@@ -11,6 +11,16 @@ import Dict.Extra as Extra
 import Html exposing (Html)
 
 
+main : Program () Model Msg
+main =
+    Browser.element { init = init, view = view, update = update, subscriptions = subs }
+
+
+subs : Model -> Sub Msg
+subs _ =
+    onAnimationFrameDelta ((\dt -> dt / 1000) >> Tick)
+
+
 
 -- Constants
 
@@ -128,6 +138,7 @@ update msg model =
                 newSecs =
                     round newTime
 
+                -- Temporarily limit ticks to ~one per sec
                 shouldUpdate =
                     secsPassed /= newSecs
             in
@@ -152,25 +163,53 @@ tick dt cars =
 updateCar : Car -> Car
 updateCar car =
     let
-        nextCoords ( x, y ) =
-            case car.direction of
-                Up ->
-                    ( x, y + 1 )
+        updatedCoords dir coords =
+            if isRoad coords then
+                ( coords, dir )
 
-                Right ->
-                    ( x + 1, y )
+            else
+                ( car.coords, turn car )
 
-                Down ->
-                    ( x, y - 1 )
-
-                Left ->
-                    ( x - 1, y )
+        ( uCoords, uDir ) =
+            updatedCoords car.direction (nextCoords car.direction car.coords)
     in
     if car.moving then
-        { car | coords = nextCoords car.coords }
+        { car | coords = uCoords, direction = uDir }
 
     else
         car
+
+
+nextCoords : Direction -> Point -> Point
+nextCoords dir ( x, y ) =
+    case dir of
+        Up ->
+            ( x, y - 1 )
+
+        Right ->
+            ( x + 1, y )
+
+        Down ->
+            ( x, y + 1 )
+
+        Left ->
+            ( x - 1, y )
+
+
+turn : Car -> Direction
+turn car =
+    case car.direction of
+        Up ->
+            Right
+
+        Right ->
+            Down
+
+        Down ->
+            Left
+
+        Left ->
+            Up
 
 
 isRoad : Point -> Bool
@@ -187,20 +226,9 @@ view model =
     boardElement model |> svg
 
 
-border : LineStyle
-border =
-    solid thin <| uniform black
-
-
-tileColor : Point -> Color
-tileColor point =
-    if isRoad point then
-        roadColor
-
-    else
-        groundColor
-
-
+{-| A 2D board of boardSize x boardSize tiles.
+Contains grass, roads and cars.
+-}
 boardElement : Model -> Collage msg
 boardElement model =
     let
@@ -234,7 +262,7 @@ tileElement c =
 carElement : Car -> Collage msg
 carElement car =
     let
-        rotationRadians =
+        rotationDegrees =
             case car.direction of
                 Up ->
                     0
@@ -258,18 +286,18 @@ carElement car =
                 |> traced (solid thin (uniform black))
     in
     stack [ ln, tri ]
-        |> rotate (degrees rotationRadians)
+        |> rotate (degrees rotationDegrees)
 
 
-
--- Main
-
-
-main : Program () Model Msg
-main =
-    Browser.element { init = init, view = view, update = update, subscriptions = subs }
+border : LineStyle
+border =
+    solid thin <| uniform black
 
 
-subs : Model -> Sub Msg
-subs _ =
-    onAnimationFrameDelta ((\dt -> dt / 1000) >> Tick)
+tileColor : Point -> Color
+tileColor point =
+    if isRoad point then
+        roadColor
+
+    else
+        groundColor
