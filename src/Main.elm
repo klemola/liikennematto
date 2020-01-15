@@ -7,7 +7,7 @@ import Collage.Layout exposing (..)
 import Collage.Render exposing (svg)
 import Color exposing (..)
 import Dict exposing (Dict)
-import Dict.Extra as Extra
+import Dict.Extra as Dict
 import Html exposing (Html)
 
 
@@ -71,6 +71,11 @@ type Direction
     | Right
     | Down
     | Left
+
+
+allDirections : List Direction
+allDirections =
+    [ Up, Right, Down, Left ]
 
 
 type alias Point =
@@ -168,6 +173,7 @@ updateCar car =
                 ( coords, dir )
 
             else
+                -- if the car can't go on, use the update cycle to turn
                 ( car.coords, turn car )
 
         ( uCoords, uDir ) =
@@ -198,18 +204,41 @@ nextCoords dir ( x, y ) =
 
 turn : Car -> Direction
 turn car =
-    case car.direction of
-        Up ->
-            Right
+    let
+        oppositeDir =
+            case car.direction of
+                Up ->
+                    Down
 
-        Right ->
-            Down
+                Right ->
+                    Left
 
-        Down ->
-            Left
+                Down ->
+                    Up
 
-        Left ->
-            Up
+                Left ->
+                    Right
+
+        isLeftOrRightTurn dir =
+            dir /= car.direction && dir /= oppositeDir
+
+        seeRoadAhead dir =
+            isRoad (nextCoords dir car.coords)
+
+        validTurns =
+            allDirections
+                |> List.filter isLeftOrRightTurn
+                |> List.filter seeRoadAhead
+
+        fallback =
+            if seeRoadAhead car.direction then
+                car.direction
+
+            else
+                oppositeDir
+    in
+    -- turn left or right, keep on going straight or turn back
+    Maybe.withDefault fallback (List.head validTurns)
 
 
 isRoad : Point -> Bool
@@ -236,7 +265,7 @@ boardElement model =
             List.range 0 (boardSize - 1)
 
         makeTile x y =
-            case Extra.find (\_ car -> car.coords == ( x, y )) model.cars of
+            case Dict.find (\_ car -> car.coords == ( x, y )) model.cars of
                 Just ( _, car ) ->
                     stack [ carElement car, tileElement <| tileColor ( x, y ) ]
 
