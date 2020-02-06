@@ -1,9 +1,9 @@
-module Car exposing (..)
+module Car exposing (Car, Cars, turn, view)
 
 import Collage exposing (..)
 import Collage.Layout exposing (stack)
 import Color exposing (Color)
-import Common exposing (Coords, Direction(..), allDirections)
+import Common exposing (Coords, Direction(..), allDirections, nextCoords, oppositeDirection)
 import Config exposing (blockSize)
 
 
@@ -13,46 +13,35 @@ type alias Car =
     , color : Color
     }
 
-type alias Cars = List Car
+
+type alias Cars =
+    List Car
 
 
-turn : Coords -> Car -> Direction
-turn coords car =
+seeRoadAhead : Coords -> List Coords -> Direction -> Bool
+seeRoadAhead coords connectedRoads dir =
+    List.any (\conn -> conn == nextCoords coords dir) connectedRoads
+
+
+turn : Coords -> List Coords -> Car -> Car
+turn currentCoords connectedRoads car =
     let
-        oppositeDir =
-            case car.direction of
-                Up ->
-                    Down
-
-                Right ->
-                    Left
-
-                Down ->
-                    Up
-
-                Left ->
-                    Right
+        opposite =
+            oppositeDirection car.direction
 
         isLeftOrRightTurn dir =
-            dir /= car.direction && dir /= oppositeDir
-
-        seeRoadAhead dir =
-            True
+            dir /= car.direction && dir /= opposite
 
         validTurns =
             allDirections
                 |> List.filter isLeftOrRightTurn
-                |> List.filter seeRoadAhead
+                |> List.filter (seeRoadAhead currentCoords connectedRoads)
 
-        fallback =
-            if seeRoadAhead car.direction then
-                car.direction
-
-            else
-                oppositeDir
+        -- turn left, right or back
+        nextDir =
+            Maybe.withDefault opposite (List.head validTurns)
     in
-    -- turn left or right, keep on going straight or turn back
-    Maybe.withDefault fallback (List.head validTurns)
+    { car | direction = nextDir }
 
 
 view : Car -> Collage msg
