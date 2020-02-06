@@ -17,8 +17,24 @@ allDirections =
     [ Up, Right, Down, Left ]
 
 
-nextCoords : Direction -> Coords -> Coords
-nextCoords dir ( x, y ) =
+oppositeDirection : Direction -> Direction
+oppositeDirection dir =
+    case dir of
+        Up ->
+            Down
+
+        Right ->
+            Left
+
+        Down ->
+            Up
+
+        Left ->
+            Right
+
+
+nextCoords : Coords -> Direction -> Coords
+nextCoords ( x, y ) dir =
     case dir of
         Up ->
             ( x, y - 1 )
