@@ -3,8 +3,8 @@ module Car exposing (Car, Cars, turn, view)
 import Collage exposing (..)
 import Collage.Layout exposing (stack)
 import Color exposing (Color)
-import Common exposing (Coords, Direction(..), allDirections, nextCoords, oppositeDirection)
-import Config exposing (blockSize)
+import Coords exposing (Coords)
+import Direction exposing (Direction(..), allDirections, oppositeDirection)
 
 
 type alias Car =
@@ -20,7 +20,7 @@ type alias Cars =
 
 seeRoadAhead : Coords -> List Coords -> Direction -> Bool
 seeRoadAhead coords connectedRoads dir =
-    List.any (\conn -> conn == nextCoords coords dir) connectedRoads
+    List.any (\conn -> conn == Coords.next coords dir) connectedRoads
 
 
 turn : Coords -> List Coords -> Car -> Car
@@ -44,9 +44,12 @@ turn currentCoords connectedRoads car =
     { car | direction = nextDir }
 
 
-view : Car -> Collage msg
-view car =
+view : Float -> Car -> Collage msg
+view blockSize car =
     let
+        size =
+            blockSize / 2
+
         border =
             solid thin <| uniform Color.black
 
@@ -65,12 +68,12 @@ view car =
                     90
 
         tri =
-            triangle (blockSize / 2)
+            triangle size
                 |> styled ( uniform car.color, border )
 
         -- Denotes direction
         ln =
-            path [ ( 0, 0 - (blockSize / 2) ), ( 0, blockSize / 2 ) ]
+            path [ ( 0, 0 - size ), ( 0, size ) ]
                 |> traced border
     in
     stack [ ln, tri ]

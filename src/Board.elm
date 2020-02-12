@@ -1,40 +1,28 @@
 module Board exposing (Board, init, update, view)
 
-import Car exposing (Car, Cars)
+import Car exposing (Car)
 import Collage exposing (..)
-import Collage.Layout exposing (horizontal, stack, vertical)
+import Collage.Layout exposing (horizontal, vertical)
 import Color exposing (..)
-import Common exposing (Coords, Direction(..), allDirections, nextCoords)
-import Config exposing (blockSize, boardSize, roads)
+import Coords exposing (Coords, hasIntersection, hasRoad, roadConnections)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
-
-
-type Tile
-    = Road Cars
-    | Terrain
-    | Empty
+import Direction exposing (Direction(..))
+import Tile exposing (Tile(..))
 
 
 type alias Board =
     Dict Coords Tile
 
 
+boardSize : Int
+boardSize =
+    8
+
+
 rg : List Int
 rg =
     List.range 1 boardSize
-
-
-hasRoad : Coords -> Bool
-hasRoad coords =
-    List.member coords roads
-
-
-roadConnections : Coords -> List Coords
-roadConnections coords =
-    allDirections
-        |> List.map (nextCoords coords)
-        |> List.filter hasRoad
 
 
 init : Board
@@ -56,15 +44,18 @@ init =
         rows =
             List.concatMap col rg
 
-        addRoad coords tile =
+        placeSpecialTiles coords tile =
             if hasRoad coords then
-                Road (placeCars coords)
+                TwoLaneRoad (placeCars coords)
+
+            else if hasIntersection coords then
+                Intersection (placeCars coords) []
 
             else
                 tile
     in
     Dict.fromList rows
-        |> Dict.map addRoad
+        |> Dict.map placeSpecialTiles
 
 
 get : Coords -> Board -> Tile
@@ -87,16 +78,14 @@ withUpdatedCars : Board -> Board
 withUpdatedCars board =
     let
         hasCars _ tile =
-            case tile of
-                Road roadCars ->
-                    List.length roadCars > 0
-
-                _ ->
-                    False
+            Tile.hasCars tile
 
         pickCars ( coords, tile ) =
             case tile of
-                Road cars ->
+                TwoLaneRoad cars ->
+                    List.map (Tuple.pair coords) cars
+
+                Intersection cars _ ->
                     List.map (Tuple.pair coords) cars
 
                 _ ->
@@ -118,26 +107,24 @@ withUpdatedCars board =
             else
                 Nothing
 
-        setCars coords tile =
-            case tile of
-                Road _ ->
-                    List.filterMap (matchCar coords) updatedCars
-                        |> Road
-
-                _ ->
-                    tile
+        updateTile coords tile =
+            List.filterMap (matchCar coords) updatedCars
+                |> Tile.setCars tile
     in
-    Dict.map setCars board
+    Dict.map updateTile board
 
 
 updateCar : Board -> ( Coords, Car ) -> ( Coords, Car )
 updateCar board ( coords, car ) =
     let
         uCoords =
-            nextCoords coords car.direction
+            Coords.next coords car.direction
     in
     case get uCoords board of
-        Road _ ->
+        TwoLaneRoad _ ->
+            ( uCoords, car )
+
+        Intersection _ _ ->
             ( uCoords, car )
 
         _ ->
@@ -149,7 +136,7 @@ view board =
     let
         makeTile x y =
             get ( x, y ) board
-                |> tileElement
+                |> Tile.view
 
         col x =
             vertical <| List.map (makeTile x) rg
@@ -158,27 +145,3 @@ view board =
             List.map col rg
     in
     horizontal rows
-
-
-tileElement : Tile -> Collage msg
-tileElement tile =
-    let
-        carsInTile cars =
-            List.map Car.view cars
-
-        border =
-            solid thin <| uniform black
-
-        ground color =
-            rectangle blockSize blockSize
-                |> styled ( uniform color, border )
-    in
-    case tile of
-        Road cars ->
-            stack (carsInTile cars ++ [ ground darkGray ])
-
-        Terrain ->
-            ground lightGreen
-
-        Empty ->
-            ground yellow
