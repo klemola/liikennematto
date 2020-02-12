@@ -1,0 +1,64 @@
+module Coords exposing (..)
+
+import Direction exposing (Direction(..), allDirections)
+
+
+type alias Coords =
+    ( Int, Int )
+
+
+next : Coords -> Direction -> Coords
+next ( x, y ) dir =
+    case dir of
+        Up ->
+            ( x, y - 1 )
+
+        Right ->
+            ( x + 1, y )
+
+        Down ->
+            ( x, y + 1 )
+
+        Left ->
+            ( x - 1, y )
+
+
+roads : List Coords
+roads =
+    [ ( 1, 1 )
+    , ( 2, 1 )
+    , ( 3, 1 )
+    , ( 4, 1 )
+    , ( 5, 1 )
+    , ( 5, 2 )
+    , ( 5, 3 )
+    , ( 5, 4 )
+    , ( 5, 6 )
+    , ( 5, 7 )
+    , ( 5, 8 )
+    , ( 6, 5 )
+    , ( 7, 5 )
+    , ( 8, 5 )
+    ]
+
+
+hasRoad : Coords -> Bool
+hasRoad coords =
+    List.member coords roads
+
+
+roadConnections : Coords -> List Coords
+roadConnections coords =
+    allDirections
+        |> List.map (next coords)
+        |> List.filter hasRoad
+
+
+intersections : List Coords
+intersections =
+    [ ( 5, 5 ) ]
+
+
+hasIntersection : Coords -> Bool
+hasIntersection coords =
+    List.member coords intersections
