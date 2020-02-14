@@ -8,7 +8,7 @@ import Coords exposing (Coords, hasIntersection, hasRoad, roadConnections)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction exposing (Direction(..))
-import Tile exposing (Tile(..))
+import Tile exposing (Tile(..), TrafficLightKind(..))
 
 
 type alias Board =
@@ -49,7 +49,7 @@ init =
                 TwoLaneRoad (placeCars coords)
 
             else if hasIntersection coords then
-                Intersection (placeCars coords) []
+                Intersection (placeCars coords) [ Tile.defaultTrafficLight ]
 
             else
                 tile
@@ -72,6 +72,7 @@ update : Board -> Board
 update board =
     board
         |> withUpdatedCars
+        |> withUpdatedTrafficLights
 
 
 withUpdatedCars : Board -> Board
@@ -81,15 +82,8 @@ withUpdatedCars board =
             Tile.hasCars tile
 
         pickCars ( coords, tile ) =
-            case tile of
-                TwoLaneRoad cars ->
-                    List.map (Tuple.pair coords) cars
-
-                Intersection cars _ ->
-                    List.map (Tuple.pair coords) cars
-
-                _ ->
-                    []
+            Tile.getCars tile
+                |> List.map (Tuple.pair coords)
 
         tilesWithCars =
             board |> Dict.filter hasCars
@@ -129,6 +123,11 @@ updateCar board ( coords, car ) =
 
         _ ->
             ( coords, Car.turn coords (roadConnections coords) car )
+
+
+withUpdatedTrafficLights : Board -> Board
+withUpdatedTrafficLights board =
+    Dict.map (\_ tile -> Tile.advanceTrafficLights tile) board
 
 
 view : Board -> Collage msg
