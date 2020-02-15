@@ -70,6 +70,28 @@ hasCars tile =
     List.length (getCars tile) > 0
 
 
+canEnter : Tile -> Bool
+canEnter tile =
+    let
+        isGreen tl =
+            case tl.kind of
+                Green ->
+                    True
+
+                _ ->
+                    False
+    in
+    case tile of
+        TwoLaneRoad _ ->
+            True
+
+        Intersection _ trafficLights ->
+            List.all isGreen trafficLights
+
+        _ ->
+            False
+
+
 defaultTrafficLight : TrafficLight
 defaultTrafficLight =
     makeTrafficLight Green

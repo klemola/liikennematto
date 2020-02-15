@@ -8,8 +8,7 @@ import Direction exposing (Direction(..), allDirections, oppositeDirection)
 
 
 type alias Car =
-    { moving : Bool
-    , direction : Direction
+    { direction : Direction
     , color : Color
     }
 
