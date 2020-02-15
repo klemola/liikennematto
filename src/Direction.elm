@@ -8,13 +8,13 @@ type Direction
     | Left
 
 
-allDirections : List Direction
-allDirections =
+all : List Direction
+all =
     [ Up, Right, Down, Left ]
 
 
-oppositeDirection : Direction -> Direction
-oppositeDirection dir =
+opposite : Direction -> Direction
+opposite dir =
     case dir of
         Up ->
             Down

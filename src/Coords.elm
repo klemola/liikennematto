@@ -1,6 +1,6 @@
 module Coords exposing (..)
 
-import Direction exposing (Direction(..), allDirections)
+import Direction exposing (Direction(..))
 
 
 type alias Coords =
@@ -58,7 +58,7 @@ hasRoad coords =
 
 roadConnections : Coords -> List Coords
 roadConnections coords =
-    allDirections
+    Direction.all
         |> List.map (next coords)
         |> List.filter hasRoad
 

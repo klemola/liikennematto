@@ -4,7 +4,7 @@ import Collage exposing (..)
 import Collage.Layout exposing (stack)
 import Color exposing (Color)
 import Coords exposing (Coords)
-import Direction exposing (Direction(..), allDirections, oppositeDirection)
+import Direction exposing (Direction(..))
 
 
 type alias Car =
@@ -26,13 +26,13 @@ turn : Coords -> List Coords -> Car -> Car
 turn currentCoords connectedRoads car =
     let
         opposite =
-            oppositeDirection car.direction
+            Direction.opposite car.direction
 
         isLeftOrRightTurn dir =
             dir /= car.direction && dir /= opposite
 
         validTurns =
-            allDirections
+            Direction.all
                 |> List.filter isLeftOrRightTurn
                 |> List.filter (seeRoadAhead currentCoords connectedRoads)
 

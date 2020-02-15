@@ -8,7 +8,8 @@ import Coords exposing (Coords, hasIntersection, hasRoad, roadConnections)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction exposing (Direction(..))
-import Tile exposing (Tile(..), TrafficLightKind(..))
+import Tile exposing (Tile(..))
+import TrafficLight
 
 
 type alias Board =
@@ -57,7 +58,9 @@ init =
                 TwoLaneRoad (placeCars coords)
 
             else if hasIntersection coords then
-                Intersection (placeCars coords) [ Tile.defaultTrafficLight ]
+                Direction.all
+                    |> List.map TrafficLight.initial
+                    |> Intersection (placeCars coords)
 
             else
                 tile
