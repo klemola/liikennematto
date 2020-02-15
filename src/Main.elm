@@ -1,10 +1,10 @@
 module Main exposing (main)
 
-import Board exposing (Board)
+import Board exposing (Board, Msg(..))
 import Browser
-import Browser.Events exposing (onAnimationFrameDelta)
 import Collage.Render exposing (svg)
 import Html exposing (Html)
+import Time
 
 
 main : Program () Model Msg
@@ -14,62 +14,44 @@ main =
 
 subs : Model -> Sub Msg
 subs _ =
-    onAnimationFrameDelta ((\dt -> dt / 1000) >> Tick)
-
-
-type alias Delta =
-    Float
+    Sub.batch
+        [ Time.every 1000 SlowTick
+        , Time.every 500 FastTick
+        ]
 
 
 type alias Model =
     { board : Board
-    , time : Float
     }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { board = Board.init, time = 0 }, Cmd.none )
+    ( { board = Board.init }, Cmd.none )
 
 
 type Msg
-    = Tick Delta
+    = SlowTick Time.Posix
+    | FastTick Time.Posix
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Tick dt ->
-            let
-                newTime =
-                    model.time + dt
-
-                secsPassed =
-                    round model.time
-
-                newSecs =
-                    round newTime
-
-                -- Temporarily limit ticks to ~one per sec
-                shouldUpdate =
-                    secsPassed /= newSecs
-            in
+        SlowTick _ ->
             ( { model
-                | board =
-                    if shouldUpdate then
-                        tick dt model.board
-
-                    else
-                        model.board
-                , time = newTime
+                | board = Board.update UpdateEnvironment model.board
               }
             , Cmd.none
             )
 
-
-tick : Float -> Board -> Board
-tick dt board =
-    Board.update board
+        FastTick _ ->
+            ( { model
+                | board =
+                    Board.update UpdateTraffic model.board
+              }
+            , Cmd.none
+            )
 
 
 view : Model -> Html Msg

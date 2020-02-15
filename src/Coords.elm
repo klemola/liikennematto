@@ -27,9 +27,9 @@ roads : List Coords
 roads =
     [ ( 1, 1 )
     , ( 2, 1 )
-    , ( 3, 1 )
-    , ( 4, 1 )
-    , ( 5, 2 )
+    , ( 2, 2 )
+    , ( 3, 2 )
+    , ( 4, 2 )
     , ( 6, 2 )
     , ( 7, 2 )
     , ( 8, 2 )
@@ -61,7 +61,7 @@ roadConnections coords =
 
 intersections : List Coords
 intersections =
-    [ ( 5, 1 ), ( 5, 5 ) ]
+    [ ( 5, 2 ), ( 5, 5 ) ]
 
 
 hasIntersection : Coords -> Bool
