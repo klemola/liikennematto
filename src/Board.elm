@@ -3,7 +3,7 @@ module Board exposing (Board, Msg(..), init, update, view)
 import Car exposing (Car)
 import Collage exposing (..)
 import Collage.Layout exposing (horizontal, vertical)
-import Color exposing (..)
+import Color
 import Coords exposing (Coords, hasIntersection, hasRoad, roadConnections)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
@@ -35,7 +35,10 @@ init =
     let
         placeCars coords =
             if coords == ( 1, 1 ) then
-                [ Car True Right blue ]
+                [ Car Right Color.blue ]
+
+            else if coords == ( 5, 1 ) then
+                [ Car Down Color.red ]
 
             else
                 []
@@ -123,16 +126,20 @@ updateCar board ( coords, car ) =
     let
         uCoords =
             Coords.next coords car.direction
+
+        nextTile =
+            get uCoords board
     in
-    case get uCoords board of
-        TwoLaneRoad _ ->
-            ( uCoords, car )
+    if Tile.canEnter nextTile then
+        ( uCoords, car )
 
-        Intersection _ _ ->
-            ( uCoords, car )
+    else
+        case nextTile of
+            Intersection _ _ ->
+                ( coords, car )
 
-        _ ->
-            ( coords, Car.turn coords (roadConnections coords) car )
+            _ ->
+                ( coords, Car.turn coords (roadConnections coords) car )
 
 
 withUpdatedTrafficLights : Board -> Board
