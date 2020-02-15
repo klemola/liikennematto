@@ -3,23 +3,8 @@ module Tile exposing (..)
 import Car exposing (Cars)
 import Collage exposing (..)
 import Collage.Layout exposing (stack)
-import Color exposing (Color)
-
-
-type TrafficLightKind
-    = Red
-    | Yellow
-    | Green
-
-
-type alias TrafficLight =
-    { kind : TrafficLightKind
-    , timeRemaining : Int
-    }
-
-
-type alias TrafficLights =
-    List TrafficLight
+import Color
+import TrafficLight exposing (TrafficLights)
 
 
 type Tile
@@ -72,80 +57,27 @@ hasCars tile =
 
 canEnter : Tile -> Bool
 canEnter tile =
-    let
-        isGreen tl =
-            case tl.kind of
-                Green ->
-                    True
-
-                _ ->
-                    False
-    in
     case tile of
         TwoLaneRoad _ ->
             True
 
         Intersection _ trafficLights ->
-            List.all isGreen trafficLights
+            List.all TrafficLight.isGreen trafficLights
 
         _ ->
             False
 
 
-defaultTrafficLight : TrafficLight
-defaultTrafficLight =
-    makeTrafficLight Green
-
-
-makeTrafficLight : TrafficLightKind -> TrafficLight
-makeTrafficLight kind =
-    case kind of
-        Green ->
-            TrafficLight Green 5
-
-        Yellow ->
-            TrafficLight Yellow 3
-
-        Red ->
-            TrafficLight Red 3
-
-
 advanceTrafficLights : Tile -> Tile
 advanceTrafficLights tile =
-    let
-        advanceTimer tl =
-            { tl | timeRemaining = tl.timeRemaining - 1 }
-
-        nextLight tl =
-            if tl.timeRemaining == 0 then
-                advanceTrafficLightCycle tl.kind
-                    |> makeTrafficLight
-
-            else
-                tl
-    in
     case tile of
         Intersection cars trafficLights ->
             trafficLights
-                |> List.map advanceTimer
-                |> List.map nextLight
+                |> List.map TrafficLight.next
                 |> Intersection cars
 
         _ ->
             tile
-
-
-advanceTrafficLightCycle : TrafficLightKind -> TrafficLightKind
-advanceTrafficLightCycle tlKind =
-    case tlKind of
-        Green ->
-            Red
-
-        Yellow ->
-            Green
-
-        Red ->
-            Yellow
 
 
 view : Tile -> Collage msg
@@ -154,40 +86,22 @@ view tile =
         carsInTile cars =
             List.map (Car.view blockSize) cars
 
-        ground color border =
+        trafficLightsInTile tls =
+            List.map (TrafficLight.view blockSize) tls
+
+        ground color =
             rectangle blockSize blockSize
-                |> styled ( uniform color, border )
-
-        tlBorder tls =
-            case List.head tls of
-                Just tl ->
-                    solid thin <| uniform (trafficLightToVisualColor tl.kind)
-
-                Nothing ->
-                    defaultBorder
+                |> styled ( uniform color, defaultBorder )
     in
     case tile of
         TwoLaneRoad cars ->
-            stack (carsInTile cars ++ [ ground Color.darkGray defaultBorder ])
+            stack (carsInTile cars ++ [ ground Color.darkGray ])
 
         Intersection cars trafficLights ->
-            stack (carsInTile cars ++ [ ground Color.darkGray (tlBorder trafficLights) ])
+            stack (carsInTile cars ++ trafficLightsInTile trafficLights ++ [ ground Color.darkGray ])
 
         Terrain ->
-            ground Color.lightGreen defaultBorder
+            ground Color.lightGreen
 
         Empty ->
-            ground Color.yellow defaultBorder
-
-
-trafficLightToVisualColor : TrafficLightKind -> Color
-trafficLightToVisualColor tlKind =
-    case tlKind of
-        Green ->
-            Color.green
-
-        Yellow ->
-            Color.yellow
-
-        Red ->
-            Color.red
+            ground Color.yellow
