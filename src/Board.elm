@@ -1,4 +1,4 @@
-module Board exposing (Board, init, update, view)
+module Board exposing (Board, Msg(..), init, update, view)
 
 import Car exposing (Car)
 import Collage exposing (..)
@@ -13,6 +13,11 @@ import Tile exposing (Tile(..), TrafficLightKind(..))
 
 type alias Board =
     Dict Coords Tile
+
+
+type Msg
+    = UpdateTraffic
+    | UpdateEnvironment
 
 
 boardSize : Int
@@ -68,11 +73,16 @@ get coords board =
             Empty
 
 
-update : Board -> Board
-update board =
-    board
-        |> withUpdatedCars
-        |> withUpdatedTrafficLights
+update : Msg -> Board -> Board
+update msg board =
+    case msg of
+        UpdateTraffic ->
+            board
+                |> withUpdatedCars
+
+        UpdateEnvironment ->
+            board
+                |> withUpdatedTrafficLights
 
 
 withUpdatedCars : Board -> Board
