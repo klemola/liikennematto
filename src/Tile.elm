@@ -21,7 +21,7 @@ blockSize =
 
 defaultBorder : LineStyle
 defaultBorder =
-    solid thin <| uniform Color.black
+    solid ultrathin <| uniform Color.darkCharcoal
 
 
 getCars : Tile -> Cars
@@ -101,7 +101,7 @@ view tile =
             stack (carsInTile cars ++ trafficLightsInTile trafficLights ++ [ ground Color.darkGray ])
 
         Terrain ->
-            ground Color.lightGreen
+            ground Color.darkGreen
 
         Empty ->
             ground Color.yellow
