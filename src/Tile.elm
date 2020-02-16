@@ -4,6 +4,7 @@ import Car exposing (Cars)
 import Collage exposing (..)
 import Collage.Layout exposing (stack)
 import Color
+import Direction exposing (Direction)
 import TrafficLight exposing (TrafficLights)
 
 
@@ -55,14 +56,18 @@ hasCars tile =
     List.length (getCars tile) > 0
 
 
-canEnter : Tile -> Bool
-canEnter tile =
+canEnter : Tile -> Direction -> Bool
+canEnter tile entryDirection =
+    let
+        entryAllowed tl =
+            TrafficLight.isGreen tl && tl.facing == entryDirection
+    in
     case tile of
         TwoLaneRoad _ ->
             True
 
         Intersection _ trafficLights ->
-            List.all TrafficLight.isGreen trafficLights
+            List.any entryAllowed trafficLights
 
         _ ->
             False

@@ -58,8 +58,8 @@ init =
                 TwoLaneRoad (placeCars coords)
 
             else if hasIntersection coords then
-                Direction.all
-                    |> List.map TrafficLight.initial
+                Direction.orientations
+                    |> List.concatMap TrafficLight.fromTrafficDirection
                     |> Intersection (placeCars coords)
 
             else
@@ -133,7 +133,7 @@ updateCar board ( coords, car ) =
         nextTile =
             get uCoords board
     in
-    if Tile.canEnter nextTile then
+    if Tile.canEnter nextTile car.direction then
         ( uCoords, car )
 
     else
