@@ -90,31 +90,31 @@ toColor : TrafficLightKind -> Color
 toColor tlKind =
     case tlKind of
         Green ->
-            Color.green
+            Color.darkGreen
 
         Yellow ->
-            Color.yellow
+            Color.darkYellow
 
         Red ->
-            Color.red
+            Color.darkRed
 
 
 view : Float -> TrafficLight -> Collage msg
 view tileSize tl =
     let
-        anchor =
+        ( anchor, offset ) =
             case tl.facing of
                 Up ->
-                    Layout.top
+                    ( Layout.top, ( 0, -2 ) )
 
                 Down ->
-                    Layout.bottom
+                    ( Layout.bottom, ( 0, 2 ) )
 
                 Left ->
-                    Layout.left
+                    ( Layout.left, ( 2, 0 ) )
 
                 Right ->
-                    Layout.right
+                    ( Layout.right, ( -2, 0 ) )
 
         boundaries =
             square tileSize
@@ -124,6 +124,7 @@ view tileSize tl =
             line tileSize
                 |> traced (solid thick (uniform (toColor tl.kind)))
                 |> rotate (degrees (Direction.rotationDegrees tl.facing))
+                |> shift offset
     in
     boundaries
         |> Layout.at anchor presentation
