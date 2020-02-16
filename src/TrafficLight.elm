@@ -13,7 +13,7 @@ type TrafficLightKind
 
 type alias TrafficLight =
     { kind : TrafficLightKind
-    , direction : Direction
+    , facing : Direction
     , timeRemaining : Int
     }
 
@@ -22,22 +22,30 @@ type alias TrafficLights =
     List TrafficLight
 
 
-initial : Direction -> TrafficLight
-initial dir =
-    new Green dir
+fromTrafficDirection : List Direction -> List TrafficLight
+fromTrafficDirection direction =
+    case direction of
+        [ Up, Down ] ->
+            [ new Green Up, new Green Down ]
+
+        [ Left, Right ] ->
+            [ new Red Left, new Red Right ]
+
+        _ ->
+            []
 
 
 new : TrafficLightKind -> Direction -> TrafficLight
-new kind dir =
+new kind facing =
     case kind of
         Green ->
-            TrafficLight Green dir 5
+            TrafficLight Green facing 6
 
         Yellow ->
-            TrafficLight Yellow dir 3
+            TrafficLight Yellow facing 2
 
         Red ->
-            TrafficLight Red dir 3
+            TrafficLight Red facing 3
 
 
 advanceTimer : TrafficLight -> TrafficLight
@@ -61,7 +69,7 @@ advanceLight tlKind =
 next : TrafficLight -> TrafficLight
 next tl =
     if tl.timeRemaining == 0 then
-        new (advanceLight tl.kind) tl.direction
+        new (advanceLight tl.kind) tl.facing
 
     else
         advanceTimer tl
@@ -126,7 +134,7 @@ view blockSize tl =
         leftBorder =
             border topLeft bottomLeft
     in
-    case tl.direction of
+    case tl.facing of
         Up ->
             topBorder
 

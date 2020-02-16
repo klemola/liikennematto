@@ -8,9 +8,24 @@ type Direction
     | Left
 
 
+horizontal : List Direction
+horizontal =
+    [ Left, Right ]
+
+
+vertical : List Direction
+vertical =
+    [ Up, Down ]
+
+
 all : List Direction
 all =
-    [ Up, Right, Down, Left ]
+    vertical ++ horizontal
+
+
+orientations : List (List Direction)
+orientations =
+    [ vertical, horizontal ]
 
 
 opposite : Direction -> Direction
