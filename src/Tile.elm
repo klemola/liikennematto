@@ -106,7 +106,7 @@ view tile =
             Layout.stack (carsInTile cars ++ trafficLightsInTile trafficLights ++ [ ground Color.darkGray ])
 
         Terrain ->
-            ground Color.darkGreen
+            ground (Color.rgb255 102 153 80)
 
         Empty ->
             ground Color.yellow
