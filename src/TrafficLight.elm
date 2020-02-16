@@ -1,6 +1,7 @@
 module TrafficLight exposing (..)
 
 import Collage exposing (..)
+import Collage.Layout as Layout
 import Color exposing (Color)
 import Direction exposing (Direction(..))
 
@@ -99,50 +100,30 @@ toColor tlKind =
 
 
 view : Float -> TrafficLight -> Collage msg
-view blockSize tl =
+view tileSize tl =
     let
-        centerToEdgeDistance =
-            blockSize / 2
+        anchor =
+            case tl.facing of
+                Up ->
+                    Layout.top
 
-        -- These coordinates can be later replaced with Collage built-in layout tools
-        topLeft =
-            ( -centerToEdgeDistance, centerToEdgeDistance )
+                Down ->
+                    Layout.bottom
 
-        topRight =
-            ( centerToEdgeDistance, centerToEdgeDistance )
+                Left ->
+                    Layout.left
 
-        bottomLeft =
-            ( -centerToEdgeDistance, -centerToEdgeDistance )
+                Right ->
+                    Layout.right
 
-        bottomRight =
-            ( centerToEdgeDistance, -centerToEdgeDistance )
+        boundaries =
+            square tileSize
+                |> styled ( transparent, invisible )
 
-        -- This could also be a line that's rotated and then aligned to a side
-        border start end =
-            segment start end
+        presentation =
+            line tileSize
                 |> traced (solid thick (uniform (toColor tl.kind)))
-
-        topBorder =
-            border topLeft topRight
-
-        rightBorder =
-            border topRight bottomRight
-
-        bottomBorder =
-            border bottomLeft bottomRight
-
-        leftBorder =
-            border topLeft bottomLeft
+                |> rotate (degrees (Direction.rotationDegrees tl.facing))
     in
-    case tl.facing of
-        Up ->
-            topBorder
-
-        Right ->
-            rightBorder
-
-        Down ->
-            bottomBorder
-
-        Left ->
-            leftBorder
+    boundaries
+        |> Layout.at anchor presentation

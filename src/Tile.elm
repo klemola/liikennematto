@@ -2,9 +2,9 @@ module Tile exposing (..)
 
 import Car exposing (Cars)
 import Collage exposing (..)
-import Collage.Layout exposing (stack)
+import Collage.Layout as Layout
 import Color
-import Direction exposing (Direction)
+import Direction exposing (Direction(..))
 import TrafficLight exposing (TrafficLights)
 
 
@@ -15,8 +15,8 @@ type Tile
     | Empty
 
 
-blockSize : Float
-blockSize =
+tileSize : Float
+tileSize =
     64
 
 
@@ -89,21 +89,21 @@ view : Tile -> Collage msg
 view tile =
     let
         carsInTile cars =
-            List.map (Car.view blockSize) cars
+            List.map (Car.view tileSize) cars
 
         trafficLightsInTile tls =
-            List.map (TrafficLight.view blockSize) tls
+            List.map (TrafficLight.view tileSize) tls
 
         ground color =
-            rectangle blockSize blockSize
+            square tileSize
                 |> styled ( uniform color, defaultBorder )
     in
     case tile of
         TwoLaneRoad cars ->
-            stack (carsInTile cars ++ [ ground Color.darkGray ])
+            Layout.stack (carsInTile cars ++ [ ground Color.darkGray ])
 
         Intersection cars trafficLights ->
-            stack (carsInTile cars ++ trafficLightsInTile trafficLights ++ [ ground Color.darkGray ])
+            Layout.stack (carsInTile cars ++ trafficLightsInTile trafficLights ++ [ ground Color.darkGray ])
 
         Terrain ->
             ground Color.darkGreen
