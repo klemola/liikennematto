@@ -44,27 +44,13 @@ turn currentCoords connectedRoads car =
 
 
 view : Float -> Car -> Collage msg
-view blockSize car =
+view tileSize car =
     let
         size =
-            blockSize / 2
+            tileSize / 2
 
         border =
             solid thin <| uniform Color.black
-
-        rotationDegrees =
-            case car.direction of
-                Up ->
-                    0
-
-                Right ->
-                    270
-
-                Down ->
-                    180
-
-                Left ->
-                    90
 
         tri =
             triangle size
@@ -76,4 +62,4 @@ view blockSize car =
                 |> traced border
     in
     stack [ ln, tri ]
-        |> rotate (degrees rotationDegrees)
+        |> rotate (degrees (Direction.rotationDegrees car.direction))
