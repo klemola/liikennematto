@@ -1,7 +1,6 @@
 module TrafficLight exposing (..)
 
 import Collage exposing (..)
-import Collage.Layout exposing (stack)
 import Color exposing (Color)
 import Direction exposing (Direction(..))
 
@@ -97,6 +96,7 @@ view blockSize tl =
         centerToEdgeDistance =
             blockSize / 2
 
+        -- These coordinates can be later replaced with Collage built-in layout tools
         topLeft =
             ( -centerToEdgeDistance, centerToEdgeDistance )
 
@@ -109,6 +109,7 @@ view blockSize tl =
         bottomRight =
             ( centerToEdgeDistance, -centerToEdgeDistance )
 
+        -- This could also be a line that's rotated and then aligned to a side
         border start end =
             segment start end
                 |> traced (solid thick (uniform (toColor tl.kind)))
