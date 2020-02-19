@@ -16,7 +16,7 @@ subs : Model -> Sub Msg
 subs _ =
     Sub.batch
         [ Time.every 1000 SlowTick
-        , Time.every 500 FastTick
+        , Time.every 600 FastTick
         ]
 
 
