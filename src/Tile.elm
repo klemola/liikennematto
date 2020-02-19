@@ -59,12 +59,15 @@ hasCars tile =
 canEnter : Tile -> Direction -> Bool
 canEnter tile entryDirection =
     let
+        noCollision car =
+            car.direction /= entryDirection
+
         entryAllowed tl =
             TrafficLight.isGreen tl && tl.facing == entryDirection
     in
     case tile of
-        TwoLaneRoad _ ->
-            True
+        TwoLaneRoad cars ->
+            List.all noCollision cars
 
         Intersection _ trafficLights ->
             List.any entryAllowed trafficLights

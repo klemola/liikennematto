@@ -1,15 +1,21 @@
-module Car exposing (Car, Cars, turn, view)
+module Car exposing (Car, CarKind(..), Cars, turn, view)
 
 import Collage exposing (..)
-import Collage.Layout exposing (stack)
-import Color exposing (Color)
 import Coords exposing (Coords)
 import Direction exposing (Direction(..))
 
 
+type CarKind
+    = Sedan1
+    | Sedan2
+    | Sedan3
+    | Sedan4
+    | Sedan5
+
+
 type alias Car =
     { direction : Direction
-    , color : Color
+    , kind : CarKind
     }
 
 
@@ -49,17 +55,25 @@ view tileSize car =
         size =
             tileSize / 2
 
-        border =
-            solid thin <| uniform Color.black
+        asset =
+            case car.kind of
+                Sedan1 ->
+                    "assets/car_blue_1.png"
 
-        tri =
-            triangle size
-                |> styled ( uniform car.color, border )
+                Sedan2 ->
+                    "assets/car_red_1.png"
 
-        -- Denotes direction
-        ln =
-            path [ ( 0, 0 - size ), ( 0, size ) ]
-                |> traced border
+                Sedan3 ->
+                    "assets/car_green_1.png"
+
+                Sedan4 ->
+                    "assets/car_yellow_1.png"
+
+                Sedan5 ->
+                    "assets/car_black_1.png"
+
+        carShape =
+            image ( size, size ) asset
     in
-    stack [ ln, tri ]
+    carShape
         |> rotate (degrees (Direction.rotationDegrees car.direction))

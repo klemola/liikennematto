@@ -1,9 +1,8 @@
 module Board exposing (Board, Msg(..), init, update, view)
 
-import Car exposing (Car)
+import Car exposing (Car, CarKind(..))
 import Collage exposing (..)
 import Collage.Layout exposing (horizontal, vertical)
-import Color
 import Coords exposing (Coords, hasIntersection, hasRoad, roadConnections)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
@@ -35,11 +34,17 @@ init : Board
 init =
     let
         placeCars coords =
-            if coords == ( 1, 1 ) then
-                [ Car Right Color.blue ]
+            if coords == ( 1, 2 ) then
+                [ Car Right Sedan1 ]
+
+            else if coords == ( 2, 2 ) then
+                [ Car Right Sedan2 ]
+
+            else if coords == ( 2, 5 ) then
+                [ Car Right Sedan3 ]
 
             else if coords == ( 5, 1 ) then
-                [ Car Down Color.red ]
+                [ Car Down Sedan4 ]
 
             else
                 []
@@ -139,6 +144,9 @@ updateCar board ( coords, car ) =
     else
         case nextTile of
             Intersection _ _ ->
+                ( coords, car )
+
+            TwoLaneRoad _ ->
                 ( coords, car )
 
             _ ->
