@@ -65,7 +65,7 @@ init =
             else if hasIntersection coords then
                 Direction.orientations
                     |> List.concatMap TrafficLight.fromTrafficDirection
-                    |> Intersection (placeCars coords)
+                    |> SignalControlledIntersection (placeCars coords)
 
             else
                 tile
@@ -143,7 +143,7 @@ updateCar board ( coords, car ) =
 
     else
         case nextTile of
-            Intersection _ _ ->
+            SignalControlledIntersection _ _ ->
                 ( coords, car )
 
             TwoLaneRoad _ ->

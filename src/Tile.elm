@@ -10,7 +10,10 @@ import TrafficLight exposing (TrafficLights)
 
 type Tile
     = TwoLaneRoad Cars
-    | Intersection Cars TrafficLights
+    | SignalControlledIntersection Cars TrafficLights
+    | YieldControlledIntersection Cars
+    | StopControlledIntersection Cars
+    | UncontrolledIntersection Cars
     | Terrain
     | Empty
 
@@ -31,7 +34,7 @@ getCars tile =
         TwoLaneRoad cars ->
             cars
 
-        Intersection cars _ ->
+        SignalControlledIntersection cars _ ->
             cars
 
         _ ->
@@ -44,8 +47,17 @@ setCars tile cars =
         TwoLaneRoad _ ->
             TwoLaneRoad cars
 
-        Intersection _ trafficLights ->
-            Intersection cars trafficLights
+        SignalControlledIntersection _ trafficLights ->
+            SignalControlledIntersection cars trafficLights
+
+        YieldControlledIntersection _ ->
+            YieldControlledIntersection cars
+
+        StopControlledIntersection _ ->
+            StopControlledIntersection cars
+
+        UncontrolledIntersection _ ->
+            UncontrolledIntersection cars
 
         _ ->
             tile
@@ -69,8 +81,17 @@ canEnter tile entryDirection =
         TwoLaneRoad cars ->
             List.all noCollision cars
 
-        Intersection _ trafficLights ->
+        SignalControlledIntersection _ trafficLights ->
             List.any entryAllowed trafficLights
+
+        YieldControlledIntersection cars ->
+            True
+
+        StopControlledIntersection cars ->
+            True
+
+        UncontrolledIntersection cars ->
+            True
 
         _ ->
             False
@@ -79,10 +100,10 @@ canEnter tile entryDirection =
 advanceTrafficLights : Tile -> Tile
 advanceTrafficLights tile =
     case tile of
-        Intersection cars trafficLights ->
+        SignalControlledIntersection cars trafficLights ->
             trafficLights
                 |> List.map TrafficLight.next
-                |> Intersection cars
+                |> SignalControlledIntersection cars
 
         _ ->
             tile
@@ -105,8 +126,17 @@ view tile =
         TwoLaneRoad cars ->
             Layout.stack (carsInTile cars ++ [ ground Color.darkGray ])
 
-        Intersection cars trafficLights ->
+        SignalControlledIntersection cars trafficLights ->
             Layout.stack (carsInTile cars ++ trafficLightsInTile trafficLights ++ [ ground Color.darkGray ])
+
+        YieldControlledIntersection cars ->
+            Layout.stack (carsInTile cars ++ [ ground Color.darkGray ])
+
+        StopControlledIntersection cars ->
+            Layout.stack (carsInTile cars ++ [ ground Color.darkGray ])
+
+        UncontrolledIntersection cars ->
+            Layout.stack (carsInTile cars ++ [ ground Color.darkGray ])
 
         Terrain ->
             ground (Color.rgb255 102 153 80)
