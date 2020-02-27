@@ -4,6 +4,7 @@ import Car exposing (Cars)
 import Collage exposing (..)
 import Collage.Layout as Layout
 import Color
+import Coords exposing (Coords)
 import Direction exposing (Direction(..))
 import TrafficLight exposing (TrafficLights)
 
@@ -37,6 +38,9 @@ getCars tile =
         SignalControlledIntersection cars _ ->
             cars
 
+        YieldControlledIntersection cars ->
+            cars
+
         _ ->
             []
 
@@ -68,24 +72,44 @@ hasCars tile =
     List.length (getCars tile) > 0
 
 
-canEnter : Tile -> Direction -> Bool
-canEnter tile entryDirection =
+canEnter : Tile -> Coords -> List ( Coords, Tile ) -> Direction -> Bool
+canEnter tile coords neighbors entryDirection =
     let
         noCollision car =
             car.direction /= entryDirection
 
-        entryAllowed tl =
+        verticalTrafficInXs carsInXs =
+            neighbors
+                |> List.filterMap
+                    (\( c, t ) ->
+                        if Tuple.second coords - Tuple.second c /= 0 then
+                            Just (getCars t)
+
+                        else
+                            Nothing
+                    )
+                |> List.concat
+                |> List.append carsInXs
+
+        signalXsEntryAllowed tl =
             TrafficLight.isGreen tl && tl.facing == entryDirection
+
+        yieldXsEntryAllowed carsInXs =
+            if List.member entryDirection Direction.horizontal then
+                List.length (verticalTrafficInXs carsInXs) == 0
+
+            else
+                True
     in
     case tile of
         TwoLaneRoad cars ->
             List.all noCollision cars
 
         SignalControlledIntersection _ trafficLights ->
-            List.any entryAllowed trafficLights
+            List.any signalXsEntryAllowed trafficLights
 
         YieldControlledIntersection cars ->
-            True
+            yieldXsEntryAllowed cars
 
         StopControlledIntersection cars ->
             True
@@ -130,10 +154,10 @@ view tile =
             Layout.stack (carsInTile cars ++ trafficLightsInTile trafficLights ++ [ ground Color.darkGray ])
 
         YieldControlledIntersection cars ->
-            Layout.stack (carsInTile cars ++ [ ground Color.darkGray ])
+            Layout.stack (carsInTile cars ++ [ ground Color.lightYellow ])
 
         StopControlledIntersection cars ->
-            Layout.stack (carsInTile cars ++ [ ground Color.darkGray ])
+            Layout.stack (carsInTile cars ++ [ ground Color.lightRed ])
 
         UncontrolledIntersection cars ->
             Layout.stack (carsInTile cars ++ [ ground Color.darkGray ])
