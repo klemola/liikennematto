@@ -39,7 +39,6 @@ roads =
     , ( 1, 4 )
     , ( 5, 4 )
     , ( 8, 4 )
-    , ( 1, 5 )
     , ( 2, 5 )
     , ( 3, 5 )
     , ( 4, 5 )
@@ -60,18 +59,33 @@ hasRoad coords =
     List.member coords roads
 
 
-roadConnections : Coords -> List Coords
-roadConnections coords =
+neighbors : Coords -> List Coords
+neighbors coords =
     Direction.all
         |> List.map (next coords)
+
+
+roadConnections : Coords -> List Coords
+roadConnections coords =
+    neighbors coords
         |> List.filter hasRoad
 
 
-intersections : List Coords
-intersections =
+signalIntersections : List Coords
+signalIntersections =
     [ ( 5, 2 ), ( 5, 5 ) ]
 
 
-hasIntersection : Coords -> Bool
-hasIntersection coords =
-    List.member coords intersections
+hasSignalIntersection : Coords -> Bool
+hasSignalIntersection coords =
+    List.member coords signalIntersections
+
+
+yieldIntersections : List Coords
+yieldIntersections =
+    [ ( 1, 5 ) ]
+
+
+hasYieldIntersection : Coords -> Bool
+hasYieldIntersection coords =
+    List.member coords yieldIntersections

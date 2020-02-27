@@ -3,7 +3,7 @@ module Board exposing (Board, Msg(..), init, update, view)
 import Car exposing (Car, CarKind(..))
 import Collage exposing (..)
 import Collage.Layout exposing (horizontal, vertical)
-import Coords exposing (Coords, hasIntersection, hasRoad, roadConnections)
+import Coords exposing (Coords, roadConnections)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction exposing (Direction(..))
@@ -34,13 +34,13 @@ init : Board
 init =
     let
         placeCars coords =
-            if coords == ( 1, 2 ) then
-                [ Car Right Sedan1 ]
+            if coords == ( 1, 7 ) then
+                [ Car Up Sedan1 ]
 
-            else if coords == ( 2, 2 ) then
-                [ Car Right Sedan2 ]
+            else if coords == ( 3, 5 ) then
+                [ Car Left Sedan2 ]
 
-            else if coords == ( 2, 5 ) then
+            else if coords == ( 4, 5 ) then
                 [ Car Right Sedan3 ]
 
             else if coords == ( 5, 1 ) then
@@ -59,13 +59,16 @@ init =
             List.concatMap col rg
 
         placeSpecialTiles coords tile =
-            if hasRoad coords then
+            if Coords.hasRoad coords then
                 TwoLaneRoad (placeCars coords)
 
-            else if hasIntersection coords then
+            else if Coords.hasSignalIntersection coords then
                 Direction.orientations
                     |> List.concatMap TrafficLight.fromTrafficDirection
                     |> SignalControlledIntersection (placeCars coords)
+
+            else if Coords.hasYieldIntersection coords then
+                YieldControlledIntersection (placeCars coords)
 
             else
                 tile
@@ -82,6 +85,23 @@ get coords board =
 
         Nothing ->
             Empty
+
+
+neighbors : Board -> Coords -> List ( Coords, Tile )
+neighbors board coords =
+    let
+        neighborCoords =
+            Coords.neighbors coords
+
+        pickNeighbors crds tile =
+            if List.member crds neighborCoords then
+                Just tile
+
+            else
+                Nothing
+    in
+    Dict.filterMap pickNeighbors board
+        |> Dict.toList
 
 
 update : Msg -> Board -> Board
@@ -138,7 +158,7 @@ updateCar board ( coords, car ) =
         nextTile =
             get uCoords board
     in
-    if Tile.canEnter nextTile car.direction then
+    if Tile.canEnter nextTile uCoords (neighbors board uCoords) car.direction then
         ( uCoords, car )
 
     else
@@ -147,6 +167,9 @@ updateCar board ( coords, car ) =
                 ( coords, car )
 
             TwoLaneRoad _ ->
+                ( coords, car )
+
+            YieldControlledIntersection _ ->
                 ( coords, car )
 
             _ ->
