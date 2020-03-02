@@ -59,6 +59,15 @@ hasRoad coords =
     List.member coords roads
 
 
+seeRoadAhead : Coords -> Direction -> Bool
+seeRoadAhead coords dir =
+    let
+        connections =
+            roadConnections coords
+    in
+    List.any (\conn -> conn == next coords dir) connections
+
+
 neighbors : Coords -> List Coords
 neighbors coords =
     Direction.all

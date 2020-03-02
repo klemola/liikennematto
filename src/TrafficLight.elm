@@ -19,10 +19,6 @@ type alias TrafficLight =
     }
 
 
-type alias TrafficLights =
-    List TrafficLight
-
-
 fromTrafficDirection : List Direction -> List TrafficLight
 fromTrafficDirection direction =
     case direction of

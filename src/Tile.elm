@@ -1,27 +1,24 @@
 module Tile exposing (..)
 
-import Car exposing (Cars)
 import Collage exposing (..)
 import Collage.Layout as Layout
 import Color
-import Coords exposing (Coords)
 import Direction exposing (Direction(..))
-import TrafficLight exposing (TrafficLights)
+import TrafficLight exposing (TrafficLight)
+
+
+type alias TrafficLights =
+    List TrafficLight
 
 
 type Tile
-    = TwoLaneRoad Cars
-    | SignalControlledIntersection Cars TrafficLights
-    | YieldControlledIntersection Cars
-    | StopControlledIntersection Cars
-    | UncontrolledIntersection Cars
+    = TwoLaneRoad
+    | SignalControlledIntersection TrafficLights
+    | YieldControlledIntersection
+    | StopControlledIntersection
+    | UncontrolledIntersection
     | Terrain
     | Empty
-
-
-tileSize : Float
-tileSize =
-    64
 
 
 defaultBorder : LineStyle
@@ -29,93 +26,19 @@ defaultBorder =
     solid ultrathin <| uniform Color.darkCharcoal
 
 
-getCars : Tile -> Cars
-getCars tile =
-    case tile of
-        TwoLaneRoad cars ->
-            cars
-
-        SignalControlledIntersection cars _ ->
-            cars
-
-        YieldControlledIntersection cars ->
-            cars
-
-        _ ->
-            []
-
-
-setCars : Tile -> Cars -> Tile
-setCars tile cars =
-    case tile of
-        TwoLaneRoad _ ->
-            TwoLaneRoad cars
-
-        SignalControlledIntersection _ trafficLights ->
-            SignalControlledIntersection cars trafficLights
-
-        YieldControlledIntersection _ ->
-            YieldControlledIntersection cars
-
-        StopControlledIntersection _ ->
-            StopControlledIntersection cars
-
-        UncontrolledIntersection _ ->
-            UncontrolledIntersection cars
-
-        _ ->
-            tile
-
-
-hasCars : Tile -> Bool
-hasCars tile =
-    List.length (getCars tile) > 0
-
-
-canEnter : Tile -> Coords -> List ( Coords, Tile ) -> Direction -> Bool
-canEnter tile coords neighbors entryDirection =
+trafficLightsAllowEntry : TrafficLights -> Direction -> Bool
+trafficLightsAllowEntry trafficLights entryDirection =
     let
-        -- TODO: take in account car status (no need to wait until the next car is moving)
-        noCollision car =
-            car.direction /= entryDirection
-
-        verticalTrafficInXs carsInXs =
-            neighbors
-                |> List.filterMap
-                    (\( c, t ) ->
-                        if Tuple.second coords - Tuple.second c /= 0 then
-                            Just (getCars t)
-
-                        else
-                            Nothing
-                    )
-                |> List.concat
-                |> List.append carsInXs
-
         signalXsEntryAllowed tl =
             TrafficLight.isGreen tl && tl.facing == entryDirection
-
-        yieldXsEntryAllowed carsInXs =
-            if List.member entryDirection Direction.horizontal then
-                List.length (verticalTrafficInXs carsInXs) == 0
-
-            else
-                True
     in
+    List.any signalXsEntryAllowed trafficLights
+
+
+isRoad : Tile -> Bool
+isRoad tile =
     case tile of
-        TwoLaneRoad cars ->
-            List.all noCollision cars
-
-        SignalControlledIntersection _ trafficLights ->
-            List.any signalXsEntryAllowed trafficLights
-
-        YieldControlledIntersection cars ->
-            yieldXsEntryAllowed cars
-
-        StopControlledIntersection cars ->
-            True
-
-        UncontrolledIntersection cars ->
+        TwoLaneRoad ->
             True
 
         _ ->
@@ -125,21 +48,18 @@ canEnter tile coords neighbors entryDirection =
 update : Tile -> Tile
 update tile =
     case tile of
-        SignalControlledIntersection cars trafficLights ->
+        SignalControlledIntersection trafficLights ->
             trafficLights
                 |> List.map TrafficLight.update
-                |> SignalControlledIntersection cars
+                |> SignalControlledIntersection
 
         _ ->
             tile
 
 
-view : Tile -> Collage msg
-view tile =
+view : Float -> Tile -> Collage msg
+view tileSize tile =
     let
-        carsInTile cars =
-            List.map (Car.view tileSize) cars
-
         trafficLightsInTile tls =
             List.map (TrafficLight.view tileSize) tls
 
@@ -148,20 +68,20 @@ view tile =
                 |> styled ( uniform color, defaultBorder )
     in
     case tile of
-        TwoLaneRoad cars ->
-            Layout.stack (carsInTile cars ++ [ ground Color.darkGray ])
+        TwoLaneRoad ->
+            ground Color.darkGray
 
-        SignalControlledIntersection cars trafficLights ->
-            Layout.stack (carsInTile cars ++ trafficLightsInTile trafficLights ++ [ ground Color.darkGray ])
+        SignalControlledIntersection trafficLights ->
+            Layout.stack (trafficLightsInTile trafficLights ++ [ ground Color.darkGray ])
 
-        YieldControlledIntersection cars ->
-            Layout.stack (carsInTile cars ++ [ ground Color.lightYellow ])
+        YieldControlledIntersection ->
+            ground Color.lightYellow
 
-        StopControlledIntersection cars ->
-            Layout.stack (carsInTile cars ++ [ ground Color.lightRed ])
+        StopControlledIntersection ->
+            ground Color.lightRed
 
-        UncontrolledIntersection cars ->
-            Layout.stack (carsInTile cars ++ [ ground Color.darkGray ])
+        UncontrolledIntersection ->
+            ground Color.darkGray
 
         Terrain ->
             ground (Color.rgb255 102 153 80)

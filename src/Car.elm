@@ -1,8 +1,9 @@
-module Car exposing (Car, CarKind(..), Cars, turn, view)
+module Car exposing (Car, CarKind(..), Msg(..), Status(..), update, view)
 
 import Collage exposing (..)
 import Coords exposing (Coords)
 import Direction exposing (Direction(..))
+import Tile exposing (Tile(..))
 
 
 type CarKind
@@ -13,40 +14,50 @@ type CarKind
     | Sedan5
 
 
+type Status
+    = Moving
+    | Turning
+    | Stopped
+    | Yielding
+
+
 type alias Car =
-    { direction : Direction
+    { coords : Coords
+    , direction : Direction
     , kind : CarKind
+    , status : Status
     }
 
 
-type alias Cars =
-    List Car
+type alias Model =
+    Car
 
 
-seeRoadAhead : Coords -> List Coords -> Direction -> Bool
-seeRoadAhead coords connectedRoads dir =
-    List.any (\conn -> conn == Coords.next coords dir) connectedRoads
+type Msg
+    = Move
+    | Turn Direction
+    | Yield
+    | Stop
 
 
-turn : Coords -> List Coords -> Car -> Car
-turn currentCoords connectedRoads car =
-    let
-        opposite =
-            Direction.opposite car.direction
+update : Msg -> Model -> Model
+update msg car =
+    case msg of
+        Move ->
+            let
+                nextCoords =
+                    Coords.next car.coords car.direction
+            in
+            { car | coords = nextCoords, status = Moving }
 
-        isLeftOrRightTurn dir =
-            dir /= car.direction && dir /= opposite
+        Turn dir ->
+            { car | direction = dir, status = Turning }
 
-        validTurns =
-            Direction.all
-                |> List.filter isLeftOrRightTurn
-                |> List.filter (seeRoadAhead currentCoords connectedRoads)
+        Yield ->
+            { car | status = Yielding }
 
-        -- turn left, right or back
-        nextDir =
-            Maybe.withDefault opposite (List.head validTurns)
-    in
-    { car | direction = nextDir }
+        Stop ->
+            { car | status = Stopped }
 
 
 view : Float -> Car -> Collage msg
