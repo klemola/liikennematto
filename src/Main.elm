@@ -1,8 +1,9 @@
 module Main exposing (main)
 
-import Board exposing (Board, Msg(..))
 import Browser
 import Collage.Render exposing (svg)
+import Direction exposing (Direction(..))
+import Game exposing (Msg(..))
 import Html exposing (Html)
 import Time
 
@@ -16,18 +17,18 @@ subs : Model -> Sub Msg
 subs _ =
     Sub.batch
         [ Time.every 1000 SlowTick
-        , Time.every 600 FastTick
+        , Time.every 400 FastTick
         ]
 
 
 type alias Model =
-    { board : Board
+    { game : Game.Model
     }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { board = Board.init }, Cmd.none )
+    ( { game = Game.initialModel }, Cmd.none )
 
 
 type Msg
@@ -40,15 +41,15 @@ update msg model =
     case msg of
         SlowTick _ ->
             ( { model
-                | board = Board.update UpdateEnvironment model.board
+                | game = Game.update UpdateEnvironment model.game
               }
             , Cmd.none
             )
 
         FastTick _ ->
             ( { model
-                | board =
-                    Board.update UpdateTraffic model.board
+                | game =
+                    Game.update UpdateTraffic model.game
               }
             , Cmd.none
             )
@@ -56,4 +57,4 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    Board.view model.board |> svg
+    Game.view model.game |> svg
