@@ -87,8 +87,8 @@ get coords board =
             Empty
 
 
-neighbors : Board -> Coords -> List ( Coords, Tile )
-neighbors board coords =
+connectedTiles : Board -> Coords -> List ( Coords, Tile )
+connectedTiles board coords =
     let
         neighborCoords =
             Coords.neighbors coords
@@ -100,7 +100,8 @@ neighbors board coords =
             else
                 Nothing
     in
-    Dict.filterMap pickNeighbors board
+    board
+        |> Dict.filterMap pickNeighbors
         |> Dict.toList
 
 
@@ -113,7 +114,7 @@ update msg board =
 
         UpdateEnvironment ->
             board
-                |> withUpdatedTrafficLights
+                |> withUpdatedTiles
 
 
 withUpdatedCars : Board -> Board
@@ -152,14 +153,17 @@ withUpdatedCars board =
 updateCar : Board -> ( Coords, Car ) -> ( Coords, Car )
 updateCar board ( coords, car ) =
     let
-        uCoords =
+        nextCoords =
             Coords.next coords car.direction
 
         nextTile =
-            get uCoords board
+            get nextCoords board
+
+        nextTileConnections =
+            connectedTiles board nextCoords
     in
-    if Tile.canEnter nextTile uCoords (neighbors board uCoords) car.direction then
-        ( uCoords, car )
+    if Tile.canEnter nextTile nextCoords nextTileConnections car.direction then
+        ( nextCoords, car )
 
     else
         case nextTile of
@@ -176,9 +180,9 @@ updateCar board ( coords, car ) =
                 ( coords, Car.turn coords (roadConnections coords) car )
 
 
-withUpdatedTrafficLights : Board -> Board
-withUpdatedTrafficLights board =
-    Dict.map (\_ tile -> Tile.advanceTrafficLights tile) board
+withUpdatedTiles : Board -> Board
+withUpdatedTiles board =
+    Dict.map (\_ tile -> Tile.update tile) board
 
 
 view : Board -> Collage msg

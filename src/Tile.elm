@@ -75,6 +75,7 @@ hasCars tile =
 canEnter : Tile -> Coords -> List ( Coords, Tile ) -> Direction -> Bool
 canEnter tile coords neighbors entryDirection =
     let
+        -- TODO: take in account car status (no need to wait until the next car is moving)
         noCollision car =
             car.direction /= entryDirection
 
@@ -121,12 +122,12 @@ canEnter tile coords neighbors entryDirection =
             False
 
 
-advanceTrafficLights : Tile -> Tile
-advanceTrafficLights tile =
+update : Tile -> Tile
+update tile =
     case tile of
         SignalControlledIntersection cars trafficLights ->
             trafficLights
-                |> List.map TrafficLight.next
+                |> List.map TrafficLight.update
                 |> SignalControlledIntersection cars
 
         _ ->
