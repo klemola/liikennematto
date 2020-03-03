@@ -61,6 +61,9 @@ initialModel =
             else if Coords.hasYieldIntersection coords then
                 YieldControlledIntersection
 
+            else if Coords.hasStopIntersection coords then
+                StopControlledIntersection
+
             else
                 tile
 
@@ -107,32 +110,35 @@ updateCar model car =
             List.any (\c -> c.coords == nextCoords && c.direction /= oppositeDirection) model.cars
     in
     if willCollideWithAnother then
-        Car.update Stop car
+        Car.update Wait car
 
     else
         case nextTile of
+            TwoLaneRoad ->
+                Car.update Move car
+
             SignalControlledIntersection trafficLights ->
                 if Tile.trafficLightsAllowEntry trafficLights car.direction then
                     Car.update Move car
 
                 else
-                    Car.update Stop car
-
-            TwoLaneRoad ->
-                Car.update Move car
+                    Car.update Wait car
 
             YieldControlledIntersection ->
-                chooseYield model nextCoords car
+                applyYieldRules model nextCoords car
+
+            StopControlledIntersection ->
+                applyStopRules model nextCoords car
 
             _ ->
-                chooseDirection car
+                changeDirection car
 
 
-chooseYield : Model -> Coords -> Car -> Car
-chooseYield model nextCoords car =
+applyYieldRules : Model -> Coords -> Car -> Car
+applyYieldRules model nextCoords car =
     let
         -- To keep things simple cars always yield on east-west direction
-        canYield =
+        shouldYield =
             List.member car.direction Direction.horizontal
 
         getCars coords list =
@@ -146,15 +152,40 @@ chooseYield model nextCoords car =
             northSouthConnections
                 |> List.concatMap (\( c, t ) -> getCars c model.cars)
     in
-    if canYield && List.length northSouthTraffic > 0 then
-        Car.update Stop car
+    if shouldYield && List.length northSouthTraffic > 0 then
+        Car.update Yield car
 
     else
         Car.update Move car
 
 
-chooseDirection : Car -> Car
-chooseDirection car =
+applyStopRules : Model -> Coords -> Car -> Car
+applyStopRules model nextCoords car =
+    let
+        -- To keep things simple cars always stop on east-west direction
+        shouldStop =
+            List.member car.direction Direction.horizontal
+    in
+    if shouldStop then
+        case car.status of
+            StoppedAtIntersection 0 ->
+                Car.update Yield car
+
+            StoppedAtIntersection turnsRemaining ->
+                Car.update (StopAtIntersection (turnsRemaining - 1)) car
+
+            Yielding ->
+                applyYieldRules model nextCoords car
+
+            _ ->
+                Car.update (StopAtIntersection 1) car
+
+    else
+        Car.update Move car
+
+
+changeDirection : Car -> Car
+changeDirection car =
     let
         oppositeDirection =
             Direction.opposite car.direction

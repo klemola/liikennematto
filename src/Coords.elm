@@ -82,7 +82,7 @@ roadConnections coords =
 
 signalIntersections : List Coords
 signalIntersections =
-    [ ( 5, 2 ), ( 5, 5 ) ]
+    [ ( 5, 2 ) ]
 
 
 hasSignalIntersection : Coords -> Bool
@@ -98,3 +98,13 @@ yieldIntersections =
 hasYieldIntersection : Coords -> Bool
 hasYieldIntersection coords =
     List.member coords yieldIntersections
+
+
+stopIntersections : List Coords
+stopIntersections =
+    [ ( 5, 5 ) ]
+
+
+hasStopIntersection : Coords -> Bool
+hasStopIntersection coords =
+    List.member coords stopIntersections

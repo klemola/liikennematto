@@ -17,7 +17,8 @@ type CarKind
 type Status
     = Moving
     | Turning
-    | Stopped
+    | Waiting
+    | StoppedAtIntersection Int
     | Yielding
 
 
@@ -36,8 +37,9 @@ type alias Model =
 type Msg
     = Move
     | Turn Direction
+    | Wait
     | Yield
-    | Stop
+    | StopAtIntersection Int
 
 
 update : Msg -> Model -> Model
@@ -53,11 +55,14 @@ update msg car =
         Turn dir ->
             { car | direction = dir, status = Turning }
 
+        Wait ->
+            { car | status = Waiting }
+
         Yield ->
             { car | status = Yielding }
 
-        Stop ->
-            { car | status = Stopped }
+        StopAtIntersection turnsRemaining ->
+            { car | status = StoppedAtIntersection turnsRemaining }
 
 
 view : Float -> Car -> Collage msg
