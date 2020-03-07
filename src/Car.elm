@@ -1,6 +1,6 @@
 module Car exposing (Car, CarKind(..), Msg(..), Status(..), update, view)
 
-import Collage exposing (..)
+import Collage exposing (Collage, image, rotate)
 import Coords exposing (Coords)
 import Direction exposing (Direction(..))
 import Tile exposing (Tile(..))

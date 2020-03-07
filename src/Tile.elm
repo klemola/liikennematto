@@ -1,9 +1,10 @@
 module Tile exposing (..)
 
-import Collage exposing (..)
+import Collage exposing (Collage, square, styled, uniform)
 import Collage.Layout as Layout
 import Color
 import Direction exposing (Direction(..))
+import Graphics
 import TrafficLight exposing (TrafficLight)
 
 
@@ -19,11 +20,6 @@ type Tile
     | UncontrolledIntersection
     | Terrain
     | Empty
-
-
-defaultBorder : LineStyle
-defaultBorder =
-    solid ultrathin <| uniform Color.darkCharcoal
 
 
 trafficLightsAllowEntry : TrafficLights -> Direction -> Bool
@@ -60,25 +56,33 @@ update tile =
 view : Float -> Tile -> Collage msg
 view tileSize tile =
     let
-        trafficLightsInTile tls =
-            List.map (TrafficLight.view tileSize) tls
-
         ground color =
             square tileSize
-                |> styled ( uniform color, defaultBorder )
+                |> styled ( uniform color, Graphics.defaultBorderStyle )
+
+        roadWithMarkers content =
+            Layout.stack (content ++ [ ground Color.darkGray ])
+
+        roadWithTrafficSigns color =
+            -- Once intersections have a type (e.g. T or four-way traffic), update the direction list
+            Direction.horizontal
+                |> List.map (Graphics.border tileSize color)
+                |> roadWithMarkers
     in
     case tile of
         TwoLaneRoad ->
             ground Color.darkGray
 
         SignalControlledIntersection trafficLights ->
-            Layout.stack (trafficLightsInTile trafficLights ++ [ ground Color.darkGray ])
+            trafficLights
+                |> List.map (TrafficLight.view tileSize)
+                |> roadWithMarkers
 
         YieldControlledIntersection ->
-            ground Color.lightYellow
+            roadWithTrafficSigns Color.lightYellow
 
         StopControlledIntersection ->
-            ground Color.lightRed
+            roadWithTrafficSigns Color.lightRed
 
         UncontrolledIntersection ->
             ground Color.darkGray

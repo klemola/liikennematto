@@ -1,9 +1,9 @@
 module TrafficLight exposing (..)
 
-import Collage exposing (..)
-import Collage.Layout as Layout
+import Collage exposing (Collage)
 import Color exposing (Color)
 import Direction exposing (Direction(..))
+import Graphics
 
 
 type TrafficLightKind
@@ -97,30 +97,4 @@ toColor tlKind =
 
 view : Float -> TrafficLight -> Collage msg
 view tileSize tl =
-    let
-        ( anchor, offset ) =
-            case tl.facing of
-                Up ->
-                    ( Layout.top, ( 0, -2 ) )
-
-                Down ->
-                    ( Layout.bottom, ( 0, 2 ) )
-
-                Left ->
-                    ( Layout.left, ( 2, 0 ) )
-
-                Right ->
-                    ( Layout.right, ( -2, 0 ) )
-
-        boundaries =
-            square tileSize
-                |> styled ( transparent, invisible )
-
-        presentation =
-            line tileSize
-                |> traced (solid thick (uniform (toColor tl.kind)))
-                |> rotate (degrees (Direction.rotationDegrees tl.facing))
-                |> shift offset
-    in
-    boundaries
-        |> Layout.at anchor presentation
+    Graphics.border tileSize (toColor tl.kind) tl.facing
