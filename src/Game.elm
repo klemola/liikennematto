@@ -105,7 +105,7 @@ updateCar model car =
         oppositeDirection =
             Direction.opposite car.direction
 
-        -- TODO: take in account car status (no need to wait until the next car is moving)
+        -- This can be improve by taking in account car status (no need to wait until the next car is moving)
         willCollideWithAnother =
             List.any (\c -> c.coords == nextCoords && c.direction /= oppositeDirection) model.cars
     in
