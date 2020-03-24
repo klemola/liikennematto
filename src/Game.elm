@@ -7,7 +7,7 @@ import Collage.Layout as Layout
 import Coords exposing (Coords)
 import Dict
 import Direction exposing (Direction(..))
-import Tile exposing (RoadKind(..), Tile(..))
+import Tile exposing (IntersectionControl(..), IntersectionShape(..), RoadKind(..), Tile(..))
 import TrafficLight
 
 
@@ -71,14 +71,13 @@ roads =
 intersections : List ( Coords, Tile )
 intersections =
     let
-        signalXS =
+        trafficLights =
             Direction.orientations
                 |> List.concatMap TrafficLight.fromTrafficDirection
-                |> SignalControlledIntersection
     in
-    [ ( ( 5, 2 ), signalXS )
-    , ( ( 1, 5 ), YieldControlledIntersection )
-    , ( ( 5, 5 ), StopControlledIntersection )
+    [ ( ( 5, 2 ), Intersection (Signal trafficLights) Crossroads )
+    , ( ( 1, 5 ), Intersection Yield (T Right) )
+    , ( ( 5, 5 ), Intersection Stop Crossroads )
     ]
 
 
@@ -136,17 +135,17 @@ updateCar model car =
             TwoLaneRoad _ ->
                 Car.update Move car
 
-            SignalControlledIntersection trafficLights ->
+            Intersection (Signal trafficLights) _ ->
                 if Tile.trafficLightsAllowEntry trafficLights car.direction then
                     Car.update Move car
 
                 else
                     Car.update Wait car
 
-            YieldControlledIntersection ->
+            Intersection Yield _ ->
                 applyYieldRules model nextCoords car
 
-            StopControlledIntersection ->
+            Intersection Stop _ ->
                 applyStopRules model nextCoords car
 
             _ ->
@@ -172,7 +171,7 @@ applyYieldRules model nextCoords car =
                 |> List.concatMap (\( c, t ) -> getCars c model.cars)
     in
     if shouldYield && List.length northSouthTraffic > 0 then
-        Car.update Yield car
+        Car.update YieldAtIntersection car
 
     else
         Car.update Move car
@@ -188,7 +187,7 @@ applyStopRules model nextCoords car =
     if shouldStop then
         case car.status of
             StoppedAtIntersection 0 ->
-                Car.update Yield car
+                Car.update YieldAtIntersection car
 
             StoppedAtIntersection turnsRemaining ->
                 Car.update (StopAtIntersection (turnsRemaining - 1)) car

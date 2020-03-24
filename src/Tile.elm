@@ -21,16 +21,25 @@ type RoadKind
     | EDeadend
 
 
+type IntersectionControl
+    = Signal TrafficLights
+    | Yield
+    | Stop
+    | Uncontrolled
+
+
+type IntersectionShape
+    = T Direction
+    | Crossroads
+
+
 type alias TrafficLights =
     List TrafficLight
 
 
 type Tile
     = TwoLaneRoad RoadKind
-    | SignalControlledIntersection TrafficLights
-    | YieldControlledIntersection
-    | StopControlledIntersection
-    | UncontrolledIntersection
+    | Intersection IntersectionControl IntersectionShape
     | Terrain
     | Empty
 
@@ -57,10 +66,14 @@ isRoad tile =
 update : Tile -> Tile
 update tile =
     case tile of
-        SignalControlledIntersection trafficLights ->
-            trafficLights
-                |> List.map TrafficLight.update
-                |> SignalControlledIntersection
+        Intersection (Signal trafficLights) shape ->
+            let
+                next =
+                    trafficLights
+                        |> List.map TrafficLight.update
+                        |> Signal
+            in
+            Intersection next shape
 
         _ ->
             tile
@@ -73,39 +86,57 @@ view tileSize tile =
             square tileSize
                 |> styled ( uniform color, Collage.invisible )
 
-        roadWithMarkers content =
-            Layout.stack (content ++ [ ground Color.darkGray ])
+        intersection shape content =
+            Layout.stack (content ++ [ texture tileSize (intersectionAsset shape) ])
 
-        roadWithTrafficSigns color =
-            -- Once intersections have a type (e.g. T or four-way traffic), update the direction list
+        intersectionWithTrafficLights shape color =
             Direction.horizontal
                 |> List.map (Graphics.border tileSize color)
-                |> roadWithMarkers
+                |> intersection shape
     in
     case tile of
         TwoLaneRoad kind ->
             roadAsset kind
                 |> texture tileSize
 
-        SignalControlledIntersection trafficLights ->
+        Intersection (Signal trafficLights) shape ->
             trafficLights
                 |> List.map (TrafficLight.view tileSize)
-                |> roadWithMarkers
+                |> intersection shape
 
-        YieldControlledIntersection ->
-            roadWithTrafficSigns Color.lightYellow
+        Intersection Yield shape ->
+            intersectionWithTrafficLights shape Color.lightYellow
 
-        StopControlledIntersection ->
-            roadWithTrafficSigns Color.lightRed
+        Intersection Stop shape ->
+            intersectionWithTrafficLights shape Color.lightRed
 
-        UncontrolledIntersection ->
-            ground Color.darkGray
+        Intersection Uncontrolled shape ->
+            intersection shape []
 
         Terrain ->
             ground (Color.rgb255 33 191 154)
 
         Empty ->
             ground Color.yellow
+
+
+intersectionAsset : IntersectionShape -> String
+intersectionAsset shape =
+    case shape of
+        T Up ->
+            "XSTN.png"
+
+        T Down ->
+            "XSTS.png"
+
+        T Right ->
+            "XSTE.png"
+
+        T Left ->
+            "XSTW.png"
+
+        Crossroads ->
+            "XSX.png"
 
 
 roadAsset : RoadKind -> String
