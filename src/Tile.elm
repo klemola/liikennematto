@@ -4,8 +4,21 @@ import Collage exposing (Collage, square, styled, uniform)
 import Collage.Layout as Layout
 import Color
 import Direction exposing (Direction(..))
-import Graphics
+import Graphics exposing (texture)
 import TrafficLight exposing (TrafficLight)
+
+
+type RoadKind
+    = Horizontal
+    | Vertical
+    | NECorner
+    | NWCorner
+    | SECorner
+    | SWCorner
+    | NDeadend
+    | SDeadend
+    | WDeadend
+    | EDeadend
 
 
 type alias TrafficLights =
@@ -13,7 +26,7 @@ type alias TrafficLights =
 
 
 type Tile
-    = TwoLaneRoad
+    = TwoLaneRoad RoadKind
     | SignalControlledIntersection TrafficLights
     | YieldControlledIntersection
     | StopControlledIntersection
@@ -34,7 +47,7 @@ trafficLightsAllowEntry trafficLights entryDirection =
 isRoad : Tile -> Bool
 isRoad tile =
     case tile of
-        TwoLaneRoad ->
+        TwoLaneRoad _ ->
             True
 
         _ ->
@@ -58,7 +71,7 @@ view tileSize tile =
     let
         ground color =
             square tileSize
-                |> styled ( uniform color, Graphics.defaultBorderStyle )
+                |> styled ( uniform color, Collage.invisible )
 
         roadWithMarkers content =
             Layout.stack (content ++ [ ground Color.darkGray ])
@@ -70,8 +83,9 @@ view tileSize tile =
                 |> roadWithMarkers
     in
     case tile of
-        TwoLaneRoad ->
-            ground Color.darkGray
+        TwoLaneRoad kind ->
+            roadAsset kind
+                |> texture tileSize
 
         SignalControlledIntersection trafficLights ->
             trafficLights
@@ -88,7 +102,41 @@ view tileSize tile =
             ground Color.darkGray
 
         Terrain ->
-            ground (Color.rgb255 102 153 80)
+            ground (Color.rgb255 33 191 154)
 
         Empty ->
             ground Color.yellow
+
+
+roadAsset : RoadKind -> String
+roadAsset kind =
+    case kind of
+        Horizontal ->
+            "R2LH.png"
+
+        Vertical ->
+            "R2LV.png"
+
+        NECorner ->
+            "RCNE.png"
+
+        NWCorner ->
+            "RCNW.png"
+
+        SECorner ->
+            "RCSE.png"
+
+        SWCorner ->
+            "RCSW.png"
+
+        NDeadend ->
+            "R2LDEN.png"
+
+        SDeadend ->
+            "R2LDES.png"
+
+        WDeadend ->
+            "R2LDEW.png"
+
+        EDeadend ->
+            "R2LDEE.png"

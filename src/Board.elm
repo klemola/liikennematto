@@ -20,7 +20,7 @@ get coords board =
             tile
 
         Nothing ->
-            Empty
+            Terrain
 
 
 connectedTiles : Board -> Coords -> List ( Coords, Tile )

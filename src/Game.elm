@@ -7,7 +7,7 @@ import Collage.Layout as Layout
 import Coords exposing (Coords)
 import Dict
 import Direction exposing (Direction(..))
-import Tile exposing (Tile(..))
+import Tile exposing (RoadKind(..), Tile(..))
 import TrafficLight
 
 
@@ -37,39 +37,58 @@ rg =
     List.range 1 boardSize
 
 
+roads : List ( Coords, Tile )
+roads =
+    [ ( ( 5, 1 ), TwoLaneRoad NDeadend )
+    , ( ( 1, 2 ), TwoLaneRoad NWCorner )
+    , ( ( 2, 2 ), TwoLaneRoad Horizontal )
+    , ( ( 3, 2 ), TwoLaneRoad Horizontal )
+    , ( ( 4, 2 ), TwoLaneRoad Horizontal )
+    , ( ( 6, 2 ), TwoLaneRoad Horizontal )
+    , ( ( 7, 2 ), TwoLaneRoad Horizontal )
+    , ( ( 8, 2 ), TwoLaneRoad NECorner )
+    , ( ( 1, 3 ), TwoLaneRoad Vertical )
+    , ( ( 5, 3 ), TwoLaneRoad Vertical )
+    , ( ( 8, 3 ), TwoLaneRoad Vertical )
+    , ( ( 1, 4 ), TwoLaneRoad Vertical )
+    , ( ( 5, 4 ), TwoLaneRoad Vertical )
+    , ( ( 8, 4 ), TwoLaneRoad Vertical )
+    , ( ( 2, 5 ), TwoLaneRoad Horizontal )
+    , ( ( 3, 5 ), TwoLaneRoad Horizontal )
+    , ( ( 4, 5 ), TwoLaneRoad Horizontal )
+    , ( ( 6, 5 ), TwoLaneRoad Horizontal )
+    , ( ( 7, 5 ), TwoLaneRoad Horizontal )
+    , ( ( 8, 5 ), TwoLaneRoad SECorner )
+    , ( ( 1, 6 ), TwoLaneRoad Vertical )
+    , ( ( 5, 6 ), TwoLaneRoad Vertical )
+    , ( ( 1, 7 ), TwoLaneRoad Vertical )
+    , ( ( 5, 7 ), TwoLaneRoad Vertical )
+    , ( ( 1, 8 ), TwoLaneRoad SDeadend )
+    , ( ( 5, 8 ), TwoLaneRoad SDeadend )
+    ]
+
+
+intersections : List ( Coords, Tile )
+intersections =
+    let
+        signalXS =
+            Direction.orientations
+                |> List.concatMap TrafficLight.fromTrafficDirection
+                |> SignalControlledIntersection
+    in
+    [ ( ( 5, 2 ), signalXS )
+    , ( ( 1, 5 ), YieldControlledIntersection )
+    , ( ( 5, 5 ), StopControlledIntersection )
+    ]
+
+
 initialModel : Model
 initialModel =
     let
-        makeTile x y =
-            ( ( x, y ), Terrain )
-
-        col x =
-            List.map (makeTile x) rg
-
-        rows =
-            List.concatMap col rg
-
-        placeSpecialTiles coords tile =
-            if Coords.hasRoad coords then
-                TwoLaneRoad
-
-            else if Coords.hasSignalIntersection coords then
-                Direction.orientations
-                    |> List.concatMap TrafficLight.fromTrafficDirection
-                    |> SignalControlledIntersection
-
-            else if Coords.hasYieldIntersection coords then
-                YieldControlledIntersection
-
-            else if Coords.hasStopIntersection coords then
-                StopControlledIntersection
-
-            else
-                tile
-
         board =
-            Dict.fromList rows
-                |> Dict.map placeSpecialTiles
+            roads
+                |> List.append intersections
+                |> Dict.fromList
 
         cars =
             [ Car ( 1, 7 ) Up Sedan1 Moving
@@ -114,7 +133,7 @@ updateCar model car =
 
     else
         case nextTile of
-            TwoLaneRoad ->
+            TwoLaneRoad _ ->
                 Car.update Move car
 
             SignalControlledIntersection trafficLights ->
@@ -131,7 +150,7 @@ updateCar model car =
                 applyStopRules model nextCoords car
 
             _ ->
-                changeDirection car
+                changeDirection car model.board
 
 
 applyYieldRules : Model -> Coords -> Car -> Car
@@ -184,8 +203,8 @@ applyStopRules model nextCoords car =
         Car.update Move car
 
 
-changeDirection : Car -> Car
-changeDirection car =
+changeDirection : Car -> Board -> Car
+changeDirection car board =
     let
         oppositeDirection =
             Direction.opposite car.direction
@@ -193,10 +212,21 @@ changeDirection car =
         isLeftOrRightTurn dir =
             dir /= car.direction && dir /= oppositeDirection
 
+        seeRoadAhead dir =
+            case Board.get (Coords.next car.coords dir) board of
+                Terrain ->
+                    False
+
+                Empty ->
+                    False
+
+                _ ->
+                    True
+
         validTurns =
             Direction.all
                 |> List.filter isLeftOrRightTurn
-                |> List.filter (Coords.seeRoadAhead car.coords)
+                |> List.filter seeRoadAhead
 
         -- turn left, right or back
         nextDir =

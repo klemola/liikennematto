@@ -8,7 +8,7 @@ import Direction exposing (Direction(..))
 
 defaultBorderStyle : LineStyle
 defaultBorderStyle =
-    solid ultrathin <| uniform Color.darkCharcoal
+    solid ultrathin <| uniform (Color.rgb255 52 65 67)
 
 
 border : Float -> Color -> Direction -> Collage msg
@@ -40,3 +40,8 @@ border length color side =
     in
     boundaries
         |> Layout.at anchor presentation
+
+
+texture : Float -> String -> Collage msg
+texture size asset =
+    image ( size, size ) ("assets/" ++ asset)

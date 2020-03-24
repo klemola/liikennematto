@@ -3,6 +3,7 @@ module Car exposing (Car, CarKind(..), Msg(..), Status(..), update, view)
 import Collage exposing (Collage, image, rotate)
 import Coords exposing (Coords)
 import Direction exposing (Direction(..))
+import Graphics exposing (texture)
 import Tile exposing (Tile(..))
 
 
@@ -74,22 +75,19 @@ view tileSize car =
         asset =
             case car.kind of
                 Sedan1 ->
-                    "assets/car_blue_1.png"
+                    "car_blue_1.png"
 
                 Sedan2 ->
-                    "assets/car_red_1.png"
+                    "car_red_1.png"
 
                 Sedan3 ->
-                    "assets/car_green_1.png"
+                    "car_green_1.png"
 
                 Sedan4 ->
-                    "assets/car_yellow_1.png"
+                    "car_yellow_1.png"
 
                 Sedan5 ->
-                    "assets/car_black_1.png"
-
-        carShape =
-            image ( size, size ) asset
+                    "car_black_1.png"
     in
-    carShape
+    texture size asset
         |> rotate (degrees (Direction.rotationDegrees car.direction))
