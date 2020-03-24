@@ -39,7 +39,7 @@ type Msg
     = Move
     | Turn Direction
     | Wait
-    | Yield
+    | YieldAtIntersection
     | StopAtIntersection Int
 
 
@@ -59,7 +59,7 @@ update msg car =
         Wait ->
             { car | status = Waiting }
 
-        Yield ->
+        YieldAtIntersection ->
             { car | status = Yielding }
 
         StopAtIntersection turnsRemaining ->
