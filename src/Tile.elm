@@ -88,11 +88,6 @@ view tileSize tile =
 
         intersection shape content =
             Layout.stack (content ++ [ texture tileSize (intersectionAsset shape) ])
-
-        intersectionWithTrafficLights shape color =
-            Direction.horizontal
-                |> List.map (Graphics.border tileSize color)
-                |> intersection shape
     in
     case tile of
         TwoLaneRoad kind ->
@@ -105,10 +100,12 @@ view tileSize tile =
                 |> intersection shape
 
         Intersection Yield shape ->
-            intersectionWithTrafficLights shape Color.lightYellow
+            signs tileSize "yield_sign.png" shape
+                |> intersection shape
 
         Intersection Stop shape ->
-            intersectionWithTrafficLights shape Color.lightRed
+            signs tileSize "stop_sign.png" shape
+                |> intersection shape
 
         Intersection Uncontrolled shape ->
             intersection shape []
@@ -118,6 +115,31 @@ view tileSize tile =
 
         Empty ->
             ground Color.yellow
+
+
+signs : Float -> String -> IntersectionShape -> List (Collage msg)
+signs tileSize asset intersectionShape =
+    let
+        size =
+            tileSize / 4
+
+        offset =
+            tileSize / 8
+
+        locations =
+            case intersectionShape of
+                T dir ->
+                    [ dir ]
+
+                Crossroads ->
+                    Direction.horizontal
+
+        presentation dir =
+            Graphics.texture size asset
+                |> Graphics.marker tileSize offset dir
+    in
+    locations
+        |> List.map presentation
 
 
 intersectionAsset : IntersectionShape -> String

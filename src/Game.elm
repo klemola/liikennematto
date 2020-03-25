@@ -29,7 +29,7 @@ boardSize =
 
 tileSize : Float
 tileSize =
-    64
+    80
 
 
 rg : List Int
