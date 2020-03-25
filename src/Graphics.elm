@@ -2,44 +2,37 @@ module Graphics exposing (..)
 
 import Collage exposing (..)
 import Collage.Layout as Layout
-import Color exposing (Color)
 import Direction exposing (Direction(..))
 
 
-defaultBorderStyle : LineStyle
-defaultBorderStyle =
-    solid ultrathin <| uniform (Color.rgb255 52 65 67)
-
-
-border : Float -> Color -> Direction -> Collage msg
-border length color side =
+marker : Float -> Float -> Direction -> Collage msg -> Collage msg
+marker tileSize offset side presentation =
     let
-        ( anchor, offset ) =
+        ( anchor, shiftAmount ) =
             case side of
                 Up ->
-                    ( Layout.top, ( 0, -2 ) )
+                    ( Layout.top, ( 0, -offset ) )
 
                 Down ->
-                    ( Layout.bottom, ( 0, 2 ) )
+                    ( Layout.bottom, ( 0, offset ) )
 
                 Left ->
-                    ( Layout.left, ( 2, 0 ) )
+                    ( Layout.left, ( offset, 0 ) )
 
                 Right ->
-                    ( Layout.right, ( -2, 0 ) )
+                    ( Layout.right, ( -offset, 0 ) )
 
         boundaries =
-            square length
+            square tileSize
                 |> styled ( transparent, invisible )
 
-        presentation =
-            line length
-                |> traced (solid thick (uniform color))
-                |> rotate (degrees (Direction.rotationDegrees side))
-                |> shift offset
+        positionedPresentation =
+            presentation
+                |> shift shiftAmount
+                |> Layout.at anchor
     in
     boundaries
-        |> Layout.at anchor presentation
+        |> positionedPresentation
 
 
 texture : Float -> String -> Collage msg

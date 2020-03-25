@@ -1,6 +1,6 @@
 module TrafficLight exposing (..)
 
-import Collage exposing (Collage)
+import Collage exposing (Collage, circle, solid, styled, uniform)
 import Color exposing (Color)
 import Direction exposing (Direction(..))
 import Graphics
@@ -97,4 +97,21 @@ toColor tlKind =
 
 view : Float -> TrafficLight -> Collage msg
 view tileSize tl =
-    Graphics.border tileSize (toColor tl.kind) tl.facing
+    let
+        markerSize =
+            tileSize / 10
+
+        borderSize =
+            markerSize / 6
+
+        offset =
+            markerSize + (2 * borderSize)
+
+        border =
+            solid borderSize <| uniform Color.grey
+
+        presentation =
+            circle markerSize
+                |> styled ( uniform (toColor tl.kind), border )
+    in
+    Graphics.marker tileSize offset tl.facing presentation
