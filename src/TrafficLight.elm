@@ -54,13 +54,13 @@ advanceLight : TrafficLightKind -> TrafficLightKind
 advanceLight tlKind =
     case tlKind of
         Green ->
-            Red
+            Yellow
 
         Yellow ->
-            Green
+            Red
 
         Red ->
-            Yellow
+            Green
 
 
 update : TrafficLight -> TrafficLight
