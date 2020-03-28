@@ -121,10 +121,10 @@ signs : Float -> String -> IntersectionShape -> List (Collage msg)
 signs tileSize asset intersectionShape =
     let
         size =
-            tileSize / 4
+            tileSize * 0.25
 
         offset =
-            tileSize / 8
+            size * 0.5
 
         locations =
             case intersectionShape of
