@@ -4,11 +4,11 @@ import Board exposing (Board)
 import Car exposing (Car, CarKind(..), Msg(..), Status(..))
 import Collage exposing (..)
 import Collage.Layout as Layout
+import Config exposing (boardSize, initialCars, initialIntersections, initialRoads, tileSize)
 import Coords exposing (Coords)
 import Dict
 import Direction exposing (Direction(..))
-import Tile exposing (IntersectionControl(..), IntersectionShape(..), RoadKind(..), Tile(..))
-import TrafficLight
+import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..))
 
 
 type alias Model =
@@ -22,84 +22,20 @@ type Msg
     | UpdateEnvironment
 
 
-boardSize : Int
-boardSize =
-    8
-
-
-tileSize : Float
-tileSize =
-    80
-
-
 rg : List Int
 rg =
     List.range 1 boardSize
-
-
-roads : List ( Coords, Tile )
-roads =
-    [ ( ( 5, 1 ), TwoLaneRoad NDeadend )
-    , ( ( 1, 2 ), TwoLaneRoad NWCorner )
-    , ( ( 2, 2 ), TwoLaneRoad Horizontal )
-    , ( ( 3, 2 ), TwoLaneRoad Horizontal )
-    , ( ( 4, 2 ), TwoLaneRoad Horizontal )
-    , ( ( 6, 2 ), TwoLaneRoad Horizontal )
-    , ( ( 7, 2 ), TwoLaneRoad Horizontal )
-    , ( ( 8, 2 ), TwoLaneRoad NECorner )
-    , ( ( 1, 3 ), TwoLaneRoad Vertical )
-    , ( ( 5, 3 ), TwoLaneRoad Vertical )
-    , ( ( 8, 3 ), TwoLaneRoad Vertical )
-    , ( ( 1, 4 ), TwoLaneRoad Vertical )
-    , ( ( 5, 4 ), TwoLaneRoad Vertical )
-    , ( ( 8, 4 ), TwoLaneRoad Vertical )
-    , ( ( 2, 5 ), TwoLaneRoad Horizontal )
-    , ( ( 3, 5 ), TwoLaneRoad Horizontal )
-    , ( ( 4, 5 ), TwoLaneRoad Horizontal )
-    , ( ( 6, 5 ), TwoLaneRoad Horizontal )
-    , ( ( 7, 5 ), TwoLaneRoad Horizontal )
-    , ( ( 8, 5 ), TwoLaneRoad SECorner )
-    , ( ( 1, 6 ), TwoLaneRoad Vertical )
-    , ( ( 5, 6 ), TwoLaneRoad Vertical )
-    , ( ( 1, 7 ), TwoLaneRoad Vertical )
-    , ( ( 5, 7 ), TwoLaneRoad Vertical )
-    , ( ( 1, 8 ), TwoLaneRoad SWCorner )
-    , ( ( 2, 8 ), TwoLaneRoad Horizontal )
-    , ( ( 3, 8 ), TwoLaneRoad SECorner )
-    , ( ( 3, 7 ), TwoLaneRoad NDeadend )
-    , ( ( 5, 8 ), TwoLaneRoad SDeadend )
-    ]
-
-
-intersections : List ( Coords, Tile )
-intersections =
-    let
-        trafficLights =
-            Direction.orientations
-                |> List.concatMap TrafficLight.fromTrafficDirection
-    in
-    [ ( ( 5, 2 ), Intersection (Signal trafficLights) Crossroads )
-    , ( ( 1, 5 ), Intersection Yield (T Right) )
-    , ( ( 5, 5 ), Intersection Stop Crossroads )
-    ]
 
 
 initialModel : Model
 initialModel =
     let
         board =
-            roads
-                |> List.append intersections
+            initialRoads
+                |> List.append initialIntersections
                 |> Dict.fromList
-
-        cars =
-            [ Car ( 1, 7 ) Up Sedan1 Moving
-            , Car ( 3, 5 ) Left Sedan2 Moving
-            , Car ( 4, 5 ) Right Sedan3 Moving
-            , Car ( 5, 1 ) Down Sedan4 Moving
-            ]
     in
-    { board = board, cars = cars }
+    { board = board, cars = initialCars }
 
 
 update : Msg -> Model -> Model
@@ -152,7 +88,7 @@ updateCar model car =
                 applyStopRules model nextCoords car
 
             _ ->
-                changeDirection car model.board
+                changeDirection model.board car
 
 
 applyYieldRules : Model -> Coords -> Car -> Car
@@ -205,8 +141,8 @@ applyStopRules model nextCoords car =
         Car.update Move car
 
 
-changeDirection : Car -> Board -> Car
-changeDirection car board =
+changeDirection : Board -> Car -> Car
+changeDirection board car =
     let
         oppositeDirection =
             Direction.opposite car.direction
@@ -244,7 +180,7 @@ view model =
             carOverlay model.cars
 
         board =
-            Board.view tileSize rg model.board
+            Board.view rg model.board
     in
     Layout.stack [ cars, board ]
 

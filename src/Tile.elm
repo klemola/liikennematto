@@ -11,14 +11,15 @@ import TrafficLight exposing (TrafficLight)
 type RoadKind
     = Horizontal
     | Vertical
-    | NECorner
-    | NWCorner
-    | SECorner
-    | SWCorner
-    | NDeadend
-    | SDeadend
-    | WDeadend
-    | EDeadend
+    | Curve CurveKind
+    | Deadend Direction
+
+
+type CurveKind
+    = TopRight
+    | TopLeft
+    | BottomRight
+    | BottomLeft
 
 
 type IntersectionControl
@@ -146,50 +147,50 @@ intersectionAsset : IntersectionShape -> String
 intersectionAsset shape =
     case shape of
         T Up ->
-            "XSTN.png"
+            "intersection_2_lanes_t_up.png"
 
         T Down ->
-            "XSTS.png"
+            "intersection_2_lanes_t_down.png"
 
         T Right ->
-            "XSTE.png"
+            "intersection_2_lanes_t_right.png"
 
         T Left ->
-            "XSTW.png"
+            "intersection_2_lanes_t_left.png"
 
         Crossroads ->
-            "XSX.png"
+            "intersection_2_lanes_x.png"
 
 
 roadAsset : RoadKind -> String
 roadAsset kind =
     case kind of
         Horizontal ->
-            "R2LH.png"
+            "road_2_lanes_horizontal.png"
 
         Vertical ->
-            "R2LV.png"
+            "road_2_lanes_vertical.png"
 
-        NECorner ->
-            "RCNE.png"
+        Curve TopRight ->
+            "road_2_lanes_curve_top_right.png"
 
-        NWCorner ->
-            "RCNW.png"
+        Curve TopLeft ->
+            "road_2_lanes_curve_top_left.png"
 
-        SECorner ->
-            "RCSE.png"
+        Curve BottomRight ->
+            "road_2_lanes_curve_bottom_right.png"
 
-        SWCorner ->
-            "RCSW.png"
+        Curve BottomLeft ->
+            "road_2_lanes_curve_bottom_left.png"
 
-        NDeadend ->
-            "R2LDEN.png"
+        Deadend Up ->
+            "road_2_lanes_deadend_up.png"
 
-        SDeadend ->
-            "R2LDES.png"
+        Deadend Down ->
+            "road_2_lanes_deadend_down.png"
 
-        WDeadend ->
-            "R2LDEW.png"
+        Deadend Left ->
+            "road_2_lanes_deadend_left.png"
 
-        EDeadend ->
-            "R2LDEE.png"
+        Deadend Right ->
+            "road_2_lanes_deadend_right.png"
