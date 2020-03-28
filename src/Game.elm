@@ -63,7 +63,10 @@ roads =
     , ( ( 5, 6 ), TwoLaneRoad Vertical )
     , ( ( 1, 7 ), TwoLaneRoad Vertical )
     , ( ( 5, 7 ), TwoLaneRoad Vertical )
-    , ( ( 1, 8 ), TwoLaneRoad SDeadend )
+    , ( ( 1, 8 ), TwoLaneRoad SWCorner )
+    , ( ( 2, 8 ), TwoLaneRoad Horizontal )
+    , ( ( 3, 8 ), TwoLaneRoad SECorner )
+    , ( ( 3, 7 ), TwoLaneRoad NDeadend )
     , ( ( 5, 8 ), TwoLaneRoad SDeadend )
     ]
 
@@ -123,7 +126,7 @@ updateCar model car =
         oppositeDirection =
             Direction.opposite car.direction
 
-        -- This can be improve by taking in account car status (no need to wait until the next car is moving)
+        -- Room for improvement: take in account car status (no need to wait until the next car is moving)
         willCollideWithAnother =
             List.any (\c -> c.coords == nextCoords && c.direction /= oppositeDirection) model.cars
     in
@@ -155,7 +158,7 @@ updateCar model car =
 applyYieldRules : Model -> Coords -> Car -> Car
 applyYieldRules model nextCoords car =
     let
-        -- To keep things simple cars always yield on east-west direction
+        -- to keep things simple cars always yield on east-west direction
         shouldYield =
             List.member car.direction Direction.horizontal
 
@@ -180,7 +183,7 @@ applyYieldRules model nextCoords car =
 applyStopRules : Model -> Coords -> Car -> Car
 applyStopRules model nextCoords car =
     let
-        -- To keep things simple cars always stop on east-west direction
+        -- to keep things simple cars always stop on east-west direction
         shouldStop =
             List.member car.direction Direction.horizontal
     in
@@ -237,27 +240,67 @@ changeDirection car board =
 view : Model -> Collage msg
 view model =
     let
-        cars x y =
-            model.cars
+        cars =
+            carOverlay model.cars
+
+        board =
+            Board.view tileSize rg model.board
+    in
+    Layout.stack [ cars, board ]
+
+
+carOverlay : List Car -> Collage msg
+carOverlay cars =
+    let
+        carSize =
+            tileSize * 0.33
+
+        shiftAmount =
+            carSize * 0.5
+
+        baseShift status =
+            case status of
+                Turning ->
+                    shiftAmount
+
+                _ ->
+                    0
+
+        carShiftCoords status dir =
+            case dir of
+                Up ->
+                    ( shiftAmount, baseShift status )
+
+                Down ->
+                    ( -shiftAmount, -(baseShift status) )
+
+                Left ->
+                    ( -(baseShift status), shiftAmount )
+
+                Right ->
+                    ( baseShift status, -shiftAmount )
+
+        placeCars x y =
+            cars
                 |> List.map
                     (\c ->
                         if c.coords == ( x, y ) then
-                            Car.view tileSize c
+                            Car.view carSize c
+                                |> shift (carShiftCoords c.status c.direction)
 
                         else
+                            -- keep cars aligned to the board by adding empty space between them
                             square tileSize
                                 |> styled ( transparent, invisible )
                     )
 
         col x =
-            List.map (cars x) rg
+            List.map (placeCars x) rg
                 |> List.map Layout.stack
                 |> Layout.vertical
 
         rows =
             List.map col rg
-
-        carsView =
-            Layout.horizontal rows
     in
-    Layout.stack [ carsView, Board.view tileSize rg model.board ]
+    -- cars are rendered as an overlaid grid of the same size as the board
+    Layout.horizontal rows

@@ -17,6 +17,7 @@ type CarKind
 
 type Status
     = Moving
+      -- Room for improvement: if the previous direction is included in "Turning", we can rotate the car half-step (45deg) when turning
     | Turning
     | Waiting
     | StoppedAtIntersection Int
@@ -67,11 +68,8 @@ update msg car =
 
 
 view : Float -> Car -> Collage msg
-view tileSize car =
+view size car =
     let
-        size =
-            tileSize / 2
-
         asset =
             case car.kind of
                 Sedan1 ->
