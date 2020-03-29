@@ -149,11 +149,11 @@ intersectionAsset shape =
         T Up ->
             "intersection_2_lanes_t_up.png"
 
-        T Down ->
-            "intersection_2_lanes_t_down.png"
-
         T Right ->
             "intersection_2_lanes_t_right.png"
+
+        T Down ->
+            "intersection_2_lanes_t_down.png"
 
         T Left ->
             "intersection_2_lanes_t_left.png"
@@ -186,11 +186,11 @@ roadAsset kind =
         Deadend Up ->
             "road_2_lanes_deadend_up.png"
 
+        Deadend Right ->
+            "road_2_lanes_deadend_right.png"
+
         Deadend Down ->
             "road_2_lanes_deadend_down.png"
 
         Deadend Left ->
             "road_2_lanes_deadend_left.png"
-
-        Deadend Right ->
-            "road_2_lanes_deadend_right.png"
