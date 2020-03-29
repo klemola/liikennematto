@@ -1,10 +1,18 @@
-module Car exposing (Car, CarKind(..), Msg(..), Status(..), update, view)
+module Car exposing (Car, CarKind(..), Msg(..), Status(..), TurnKind(..), update, view)
 
-import Collage exposing (Collage, image, rotate)
+import Collage exposing (Collage, rotate)
 import Coords exposing (Coords)
 import Direction exposing (Direction(..))
 import Graphics exposing (texture)
 import Tile exposing (Tile(..))
+
+
+type alias Car =
+    { coords : Coords
+    , direction : Direction
+    , kind : CarKind
+    , status : Status
+    }
 
 
 type CarKind
@@ -18,18 +26,16 @@ type CarKind
 type Status
     = Moving
       -- Room for improvement: if the previous direction is included in "Turning", we can rotate the car half-step (45deg) when turning
-    | Turning
+    | Turning TurnKind
     | Waiting
     | StoppedAtIntersection Int
     | Yielding
 
 
-type alias Car =
-    { coords : Coords
-    , direction : Direction
-    , kind : CarKind
-    , status : Status
-    }
+type TurnKind
+    = LeftTurn
+    | RightTurn
+    | UTurn
 
 
 type alias Model =
@@ -54,8 +60,19 @@ update msg car =
             in
             { car | coords = nextCoords, status = Moving }
 
-        Turn dir ->
-            { car | direction = dir, status = Turning }
+        Turn nextDirection ->
+            let
+                turnDirection =
+                    if Direction.previous car.direction == nextDirection then
+                        LeftTurn
+
+                    else if Direction.next car.direction == nextDirection then
+                        RightTurn
+
+                    else
+                        UTurn
+            in
+            { car | direction = nextDirection, status = Turning turnDirection }
 
         Wait ->
             { car | status = Waiting }
@@ -86,6 +103,20 @@ view size car =
 
                 Sedan5 ->
                     "car_black_1.png"
+
+        rotationModifier =
+            case car.status of
+                Turning LeftTurn ->
+                    -45
+
+                Turning RightTurn ->
+                    45
+
+                _ ->
+                    0
+
+        rotation =
+            Direction.rotationDegrees car.direction + rotationModifier
     in
     texture size asset
-        |> rotate (degrees (Direction.rotationDegrees car.direction))
+        |> rotate (degrees rotation)

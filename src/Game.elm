@@ -196,7 +196,7 @@ carOverlay cars =
 
         baseShift status =
             case status of
-                Turning ->
+                Turning _ ->
                     shiftAmount
 
                 _ ->
@@ -207,14 +207,14 @@ carOverlay cars =
                 Up ->
                     ( shiftAmount, baseShift status )
 
+                Right ->
+                    ( baseShift status, -shiftAmount )
+
                 Down ->
                     ( -shiftAmount, -(baseShift status) )
 
                 Left ->
                     ( -(baseShift status), shiftAmount )
-
-                Right ->
-                    ( baseShift status, -shiftAmount )
 
         placeCars x y =
             cars

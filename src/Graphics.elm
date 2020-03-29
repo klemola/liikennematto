@@ -13,14 +13,14 @@ marker tileSize offset side presentation =
                 Up ->
                     ( Layout.top, ( 0, -offset ) )
 
+                Right ->
+                    ( Layout.right, ( -offset, 0 ) )
+
                 Down ->
                     ( Layout.bottom, ( 0, offset ) )
 
                 Left ->
                     ( Layout.left, ( offset, 0 ) )
-
-                Right ->
-                    ( Layout.right, ( -offset, 0 ) )
 
         boundaries =
             square tileSize

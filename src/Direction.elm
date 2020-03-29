@@ -44,8 +44,41 @@ opposite dir =
             Right
 
 
+previous : Direction -> Direction
+previous dir =
+    case dir of
+        Up ->
+            Left
+
+        Right ->
+            Up
+
+        Down ->
+            Right
+
+        Left ->
+            Down
+
+
+next : Direction -> Direction
+next dir =
+    case dir of
+        Up ->
+            Right
+
+        Right ->
+            Down
+
+        Down ->
+            Left
+
+        Left ->
+            Up
+
+
 rotationDegrees : Direction -> Float
 rotationDegrees dir =
+    -- the values here are based on Collage logic: counter-clockwise rotation (from "Up")
     case dir of
         Up ->
             0
