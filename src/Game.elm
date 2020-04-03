@@ -98,9 +98,6 @@ applyYieldRules model nextCoords car =
         shouldYield =
             List.member car.direction Direction.horizontal
 
-        getCars coords list =
-            List.filter (\c -> c.coords == coords) list
-
         northSouthConnections =
             Board.connectedRoads model.board nextCoords
                 |> List.filter (\( c, t ) -> Tuple.second c - Tuple.second nextCoords /= 0)
@@ -194,6 +191,11 @@ carOverlay cars =
         shiftAmount =
             carSize * 0.5
 
+        -- fake tiles align the cars to the board beneath
+        fakeTile =
+            square tileSize
+                |> styled ( transparent, invisible )
+
         baseShift status =
             case status of
                 Turning _ ->
@@ -217,21 +219,16 @@ carOverlay cars =
                     ( -(baseShift status), shiftAmount )
 
         placeCars x y =
-            cars
+            getCars ( x, y ) cars
                 |> List.map
                     (\c ->
-                        if c.coords == ( x, y ) then
-                            Car.view carSize c
-                                |> shift (carShiftCoords c.status c.direction)
-
-                        else
-                            -- keep cars aligned to the board by adding empty space between them
-                            square tileSize
-                                |> styled ( transparent, invisible )
+                        Car.view carSize c
+                            |> shift (carShiftCoords c.status c.direction)
                     )
 
         col x =
             List.map (placeCars x) rg
+                |> List.map (List.append [ fakeTile ])
                 |> List.map Layout.stack
                 |> Layout.vertical
 
@@ -240,3 +237,9 @@ carOverlay cars =
     in
     -- cars are rendered as an overlaid grid of the same size as the board
     Layout.horizontal rows
+
+
+getCars : Coords -> List Car -> List Car
+getCars coords cars =
+    cars
+        |> List.filter (\c -> c.coords == coords)
