@@ -36,13 +36,13 @@ new : TrafficLightKind -> Direction -> TrafficLight
 new kind facing =
     case kind of
         Green ->
-            TrafficLight Green facing 6
+            TrafficLight Green facing 7
 
         Yellow ->
             TrafficLight Yellow facing 2
 
         Red ->
-            TrafficLight Red facing 3
+            TrafficLight Red facing 9
 
 
 advanceTimer : TrafficLight -> TrafficLight
