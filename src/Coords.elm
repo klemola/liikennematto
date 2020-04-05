@@ -27,3 +27,14 @@ neighbors : Coords -> List Coords
 neighbors coords =
     Direction.all
         |> List.map (next coords)
+
+
+toString : Coords -> String
+toString coords =
+    String.join
+        " "
+        [ "x:"
+        , String.fromInt <| Tuple.first coords
+        , "y:"
+        , String.fromInt <| Tuple.second coords
+        ]

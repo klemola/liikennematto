@@ -2,6 +2,7 @@ module Graphics exposing (..)
 
 import Collage exposing (..)
 import Collage.Layout as Layout
+import Color exposing (Color)
 import Direction exposing (Direction(..))
 
 
@@ -38,3 +39,13 @@ marker tileSize offset side presentation =
 texture : Float -> String -> Collage msg
 texture size asset =
     image ( size, size ) ("assets/" ++ asset)
+
+
+background : Color
+background =
+    Color.rgb255 33 191 154
+
+
+backgroundCss : String
+backgroundCss =
+    Color.toCssString background

@@ -1,4 +1,4 @@
-module Car exposing (Car, CarKind(..), Msg(..), Status(..), TurnKind(..), isTurning, update, view)
+module Car exposing (Car, CarKind(..), Msg(..), Status(..), TurnKind(..), asset, isTurning, update, view)
 
 import Collage exposing (Collage, rotate)
 import Coords exposing (Coords)
@@ -97,23 +97,6 @@ update msg car =
 view : Float -> Car -> Collage msg
 view size car =
     let
-        asset =
-            case car.kind of
-                Sedan1 ->
-                    "car_blue_1.png"
-
-                Sedan2 ->
-                    "car_red_1.png"
-
-                Sedan3 ->
-                    "car_green_1.png"
-
-                Sedan4 ->
-                    "car_yellow_1.png"
-
-                Sedan5 ->
-                    "car_black_1.png"
-
         rotationModifier =
             case car.status of
                 Turning LeftTurn ->
@@ -128,5 +111,24 @@ view size car =
         rotation =
             Direction.rotationDegrees car.direction + rotationModifier
     in
-    texture size asset
+    texture size (asset car)
         |> rotate (degrees rotation)
+
+
+asset : Car -> String
+asset car =
+    case car.kind of
+        Sedan1 ->
+            "car_blue_1.png"
+
+        Sedan2 ->
+            "car_red_1.png"
+
+        Sedan3 ->
+            "car_green_1.png"
+
+        Sedan4 ->
+            "car_yellow_1.png"
+
+        Sedan5 ->
+            "car_black_1.png"
