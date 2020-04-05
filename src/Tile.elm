@@ -64,6 +64,16 @@ isRoad tile =
             False
 
 
+isIntersection : Tile -> Bool
+isIntersection tile =
+    case tile of
+        Intersection _ _ ->
+            True
+
+        _ ->
+            False
+
+
 update : Tile -> Tile
 update tile =
     case tile of

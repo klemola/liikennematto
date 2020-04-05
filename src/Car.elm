@@ -1,4 +1,4 @@
-module Car exposing (Car, CarKind(..), Msg(..), Status(..), TurnKind(..), update, view)
+module Car exposing (Car, CarKind(..), Msg(..), Status(..), TurnKind(..), isTurning, update, view)
 
 import Collage exposing (Collage, rotate)
 import Coords exposing (Coords)
@@ -48,6 +48,16 @@ type Msg
     | Wait
     | YieldAtIntersection
     | StopAtIntersection Int
+
+
+isTurning : Car -> Bool
+isTurning car =
+    case car.status of
+        Turning _ ->
+            True
+
+        _ ->
+            False
 
 
 update : Msg -> Model -> Model
