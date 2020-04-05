@@ -1,6 +1,6 @@
 module Config exposing (..)
 
-import Car exposing (Car, CarKind(..), Status(..))
+import Car exposing (Car, CarKind(..), Status(..), TurnKind(..))
 import Coords exposing (Coords)
 import Direction exposing (Direction(..))
 import Tile exposing (CurveKind(..), IntersectionControl(..), IntersectionShape(..), RoadKind(..), Tile(..))

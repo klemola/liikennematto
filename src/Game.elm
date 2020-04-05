@@ -8,18 +8,22 @@ import Config exposing (boardSize, initialCars, initialIntersections, initialRoa
 import Coords exposing (Coords)
 import Dict
 import Direction exposing (Direction(..))
+import Random
+import Random.List
 import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..))
 
 
 type alias Model =
     { board : Board
     , cars : List Car
+    , randomDirections : List Direction
     }
 
 
 type Msg
     = UpdateTraffic
     | UpdateEnvironment
+    | ReceiveRandomDirections (List Direction)
 
 
 rg : List Int
@@ -35,19 +39,31 @@ initialModel =
                 |> List.append initialIntersections
                 |> Dict.fromList
     in
-    { board = board, cars = initialCars }
+    { board = board, cars = initialCars, randomDirections = List.repeat 100 Right }
 
 
-update : Msg -> Model -> Model
+newRandomDirections : Cmd Msg
+newRandomDirections =
+    Direction.all
+        |> Random.List.shuffle
+        |> Random.generate ReceiveRandomDirections
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         UpdateTraffic ->
-            { model | cars = List.map (updateCar model) model.cars }
+            ( { model | cars = List.map (updateCar model) model.cars }, newRandomDirections )
 
         UpdateEnvironment ->
-            { model
+            ( { model
                 | board = Board.update model.board
-            }
+              }
+            , Cmd.none
+            )
+
+        ReceiveRandomDirections directions ->
+            ( { model | randomDirections = directions }, Cmd.none )
 
 
 updateCar : Model -> Car -> Car
@@ -88,7 +104,7 @@ updateCar model car =
                 applyStopRules model nextCoords car
 
             _ ->
-                changeDirection model.board car
+                changeDirection model.board model.randomDirections car
 
 
 applyYieldRules : Model -> Coords -> Car -> Car
@@ -138,8 +154,8 @@ applyStopRules model nextCoords car =
         Car.update Move car
 
 
-changeDirection : Board -> Car -> Car
-changeDirection board car =
+changeDirection : Board -> List Direction -> Car -> Car
+changeDirection board randomDirs car =
     let
         oppositeDirection =
             Direction.opposite car.direction
@@ -159,15 +175,14 @@ changeDirection board car =
                     True
 
         validTurns =
-            Direction.all
+            randomDirs
                 |> List.filter isLeftOrRightTurn
                 |> List.filter seeRoadAhead
 
-        -- turn left, right or back
-        nextDir =
+        turn =
             Maybe.withDefault oppositeDirection (List.head validTurns)
     in
-    Car.update (Turn nextDir) car
+    Car.update (Turn turn) car
 
 
 view : Model -> Collage msg
