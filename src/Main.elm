@@ -2,9 +2,13 @@ module Main exposing (main)
 
 import Browser
 import Collage.Render exposing (svg)
+import Config
 import Game exposing (Msg(..))
-import Html exposing (Html)
+import Graphics
+import Html exposing (Html, div)
+import Html.Attributes exposing (style)
 import Time
+import UI
 
 
 main : Program () Model Msg
@@ -77,4 +81,21 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    Game.view model.game |> svg
+    let
+        padding =
+            String.fromFloat Config.tileSize ++ "px"
+
+        minHeight =
+            "calc(100vh - " ++ String.fromFloat (2 * Config.tileSize) ++ "px)"
+    in
+    div
+        [ style "display" "flex"
+        , style "background-color" Graphics.backgroundCss
+        , style "flex-direction" "column"
+        , style "align-items" "center"
+        , style "padding" padding
+        , style "min-height" minHeight
+        ]
+        [ Game.view model.game |> svg
+        , UI.view model.game
+        ]

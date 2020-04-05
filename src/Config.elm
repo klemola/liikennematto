@@ -17,6 +17,11 @@ tileSize =
     80
 
 
+boardSizePx : Int
+boardSizePx =
+    boardSize * floor tileSize
+
+
 initialRoads : List ( Coords, Tile )
 initialRoads =
     [ ( ( 5, 1 ), TwoLaneRoad (Deadend Up) )
