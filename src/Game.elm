@@ -16,6 +16,7 @@ import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..))
 type alias Model =
     { board : Board
     , cars : List Car
+    , coinTossResult : Bool
     , randomDirections : List Direction
     }
 
@@ -23,6 +24,7 @@ type alias Model =
 type Msg
     = UpdateTraffic
     | UpdateEnvironment
+    | CoinToss Bool
     | ReceiveRandomDirections (List Direction)
 
 
@@ -39,21 +41,36 @@ initialModel =
                 |> List.append initialIntersections
                 |> Dict.fromList
     in
-    { board = board, cars = initialCars, randomDirections = List.repeat 100 Right }
+    { board = board, cars = initialCars, coinTossResult = False, randomDirections = List.repeat 100 Right }
 
 
-newRandomDirections : Cmd Msg
-newRandomDirections =
+shuffleDirections : Cmd Msg
+shuffleDirections =
     Direction.all
         |> Random.List.shuffle
         |> Random.generate ReceiveRandomDirections
+
+
+weightedCoinToss : Random.Generator Bool
+weightedCoinToss =
+    Random.weighted ( 60, False ) [ ( 40, True ) ]
+
+
+tossACoin : Cmd Msg
+tossACoin =
+    Random.generate CoinToss weightedCoinToss
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         UpdateTraffic ->
-            ( { model | cars = List.map (updateCar model) model.cars }, newRandomDirections )
+            ( { model | cars = List.map (updateCar model) model.cars }
+            , Cmd.batch
+                [ tossACoin
+                , shuffleDirections
+                ]
+            )
 
         UpdateEnvironment ->
             ( { model
@@ -62,6 +79,9 @@ update msg model =
             , Cmd.none
             )
 
+        CoinToss result ->
+            ( { model | coinTossResult = result }, Cmd.none )
+
         ReceiveRandomDirections directions ->
             ( { model | randomDirections = directions }, Cmd.none )
 
@@ -69,6 +89,9 @@ update msg model =
 updateCar : Model -> Car -> Car
 updateCar model car =
     let
+        currentTile =
+            Board.get car.coords model.board
+
         nextCoords =
             Coords.next car.coords car.direction
 
@@ -88,7 +111,12 @@ updateCar model car =
     else
         case nextTile of
             TwoLaneRoad _ ->
-                Car.update Move car
+                -- Turn every now and then at intersection
+                if model.coinTossResult && Tile.isIntersection currentTile && not (Car.isTurning car) then
+                    changeDirection model.board model.randomDirections car
+
+                else
+                    Car.update Move car
 
             Intersection (Signal trafficLights) _ ->
                 if Tile.trafficLightsAllowEntry trafficLights car.direction then
