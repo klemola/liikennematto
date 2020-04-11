@@ -7,8 +7,9 @@ import Game exposing (Msg(..))
 import Graphics
 import Html exposing (Html, div)
 import Html.Attributes exposing (style)
+import SharedState exposing (Mode(..), SharedState)
 import Time
-import UI
+import UI exposing (Msg(..))
 
 
 main : Program () Model Msg
@@ -17,27 +18,38 @@ main =
 
 
 subs : Model -> Sub Msg
-subs _ =
-    Sub.batch
-        [ Time.every 1000 SlowTick
-        , Time.every 500 FastTick
-        ]
+subs model =
+    let
+        ( slowTickSpeed, fastTickSpeed ) =
+            SharedState.simulationSpeedValues model.sharedState.simulationSpeed
+    in
+    case model.sharedState.mode of
+        Simulation ->
+            Sub.batch
+                [ Time.every slowTickSpeed SlowTick
+                , Time.every fastTickSpeed FastTick
+                ]
+
+        Paused ->
+            Sub.none
 
 
 type alias Model =
     { game : Game.Model
+    , sharedState : SharedState
     }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { game = Game.initialModel }, Cmd.none )
+    ( { game = Game.initialModel, sharedState = SharedState.initial }, Cmd.none )
 
 
 type Msg
     = SlowTick Time.Posix
     | FastTick Time.Posix
     | GameMsg Game.Msg
+    | UIMsg UI.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -48,9 +60,7 @@ update msg model =
                 ( game, cmd ) =
                     Game.update UpdateEnvironment model.game
             in
-            ( { model
-                | game = game
-              }
+            ( { model | game = game }
             , Cmd.map GameMsg cmd
             )
 
@@ -59,10 +69,7 @@ update msg model =
                 ( game, cmd ) =
                     Game.update UpdateTraffic model.game
             in
-            ( { model
-                | game =
-                    game
-              }
+            ( { model | game = game }
             , Cmd.map GameMsg cmd
             )
 
@@ -71,12 +78,24 @@ update msg model =
                 ( game, cmd ) =
                     Game.update gameMsg model.game
             in
-            ( { model
-                | game =
-                    game
-              }
+            ( { model | game = game }
             , Cmd.map GameMsg cmd
             )
+
+        UIMsg uiMsg ->
+            let
+                ss =
+                    model.sharedState
+
+                updatedSharedState =
+                    case uiMsg of
+                        ToggleSimulation ->
+                            { ss | mode = SharedState.nextMode ss.mode }
+
+                        SetSimulationSpeed speed ->
+                            { ss | simulationSpeed = speed }
+            in
+            ( { model | sharedState = updatedSharedState }, Cmd.none )
 
 
 view : Model -> Html Msg
@@ -97,5 +116,5 @@ view model =
         , style "min-height" minHeight
         ]
         [ Game.view model.game |> svg
-        , UI.view model.game
+        , Html.map UIMsg (UI.view model.game model.sharedState)
         ]
