@@ -27,13 +27,13 @@ simulationSpeedValues speed =
     -- (Environment update, Traffic update)
     case speed of
         Slow ->
-            ( 2000, 1000 )
+            ( 1200, 300 )
 
         Medium ->
-            ( 1000, 500 )
+            ( 900, 150 )
 
         Fast ->
-            ( 600, 300 )
+            ( 600, 75 )
 
 
 type alias SharedState =

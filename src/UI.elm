@@ -3,6 +3,7 @@ module UI exposing (..)
 import Car exposing (Status(..), TurnKind(..))
 import Config
 import Coords
+import Dict
 import Game
 import Html exposing (Html, button, div, h4, img, span, text)
 import Html.Attributes exposing (src, style, width)
@@ -82,7 +83,10 @@ view game sharedState =
         , style "padding" (String.fromInt padding ++ "px")
         , style "border-radius" "0.5rem"
         ]
-        [ div [ style "flex" "1" ] (List.map carInfo game.cars)
+        [ div [ style "flex" "1" ]
+            (Dict.values game.cars
+                |> List.map carInfo
+            )
         , div []
             [ h4 [ style "margin-top" "0" ] [ text "Simulation control" ]
             , button [ onClick ToggleSimulation ] [ text modeAsText ]
