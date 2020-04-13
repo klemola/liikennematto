@@ -6,7 +6,7 @@ import Collage exposing (..)
 import Collage.Layout as Layout
 import Config exposing (boardSize, initialCars, initialIntersections, initialRoads, tileSize)
 import Coords exposing (Coords)
-import Dict
+import Dict exposing (Dict)
 import Direction exposing (Direction(..))
 import Random
 import Random.List
@@ -15,7 +15,8 @@ import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..))
 
 type alias Model =
     { board : Board
-    , cars : List Car
+    , cars : Dict Int Car
+    , activeCarId : Int
     , coinTossResult : Bool
     , randomDirections : List Direction
     }
@@ -41,7 +42,12 @@ initialModel =
                 |> List.append initialIntersections
                 |> Dict.fromList
     in
-    { board = board, cars = initialCars, coinTossResult = False, randomDirections = List.repeat 100 Right }
+    { board = board
+    , cars = initialCars
+    , activeCarId = 1
+    , coinTossResult = False
+    , randomDirections = List.repeat 4 Right
+    }
 
 
 shuffleDirections : Cmd Msg
@@ -65,7 +71,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         UpdateTraffic ->
-            ( { model | cars = List.map (updateCar model) model.cars }
+            ( updateCars model
             , Cmd.batch
                 [ tossACoin
                 , shuffleDirections
@@ -86,33 +92,83 @@ update msg model =
             ( { model | randomDirections = directions }, Cmd.none )
 
 
-updateCar : Model -> Car -> Car
-updateCar model car =
+updateCars : Model -> Model
+updateCars model =
     let
-        currentTile =
-            Board.get car.coords model.board
+        current =
+            Dict.get model.activeCarId model.cars
+
+        others =
+            model.cars
+                |> Dict.filter (\k _ -> k /= model.activeCarId)
+                |> Dict.values
+
+        updatedCar =
+            Maybe.map (updateCar model others) current
+
+        nextCars =
+            case updatedCar of
+                Just car ->
+                    Dict.insert model.activeCarId car model.cars
+
+                Nothing ->
+                    model.cars
+
+        nextActiveCarId =
+            -- restart the cycle
+            if model.activeCarId == 0 || model.activeCarId == Dict.size model.cars then
+                1
+
+            else
+                model.activeCarId + 1
+    in
+    { model | cars = nextCars, activeCarId = nextActiveCarId }
+
+
+updateCar : Model -> List Car -> Car -> Car
+updateCar model otherCars car =
+    let
+        oppositeDirection =
+            Direction.opposite car.direction
 
         nextCoords =
             Coords.next car.coords car.direction
 
+        currentTile =
+            Board.get car.coords model.board
+
         nextTile =
             Board.get nextCoords model.board
 
-        oppositeDirection =
-            Direction.opposite car.direction
+        -- turn every now and then at an intersection
+        -- cars in intersections can block the traffic, so this also works as a sort of a tie-breaker
+        shouldTurnRandomly =
+            model.coinTossResult && Tile.isIntersection currentTile && not (Car.isTurning car)
 
-        -- Room for improvement: take in account car status (no need to wait until the next car is moving)
         willCollideWithAnother =
-            List.any (\c -> c.coords == nextCoords && c.direction /= oppositeDirection) model.cars
+            case nextTile of
+                -- car moving towards another in an opposite direction will not cause a collision
+                TwoLaneRoad Vertical ->
+                    List.any (\c -> c.coords == nextCoords && c.direction /= oppositeDirection) otherCars
+
+                TwoLaneRoad Horizontal ->
+                    List.any (\c -> c.coords == nextCoords && c.direction /= oppositeDirection) otherCars
+
+                -- intersections, curves and deadends should be clear before entering (slightly naive logic)
+                _ ->
+                    List.any (\c -> c.coords == nextCoords) otherCars
     in
     if willCollideWithAnother then
-        Car.update Wait car
+        if shouldTurnRandomly then
+            changeDirection model.board model.randomDirections car
+
+        else
+            Car.update Wait car
 
     else
         case nextTile of
             TwoLaneRoad _ ->
-                -- Turn every now and then at intersection
-                if model.coinTossResult && Tile.isIntersection currentTile && not (Car.isTurning car) then
+                if shouldTurnRandomly then
                     changeDirection model.board model.randomDirections car
 
                 else
@@ -126,29 +182,29 @@ updateCar model car =
                     Car.update Wait car
 
             Intersection Yield _ ->
-                applyYieldRules model nextCoords car
+                applyYieldRules model.board nextCoords otherCars car
 
             Intersection Stop _ ->
-                applyStopRules model nextCoords car
+                applyStopRules model.board nextCoords otherCars car
 
             _ ->
                 changeDirection model.board model.randomDirections car
 
 
-applyYieldRules : Model -> Coords -> Car -> Car
-applyYieldRules model nextCoords car =
+applyYieldRules : Board -> Coords -> List Car -> Car -> Car
+applyYieldRules board nextCoords otherCars car =
     let
         -- to keep things simple cars always yield on east-west direction
         shouldYield =
             List.member car.direction Direction.horizontal
 
         northSouthConnections =
-            Board.connectedRoads model.board nextCoords
-                |> List.filter (\( c, t ) -> Tuple.second c - Tuple.second nextCoords /= 0)
+            Board.connectedRoads board nextCoords
+                |> List.filter (\( c, _ ) -> Tuple.second c - Tuple.second nextCoords /= 0)
 
         northSouthTraffic =
             northSouthConnections
-                |> List.concatMap (\( c, t ) -> getCars c model.cars)
+                |> List.concatMap (\( c, _ ) -> getCars c otherCars)
     in
     if shouldYield && List.length northSouthTraffic > 0 then
         Car.update YieldAtIntersection car
@@ -157,8 +213,8 @@ applyYieldRules model nextCoords car =
         Car.update Move car
 
 
-applyStopRules : Model -> Coords -> Car -> Car
-applyStopRules model nextCoords car =
+applyStopRules : Board -> Coords -> List Car -> Car -> Car
+applyStopRules board nextCoords otherCars car =
     let
         -- to keep things simple cars always stop on east-west direction
         shouldStop =
@@ -173,7 +229,7 @@ applyStopRules model nextCoords car =
                 Car.update (StopAtIntersection (turnsRemaining - 1)) car
 
             Yielding ->
-                applyYieldRules model nextCoords car
+                applyYieldRules board nextCoords otherCars car
 
             _ ->
                 Car.update (StopAtIntersection 1) car
@@ -217,7 +273,7 @@ view : Model -> Collage msg
 view model =
     let
         cars =
-            carOverlay model.cars
+            carOverlay (Dict.values model.cars)
 
         board =
             Board.view rg model.board

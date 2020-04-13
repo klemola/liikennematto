@@ -2,6 +2,7 @@ module Config exposing (..)
 
 import Car exposing (Car, CarKind(..), Status(..), TurnKind(..))
 import Coords exposing (Coords)
+import Dict exposing (Dict)
 import Direction exposing (Direction(..))
 import Tile exposing (CurveKind(..), IntersectionControl(..), IntersectionShape(..), RoadKind(..), Tile(..))
 import TrafficLight
@@ -50,9 +51,9 @@ initialRoads =
     , ( ( 5, 7 ), TwoLaneRoad Vertical )
     , ( ( 1, 8 ), TwoLaneRoad (Curve BottomLeft) )
     , ( ( 2, 8 ), TwoLaneRoad Horizontal )
-    , ( ( 3, 8 ), TwoLaneRoad (Curve BottomRight) )
-    , ( ( 3, 7 ), TwoLaneRoad (Deadend Up) )
-    , ( ( 5, 8 ), TwoLaneRoad (Deadend Down) )
+    , ( ( 3, 8 ), TwoLaneRoad Horizontal )
+    , ( ( 4, 8 ), TwoLaneRoad Horizontal )
+    , ( ( 5, 8 ), TwoLaneRoad (Curve BottomRight) )
     ]
 
 
@@ -69,10 +70,11 @@ initialIntersections =
     ]
 
 
-initialCars : List Car
+initialCars : Dict Int Car
 initialCars =
-    [ Car ( 1, 7 ) Up Sedan1 Moving
-    , Car ( 3, 5 ) Left Sedan2 Moving
-    , Car ( 4, 5 ) Right Sedan3 Moving
-    , Car ( 5, 1 ) Down Sedan4 Moving
-    ]
+    Dict.fromList
+        [ ( 1, Car ( 1, 7 ) Up Sedan1 Moving )
+        , ( 2, Car ( 3, 5 ) Left Sedan2 Moving )
+        , ( 3, Car ( 4, 5 ) Right Sedan3 Moving )
+        , ( 4, Car ( 5, 1 ) Down Sedan4 Moving )
+        ]
