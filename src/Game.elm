@@ -8,6 +8,7 @@ import Config exposing (boardSize, initialCars, initialIntersections, initialRoa
 import Coords exposing (Coords)
 import Dict exposing (Dict)
 import Direction exposing (Direction(..))
+import Graphics
 import Random
 import Random.List
 import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..))
@@ -27,11 +28,6 @@ type Msg
     | UpdateEnvironment
     | CoinToss Bool
     | ReceiveRandomDirections (List Direction)
-
-
-rg : List Int
-rg =
-    List.range 1 boardSize
 
 
 initialModel : Model
@@ -276,7 +272,7 @@ view model =
             carOverlay (Dict.values model.cars)
 
         board =
-            Board.view rg model.board
+            Board.view model.board
     in
     Layout.stack [ cars, board ]
 
@@ -317,25 +313,18 @@ carOverlay cars =
                 Left ->
                     ( -(baseShift status), shiftAmount )
 
-        placeCars x y =
+        drawCars x y =
             getCars ( x, y ) cars
                 |> List.map
                     (\c ->
                         Car.view carSize c
                             |> shift (carShiftCoords c.status c.direction)
                     )
-
-        col x =
-            List.map (placeCars x) rg
-                |> List.map (List.append [ fakeTile ])
-                |> List.map Layout.stack
-                |> Layout.vertical
-
-        rows =
-            List.map col rg
+                |> List.append [ fakeTile ]
+                |> Layout.stack
     in
     -- cars are rendered as an overlaid grid of the same size as the board
-    Layout.horizontal rows
+    Graphics.grid boardSize drawCars
 
 
 getCars : Coords -> List Car -> List Car

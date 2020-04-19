@@ -6,6 +6,24 @@ import Color exposing (Color)
 import Direction exposing (Direction(..))
 
 
+grid : Int -> (Int -> Int -> Collage msg) -> Collage msg
+grid size getCollage =
+    let
+        rg =
+            List.range 1 size
+
+        col x =
+            rg
+                |> List.map (getCollage x)
+                |> Layout.vertical
+
+        rows =
+            rg
+                |> List.map col
+    in
+    Layout.horizontal rows
+
+
 marker : Float -> Float -> Direction -> Collage msg -> Collage msg
 marker tileSize offset side presentation =
     let

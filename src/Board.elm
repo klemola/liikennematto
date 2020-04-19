@@ -1,12 +1,12 @@
 module Board exposing (Board, connectedRoads, get, update, view)
 
 import Collage exposing (..)
-import Collage.Layout as Layout
-import Config exposing (tileSize)
+import Config exposing (boardSize, tileSize)
 import Coords exposing (Coords)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction exposing (Direction(..))
+import Graphics
 import Tile exposing (Tile(..))
 
 
@@ -59,18 +59,11 @@ withUpdatedTiles board =
     Dict.map (\_ tile -> Tile.update tile) board
 
 
-view : List Int -> Board -> Collage msg
-view rg board =
+view : Board -> Collage msg
+view board =
     let
-        tile x y =
+        drawTile x y =
             get ( x, y ) board
                 |> Tile.view tileSize
-
-        col x =
-            List.map (tile x) rg
-                |> Layout.vertical
-
-        rows =
-            List.map col rg
     in
-    Layout.horizontal rows
+    Graphics.grid boardSize drawTile
