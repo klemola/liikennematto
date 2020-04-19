@@ -31,10 +31,16 @@ neighbors coords =
 
 toString : Coords -> String
 toString coords =
+    let
+        format n =
+            n
+                |> String.fromInt
+                |> String.padLeft 2 ' '
+    in
     String.join
         " "
         [ "x:"
-        , String.fromInt <| Tuple.first coords
+        , format (Tuple.first coords)
         , "y:"
-        , String.fromInt <| Tuple.second coords
+        , format (Tuple.second coords)
         ]

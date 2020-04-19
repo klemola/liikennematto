@@ -39,10 +39,10 @@ new kind facing =
             TrafficLight Green facing 7
 
         Yellow ->
-            TrafficLight Yellow facing 2
+            TrafficLight Yellow facing 1
 
         Red ->
-            TrafficLight Red facing 9
+            TrafficLight Red facing 8
 
 
 advanceTimer : TrafficLight -> TrafficLight

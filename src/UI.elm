@@ -45,16 +45,23 @@ view game sharedState =
                 Waiting ->
                     "Waiting"
 
-                StoppedAtIntersection timeRemaining ->
-                    "Stopped, time remaining: " ++ String.fromInt timeRemaining
+                StoppedAtIntersection roundsRemaining ->
+                    "Stopped, rounds remaining: " ++ String.fromInt roundsRemaining
 
                 Yielding ->
                     "Yielding"
 
         carInfo car =
-            div [ style "display" "flex", style "align-items" "center", style "margin-bottom" "2px" ]
+            div
+                [ style "display" "flex"
+                , style "align-items" "center"
+                , style "margin-bottom" "2px"
+                , style "white-space" "pre"
+                ]
                 [ showCarKind car
-                , span [ style "margin-left" "1rem" ] [ text (String.join " | " [ Coords.toString car.coords, carStatusToString car.status ]) ]
+                , span
+                    [ style "margin-left" "1rem" ]
+                    [ text (String.join " | " [ Coords.toString car.coords, carStatusToString car.status ]) ]
                 ]
 
         modeAsText =

@@ -225,8 +225,8 @@ applyStopRules board nextCoords otherCars car =
             StoppedAtIntersection 0 ->
                 Car.update YieldAtIntersection car
 
-            StoppedAtIntersection turnsRemaining ->
-                Car.update (StopAtIntersection (turnsRemaining - 1)) car
+            StoppedAtIntersection roundsRemaining ->
+                Car.update (StopAtIntersection (roundsRemaining - 1)) car
 
             Yielding ->
                 applyYieldRules board nextCoords otherCars car

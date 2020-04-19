@@ -25,7 +25,6 @@ type CarKind
 
 type Status
     = Moving
-      -- Room for improvement: if the previous direction is included in "Turning", we can rotate the car half-step (45deg) when turning
     | Turning TurnKind
     | Waiting
     | StoppedAtIntersection Int
@@ -90,8 +89,8 @@ update msg car =
         YieldAtIntersection ->
             { car | status = Yielding }
 
-        StopAtIntersection turnsRemaining ->
-            { car | status = StoppedAtIntersection turnsRemaining }
+        StopAtIntersection roundsRemaining ->
+            { car | status = StoppedAtIntersection roundsRemaining }
 
 
 view : Float -> Car -> Collage msg

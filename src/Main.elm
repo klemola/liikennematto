@@ -102,10 +102,10 @@ view : Model -> Html Msg
 view model =
     let
         padding =
-            String.fromFloat Config.tileSize ++ "px"
+            String.fromFloat (Config.tileSize / 2) ++ "px"
 
         minHeight =
-            "calc(100vh - " ++ String.fromFloat (2 * Config.tileSize) ++ "px)"
+            "calc(100vh - " ++ String.fromFloat Config.tileSize ++ "px)"
     in
     div
         [ style "display" "flex"
