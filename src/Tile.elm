@@ -74,6 +74,19 @@ isIntersection tile =
             False
 
 
+crossDirections : Tile -> List Direction
+crossDirections tile =
+    case tile of
+        Intersection _ (T dir) ->
+            Direction.cross dir
+
+        Intersection _ Crossroads ->
+            Direction.vertical
+
+        _ ->
+            []
+
+
 update : Tile -> Tile
 update tile =
     case tile of

@@ -11,7 +11,7 @@ import Direction exposing (Direction(..))
 import Graphics
 import Random
 import Random.List
-import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..))
+import Tile exposing (IntersectionControl(..), IntersectionShape(..), RoadKind(..), Tile(..))
 
 
 type alias Model =
@@ -188,21 +188,23 @@ updateCar model otherCars car =
 
 
 applyYieldRules : Board -> Coords -> List Car -> Car -> Car
-applyYieldRules board nextCoords otherCars car =
+applyYieldRules board tileCoords otherCars car =
     let
-        -- to keep things simple cars always yield on east-west direction
+        crossDirections =
+            Tile.crossDirections (Board.get tileCoords board)
+
         shouldYield =
-            List.member car.direction Direction.horizontal
+            not (List.member car.direction crossDirections)
 
-        northSouthConnections =
-            Board.connectedRoads board nextCoords
-                |> List.filter (\( c, _ ) -> Tuple.second c - Tuple.second nextCoords /= 0)
-
-        northSouthTraffic =
-            northSouthConnections
-                |> List.concatMap (\( c, _ ) -> getCars c otherCars)
+        crossTraffic =
+            crossDirections
+                -- get tile coordinates relative to the intersection at "tileCoords"
+                |> List.map (Coords.next tileCoords)
+                -- add the intersection
+                |> List.append [ Coords.next car.coords car.direction ]
+                |> List.concatMap (getCars otherCars)
     in
-    if shouldYield && List.length northSouthTraffic > 0 then
+    if shouldYield && List.length crossTraffic > 0 then
         Car.update YieldAtIntersection car
 
     else
@@ -210,11 +212,13 @@ applyYieldRules board nextCoords otherCars car =
 
 
 applyStopRules : Board -> Coords -> List Car -> Car -> Car
-applyStopRules board nextCoords otherCars car =
+applyStopRules board tileCoords otherCars car =
     let
-        -- to keep things simple cars always stop on east-west direction
+        crossDirections =
+            Tile.crossDirections (Board.get tileCoords board)
+
         shouldStop =
-            List.member car.direction Direction.horizontal
+            not (List.member car.direction crossDirections)
     in
     if shouldStop then
         case car.status of
@@ -224,11 +228,11 @@ applyStopRules board nextCoords otherCars car =
             StoppedAtIntersection roundsRemaining ->
                 Car.update (StopAtIntersection (roundsRemaining - 1)) car
 
-            Yielding ->
-                applyYieldRules board nextCoords otherCars car
+            Moving ->
+                Car.update (StopAtIntersection 1) car
 
             _ ->
-                Car.update (StopAtIntersection 1) car
+                applyYieldRules board tileCoords otherCars car
 
     else
         Car.update Move car
@@ -263,6 +267,12 @@ changeDirection board randomDirs car =
             Maybe.withDefault oppositeDirection (List.head validTurns)
     in
     Car.update (Turn turn) car
+
+
+getCars : List Car -> Coords -> List Car
+getCars cars coords =
+    cars
+        |> List.filter (\c -> c.coords == coords)
 
 
 view : Model -> Collage msg
@@ -314,7 +324,7 @@ carOverlay cars =
                     ( -(baseShift status), shiftAmount )
 
         drawCars x y =
-            getCars ( x, y ) cars
+            getCars cars ( x, y )
                 |> List.map
                     (\c ->
                         Car.view carSize c
@@ -325,9 +335,3 @@ carOverlay cars =
     in
     -- cars are rendered as an overlaid grid of the same size as the board
     Graphics.grid boardSize drawCars
-
-
-getCars : Coords -> List Car -> List Car
-getCars coords cars =
-    cars
-        |> List.filter (\c -> c.coords == coords)
