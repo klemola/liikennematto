@@ -76,6 +76,22 @@ next dir =
             Up
 
 
+cross : Direction -> List Direction
+cross fromDir =
+    case fromDir of
+        Up ->
+            horizontal
+
+        Right ->
+            vertical
+
+        Down ->
+            horizontal
+
+        Left ->
+            vertical
+
+
 rotationDegrees : Direction -> Float
 rotationDegrees dir =
     -- the values here are based on Collage logic: counter-clockwise rotation (from "Up")
