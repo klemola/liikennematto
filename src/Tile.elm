@@ -73,15 +73,22 @@ isIntersection tile =
             False
 
 
-crossDirections : Tile -> List Direction
-crossDirections tile =
+priorityDirections : Tile -> List Direction
+priorityDirections tile =
+    let
+        priority trafficControlOrientation =
+            trafficControlOrientation
+                |> Direction.oppositeOrientation
+                |> Direction.fromOrientation
+    in
     case tile of
-        Intersection _ (T dir) ->
-            Direction.cross dir
+        Intersection (Yield orientation) _ ->
+            priority orientation
 
-        Intersection _ Crossroads ->
-            Direction.vertical
+        Intersection (Stop orientation) _ ->
+            priority orientation
 
+        -- Other tile kinds don't have priority (e.g. signal controlled intersections)
         _ ->
             []
 
@@ -123,11 +130,11 @@ view tileSize tile =
                 |> intersection shape
 
         Intersection (Yield orientation) shape ->
-            signs tileSize "yield_sign.png" shape
+            signs tileSize orientation shape "yield_sign.png"
                 |> intersection shape
 
         Intersection (Stop orientation) shape ->
-            signs tileSize "stop_sign.png" shape
+            signs tileSize orientation shape "stop_sign.png"
                 |> intersection shape
 
         Intersection Uncontrolled shape ->
@@ -140,8 +147,8 @@ view tileSize tile =
             ground Color.yellow
 
 
-signs : Float -> String -> IntersectionShape -> List (Collage msg)
-signs tileSize asset intersectionShape =
+signs : Float -> Orientation -> IntersectionShape -> String -> List (Collage msg)
+signs tileSize orientation intersectionShape asset =
     let
         size =
             tileSize * 0.25
@@ -155,7 +162,7 @@ signs tileSize asset intersectionShape =
                     [ dir ]
 
                 Crossroads ->
-                    Direction.horizontal
+                    Direction.fromOrientation orientation
 
         presentation dir =
             Graphics.texture size asset

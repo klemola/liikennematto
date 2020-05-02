@@ -174,10 +174,10 @@ updateCar model otherCars car =
                 else
                     Car.update Wait car
 
-            Intersection (Yield orientation) _ ->
+            Intersection (Yield _) _ ->
                 applyYieldRules model.board nextCoords otherCars car
 
-            Intersection (Stop orientation) _ ->
+            Intersection (Stop _) _ ->
                 applyStopRules model.board nextCoords otherCars car
 
             _ ->
@@ -187,21 +187,21 @@ updateCar model otherCars car =
 applyYieldRules : Board -> Coords -> List Car -> Car -> Car
 applyYieldRules board tileCoords otherCars car =
     let
-        crossDirections =
-            Tile.crossDirections (Board.get tileCoords board)
+        priorityDirections =
+            Tile.priorityDirections (Board.get tileCoords board)
 
         shouldYield =
-            not (List.member car.direction crossDirections)
+            not (List.member car.direction priorityDirections)
 
-        crossTraffic =
-            crossDirections
+        priorityTraffic =
+            priorityDirections
                 -- get tile coordinates relative to the intersection at "tileCoords"
                 |> List.map (Coords.next tileCoords)
                 -- add the intersection
                 |> List.append [ Coords.next car.coords car.direction ]
                 |> List.concatMap (getCars otherCars)
     in
-    if shouldYield && List.length crossTraffic > 0 then
+    if shouldYield && List.length priorityTraffic > 0 then
         Car.update YieldAtIntersection car
 
     else
@@ -211,11 +211,11 @@ applyYieldRules board tileCoords otherCars car =
 applyStopRules : Board -> Coords -> List Car -> Car -> Car
 applyStopRules board tileCoords otherCars car =
     let
-        crossDirections =
-            Tile.crossDirections (Board.get tileCoords board)
+        priorityDirections =
+            Tile.priorityDirections (Board.get tileCoords board)
 
         shouldStop =
-            not (List.member car.direction crossDirections)
+            not (List.member car.direction priorityDirections)
     in
     if shouldStop then
         case car.status of

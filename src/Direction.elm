@@ -8,6 +8,10 @@ type Direction
     | Left
 
 
+
+-- Room for improvement: consider moving Orientation & related fns to a separate module
+
+
 type Orientation
     = Vertical
     | Horizontal
@@ -33,6 +37,16 @@ byOrientation =
     [ vertical, horizontal ]
 
 
+fromOrientation : Orientation -> List Direction
+fromOrientation orientation =
+    case orientation of
+        Vertical ->
+            vertical
+
+        Horizontal ->
+            horizontal
+
+
 orientations : List Orientation
 orientations =
     [ Vertical, Horizontal ]
@@ -52,6 +66,16 @@ opposite dir =
 
         Left ->
             Right
+
+
+oppositeOrientation : Orientation -> Orientation
+oppositeOrientation orientation =
+    case orientation of
+        Vertical ->
+            Horizontal
+
+        Horizontal ->
+            Vertical
 
 
 previous : Direction -> Direction
