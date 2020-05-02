@@ -15,6 +15,7 @@
             "elm/time": "1.0.0",
             "elm-community/dict-extra": "2.4.0",
             "elm-community/random-extra": "3.1.0",
+            "mdgriffith/elm-ui": "1.1.5",
             "timjs/elm-collage": "2.0.2"
         },
         "indirect": {
