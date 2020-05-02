@@ -18,11 +18,6 @@ tileSize =
     72
 
 
-boardSizePx : Int
-boardSizePx =
-    boardSize * floor tileSize
-
-
 initialRoads : List ( Coords, Tile )
 initialRoads =
     [ ( ( 1, 1 ), TwoLaneRoad (Curve TopLeft) )

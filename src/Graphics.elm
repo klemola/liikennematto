@@ -57,13 +57,3 @@ marker tileSize offset side presentation =
 texture : Float -> String -> Collage msg
 texture size asset =
     image ( size, size ) ("assets/" ++ asset)
-
-
-background : Color
-background =
-    Color.rgb255 33 191 154
-
-
-backgroundCss : String
-backgroundCss =
-    Color.toCssString background

@@ -1,14 +1,15 @@
 module UI exposing (..)
 
-import Car exposing (Status(..), TurnKind(..))
-import Config
+import Car exposing (Car, Status(..), TurnKind(..))
 import Coords
 import Dict
+import Element exposing (Element, alignRight, alignTop, centerY, column, el, fill, image, padding, px, rgb255, row, spacing, text, width)
+import Element.Background as Background
+import Element.Border as Border
+import Element.Font as Font exposing (semiBold)
+import Element.Input as Input
 import Game
-import Html exposing (Html, button, div, h4, img, span, text)
-import Html.Attributes exposing (src, style, width)
-import Html.Events exposing (onClick)
-import SharedState exposing (Mode(..), SharedState, SimulationSpeed(..))
+import SharedState exposing (SharedState, SimulationSpeed(..), SimulationState(..))
 
 
 type Msg
@@ -16,20 +17,82 @@ type Msg
     | SetSimulationSpeed SimulationSpeed
 
 
-view : Game.Model -> SharedState -> Html Msg
-view game sharedState =
+colors =
+    { mainBackground = Element.rgb255 33 191 154
+    , toolbarBackground = rgb255 191 213 217
+    , buttonBackground = rgb255 255 255 255
+    , text = rgb255 52 65 67
+    , selected = rgb255 0 0 0
+    }
+
+
+debug : Game.Model -> SharedState -> Element Msg
+debug game sharedState =
     let
-        padding =
-            16
+        simulationStateAsText =
+            case sharedState.simulationState of
+                Simulation ->
+                    "Pause"
 
-        uiWidth =
-            String.fromInt (Config.boardSizePx - 2 * padding) ++ "px"
+                Paused ->
+                    "Resume"
 
-        showCarKind car =
-            img [ src ("assets/" ++ Car.asset car), width 16 ] []
+        controlLabel t =
+            el [ semiBold ] (text t)
 
-        carStatusToString status =
-            case status of
+        controlButton t m s =
+            Input.button
+                [ Background.color colors.buttonBackground
+                , padding 5
+                , Border.width 2
+                , Border.solid
+                , Border.color
+                    (if s then
+                        colors.selected
+
+                     else
+                        colors.buttonBackground
+                    )
+                ]
+                { onPress = Just m
+                , label = text t
+                }
+    in
+    row
+        [ width fill
+        , Background.color colors.toolbarBackground
+        , Border.rounded 5
+        , padding 10
+        , spacing 10
+        , Font.family [ Font.monospace ]
+        , Font.color colors.text
+        , Font.size 14
+        ]
+        [ column [ spacing 5 ]
+            (Dict.values game.cars
+                |> List.map carInfo
+            )
+        , column [ alignRight, alignTop, spacing 10 ]
+            [ controlLabel "Simulation control"
+            , controlButton simulationStateAsText ToggleSimulation False
+            , controlLabel "Simulation speed"
+            , row [ spacing 10 ]
+                [ controlButton "Slow" (SetSimulationSpeed Slow) (sharedState.simulationSpeed == Slow)
+                , controlButton "Medium" (SetSimulationSpeed Medium) (sharedState.simulationSpeed == Medium)
+                , controlButton "Fast" (SetSimulationSpeed Fast) (sharedState.simulationSpeed == Fast)
+                ]
+            ]
+        ]
+
+
+carInfo : Car -> Element msg
+carInfo car =
+    let
+        showCarKind =
+            image [ width (px 14) ] { description = "", src = "assets/" ++ Car.asset car }
+
+        status =
+            case car.status of
                 Moving ->
                     "Moving"
 
@@ -50,56 +113,9 @@ view game sharedState =
 
                 Yielding ->
                     "Yielding"
-
-        carInfo car =
-            div
-                [ style "display" "flex"
-                , style "align-items" "center"
-                , style "margin-bottom" "2px"
-                , style "white-space" "pre"
-                ]
-                [ showCarKind car
-                , span
-                    [ style "margin-left" "1rem" ]
-                    [ text (String.join " | " [ Coords.toString car.coords, carStatusToString car.status ]) ]
-                ]
-
-        modeAsText =
-            case sharedState.mode of
-                Simulation ->
-                    "Pause"
-
-                Paused ->
-                    "Resume"
-
-        buttonStyle simulationSpeed =
-            if simulationSpeed == sharedState.simulationSpeed then
-                style "border" "1px solid black"
-
-            else
-                style "border" "1px solid white"
     in
-    -- Room for improvement: should try to use elm-ui instead of ad hoc HTML
-    div
-        [ style "display" "flex"
-        , style "width" uiWidth
-        , style "font-family" "monospace"
-        , style "margin-top" "1rem"
-        , style "background-color" "#bfd5d9"
-        , style "color" "#344143"
-        , style "padding" (String.fromInt padding ++ "px")
-        , style "border-radius" "0.5rem"
-        ]
-        [ div [ style "flex" "1" ]
-            (Dict.values game.cars
-                |> List.map carInfo
-            )
-        , div []
-            [ h4 [ style "margin-top" "0" ] [ text "Simulation control" ]
-            , button [ onClick ToggleSimulation ] [ text modeAsText ]
-            , h4 [] [ text "Simulation speed" ]
-            , button [ buttonStyle Slow, onClick (SetSimulationSpeed Slow) ] [ text "Slow" ]
-            , button [ buttonStyle Medium, onClick (SetSimulationSpeed Medium) ] [ text "Medium" ]
-            , button [ buttonStyle Fast, onClick (SetSimulationSpeed Fast) ] [ text "Fast" ]
-            ]
+    row
+        [ centerY, spacing 10 ]
+        [ showCarKind
+        , text (String.join " | " [ Coords.toString car.coords, status ])
         ]

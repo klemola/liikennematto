@@ -1,13 +1,26 @@
 module SharedState exposing (..)
 
 
-type Mode
+type alias SharedState =
+    { simulationState : SimulationState
+    , simulationSpeed : SimulationSpeed
+    }
+
+
+initial : SharedState
+initial =
+    { simulationState = Simulation
+    , simulationSpeed = Medium
+    }
+
+
+type SimulationState
     = Simulation
     | Paused
 
 
-nextMode : Mode -> Mode
-nextMode current =
+nextSimulationState : SimulationState -> SimulationState
+nextSimulationState current =
     case current of
         Simulation ->
             Paused
@@ -34,16 +47,3 @@ simulationSpeedValues speed =
 
         Fast ->
             ( 600, 75 )
-
-
-type alias SharedState =
-    { mode : Mode
-    , simulationSpeed : SimulationSpeed
-    }
-
-
-initial : SharedState
-initial =
-    { mode = Simulation
-    , simulationSpeed = Medium
-    }
