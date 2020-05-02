@@ -7,7 +7,7 @@ import Collage.Layout as Layout
 import Config exposing (boardSize, initialCars, initialIntersections, initialRoads, tileSize)
 import Coords exposing (Coords)
 import Dict exposing (Dict)
-import Direction exposing (Direction(..))
+import Direction exposing (Direction(..), Orientation(..))
 import Graphics
 import Random
 import Random.List
@@ -144,10 +144,7 @@ updateCar model otherCars car =
         willCollideWithAnother =
             case nextTile of
                 -- car moving towards another in an opposite direction will not cause a collision
-                TwoLaneRoad Vertical ->
-                    List.any (\c -> c.coords == nextCoords && c.direction /= oppositeDirection) otherCars
-
-                TwoLaneRoad Horizontal ->
+                TwoLaneRoad (Regular _) ->
                     List.any (\c -> c.coords == nextCoords && c.direction /= oppositeDirection) otherCars
 
                 -- intersections, curves and deadends should be clear before entering (slightly naive logic)
@@ -177,10 +174,10 @@ updateCar model otherCars car =
                 else
                     Car.update Wait car
 
-            Intersection Yield _ ->
+            Intersection (Yield orientation) _ ->
                 applyYieldRules model.board nextCoords otherCars car
 
-            Intersection Stop _ ->
+            Intersection (Stop orientation) _ ->
                 applyStopRules model.board nextCoords otherCars car
 
             _ ->
