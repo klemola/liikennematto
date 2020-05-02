@@ -3,14 +3,13 @@ module Tile exposing (..)
 import Collage exposing (Collage, square, styled, uniform)
 import Collage.Layout as Layout
 import Color
-import Direction exposing (Direction(..))
+import Direction exposing (Direction(..), Orientation(..))
 import Graphics exposing (texture)
 import TrafficLight exposing (TrafficLight)
 
 
 type RoadKind
-    = Horizontal
-    | Vertical
+    = Regular Orientation
     | Curve CurveKind
     | Deadend Direction
 
@@ -24,8 +23,8 @@ type CurveKind
 
 type IntersectionControl
     = Signal TrafficLights
-    | Yield
-    | Stop
+    | Yield Orientation
+    | Stop Orientation
     | Uncontrolled
 
 
@@ -123,11 +122,11 @@ view tileSize tile =
                 |> List.map (TrafficLight.view tileSize)
                 |> intersection shape
 
-        Intersection Yield shape ->
+        Intersection (Yield orientation) shape ->
             signs tileSize "yield_sign.png" shape
                 |> intersection shape
 
-        Intersection Stop shape ->
+        Intersection (Stop orientation) shape ->
             signs tileSize "stop_sign.png" shape
                 |> intersection shape
 
@@ -188,10 +187,10 @@ intersectionAsset shape =
 roadAsset : RoadKind -> String
 roadAsset kind =
     case kind of
-        Horizontal ->
+        Regular Horizontal ->
             "road_2_lanes_horizontal.png"
 
-        Vertical ->
+        Regular Vertical ->
             "road_2_lanes_vertical.png"
 
         Curve TopRight ->
