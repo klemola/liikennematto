@@ -156,10 +156,10 @@ updateCar model board otherCars car =
             Coords.next car.coords car.direction
 
         currentTile =
-            Board.get car.coords board
+            Board.getSafe car.coords board
 
         nextTile =
-            Board.get nextCoords board
+            Board.getSafe nextCoords board
 
         -- turn every now and then at an intersection
         -- cars in intersections can block the traffic, so this also works as a sort of a tie-breaker
@@ -213,7 +213,7 @@ applyYieldRules : Board -> Coords -> List Car -> Car -> Car
 applyYieldRules board tileCoords otherCars car =
     let
         priorityDirections =
-            Tile.priorityDirections (Board.get tileCoords board)
+            Tile.priorityDirections (Board.getSafe tileCoords board)
 
         shouldYield =
             not (List.member car.direction priorityDirections)
@@ -237,7 +237,7 @@ applyStopRules : Board -> Coords -> List Car -> Car -> Car
 applyStopRules board tileCoords otherCars car =
     let
         priorityDirections =
-            Tile.priorityDirections (Board.get tileCoords board)
+            Tile.priorityDirections (Board.getSafe tileCoords board)
 
         shouldStop =
             not (List.member car.direction priorityDirections)
@@ -270,11 +270,8 @@ changeDirection board randomDirs car =
             dir /= car.direction && dir /= oppositeDirection
 
         seeRoadAhead dir =
-            case Board.get (Coords.next car.coords dir) board of
+            case Board.getSafe (Coords.next car.coords dir) board of
                 Terrain ->
-                    False
-
-                Empty ->
                     False
 
                 _ ->
@@ -295,6 +292,10 @@ getCars : List Car -> Coords -> List Car
 getCars cars coords =
     cars
         |> List.filter (\c -> c.coords == coords)
+
+
+
+-- Room for improvement: since the view doesn't depend on Simulation model, it could be moved into a separate module - e.g. "Render"
 
 
 view : SharedState -> Collage msg

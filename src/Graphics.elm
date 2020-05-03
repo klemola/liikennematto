@@ -2,7 +2,6 @@ module Graphics exposing (..)
 
 import Collage exposing (..)
 import Collage.Layout as Layout
-import Color exposing (Color)
 import Direction exposing (Direction(..))
 
 

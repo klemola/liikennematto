@@ -122,20 +122,24 @@ view model =
         paddingAmount =
             floor (Config.tileSize / 2)
 
+        simulation =
+            Simulation.view model.sharedState
+                |> svg
+                |> Element.html
+
+        ui =
+            UI.view model.sharedState model.ui
+
         layout =
             Element.layout
                 [ Background.color colors.mainBackground
+                , Element.padding paddingAmount
                 ]
-                (Element.column
+                (Element.el
                     [ Element.centerX
-                    , Element.centerY
-                    , Element.padding paddingAmount
+                    , Element.inFront ui
                     ]
-                    [ Simulation.view model.sharedState
-                        |> svg
-                        |> Element.html
-                    , UI.view model.sharedState model.ui
-                    ]
+                    simulation
                 )
     in
     Html.map UIMsg layout

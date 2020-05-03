@@ -1,28 +1,42 @@
 module UI exposing (..)
 
+import Board
 import Car exposing (Car, Status(..), TurnKind(..))
-import Coords
+import Config
+import Coords exposing (Coords)
 import Dict
-import Element exposing (Element, alignRight, alignTop, centerY, column, el, fill, image, padding, px, rgb255, row, spacing, text, width)
+import Direction exposing (Orientation(..))
+import Element exposing (Element, alignRight, alignTop, centerY, column, el, fill, height, image, mouseOver, padding, px, rgb255, row, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Font as Font exposing (semiBold)
+import Element.Events as Events
+import Element.Font as Font
 import Element.Input as Input
 import SharedState exposing (SharedState, SharedStateUpdate, SimulationSpeed(..), SimulationState(..))
+import Tile exposing (RoadKind(..), Tile)
+
+
+type Tool
+    = Construction Tile
+    | Bulldozer
+    | None
 
 
 type alias Model =
-    ()
+    { selectedTool : Tool
+    }
 
 
 type Msg
     = ToggleSimulation
     | SetSimulationSpeed SimulationSpeed
+    | SelectTile Coords
 
 
 initialModel : Model
 initialModel =
-    ()
+    { selectedTool = Construction (Tile.TwoLaneRoad (Regular Vertical))
+    }
 
 
 update : SharedState -> Msg -> Model -> ( Model, Cmd Msg, SharedStateUpdate )
@@ -38,6 +52,18 @@ update sharedState msg model =
         SetSimulationSpeed speed ->
             ( model, Cmd.none, SharedState.UpdateSimulationSpeed speed )
 
+        SelectTile coords ->
+            case ( model.selectedTool, Board.get coords sharedState.board ) of
+                ( Construction tile, Nothing ) ->
+                    ( model
+                    , Cmd.none
+                    , Board.set coords tile sharedState.board
+                        |> SharedState.UpdateBoard
+                    )
+
+                _ ->
+                    ( model, Cmd.none, SharedState.NoUpdate )
+
 
 colors =
     { mainBackground = Element.rgb255 33 191 154
@@ -45,12 +71,46 @@ colors =
     , buttonBackground = rgb255 255 255 255
     , text = rgb255 52 65 67
     , selected = rgb255 0 0 0
+    , grid = rgb255 222 222 222
     }
 
 
 view : SharedState -> Model -> Element Msg
 view sharedState model =
-    debug sharedState
+    column [ width fill, spacing 10 ]
+        [ editor sharedState model
+        , debug sharedState
+        ]
+
+
+editor : SharedState -> Model -> Element Msg
+editor sharedState model =
+    let
+        rg =
+            List.range 1 Config.boardSize
+
+        col y =
+            List.map (\x -> tileOverlay ( x, y )) rg
+
+        rows =
+            List.map (\y -> row [] (col y)) rg
+    in
+    column [] rows
+
+
+tileOverlay : Coords -> Element Msg
+tileOverlay coords =
+    let
+        tileSizePx =
+            px (floor Config.tileSize)
+    in
+    el
+        [ width tileSizePx
+        , height tileSizePx
+        , mouseOver [ Border.innerGlow colors.grid 5 ]
+        , Events.onClick (SelectTile coords)
+        ]
+        Element.none
 
 
 debug : SharedState -> Element Msg
@@ -65,7 +125,7 @@ debug sharedState =
                     "Resume"
 
         controlLabel t =
-            el [ semiBold ] (text t)
+            el [ Font.semiBold ] (text t)
 
         controlButton t m s =
             Input.button
