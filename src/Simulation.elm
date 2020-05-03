@@ -1,4 +1,4 @@
-module Game exposing (Model, Msg(..), initialModel, update, view)
+module Simulation exposing (Model, Msg(..), initialModel, update, view)
 
 import Board exposing (Board)
 import Car exposing (Car, CarKind(..), Msg(..), Status(..))
