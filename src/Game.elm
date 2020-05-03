@@ -4,20 +4,20 @@ import Board exposing (Board)
 import Car exposing (Car, CarKind(..), Msg(..), Status(..))
 import Collage exposing (..)
 import Collage.Layout as Layout
-import Config exposing (boardSize, initialCars, initialIntersections, initialRoads, tileSize)
+import Config exposing (boardSize, tileSize)
 import Coords exposing (Coords)
-import Dict exposing (Dict)
+import Dict
 import Direction exposing (Direction(..), Orientation(..))
 import Graphics
 import Random
 import Random.List
+import SharedState exposing (Cars, SharedState, SharedStateUpdate)
 import Tile exposing (IntersectionControl(..), IntersectionShape(..), RoadKind(..), Tile(..))
+import TrafficLight
 
 
 type alias Model =
-    { board : Board
-    , cars : Dict Int Car
-    , activeCarId : Int
+    { activeCarId : Int
     , coinTossResult : Bool
     , randomDirections : List Direction
     }
@@ -32,15 +32,7 @@ type Msg
 
 initialModel : Model
 initialModel =
-    let
-        board =
-            initialRoads
-                |> List.append initialIntersections
-                |> Dict.fromList
-    in
-    { board = board
-    , cars = initialCars
-    , activeCarId = 1
+    { activeCarId = 1
     , coinTossResult = False
     , randomDirections = List.repeat 4 Right
     }
@@ -63,66 +55,99 @@ tossACoin =
     Random.generate CoinToss weightedCoinToss
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : SharedState -> Msg -> Model -> ( Model, Cmd Msg, SharedStateUpdate )
+update sharedState msg model =
     case msg of
         UpdateTraffic ->
-            ( updateCars model
+            let
+                ( nextActiveCarId, nextCars ) =
+                    updateCars model sharedState.board sharedState.cars
+            in
+            ( { model | activeCarId = nextActiveCarId }
             , Cmd.batch
                 [ tossACoin
                 , shuffleDirections
                 ]
+            , SharedState.UpdateCars nextCars
             )
 
         UpdateEnvironment ->
-            ( { model
-                | board = Board.update model.board
-              }
+            ( model
             , Cmd.none
+            , SharedState.UpdateBoard (updateEnvironment sharedState.board)
             )
 
         CoinToss result ->
-            ( { model | coinTossResult = result }, Cmd.none )
+            ( { model | coinTossResult = result }, Cmd.none, SharedState.NoUpdate )
 
         ReceiveRandomDirections directions ->
-            ( { model | randomDirections = directions }, Cmd.none )
+            ( { model | randomDirections = directions }, Cmd.none, SharedState.NoUpdate )
 
 
-updateCars : Model -> Model
-updateCars model =
+updateEnvironment : Board -> Board
+updateEnvironment board =
+    -- Room for improvement: consider moving traffic light state from tiles to SharedState
+    -- in order to make Tiles passive
+    let
+        updateTrafficLight tl =
+            if tl.timeRemaining == 0 then
+                TrafficLight.new (TrafficLight.advanceLight tl.kind) tl.facing
+
+            else
+                TrafficLight.advanceTimer tl
+
+        updateTile tile =
+            case tile of
+                Intersection (Signal trafficLights) shape ->
+                    let
+                        next =
+                            trafficLights
+                                |> List.map updateTrafficLight
+                                |> Signal
+                    in
+                    Intersection next shape
+
+                _ ->
+                    tile
+    in
+    Dict.map (\_ tile -> updateTile tile) board
+
+
+updateCars : Model -> Board -> Cars -> ( Int, Cars )
+updateCars model board cars =
     let
         current =
-            Dict.get model.activeCarId model.cars
+            Dict.get model.activeCarId cars
 
         others =
-            model.cars
+            cars
                 |> Dict.filter (\k _ -> k /= model.activeCarId)
                 |> Dict.values
 
         updatedCar =
-            Maybe.map (updateCar model others) current
+            Maybe.map (updateCar model board others) current
 
         nextCars =
             case updatedCar of
                 Just car ->
-                    Dict.insert model.activeCarId car model.cars
+                    Dict.insert model.activeCarId car cars
 
                 Nothing ->
-                    model.cars
+                    cars
 
         nextActiveCarId =
             -- restart the cycle
-            if model.activeCarId == 0 || model.activeCarId == Dict.size model.cars then
+            if model.activeCarId == 0 || model.activeCarId == Dict.size cars then
                 1
 
             else
                 model.activeCarId + 1
     in
-    { model | cars = nextCars, activeCarId = nextActiveCarId }
+    ( nextActiveCarId, nextCars )
 
 
-updateCar : Model -> List Car -> Car -> Car
-updateCar model otherCars car =
+updateCar : Model -> Board -> List Car -> Car -> Car
+updateCar model board otherCars car =
     let
         oppositeDirection =
             Direction.opposite car.direction
@@ -131,10 +156,10 @@ updateCar model otherCars car =
             Coords.next car.coords car.direction
 
         currentTile =
-            Board.get car.coords model.board
+            Board.get car.coords board
 
         nextTile =
-            Board.get nextCoords model.board
+            Board.get nextCoords board
 
         -- turn every now and then at an intersection
         -- cars in intersections can block the traffic, so this also works as a sort of a tie-breaker
@@ -153,7 +178,7 @@ updateCar model otherCars car =
     in
     if willCollideWithAnother then
         if shouldTurnRandomly then
-            changeDirection model.board model.randomDirections car
+            changeDirection board model.randomDirections car
 
         else
             Car.update Wait car
@@ -162,7 +187,7 @@ updateCar model otherCars car =
         case nextTile of
             TwoLaneRoad _ ->
                 if shouldTurnRandomly then
-                    changeDirection model.board model.randomDirections car
+                    changeDirection board model.randomDirections car
 
                 else
                     Car.update Move car
@@ -175,13 +200,13 @@ updateCar model otherCars car =
                     Car.update Wait car
 
             Intersection (Yield _) _ ->
-                applyYieldRules model.board nextCoords otherCars car
+                applyYieldRules board nextCoords otherCars car
 
             Intersection (Stop _) _ ->
-                applyStopRules model.board nextCoords otherCars car
+                applyStopRules board nextCoords otherCars car
 
             _ ->
-                changeDirection model.board model.randomDirections car
+                changeDirection board model.randomDirections car
 
 
 applyYieldRules : Board -> Coords -> List Car -> Car -> Car
@@ -272,14 +297,14 @@ getCars cars coords =
         |> List.filter (\c -> c.coords == coords)
 
 
-view : Model -> Collage msg
-view model =
+view : SharedState -> Collage msg
+view sharedState =
     let
         cars =
-            carOverlay (Dict.values model.cars)
+            carOverlay (Dict.values sharedState.cars)
 
         board =
-            Board.view model.board
+            Board.view sharedState.board
     in
     Layout.stack [ cars, board ]
 

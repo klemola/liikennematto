@@ -1,4 +1,4 @@
-module Board exposing (Board, connectedRoads, get, update, view)
+module Board exposing (Board, connectedRoads, get, view)
 
 import Collage exposing (..)
 import Config exposing (boardSize, tileSize)
@@ -46,17 +46,6 @@ connectedRoads : Board -> Coords -> List ( Coords, Tile )
 connectedRoads board coords =
     connectedTiles board coords
         |> List.filter (\( c, t ) -> Tile.isRoad t)
-
-
-update : Board -> Board
-update board =
-    board
-        |> withUpdatedTiles
-
-
-withUpdatedTiles : Board -> Board
-withUpdatedTiles board =
-    Dict.map (\_ tile -> Tile.update tile) board
 
 
 view : Board -> Collage msg

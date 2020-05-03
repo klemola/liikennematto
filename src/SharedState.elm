@@ -1,22 +1,75 @@
 module SharedState exposing (..)
 
+import Board exposing (Board)
+import Car exposing (Car)
+import Config exposing (initialCars, initialIntersections, initialRoads)
+import Coords exposing (Coords)
+import Dict exposing (Dict)
+
 
 type alias SharedState =
     { simulationState : SimulationState
     , simulationSpeed : SimulationSpeed
+    , board : Board
+    , cars : Cars
     }
 
 
-initial : SharedState
-initial =
-    { simulationState = Simulation
-    , simulationSpeed = Medium
-    }
+type alias Cars =
+    Dict Int Car
+
+
+type SimulationSpeed
+    = Slow
+    | Medium
+    | Fast
 
 
 type SimulationState
     = Simulation
     | Paused
+
+
+type SharedStateUpdate
+    = NoUpdate
+    | UpdateSimulationState SimulationState
+    | UpdateSimulationSpeed SimulationSpeed
+    | UpdateBoard Board
+    | UpdateCars Cars
+
+
+initial : SharedState
+initial =
+    let
+        board =
+            initialRoads
+                |> List.append initialIntersections
+                |> Dict.fromList
+    in
+    { simulationState = Simulation
+    , simulationSpeed = Medium
+    , board = board
+    , cars = initialCars
+    }
+
+
+update : SharedState -> SharedStateUpdate -> SharedState
+update sharedState sharedStateUpdate =
+    case sharedStateUpdate of
+        UpdateSimulationState state ->
+            { sharedState | simulationState = state }
+
+        UpdateSimulationSpeed speed ->
+            { sharedState | simulationSpeed = speed }
+
+        UpdateBoard board ->
+            { sharedState | board = board }
+
+        UpdateCars cars ->
+            { sharedState | cars = cars }
+
+        NoUpdate ->
+            sharedState
 
 
 nextSimulationState : SimulationState -> SimulationState
@@ -27,12 +80,6 @@ nextSimulationState current =
 
         Paused ->
             Simulation
-
-
-type SimulationSpeed
-    = Slow
-    | Medium
-    | Fast
 
 
 simulationSpeedValues : SimulationSpeed -> ( Float, Float )

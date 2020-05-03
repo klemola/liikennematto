@@ -63,15 +63,6 @@ advanceLight tlKind =
             Green
 
 
-update : TrafficLight -> TrafficLight
-update tl =
-    if tl.timeRemaining == 0 then
-        new (advanceLight tl.kind) tl.facing
-
-    else
-        advanceTimer tl
-
-
 isGreen : TrafficLight -> Bool
 isGreen tl =
     case tl.kind of

@@ -93,22 +93,6 @@ priorityDirections tile =
             []
 
 
-update : Tile -> Tile
-update tile =
-    case tile of
-        Intersection (Signal trafficLights) shape ->
-            let
-                next =
-                    trafficLights
-                        |> List.map TrafficLight.update
-                        |> Signal
-            in
-            Intersection next shape
-
-        _ ->
-            tile
-
-
 view : Float -> Tile -> Collage msg
 view tileSize tile =
     let
