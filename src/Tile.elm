@@ -41,7 +41,6 @@ type Tile
     = TwoLaneRoad RoadKind
     | Intersection IntersectionControl IntersectionShape
     | Terrain
-    | Empty
 
 
 trafficLightsAllowEntry : TrafficLights -> Direction -> Bool
@@ -126,9 +125,6 @@ view tileSize tile =
 
         Terrain ->
             ground (Color.rgb255 33 191 154)
-
-        Empty ->
-            ground Color.yellow
 
 
 signs : Float -> Orientation -> IntersectionShape -> String -> List (Collage msg)

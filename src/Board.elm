@@ -1,4 +1,4 @@
-module Board exposing (Board, connectedRoads, get, view)
+module Board exposing (Board, connectedRoads, get, getSafe, set, view)
 
 import Collage exposing (..)
 import Config exposing (boardSize, tileSize)
@@ -14,14 +14,21 @@ type alias Board =
     Dict Coords Tile
 
 
-get : Coords -> Board -> Tile
+get : Coords -> Board -> Maybe Tile
 get coords board =
-    case Dict.find (\key _ -> key == coords) board of
-        Just ( _, tile ) ->
-            tile
+    Dict.find (\key _ -> key == coords) board
+        |> Maybe.map Tuple.second
 
-        Nothing ->
-            Terrain
+
+getSafe : Coords -> Board -> Tile
+getSafe coords board =
+    get coords board
+        |> Maybe.withDefault Terrain
+
+
+set : Coords -> Tile -> Board -> Board
+set coords tile board =
+    Dict.insert coords tile board
 
 
 connectedTiles : Board -> Coords -> List ( Coords, Tile )
@@ -52,7 +59,7 @@ view : Board -> Collage msg
 view board =
     let
         drawTile x y =
-            get ( x, y ) board
+            getSafe ( x, y ) board
                 |> Tile.view tileSize
     in
     Graphics.grid boardSize drawTile
