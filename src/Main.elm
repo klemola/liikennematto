@@ -41,13 +41,19 @@ subs model =
 
 type alias Model =
     { game : Game.Model
+    , ui : UI.Model
     , sharedState : SharedState
     }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { game = Game.initialModel, sharedState = SharedState.initial }, Cmd.none )
+    ( { game = Game.initialModel
+      , ui = UI.initialModel
+      , sharedState = SharedState.initial
+      }
+    , Cmd.none
+    )
 
 
 type Msg
@@ -99,15 +105,15 @@ update msg model =
 
         UIMsg uiMsg ->
             let
-                updatedSharedState =
-                    case uiMsg of
-                        ToggleSimulation ->
-                            SharedState.update model.sharedState (SharedState.UpdateSimulationState (SharedState.nextSimulationState model.sharedState.simulationState))
+                ( ui, cmd, sharedStateUpdate ) =
+                    UI.update model.sharedState uiMsg model.ui
 
-                        SetSimulationSpeed speed ->
-                            SharedState.update model.sharedState (SharedState.UpdateSimulationSpeed speed)
+                nextSharedState =
+                    SharedState.update model.sharedState sharedStateUpdate
             in
-            ( { model | sharedState = updatedSharedState }, Cmd.none )
+            ( { model | ui = ui, sharedState = nextSharedState }
+            , Cmd.map UIMsg cmd
+            )
 
 
 view : Model -> Html Msg
@@ -128,7 +134,7 @@ view model =
                     [ Game.view model.sharedState
                         |> svg
                         |> Element.html
-                    , UI.debug model.sharedState
+                    , UI.view model.sharedState model.ui
                     ]
                 )
     in
