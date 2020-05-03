@@ -5,9 +5,9 @@ import Collage.Render exposing (svg)
 import Config
 import Element
 import Element.Background as Background
-import Game exposing (Msg(..))
 import Html exposing (Html)
 import SharedState exposing (SharedState, SimulationState(..))
+import Simulation exposing (Msg(..))
 import Time
 import UI exposing (Msg(..), colors)
 
@@ -40,7 +40,7 @@ subs model =
 
 
 type alias Model =
-    { game : Game.Model
+    { simulation : Simulation.Model
     , ui : UI.Model
     , sharedState : SharedState
     }
@@ -48,7 +48,7 @@ type alias Model =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { game = Game.initialModel
+    ( { simulation = Simulation.initialModel
       , ui = UI.initialModel
       , sharedState = SharedState.initial
       }
@@ -59,48 +59,48 @@ init _ =
 type Msg
     = SlowTick Time.Posix
     | FastTick Time.Posix
-    | GameMsg Game.Msg
+    | SimulationMsg Simulation.Msg
     | UIMsg UI.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        -- Room for improvement: Tick Msgs could be removed if Game subbed directly to ticks
+        -- Room for improvement: Tick Msgs could be removed if Simulation subbed directly to ticks
         SlowTick _ ->
             let
-                ( game, cmd, sharedStateUpdate ) =
-                    Game.update model.sharedState UpdateEnvironment model.game
+                ( simulation, cmd, sharedStateUpdate ) =
+                    Simulation.update model.sharedState UpdateEnvironment model.simulation
 
                 nextSharedState =
                     SharedState.update model.sharedState sharedStateUpdate
             in
-            ( { model | game = game, sharedState = nextSharedState }
-            , Cmd.map GameMsg cmd
+            ( { model | simulation = simulation, sharedState = nextSharedState }
+            , Cmd.map SimulationMsg cmd
             )
 
         FastTick _ ->
             let
-                ( game, cmd, sharedStateUpdate ) =
-                    Game.update model.sharedState UpdateTraffic model.game
+                ( simulation, cmd, sharedStateUpdate ) =
+                    Simulation.update model.sharedState UpdateTraffic model.simulation
 
                 nextSharedState =
                     SharedState.update model.sharedState sharedStateUpdate
             in
-            ( { model | game = game, sharedState = nextSharedState }
-            , Cmd.map GameMsg cmd
+            ( { model | simulation = simulation, sharedState = nextSharedState }
+            , Cmd.map SimulationMsg cmd
             )
 
-        GameMsg gameMsg ->
+        SimulationMsg simulationMsg ->
             let
-                ( game, cmd, sharedStateUpdate ) =
-                    Game.update model.sharedState gameMsg model.game
+                ( simulation, cmd, sharedStateUpdate ) =
+                    Simulation.update model.sharedState simulationMsg model.simulation
 
                 nextSharedState =
                     SharedState.update model.sharedState sharedStateUpdate
             in
-            ( { model | game = game, sharedState = nextSharedState }
-            , Cmd.map GameMsg cmd
+            ( { model | simulation = simulation, sharedState = nextSharedState }
+            , Cmd.map SimulationMsg cmd
             )
 
         UIMsg uiMsg ->
@@ -131,7 +131,7 @@ view model =
                     , Element.centerY
                     , Element.padding paddingAmount
                     ]
-                    [ Game.view model.sharedState
+                    [ Simulation.view model.sharedState
                         |> svg
                         |> Element.html
                     , UI.view model.sharedState model.ui
