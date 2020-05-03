@@ -8,12 +8,35 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font exposing (semiBold)
 import Element.Input as Input
-import SharedState exposing (SharedState, SimulationSpeed(..), SimulationState(..))
+import SharedState exposing (SharedState, SharedStateUpdate, SimulationSpeed(..), SimulationState(..))
+
+
+type alias Model =
+    ()
 
 
 type Msg
     = ToggleSimulation
     | SetSimulationSpeed SimulationSpeed
+
+
+initialModel : Model
+initialModel =
+    ()
+
+
+update : SharedState -> Msg -> Model -> ( Model, Cmd Msg, SharedStateUpdate )
+update sharedState msg model =
+    case msg of
+        ToggleSimulation ->
+            let
+                simulationState =
+                    SharedState.nextSimulationState sharedState.simulationState
+            in
+            ( model, Cmd.none, SharedState.UpdateSimulationState simulationState )
+
+        SetSimulationSpeed speed ->
+            ( model, Cmd.none, SharedState.UpdateSimulationSpeed speed )
 
 
 colors =
@@ -23,6 +46,11 @@ colors =
     , text = rgb255 52 65 67
     , selected = rgb255 0 0 0
     }
+
+
+view : SharedState -> Model -> Element Msg
+view sharedState model =
+    debug sharedState
 
 
 debug : SharedState -> Element Msg
