@@ -8,7 +8,6 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font exposing (semiBold)
 import Element.Input as Input
-import Game
 import SharedState exposing (SharedState, SimulationSpeed(..), SimulationState(..))
 
 
@@ -26,8 +25,8 @@ colors =
     }
 
 
-debug : Game.Model -> SharedState -> Element Msg
-debug game sharedState =
+debug : SharedState -> Element Msg
+debug sharedState =
     let
         simulationStateAsText =
             case sharedState.simulationState of
@@ -69,7 +68,7 @@ debug game sharedState =
         , Font.size 14
         ]
         [ column [ spacing 5 ]
-            (Dict.values game.cars
+            (Dict.values sharedState.cars
                 |> List.map carInfo
             )
         , column [ alignRight, alignTop, spacing 10 ]

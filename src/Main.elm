@@ -14,7 +14,12 @@ import UI exposing (Msg(..), colors)
 
 main : Program () Model Msg
 main =
-    Browser.element { init = init, view = view, update = update, subscriptions = subs }
+    Browser.element
+        { init = init
+        , view = view
+        , update = update
+        , subscriptions = subs
+        }
 
 
 subs : Model -> Sub Msg
@@ -55,45 +60,52 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        -- Room for improvement: Tick Msgs could be removed if Game subbed directly to ticks
         SlowTick _ ->
             let
-                ( game, cmd ) =
-                    Game.update UpdateEnvironment model.game
+                ( game, cmd, sharedStateUpdate ) =
+                    Game.update model.sharedState UpdateEnvironment model.game
+
+                nextSharedState =
+                    SharedState.update model.sharedState sharedStateUpdate
             in
-            ( { model | game = game }
+            ( { model | game = game, sharedState = nextSharedState }
             , Cmd.map GameMsg cmd
             )
 
         FastTick _ ->
             let
-                ( game, cmd ) =
-                    Game.update UpdateTraffic model.game
+                ( game, cmd, sharedStateUpdate ) =
+                    Game.update model.sharedState UpdateTraffic model.game
+
+                nextSharedState =
+                    SharedState.update model.sharedState sharedStateUpdate
             in
-            ( { model | game = game }
+            ( { model | game = game, sharedState = nextSharedState }
             , Cmd.map GameMsg cmd
             )
 
         GameMsg gameMsg ->
             let
-                ( game, cmd ) =
-                    Game.update gameMsg model.game
+                ( game, cmd, sharedStateUpdate ) =
+                    Game.update model.sharedState gameMsg model.game
+
+                nextSharedState =
+                    SharedState.update model.sharedState sharedStateUpdate
             in
-            ( { model | game = game }
+            ( { model | game = game, sharedState = nextSharedState }
             , Cmd.map GameMsg cmd
             )
 
         UIMsg uiMsg ->
             let
-                ss =
-                    model.sharedState
-
                 updatedSharedState =
                     case uiMsg of
                         ToggleSimulation ->
-                            { ss | simulationState = SharedState.nextSimulationState ss.simulationState }
+                            SharedState.update model.sharedState (SharedState.UpdateSimulationState (SharedState.nextSimulationState model.sharedState.simulationState))
 
                         SetSimulationSpeed speed ->
-                            { ss | simulationSpeed = speed }
+                            SharedState.update model.sharedState (SharedState.UpdateSimulationSpeed speed)
             in
             ( { model | sharedState = updatedSharedState }, Cmd.none )
 
@@ -113,10 +125,10 @@ view model =
                     , Element.centerY
                     , Element.padding paddingAmount
                     ]
-                    [ Game.view model.game
+                    [ Game.view model.sharedState
                         |> svg
                         |> Element.html
-                    , UI.debug model.game model.sharedState
+                    , UI.debug model.sharedState
                     ]
                 )
     in
