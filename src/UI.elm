@@ -6,14 +6,14 @@ import Config
 import Coords exposing (Coords)
 import Dict
 import Direction exposing (Orientation(..))
-import Element exposing (Element, alignRight, alignTop, centerY, column, el, fill, height, image, mouseOver, padding, px, rgb255, row, spacing, text, width)
+import Element exposing (Element, alignRight, alignTop, centerY, column, el, fill, height, image, mouseOver, padding, px, rgb255, row, scrollbarX, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import SharedState exposing (SharedState, SharedStateUpdate, SimulationSpeed(..), SimulationState(..))
-import Tile exposing (RoadKind(..), Tile)
+import Tile exposing (RoadKind(..), Tile(..))
 
 
 type Tool
@@ -31,6 +31,7 @@ type Msg
     = ToggleSimulation
     | SetSimulationSpeed SimulationSpeed
     | SelectTile Coords
+    | SelectTool Tool
 
 
 initialModel : Model
@@ -61,8 +62,18 @@ update sharedState msg model =
                         |> SharedState.UpdateBoard
                     )
 
+                ( Bulldozer, Just _ ) ->
+                    ( model
+                    , Cmd.none
+                    , Board.remove coords sharedState.board
+                        |> SharedState.UpdateBoard
+                    )
+
                 _ ->
                     ( model, Cmd.none, SharedState.NoUpdate )
+
+        SelectTool tool ->
+            ( { model | selectedTool = tool }, Cmd.none, SharedState.NoUpdate )
 
 
 colors =
@@ -79,6 +90,7 @@ view : SharedState -> Model -> Element Msg
 view sharedState model =
     column [ width fill, spacing 10 ]
         [ editor sharedState model
+        , toolbar model
         , debug sharedState
         ]
 
@@ -111,6 +123,63 @@ tileOverlay coords =
         , Events.onClick (SelectTile coords)
         ]
         Element.none
+
+
+toolbar : Model -> Element Msg
+toolbar model =
+    let
+        asset tool =
+            case tool of
+                Construction (TwoLaneRoad kind) ->
+                    Tile.roadAsset kind
+
+                Construction (Intersection _ shape) ->
+                    Tile.intersectionAsset shape
+
+                Bulldozer ->
+                    "bulldozer.png"
+
+                _ ->
+                    "__none__"
+
+        show tool =
+            image [ width (px 42) ] { description = "", src = "assets/" ++ asset tool }
+
+        toolbarButton tool =
+            Input.button
+                [ Background.color colors.buttonBackground
+                , Border.width 2
+                , Border.solid
+                , Border.color
+                    (if tool == model.selectedTool then
+                        colors.selected
+
+                     else
+                        colors.buttonBackground
+                    )
+                ]
+                { onPress = Just (SelectTool tool)
+                , label = show tool
+                }
+
+        constructionButtons =
+            Config.constructionTiles
+                |> List.map
+                    (\t ->
+                        t
+                            |> Construction
+                            |> toolbarButton
+                    )
+    in
+    row
+        [ width fill
+        , Background.color colors.toolbarBackground
+        , Border.rounded 5
+        , padding 10
+        , spacing 10
+        , scrollbarX
+        ]
+        (toolbarButton Bulldozer :: constructionButtons)
 
 
 debug : SharedState -> Element Msg
