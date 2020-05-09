@@ -2,11 +2,11 @@ module UI exposing (..)
 
 import Board
 import Car exposing (Car, Status(..), TurnKind(..))
-import Config
+import Config exposing (constructionTileGroups)
 import Coords exposing (Coords)
 import Dict
 import Direction exposing (Orientation(..))
-import Element exposing (Element, alignRight, alignTop, centerY, column, el, fill, height, image, mouseOver, padding, px, rgb255, row, scrollbarX, spacing, text, width)
+import Element exposing (Element, alignRight, alignTop, centerX, centerY, column, el, fill, height, image, mouseOver, padding, px, rgb255, row, spacing, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
@@ -81,7 +81,7 @@ colors =
     , toolbarBackground = rgb255 191 213 217
     , buttonBackground = rgb255 255 255 255
     , text = rgb255 52 65 67
-    , selected = rgb255 0 0 0
+    , selected = rgb255 245 220 62
     , grid = rgb255 222 222 222
     }
 
@@ -128,7 +128,32 @@ tileOverlay coords =
 toolbar : Model -> Element Msg
 toolbar model =
     let
-        asset tool =
+        constructionButtonGroup g =
+            g
+                |> List.map Construction
+                |> List.map (toolbarButton model.selectedTool)
+                |> buttonGroup
+    in
+    row
+        [ width fill
+        , Background.color colors.toolbarBackground
+        , Border.rounded 5
+        , padding 10
+        , spacing 20
+        ]
+        [ buttonGroup [ toolbarButton model.selectedTool Bulldozer ]
+        , constructionButtonGroup constructionTileGroups.main
+        , constructionButtonGroup constructionTileGroups.intersectionCross
+        , constructionButtonGroup constructionTileGroups.intersectionT
+        , constructionButtonGroup constructionTileGroups.curve
+        , constructionButtonGroup constructionTileGroups.deadend
+        ]
+
+
+toolbarButton : Tool -> Tool -> Element Msg
+toolbarButton selectedTool tool =
+    let
+        asset =
             case tool of
                 Construction (TwoLaneRoad kind) ->
                     Tile.roadAsset kind
@@ -142,44 +167,33 @@ toolbar model =
                 _ ->
                     "__none__"
 
-        show tool =
-            image [ width (px 42) ] { description = "", src = "assets/" ++ asset tool }
-
-        toolbarButton tool =
-            Input.button
-                [ Background.color colors.buttonBackground
-                , Border.width 2
-                , Border.solid
-                , Border.color
-                    (if tool == model.selectedTool then
-                        colors.selected
-
-                     else
-                        colors.buttonBackground
-                    )
-                ]
-                { onPress = Just (SelectTool tool)
-                , label = show tool
-                }
-
-        constructionButtons =
-            Config.constructionTiles
-                |> List.map
-                    (\t ->
-                        t
-                            |> Construction
-                            |> toolbarButton
-                    )
+        show =
+            image [ width (px 42) ] { description = "", src = "assets/" ++ asset }
     in
-    row
-        [ width fill
-        , Background.color colors.toolbarBackground
-        , Border.rounded 5
-        , padding 10
-        , spacing 10
-        , scrollbarX
+    Input.button
+        [ Background.color colors.buttonBackground
+        , Border.width 2
+        , Border.solid
+        , Border.color
+            (if selectedTool == tool then
+                colors.selected
+
+             else
+                colors.buttonBackground
+            )
         ]
-        (toolbarButton Bulldozer :: constructionButtons)
+        { onPress = Just (SelectTool tool)
+        , label = show
+        }
+
+
+buttonGroup : List (Element Msg) -> Element Msg
+buttonGroup buttons =
+    if List.length buttons > 2 then
+        wrappedRow [ width (px 96), spacing 5 ] buttons
+
+    else
+        column [ alignTop, spacing 5 ] buttons
 
 
 debug : SharedState -> Element Msg
