@@ -6,7 +6,7 @@ import Config exposing (constructionTileGroups)
 import Coords exposing (Coords)
 import Dict
 import Direction exposing (Orientation(..))
-import Element exposing (Element, alignRight, alignTop, centerX, centerY, column, el, fill, height, image, mouseOver, padding, px, rgb255, row, spacing, text, width, wrappedRow)
+import Element exposing (Element, alignRight, alignTop, centerX, centerY, column, el, fill, height, image, mouseOver, padding, px, rgb255, row, scrollbarX, spacing, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
@@ -19,6 +19,7 @@ import Tile exposing (RoadKind(..), Tile(..))
 type Tool
     = Construction Tile
     | Bulldozer
+    | Dynamite
     | None
 
 
@@ -69,6 +70,13 @@ update sharedState msg model =
                         |> SharedState.UpdateBoard
                     )
 
+                ( Dynamite, _ ) ->
+                    ( { model | selectedTool = None }
+                    , Cmd.none
+                    , Board.new
+                        |> SharedState.UpdateBoard
+                    )
+
                 _ ->
                     ( model, Cmd.none, SharedState.NoUpdate )
 
@@ -85,18 +93,26 @@ update sharedState msg model =
 
 
 colors =
-    { mainBackground = Element.rgb255 33 191 154
+    { mainBackground = rgb255 33 191 154
     , toolbarBackground = rgb255 191 213 217
-    , buttonBackground = rgb255 255 255 255
+    , buttonBackground = rgb255 222 222 222
     , text = rgb255 52 65 67
     , selected = rgb255 245 220 62
+    , danger = rgb255 235 119 52
     , grid = rgb255 222 222 222
+    , transparent = Element.rgba255 0 0 0 0
+    }
+
+
+whitespace =
+    { regular = 10
+    , button = 5
     }
 
 
 view : SharedState -> Model -> Element Msg
 view sharedState model =
-    column [ width fill, spacing 10 ]
+    column [ width fill, spacing whitespace.regular ]
         [ editor sharedState model
         , toolbar model
         , debug sharedState
@@ -114,8 +130,16 @@ editor sharedState model =
 
         rows =
             List.map (\y -> row [] (col y)) rg
+
+        glowColor =
+            case model.selectedTool of
+                Dynamite ->
+                    colors.danger
+
+                _ ->
+                    colors.transparent
     in
-    column [] rows
+    el [ mouseOver [ Border.innerGlow glowColor 5 ] ] (column [] rows)
 
 
 tileOverlay : Tool -> Coords -> Element Msg
@@ -125,11 +149,18 @@ tileOverlay selectedTool coords =
             px (floor Config.tileSize)
 
         glowColor =
-            if selectedTool == None then
-                colors.grid
+            case selectedTool of
+                None ->
+                    colors.grid
 
-            else
-                colors.selected
+                Bulldozer ->
+                    colors.danger
+
+                Dynamite ->
+                    colors.transparent
+
+                _ ->
+                    colors.selected
     in
     el
         [ width tileSizePx
@@ -152,16 +183,20 @@ toolbar model =
     row
         [ width fill
         , Background.color colors.toolbarBackground
-        , Border.rounded 5
-        , padding 10
-        , spacing 20
+        , Border.rounded whitespace.button
+        , padding whitespace.regular
+        , spacing (whitespace.regular * 2)
+        , scrollbarX
         ]
-        [ buttonGroup [ toolbarButton model.selectedTool Bulldozer ]
-        , constructionButtonGroup constructionTileGroups.main
+        [ constructionButtonGroup constructionTileGroups.main
         , constructionButtonGroup constructionTileGroups.intersectionCross
         , constructionButtonGroup constructionTileGroups.intersectionT
         , constructionButtonGroup constructionTileGroups.curve
         , constructionButtonGroup constructionTileGroups.deadend
+        , buttonGroup
+            [ toolbarButton model.selectedTool Bulldozer
+            , toolbarButton model.selectedTool Dynamite
+            ]
         ]
 
 
@@ -178,6 +213,9 @@ toolbarButton selectedTool tool =
 
                 Bulldozer ->
                     "bulldozer.png"
+
+                Dynamite ->
+                    "dynamite.png"
 
                 _ ->
                     "__none__"
@@ -206,10 +244,10 @@ toolbarButton selectedTool tool =
 buttonGroup : List (Element Msg) -> Element Msg
 buttonGroup buttons =
     if List.length buttons > 2 then
-        wrappedRow [ width (px 100), spacing 5 ] buttons
+        wrappedRow [ width (px 100), spacing whitespace.button ] buttons
 
     else
-        column [ alignTop, spacing 5 ] buttons
+        column [ alignTop, spacing whitespace.button ] buttons
 
 
 debug : SharedState -> Element Msg
@@ -229,8 +267,9 @@ debug sharedState =
         controlButton t m s =
             Input.button
                 [ Background.color colors.buttonBackground
-                , padding 5
-                , Border.width 2
+                , padding whitespace.button
+                , Border.width 3
+                , Border.rounded 3
                 , Border.solid
                 , Border.color
                     (if s then
@@ -247,22 +286,22 @@ debug sharedState =
     row
         [ width fill
         , Background.color colors.toolbarBackground
-        , Border.rounded 5
-        , padding 10
-        , spacing 10
+        , Border.rounded whitespace.button
+        , padding whitespace.regular
+        , spacing whitespace.regular
         , Font.family [ Font.monospace ]
         , Font.color colors.text
         , Font.size 14
         ]
-        [ column [ spacing 5 ]
+        [ column [ spacing whitespace.button ]
             (Dict.values sharedState.cars
                 |> List.map carInfo
             )
-        , column [ alignRight, alignTop, spacing 10 ]
+        , column [ alignRight, alignTop, spacing whitespace.regular ]
             [ controlLabel "Simulation control"
             , controlButton simulationStateAsText ToggleSimulation False
             , controlLabel "Simulation speed"
-            , row [ spacing 10 ]
+            , row [ spacing whitespace.regular ]
                 [ controlButton "Slow" (SetSimulationSpeed Slow) (sharedState.simulationSpeed == Slow)
                 , controlButton "Medium" (SetSimulationSpeed Medium) (sharedState.simulationSpeed == Medium)
                 , controlButton "Fast" (SetSimulationSpeed Fast) (sharedState.simulationSpeed == Fast)
@@ -301,7 +340,7 @@ carInfo car =
                     "Yielding"
     in
     row
-        [ centerY, spacing 10 ]
+        [ centerY, spacing whitespace.regular ]
         [ showCarKind
         , text (String.join " | " [ Coords.toString car.coords, status ])
         ]

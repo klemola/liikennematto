@@ -1,4 +1,4 @@
-module Board exposing (Board, connectedRoads, get, getSafe, remove, set, view)
+module Board exposing (Board, connectedRoads, get, getSafe, new, remove, set, view)
 
 import Collage exposing (..)
 import Config exposing (boardSize, tileSize)
@@ -12,6 +12,11 @@ import Tile exposing (Tile(..))
 
 type alias Board =
     Dict Coords Tile
+
+
+new : Board
+new =
+    Dict.fromList []
 
 
 get : Coords -> Board -> Maybe Tile
