@@ -24,24 +24,33 @@ defaultTrafficLights =
         |> List.concatMap TrafficLight.fromTrafficDirection
 
 
-constructionTiles : List Tile
-constructionTiles =
-    [ TwoLaneRoad (Regular Horizontal)
-    , TwoLaneRoad (Regular Vertical)
-    , Intersection (Signal defaultTrafficLights) Crossroads
-    , Intersection (Yield Vertical) (T Up)
-    , Intersection (Yield Horizontal) (T Right)
-    , Intersection (Yield Vertical) (T Down)
-    , Intersection (Yield Horizontal) (T Left)
-    , TwoLaneRoad (Curve TopLeft)
-    , TwoLaneRoad (Curve TopRight)
-    , TwoLaneRoad (Curve BottomLeft)
-    , TwoLaneRoad (Curve BottomRight)
-    , TwoLaneRoad (Deadend Up)
-    , TwoLaneRoad (Deadend Right)
-    , TwoLaneRoad (Deadend Down)
-    , TwoLaneRoad (Deadend Left)
-    ]
+constructionTileGroups =
+    { main =
+        [ TwoLaneRoad (Regular Horizontal)
+        , TwoLaneRoad (Regular Vertical)
+        ]
+    , intersectionCross =
+        [ Intersection (Signal defaultTrafficLights) Crossroads
+        ]
+    , intersectionT =
+        [ Intersection (Yield Vertical) (T Up)
+        , Intersection (Yield Horizontal) (T Right)
+        , Intersection (Yield Vertical) (T Down)
+        , Intersection (Yield Horizontal) (T Left)
+        ]
+    , curve =
+        [ TwoLaneRoad (Curve TopLeft)
+        , TwoLaneRoad (Curve TopRight)
+        , TwoLaneRoad (Curve BottomLeft)
+        , TwoLaneRoad (Curve BottomRight)
+        ]
+    , deadend =
+        [ TwoLaneRoad (Deadend Up)
+        , TwoLaneRoad (Deadend Right)
+        , TwoLaneRoad (Deadend Down)
+        , TwoLaneRoad (Deadend Left)
+        ]
+    }
 
 
 initialRoads : List ( Coords, Tile )
