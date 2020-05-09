@@ -36,7 +36,7 @@ type Msg
 
 initialModel : Model
 initialModel =
-    { selectedTool = Construction (Tile.TwoLaneRoad (Regular Vertical))
+    { selectedTool = None
     }
 
 
@@ -55,7 +55,7 @@ update sharedState msg model =
 
         SelectTile coords ->
             case ( model.selectedTool, Board.get coords sharedState.board ) of
-                ( Construction tile, Nothing ) ->
+                ( Construction tile, _ ) ->
                     ( model
                     , Cmd.none
                     , Board.set coords tile sharedState.board
@@ -73,7 +73,15 @@ update sharedState msg model =
                     ( model, Cmd.none, SharedState.NoUpdate )
 
         SelectTool tool ->
-            ( { model | selectedTool = tool }, Cmd.none, SharedState.NoUpdate )
+            let
+                nextTool =
+                    if model.selectedTool == tool then
+                        None
+
+                    else
+                        tool
+            in
+            ( { model | selectedTool = nextTool }, Cmd.none, SharedState.NoUpdate )
 
 
 colors =
@@ -102,7 +110,7 @@ editor sharedState model =
             List.range 1 Config.boardSize
 
         col y =
-            List.map (\x -> tileOverlay ( x, y )) rg
+            List.map (\x -> tileOverlay model.selectedTool ( x, y )) rg
 
         rows =
             List.map (\y -> row [] (col y)) rg
@@ -110,16 +118,23 @@ editor sharedState model =
     column [] rows
 
 
-tileOverlay : Coords -> Element Msg
-tileOverlay coords =
+tileOverlay : Tool -> Coords -> Element Msg
+tileOverlay selectedTool coords =
     let
         tileSizePx =
             px (floor Config.tileSize)
+
+        glowColor =
+            if selectedTool == None then
+                colors.grid
+
+            else
+                colors.selected
     in
     el
         [ width tileSizePx
         , height tileSizePx
-        , mouseOver [ Border.innerGlow colors.grid 5 ]
+        , mouseOver [ Border.innerGlow glowColor 5 ]
         , Events.onClick (SelectTile coords)
         ]
         Element.none
@@ -172,8 +187,9 @@ toolbarButton selectedTool tool =
     in
     Input.button
         [ Background.color colors.buttonBackground
-        , Border.width 2
+        , Border.width 3
         , Border.solid
+        , Border.rounded 3
         , Border.color
             (if selectedTool == tool then
                 colors.selected
@@ -190,7 +206,7 @@ toolbarButton selectedTool tool =
 buttonGroup : List (Element Msg) -> Element Msg
 buttonGroup buttons =
     if List.length buttons > 2 then
-        wrappedRow [ width (px 96), spacing 5 ] buttons
+        wrappedRow [ width (px 100), spacing 5 ] buttons
 
     else
         column [ alignTop, spacing 5 ] buttons
