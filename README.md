@@ -18,3 +18,5 @@ This is what I have so far:
 Read more about the project from [Liikennematto dev blog #1: prototyping traffic simulation with Elm](https://matiasklemola.com/liikennematto-dev-blog-one)
 
 Thanks to [Kenney](https://kenney.nl/assets) for the free game assets (subset of the "Road Textures" and "Racing Pack" collections).
+
+Icons made by <a href="https://www.flaticon.com/authors/smashicons" title="Smashicons">Smashicons</a> from <a href="https://www.flaticon.com/" title="Flaticon"> www.flaticon.com</a>

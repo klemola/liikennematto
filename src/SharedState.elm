@@ -3,7 +3,6 @@ module SharedState exposing (..)
 import Board exposing (Board)
 import Car exposing (Car)
 import Config exposing (initialCars, initialIntersections, initialRoads)
-import Coords exposing (Coords)
 import Dict exposing (Dict)
 
 
@@ -87,10 +86,10 @@ simulationSpeedValues speed =
     -- (Environment update, Traffic update)
     case speed of
         Slow ->
-            ( 1200, 300 )
+            ( 1200, 400 )
 
         Medium ->
-            ( 900, 150 )
+            ( 900, 100 )
 
         Fast ->
-            ( 600, 75 )
+            ( 600, 50 )
