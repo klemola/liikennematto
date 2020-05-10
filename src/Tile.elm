@@ -1,4 +1,4 @@
-module Tile exposing (..)
+module Tile exposing (CurveKind(..), IntersectionControl(..), IntersectionShape(..), RoadKind(..), Tile(..), intersectionAsset, isIntersection, isRoad, potentialConnections, priorityDirections, roadAsset, trafficLightsAllowEntry, view)
 
 import Collage exposing (Collage, square, styled, uniform)
 import Collage.Layout as Layout
@@ -89,6 +89,37 @@ priorityDirections tile =
 
         -- Other tile kinds don't have priority (e.g. signal controlled intersections)
         _ ->
+            []
+
+
+potentialConnections : Tile -> List Direction
+potentialConnections tile =
+    case tile of
+        TwoLaneRoad (Regular orientation) ->
+            Direction.fromOrientation orientation
+
+        TwoLaneRoad (Curve TopRight) ->
+            [ Left, Down ]
+
+        TwoLaneRoad (Curve TopLeft) ->
+            [ Right, Down ]
+
+        TwoLaneRoad (Curve BottomRight) ->
+            [ Left, Up ]
+
+        TwoLaneRoad (Curve BottomLeft) ->
+            [ Right, Up ]
+
+        TwoLaneRoad (Deadend dir) ->
+            [ Direction.opposite dir ]
+
+        Intersection _ Crossroads ->
+            Direction.all
+
+        Intersection _ (T dir) ->
+            Direction.other dir
+
+        Terrain ->
             []
 
 

@@ -23,10 +23,18 @@ next ( x, y ) dir =
             ( x - 1, y )
 
 
-neighbors : Coords -> List Coords
-neighbors coords =
-    Direction.all
-        |> List.map (next coords)
+diagonalNeighbors : Coords -> List Coords
+diagonalNeighbors ( x, y ) =
+    [ ( x - 1, y - 1 )
+    , ( x + 1, y - 1 )
+    , ( x - 1, y + 1 )
+    , ( x + 1, y + 1 )
+    ]
+
+
+parallelNeighbors : Coords -> List Coords
+parallelNeighbors coords =
+    List.map (next coords) Direction.all
 
 
 toString : Coords -> String

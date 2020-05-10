@@ -1,12 +1,12 @@
 module UI exposing (..)
 
-import Board
+import Board exposing (Board)
 import Car exposing (Car, Status(..), TurnKind(..))
 import Config exposing (constructionTileGroups)
 import Coords exposing (Coords)
 import Dict
 import Direction exposing (Orientation(..))
-import Element exposing (Element, alignRight, alignTop, centerX, centerY, column, el, fill, height, image, mouseOver, padding, px, rgb255, row, scrollbarX, spacing, text, width, wrappedRow)
+import Element exposing (Element, alignRight, alignTop, centerY, column, el, fill, height, image, mouseOver, padding, px, rgb255, row, scrollbarX, spacing, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
@@ -55,11 +55,11 @@ update sharedState msg model =
             ( model, Cmd.none, SharedState.UpdateSimulationSpeed speed )
 
         SelectTile coords ->
-            case ( model.selectedTool, Board.get coords sharedState.board ) of
+            case ( model.selectedTool, Board.get sharedState.board coords ) of
                 ( Construction tile, _ ) ->
                     ( model
                     , Cmd.none
-                    , Board.set coords tile sharedState.board
+                    , Board.set sharedState.board coords tile
                         |> SharedState.UpdateBoard
                     )
 
@@ -99,7 +99,8 @@ colors =
     , text = rgb255 52 65 67
     , selected = rgb255 245 220 62
     , danger = rgb255 235 119 52
-    , grid = rgb255 222 222 222
+    , notAllowed = rgb255 245 66 84
+    , target = rgb255 222 222 222
     , transparent = Element.rgba255 0 0 0 0
     }
 
@@ -126,7 +127,7 @@ editor sharedState model =
             List.range 1 Config.boardSize
 
         col y =
-            List.map (\x -> tileOverlay model.selectedTool ( x, y )) rg
+            List.map (\x -> tileOverlay sharedState.board model.selectedTool ( x, y )) rg
 
         rows =
             List.map (\y -> row [] (col y)) rg
@@ -139,11 +140,15 @@ editor sharedState model =
                 _ ->
                     colors.transparent
     in
-    el [ mouseOver [ Border.innerGlow glowColor 5 ] ] (column [] rows)
+    el
+        [ mouseOver [ Border.innerGlow glowColor Config.tileSize ]
+        , Border.rounded whitespace.regular
+        ]
+        (column [] rows)
 
 
-tileOverlay : Tool -> Coords -> Element Msg
-tileOverlay selectedTool coords =
+tileOverlay : Board -> Tool -> Coords -> Element Msg
+tileOverlay board selectedTool coords =
     let
         tileSizePx =
             px (floor Config.tileSize)
@@ -151,7 +156,7 @@ tileOverlay selectedTool coords =
         glowColor =
             case selectedTool of
                 None ->
-                    colors.grid
+                    colors.transparent
 
                 Bulldozer ->
                     colors.danger
@@ -159,13 +164,17 @@ tileOverlay selectedTool coords =
                 Dynamite ->
                     colors.transparent
 
-                _ ->
-                    colors.selected
+                Construction tile ->
+                    if Board.canAddTile board coords tile then
+                        colors.target
+
+                    else
+                        colors.notAllowed
     in
     el
         [ width tileSizePx
         , height tileSizePx
-        , mouseOver [ Border.innerGlow glowColor 5 ]
+        , mouseOver [ Border.innerGlow glowColor (Config.tileSize / 4) ]
         , Events.onClick (SelectTile coords)
         ]
         Element.none
@@ -244,7 +253,7 @@ toolbarButton selectedTool tool =
 buttonGroup : List (Element Msg) -> Element Msg
 buttonGroup buttons =
     if List.length buttons > 2 then
-        wrappedRow [ width (px 100), spacing whitespace.button ] buttons
+        wrappedRow [ width (px 102), spacing whitespace.button ] buttons
 
     else
         column [ alignTop, spacing whitespace.button ] buttons
