@@ -68,6 +68,11 @@ opposite dir =
             Right
 
 
+other : Direction -> List Direction
+other dir =
+    opposite dir :: cross dir
+
+
 oppositeOrientation : Orientation -> Orientation
 oppositeOrientation orientation =
     case orientation of

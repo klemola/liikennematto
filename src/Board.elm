@@ -1,4 +1,4 @@
-module Board exposing (Board, connectedRoads, get, getSafe, new, remove, set, view)
+module Board exposing (Board, canAddTile, get, getSafe, new, remove, set, view)
 
 import Collage exposing (..)
 import Config exposing (boardSize, tileSize)
@@ -7,7 +7,7 @@ import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction exposing (Direction(..))
 import Graphics
-import Tile exposing (Tile(..))
+import Tile exposing (RoadKind(..), Tile(..))
 
 
 type alias Board =
@@ -19,21 +19,25 @@ new =
     Dict.fromList []
 
 
-get : Coords -> Board -> Maybe Tile
-get coords board =
+get : Board -> Coords -> Maybe Tile
+get board coords =
     Dict.find (\key _ -> key == coords) board
         |> Maybe.map Tuple.second
 
 
-getSafe : Coords -> Board -> Tile
-getSafe coords board =
-    get coords board
+getSafe : Board -> Coords -> Tile
+getSafe board coords =
+    get board coords
         |> Maybe.withDefault Terrain
 
 
-set : Coords -> Tile -> Board -> Board
-set coords tile board =
-    Dict.insert coords tile board
+set : Board -> Coords -> Tile -> Board
+set board coords tile =
+    if canAddTile board coords tile then
+        Dict.insert coords tile board
+
+    else
+        board
 
 
 remove : Coords -> Board -> Board
@@ -41,35 +45,68 @@ remove coords board =
     Dict.remove coords board
 
 
-connectedTiles : Board -> Coords -> List ( Coords, Tile )
-connectedTiles board coords =
+connections : Board -> Coords -> Tile -> List Tile
+connections board coords target =
     let
-        neighborCoords =
-            Coords.neighbors coords
-
-        pickNeighbors crds tile =
-            if List.member crds neighborCoords then
+        validate dir tile =
+            if List.member (Direction.opposite dir) (Tile.potentialConnections tile) then
                 Just tile
 
             else
                 Nothing
+
+        connection dir =
+            get board (Coords.next coords dir)
+                |> Maybe.andThen (validate dir)
     in
-    board
-        |> Dict.filterMap pickNeighbors
-        |> Dict.toList
+    Tile.potentialConnections target
+        |> List.filterMap connection
 
 
-connectedRoads : Board -> Coords -> List ( Coords, Tile )
-connectedRoads board coords =
-    connectedTiles board coords
-        |> List.filter (\( c, t ) -> Tile.isRoad t)
+canAddTile : Board -> Coords -> Tile -> Bool
+canAddTile board coords tile =
+    let
+        diagonalNeighborTiles =
+            Coords.diagonalNeighbors coords
+                |> List.filterMap (get board)
+
+        parallelNeighborTiles =
+            Coords.parallelNeighbors coords
+                |> List.filterMap (get board)
+
+        surroundingTiles =
+            parallelNeighborTiles ++ diagonalNeighborTiles
+
+        isValidDiagonal anotherTile =
+            case anotherTile of
+                TwoLaneRoad (Regular _) ->
+                    True
+
+                TwoLaneRoad (Deadend _) ->
+                    True
+
+                Terrain ->
+                    True
+
+                _ ->
+                    False
+
+        doesRoadConnect _ =
+            not (List.isEmpty (connections board coords tile))
+
+        isValid _ =
+            List.all isValidDiagonal diagonalNeighborTiles && doesRoadConnect ()
+    in
+    Dict.isEmpty board
+        || List.isEmpty surroundingTiles
+        || isValid ()
 
 
 view : Board -> Collage msg
 view board =
     let
         drawTile x y =
-            getSafe ( x, y ) board
+            getSafe board ( x, y )
                 |> Tile.view tileSize
     in
     Graphics.grid boardSize drawTile

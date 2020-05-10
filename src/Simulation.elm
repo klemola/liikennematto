@@ -156,10 +156,10 @@ updateCar model board otherCars car =
             Coords.next car.coords car.direction
 
         currentTile =
-            Board.getSafe car.coords board
+            Board.getSafe board car.coords
 
         nextTile =
-            Board.getSafe nextCoords board
+            Board.getSafe board nextCoords
 
         -- turn every now and then at an intersection
         -- cars in intersections can block the traffic, so this also works as a sort of a tie-breaker
@@ -213,7 +213,7 @@ applyYieldRules : Board -> Coords -> List Car -> Car -> Car
 applyYieldRules board tileCoords otherCars car =
     let
         priorityDirections =
-            Tile.priorityDirections (Board.getSafe tileCoords board)
+            Tile.priorityDirections (Board.getSafe board tileCoords)
 
         shouldYield =
             not (List.member car.direction priorityDirections)
@@ -237,7 +237,7 @@ applyStopRules : Board -> Coords -> List Car -> Car -> Car
 applyStopRules board tileCoords otherCars car =
     let
         priorityDirections =
-            Tile.priorityDirections (Board.getSafe tileCoords board)
+            Tile.priorityDirections (Board.getSafe board tileCoords)
 
         shouldStop =
             not (List.member car.direction priorityDirections)
@@ -270,7 +270,7 @@ changeDirection board randomDirs car =
             dir /= car.direction && dir /= oppositeDirection
 
         seeRoadAhead dir =
-            case Board.getSafe (Coords.next car.coords dir) board of
+            case Board.getSafe board (Coords.next car.coords dir) of
                 Terrain ->
                     False
 
