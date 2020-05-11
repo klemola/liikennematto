@@ -1,6 +1,6 @@
 module Board exposing (Board, canAddTile, get, getSafe, new, remove, set, view)
 
-import Collage exposing (..)
+import Collage exposing (Collage)
 import Config exposing (boardSize, tileSize)
 import Coords exposing (Coords)
 import Dict exposing (Dict)
@@ -49,7 +49,10 @@ connections : Board -> Coords -> Tile -> List Tile
 connections board coords target =
     let
         validate dir tile =
-            if List.member (Direction.opposite dir) (Tile.potentialConnections tile) then
+            if
+                List.member (Direction.opposite dir) (Tile.potentialConnections tile)
+                    && Tile.validNeighbors tile target
+            then
                 Just tile
 
             else
