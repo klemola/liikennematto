@@ -1,4 +1,18 @@
-module Tile exposing (CurveKind(..), IntersectionControl(..), IntersectionShape(..), RoadKind(..), Tile(..), intersectionAsset, isIntersection, isRoad, potentialConnections, priorityDirections, roadAsset, trafficLightsAllowEntry, view)
+module Tile exposing
+    ( CurveKind(..)
+    , IntersectionControl(..)
+    , IntersectionShape(..)
+    , RoadKind(..)
+    , Tile(..)
+    , intersectionAsset
+    , isIntersection
+    , potentialConnections
+    , priorityDirections
+    , roadAsset
+    , trafficLightsAllowEntry
+    , validNeighbors
+    , view
+    )
 
 import Collage exposing (Collage, square, styled, uniform)
 import Collage.Layout as Layout
@@ -52,10 +66,10 @@ trafficLightsAllowEntry trafficLights entryDirection =
     List.any signalXsEntryAllowed trafficLights
 
 
-isRoad : Tile -> Bool
-isRoad tile =
+isRegularRoad : Tile -> Bool
+isRegularRoad tile =
     case tile of
-        TwoLaneRoad _ ->
+        TwoLaneRoad (Regular _) ->
             True
 
         _ ->
@@ -117,10 +131,15 @@ potentialConnections tile =
             Direction.all
 
         Intersection _ (T dir) ->
-            Direction.other dir
+            dir :: Direction.cross dir
 
         Terrain ->
             []
+
+
+validNeighbors : Tile -> Tile -> Bool
+validNeighbors tileA tileB =
+    List.any isRegularRoad [ tileA, tileB ]
 
 
 view : Float -> Tile -> Collage msg
