@@ -114,9 +114,9 @@ initialIntersections =
 initialCars : Dict Int Car
 initialCars =
     Dict.fromList
-        [ ( 1, Car ( 9, 1 ) Left Sedan1 Moving )
-        , ( 2, Car ( 5, 2 ) Down Sedan2 Moving )
-        , ( 3, Car ( 4, 3 ) Right Sedan3 Moving )
-        , ( 4, Car ( 3, 6 ) Left Sedan4 Moving )
-        , ( 5, Car ( 9, 9 ) Up Sedan5 Moving )
+        [ ( 1, Car.new Sedan1 )
+        , ( 2, Car.new Sedan2 )
+        , ( 3, Car.new Sedan3 )
+        , ( 4, Car.new Sedan4 )
+        , ( 5, Car.new Sedan5 )
         ]

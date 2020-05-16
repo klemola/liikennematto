@@ -1,12 +1,33 @@
-module UI exposing (..)
+module UI exposing (Model, Msg(..), colors, initialModel, update, view)
 
 import Board exposing (Board)
-import Car exposing (Car, Status(..), TurnKind(..))
+import Car exposing (Car)
 import Config exposing (constructionTileGroups)
 import Coords exposing (Coords)
 import Dict
 import Direction exposing (Orientation(..))
-import Element exposing (Element, alignRight, alignTop, centerY, column, el, fill, height, image, mouseOver, padding, px, rgb255, row, scrollbarX, spacing, text, width, wrappedRow)
+import Element
+    exposing
+        ( Element
+        , alignRight
+        , alignTop
+        , centerY
+        , column
+        , el
+        , fill
+        , height
+        , image
+        , mouseOver
+        , padding
+        , px
+        , rgb255
+        , row
+        , scrollbarX
+        , spacing
+        , text
+        , width
+        , wrappedRow
+        )
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
@@ -60,21 +81,20 @@ update sharedState msg model =
                     ( model
                     , Cmd.none
                     , Board.set sharedState.board coords tile
-                        |> SharedState.UpdateBoard
+                        |> SharedState.EditBoardAt coords
                     )
 
                 ( Bulldozer, Just _ ) ->
                     ( model
                     , Cmd.none
                     , Board.remove coords sharedState.board
-                        |> SharedState.UpdateBoard
+                        |> SharedState.EditBoardAt coords
                     )
 
                 ( Dynamite, _ ) ->
                     ( { model | selectedTool = None }
                     , Cmd.none
-                    , Board.new
-                        |> SharedState.UpdateBoard
+                    , SharedState.NewBoard
                     )
 
                 _ ->
@@ -324,32 +344,9 @@ carInfo car =
     let
         showCarKind =
             image [ width (px 14) ] { description = "", src = "assets/" ++ Car.asset car }
-
-        status =
-            case car.status of
-                Moving ->
-                    "Moving"
-
-                Turning LeftTurn ->
-                    "Turning left"
-
-                Turning RightTurn ->
-                    "Turning right"
-
-                Turning UTurn ->
-                    "Making a U-turn"
-
-                Waiting ->
-                    "Waiting"
-
-                StoppedAtIntersection roundsRemaining ->
-                    "Stopped, rounds remaining: " ++ String.fromInt roundsRemaining
-
-                Yielding ->
-                    "Yielding"
     in
     row
         [ centerY, spacing whitespace.regular ]
         [ showCarKind
-        , text (String.join " | " [ Coords.toString car.coords, status ])
+        , text (String.join " | " [ Coords.toString car.coords, Car.statusDescription car.status ])
         ]

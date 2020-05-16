@@ -6,6 +6,7 @@ module Tile exposing
     , Tile(..)
     , intersectionAsset
     , isIntersection
+    , isRoad
     , potentialConnections
     , priorityDirections
     , roadAsset
@@ -64,6 +65,16 @@ trafficLightsAllowEntry trafficLights entryDirection =
             TrafficLight.isGreen tl && tl.facing == entryDirection
     in
     List.any signalXsEntryAllowed trafficLights
+
+
+isRoad : Tile -> Bool
+isRoad tile =
+    case tile of
+        TwoLaneRoad _ ->
+            True
+
+        _ ->
+            False
 
 
 isRegularRoad : Tile -> Bool

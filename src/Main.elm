@@ -9,7 +9,7 @@ import Html exposing (Html)
 import SharedState exposing (SharedState, SimulationState(..))
 import Simulation exposing (Msg(..))
 import Time
-import UI exposing (Msg(..), colors)
+import UI
 
 
 main : Program () Model Msg
@@ -132,7 +132,7 @@ view model =
 
         layout =
             Element.layout
-                [ Background.color colors.mainBackground
+                [ Background.color UI.colors.mainBackground
                 , Element.padding paddingAmount
                 ]
                 (Element.el
