@@ -34,11 +34,12 @@ import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import SharedState exposing (SharedState, SharedStateUpdate, SimulationSpeed(..), SimulationState(..))
-import Tile exposing (RoadKind(..), Tile(..))
+import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..))
 
 
 type Tool
     = Construction Tile
+    | IntersectionDesigner
     | Bulldozer
     | Dynamite
     | None
@@ -67,10 +68,10 @@ update sharedState msg model =
     case msg of
         ToggleSimulation ->
             let
-                simulationState =
+                nextSimulationState =
                     SharedState.nextSimulationState sharedState.simulationState
             in
-            ( model, Cmd.none, SharedState.UpdateSimulationState simulationState )
+            ( model, Cmd.none, SharedState.UpdateSimulationState nextSimulationState )
 
         SetSimulationSpeed speed ->
             ( model, Cmd.none, SharedState.UpdateSimulationSpeed speed )
@@ -95,6 +96,14 @@ update sharedState msg model =
                     ( { model | selectedTool = None }
                     , Cmd.none
                     , SharedState.NewBoard
+                    )
+
+                ( IntersectionDesigner, Just tile ) ->
+                    ( model
+                    , Cmd.none
+                    , Tile.toggleIntersectionControl tile
+                        |> Board.set sharedState.board coords
+                        |> SharedState.EditBoardAt coords
                     )
 
                 _ ->
@@ -190,6 +199,14 @@ tileOverlay board selectedTool coords =
 
                     else
                         colors.notAllowed
+
+                IntersectionDesigner ->
+                    case Board.get board coords of
+                        Just (Intersection _ _) ->
+                            colors.target
+
+                        _ ->
+                            colors.notAllowed
     in
     el
         [ width tileSizePx
@@ -225,6 +242,7 @@ toolbar model =
         , buttonGroup
             [ toolbarButton model.selectedTool Bulldozer
             , toolbarButton model.selectedTool Dynamite
+            , toolbarButton model.selectedTool IntersectionDesigner
             ]
         ]
 
@@ -239,6 +257,9 @@ toolbarButton selectedTool tool =
 
                 Construction (Intersection _ shape) ->
                     Tile.intersectionAsset shape
+
+                IntersectionDesigner ->
+                    "intersection_designer.png"
 
                 Bulldozer ->
                     "bulldozer.png"

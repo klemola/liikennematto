@@ -45,6 +45,12 @@ new kind facing =
             TrafficLight Red facing 8
 
 
+default : List TrafficLight
+default =
+    Direction.byOrientation
+        |> List.concatMap fromTrafficDirection
+
+
 advanceTimer : TrafficLight -> TrafficLight
 advanceTimer tl =
     { tl | timeRemaining = tl.timeRemaining - 1 }
