@@ -1,4 +1,4 @@
-module Board exposing (Board, canAddTile, get, getSafe, new, remove, set, view)
+module Board exposing (Board, canAddTile, get, getSafe, new, remove, roadCoords, set, view)
 
 import Collage exposing (Collage)
 import Config exposing (boardSize, tileSize)
@@ -43,6 +43,16 @@ set board coords tile =
 remove : Coords -> Board -> Board
 remove coords board =
     Dict.remove coords board
+
+
+roadCoords : Board -> List Coords
+roadCoords board =
+    board
+        |> Dict.filter
+            (\_ t ->
+                Tile.isRoad t
+            )
+        |> Dict.keys
 
 
 connections : Board -> Coords -> Tile -> List Tile

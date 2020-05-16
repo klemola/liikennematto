@@ -176,7 +176,14 @@ updateCar model board otherCars car =
                 _ ->
                     List.any (\c -> c.coords == nextCoords) otherCars
     in
-    if willCollideWithAnother then
+    if Car.isRespawning car then
+        Board.roadCoords board
+            |> List.filter (\coords -> List.all (\oc -> oc.coords /= coords) otherCars)
+            |> List.head
+            |> Maybe.map (\coords -> Car.update (Spawn coords) car)
+            |> Maybe.withDefault car
+
+    else if willCollideWithAnother then
         if shouldTurnRandomly then
             changeDirection board model.randomDirections car
 

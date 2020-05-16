@@ -1,4 +1,4 @@
-module Car exposing (Car, CarKind(..), Msg(..), Status(..), TurnKind(..), asset, isTurning, update, view)
+module Car exposing (Car, CarKind(..), Msg(..), Status(..), TurnKind(..), asset, isRespawning, isTurning, new, statusDescription, update, view)
 
 import Collage exposing (Collage, rotate)
 import Coords exposing (Coords)
@@ -29,6 +29,7 @@ type Status
     | Waiting
     | StoppedAtIntersection Int
     | Yielding
+    | Respawning
 
 
 type TurnKind
@@ -47,12 +48,29 @@ type Msg
     | Wait
     | YieldAtIntersection
     | StopAtIntersection Int
+    | WaitForRespawn
+    | Spawn Coords
+
+
+new : CarKind -> Car
+new kind =
+    Car ( 0, 0 ) Up kind Respawning
 
 
 isTurning : Car -> Bool
 isTurning car =
     case car.status of
         Turning _ ->
+            True
+
+        _ ->
+            False
+
+
+isRespawning : Car -> Bool
+isRespawning car =
+    case car.status of
+        Respawning ->
             True
 
         _ ->
@@ -91,6 +109,40 @@ update msg car =
 
         StopAtIntersection roundsRemaining ->
             { car | status = StoppedAtIntersection roundsRemaining }
+
+        WaitForRespawn ->
+            { car | status = Respawning, coords = ( 0, 0 ) }
+
+        Spawn coords ->
+            { car | status = Waiting, coords = coords }
+
+
+statusDescription : Status -> String
+statusDescription status =
+    case status of
+        Moving ->
+            "Moving"
+
+        Turning LeftTurn ->
+            "Turning left"
+
+        Turning RightTurn ->
+            "Turning right"
+
+        Turning UTurn ->
+            "Making a U-turn"
+
+        Waiting ->
+            "Waiting"
+
+        StoppedAtIntersection roundsRemaining ->
+            "Stopped, rounds remaining: " ++ String.fromInt roundsRemaining
+
+        Yielding ->
+            "Yielding"
+
+        Respawning ->
+            "Respawning"
 
 
 view : Float -> Car -> Collage msg

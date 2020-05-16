@@ -3,6 +3,7 @@ module SharedState exposing (..)
 import Board exposing (Board)
 import Car exposing (Car)
 import Config exposing (initialCars, initialIntersections, initialRoads)
+import Coords exposing (Coords)
 import Dict exposing (Dict)
 
 
@@ -35,6 +36,8 @@ type SharedStateUpdate
     | UpdateSimulationSpeed SimulationSpeed
     | UpdateBoard Board
     | UpdateCars Cars
+    | NewBoard
+    | EditBoardAt Coords Board
 
 
 initial : SharedState
@@ -66,6 +69,31 @@ update sharedState sharedStateUpdate =
 
         UpdateCars cars ->
             { sharedState | cars = cars }
+
+        NewBoard ->
+            { sharedState
+                | simulationState = Paused
+                , cars = initial.cars
+                , board = Board.new
+            }
+
+        EditBoardAt coords editedBoard ->
+            let
+                nextCars =
+                    Dict.map
+                        (\_ car ->
+                            if car.coords == coords then
+                                Car.update Car.WaitForRespawn car
+
+                            else
+                                car
+                        )
+                        sharedState.cars
+            in
+            { sharedState
+                | board = editedBoard
+                , cars = nextCars
+            }
 
         NoUpdate ->
             sharedState
