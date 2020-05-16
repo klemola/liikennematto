@@ -10,6 +10,7 @@ module Tile exposing
     , potentialConnections
     , priorityDirections
     , roadAsset
+    , toggleIntersectionControl
     , trafficLightsAllowEntry
     , validNeighbors
     , view
@@ -151,6 +152,39 @@ potentialConnections tile =
 validNeighbors : Tile -> Tile -> Bool
 validNeighbors tileA tileB =
     List.any isRegularRoad [ tileA, tileB ]
+
+
+toggleIntersectionControl : Tile -> Tile
+toggleIntersectionControl tile =
+    case tile of
+        -- Crossroads intersections cycle from signal to stop to yield (and back to signal)
+        Intersection (Signal _) Crossroads ->
+            Intersection (Stop Vertical) Crossroads
+
+        Intersection (Stop Vertical) Crossroads ->
+            -- swap orientation
+            Intersection (Stop Horizontal) Crossroads
+
+        Intersection (Stop Horizontal) Crossroads ->
+            Intersection (Yield Vertical) Crossroads
+
+        Intersection (Yield Vertical) Crossroads ->
+            -- swap orientation
+            Intersection (Yield Horizontal) Crossroads
+
+        Intersection (Yield Horizontal) Crossroads ->
+            Intersection (Signal TrafficLight.default) Crossroads
+
+        -- T shape intersections can't have traffic lights and their orientation is based on the main road
+        -- toggling between them is simple - from stop to yield and back
+        Intersection (Stop orientation) (T dir) ->
+            Intersection (Yield orientation) (T dir)
+
+        Intersection (Yield orientation) (T dir) ->
+            Intersection (Stop orientation) (T dir)
+
+        _ ->
+            tile
 
 
 view : Float -> Tile -> Collage msg

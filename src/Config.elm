@@ -5,7 +5,7 @@ import Coords exposing (Coords)
 import Dict exposing (Dict)
 import Direction exposing (Direction(..), Orientation(..))
 import Tile exposing (CurveKind(..), IntersectionControl(..), IntersectionShape(..), RoadKind(..), Tile(..))
-import TrafficLight exposing (TrafficLight)
+import TrafficLight
 
 
 boardSize : Int
@@ -18,19 +18,13 @@ tileSize =
     72
 
 
-defaultTrafficLights : List TrafficLight
-defaultTrafficLights =
-    Direction.byOrientation
-        |> List.concatMap TrafficLight.fromTrafficDirection
-
-
 constructionTileGroups =
     { main =
         [ TwoLaneRoad (Regular Horizontal)
         , TwoLaneRoad (Regular Vertical)
         ]
     , intersectionCross =
-        [ Intersection (Signal defaultTrafficLights) Crossroads
+        [ Intersection (Signal TrafficLight.default) Crossroads
         ]
     , intersectionT =
         [ Intersection (Yield Vertical) (T Up)
@@ -105,7 +99,7 @@ initialIntersections =
     [ ( ( 5, 1 ), Intersection (Yield Vertical) (T Down) )
     , ( ( 1, 3 ), Intersection (Yield Horizontal) (T Right) )
     , ( ( 5, 3 ), Intersection (Stop Vertical) Crossroads )
-    , ( ( 5, 6 ), Intersection (Signal defaultTrafficLights) Crossroads )
+    , ( ( 5, 6 ), Intersection (Signal TrafficLight.default) Crossroads )
     , ( ( 9, 6 ), Intersection (Stop Horizontal) (T Left) )
     , ( ( 5, 9 ), Intersection (Yield Vertical) (T Up) )
     ]
