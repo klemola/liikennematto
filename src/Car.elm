@@ -136,7 +136,7 @@ statusDescription status =
             "Waiting"
 
         StoppedAtIntersection roundsRemaining ->
-            "Stopped, rounds remaining: " ++ String.fromInt roundsRemaining
+            "Stopped..." ++ String.fromInt roundsRemaining
 
         Yielding ->
             "Yielding"

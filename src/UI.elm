@@ -1,4 +1,4 @@
-module UI exposing (Model, Msg(..), colors, initialModel, update, view)
+module UI exposing (Model, Msg(..), borderSize, colors, editor, initialModel, menu, toolbar, update, whitespace)
 
 import Board exposing (Board)
 import Car exposing (Car)
@@ -9,20 +9,20 @@ import Direction exposing (Orientation(..))
 import Element
     exposing
         ( Element
-        , alignRight
-        , alignTop
+        , centerX
         , centerY
         , column
         , el
         , fill
         , height
         , image
+        , minimum
         , mouseOver
         , padding
+        , paddingXY
         , px
         , rgb255
         , row
-        , scrollbarX
         , spacing
         , text
         , width
@@ -51,10 +51,10 @@ type alias Model =
 
 
 type Msg
-    = ToggleSimulation
-    | SetSimulationSpeed SimulationSpeed
-    | SelectTile Coords
+    = SelectTile Coords
     | SelectTool Tool
+    | ToggleSimulation
+    | SetSimulationSpeed SimulationSpeed
 
 
 initialModel : Model
@@ -66,16 +66,6 @@ initialModel =
 update : SharedState -> Msg -> Model -> ( Model, Cmd Msg, SharedStateUpdate )
 update sharedState msg model =
     case msg of
-        ToggleSimulation ->
-            let
-                nextSimulationState =
-                    SharedState.nextSimulationState sharedState.simulationState
-            in
-            ( model, Cmd.none, SharedState.UpdateSimulationState nextSimulationState )
-
-        SetSimulationSpeed speed ->
-            ( model, Cmd.none, SharedState.UpdateSimulationSpeed speed )
-
         SelectTile coords ->
             case ( model.selectedTool, Board.get sharedState.board coords ) of
                 ( Construction tile, _ ) ->
@@ -120,33 +110,48 @@ update sharedState msg model =
             in
             ( { model | selectedTool = nextTool }, Cmd.none, SharedState.NoUpdate )
 
+        ToggleSimulation ->
+            let
+                nextSimulationState =
+                    SharedState.nextSimulationState sharedState.simulationState
+            in
+            ( model, Cmd.none, SharedState.UpdateSimulationState nextSimulationState )
+
+        SetSimulationSpeed speed ->
+            ( model, Cmd.none, SharedState.UpdateSimulationSpeed speed )
+
 
 colors =
-    { mainBackground = rgb255 33 191 154
-    , toolbarBackground = rgb255 191 213 217
+    { mainBackground = rgb255 68 115 120
+    , toolbarBackground = rgb255 159 192 198
     , buttonBackground = rgb255 222 222 222
     , text = rgb255 52 65 67
-    , selected = rgb255 245 220 62
+    , selected = rgb255 242 212 13
     , danger = rgb255 235 119 52
     , notAllowed = rgb255 245 66 84
     , target = rgb255 222 222 222
+    , terrain = rgb255 33 191 154
     , transparent = Element.rgba255 0 0 0 0
+    , sectionBorder = rgb255 53 93 97
     }
 
 
 whitespace =
     { regular = 10
-    , button = 5
+    , tight = 5
     }
 
 
-view : SharedState -> Model -> Element Msg
-view sharedState model =
-    column [ width fill, spacing whitespace.regular ]
-        [ editor sharedState model
-        , toolbar model
-        , debug sharedState
-        ]
+borderSize =
+    { heavy = 10
+    , light = 3
+    , radius = 3
+    }
+
+
+editorWidth : Int
+editorWidth =
+    Config.boardSize * floor Config.tileSize + (2 * borderSize.heavy)
 
 
 editor : SharedState -> Model -> Element Msg
@@ -171,7 +176,8 @@ editor sharedState model =
     in
     el
         [ mouseOver [ Border.innerGlow glowColor Config.tileSize ]
-        , Border.rounded whitespace.regular
+        , width (px editorWidth)
+        , height (px editorWidth)
         ]
         (column [] rows)
 
@@ -220,31 +226,50 @@ tileOverlay board selectedTool coords =
 toolbar : Model -> Element Msg
 toolbar model =
     let
+        buttonGroup buttons =
+            if List.length buttons > 2 then
+                wrappedRow [ width (px 102), spacing whitespace.tight ] buttons
+
+            else
+                row [ spacing whitespace.tight ] buttons
+
         constructionButtonGroup g =
             g
                 |> List.map Construction
                 |> List.map (toolbarButton model.selectedTool)
                 |> buttonGroup
     in
-    row
-        [ width fill
-        , Background.color colors.toolbarBackground
-        , Border.rounded whitespace.button
+    el
+        [ width (fill |> minimum 120)
+        , height fill
         , padding whitespace.regular
-        , spacing (whitespace.regular * 2)
-        , scrollbarX
+        , Background.color colors.toolbarBackground
+        , Border.rounded borderSize.radius
+        , Border.solid
+        , Border.widthEach
+            { top = borderSize.heavy
+            , bottom = borderSize.heavy
+            , left = borderSize.light
+            , right = borderSize.light
+            }
+        , Border.color colors.sectionBorder
         ]
-        [ constructionButtonGroup constructionTileGroups.main
-        , constructionButtonGroup constructionTileGroups.intersectionCross
-        , constructionButtonGroup constructionTileGroups.intersectionT
-        , constructionButtonGroup constructionTileGroups.curve
-        , constructionButtonGroup constructionTileGroups.deadend
-        , buttonGroup
-            [ toolbarButton model.selectedTool Bulldozer
-            , toolbarButton model.selectedTool Dynamite
-            , toolbarButton model.selectedTool IntersectionDesigner
+        (column
+            [ spacing (whitespace.regular * 2)
+            , centerX
             ]
-        ]
+            [ constructionButtonGroup constructionTileGroups.main
+            , constructionButtonGroup constructionTileGroups.intersectionCross
+            , constructionButtonGroup constructionTileGroups.intersectionT
+            , constructionButtonGroup constructionTileGroups.curve
+            , constructionButtonGroup constructionTileGroups.deadend
+            , buttonGroup
+                [ toolbarButton model.selectedTool Bulldozer
+                , toolbarButton model.selectedTool Dynamite
+                , toolbarButton model.selectedTool IntersectionDesigner
+                ]
+            ]
+        )
 
 
 toolbarButton : Tool -> Tool -> Element Msg
@@ -275,9 +300,9 @@ toolbarButton selectedTool tool =
     in
     Input.button
         [ Background.color colors.buttonBackground
-        , Border.width 3
+        , Border.width borderSize.light
         , Border.solid
-        , Border.rounded 3
+        , Border.rounded borderSize.radius
         , Border.color
             (if selectedTool == tool then
                 colors.selected
@@ -291,72 +316,70 @@ toolbarButton selectedTool tool =
         }
 
 
-buttonGroup : List (Element Msg) -> Element Msg
-buttonGroup buttons =
-    if List.length buttons > 2 then
-        wrappedRow [ width (px 102), spacing whitespace.button ] buttons
+menu : SharedState -> Element Msg
+menu sharedState =
+    column
+        [ Font.family [ Font.monospace ]
+        , Font.color colors.text
+        , Font.size 14
+        , height fill
+        , padding whitespace.tight
+        , spacing whitespace.regular
+        , Background.color colors.toolbarBackground
+        , Border.rounded borderSize.radius
+        , Border.solid
+        , Border.widthEach
+            { top = borderSize.heavy
+            , bottom = borderSize.heavy
+            , left = borderSize.light
+            , right = borderSize.light
+            }
+        , Border.color colors.sectionBorder
+        ]
+        [ simulationControl sharedState
+        , debug sharedState
+        ]
 
-    else
-        column [ alignTop, spacing whitespace.button ] buttons
 
-
-debug : SharedState -> Element Msg
-debug sharedState =
+simulationControl : SharedState -> Element Msg
+simulationControl sharedState =
     let
         simulationStateAsText =
             case sharedState.simulationState of
                 Simulation ->
-                    "Pause"
+                    "Pause simulation"
 
                 Paused ->
-                    "Resume"
+                    "Resume simulation"
 
-        controlLabel t =
+        label t =
             el [ Font.semiBold ] (text t)
-
-        controlButton t m s =
-            Input.button
-                [ Background.color colors.buttonBackground
-                , padding whitespace.button
-                , Border.width 3
-                , Border.rounded 3
-                , Border.solid
-                , Border.color
-                    (if s then
-                        colors.selected
-
-                     else
-                        colors.buttonBackground
-                    )
-                ]
-                { onPress = Just m
-                , label = text t
-                }
     in
+    column
+        [ spacing whitespace.regular
+        , paddingXY whitespace.tight whitespace.regular
+        ]
+        [ button simulationStateAsText ToggleSimulation False
+        , label "Simulation speed"
+        , row [ spacing whitespace.regular ]
+            [ button "Slow" (SetSimulationSpeed Slow) (sharedState.simulationSpeed == Slow)
+            , button "Medium" (SetSimulationSpeed Medium) (sharedState.simulationSpeed == Medium)
+            , button "Fast" (SetSimulationSpeed Fast) (sharedState.simulationSpeed == Fast)
+            ]
+        ]
+
+
+debug : SharedState -> Element Msg
+debug sharedState =
     row
         [ width fill
-        , Background.color colors.toolbarBackground
-        , Border.rounded whitespace.button
-        , padding whitespace.regular
+        , paddingXY 0 whitespace.regular
         , spacing whitespace.regular
-        , Font.family [ Font.monospace ]
-        , Font.color colors.text
-        , Font.size 14
         ]
-        [ column [ spacing whitespace.button ]
+        [ column [ spacing whitespace.regular ]
             (Dict.values sharedState.cars
                 |> List.map carInfo
             )
-        , column [ alignRight, alignTop, spacing whitespace.regular ]
-            [ controlLabel "Simulation control"
-            , controlButton simulationStateAsText ToggleSimulation False
-            , controlLabel "Simulation speed"
-            , row [ spacing whitespace.regular ]
-                [ controlButton "Slow" (SetSimulationSpeed Slow) (sharedState.simulationSpeed == Slow)
-                , controlButton "Medium" (SetSimulationSpeed Medium) (sharedState.simulationSpeed == Medium)
-                , controlButton "Fast" (SetSimulationSpeed Fast) (sharedState.simulationSpeed == Fast)
-                ]
-            ]
         ]
 
 
@@ -367,7 +390,35 @@ carInfo car =
             image [ width (px 14) ] { description = "", src = "assets/" ++ Car.asset car }
     in
     row
-        [ centerY, spacing whitespace.regular ]
+        [ paddingXY whitespace.tight 0, spacing whitespace.regular ]
         [ showCarKind
-        , text (String.join " | " [ Coords.toString car.coords, Car.statusDescription car.status ])
+        , column [ spacing whitespace.tight ]
+            [ text (Coords.toString car.coords)
+            , text (Car.statusDescription car.status)
+            ]
         ]
+
+
+type alias Button =
+    Element Msg
+
+
+button : String -> Msg -> Bool -> Button
+button label msg selected =
+    Input.button
+        [ Background.color colors.buttonBackground
+        , padding whitespace.tight
+        , Border.width borderSize.light
+        , Border.rounded borderSize.radius
+        , Border.solid
+        , Border.color
+            (if selected then
+                colors.selected
+
+             else
+                colors.buttonBackground
+            )
+        ]
+        { onPress = Just msg
+        , label = text label
+        }
