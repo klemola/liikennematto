@@ -2,9 +2,9 @@ module Main exposing (main)
 
 import Browser
 import Collage.Render exposing (svg)
-import Config
 import Element
 import Element.Background as Background
+import Element.Border as Border
 import Html exposing (Html)
 import SharedState exposing (SharedState, SimulationState(..))
 import Simulation exposing (Msg(..))
@@ -119,27 +119,53 @@ update msg model =
 view : Model -> Html Msg
 view model =
     let
-        paddingAmount =
-            floor (Config.tileSize / 2)
-
         simulation =
             Simulation.view model.sharedState
                 |> svg
                 |> Element.html
 
-        ui =
-            UI.view model.sharedState model.ui
+        editor =
+            UI.editor model.sharedState model.ui
+
+        toolbar =
+            UI.toolbar model.ui
+
+        menu =
+            UI.menu model.sharedState
 
         layout =
             Element.layout
                 [ Background.color UI.colors.mainBackground
-                , Element.padding paddingAmount
+                , Element.width Element.fill
+                , Element.height Element.fill
                 ]
                 (Element.el
                     [ Element.centerX
-                    , Element.inFront ui
+                    , Element.centerY
+                    , Element.scrollbarX
+                    , Element.padding UI.whitespace.regular
                     ]
-                    simulation
+                    (Element.row
+                        [ Element.width Element.fill
+                        , Element.height Element.fill
+                        , Element.spacing UI.whitespace.regular
+                        ]
+                        [ toolbar
+                        , Element.el
+                            [ Element.inFront editor
+                            , Border.solid
+                            , Border.width UI.borderSize.heavy
+                            , Border.rounded UI.borderSize.radius
+                            , Border.color UI.colors.sectionBorder
+                            ]
+                            simulation
+                        , Element.el
+                            [ Element.alignTop
+                            , Element.height Element.fill
+                            ]
+                            menu
+                        ]
+                    )
                 )
     in
     Html.map UIMsg layout
