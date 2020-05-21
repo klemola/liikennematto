@@ -1,4 +1,4 @@
-module UI exposing (Model, Msg(..), borderSize, colors, editor, initialModel, menu, toolbar, update, whitespace)
+module UI exposing (Model, Msg(..), borderRadius, borderSize, colors, editor, initialModel, menu, toolbar, update, whitespace)
 
 import Board exposing (Board)
 import Car exposing (Car)
@@ -10,7 +10,6 @@ import Element
     exposing
         ( Element
         , centerX
-        , centerY
         , column
         , el
         , fill
@@ -124,20 +123,24 @@ update sharedState msg model =
 colors =
     { mainBackground = rgb255 68 115 120
     , toolbarBackground = rgb255 159 192 198
-    , buttonBackground = rgb255 222 222 222
+    , buttonBackground = rgb255 228 228 235
+    , listItemBackground = rgb255 109 151 156
     , text = rgb255 52 65 67
+    , textInverse = rgb255 222 222 222
     , selected = rgb255 242 212 13
     , danger = rgb255 235 119 52
     , notAllowed = rgb255 245 66 84
     , target = rgb255 222 222 222
     , terrain = rgb255 33 191 154
     , transparent = Element.rgba255 0 0 0 0
-    , sectionBorder = rgb255 53 93 97
+    , lightBorder = rgb255 220 220 226
+    , heavyBorder = rgb255 53 93 97
     }
 
 
 whitespace =
     { regular = 10
+    , spacious = 20
     , tight = 5
     }
 
@@ -145,7 +148,12 @@ whitespace =
 borderSize =
     { heavy = 10
     , light = 3
-    , radius = 3
+    }
+
+
+borderRadius =
+    { heavy = 5
+    , light = 3
     }
 
 
@@ -244,7 +252,7 @@ toolbar model =
         , height fill
         , padding whitespace.regular
         , Background.color colors.toolbarBackground
-        , Border.rounded borderSize.radius
+        , Border.rounded borderRadius.heavy
         , Border.solid
         , Border.widthEach
             { top = borderSize.heavy
@@ -252,7 +260,7 @@ toolbar model =
             , left = borderSize.light
             , right = borderSize.light
             }
-        , Border.color colors.sectionBorder
+        , Border.color colors.heavyBorder
         ]
         (column
             [ spacing (whitespace.regular * 2)
@@ -302,13 +310,13 @@ toolbarButton selectedTool tool =
         [ Background.color colors.buttonBackground
         , Border.width borderSize.light
         , Border.solid
-        , Border.rounded borderSize.radius
+        , Border.rounded borderRadius.light
         , Border.color
             (if selectedTool == tool then
                 colors.selected
 
              else
-                colors.buttonBackground
+                colors.lightBorder
             )
         ]
         { onPress = Just (SelectTool tool)
@@ -326,7 +334,7 @@ menu sharedState =
         , padding whitespace.tight
         , spacing whitespace.regular
         , Background.color colors.toolbarBackground
-        , Border.rounded borderSize.radius
+        , Border.rounded borderRadius.heavy
         , Border.solid
         , Border.widthEach
             { top = borderSize.heavy
@@ -334,7 +342,7 @@ menu sharedState =
             , left = borderSize.light
             , right = borderSize.light
             }
-        , Border.color colors.sectionBorder
+        , Border.color colors.heavyBorder
         ]
         [ simulationControl sharedState
         , debug sharedState
@@ -361,7 +369,7 @@ simulationControl sharedState =
         ]
         [ button simulationStateAsText ToggleSimulation False
         , label "Simulation speed"
-        , row [ spacing whitespace.regular ]
+        , row [ spacing whitespace.tight ]
             [ button "Slow" (SetSimulationSpeed Slow) (sharedState.simulationSpeed == Slow)
             , button "Medium" (SetSimulationSpeed Medium) (sharedState.simulationSpeed == Medium)
             , button "Fast" (SetSimulationSpeed Fast) (sharedState.simulationSpeed == Fast)
@@ -371,26 +379,32 @@ simulationControl sharedState =
 
 debug : SharedState -> Element Msg
 debug sharedState =
-    row
-        [ width fill
-        , paddingXY 0 whitespace.regular
-        , spacing whitespace.regular
-        ]
-        [ column [ spacing whitespace.regular ]
-            (Dict.values sharedState.cars
-                |> List.map carInfo
-            )
-        ]
+    column [ spacing whitespace.tight, width fill ]
+        (Dict.values sharedState.cars
+            |> List.map carInfo
+        )
 
 
 carInfo : Car -> Element msg
 carInfo car =
     let
         showCarKind =
-            image [ width (px 14) ] { description = "", src = "assets/" ++ Car.asset car }
+            image [ width (px 14) ]
+                { description = ""
+                , src = "assets/" ++ Car.asset car
+                }
     in
     row
-        [ paddingXY whitespace.tight 0, spacing whitespace.regular ]
+        [ width fill
+        , padding whitespace.tight
+        , spacing whitespace.regular
+        , Font.color colors.textInverse
+        , Background.color colors.listItemBackground
+        , Border.solid
+        , Border.rounded borderRadius.light
+        , Border.width borderSize.light
+        , Border.color colors.listItemBackground
+        ]
         [ showCarKind
         , column [ spacing whitespace.tight ]
             [ text (Coords.toString car.coords)
@@ -409,14 +423,14 @@ button label msg selected =
         [ Background.color colors.buttonBackground
         , padding whitespace.tight
         , Border.width borderSize.light
-        , Border.rounded borderSize.radius
+        , Border.rounded borderRadius.light
         , Border.solid
         , Border.color
             (if selected then
                 colors.selected
 
              else
-                colors.buttonBackground
+                colors.lightBorder
             )
         ]
         { onPress = Just msg
