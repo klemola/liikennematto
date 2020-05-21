@@ -155,8 +155,8 @@ view model =
                             [ Element.inFront editor
                             , Border.solid
                             , Border.width UI.borderSize.heavy
-                            , Border.rounded UI.borderSize.radius
-                            , Border.color UI.colors.sectionBorder
+                            , Border.rounded UI.borderRadius.heavy
+                            , Border.color UI.colors.heavyBorder
                             ]
                             simulation
                         , Element.el
