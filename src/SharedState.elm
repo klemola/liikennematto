@@ -9,7 +9,6 @@ import Dict exposing (Dict)
 
 type alias SharedState =
     { simulationState : SimulationState
-    , simulationSpeed : SimulationSpeed
     , dimensions : Dimensions
     , screenSize : ( Int, Int )
     , board : Board
@@ -21,7 +20,7 @@ type alias Dimensions =
     { toolbar : Int
     , toolbarButton : Int
     , menu : Int
-    , carPreview : Int
+    , menuButton : Int
     , text : Int
     , tileSize : Float
     }
@@ -38,14 +37,13 @@ type SimulationSpeed
 
 
 type SimulationState
-    = Simulation
+    = Simulation SimulationSpeed
     | Paused
 
 
 type SharedStateUpdate
     = NoUpdate
     | UpdateSimulationState SimulationState
-    | UpdateSimulationSpeed SimulationSpeed
     | RecalculateDimensions Int Int
     | UpdateBoard Board
     | UpdateCars Cars
@@ -65,8 +63,7 @@ initial =
         dimensions =
             { maxDimensions | tileSize = 0 }
     in
-    { simulationState = Simulation
-    , simulationSpeed = Medium
+    { simulationState = Simulation Medium
     , dimensions = dimensions
     , screenSize = ( 0, 0 )
     , board = board
@@ -80,13 +77,14 @@ update sharedState sharedStateUpdate =
         UpdateSimulationState state ->
             { sharedState | simulationState = state }
 
-        UpdateSimulationSpeed speed ->
-            { sharedState | simulationSpeed = speed }
-
         RecalculateDimensions screenWidth screenHeight ->
+            let
+                dimensions =
+                    nextDimensions sharedState.dimensions ( toFloat screenWidth, toFloat screenHeight )
+            in
             { sharedState
                 | screenSize = ( screenHeight, screenHeight )
-                , dimensions = nextDimensions sharedState.dimensions ( toFloat screenWidth, toFloat screenHeight )
+                , dimensions = dimensions
             }
 
         UpdateBoard board ->
@@ -129,9 +127,9 @@ maxDimensions =
     { toolbar = 121
     , toolbarButton = 50
     , menu = 200
-    , carPreview = 14
+    , menuButton = 18
     , text = 14
-    , tileSize = 72
+    , tileSize = 80
     }
 
 
@@ -141,20 +139,17 @@ nextDimensions dimensions ( screenWidth, screenHeight ) =
     -- landscape is the only supported orientation
     -- implicit square board
     let
-        horizontalPadding =
-            screenWidth / 12
-
-        verticalPadding =
-            screenHeight / 10
+        ( paddingX, paddingY ) =
+            ( 60, 40 )
 
         maxBoardSize =
             maxDimensions.tileSize * toFloat boardSize
 
         initialSpace =
-            screenWidth - horizontalPadding
+            screenWidth - paddingX
 
         availableUISpace =
-            initialSpace - maxBoardSize
+            initialSpace * 0.4
 
         toolbarButtonSize =
             (availableUISpace * 0.15)
@@ -172,7 +167,7 @@ nextDimensions dimensions ( screenWidth, screenHeight ) =
             initialSpace - menuSize - toolbarSize
 
         boardSizePx =
-            (screenHeight - verticalPadding)
+            (screenHeight - paddingY)
                 |> min availableBoardSpace
                 |> min maxBoardSize
 
@@ -190,16 +185,6 @@ nextDimensions dimensions ( screenWidth, screenHeight ) =
 valueOrMax : Int -> Float -> Float
 valueOrMax value max =
     min (toFloat value) max
-
-
-nextSimulationState : SimulationState -> SimulationState
-nextSimulationState current =
-    case current of
-        Simulation ->
-            Paused
-
-        Paused ->
-            Simulation
 
 
 simulationSpeedValues : SimulationSpeed -> ( Float, Float )
