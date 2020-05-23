@@ -1,7 +1,7 @@
 module Board exposing (Board, canAddTile, get, getSafe, new, remove, roadCoords, set, view)
 
 import Collage exposing (Collage)
-import Config exposing (boardSize, tileSize)
+import Config exposing (boardSize)
 import Coords exposing (Coords)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
@@ -115,8 +115,8 @@ canAddTile board coords tile =
         || isValid ()
 
 
-view : Board -> Collage msg
-view board =
+view : Board -> Float -> Collage msg
+view board tileSize =
     let
         drawTile x y =
             getSafe board ( x, y )

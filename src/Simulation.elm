@@ -4,7 +4,7 @@ import Board exposing (Board)
 import Car exposing (Car, CarKind(..), Msg(..), Status(..))
 import Collage exposing (..)
 import Collage.Layout as Layout
-import Config exposing (boardSize, tileSize)
+import Config exposing (boardSize)
 import Coords exposing (Coords)
 import Dict
 import Direction exposing (Direction(..), Orientation(..))
@@ -309,16 +309,16 @@ view : SharedState -> Collage msg
 view sharedState =
     let
         cars =
-            carOverlay (Dict.values sharedState.cars)
+            carOverlay (Dict.values sharedState.cars) sharedState.dimensions.tileSize
 
         board =
-            Board.view sharedState.board
+            Board.view sharedState.board sharedState.dimensions.tileSize
     in
     Layout.stack [ cars, board ]
 
 
-carOverlay : List Car -> Collage msg
-carOverlay cars =
+carOverlay : List Car -> Float -> Collage msg
+carOverlay cars tileSize =
     let
         carSize =
             tileSize * 0.33
