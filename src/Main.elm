@@ -27,12 +27,12 @@ main =
 
 subs : Model -> Sub Msg
 subs model =
-    let
-        ( slowTickSpeed, fastTickSpeed ) =
-            SharedState.simulationSpeedValues model.sharedState.simulationSpeed
-    in
     case model.sharedState.simulationState of
-        Simulation ->
+        Simulation speed ->
+            let
+                ( slowTickSpeed, fastTickSpeed ) =
+                    SharedState.simulationSpeedValues speed
+            in
             Sub.batch
                 [ Time.every slowTickSpeed SlowTick
                 , Time.every fastTickSpeed FastTick
@@ -146,6 +146,14 @@ view model =
         menu =
             UI.menu model.sharedState
 
+        simulationBorderColor =
+            case model.sharedState.simulationState of
+                Paused ->
+                    UI.colors.selected
+
+                _ ->
+                    UI.colors.heavyBorder
+
         layout =
             Element.layout
                 [ Background.color UI.colors.mainBackground
@@ -155,13 +163,10 @@ view model =
                 (Element.el
                     [ Element.centerX
                     , Element.centerY
-                    , Element.scrollbarX
                     , Element.padding UI.whitespace.regular
                     ]
                     (Element.row
-                        [ Element.width Element.fill
-                        , Element.height Element.fill
-                        , Element.spacing UI.whitespace.regular
+                        [ Element.spacing UI.whitespace.regular
                         ]
                         [ toolbar
                         , Element.el
@@ -170,7 +175,7 @@ view model =
                             , Border.solid
                             , Border.width UI.borderSize.heavy
                             , Border.rounded UI.borderRadius.heavy
-                            , Border.color UI.colors.heavyBorder
+                            , Border.color simulationBorderColor
                             ]
                             simulation
                         , menu
