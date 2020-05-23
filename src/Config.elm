@@ -13,11 +13,6 @@ boardSize =
     9
 
 
-tileSize : Float
-tileSize =
-    72
-
-
 constructionTileGroups =
     { main =
         [ TwoLaneRoad (Regular Horizontal)

@@ -9,13 +9,12 @@ import Direction exposing (Orientation(..))
 import Element
     exposing
         ( Element
-        , centerX
+        , alignTop
         , column
         , el
         , fill
         , height
         , image
-        , minimum
         , mouseOver
         , padding
         , paddingXY
@@ -32,7 +31,7 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
-import SharedState exposing (SharedState, SharedStateUpdate, SimulationSpeed(..), SimulationState(..))
+import SharedState exposing (Dimensions, SharedState, SharedStateUpdate, SimulationSpeed(..), SimulationState(..))
 import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..))
 
 
@@ -157,19 +156,25 @@ borderRadius =
     }
 
 
-editorWidth : Int
-editorWidth =
-    Config.boardSize * floor Config.tileSize + (2 * borderSize.heavy)
+editorWidth : Float -> Int
+editorWidth tileSize =
+    Config.boardSize * floor tileSize + (2 * borderSize.heavy)
 
 
 editor : SharedState -> Model -> Element Msg
 editor sharedState model =
     let
+        tileSize =
+            sharedState.dimensions.tileSize
+
+        size =
+            px (editorWidth tileSize)
+
         rg =
             List.range 1 Config.boardSize
 
         col y =
-            List.map (\x -> tileOverlay sharedState.board model.selectedTool ( x, y )) rg
+            List.map (\x -> tileOverlay sharedState.board tileSize model.selectedTool ( x, y )) rg
 
         rows =
             List.map (\y -> row [] (col y)) rg
@@ -183,18 +188,18 @@ editor sharedState model =
                     colors.transparent
     in
     el
-        [ mouseOver [ Border.innerGlow glowColor Config.tileSize ]
-        , width (px editorWidth)
-        , height (px editorWidth)
+        [ mouseOver [ Border.innerGlow glowColor tileSize ]
+        , width size
+        , height size
         ]
         (column [] rows)
 
 
-tileOverlay : Board -> Tool -> Coords -> Element Msg
-tileOverlay board selectedTool coords =
+tileOverlay : Board -> Float -> Tool -> Coords -> Element Msg
+tileOverlay board tileSize selectedTool coords =
     let
         tileSizePx =
-            px (floor Config.tileSize)
+            px (floor tileSize)
 
         glowColor =
             case selectedTool of
@@ -225,32 +230,32 @@ tileOverlay board selectedTool coords =
     el
         [ width tileSizePx
         , height tileSizePx
-        , mouseOver [ Border.innerGlow glowColor (Config.tileSize / 4) ]
+        , mouseOver [ Border.innerGlow glowColor (tileSize / 4) ]
         , Events.onClick (SelectTile coords)
         ]
         Element.none
 
 
-toolbar : Model -> Element Msg
-toolbar model =
+toolbar : Model -> Dimensions -> Element Msg
+toolbar model dimensions =
     let
         buttonGroup buttons =
-            if List.length buttons > 2 then
-                wrappedRow [ width (px 102), spacing whitespace.tight ] buttons
-
-            else
-                row [ spacing whitespace.tight ] buttons
+            wrappedRow
+                [ width fill
+                , spacing whitespace.tight
+                ]
+                buttons
 
         constructionButtonGroup g =
             g
                 |> List.map Construction
-                |> List.map (toolbarButton model.selectedTool)
+                |> List.map (toolbarButton dimensions model.selectedTool)
                 |> buttonGroup
     in
     el
-        [ width (fill |> minimum 120)
-        , height fill
-        , padding whitespace.regular
+        [ width (px dimensions.toolbar)
+        , alignTop
+        , paddingXY whitespace.tight whitespace.regular
         , Background.color colors.toolbarBackground
         , Border.rounded borderRadius.heavy
         , Border.solid
@@ -263,8 +268,8 @@ toolbar model =
         , Border.color colors.heavyBorder
         ]
         (column
-            [ spacing (whitespace.regular * 2)
-            , centerX
+            [ spacing whitespace.regular
+            , width fill
             ]
             [ constructionButtonGroup constructionTileGroups.main
             , constructionButtonGroup constructionTileGroups.intersectionCross
@@ -272,16 +277,16 @@ toolbar model =
             , constructionButtonGroup constructionTileGroups.curve
             , constructionButtonGroup constructionTileGroups.deadend
             , buttonGroup
-                [ toolbarButton model.selectedTool Bulldozer
-                , toolbarButton model.selectedTool Dynamite
-                , toolbarButton model.selectedTool IntersectionDesigner
+                [ toolbarButton dimensions model.selectedTool Bulldozer
+                , toolbarButton dimensions model.selectedTool Dynamite
+                , toolbarButton dimensions model.selectedTool IntersectionDesigner
                 ]
             ]
         )
 
 
-toolbarButton : Tool -> Tool -> Element Msg
-toolbarButton selectedTool tool =
+toolbarButton : Dimensions -> Tool -> Tool -> Element Msg
+toolbarButton dimensions selectedTool tool =
     let
         asset =
             case tool of
@@ -304,10 +309,11 @@ toolbarButton selectedTool tool =
                     "__none__"
 
         show =
-            image [ width (px 42) ] { description = "", src = "assets/" ++ asset }
+            image [ width fill ] { description = "", src = "assets/" ++ asset }
     in
     Input.button
         [ Background.color colors.buttonBackground
+        , width (px dimensions.toolbarButton)
         , Border.width borderSize.light
         , Border.solid
         , Border.rounded borderRadius.light
@@ -329,8 +335,9 @@ menu sharedState =
     column
         [ Font.family [ Font.monospace ]
         , Font.color colors.text
-        , Font.size 14
-        , height fill
+        , Font.size sharedState.dimensions.text
+        , alignTop
+        , width (px sharedState.dimensions.menu)
         , padding whitespace.tight
         , spacing whitespace.regular
         , Background.color colors.toolbarBackground
@@ -381,15 +388,15 @@ debug : SharedState -> Element Msg
 debug sharedState =
     column [ spacing whitespace.tight, width fill ]
         (Dict.values sharedState.cars
-            |> List.map carInfo
+            |> List.map (carInfo sharedState.dimensions)
         )
 
 
-carInfo : Car -> Element msg
-carInfo car =
+carInfo : Dimensions -> Car -> Element msg
+carInfo dimensions car =
     let
         showCarKind =
-            image [ width (px 14) ]
+            image [ width (px dimensions.carPreview) ]
                 { description = ""
                 , src = "assets/" ++ Car.asset car
                 }

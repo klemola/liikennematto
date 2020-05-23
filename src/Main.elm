@@ -1,13 +1,16 @@
 module Main exposing (main)
 
 import Browser
-import Collage.Render exposing (svg)
+import Browser.Dom exposing (getViewport)
+import Browser.Events exposing (onResize)
+import Collage.Render as Render
 import Element
 import Element.Background as Background
 import Element.Border as Border
 import Html exposing (Html)
-import SharedState exposing (SharedState, SimulationState(..))
+import SharedState exposing (SharedState, SharedStateUpdate(..), SimulationState(..))
 import Simulation exposing (Msg(..))
+import Task
 import Time
 import UI
 
@@ -33,10 +36,11 @@ subs model =
             Sub.batch
                 [ Time.every slowTickSpeed SlowTick
                 , Time.every fastTickSpeed FastTick
+                , onResize ResizeWindow
                 ]
 
         Paused ->
-            Sub.none
+            onResize ResizeWindow
 
 
 type alias Model =
@@ -52,13 +56,15 @@ init _ =
       , ui = UI.initialModel
       , sharedState = SharedState.initial
       }
-    , Cmd.none
+      -- simulate a screen resize
+    , Task.perform (\{ viewport } -> ResizeWindow (round viewport.width) (round viewport.height)) getViewport
     )
 
 
 type Msg
     = SlowTick Time.Posix
     | FastTick Time.Posix
+    | ResizeWindow Int Int
     | SimulationMsg Simulation.Msg
     | UIMsg UI.Msg
 
@@ -91,6 +97,13 @@ update msg model =
             , Cmd.map SimulationMsg cmd
             )
 
+        ResizeWindow width height ->
+            let
+                nextSharedState =
+                    SharedState.update model.sharedState (RecalculateDimensions width height)
+            in
+            ( { model | sharedState = nextSharedState }, Cmd.none )
+
         SimulationMsg simulationMsg ->
             let
                 ( simulation, cmd, sharedStateUpdate ) =
@@ -121,14 +134,14 @@ view model =
     let
         simulation =
             Simulation.view model.sharedState
-                |> svg
+                |> Render.svg
                 |> Element.html
 
         editor =
             UI.editor model.sharedState model.ui
 
         toolbar =
-            UI.toolbar model.ui
+            UI.toolbar model.ui model.sharedState.dimensions
 
         menu =
             UI.menu model.sharedState
@@ -153,17 +166,14 @@ view model =
                         [ toolbar
                         , Element.el
                             [ Element.inFront editor
+                            , Element.alignTop
                             , Border.solid
                             , Border.width UI.borderSize.heavy
                             , Border.rounded UI.borderRadius.heavy
                             , Border.color UI.colors.heavyBorder
                             ]
                             simulation
-                        , Element.el
-                            [ Element.alignTop
-                            , Element.height Element.fill
-                            ]
-                            menu
+                        , menu
                         ]
                     )
                 )
