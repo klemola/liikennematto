@@ -1,4 +1,14 @@
-module SharedState exposing (..)
+module SharedState exposing
+    ( Cars
+    , Dimensions
+    , SharedState
+    , SharedStateUpdate(..)
+    , SimulationSpeed(..)
+    , SimulationState(..)
+    , initial
+    , simulationSpeedValues
+    , update
+    )
 
 import Board exposing (Board)
 import Car exposing (Car)

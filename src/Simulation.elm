@@ -1,14 +1,10 @@
-module Simulation exposing (Model, Msg(..), initialModel, update, view)
+module Simulation exposing (Model, Msg(..), initialModel, update)
 
 import Board exposing (Board)
 import Car exposing (Car, CarKind(..), Msg(..), Status(..))
-import Collage exposing (..)
-import Collage.Layout as Layout
-import Config exposing (boardSize)
 import Coords exposing (Coords)
 import Dict
 import Direction exposing (Direction(..), Orientation(..))
-import Graphics
 import Random
 import Random.List
 import SharedState exposing (Cars, SharedState, SharedStateUpdate)
@@ -231,7 +227,7 @@ applyYieldRules board tileCoords otherCars car =
                 |> List.map (Coords.next tileCoords)
                 -- add the intersection
                 |> List.append [ Coords.next car.coords car.direction ]
-                |> List.concatMap (getCars otherCars)
+                |> List.concatMap (Coords.filterBy otherCars)
     in
     if shouldYield && List.length priorityTraffic > 0 then
         Car.update YieldAtIntersection car
@@ -293,75 +289,3 @@ changeDirection board randomDirs car =
             Maybe.withDefault oppositeDirection (List.head validTurns)
     in
     Car.update (Turn turn) car
-
-
-getCars : List Car -> Coords -> List Car
-getCars cars coords =
-    cars
-        |> List.filter (\c -> c.coords == coords)
-
-
-
--- Room for improvement: since the view doesn't depend on Simulation model, it could be moved into a separate module - e.g. "Render"
-
-
-view : SharedState -> Collage msg
-view sharedState =
-    let
-        cars =
-            carOverlay (Dict.values sharedState.cars) sharedState.dimensions.tileSize
-
-        board =
-            Board.view sharedState.board sharedState.dimensions.tileSize
-    in
-    Layout.stack [ cars, board ]
-
-
-carOverlay : List Car -> Float -> Collage msg
-carOverlay cars tileSize =
-    let
-        carSize =
-            tileSize * 0.33
-
-        shiftAmount =
-            carSize * 0.5
-
-        -- fake tiles align the cars to the board beneath
-        fakeTile =
-            square tileSize
-                |> styled ( transparent, invisible )
-
-        baseShift status =
-            case status of
-                Turning _ ->
-                    shiftAmount
-
-                _ ->
-                    0
-
-        carShiftCoords status dir =
-            case dir of
-                Up ->
-                    ( shiftAmount, baseShift status )
-
-                Right ->
-                    ( baseShift status, -shiftAmount )
-
-                Down ->
-                    ( -shiftAmount, -(baseShift status) )
-
-                Left ->
-                    ( -(baseShift status), shiftAmount )
-
-        drawCars x y =
-            getCars cars ( x, y )
-                |> List.map
-                    (\c ->
-                        Car.view carSize c
-                            |> shift (carShiftCoords c.status c.direction)
-                    )
-                |> List.append [ fakeTile ]
-                |> Layout.stack
-    in
-    -- cars are rendered as an overlaid grid of the same size as the board
-    Graphics.grid boardSize drawCars

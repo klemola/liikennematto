@@ -1,9 +1,7 @@
-module Car exposing (Car, CarKind(..), Msg(..), Status(..), TurnKind(..), asset, isRespawning, isTurning, new, statusDescription, update, view)
+module Car exposing (Car, CarKind(..), Msg(..), Status(..), TurnKind(..), isRespawning, isTurning, new, statusDescription, update)
 
-import Collage exposing (Collage, rotate)
 import Coords exposing (Coords)
 import Direction exposing (Direction(..))
-import Graphics exposing (texture)
 import Tile exposing (Tile(..))
 
 
@@ -143,43 +141,3 @@ statusDescription status =
 
         Respawning ->
             "Respawning"
-
-
-view : Float -> Car -> Collage msg
-view size car =
-    let
-        rotationModifier =
-            case car.status of
-                Turning LeftTurn ->
-                    -45
-
-                Turning RightTurn ->
-                    45
-
-                _ ->
-                    0
-
-        rotation =
-            Direction.rotationDegrees car.direction + rotationModifier
-    in
-    texture size (asset car)
-        |> rotate (degrees rotation)
-
-
-asset : Car -> String
-asset car =
-    case car.kind of
-        Sedan1 ->
-            "car_blue_1.png"
-
-        Sedan2 ->
-            "car_red_1.png"
-
-        Sedan3 ->
-            "car_green_1.png"
-
-        Sedan4 ->
-            "car_yellow_1.png"
-
-        Sedan5 ->
-            "car_black_1.png"

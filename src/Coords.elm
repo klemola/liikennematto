@@ -1,4 +1,4 @@
-module Coords exposing (..)
+module Coords exposing (Coords, diagonalNeighbors, filterBy, next, parallelNeighbors, toString)
 
 import Direction exposing (Direction(..))
 
@@ -35,6 +35,12 @@ diagonalNeighbors ( x, y ) =
 parallelNeighbors : Coords -> List Coords
 parallelNeighbors coords =
     List.map (next coords) Direction.all
+
+
+filterBy : List { a | coords : Coords } -> Coords -> List { a | coords : Coords }
+filterBy list coords =
+    list
+        |> List.filter (\el -> el.coords == coords)
 
 
 toString : Coords -> String
