@@ -3,10 +3,6 @@ module Main exposing (main)
 import Browser
 import Browser.Dom exposing (getViewport)
 import Browser.Events exposing (onResize)
-import Collage.Render as Render
-import Element
-import Element.Background as Background
-import Element.Border as Border
 import Html exposing (Html)
 import SharedState exposing (SharedState, SharedStateUpdate(..), SimulationState(..))
 import Simulation exposing (Msg(..))
@@ -131,56 +127,4 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    let
-        simulation =
-            Simulation.view model.sharedState
-                |> Render.svg
-                |> Element.html
-
-        editor =
-            UI.editor model.sharedState model.ui
-
-        toolbar =
-            UI.toolbar model.ui model.sharedState.dimensions
-
-        menu =
-            UI.menu model.sharedState
-
-        simulationBorderColor =
-            case model.sharedState.simulationState of
-                Paused ->
-                    UI.colors.selected
-
-                _ ->
-                    UI.colors.heavyBorder
-
-        layout =
-            Element.layout
-                [ Background.color UI.colors.mainBackground
-                , Element.width Element.fill
-                , Element.height Element.fill
-                ]
-                (Element.el
-                    [ Element.centerX
-                    , Element.centerY
-                    , Element.padding UI.whitespace.regular
-                    ]
-                    (Element.row
-                        [ Element.spacing UI.whitespace.regular
-                        ]
-                        [ toolbar
-                        , Element.el
-                            [ Element.inFront editor
-                            , Element.alignTop
-                            , Border.solid
-                            , Border.width UI.borderSize.heavy
-                            , Border.rounded UI.borderRadius.heavy
-                            , Border.color simulationBorderColor
-                            ]
-                            simulation
-                        , menu
-                        ]
-                    )
-                )
-    in
-    Html.map UIMsg layout
+    Html.map UIMsg (UI.view model.sharedState model.ui)

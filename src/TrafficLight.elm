@@ -1,9 +1,6 @@
-module TrafficLight exposing (..)
+module TrafficLight exposing (TrafficLight, TrafficLightKind(..), advanceLight, advanceTimer, default, fromTrafficDirection, isGreen, new)
 
-import Collage exposing (Collage, circle, solid, styled, uniform)
-import Color exposing (Color)
 import Direction exposing (Direction(..))
-import Graphics
 
 
 type TrafficLightKind
@@ -77,38 +74,3 @@ isGreen tl =
 
         _ ->
             False
-
-
-toColor : TrafficLightKind -> Color
-toColor tlKind =
-    case tlKind of
-        Green ->
-            Color.darkGreen
-
-        Yellow ->
-            Color.darkYellow
-
-        Red ->
-            Color.darkRed
-
-
-view : Float -> TrafficLight -> Collage msg
-view tileSize tl =
-    let
-        markerSize =
-            tileSize / 10
-
-        borderSize =
-            markerSize / 6
-
-        offset =
-            markerSize + (2 * borderSize)
-
-        border =
-            solid borderSize <| uniform Color.grey
-
-        presentation =
-            circle markerSize
-                |> styled ( uniform (toColor tl.kind), border )
-    in
-    Graphics.marker tileSize offset tl.facing presentation

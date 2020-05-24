@@ -1,318 +1,131 @@
-module UI exposing (Model, Msg(..), borderRadius, borderSize, colors, editor, initialModel, menu, toolbar, update, whitespace)
+module UI exposing (Model, Msg(..), initialModel, menu, update, view)
 
-import Board exposing (Board)
 import Car exposing (Car)
-import Config exposing (constructionTileGroups)
-import Coords exposing (Coords)
+import Config exposing (borderRadius, borderSize, colors, whitespace)
+import Coords
 import Dict
 import Direction exposing (Orientation(..))
+import Editor
 import Element
     exposing
         ( Element
         , alignTop
+        , centerX
+        , centerY
         , column
         , el
         , fill
         , fillPortion
         , height
         , image
-        , mouseOver
+        , inFront
         , padding
         , paddingXY
         , px
-        , rgb255
         , row
-        , scrollbarY
         , spacing
         , text
         , width
-        , wrappedRow
         )
 import Element.Background as Background
 import Element.Border as Border
-import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
-import SharedState exposing (Dimensions, SharedState, SharedStateUpdate, SimulationSpeed(..), SimulationState(..))
-import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..))
-
-
-type Tool
-    = Construction Tile
-    | IntersectionDesigner
-    | Bulldozer
-    | Dynamite
-    | None
-
-
-type alias Model =
-    { selectedTool : Tool
-    }
+import Graphics
+import Html exposing (Html)
+import Render
+import SharedState
+    exposing
+        ( Dimensions
+        , SharedState
+        , SharedStateUpdate
+        , SimulationSpeed(..)
+        , SimulationState(..)
+        )
 
 
 type Msg
-    = SelectTile Coords
-    | SelectTool Tool
-    | SetSimulationState SimulationState
+    = SetSimulationState SimulationState
+    | EditorMsg Editor.Msg
+
+
+type alias Model =
+    { editor : Editor.Model
+    }
 
 
 initialModel : Model
 initialModel =
-    { selectedTool = None
-    }
+    { editor = Editor.initialModel }
 
 
 update : SharedState -> Msg -> Model -> ( Model, Cmd Msg, SharedStateUpdate )
 update sharedState msg model =
     case msg of
-        SelectTile coords ->
-            case ( model.selectedTool, Board.get sharedState.board coords ) of
-                ( Construction tile, _ ) ->
-                    ( model
-                    , Cmd.none
-                    , Board.set sharedState.board coords tile
-                        |> SharedState.EditBoardAt coords
-                    )
-
-                ( Bulldozer, Just _ ) ->
-                    ( model
-                    , Cmd.none
-                    , Board.remove coords sharedState.board
-                        |> SharedState.EditBoardAt coords
-                    )
-
-                ( Dynamite, _ ) ->
-                    ( { model | selectedTool = None }
-                    , Cmd.none
-                    , SharedState.NewBoard
-                    )
-
-                ( IntersectionDesigner, Just tile ) ->
-                    ( model
-                    , Cmd.none
-                    , Tile.toggleIntersectionControl tile
-                        |> Board.set sharedState.board coords
-                        |> SharedState.EditBoardAt coords
-                    )
-
-                _ ->
-                    ( model, Cmd.none, SharedState.NoUpdate )
-
-        SelectTool tool ->
-            let
-                nextTool =
-                    if model.selectedTool == tool then
-                        None
-
-                    else
-                        tool
-            in
-            ( { model | selectedTool = nextTool }, Cmd.none, SharedState.NoUpdate )
-
         SetSimulationState state ->
             ( model, Cmd.none, SharedState.UpdateSimulationState state )
 
-
-colors =
-    { mainBackground = rgb255 68 115 120
-    , toolbarBackground = rgb255 159 192 198
-    , buttonBackground = rgb255 228 228 235
-    , listItemBackground = rgb255 109 151 156
-    , text = rgb255 52 65 67
-    , textInverse = rgb255 222 222 222
-    , selected = rgb255 242 212 13
-    , danger = rgb255 235 119 52
-    , notAllowed = rgb255 245 66 84
-    , target = rgb255 222 222 222
-    , terrain = rgb255 33 191 154
-    , transparent = Element.rgba255 0 0 0 0
-    , lightBorder = rgb255 220 220 226
-    , heavyBorder = rgb255 53 93 97
-    }
-
-
-whitespace =
-    { regular = 10
-    , spacious = 20
-    , tight = 5
-    }
-
-
-borderSize =
-    { heavy = 10
-    , light = 3
-    }
-
-
-borderRadius =
-    { heavy = 5
-    , light = 3
-    }
-
-
-editor : SharedState -> Model -> Element Msg
-editor sharedState model =
-    let
-        tileSize =
-            sharedState.dimensions.tileSize
-
-        size =
-            px (Config.boardSize * floor tileSize)
-
-        rg =
-            List.range 1 Config.boardSize
-
-        col y =
-            List.map (\x -> tileOverlay sharedState.board tileSize model.selectedTool ( x, y )) rg
-
-        rows =
-            List.map (\y -> row [] (col y)) rg
-
-        glowColor =
-            case model.selectedTool of
-                Dynamite ->
-                    colors.danger
-
-                _ ->
-                    colors.transparent
-    in
-    el
-        [ mouseOver [ Border.innerGlow glowColor tileSize ]
-        , width size
-        , height size
-        ]
-        (column [] rows)
-
-
-tileOverlay : Board -> Float -> Tool -> Coords -> Element Msg
-tileOverlay board tileSize selectedTool coords =
-    let
-        tileSizePx =
-            px (floor tileSize)
-
-        glowColor =
-            case selectedTool of
-                None ->
-                    colors.transparent
-
-                Bulldozer ->
-                    colors.danger
-
-                Dynamite ->
-                    colors.transparent
-
-                Construction tile ->
-                    if Board.canAddTile board coords tile then
-                        colors.target
-
-                    else
-                        colors.notAllowed
-
-                IntersectionDesigner ->
-                    case Board.get board coords of
-                        Just (Intersection _ _) ->
-                            colors.target
-
-                        _ ->
-                            colors.notAllowed
-    in
-    el
-        [ width tileSizePx
-        , height tileSizePx
-        , mouseOver [ Border.innerGlow glowColor (tileSize / 4) ]
-        , Events.onClick (SelectTile coords)
-        ]
-        Element.none
-
-
-toolbar : Model -> Dimensions -> Element Msg
-toolbar model dimensions =
-    let
-        buttonGroup buttons =
-            wrappedRow
-                [ width fill
-                , spacing whitespace.tight
-                ]
-                buttons
-
-        constructionButtonGroup g =
-            g
-                |> List.map Construction
-                |> List.map (toolbarButton dimensions model.selectedTool)
-                |> buttonGroup
-    in
-    column
-        [ width (px dimensions.toolbar)
-        , alignTop
-        , paddingXY whitespace.tight whitespace.regular
-        , Background.color colors.toolbarBackground
-        , Border.rounded borderRadius.heavy
-        , Border.solid
-        , Border.widthEach
-            { top = borderSize.heavy
-            , bottom = borderSize.heavy
-            , left = borderSize.light
-            , right = borderSize.light
-            }
-        , Border.color colors.heavyBorder
-        , spacing whitespace.regular
-        ]
-        [ constructionButtonGroup constructionTileGroups.main
-        , constructionButtonGroup constructionTileGroups.intersectionCross
-        , constructionButtonGroup constructionTileGroups.intersectionT
-        , constructionButtonGroup constructionTileGroups.curve
-        , constructionButtonGroup constructionTileGroups.deadend
-        , buttonGroup
-            [ toolbarButton dimensions model.selectedTool Bulldozer
-            , toolbarButton dimensions model.selectedTool Dynamite
-            , toolbarButton dimensions model.selectedTool IntersectionDesigner
-            ]
-        ]
-
-
-toolbarButton : Dimensions -> Tool -> Tool -> Element Msg
-toolbarButton dimensions selectedTool tool =
-    let
-        asset =
-            case tool of
-                Construction (TwoLaneRoad kind) ->
-                    Tile.roadAsset kind
-
-                Construction (Intersection _ shape) ->
-                    Tile.intersectionAsset shape
-
-                IntersectionDesigner ->
-                    "intersection_designer.png"
-
-                Bulldozer ->
-                    "bulldozer.png"
-
-                Dynamite ->
-                    "dynamite.png"
-
-                _ ->
-                    "__none__"
-
-        show =
-            image [ width fill ] { description = "", src = "assets/" ++ asset }
-    in
-    Input.button
-        [ Background.color colors.buttonBackground
-        , width (px dimensions.toolbarButton)
-        , Border.width borderSize.light
-        , Border.solid
-        , Border.rounded borderRadius.light
-        , Border.color
-            (if selectedTool == tool then
-                colors.selected
-
-             else
-                colors.lightBorder
+        EditorMsg editorMsg ->
+            let
+                ( editor, cmd, sharedStateUpdate ) =
+                    Editor.update sharedState editorMsg model.editor
+            in
+            ( { model | editor = editor }
+            , Cmd.map EditorMsg cmd
+            , sharedStateUpdate
             )
+
+
+view : SharedState -> Model -> Html Msg
+view sharedState model =
+    let
+        simulation =
+            Render.view sharedState
+                |> Element.html
+
+        editor =
+            Editor.overlay sharedState model.editor
+                |> Element.map EditorMsg
+
+        toolbar =
+            Editor.toolbar model.editor sharedState.dimensions
+                |> Element.map EditorMsg
+
+        simulationBorderColor =
+            case sharedState.simulationState of
+                Paused ->
+                    colors.selected
+
+                _ ->
+                    colors.heavyBorder
+    in
+    Element.layout
+        [ Background.color colors.mainBackground
+        , width fill
+        , height fill
         ]
-        { onPress = Just (SelectTool tool)
-        , label = show
-        }
+        (el
+            [ centerX
+            , centerY
+            , padding whitespace.regular
+            ]
+            (row
+                [ spacing whitespace.regular
+                ]
+                [ toolbar
+                , el
+                    [ inFront editor
+                    , alignTop
+                    , Border.solid
+                    , Border.width borderSize.heavy
+                    , Border.rounded borderRadius.heavy
+                    , Border.color simulationBorderColor
+                    ]
+                    simulation
+                , menu sharedState
+                ]
+            )
+        )
 
 
 menu : SharedState -> Element Msg
@@ -400,7 +213,7 @@ carInfo dimensions car =
         showCarKind =
             image [ width (px dimensions.text) ]
                 { description = ""
-                , src = "assets/" ++ Car.asset car
+                , src = "assets/" ++ Graphics.carAsset car
                 }
     in
     row

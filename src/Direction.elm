@@ -1,4 +1,17 @@
-module Direction exposing (..)
+module Direction exposing
+    ( Direction(..)
+    , Orientation(..)
+    , all
+    , byOrientation
+    , cross
+    , fromOrientation
+    , next
+    , opposite
+    , oppositeOrientation
+    , orientations
+    , other
+    , previous
+    )
 
 
 type Direction
@@ -129,20 +142,3 @@ cross fromDir =
 
         Left ->
             vertical
-
-
-rotationDegrees : Direction -> Float
-rotationDegrees dir =
-    -- the values here are based on Collage logic: counter-clockwise rotation (from "Up")
-    case dir of
-        Up ->
-            0
-
-        Right ->
-            270
-
-        Down ->
-            180
-
-        Left ->
-            90
