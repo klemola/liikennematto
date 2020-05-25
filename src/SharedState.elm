@@ -12,7 +12,7 @@ module SharedState exposing
 
 import Board exposing (Board)
 import Car exposing (Car)
-import Config exposing (boardSize, initialCars, initialIntersections, initialRoads)
+import Config exposing (boardSize, initialBoard, initialCars)
 import Coords exposing (Coords)
 import Dict exposing (Dict)
 
@@ -65,18 +65,13 @@ initial : SharedState
 initial =
     -- Room for improvement: require screen size as parameter in order to avoid temporary values (zeros)
     let
-        board =
-            initialRoads
-                |> List.append initialIntersections
-                |> Dict.fromList
-
         dimensions =
             { maxDimensions | tileSize = 0 }
     in
     { simulationState = Simulation Medium
     , dimensions = dimensions
     , screenSize = ( 0, 0 )
-    , board = board
+    , board = initialBoard
     , cars = initialCars
     }
 
@@ -180,9 +175,10 @@ nextDimensions dimensions ( screenWidth, screenHeight ) =
             (screenHeight - paddingY)
                 |> min availableBoardSpace
                 |> min maxBoardSize
+                |> floorToEven
 
         tileSize =
-            boardSizePx / toFloat boardSize
+            floorToEven (boardSizePx / toFloat boardSize)
     in
     { dimensions
         | toolbarButton = floor toolbarButtonSize
@@ -195,6 +191,25 @@ nextDimensions dimensions ( screenWidth, screenHeight ) =
 valueOrMax : Int -> Float -> Float
 valueOrMax value max =
     min (toFloat value) max
+
+
+floorToEven : Float -> Float
+floorToEven num =
+    let
+        floored =
+            truncate num
+
+        isEven =
+            modBy 2 floored == 0
+
+        result =
+            if isEven then
+                floored
+
+            else
+                max (floored - 1) 0
+    in
+    toFloat result
 
 
 simulationSpeedValues : SimulationSpeed -> ( Float, Float )

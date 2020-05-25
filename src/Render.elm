@@ -87,10 +87,10 @@ renderTrafficLight : Float -> TrafficLight -> Collage msg
 renderTrafficLight tileSize tl =
     let
         markerSize =
-            tileSize / 10
+            tileSize * 0.1
 
         borderSize =
-            markerSize / 6
+            markerSize * 0.16
 
         offset =
             markerSize + (2 * borderSize)

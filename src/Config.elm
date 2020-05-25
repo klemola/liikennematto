@@ -11,7 +11,7 @@ import TrafficLight
 
 boardSize : Int
 boardSize =
-    9
+    10
 
 
 constructionTileGroups =
@@ -80,62 +80,65 @@ borderRadius =
     }
 
 
-initialRoads : List ( Coords, Tile )
-initialRoads =
-    [ ( ( 1, 1 ), TwoLaneRoad (Curve TopLeft) )
-    , ( ( 2, 1 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 3, 1 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 4, 1 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 6, 1 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 7, 1 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 8, 1 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 9, 1 ), TwoLaneRoad (Deadend Right) )
-    , ( ( 1, 2 ), TwoLaneRoad (Regular Vertical) )
-    , ( ( 5, 2 ), TwoLaneRoad (Regular Vertical) )
-    , ( ( 2, 3 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 3, 3 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 4, 3 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 6, 3 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 7, 3 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 8, 3 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 9, 3 ), TwoLaneRoad (Curve TopRight) )
-    , ( ( 1, 4 ), TwoLaneRoad (Regular Vertical) )
-    , ( ( 5, 4 ), TwoLaneRoad (Regular Vertical) )
-    , ( ( 9, 4 ), TwoLaneRoad (Regular Vertical) )
-    , ( ( 1, 5 ), TwoLaneRoad (Regular Vertical) )
-    , ( ( 5, 5 ), TwoLaneRoad (Regular Vertical) )
-    , ( ( 9, 5 ), TwoLaneRoad (Regular Vertical) )
-    , ( ( 1, 6 ), TwoLaneRoad (Curve BottomLeft) )
-    , ( ( 2, 6 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 3, 6 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 4, 6 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 6, 6 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 7, 6 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 8, 6 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 5, 7 ), TwoLaneRoad (Regular Vertical) )
-    , ( ( 9, 7 ), TwoLaneRoad (Regular Vertical) )
-    , ( ( 5, 8 ), TwoLaneRoad (Regular Vertical) )
-    , ( ( 9, 8 ), TwoLaneRoad (Regular Vertical) )
-    , ( ( 1, 9 ), TwoLaneRoad (Deadend Left) )
-    , ( ( 2, 9 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 3, 9 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 4, 9 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 6, 9 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 7, 9 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 8, 9 ), TwoLaneRoad (Regular Horizontal) )
-    , ( ( 9, 9 ), TwoLaneRoad (Curve BottomRight) )
-    ]
-
-
-initialIntersections : List ( Coords, Tile )
-initialIntersections =
-    [ ( ( 5, 1 ), Intersection (Yield Vertical) (T Down) )
-    , ( ( 1, 3 ), Intersection (Yield Horizontal) (T Right) )
-    , ( ( 5, 3 ), Intersection (Stop Vertical) Crossroads )
-    , ( ( 5, 6 ), Intersection (Signal TrafficLight.default) Crossroads )
-    , ( ( 9, 6 ), Intersection (Stop Horizontal) (T Left) )
-    , ( ( 5, 9 ), Intersection (Yield Vertical) (T Up) )
-    ]
+initialBoard : Dict Coords Tile
+initialBoard =
+    Dict.fromList
+        [ ( ( 1, 1 ), TwoLaneRoad (Curve TopLeft) )
+        , ( ( 1, 2 ), TwoLaneRoad (Regular Vertical) )
+        , ( ( 1, 3 ), TwoLaneRoad (Regular Vertical) )
+        , ( ( 1, 4 ), Intersection (Stop Horizontal) (T Right) )
+        , ( ( 1, 5 ), TwoLaneRoad (Regular Vertical) )
+        , ( ( 1, 6 ), TwoLaneRoad (Regular Vertical) )
+        , ( ( 1, 7 ), Intersection (Yield Horizontal) (T Right) )
+        , ( ( 1, 8 ), TwoLaneRoad (Regular Vertical) )
+        , ( ( 1, 9 ), TwoLaneRoad (Regular Vertical) )
+        , ( ( 1, 10 ), TwoLaneRoad (Curve BottomLeft) )
+        , ( ( 2, 1 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 2, 4 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 2, 7 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 2, 10 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 3, 1 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 3, 4 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 3, 7 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 3, 10 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 4, 1 ), Intersection (Stop Vertical) (T Down) )
+        , ( ( 4, 2 ), TwoLaneRoad (Regular Vertical) )
+        , ( ( 4, 3 ), TwoLaneRoad (Regular Vertical) )
+        , ( ( 4, 4 ), Intersection (Signal TrafficLight.default) Crossroads )
+        , ( ( 4, 5 ), TwoLaneRoad (Regular Vertical) )
+        , ( ( 4, 6 ), TwoLaneRoad (Regular Vertical) )
+        , ( ( 4, 7 ), TwoLaneRoad (Curve BottomRight) )
+        , ( ( 4, 10 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 5, 1 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 5, 4 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 5, 10 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 6, 1 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 6, 4 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 6, 10 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 7, 1 ), TwoLaneRoad (Curve TopRight) )
+        , ( ( 7, 2 ), TwoLaneRoad (Regular Vertical) )
+        , ( ( 7, 3 ), TwoLaneRoad (Regular Vertical) )
+        , ( ( 7, 4 ), Intersection (Yield Vertical) Crossroads )
+        , ( ( 7, 5 ), TwoLaneRoad (Regular Vertical) )
+        , ( ( 7, 6 ), TwoLaneRoad (Regular Vertical) )
+        , ( ( 7, 7 ), Intersection (Yield Horizontal) (T Right) )
+        , ( ( 7, 8 ), TwoLaneRoad (Regular Vertical) )
+        , ( ( 7, 9 ), TwoLaneRoad (Regular Vertical) )
+        , ( ( 7, 10 ), Intersection (Yield Vertical) (T Up) )
+        , ( ( 8, 4 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 8, 7 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 8, 10 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 9, 4 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 9, 7 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 9, 10 ), TwoLaneRoad (Regular Horizontal) )
+        , ( ( 10, 4 ), TwoLaneRoad (Curve TopRight) )
+        , ( ( 10, 5 ), TwoLaneRoad (Regular Vertical) )
+        , ( ( 10, 6 ), TwoLaneRoad (Regular Vertical) )
+        , ( ( 10, 7 ), Intersection (Yield Horizontal) (T Left) )
+        , ( ( 10, 8 ), TwoLaneRoad (Regular Vertical) )
+        , ( ( 10, 9 ), TwoLaneRoad (Regular Vertical) )
+        , ( ( 10, 10 ), TwoLaneRoad (Curve BottomRight) )
+        ]
 
 
 initialCars : Dict Int Car

@@ -49,7 +49,7 @@ toString coords =
         format n =
             n
                 |> String.fromInt
-                |> String.padLeft 1 ' '
+                |> String.padLeft 2 ' '
     in
     String.join
         " "

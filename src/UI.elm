@@ -120,6 +120,7 @@ view sharedState model =
                     , Border.width borderSize.heavy
                     , Border.rounded borderRadius.heavy
                     , Border.color simulationBorderColor
+                    , Background.color colors.terrain
                     ]
                     simulation
                 , menu sharedState
