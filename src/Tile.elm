@@ -4,6 +4,7 @@ module Tile exposing
     , IntersectionShape(..)
     , RoadKind(..)
     , Tile(..)
+    , connected
     , isIntersection
     , isRoad
     , potentialConnections
@@ -140,6 +141,21 @@ potentialConnections tile =
 
         Terrain ->
             []
+
+
+connected : Direction -> Tile -> Tile -> Bool
+connected fromDir origin destination =
+    let
+        originConnections =
+            potentialConnections origin
+
+        destinationConnections =
+            potentialConnections destination
+
+        connects dir =
+            dir == fromDir && List.member (Direction.opposite dir) destinationConnections
+    in
+    List.any connects originConnections
 
 
 validNeighbors : Tile -> Tile -> Bool

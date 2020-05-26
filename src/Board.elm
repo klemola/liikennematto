@@ -53,12 +53,12 @@ roadCoords board =
 
 
 connections : Board -> Coords -> Tile -> List Tile
-connections board coords target =
+connections board coords origin =
     let
         validate dir tile =
             if
                 List.member (Direction.opposite dir) (Tile.potentialConnections tile)
-                    && Tile.validNeighbors tile target
+                    && Tile.validNeighbors tile origin
             then
                 Just tile
 
@@ -69,7 +69,7 @@ connections board coords target =
             get board (Coords.next coords dir)
                 |> Maybe.andThen (validate dir)
     in
-    Tile.potentialConnections target
+    Tile.potentialConnections origin
         |> List.filterMap connection
 
 

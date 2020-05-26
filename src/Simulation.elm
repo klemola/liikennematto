@@ -162,6 +162,9 @@ updateCar model board otherCars car =
         shouldTurnRandomly =
             model.coinTossResult && Tile.isIntersection currentTile && not (Car.isTurning car)
 
+        isNextTileConnected =
+            Tile.connected car.direction currentTile nextTile
+
         willCollideWithAnother =
             case nextTile of
                 -- car moving towards another in an opposite direction will not cause a collision
@@ -173,11 +176,7 @@ updateCar model board otherCars car =
                     List.any (\c -> c.coords == nextCoords) otherCars
     in
     if Car.isRespawning car then
-        Board.roadCoords board
-            |> List.filter (\coords -> List.all (\oc -> oc.coords /= coords) otherCars)
-            |> List.head
-            |> Maybe.map (\coords -> Car.update (Spawn coords) car)
-            |> Maybe.withDefault car
+        attemptRespawn board otherCars car
 
     else if willCollideWithAnother then
         if shouldTurnRandomly then
@@ -185,6 +184,9 @@ updateCar model board otherCars car =
 
         else
             Car.update Wait car
+
+    else if not isNextTileConnected then
+        changeDirection board model.randomDirections car
 
     else
         case nextTile of
@@ -210,6 +212,15 @@ updateCar model board otherCars car =
 
             _ ->
                 changeDirection board model.randomDirections car
+
+
+attemptRespawn : Board -> List Car -> Car -> Car
+attemptRespawn board otherCars car =
+    Board.roadCoords board
+        |> List.filter (\coords -> List.all (\oc -> oc.coords /= coords) otherCars)
+        |> List.head
+        |> Maybe.map (\coords -> Car.update (Spawn coords) car)
+        |> Maybe.withDefault car
 
 
 applyYieldRules : Board -> Coords -> List Car -> Car -> Car
