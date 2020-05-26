@@ -1,8 +1,10 @@
 # Liikennematto
 
-Liikennematto (Finnish for a "traffic mat/rug") is a prototype of a village builder game of a tiny scale. The inspiration comes from traffic rugs/road carpets that children play with. The prototype currently works like a board game where cars take turns in roaming around the "game board".
+Liikennematto (_Finnish for a "traffic mat"_) is a prototype village builder game with a tiny scale. Inspired by traffic mats that children play with. The prototype currently works like a board game where cars take turns in roaming around the "game board".
 
-This is what I have so far:
+## Features
+
+### Simulation
 
 - simple collision detection
 - a two-lane road network on a grid
@@ -10,12 +12,37 @@ This is what I have so far:
 - yield sign based intersections
 - stop sign based intersections
 - dead end streets
-- basic textures
-- basic UI with debug info and simulation controls
+- basic simulation control (pause/speed)
+- debug view
 
-[Live demo](http://apps.butsku.com/liikennematto/)
+### Map editor
+
+- draw (_place_) tiles of all kind
+- bulldoze (_remove_) tiles
+- blow up the board (_clear it_) with dynamite
+- toggle intersection control
+
+#### Restrictions
+
+Tiles cannot be placed everywhere. In order to avoid awkward road layouts, these restrictions apply:
+
+- intersections and curves cannot be placed right next to each other (add a regular road tile between them)
+- parallel roads have to be at least one empty tile apart
+- tiles have to "connect" with another tile, unless the surroundings are empty
+
+## Demo & more information
+
+> Liikennematto works best on a large screen with landscape orientation (iPad, laptops, desktops)
+
+[Live demo (stable)](http://apps.butsku.com/liikennematto/)
+
+[Preview version (often in sync with the master branch)](http://apps.butsku.com/liikennematto/next.html)
 
 Read more about the project from [Liikennematto dev blog #1: prototyping traffic simulation with Elm](https://matiasklemola.com/liikennematto-dev-blog-one)
+
+[Follow me on Twitter](https://twitter.com/MatiasKlemola) for updates
+
+## Attribution
 
 Thanks to [Kenney](https://kenney.nl/assets) for the free game assets (subset of the "Road Textures" and "Racing Pack" collections).
 
