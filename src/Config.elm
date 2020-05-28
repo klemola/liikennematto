@@ -4,7 +4,7 @@ import Car exposing (Car, CarKind(..), Status(..), TurnKind(..))
 import Coords exposing (Coords)
 import Dict exposing (Dict)
 import Direction exposing (Direction(..), Orientation(..))
-import Element exposing (rgb255)
+import Element exposing (rgb255, rgba255)
 import Tile exposing (CurveKind(..), IntersectionControl(..), IntersectionShape(..), RoadKind(..), Tile(..))
 import TrafficLight
 
@@ -50,12 +50,13 @@ colors =
     , listItemBackground = rgb255 109 151 156
     , text = rgb255 52 65 67
     , textInverse = rgb255 222 222 222
+    , link = rgb255 10 132 199
     , selected = rgb255 242 212 13
     , danger = rgb255 235 119 52
     , notAllowed = rgb255 245 66 84
     , target = rgb255 222 222 222
     , terrain = rgb255 33 191 154
-    , transparent = Element.rgba255 0 0 0 0
+    , transparent = rgba255 0 0 0 0
     , lightBorder = rgb255 220 220 226
     , heavyBorder = rgb255 53 93 97
     }

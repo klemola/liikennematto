@@ -19,8 +19,10 @@ import Element
         , height
         , image
         , inFront
+        , newTabLink
         , padding
         , paddingXY
+        , paragraph
         , px
         , row
         , spacing
@@ -152,6 +154,7 @@ menu sharedState =
         ]
         [ simulationControl sharedState
         , debug sharedState
+        , projectInfo
         ]
 
 
@@ -204,12 +207,12 @@ debug : SharedState -> Element Msg
 debug sharedState =
     column [ spacing whitespace.tight, width fill ]
         (Dict.values sharedState.cars
-            |> List.map (carInfo sharedState.dimensions)
+            |> List.map (carStateView sharedState.dimensions)
         )
 
 
-carInfo : Dimensions -> Car -> Element msg
-carInfo dimensions car =
+carStateView : Dimensions -> Car -> Element msg
+carStateView dimensions car =
     let
         showCarKind =
             image [ width (px dimensions.text) ]
@@ -232,5 +235,46 @@ carInfo dimensions car =
         , column [ spacing whitespace.tight ]
             [ text (Coords.toString car.coords)
             , text (Car.statusDescription car.status)
+            ]
+        ]
+
+
+projectInfo : Element Msg
+projectInfo =
+    let
+        link url label =
+            newTabLink
+                [ Font.color colors.link
+                ]
+                { url = url
+                , label = text label
+                }
+    in
+    column
+        [ Font.family
+            [ Font.typeface "Helvetica"
+            , Font.typeface "sans-serif"
+            ]
+        , Background.color colors.textInverse
+        , Border.rounded borderRadius.light
+        , width fill
+        , padding whitespace.regular
+        , spacing whitespace.regular
+        ]
+        [ el
+            [ Font.size 16
+            , Font.bold
+            ]
+            (text "Liikennematto")
+        , paragraph [] [ text "Prototype village builder game with a tiny scale. Inspired by traffic mats that children play with." ]
+        , row
+            [ spacing whitespace.tight
+            , centerX
+            ]
+            [ link "https://github.com/klemola/liikennematto" "GitHub"
+            , text "｜"
+            , link "https://matiasklemola.com/liikennematto-dev-blog-one" "Blog"
+            , text "｜"
+            , link "https://twitter.com/MatiasKlemola" "Twitter"
             ]
         ]
