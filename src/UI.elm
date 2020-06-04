@@ -12,6 +12,7 @@ import Element
         , alignTop
         , centerX
         , centerY
+        , clipX
         , column
         , el
         , fill
@@ -224,7 +225,9 @@ carStateView dimensions car =
         [ width fill
         , padding whitespace.tight
         , spacing whitespace.regular
+        , clipX
         , Font.color colors.textInverse
+        , Font.size 13
         , Background.color colors.listItemBackground
         , Border.solid
         , Border.rounded borderRadius.light

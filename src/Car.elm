@@ -1,4 +1,22 @@
-module Car exposing (Car, CarKind(..), Msg(..), Status(..), TurnKind(..), isRespawning, isTurning, new, statusDescription, update)
+module Car exposing
+    ( Car
+    , CarKind(..)
+    , Status(..)
+    , TurnKind(..)
+    , isMoving
+    , isRespawning
+    , isTurning
+    , move
+    , new
+    , skipRound
+    , spawn
+    , statusDescription
+    , stopAtIntersection
+    , turn
+    , waitForRespawn
+    , waitForTrafficLights
+    , yield
+    )
 
 import Coords exposing (Coords)
 import Direction exposing (Direction(..))
@@ -24,30 +42,17 @@ type CarKind
 type Status
     = Moving
     | Turning TurnKind
-    | Waiting
+    | WaitingForTrafficLights
     | StoppedAtIntersection Int
     | Yielding
     | Respawning
+    | SkippingRound
 
 
 type TurnKind
     = LeftTurn
     | RightTurn
     | UTurn
-
-
-type alias Model =
-    Car
-
-
-type Msg
-    = Move
-    | Turn Direction
-    | Wait
-    | YieldAtIntersection
-    | StopAtIntersection Int
-    | WaitForRespawn
-    | Spawn Coords
 
 
 new : CarKind -> Car
@@ -75,44 +80,75 @@ isRespawning car =
             False
 
 
-update : Msg -> Model -> Model
-update msg car =
-    case msg of
-        Move ->
-            let
-                nextCoords =
-                    Coords.next car.coords car.direction
-            in
-            { car | coords = nextCoords, status = Moving }
+isMoving : Car -> Bool
+isMoving car =
+    case car.status of
+        Moving ->
+            True
 
-        Turn nextDirection ->
-            let
-                turnDirection =
-                    if Direction.previous car.direction == nextDirection then
-                        LeftTurn
+        Respawning ->
+            True
 
-                    else if Direction.next car.direction == nextDirection then
-                        RightTurn
+        Turning _ ->
+            True
 
-                    else
-                        UTurn
-            in
-            { car | direction = nextDirection, status = Turning turnDirection }
+        _ ->
+            False
 
-        Wait ->
-            { car | status = Waiting }
 
-        YieldAtIntersection ->
-            { car | status = Yielding }
+move : Car -> Car
+move car =
+    let
+        nextCoords =
+            Coords.next car.coords car.direction
+    in
+    { car | coords = nextCoords, status = Moving }
 
-        StopAtIntersection roundsRemaining ->
-            { car | status = StoppedAtIntersection roundsRemaining }
 
-        WaitForRespawn ->
-            { car | status = Respawning, coords = ( 0, 0 ) }
+skipRound : Car -> Car
+skipRound car =
+    { car | status = SkippingRound }
 
-        Spawn coords ->
-            { car | status = Waiting, coords = coords }
+
+turn : Car -> Direction -> Car
+turn car nextDirection =
+    let
+        turnDirection =
+            if Direction.previous car.direction == nextDirection then
+                LeftTurn
+
+            else if Direction.next car.direction == nextDirection then
+                RightTurn
+
+            else
+                UTurn
+    in
+    { car | direction = nextDirection, status = Turning turnDirection }
+
+
+waitForTrafficLights : Car -> Car
+waitForTrafficLights car =
+    { car | status = WaitingForTrafficLights }
+
+
+yield : Car -> Car
+yield car =
+    { car | status = Yielding }
+
+
+stopAtIntersection : Car -> Int -> Car
+stopAtIntersection car roundsRemaining =
+    { car | status = StoppedAtIntersection roundsRemaining }
+
+
+waitForRespawn : Car -> Car
+waitForRespawn car =
+    { car | status = Respawning, coords = ( 0, 0 ) }
+
+
+spawn : Car -> Coords -> Car
+spawn car coords =
+    { car | status = SkippingRound, coords = coords }
 
 
 statusDescription : Status -> String
@@ -130,8 +166,8 @@ statusDescription status =
         Turning UTurn ->
             "Making a U-turn"
 
-        Waiting ->
-            "Waiting"
+        WaitingForTrafficLights ->
+            "Stopped @ traffic lights"
 
         StoppedAtIntersection roundsRemaining ->
             "Stopped..." ++ String.fromInt roundsRemaining
@@ -141,3 +177,6 @@ statusDescription status =
 
         Respawning ->
             "Respawning"
+
+        SkippingRound ->
+            "Skipping the round"
