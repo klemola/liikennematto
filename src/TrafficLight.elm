@@ -1,4 +1,15 @@
-module TrafficLight exposing (TrafficLight, TrafficLightKind(..), advanceLight, advanceTimer, default, fromTrafficDirection, isGreen, new)
+module TrafficLight exposing
+    ( TrafficLight
+    , TrafficLightKind(..)
+    , TrafficLights
+    , advanceLight
+    , advanceTimer
+    , default
+    , fromTrafficDirection
+    , isGreen
+    , new
+    , trafficAllowedFromDirection
+    )
 
 import Direction exposing (Direction(..))
 
@@ -14,6 +25,10 @@ type alias TrafficLight =
     , facing : Direction
     , timeRemaining : Int
     }
+
+
+type alias TrafficLights =
+    List TrafficLight
 
 
 fromTrafficDirection : List Direction -> List TrafficLight
@@ -74,3 +89,12 @@ isGreen tl =
 
         _ ->
             False
+
+
+trafficAllowedFromDirection : TrafficLights -> Direction -> Bool
+trafficAllowedFromDirection trafficLights entryDirection =
+    let
+        signalXsEntryAllowed tl =
+            isGreen tl && tl.facing == entryDirection
+    in
+    List.any signalXsEntryAllowed trafficLights

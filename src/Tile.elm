@@ -7,15 +7,15 @@ module Tile exposing
     , connected
     , isIntersection
     , isRoad
+    , isTerrain
     , potentialConnections
     , priorityDirections
     , toggleIntersectionControl
-    , trafficLightsAllowEntry
     , validNeighbors
     )
 
 import Direction exposing (Direction(..), Orientation(..))
-import TrafficLight exposing (TrafficLight)
+import TrafficLight exposing (TrafficLights)
 
 
 type RoadKind
@@ -43,23 +43,10 @@ type IntersectionShape
     | Crossroads
 
 
-type alias TrafficLights =
-    List TrafficLight
-
-
 type Tile
     = TwoLaneRoad RoadKind
     | Intersection IntersectionControl IntersectionShape
     | Terrain
-
-
-trafficLightsAllowEntry : TrafficLights -> Direction -> Bool
-trafficLightsAllowEntry trafficLights entryDirection =
-    let
-        signalXsEntryAllowed tl =
-            TrafficLight.isGreen tl && tl.facing == entryDirection
-    in
-    List.any signalXsEntryAllowed trafficLights
 
 
 isRoad : Tile -> Bool
@@ -90,6 +77,11 @@ isIntersection tile =
 
         _ ->
             False
+
+
+isTerrain : Tile -> Bool
+isTerrain tile =
+    tile == Terrain
 
 
 priorityDirections : Tile -> List Direction

@@ -111,7 +111,7 @@ update sharedState sharedStateUpdate =
                     Dict.map
                         (\_ car ->
                             if car.coords == coords then
-                                Car.update Car.WaitForRespawn car
+                                Car.waitForRespawn car
 
                             else
                                 car
