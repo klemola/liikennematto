@@ -16,21 +16,21 @@ new =
     Dict.fromList []
 
 
-get : Board -> Coords -> Maybe Tile
-get board coords =
+get : Coords -> Board -> Maybe Tile
+get coords board =
     Dict.find (\key _ -> key == coords) board
         |> Maybe.map Tuple.second
 
 
-getSafe : Board -> Coords -> Tile
-getSafe board coords =
-    get board coords
+getSafe : Coords -> Board -> Tile
+getSafe coords board =
+    get coords board
         |> Maybe.withDefault Terrain
 
 
-set : Board -> Coords -> Tile -> Board
-set board coords tile =
-    if canAddTile board coords tile then
+set : Coords -> Tile -> Board -> Board
+set coords tile board =
+    if canAddTile coords tile board then
         Dict.insert coords tile board
 
     else
@@ -52,8 +52,8 @@ roadCoords board =
         |> Dict.keys
 
 
-connections : Board -> Coords -> Tile -> List Tile
-connections board coords origin =
+connections : Coords -> Tile -> Board -> List Tile
+connections coords origin board =
     let
         validate dir tile =
             if
@@ -66,23 +66,23 @@ connections board coords origin =
                 Nothing
 
         connection dir =
-            get board (Coords.next coords dir)
+            get (Coords.next coords dir) board
                 |> Maybe.andThen (validate dir)
     in
     Tile.potentialConnections origin
         |> List.filterMap connection
 
 
-canAddTile : Board -> Coords -> Tile -> Bool
-canAddTile board coords tile =
+canAddTile : Coords -> Tile -> Board -> Bool
+canAddTile coords tile board =
     let
         diagonalNeighborTiles =
             Coords.diagonalNeighbors coords
-                |> List.filterMap (get board)
+                |> List.filterMap (\c -> get c board)
 
         parallelNeighborTiles =
             Coords.parallelNeighbors coords
-                |> List.filterMap (get board)
+                |> List.filterMap (\c -> get c board)
 
         surroundingTiles =
             parallelNeighborTiles ++ diagonalNeighborTiles
@@ -102,7 +102,7 @@ canAddTile board coords tile =
                     False
 
         doesRoadConnect _ =
-            not (List.isEmpty (connections board coords tile))
+            not (List.isEmpty (connections coords tile board))
 
         isValid _ =
             List.all isValidDiagonal diagonalNeighborTiles && doesRoadConnect ()

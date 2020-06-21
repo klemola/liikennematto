@@ -110,8 +110,8 @@ skipRound car =
     { car | status = SkippingRound }
 
 
-turn : Car -> Direction -> Car
-turn car nextDirection =
+turn : Direction -> Car -> Car
+turn nextDirection car =
     let
         turnDirection =
             if Direction.previous car.direction == nextDirection then
@@ -136,8 +136,8 @@ yield car =
     { car | status = Yielding }
 
 
-stopAtIntersection : Car -> Int -> Car
-stopAtIntersection car roundsRemaining =
+stopAtIntersection : Int -> Car -> Car
+stopAtIntersection roundsRemaining car =
     { car | status = StoppedAtIntersection roundsRemaining }
 
 
@@ -146,8 +146,8 @@ waitForRespawn car =
     { car | status = Respawning, coords = ( 0, 0 ) }
 
 
-spawn : Car -> Coords -> Car
-spawn car coords =
+spawn : Coords -> Car -> Car
+spawn coords car =
     { car | status = SkippingRound, coords = coords }
 
 
