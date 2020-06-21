@@ -55,11 +55,12 @@ update : SharedState -> Msg -> Model -> ( Model, Cmd Msg, SharedStateUpdate )
 update sharedState msg model =
     case msg of
         SelectTile coords ->
-            case ( model, Board.get sharedState.board coords ) of
+            case ( model, Board.get coords sharedState.board ) of
                 ( Construction tile, _ ) ->
                     ( model
                     , Cmd.none
-                    , Board.set sharedState.board coords tile
+                    , sharedState.board
+                        |> Board.set coords tile
                         |> SharedState.EditBoardAt coords
                     )
 
@@ -79,8 +80,8 @@ update sharedState msg model =
                 ( IntersectionDesigner, Just tile ) ->
                     ( model
                     , Cmd.none
-                    , Tile.toggleIntersectionControl tile
-                        |> Board.set sharedState.board coords
+                    , sharedState.board
+                        |> Board.set coords (Tile.toggleIntersectionControl tile)
                         |> SharedState.EditBoardAt coords
                     )
 
@@ -151,14 +152,14 @@ tileOverlay board tileSize selectedTool coords =
                     colors.transparent
 
                 Construction tile ->
-                    if Board.canAddTile board coords tile then
+                    if Board.canAddTile coords tile board then
                         colors.target
 
                     else
                         colors.notAllowed
 
                 IntersectionDesigner ->
-                    case Board.get board coords of
+                    case Board.get coords board of
                         Just (Intersection _ _) ->
                             colors.target
 

@@ -42,7 +42,8 @@ renderBoard : Board -> Float -> Collage msg
 renderBoard board tileSize =
     let
         drawTile x y =
-            Board.getSafe board ( x, y )
+            board
+                |> Board.getSafe ( x, y )
                 |> renderTile tileSize
     in
     Graphics.grid boardSize drawTile
