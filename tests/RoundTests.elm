@@ -1,5 +1,6 @@
 module RoundTests exposing (suite)
 
+import Car exposing (Status(..), TurnKind(..))
 import Expect
 import Fixtures exposing (..)
 import Round exposing (Rule(..), checkCollisionRules, checkIntersectionRules, checkMovementRules, checkTurningRules)
@@ -44,5 +45,75 @@ suite =
                 (\_ -> Expect.equal (checkIntersectionRules stopSetup) (Just StopAtIntersection))
             , test "disallow movement if the car is at a stop sign - additional yield rules"
                 (\_ -> Expect.equal (checkIntersectionRules yieldAfterStopSetup) (Just YieldAtIntersection))
+            ]
+        , describe "Playing the round"
+            [ test "can prevent car movement"
+                (\_ ->
+                    Expect.equal
+                        (collisionSetup
+                            |> Round.play
+                            |> .status
+                        )
+                        SkippingRound
+                )
+            , test "can make the car turn"
+                (\_ ->
+                    Expect.equal
+                        (curveSetup
+                            |> Round.play
+                            |> .status
+                        )
+                        (Turning RightTurn)
+                )
+            , test "can stop the car at traffic lights"
+                (\_ ->
+                    Expect.equal
+                        (redTrafficLightsSetup
+                            |> Round.play
+                            |> .status
+                        )
+                        WaitingForTrafficLights
+                )
+            , test "can make the car yield"
+                (\_ ->
+                    Expect.equal
+                        (yieldWithPriorityTrafficSetup
+                            |> Round.play
+                            |> .status
+                        )
+                        Yielding
+                )
+            , test "can make the car stop (at sign)"
+                (\_ ->
+                    Expect.equal
+                        (stopSetup
+                            |> Round.play
+                            |> .status
+                        )
+                        (StoppedAtIntersection 1)
+                )
+            ]
+        , describe "Respawn"
+            [ test "works for a car that is waiting to spawn"
+                (\_ ->
+                    Expect.equal
+                        (respawnSetup
+                            |> Round.attemptRespawn
+                            |> .activeCar
+                            |> .coords
+                        )
+                        ( 1, 1 )
+                )
+            , test "does nothing for a car that has already spawned"
+                (\_ ->
+                    Expect.equal
+                        (connectedRoadsSetup
+                            |> Round.attemptRespawn
+                            |> .activeCar
+                        )
+                        (connectedRoadsSetup
+                            |> .activeCar
+                        )
+                )
             ]
         ]
