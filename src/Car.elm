@@ -3,11 +3,11 @@ module Car exposing
     , CarKind(..)
     , Status(..)
     , TurnKind(..)
-    , isMoving
     , isRespawning
     , isTurning
     , move
     , new
+    , onTheMove
     , skipRound
     , spawn
     , statusDescription
@@ -43,7 +43,7 @@ type Status
     = Moving
     | Turning TurnKind
     | WaitingForTrafficLights
-    | StoppedAtIntersection Int
+    | StoppedAtIntersection
     | Yielding
     | Respawning
     | SkippingRound
@@ -80,8 +80,8 @@ isRespawning car =
             False
 
 
-isMoving : Car -> Bool
-isMoving car =
+onTheMove : Car -> Bool
+onTheMove car =
     case car.status of
         Moving ->
             True
@@ -136,9 +136,9 @@ yield car =
     { car | status = Yielding }
 
 
-stopAtIntersection : Int -> Car -> Car
-stopAtIntersection roundsRemaining car =
-    { car | status = StoppedAtIntersection roundsRemaining }
+stopAtIntersection : Car -> Car
+stopAtIntersection car =
+    { car | status = StoppedAtIntersection }
 
 
 waitForRespawn : Car -> Car
@@ -169,8 +169,8 @@ statusDescription status =
         WaitingForTrafficLights ->
             "Stopped @ traffic lights"
 
-        StoppedAtIntersection roundsRemaining ->
-            "Stopped..." ++ String.fromInt roundsRemaining
+        StoppedAtIntersection ->
+            "Stopped"
 
         Yielding ->
             "Yielding"

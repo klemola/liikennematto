@@ -90,7 +90,7 @@ suite =
                             |> Round.play
                             |> .status
                         )
-                        (StoppedAtIntersection 1)
+                        StoppedAtIntersection
                 )
             ]
         , describe "Respawn"
