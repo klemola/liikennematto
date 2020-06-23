@@ -278,7 +278,7 @@ yieldAfterStopSetup =
             carOne
                 |> Car.spawn ( 1, 2 )
                 |> Car.turn Right
-                |> Car.stopAtIntersection 0
+                |> Car.stopAtIntersection
 
         otherCars =
             [ carTwo
