@@ -24,7 +24,23 @@ fakeRandomDirections =
 
 
 
--- Setups for testing rules
+-- Setups for testing Rules and Round behavior
+
+
+respawnSetup : Round
+respawnSetup =
+    let
+        board =
+            Board.new
+                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal))
+
+        car =
+            carOne
+
+        otherCars =
+            []
+    in
+    Round.new board False fakeRandomDirections car otherCars
 
 
 connectedRoadsSetup : Round
