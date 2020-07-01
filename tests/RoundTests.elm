@@ -3,7 +3,14 @@ module RoundTests exposing (suite)
 import Car exposing (Status(..), TurnKind(..))
 import Expect
 import Fixtures exposing (..)
-import Round exposing (Rule(..), checkCollisionRules, checkIntersectionRules, checkMovementRules, checkTurningRules)
+import Round
+    exposing
+        ( Rule(..)
+        , checkCollisionRules
+        , checkIntersectionRules
+        , checkMovementRules
+        , checkTurningRules
+        )
 import Test exposing (..)
 
 

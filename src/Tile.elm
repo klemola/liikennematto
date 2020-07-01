@@ -4,6 +4,7 @@ module Tile exposing
     , IntersectionShape(..)
     , RoadKind(..)
     , Tile(..)
+    , TrafficDirection(..)
     , connected
     , isIntersection
     , isRoad
@@ -18,10 +19,21 @@ import Direction exposing (Direction(..), Orientation(..))
 import TrafficLight exposing (TrafficLights)
 
 
+type Tile
+    = TwoLaneRoad RoadKind TrafficDirection
+    | Intersection IntersectionControl IntersectionShape
+    | Terrain
+
+
 type RoadKind
     = Regular Orientation
     | Curve CurveKind
     | Deadend Direction
+
+
+type TrafficDirection
+    = Both
+    | OneWay
 
 
 type CurveKind
@@ -43,16 +55,10 @@ type IntersectionShape
     | Crossroads
 
 
-type Tile
-    = TwoLaneRoad RoadKind
-    | Intersection IntersectionControl IntersectionShape
-    | Terrain
-
-
 isRoad : Tile -> Bool
 isRoad tile =
     case tile of
-        TwoLaneRoad _ ->
+        TwoLaneRoad _ _ ->
             True
 
         _ ->
@@ -62,7 +68,7 @@ isRoad tile =
 isRegularRoad : Tile -> Bool
 isRegularRoad tile =
     case tile of
-        TwoLaneRoad (Regular _) ->
+        TwoLaneRoad (Regular _) _ ->
             True
 
         _ ->
@@ -107,22 +113,22 @@ priorityDirections tile =
 potentialConnections : Tile -> List Direction
 potentialConnections tile =
     case tile of
-        TwoLaneRoad (Regular orientation) ->
+        TwoLaneRoad (Regular orientation) _ ->
             Direction.fromOrientation orientation
 
-        TwoLaneRoad (Curve TopRight) ->
+        TwoLaneRoad (Curve TopRight) _ ->
             [ Left, Down ]
 
-        TwoLaneRoad (Curve TopLeft) ->
+        TwoLaneRoad (Curve TopLeft) _ ->
             [ Right, Down ]
 
-        TwoLaneRoad (Curve BottomRight) ->
+        TwoLaneRoad (Curve BottomRight) _ ->
             [ Left, Up ]
 
-        TwoLaneRoad (Curve BottomLeft) ->
+        TwoLaneRoad (Curve BottomLeft) _ ->
             [ Right, Up ]
 
-        TwoLaneRoad (Deadend dir) ->
+        TwoLaneRoad (Deadend dir) _ ->
             [ Direction.opposite dir ]
 
         Intersection _ Crossroads ->
@@ -135,11 +141,23 @@ potentialConnections tile =
             []
 
 
+matchesTrafficDirection : Tile -> Direction -> Bool
+matchesTrafficDirection tile toDir =
+    case tile of
+        -- traffic from either Left or Up (lowest x or y)
+        TwoLaneRoad _ OneWay ->
+            toDir == Left || toDir == Up
+
+        _ ->
+            True
+
+
 connected : Direction -> Tile -> Tile -> Bool
 connected fromDir origin destination =
     let
         originConnections =
             potentialConnections origin
+                |> List.filter (matchesTrafficDirection origin)
 
         destinationConnections =
             potentialConnections destination

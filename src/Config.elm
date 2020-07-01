@@ -5,7 +5,7 @@ import Coords exposing (Coords)
 import Dict exposing (Dict)
 import Direction exposing (Direction(..), Orientation(..))
 import Element exposing (rgb255, rgba255)
-import Tile exposing (CurveKind(..), IntersectionControl(..), IntersectionShape(..), RoadKind(..), Tile(..))
+import Tile exposing (CurveKind(..), IntersectionControl(..), IntersectionShape(..), RoadKind(..), Tile(..), TrafficDirection(..))
 import TrafficLight
 
 
@@ -16,8 +16,8 @@ boardSize =
 
 constructionTileGroups =
     { main =
-        [ TwoLaneRoad (Regular Horizontal)
-        , TwoLaneRoad (Regular Vertical)
+        [ TwoLaneRoad (Regular Horizontal) Both
+        , TwoLaneRoad (Regular Vertical) Both
         ]
     , intersectionCross =
         [ Intersection (Signal TrafficLight.default) Crossroads
@@ -29,16 +29,16 @@ constructionTileGroups =
         , Intersection (Yield Horizontal) (T Left)
         ]
     , curve =
-        [ TwoLaneRoad (Curve TopLeft)
-        , TwoLaneRoad (Curve TopRight)
-        , TwoLaneRoad (Curve BottomLeft)
-        , TwoLaneRoad (Curve BottomRight)
+        [ TwoLaneRoad (Curve TopLeft) Both
+        , TwoLaneRoad (Curve TopRight) Both
+        , TwoLaneRoad (Curve BottomLeft) Both
+        , TwoLaneRoad (Curve BottomRight) Both
         ]
     , deadend =
-        [ TwoLaneRoad (Deadend Up)
-        , TwoLaneRoad (Deadend Right)
-        , TwoLaneRoad (Deadend Down)
-        , TwoLaneRoad (Deadend Left)
+        [ TwoLaneRoad (Deadend Up) Both
+        , TwoLaneRoad (Deadend Right) Both
+        , TwoLaneRoad (Deadend Down) Both
+        , TwoLaneRoad (Deadend Left) Both
         ]
     }
 
@@ -84,61 +84,57 @@ borderRadius =
 initialBoard : Dict Coords Tile
 initialBoard =
     Dict.fromList
-        [ ( ( 1, 1 ), TwoLaneRoad (Curve TopLeft) )
-        , ( ( 1, 2 ), TwoLaneRoad (Regular Vertical) )
-        , ( ( 1, 3 ), TwoLaneRoad (Regular Vertical) )
-        , ( ( 1, 4 ), Intersection (Stop Horizontal) (T Right) )
-        , ( ( 1, 5 ), TwoLaneRoad (Regular Vertical) )
-        , ( ( 1, 6 ), TwoLaneRoad (Regular Vertical) )
-        , ( ( 1, 7 ), Intersection (Yield Horizontal) (T Right) )
-        , ( ( 1, 8 ), TwoLaneRoad (Regular Vertical) )
-        , ( ( 1, 9 ), TwoLaneRoad (Regular Vertical) )
-        , ( ( 1, 10 ), TwoLaneRoad (Curve BottomLeft) )
-        , ( ( 2, 1 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 2, 4 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 2, 7 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 2, 10 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 3, 1 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 3, 4 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 3, 7 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 3, 10 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 4, 1 ), Intersection (Stop Vertical) (T Down) )
-        , ( ( 4, 2 ), TwoLaneRoad (Regular Vertical) )
-        , ( ( 4, 3 ), TwoLaneRoad (Regular Vertical) )
-        , ( ( 4, 4 ), Intersection (Signal TrafficLight.default) Crossroads )
-        , ( ( 4, 5 ), TwoLaneRoad (Regular Vertical) )
-        , ( ( 4, 6 ), TwoLaneRoad (Regular Vertical) )
-        , ( ( 4, 7 ), TwoLaneRoad (Curve BottomRight) )
-        , ( ( 4, 10 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 5, 1 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 5, 4 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 5, 10 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 6, 1 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 6, 4 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 6, 10 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 7, 1 ), TwoLaneRoad (Curve TopRight) )
-        , ( ( 7, 2 ), TwoLaneRoad (Regular Vertical) )
-        , ( ( 7, 3 ), TwoLaneRoad (Regular Vertical) )
-        , ( ( 7, 4 ), Intersection (Yield Vertical) Crossroads )
-        , ( ( 7, 5 ), TwoLaneRoad (Regular Vertical) )
-        , ( ( 7, 6 ), TwoLaneRoad (Regular Vertical) )
-        , ( ( 7, 7 ), Intersection (Yield Horizontal) (T Right) )
-        , ( ( 7, 8 ), TwoLaneRoad (Regular Vertical) )
-        , ( ( 7, 9 ), TwoLaneRoad (Regular Vertical) )
+        [ ( ( 1, 1 ), TwoLaneRoad (Curve TopLeft) Both )
+        , ( ( 1, 2 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 1, 3 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 1, 4 ), TwoLaneRoad (Curve BottomLeft) Both )
+        , ( ( 1, 7 ), TwoLaneRoad (Curve TopLeft) Both )
+        , ( ( 1, 8 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 1, 9 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 1, 10 ), TwoLaneRoad (Curve BottomLeft) Both )
+        , ( ( 2, 1 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 2, 4 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 2, 7 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 2, 10 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 3, 1 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 3, 4 ), Intersection (Yield Vertical) (T Down) )
+        , ( ( 3, 5 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 3, 6 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 3, 7 ), Intersection (Yield Vertical) (T Up) )
+        , ( ( 3, 10 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 4, 1 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 4, 4 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 4, 7 ), TwoLaneRoad (Regular Horizontal) OneWay )
+        , ( ( 4, 10 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 5, 1 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 5, 4 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 5, 7 ), TwoLaneRoad (Regular Horizontal) OneWay )
+        , ( ( 5, 10 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 6, 1 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 6, 4 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 6, 7 ), TwoLaneRoad (Regular Horizontal) OneWay )
+        , ( ( 6, 10 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 7, 1 ), TwoLaneRoad (Curve TopRight) Both )
+        , ( ( 7, 2 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 7, 3 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 7, 4 ), Intersection (Signal TrafficLight.default) Crossroads )
+        , ( ( 7, 5 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 7, 6 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 7, 7 ), Intersection (Stop Horizontal) (T Left) )
+        , ( ( 7, 8 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 7, 9 ), TwoLaneRoad (Regular Vertical) Both )
         , ( ( 7, 10 ), Intersection (Yield Vertical) (T Up) )
-        , ( ( 8, 4 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 8, 7 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 8, 10 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 9, 4 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 9, 7 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 9, 10 ), TwoLaneRoad (Regular Horizontal) )
-        , ( ( 10, 4 ), TwoLaneRoad (Curve TopRight) )
-        , ( ( 10, 5 ), TwoLaneRoad (Regular Vertical) )
-        , ( ( 10, 6 ), TwoLaneRoad (Regular Vertical) )
-        , ( ( 10, 7 ), Intersection (Yield Horizontal) (T Left) )
-        , ( ( 10, 8 ), TwoLaneRoad (Regular Vertical) )
-        , ( ( 10, 9 ), TwoLaneRoad (Regular Vertical) )
-        , ( ( 10, 10 ), TwoLaneRoad (Curve BottomRight) )
+        , ( ( 8, 4 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 8, 10 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 9, 4 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 9, 10 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 10, 4 ), TwoLaneRoad (Curve TopRight) Both )
+        , ( ( 10, 5 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 10, 6 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 10, 7 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 10, 8 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 10, 9 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 10, 10 ), TwoLaneRoad (Curve BottomRight) Both )
         ]
 
 

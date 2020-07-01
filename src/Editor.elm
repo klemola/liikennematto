@@ -225,7 +225,7 @@ toolbarButton dimensions selectedTool tool =
     let
         asset =
             case tool of
-                Construction (TwoLaneRoad kind) ->
+                Construction (TwoLaneRoad kind _) ->
                     Graphics.roadAsset kind
 
                 Construction (Intersection _ shape) ->

@@ -15,7 +15,7 @@ import Board exposing (Board)
 import Car exposing (Car, Status(..))
 import Coords exposing (Coords)
 import Direction exposing (Direction)
-import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..))
+import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..), TrafficDirection(..))
 import TrafficLight
 
 
@@ -171,6 +171,7 @@ checkTurningRules { currentTile, nextTile, coinTossResult, activeCar } =
             coinTossResult && Tile.isIntersection currentTile && not (Car.isTurning activeCar)
     in
     -- Room for improvement: base turning rule on whether roads connect in car's direction
+    -- TODO: turn if facing a one-way street of opposite direction
     if Tile.isTerrain nextTile || shouldTurnRandomly then
         Just TurningRequired
 
@@ -187,10 +188,11 @@ checkCollisionRules { otherCars, nextCoords, nextTile, activeCar } =
         willCollideWithAnother =
             case nextTile of
                 -- car moving towards another in an opposite direction will not cause a collision
-                TwoLaneRoad (Regular _) ->
+                TwoLaneRoad (Regular _) Both ->
                     List.any (\c -> c.coords == nextCoords && c.direction /= oppositeDirection) otherCars
 
                 -- intersections, curves and deadends should be clear before entering (slightly naive logic)
+                -- TODO: consider both lanes of one-way traffic
                 _ ->
                     List.any (\c -> c.coords == nextCoords) otherCars
     in
