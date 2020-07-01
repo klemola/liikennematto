@@ -1,4 +1,13 @@
-module Board exposing (Board, canAddTile, get, getSafe, new, remove, roadCoords, set)
+module Board exposing
+    ( Board
+    , canAddTile
+    , get
+    , getSafe
+    , new
+    , remove
+    , roadCoords
+    , set
+    )
 
 import Coords exposing (Coords)
 import Dict exposing (Dict)
@@ -55,12 +64,12 @@ roadCoords board =
 connections : Coords -> Tile -> Board -> List Tile
 connections coords origin board =
     let
-        validate dir tile =
+        validate dir destination =
             if
-                List.member (Direction.opposite dir) (Tile.potentialConnections tile)
-                    && Tile.validNeighbors tile origin
+                Tile.connected dir origin destination
+                    && Tile.validNeighbors destination origin
             then
-                Just tile
+                Just destination
 
             else
                 Nothing
@@ -89,10 +98,10 @@ canAddTile coords tile board =
 
         isValidDiagonal anotherTile =
             case anotherTile of
-                TwoLaneRoad (Regular _) ->
+                TwoLaneRoad (Regular _) _ ->
                     True
 
-                TwoLaneRoad (Deadend _) ->
+                TwoLaneRoad (Deadend _) _ ->
                     True
 
                 Terrain ->

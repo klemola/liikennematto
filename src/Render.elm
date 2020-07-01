@@ -25,7 +25,13 @@ import Direction exposing (Direction(..), Orientation)
 import Graphics
 import Html exposing (Html)
 import SharedState exposing (SharedState)
-import Tile exposing (IntersectionControl(..), IntersectionShape(..), Tile(..))
+import Tile
+    exposing
+        ( IntersectionControl(..)
+        , IntersectionShape(..)
+        , Tile(..)
+        , TrafficDirection(..)
+        )
 import TrafficLight exposing (TrafficLight, TrafficLightKind(..))
 
 
@@ -58,11 +64,20 @@ renderTile tileSize tile =
 
         intersection shape content =
             Layout.stack (content ++ [ Graphics.texture tileSize (Graphics.intersectionAsset shape) ])
+
+        addRoadMarkings trafficDirection road =
+            case trafficDirection of
+                Both ->
+                    road
+
+                OneWay ->
+                    Layout.stack [ Graphics.texture tileSize "arrow_right.png", road ]
     in
     case tile of
-        TwoLaneRoad kind ->
+        TwoLaneRoad kind trafficDirection ->
             Graphics.roadAsset kind
                 |> Graphics.texture tileSize
+                |> addRoadMarkings trafficDirection
 
         Intersection (Signal trafficLights) shape ->
             trafficLights

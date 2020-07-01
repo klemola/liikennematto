@@ -4,7 +4,7 @@ import Board
 import Car exposing (Car)
 import Direction exposing (Direction(..), Orientation(..))
 import Round exposing (Round)
-import Tile exposing (CurveKind(..), IntersectionControl(..), IntersectionShape(..), RoadKind(..), Tile(..))
+import Tile exposing (CurveKind(..), IntersectionControl(..), IntersectionShape(..), RoadKind(..), Tile(..), TrafficDirection(..))
 import TrafficLight
 
 
@@ -32,7 +32,7 @@ respawnSetup =
     let
         board =
             Board.new
-                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal))
+                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
 
         car =
             carOne
@@ -48,8 +48,8 @@ connectedRoadsSetup =
     let
         board =
             Board.new
-                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal))
-                |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Horizontal))
+                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
 
         car =
             carOne
@@ -67,8 +67,8 @@ disconnectedRoadsSetup =
     let
         board =
             Board.new
-                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal))
-                |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Vertical))
+                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Vertical) Both)
 
         car =
             carOne
@@ -86,10 +86,10 @@ curveSetup =
     let
         board =
             Board.new
-                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal))
-                |> Board.set ( 2, 1 ) (TwoLaneRoad (Curve TopRight))
+                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> Board.set ( 2, 1 ) (TwoLaneRoad (Curve TopRight) Both)
                 |> Board.set ( 3, 1 ) Terrain
-                |> Board.set ( 2, 2 ) (TwoLaneRoad (Regular Vertical))
+                |> Board.set ( 2, 2 ) (TwoLaneRoad (Regular Vertical) Both)
 
         car =
             carOne
@@ -108,7 +108,7 @@ randomTurnSetup =
         board =
             Board.new
                 |> Board.set ( 1, 1 ) (Intersection (Yield Vertical) Crossroads)
-                |> Board.set ( 1, 2 ) (TwoLaneRoad (Regular Vertical))
+                |> Board.set ( 1, 2 ) (TwoLaneRoad (Regular Vertical) Both)
 
         car =
             carOne
@@ -126,8 +126,8 @@ collisionSetup =
     let
         board =
             Board.new
-                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal))
-                |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Horizontal))
+                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
 
         car =
             carOne
@@ -148,8 +148,8 @@ noCollisionSetup =
     let
         board =
             Board.new
-                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal))
-                |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Horizontal))
+                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
 
         car =
             carOne
@@ -170,7 +170,7 @@ redTrafficLightsSetup =
     let
         board =
             Board.new
-                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal))
+                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
                 |> Board.set ( 2, 1 ) (Intersection (Signal TrafficLight.default) Crossroads)
 
         car =
@@ -189,7 +189,7 @@ greenTrafficLightsSetup =
     let
         board =
             Board.new
-                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal))
+                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
                 |> Board.set ( 1, 2 ) (Intersection (Signal TrafficLight.default) Crossroads)
 
         car =
@@ -208,10 +208,10 @@ yieldSetup hasPriorityTraffic =
     let
         board =
             Board.new
-                |> Board.set ( 1, 2 ) (TwoLaneRoad (Regular Horizontal))
-                |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Vertical))
+                |> Board.set ( 1, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Vertical) Both)
                 |> Board.set ( 2, 2 ) (Intersection (Yield Horizontal) (T Left))
-                |> Board.set ( 2, 3 ) (TwoLaneRoad (Regular Vertical))
+                |> Board.set ( 2, 3 ) (TwoLaneRoad (Regular Vertical) Both)
 
         car =
             carOne
@@ -246,11 +246,11 @@ stopSetup =
     let
         board =
             Board.new
-                |> Board.set ( 1, 2 ) (TwoLaneRoad (Regular Horizontal))
-                |> Board.set ( 2, 2 ) (TwoLaneRoad (Regular Horizontal))
-                |> Board.set ( 3, 1 ) (TwoLaneRoad (Regular Vertical))
+                |> Board.set ( 1, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> Board.set ( 2, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> Board.set ( 3, 1 ) (TwoLaneRoad (Regular Vertical) Both)
                 |> Board.set ( 3, 2 ) (Intersection (Stop Horizontal) (T Left))
-                |> Board.set ( 3, 3 ) (TwoLaneRoad (Regular Vertical))
+                |> Board.set ( 3, 3 ) (TwoLaneRoad (Regular Vertical) Both)
 
         car =
             carOne
@@ -269,10 +269,10 @@ yieldAfterStopSetup =
     let
         board =
             Board.new
-                |> Board.set ( 1, 2 ) (TwoLaneRoad (Regular Horizontal))
-                |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Vertical))
+                |> Board.set ( 1, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Vertical) Both)
                 |> Board.set ( 2, 2 ) (Intersection (Stop Horizontal) (T Left))
-                |> Board.set ( 2, 3 ) (TwoLaneRoad (Regular Vertical))
+                |> Board.set ( 2, 3 ) (TwoLaneRoad (Regular Vertical) Both)
 
         car =
             carOne
