@@ -141,31 +141,31 @@ potentialConnections tile =
             []
 
 
-matchesTrafficDirection : Tile -> Direction -> Bool
-matchesTrafficDirection tile toDir =
-    case tile of
-        -- traffic from either Left or Up (lowest x or y)
+matchesTrafficDirection : Direction -> Tile -> Bool
+matchesTrafficDirection dir destination =
+    case destination of
+        -- traffic from either Left or Down (lowest x or y)
         TwoLaneRoad _ OneWay ->
-            toDir == Left || toDir == Up
+            dir == Right || dir == Up
 
         _ ->
             True
 
 
 connected : Direction -> Tile -> Tile -> Bool
-connected fromDir origin destination =
+connected trafficDirection origin destination =
     let
         originConnections =
             potentialConnections origin
-                |> List.filter (matchesTrafficDirection origin)
 
         destinationConnections =
             potentialConnections destination
 
         connects dir =
-            dir == fromDir && List.member (Direction.opposite dir) destinationConnections
+            dir == trafficDirection && List.member (Direction.opposite dir) destinationConnections
     in
-    List.any connects originConnections
+    matchesTrafficDirection trafficDirection destination
+        && List.any connects originConnections
 
 
 validNeighbors : Tile -> Tile -> Bool

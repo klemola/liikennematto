@@ -1,6 +1,7 @@
 module Board exposing
     ( Board
     , canAddTile
+    , connections
     , get
     , getSafe
     , new
