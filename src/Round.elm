@@ -91,7 +91,7 @@ play round =
 
 
 applyRule : Round -> Rule -> Car
-applyRule { activeCar, board, randomDirections } rule =
+applyRule { activeCar, board, currentTile, randomDirections } rule =
     case rule of
         MovementBlocked ->
             Car.skipRound activeCar
@@ -105,12 +105,8 @@ applyRule { activeCar, board, randomDirections } rule =
                     dir /= activeCar.direction && dir /= oppositeDirection
 
                 seeRoadAhead dir =
-                    case Board.getSafe (Coords.next activeCar.coords dir) board of
-                        Terrain ->
-                            False
-
-                        _ ->
-                            True
+                    Board.getSafe (Coords.next activeCar.coords dir) board
+                        |> Tile.connected dir currentTile
 
                 direction =
                     randomDirections
@@ -163,16 +159,20 @@ checkMovementRules { currentTile, nextTile, activeCar } =
 
 
 checkTurningRules : Round -> Maybe Rule
-checkTurningRules { currentTile, nextTile, coinTossResult, activeCar } =
+checkTurningRules { board, currentTile, nextTile, coinTossResult, activeCar } =
     let
+        canContinue =
+            Tile.connected activeCar.direction currentTile nextTile
+
         -- turn every now and then at an intersection
         -- cars in intersections can block the traffic, so this also works as a sort of a tie-breaker
         shouldTurnRandomly =
-            coinTossResult && Tile.isIntersection currentTile && not (Car.isTurning activeCar)
+            coinTossResult
+                && Tile.isIntersection currentTile
+                && not (Car.isTurning activeCar)
+                && (List.length (Board.connections activeCar.coords currentTile board) > 2)
     in
-    -- Room for improvement: base turning rule on whether roads connect in car's direction
-    -- TODO: turn if facing a one-way street of opposite direction
-    if Tile.isTerrain nextTile || shouldTurnRandomly then
+    if not canContinue || shouldTurnRandomly then
         Just TurningRequired
 
     else
@@ -192,7 +192,6 @@ checkCollisionRules { otherCars, nextCoords, nextTile, activeCar } =
                     List.any (\c -> c.coords == nextCoords && c.direction /= oppositeDirection) otherCars
 
                 -- intersections, curves and deadends should be clear before entering (slightly naive logic)
-                -- TODO: consider both lanes of one-way traffic
                 _ ->
                     List.any (\c -> c.coords == nextCoords) otherCars
     in
