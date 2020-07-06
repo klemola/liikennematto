@@ -54,7 +54,7 @@ suite =
                     Tile.connected Right tileA tileB
                         |> Expect.true "Expected tiles to connect."
                 )
-            , test "connects a curved road from entry point A"
+            , test "connects a curved road from entry side A"
                 (\_ ->
                     let
                         tileA =
@@ -66,7 +66,7 @@ suite =
                     Tile.connected Down tileA tileB
                         |> Expect.true "Expected tiles to connect."
                 )
-            , test "connects a curved road from entry point B"
+            , test "connects a curved road from entry side B"
                 (\_ ->
                     let
                         tileA =
@@ -126,7 +126,7 @@ suite =
                     Tile.connected Left tileA tileB
                         |> Expect.false "Expected tiles to NOT connect."
                 )
-            , test "connects a one-way road piece with an intersection by entry point"
+            , test "connects a one-way road piece with an intersection by entry side"
                 (\_ ->
                     let
                         tileA =
@@ -138,7 +138,7 @@ suite =
                     Tile.connected Right tileA tileB
                         |> Expect.true "Expected tiles to connect."
                 )
-            , test "does not connect a one-way road piece with an intersection by exit point"
+            , test "does not connect a one-way road piece with an intersection by exit side"
                 (\_ ->
                     let
                         tileA =
@@ -149,6 +149,30 @@ suite =
                     in
                     Tile.connected Left tileA tileB
                         |> Expect.false "Expected tiles to NOT connect."
+                )
+            , test "connects a curved one-way road from entry side A"
+                (\_ ->
+                    let
+                        tileA =
+                            TwoLaneRoad (Regular Vertical) OneWay
+
+                        tileB =
+                            TwoLaneRoad (Curve TopRight) OneWay
+                    in
+                    Tile.connected Up tileA tileB
+                        |> Expect.true "Expected tiles to connect."
+                )
+            , test "connects a curved one-way road from entry side B"
+                (\_ ->
+                    let
+                        tileA =
+                            TwoLaneRoad (Curve TopLeft) OneWay
+
+                        tileB =
+                            TwoLaneRoad (Regular Horizontal) OneWay
+                    in
+                    Tile.connected Right tileA tileB
+                        |> Expect.true "Expected tiles to connect."
                 )
             ]
         ]

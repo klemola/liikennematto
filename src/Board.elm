@@ -10,7 +10,7 @@ module Board exposing
     , set
     )
 
-import Coords exposing (Coords)
+import Coords exposing (Coords, parallelNeighbors)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction exposing (Direction(..))
@@ -66,10 +66,7 @@ connections : Coords -> Tile -> Board -> List Tile
 connections coords origin board =
     let
         validate dir destination =
-            if
-                Tile.connected dir origin destination
-                    && Tile.validNeighbors destination origin
-            then
+            if Tile.connected dir origin destination then
                 Just destination
 
             else
@@ -91,8 +88,7 @@ canAddTile coords tile board =
                 |> List.filterMap (\c -> get c board)
 
         parallelNeighborTiles =
-            Coords.parallelNeighbors coords
-                |> List.filterMap (\c -> get c board)
+            connections coords tile board
 
         surroundingTiles =
             parallelNeighborTiles ++ diagonalNeighborTiles
@@ -111,11 +107,8 @@ canAddTile coords tile board =
                 _ ->
                     False
 
-        doesRoadConnect _ =
-            not (List.isEmpty (connections coords tile board))
-
         isValid _ =
-            List.all isValidDiagonal diagonalNeighborTiles && doesRoadConnect ()
+            not (List.isEmpty parallelNeighborTiles)
     in
     Dict.isEmpty board
         || List.isEmpty surroundingTiles

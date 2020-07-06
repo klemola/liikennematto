@@ -161,16 +161,25 @@ checkMovementRules { currentTile, nextTile, activeCar } =
 checkTurningRules : Round -> Maybe Rule
 checkTurningRules { board, currentTile, nextTile, coinTossResult, activeCar } =
     let
+        leftAndRightTilesFromCarDirection =
+            [ Board.get (Coords.next activeCar.coords (Direction.previous activeCar.direction)) board
+            , Board.get (Coords.next activeCar.coords (Direction.next activeCar.direction)) board
+            ]
+                |> List.filterMap identity
+
         canContinue =
             Tile.connected activeCar.direction currentTile nextTile
+
+        canTurn =
+            not (List.isEmpty leftAndRightTilesFromCarDirection)
 
         -- turn every now and then at an intersection
         -- cars in intersections can block the traffic, so this also works as a sort of a tie-breaker
         shouldTurnRandomly =
             coinTossResult
                 && Tile.isIntersection currentTile
+                && canTurn
                 && not (Car.isTurning activeCar)
-                && (List.length (Board.connections activeCar.coords currentTile board) > 2)
     in
     if not canContinue || shouldTurnRandomly then
         Just TurningRequired
