@@ -8,10 +8,10 @@ module Tile exposing
     , connected
     , isIntersection
     , isRoad
-    , isTerrain
     , potentialConnections
     , priorityDirections
     , toggleIntersectionControl
+    , toggleTrafficDirection
     , validNeighbors
     )
 
@@ -85,11 +85,6 @@ isIntersection tile =
             False
 
 
-isTerrain : Tile -> Bool
-isTerrain tile =
-    tile == Terrain
-
-
 priorityDirections : Tile -> List Direction
 priorityDirections tile =
     let
@@ -144,7 +139,18 @@ potentialConnections tile =
 matchesTrafficDirection : Direction -> Tile -> Bool
 matchesTrafficDirection dir destination =
     case destination of
-        -- traffic from either Left or Down (lowest x or y)
+        TwoLaneRoad (Curve TopRight) OneWay ->
+            dir == Up
+
+        TwoLaneRoad (Curve TopLeft) OneWay ->
+            dir == Left
+
+        TwoLaneRoad (Curve BottomRight) OneWay ->
+            dir == Right
+
+        TwoLaneRoad (Curve BottomLeft) OneWay ->
+            dir == Down
+
         TwoLaneRoad _ OneWay ->
             dir == Right || dir == Up
 
@@ -201,6 +207,19 @@ toggleIntersectionControl tile =
 
         Intersection (Yield orientation) (T dir) ->
             Intersection (Stop orientation) (T dir)
+
+        _ ->
+            tile
+
+
+toggleTrafficDirection : Tile -> Tile
+toggleTrafficDirection tile =
+    case tile of
+        TwoLaneRoad kind OneWay ->
+            TwoLaneRoad kind Both
+
+        TwoLaneRoad kind Both ->
+            TwoLaneRoad kind OneWay
 
         _ ->
             tile

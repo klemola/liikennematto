@@ -32,6 +32,7 @@ import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..))
 type Tool
     = Construction Tile
     | IntersectionDesigner
+    | TrafficDirectionDesigner
     | Bulldozer
     | Dynamite
     | None
@@ -82,6 +83,14 @@ update sharedState msg model =
                     , Cmd.none
                     , sharedState.board
                         |> Board.set coords (Tile.toggleIntersectionControl tile)
+                        |> SharedState.EditBoardAt coords
+                    )
+
+                ( TrafficDirectionDesigner, Just tile ) ->
+                    ( model
+                    , Cmd.none
+                    , sharedState.board
+                        |> Board.set coords (Tile.toggleTrafficDirection tile)
                         |> SharedState.EditBoardAt coords
                     )
 
@@ -165,6 +174,14 @@ tileOverlay board tileSize selectedTool coords =
 
                         _ ->
                             colors.notAllowed
+
+                TrafficDirectionDesigner ->
+                    case Board.get coords board of
+                        Just (TwoLaneRoad _ _) ->
+                            colors.target
+
+                        _ ->
+                            colors.notAllowed
     in
     el
         [ width tileSizePx
@@ -216,6 +233,7 @@ toolbar model dimensions =
             [ toolbarButton dimensions model Bulldozer
             , toolbarButton dimensions model Dynamite
             , toolbarButton dimensions model IntersectionDesigner
+            , toolbarButton dimensions model TrafficDirectionDesigner
             ]
         ]
 
@@ -233,6 +251,9 @@ toolbarButton dimensions selectedTool tool =
 
                 IntersectionDesigner ->
                     "intersection_designer.png"
+
+                TrafficDirectionDesigner ->
+                    "arrow_right.png"
 
                 Bulldozer ->
                     "bulldozer.png"
