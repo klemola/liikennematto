@@ -136,8 +136,8 @@ applyRule { activeCar, board, currentTile, randomDirections } rule =
 
 activeRulesByPriority : Round -> List Rule
 activeRulesByPriority round =
-    [ checkCollisionRules round
-    , checkTurningRules round
+    [ checkTurningRules round
+    , checkCollisionRules round
     , checkIntersectionRules round
     , checkMovementRules round
     ]

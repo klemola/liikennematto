@@ -10,7 +10,7 @@ module Board exposing
     , set
     )
 
-import Coords exposing (Coords, parallelNeighbors)
+import Coords exposing (Coords)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction exposing (Direction(..))
@@ -28,8 +28,13 @@ new =
 
 get : Coords -> Board -> Maybe Tile
 get coords board =
-    Dict.find (\key _ -> key == coords) board
+    getWithIndex coords board
         |> Maybe.map Tuple.second
+
+
+getWithIndex : Coords -> Board -> Maybe ( Coords, Tile )
+getWithIndex coords board =
+    Dict.find (\key _ -> key == coords) board
 
 
 getSafe : Coords -> Board -> Tile
@@ -40,11 +45,7 @@ getSafe coords board =
 
 set : Coords -> Tile -> Board -> Board
 set coords tile board =
-    if canAddTile coords tile board then
-        Dict.insert coords tile board
-
-    else
-        board
+    Dict.insert coords tile board
 
 
 remove : Coords -> Board -> Board
@@ -83,33 +84,23 @@ connections coords origin board =
 canAddTile : Coords -> Tile -> Board -> Bool
 canAddTile coords tile board =
     let
-        diagonalNeighborTiles =
-            Coords.diagonalNeighbors coords
+        parallelNeighbors =
+            Coords.parallelNeighbors coords
                 |> List.filterMap (\c -> get c board)
 
-        parallelNeighborTiles =
+        parallelConnections =
             connections coords tile board
 
-        surroundingTiles =
-            parallelNeighborTiles ++ diagonalNeighborTiles
+        connects =
+            List.length parallelConnections > 0
 
-        isValidDiagonal anotherTile =
-            case anotherTile of
-                TwoLaneRoad (Regular _) _ ->
-                    True
+        hasValidNeighbors =
+            parallelNeighbors
+                |> List.all (Tile.validNeighbors tile)
 
-                TwoLaneRoad (Deadend _) _ ->
-                    True
-
-                Terrain ->
-                    True
-
-                _ ->
-                    False
-
-        isValid _ =
-            not (List.isEmpty parallelNeighborTiles)
+        isValid =
+            connects && hasValidNeighbors
     in
     Dict.isEmpty board
-        || List.isEmpty surroundingTiles
-        || isValid ()
+        || List.isEmpty parallelNeighbors
+        || isValid

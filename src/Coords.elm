@@ -1,10 +1,21 @@
-module Coords exposing (Coords, diagonalNeighbors, filterBy, next, parallelNeighbors, toString)
+module Coords exposing
+    ( Coords
+    , diagonalNeighbors
+    , filterBy
+    , next
+    , parallelNeighbors
+    , toString
+    )
 
 import Direction exposing (Direction(..))
 
 
 type alias Coords =
     ( Int, Int )
+
+
+type alias Positioned a =
+    { a | coords : Coords }
 
 
 next : Coords -> Direction -> Coords
@@ -37,9 +48,9 @@ parallelNeighbors coords =
     List.map (next coords) Direction.all
 
 
-filterBy : List { a | coords : Coords } -> Coords -> List { a | coords : Coords }
-filterBy list coords =
-    list
+filterBy : List (Positioned a) -> Coords -> List (Positioned a)
+filterBy thingsWithCoords coords =
+    thingsWithCoords
         |> List.filter (\el -> el.coords == coords)
 
 

@@ -65,16 +65,6 @@ isRoad tile =
             False
 
 
-isRegularRoad : Tile -> Bool
-isRegularRoad tile =
-    case tile of
-        TwoLaneRoad (Regular _) _ ->
-            True
-
-        _ ->
-            False
-
-
 isIntersection : Tile -> Bool
 isIntersection tile =
     case tile of
@@ -176,7 +166,10 @@ connected trafficDirection origin destination =
 
 validNeighbors : Tile -> Tile -> Bool
 validNeighbors tileA tileB =
-    List.any isRegularRoad [ tileA, tileB ]
+    -- this pratically prevents placing intersections right next to each other
+    -- Room for improvement: It's possible to check if # of combined "potential connections"
+    -- ...is bigger than the # of individual tiles == complexity will increase, and prevent it
+    isRoad tileA || isRoad tileB
 
 
 toggleIntersectionControl : Tile -> Tile

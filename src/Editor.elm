@@ -58,11 +58,19 @@ update sharedState msg model =
         SelectTile coords ->
             case ( model, Board.get coords sharedState.board ) of
                 ( Construction tile, _ ) ->
+                    let
+                        ssu =
+                            if Board.canAddTile coords tile sharedState.board then
+                                sharedState.board
+                                    |> Board.set coords tile
+                                    |> SharedState.EditBoardAt coords
+
+                            else
+                                SharedState.NoUpdate
+                    in
                     ( model
                     , Cmd.none
-                    , sharedState.board
-                        |> Board.set coords tile
-                        |> SharedState.EditBoardAt coords
+                    , ssu
                     )
 
                 ( Bulldozer, Just _ ) ->
