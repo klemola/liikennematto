@@ -65,19 +65,19 @@ renderTile tileSize tile =
         intersection shape content =
             Layout.stack (content ++ [ Graphics.texture tileSize (Graphics.intersectionAsset shape) ])
 
-        addRoadMarkings trafficDirection road =
+        addRoadMarkings roadKind trafficDirection road =
             case trafficDirection of
                 Both ->
                     road
 
                 OneWay ->
-                    Layout.stack [ Graphics.texture tileSize "arrow_right.png", road ]
+                    Layout.stack [ Graphics.texture tileSize (Graphics.oneWayMarker roadKind), road ]
     in
     case tile of
         TwoLaneRoad kind trafficDirection ->
             Graphics.roadAsset kind
                 |> Graphics.texture tileSize
-                |> addRoadMarkings trafficDirection
+                |> addRoadMarkings kind trafficDirection
 
         Intersection (Signal trafficLights) shape ->
             trafficLights

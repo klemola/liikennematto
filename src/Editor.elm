@@ -58,19 +58,15 @@ update sharedState msg model =
         SelectTile coords ->
             case ( model, Board.get coords sharedState.board ) of
                 ( Construction tile, _ ) ->
-                    let
-                        ssu =
-                            if Board.canAddTile coords tile sharedState.board then
-                                sharedState.board
-                                    |> Board.set coords tile
-                                    |> SharedState.EditBoardAt coords
-
-                            else
-                                SharedState.NoUpdate
-                    in
                     ( model
                     , Cmd.none
-                    , ssu
+                    , if Board.canAddTile coords tile sharedState.board then
+                        sharedState.board
+                            |> Board.set coords tile
+                            |> SharedState.EditBoardAt coords
+
+                      else
+                        SharedState.NoUpdate
                     )
 
                 ( Bulldozer, Just _ ) ->
@@ -261,7 +257,7 @@ toolbarButton dimensions selectedTool tool =
                     "intersection_designer.png"
 
                 TrafficDirectionDesigner ->
-                    "arrow_right.png"
+                    "traffic_direction_designer.png"
 
                 Bulldozer ->
                     "bulldozer.png"
