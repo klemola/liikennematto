@@ -1,4 +1,12 @@
-module Graphics exposing (carAsset, grid, intersectionAsset, marker, roadAsset, texture)
+module Graphics exposing
+    ( carAsset
+    , grid
+    , intersectionAsset
+    , marker
+    , oneWayMarker
+    , roadAsset
+    , texture
+    )
 
 import Car exposing (Car, CarKind(..))
 import Collage exposing (Collage, image, invisible, shift, square, styled, transparent)
@@ -130,3 +138,28 @@ carAsset car =
 
         Sedan5 ->
             "car_black_1.png"
+
+
+oneWayMarker : RoadKind -> String
+oneWayMarker roadKind =
+    case roadKind of
+        Curve TopLeft ->
+            "arrow_topleft.png"
+
+        Curve TopRight ->
+            "arrow_topright.png"
+
+        Curve BottomLeft ->
+            "arrow_bottomleft.png"
+
+        Curve BottomRight ->
+            "arrow_bottomright.png"
+
+        Regular Vertical ->
+            "arrow_up.png"
+
+        Deadend Up ->
+            "arrow_up.png"
+
+        _ ->
+            "arrow_right.png"
