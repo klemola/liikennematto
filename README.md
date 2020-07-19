@@ -6,29 +6,30 @@ Liikennematto (_Finnish for a "traffic mat"_) is a prototype village builder gam
 
 ### Simulation
 
-- simple collision detection
-- a two-lane road network on a grid
-- signal intersections (traffic lights)
-- yield sign based intersections
-- stop sign based intersections
-- dead end streets
-- basic simulation control (pause/speed)
-- debug view
+-   a two-lane road network on a grid
+-   simple collision detection
+-   signal intersections (traffic lights)
+-   yield sign based intersections
+-   stop sign based intersections
+-   one-way streets (with some limits)
+-   dead end streets
+-   basic simulation control (pause/speed)
+-   debug view
 
 ### Map editor
 
-- draw (_place_) tiles of all kind
-- bulldoze (_remove_) tiles
-- blow up the board (_clear it_) with dynamite
-- toggle intersection control
+-   draw (_place_) tiles of all kind
+-   bulldoze (_remove_) tiles
+-   blow up the board (_clear it_) with dynamite
+-   toggle intersection control
+-   change traffic direction (one-way / both)
 
 #### Restrictions
 
 Tiles cannot be placed everywhere. In order to avoid awkward road layouts, these restrictions apply:
 
-- intersections and curves cannot be placed right next to each other (add a regular road tile between them)
-- parallel roads have to be at least one empty tile apart
-- tiles have to "connect" with another tile, unless the surroundings are empty
+-   intersections cannot be placed right next to each other (add a regular road tile between them)
+-   tiles have to "connect" with another tile, unless the surroundings are empty
 
 ## Demo & more information
 
