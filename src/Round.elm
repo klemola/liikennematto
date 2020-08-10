@@ -84,10 +84,14 @@ attemptRespawn round =
 
 play : Round -> Car
 play round =
-    activeRulesByPriority round
-        |> List.head
-        |> Maybe.map (applyRule round)
-        |> Maybe.withDefault (Car.move round.activeCar)
+    if not (Car.isRespawning round.activeCar) then
+        activeRulesByPriority round
+            |> List.head
+            |> Maybe.map (applyRule round)
+            |> Maybe.withDefault (Car.move round.activeCar)
+
+    else
+        round.activeCar
 
 
 applyRule : Round -> Rule -> Car
