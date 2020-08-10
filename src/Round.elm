@@ -200,7 +200,12 @@ checkCollisionRules { otherCars, nextCoords, nextTile, activeCar } =
                 TwoLaneRoad (Regular _) Both ->
                     List.any (\c -> c.coords == nextCoords && c.direction /= oppositeDirection) otherCars
 
-                -- intersections, curves and deadends should be clear before entering (slightly naive logic)
+                -- curves are really just another "Regular" piece of road, but the coordinates are not precise
+                -- enough to consider "lanes". Meanwhile we'll fall back on "Regular" road logic
+                TwoLaneRoad (Curve _) Both ->
+                    List.any (\c -> c.coords == nextCoords && c.direction /= oppositeDirection) otherCars
+
+                -- intersections and deadends should be clear before entering (slightly naive logic)
                 _ ->
                     List.any (\c -> c.coords == nextCoords) otherCars
     in
