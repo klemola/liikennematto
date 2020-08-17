@@ -4,6 +4,7 @@ import BitMask
 import Board exposing (Board)
 import Config exposing (borderRadius, borderSize, colors, constructionTileGroups, whitespace)
 import Coords exposing (Coords)
+import CustomEvent
 import Direction exposing (Direction(..))
 import Element
     exposing
@@ -47,6 +48,7 @@ type alias Model =
 
 type Msg
     = SelectTile Coords
+    | SecondaryAction Coords
     | SelectTool Tool
 
 
@@ -90,7 +92,7 @@ update sharedState msg model =
                 ( Bulldozer, Just _ ) ->
                     ( model
                     , Cmd.none
-                    , Board.remove coords sharedState.board
+                    , removeRoad sharedState.board coords
                         |> SharedState.EditBoardAt coords
                     )
 
@@ -119,6 +121,18 @@ update sharedState msg model =
                 _ ->
                     ( model, Cmd.none, SharedState.NoUpdate )
 
+        SecondaryAction coords ->
+            case model of
+                SmartConstruction ->
+                    ( model
+                    , Cmd.none
+                    , removeRoad sharedState.board coords
+                        |> SharedState.EditBoardAt coords
+                    )
+
+                _ ->
+                    ( model, Cmd.none, SharedState.NoUpdate )
+
         SelectTool tool ->
             let
                 nextTool =
@@ -137,12 +151,26 @@ buildRoad board origin =
         boardWithNewTile =
             Board.set origin Config.defaultTile board
     in
+    applyMask boardWithNewTile
+
+
+removeRoad : Board -> Coords -> Board
+removeRoad board origin =
+    let
+        boardWithoutTile =
+            Board.remove origin board
+    in
+    applyMask boardWithoutTile
+
+
+applyMask : Board -> Board
+applyMask board =
     Board.map
         (\coords _ ->
-            chooseTile boardWithNewTile coords
+            chooseTile board coords
                 |> Maybe.withDefault Config.defaultTile
         )
-        boardWithNewTile
+        board
 
 
 chooseTile : Board -> Coords -> Maybe Tile
@@ -248,8 +276,9 @@ tileOverlay board tileSize selectedTool coords =
     el
         [ width tileSizePx
         , height tileSizePx
-        , mouseOver [ Border.innerGlow glowColor (tileSize / 4) ]
+        , mouseOver [ Border.innerGlow glowColor <| tileSize / 4 ]
         , Events.onClick (SelectTile coords)
+        , Element.htmlAttribute (CustomEvent.onRightClick <| SecondaryAction coords)
         ]
         Element.none
 
