@@ -1,8 +1,10 @@
 module Direction exposing
-    ( Direction(..)
+    ( Corner(..)
+    , Direction(..)
     , Orientation(..)
     , all
     , byOrientation
+    , corners
     , cross
     , fromOrientation
     , next
@@ -19,6 +21,13 @@ type Direction
     | Right
     | Down
     | Left
+
+
+type Corner
+    = TopRight
+    | TopLeft
+    | BottomRight
+    | BottomLeft
 
 
 
@@ -142,3 +151,8 @@ cross fromDir =
 
         Left ->
             vertical
+
+
+corners : List Corner
+corners =
+    [ TopLeft, TopRight, BottomLeft, BottomRight ]

@@ -1,11 +1,11 @@
 module Tile exposing
-    ( CurveKind(..)
-    , IntersectionControl(..)
+    ( IntersectionControl(..)
     , IntersectionShape(..)
     , RoadKind(..)
     , Tile(..)
     , TrafficDirection(..)
     , connected
+    , fromId
     , isIntersection
     , isRoad
     , potentialConnections
@@ -15,7 +15,8 @@ module Tile exposing
     , validNeighbors
     )
 
-import Direction exposing (Direction(..), Orientation(..))
+import Dict exposing (Dict)
+import Direction exposing (Corner(..), Direction(..), Orientation(..))
 import TrafficLight exposing (TrafficLights)
 
 
@@ -27,20 +28,13 @@ type Tile
 
 type RoadKind
     = Regular Orientation
-    | Curve CurveKind
+    | Curve Corner
     | Deadend Direction
 
 
 type TrafficDirection
     = Both
     | OneWay
-
-
-type CurveKind
-    = TopRight
-    | TopLeft
-    | BottomRight
-    | BottomLeft
 
 
 type IntersectionControl
@@ -216,3 +210,30 @@ toggleTrafficDirection tile =
 
         _ ->
             tile
+
+
+ids : Dict Int Tile
+ids =
+    Dict.fromList
+        [ -- value for "0" is omitted - does not represent any road piece
+          ( 1, TwoLaneRoad (Deadend Down) Both )
+        , ( 2, TwoLaneRoad (Deadend Right) Both )
+        , ( 3, TwoLaneRoad (Curve BottomRight) Both )
+        , ( 4, TwoLaneRoad (Deadend Left) Both )
+        , ( 5, TwoLaneRoad (Curve BottomLeft) Both )
+        , ( 6, TwoLaneRoad (Regular Horizontal) Both )
+        , ( 7, Intersection (Yield Vertical) (T Up) )
+        , ( 8, TwoLaneRoad (Deadend Up) Both )
+        , ( 9, TwoLaneRoad (Regular Vertical) Both )
+        , ( 10, TwoLaneRoad (Curve TopRight) Both )
+        , ( 11, Intersection (Yield Horizontal) (T Left) )
+        , ( 12, TwoLaneRoad (Curve TopLeft) Both )
+        , ( 13, Intersection (Yield Horizontal) (T Right) )
+        , ( 14, Intersection (Yield Vertical) (T Down) )
+        , ( 15, Intersection (Signal TrafficLight.default) Crossroads )
+        ]
+
+
+fromId : Int -> Maybe Tile
+fromId fourBitId =
+    Dict.get fourBitId ids

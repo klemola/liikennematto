@@ -1,9 +1,12 @@
 module Board exposing
     ( Board
     , canAddTile
+    , canBuildRoadAt
     , connections
     , get
     , getSafe
+    , has
+    , map
     , new
     , remove
     , roadCoords
@@ -43,6 +46,16 @@ getSafe coords board =
         |> Maybe.withDefault Terrain
 
 
+has : Coords -> Board -> Bool
+has coords board =
+    case get coords board of
+        Just _ ->
+            True
+
+        Nothing ->
+            False
+
+
 set : Coords -> Tile -> Board -> Board
 set coords tile board =
     Dict.insert coords tile board
@@ -51,6 +64,11 @@ set coords tile board =
 remove : Coords -> Board -> Board
 remove coords board =
     Dict.remove coords board
+
+
+map : (Coords -> Tile -> Tile) -> Board -> Board
+map fn board =
+    Dict.map fn board
 
 
 roadCoords : Board -> List Coords
@@ -104,3 +122,17 @@ canAddTile coords tile board =
     Dict.isEmpty board
         || List.isEmpty parallelNeighbors
         || isValid
+
+
+canBuildRoadAt : Coords -> Board -> Bool
+canBuildRoadAt coords board =
+    let
+        xyz l =
+            List.length l < 3
+
+        hasLowComplexity corner =
+            Coords.cornerAndNeighbors corner coords
+                |> List.filterMap (\c -> get c board)
+                |> xyz
+    in
+    List.all hasLowComplexity Direction.corners

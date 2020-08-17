@@ -1,5 +1,7 @@
 module Coords exposing
     ( Coords
+    , corner
+    , cornerAndNeighbors
     , diagonalNeighbors
     , filterBy
     , next
@@ -7,7 +9,7 @@ module Coords exposing
     , toString
     )
 
-import Direction exposing (Direction(..))
+import Direction exposing (Corner(..), Direction(..))
 
 
 type alias Coords =
@@ -35,17 +37,54 @@ next ( x, y ) dir =
 
 
 diagonalNeighbors : Coords -> List Coords
-diagonalNeighbors ( x, y ) =
-    [ ( x - 1, y - 1 )
-    , ( x + 1, y - 1 )
-    , ( x - 1, y + 1 )
-    , ( x + 1, y + 1 )
+diagonalNeighbors coords =
+    [ corner coords TopLeft
+    , corner coords TopRight
+    , corner coords BottomLeft
+    , corner coords BottomRight
     ]
 
 
 parallelNeighbors : Coords -> List Coords
 parallelNeighbors coords =
     List.map (next coords) Direction.all
+
+
+corner : Coords -> Corner -> Coords
+corner ( x, y ) c =
+    case c of
+        TopLeft ->
+            ( x - 1, y - 1 )
+
+        TopRight ->
+            ( x + 1, y - 1 )
+
+        BottomLeft ->
+            ( x - 1, y + 1 )
+
+        BottomRight ->
+            ( x + 1, y + 1 )
+
+
+{-| Corner plus natural neighbors (clockwise).
+
+    e.g. Left, TopLeft, Up
+
+-}
+cornerAndNeighbors : Corner -> Coords -> List Coords
+cornerAndNeighbors c coords =
+    case c of
+        TopLeft ->
+            [ next coords Left, corner coords TopLeft, next coords Up ]
+
+        TopRight ->
+            [ next coords Up, corner coords TopRight, next coords Right ]
+
+        BottomLeft ->
+            [ next coords Down, corner coords BottomLeft, next coords Left ]
+
+        BottomRight ->
+            [ next coords Right, corner coords BottomRight, next coords Down ]
 
 
 filterBy : List (Positioned a) -> Coords -> List (Positioned a)
