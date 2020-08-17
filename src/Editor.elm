@@ -1,8 +1,10 @@
 module Editor exposing (Model, Msg, initialModel, overlay, toolbar, update)
 
+import BitMask
 import Board exposing (Board)
 import Config exposing (borderRadius, borderSize, colors, constructionTileGroups, whitespace)
 import Coords exposing (Coords)
+import Direction exposing (Direction(..))
 import Element
     exposing
         ( Element
@@ -31,6 +33,7 @@ import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..))
 
 type Tool
     = Construction Tile
+    | SmartConstruction
     | IntersectionDesigner
     | TrafficDirectionDesigner
     | Bulldozer
@@ -52,6 +55,10 @@ initialModel =
     None
 
 
+
+-- Update
+
+
 update : SharedState -> Msg -> Model -> ( Model, Cmd Msg, SharedStateUpdate )
 update sharedState msg model =
     case msg of
@@ -63,6 +70,17 @@ update sharedState msg model =
                     , if Board.canAddTile coords tile sharedState.board then
                         sharedState.board
                             |> Board.set coords tile
+                            |> SharedState.EditBoardAt coords
+
+                      else
+                        SharedState.NoUpdate
+                    )
+
+                ( SmartConstruction, _ ) ->
+                    ( model
+                    , Cmd.none
+                    , if Board.canBuildRoadAt coords sharedState.board then
+                        buildRoad sharedState.board coords
                             |> SharedState.EditBoardAt coords
 
                       else
@@ -111,6 +129,39 @@ update sharedState msg model =
                         tool
             in
             ( nextTool, Cmd.none, SharedState.NoUpdate )
+
+
+buildRoad : Board -> Coords -> Board
+buildRoad board origin =
+    let
+        boardWithNewTile =
+            Board.set origin Config.defaultTile board
+    in
+    Board.map
+        (\coords _ ->
+            chooseTile boardWithNewTile coords
+                |> Maybe.withDefault Config.defaultTile
+        )
+        boardWithNewTile
+
+
+chooseTile : Board -> Coords -> Maybe Tile
+chooseTile board origin =
+    let
+        parallelTiles =
+            { north = Board.has (Coords.next origin Up) board
+            , west = Board.has (Coords.next origin Left) board
+            , east = Board.has (Coords.next origin Right) board
+            , south = Board.has (Coords.next origin Down) board
+            }
+    in
+    parallelTiles
+        |> BitMask.fourBitValue
+        |> Tile.fromId
+
+
+
+-- Views
 
 
 overlay : SharedState -> Model -> Element Msg
@@ -166,6 +217,13 @@ tileOverlay board tileSize selectedTool coords =
 
                 Construction tile ->
                     if Board.canAddTile coords tile board then
+                        colors.target
+
+                    else
+                        colors.notAllowed
+
+                SmartConstruction ->
+                    if Board.canBuildRoadAt coords board then
                         colors.target
 
                     else
@@ -232,12 +290,12 @@ toolbar model dimensions =
         , constructionButtonGroup constructionTileGroups.intersectionCross
         , constructionButtonGroup constructionTileGroups.intersectionT
         , constructionButtonGroup constructionTileGroups.curve
-        , constructionButtonGroup constructionTileGroups.deadend
         , buttonGroup
             [ toolbarButton dimensions model Bulldozer
             , toolbarButton dimensions model Dynamite
             , toolbarButton dimensions model IntersectionDesigner
             , toolbarButton dimensions model TrafficDirectionDesigner
+            , toolbarButton dimensions model SmartConstruction
             ]
         ]
 
@@ -252,6 +310,9 @@ toolbarButton dimensions selectedTool tool =
 
                 Construction (Intersection _ shape) ->
                     Graphics.intersectionAsset shape
+
+                SmartConstruction ->
+                    "road_2_lanes_horizontal.png"
 
                 IntersectionDesigner ->
                     "intersection_designer.png"

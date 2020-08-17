@@ -11,8 +11,8 @@ module Graphics exposing
 import Car exposing (Car, CarKind(..))
 import Collage exposing (Collage, image, invisible, shift, square, styled, transparent)
 import Collage.Layout as Layout
-import Direction exposing (Direction(..), Orientation(..))
-import Tile exposing (CurveKind(..), IntersectionShape(..), RoadKind(..))
+import Direction exposing (Corner(..), Direction(..), Orientation(..))
+import Tile exposing (IntersectionShape(..), RoadKind(..))
 
 
 grid : Int -> (Int -> Int -> Collage msg) -> Collage msg

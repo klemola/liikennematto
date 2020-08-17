@@ -3,15 +3,26 @@ module Config exposing (..)
 import Car exposing (Car, CarKind(..), Status(..), TurnKind(..))
 import Coords exposing (Coords)
 import Dict exposing (Dict)
-import Direction exposing (Direction(..), Orientation(..))
+import Direction exposing (Corner(..), Direction(..), Orientation(..))
 import Element exposing (rgb255, rgba255)
-import Tile exposing (CurveKind(..), IntersectionControl(..), IntersectionShape(..), RoadKind(..), Tile(..), TrafficDirection(..))
+import Tile
+    exposing
+        ( IntersectionControl(..)
+        , IntersectionShape(..)
+        , RoadKind(..)
+        , Tile(..)
+        , TrafficDirection(..)
+        )
 import TrafficLight
 
 
 boardSize : Int
 boardSize =
     10
+
+
+defaultTile =
+    TwoLaneRoad (Regular Horizontal) Both
 
 
 constructionTileGroups =
