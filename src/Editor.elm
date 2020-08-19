@@ -29,7 +29,7 @@ import Element.Events as Events
 import Element.Input as Input
 import Graphics
 import SharedState exposing (Dimensions, SharedState, SharedStateUpdate)
-import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..))
+import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..), TrafficDirection(..))
 
 
 type Tool
@@ -165,10 +165,25 @@ removeRoad board origin =
 
 applyMask : Board -> Board
 applyMask board =
+    let
+        -- applies modifiers (traffic direction, intersection control type) if new tile is compatible
+        -- Room for improvement: if Tile shape is decoupled from modifiers, this step is unnecessary
+        reApplyModifiersIfNecessary oldTile newTile =
+            case oldTile of
+                TwoLaneRoad _ OneWay ->
+                    Tile.toggleTrafficDirection newTile
+
+                Intersection control _ ->
+                    Tile.setIntersectionControl newTile control
+
+                _ ->
+                    newTile
+    in
     Board.map
-        (\coords _ ->
+        (\coords oldTile ->
             chooseTile board coords
                 |> Maybe.withDefault Config.defaultTile
+                |> reApplyModifiersIfNecessary oldTile
         )
         board
 

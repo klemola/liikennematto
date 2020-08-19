@@ -10,6 +10,7 @@ module Tile exposing
     , isRoad
     , potentialConnections
     , priorityDirections
+    , setIntersectionControl
     , toggleIntersectionControl
     , toggleTrafficDirection
     , validNeighbors
@@ -194,6 +195,16 @@ toggleIntersectionControl tile =
 
         Intersection (Yield orientation) (T dir) ->
             Intersection (Stop orientation) (T dir)
+
+        _ ->
+            tile
+
+
+setIntersectionControl : Tile -> IntersectionControl -> Tile
+setIntersectionControl tile control =
+    case tile of
+        Intersection _ shape ->
+            Intersection control shape
 
         _ ->
             tile
