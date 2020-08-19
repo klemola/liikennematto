@@ -22,7 +22,6 @@ import Element
         , inFront
         , newTabLink
         , padding
-        , paddingXY
         , paragraph
         , px
         , row
@@ -140,7 +139,7 @@ menu sharedState =
         , Font.size sharedState.dimensions.text
         , alignTop
         , width (px sharedState.dimensions.menu)
-        , paddingXY whitespace.tight whitespace.regular
+        , padding whitespace.tight
         , spacing whitespace.regular
         , Background.color colors.toolbarBackground
         , Border.rounded borderRadius.heavy

@@ -2,7 +2,7 @@ module Editor exposing (Model, Msg, initialModel, overlay, toolbar, update)
 
 import BitMask
 import Board exposing (Board)
-import Config exposing (borderRadius, borderSize, colors, constructionTileGroups, whitespace)
+import Config exposing (borderRadius, borderSize, colors, whitespace)
 import Coords exposing (Coords)
 import CustomEvent
 import Direction exposing (Direction(..))
@@ -16,25 +16,22 @@ import Element
         , height
         , image
         , mouseOver
-        , paddingXY
+        , padding
         , px
         , row
         , spacing
         , width
-        , wrappedRow
         )
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
 import Element.Input as Input
-import Graphics
 import SharedState exposing (Dimensions, SharedState, SharedStateUpdate)
 import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..), TrafficDirection(..))
 
 
 type Tool
-    = Construction Tile
-    | SmartConstruction
+    = SmartConstruction
     | IntersectionDesigner
     | TrafficDirectionDesigner
     | Bulldozer
@@ -66,18 +63,6 @@ update sharedState msg model =
     case msg of
         SelectTile coords ->
             case ( model, Board.get coords sharedState.board ) of
-                ( Construction tile, _ ) ->
-                    ( model
-                    , Cmd.none
-                    , if Board.canAddTile coords tile sharedState.board then
-                        sharedState.board
-                            |> Board.set coords tile
-                            |> SharedState.EditBoardAt coords
-
-                      else
-                        SharedState.NoUpdate
-                    )
-
                 ( SmartConstruction, _ ) ->
                     ( model
                     , Cmd.none
@@ -258,13 +243,6 @@ tileOverlay board tileSize selectedTool coords =
                 Dynamite ->
                     colors.transparent
 
-                Construction tile ->
-                    if Board.canAddTile coords tile board then
-                        colors.target
-
-                    else
-                        colors.notAllowed
-
                 SmartConstruction ->
                     if Board.canBuildRoadAt coords board then
                         colors.target
@@ -300,24 +278,10 @@ tileOverlay board tileSize selectedTool coords =
 
 toolbar : Model -> Dimensions -> Element Msg
 toolbar model dimensions =
-    let
-        buttonGroup buttons =
-            wrappedRow
-                [ width fill
-                , spacing whitespace.tight
-                ]
-                buttons
-
-        constructionButtonGroup g =
-            g
-                |> List.map Construction
-                |> List.map (toolbarButton dimensions model)
-                |> buttonGroup
-    in
     column
         [ width (px dimensions.toolbar)
         , alignTop
-        , paddingXY whitespace.tight whitespace.regular
+        , padding whitespace.tight
         , Background.color colors.toolbarBackground
         , Border.rounded borderRadius.heavy
         , Border.solid
@@ -328,33 +292,21 @@ toolbar model dimensions =
             , right = borderSize.light
             }
         , Border.color colors.heavyBorder
-        , spacing whitespace.regular
+        , spacing whitespace.tight
         ]
-        [ constructionButtonGroup constructionTileGroups.main
-        , constructionButtonGroup constructionTileGroups.intersectionCross
-        , constructionButtonGroup constructionTileGroups.intersectionT
-        , constructionButtonGroup constructionTileGroups.curve
-        , buttonGroup
-            [ toolbarButton dimensions model Bulldozer
-            , toolbarButton dimensions model Dynamite
-            , toolbarButton dimensions model IntersectionDesigner
-            , toolbarButton dimensions model TrafficDirectionDesigner
-            , toolbarButton dimensions model SmartConstruction
-            ]
+        [ toolbarButton model SmartConstruction
+        , toolbarButton model IntersectionDesigner
+        , toolbarButton model TrafficDirectionDesigner
+        , toolbarButton model Bulldozer
+        , toolbarButton model Dynamite
         ]
 
 
-toolbarButton : Dimensions -> Tool -> Tool -> Element Msg
-toolbarButton dimensions selectedTool tool =
+toolbarButton : Tool -> Tool -> Element Msg
+toolbarButton selectedTool tool =
     let
         asset =
             case tool of
-                Construction (TwoLaneRoad kind _) ->
-                    Graphics.roadAsset kind
-
-                Construction (Intersection _ shape) ->
-                    Graphics.intersectionAsset shape
-
                 SmartConstruction ->
                     "smart_construction.png"
 
@@ -370,7 +322,7 @@ toolbarButton dimensions selectedTool tool =
                 Dynamite ->
                     "dynamite.png"
 
-                _ ->
+                None ->
                     "__none__"
 
         show =
@@ -378,7 +330,7 @@ toolbarButton dimensions selectedTool tool =
     in
     Input.button
         [ Background.color colors.buttonBackground
-        , width (px dimensions.toolbarButton)
+        , width fill
         , Border.width borderSize.light
         , Border.solid
         , Border.rounded borderRadius.light

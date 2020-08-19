@@ -28,7 +28,6 @@ type alias SharedState =
 
 type alias Dimensions =
     { toolbar : Int
-    , toolbarButton : Int
     , menu : Int
     , menuButton : Int
     , text : Int
@@ -129,8 +128,7 @@ update sharedState sharedStateUpdate =
 
 maxDimensions : Dimensions
 maxDimensions =
-    { toolbar = 121
-    , toolbarButton = 50
+    { toolbar = 71
     , menu = 200
     , menuButton = 18
     , text = 14
@@ -158,10 +156,10 @@ nextDimensions dimensions ( screenWidth, screenHeight ) =
 
         toolbarButtonSize =
             (availableUISpace * 0.15)
-                |> valueOrMax maxDimensions.toolbarButton
+                |> valueOrMax maxDimensions.toolbar
 
         toolbarSize =
-            (toolbarButtonSize * 2 + 21)
+            (toolbarButtonSize + 21)
                 |> valueOrMax maxDimensions.toolbar
 
         menuSize =
@@ -181,8 +179,7 @@ nextDimensions dimensions ( screenWidth, screenHeight ) =
             floorToEven (boardSizePx / toFloat boardSize)
     in
     { dimensions
-        | toolbarButton = floor toolbarButtonSize
-        , toolbar = floor toolbarSize
+        | toolbar = floor toolbarSize
         , menu = floor menuSize
         , tileSize = tileSize
     }
