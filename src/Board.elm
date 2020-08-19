@@ -1,8 +1,6 @@
 module Board exposing
     ( Board
-    , canAddTile
     , canBuildRoadAt
-    , connections
     , get
     , getSafe
     , has
@@ -79,49 +77,6 @@ roadCoords board =
                 Tile.isRoad t
             )
         |> Dict.keys
-
-
-connections : Coords -> Tile -> Board -> List Tile
-connections coords origin board =
-    let
-        validate dir destination =
-            if Tile.connected dir origin destination then
-                Just destination
-
-            else
-                Nothing
-
-        connection dir =
-            get (Coords.next coords dir) board
-                |> Maybe.andThen (validate dir)
-    in
-    Tile.potentialConnections origin
-        |> List.filterMap connection
-
-
-canAddTile : Coords -> Tile -> Board -> Bool
-canAddTile coords tile board =
-    let
-        parallelNeighbors =
-            Coords.parallelNeighbors coords
-                |> List.filterMap (\c -> get c board)
-
-        parallelConnections =
-            connections coords tile board
-
-        connects =
-            List.length parallelConnections > 0
-
-        hasValidNeighbors =
-            parallelNeighbors
-                |> List.all (Tile.validNeighbors tile)
-
-        isValid =
-            connects && hasValidNeighbors
-    in
-    Dict.isEmpty board
-        || List.isEmpty parallelNeighbors
-        || isValid
 
 
 canBuildRoadAt : Coords -> Board -> Bool
