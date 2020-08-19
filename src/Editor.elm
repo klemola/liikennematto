@@ -356,7 +356,7 @@ toolbarButton dimensions selectedTool tool =
                     Graphics.intersectionAsset shape
 
                 SmartConstruction ->
-                    "road_2_lanes_horizontal.png"
+                    "smart_construction.png"
 
                 IntersectionDesigner ->
                     "intersection_designer.png"
