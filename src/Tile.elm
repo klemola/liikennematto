@@ -13,7 +13,6 @@ module Tile exposing
     , setIntersectionControl
     , toggleIntersectionControl
     , toggleTrafficDirection
-    , validNeighbors
     )
 
 import Dict exposing (Dict)
@@ -157,14 +156,6 @@ connected trafficDirection origin destination =
     in
     matchesTrafficDirection trafficDirection destination
         && List.any connects originConnections
-
-
-validNeighbors : Tile -> Tile -> Bool
-validNeighbors tileA tileB =
-    -- this pratically prevents placing intersections right next to each other
-    -- Room for improvement: It's possible to check if # of combined "potential connections"
-    -- ...is bigger than the # of individual tiles == complexity will increase, and prevent it
-    isRoad tileA || isRoad tileB
 
 
 toggleIntersectionControl : Tile -> Tile
