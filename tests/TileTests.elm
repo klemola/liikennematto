@@ -1,12 +1,11 @@
 module TileTests exposing (suite)
 
-import Direction exposing (Direction(..), Orientation(..))
+import Direction exposing (Corner(..), Direction(..), Orientation(..))
 import Expect
 import Test exposing (..)
 import Tile
     exposing
-        ( CurveKind(..)
-        , IntersectionControl(..)
+        ( IntersectionControl(..)
         , IntersectionShape(..)
         , RoadKind(..)
         , Tile(..)
