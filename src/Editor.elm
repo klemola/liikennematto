@@ -27,7 +27,14 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Input as Input
 import SharedState exposing (Dimensions, SharedState, SharedStateUpdate)
-import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..), TrafficDirection(..))
+import Tile
+    exposing
+        ( IntersectionControl(..)
+        , IntersectionShape(..)
+        , RoadKind(..)
+        , Tile(..)
+        , TrafficDirection(..)
+        )
 
 
 type Tool
@@ -154,11 +161,17 @@ applyMask board =
         -- applies modifiers (traffic direction, intersection control type) if new tile is compatible
         -- Room for improvement: if Tile shape is decoupled from modifiers, this step is unnecessary
         reApplyModifiersIfNecessary oldTile newTile =
-            case oldTile of
-                TwoLaneRoad _ OneWay ->
+            case ( oldTile, newTile ) of
+                ( TwoLaneRoad _ OneWay, _ ) ->
                     Tile.toggleTrafficDirection newTile
 
-                Intersection control _ ->
+                -- signal control can't be restored on a T intersection
+                ( Intersection (Signal _) Crossroads, Intersection _ (T dir) ) ->
+                    Tile.defaultIntersectionControl (T dir)
+                        |> Tile.setIntersectionControl newTile
+
+                -- otherwise intersection shape is compatible (e.g. from T to Crossroads)
+                ( Intersection control _, _ ) ->
                     Tile.setIntersectionControl newTile control
 
                 _ ->
