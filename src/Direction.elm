@@ -13,6 +13,7 @@ module Direction exposing
     , orientations
     , other
     , previous
+    , toOrientation
     )
 
 
@@ -93,6 +94,22 @@ opposite dir =
 other : Direction -> List Direction
 other dir =
     opposite dir :: cross dir
+
+
+toOrientation : Direction -> Orientation
+toOrientation dir =
+    case dir of
+        Up ->
+            Vertical
+
+        Right ->
+            Horizontal
+
+        Down ->
+            Vertical
+
+        Left ->
+            Horizontal
 
 
 oppositeOrientation : Orientation -> Orientation

@@ -5,6 +5,7 @@ module Tile exposing
     , Tile(..)
     , TrafficDirection(..)
     , connected
+    , defaultIntersectionControl
     , fromId
     , isIntersection
     , isRoad
@@ -189,6 +190,18 @@ toggleIntersectionControl tile =
 
         _ ->
             tile
+
+
+defaultIntersectionControl : IntersectionShape -> IntersectionControl
+defaultIntersectionControl shape =
+    case shape of
+        T dir ->
+            Direction.toOrientation dir
+                |> Direction.oppositeOrientation
+                |> Yield
+
+        Crossroads ->
+            Signal TrafficLight.default
 
 
 setIntersectionControl : Tile -> IntersectionControl -> Tile
