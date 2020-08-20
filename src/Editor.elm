@@ -1,11 +1,9 @@
 module Editor exposing (Model, Msg, initialModel, overlay, toolbar, update)
 
-import BitMask
 import Board exposing (Board)
 import Config exposing (borderRadius, borderSize, colors, whitespace)
 import Coords exposing (Coords)
 import CustomEvent
-import Direction exposing (Direction(..))
 import Element
     exposing
         ( Element
@@ -27,14 +25,7 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Input as Input
 import SharedState exposing (Dimensions, SharedState, SharedStateUpdate)
-import Tile
-    exposing
-        ( IntersectionControl(..)
-        , IntersectionShape(..)
-        , RoadKind(..)
-        , Tile(..)
-        , TrafficDirection(..)
-        )
+import Tile exposing (Tile(..))
 
 
 type Tool
@@ -143,7 +134,7 @@ buildRoad board origin =
         boardWithNewTile =
             Board.set origin Config.defaultTile board
     in
-    applyMask boardWithNewTile
+    Board.applyMask boardWithNewTile
 
 
 removeRoad : Board -> Coords -> Board
@@ -152,53 +143,7 @@ removeRoad board origin =
         boardWithoutTile =
             Board.remove origin board
     in
-    applyMask boardWithoutTile
-
-
-applyMask : Board -> Board
-applyMask board =
-    let
-        -- applies modifiers (traffic direction, intersection control type) if new tile is compatible
-        -- Room for improvement: if Tile shape is decoupled from modifiers, this step is unnecessary
-        reApplyModifiersIfNecessary oldTile newTile =
-            case ( oldTile, newTile ) of
-                ( TwoLaneRoad _ OneWay, _ ) ->
-                    Tile.toggleTrafficDirection newTile
-
-                -- signal control can't be restored on a T intersection
-                ( Intersection (Signal _) Crossroads, Intersection _ (T dir) ) ->
-                    Tile.defaultIntersectionControl (T dir)
-                        |> Tile.setIntersectionControl newTile
-
-                -- otherwise intersection shape is compatible (e.g. from T to Crossroads)
-                ( Intersection control _, _ ) ->
-                    Tile.setIntersectionControl newTile control
-
-                _ ->
-                    newTile
-    in
-    Board.map
-        (\coords oldTile ->
-            chooseTile board coords
-                |> Maybe.withDefault Config.defaultTile
-                |> reApplyModifiersIfNecessary oldTile
-        )
-        board
-
-
-chooseTile : Board -> Coords -> Maybe Tile
-chooseTile board origin =
-    let
-        parallelTiles =
-            { north = Board.has (Coords.next origin Up) board
-            , west = Board.has (Coords.next origin Left) board
-            , east = Board.has (Coords.next origin Right) board
-            , south = Board.has (Coords.next origin Down) board
-            }
-    in
-    parallelTiles
-        |> BitMask.fourBitValue
-        |> Tile.fromId
+    Board.applyMask boardWithoutTile
 
 
 

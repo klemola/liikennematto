@@ -1,10 +1,17 @@
 module Fixtures exposing (..)
 
-import Board
+import Board exposing (Board)
 import Car exposing (Car)
-import Direction exposing (Direction(..), Orientation(..))
+import Direction exposing (Corner(..), Direction(..), Orientation(..))
 import Round exposing (Round)
-import Tile exposing (CurveKind(..), IntersectionControl(..), IntersectionShape(..), RoadKind(..), Tile(..), TrafficDirection(..))
+import Tile
+    exposing
+        ( IntersectionControl(..)
+        , IntersectionShape(..)
+        , RoadKind(..)
+        , Tile(..)
+        , TrafficDirection(..)
+        )
 import TrafficLight
 
 
@@ -287,3 +294,74 @@ yieldAfterStopSetup =
             ]
     in
     Round.new board False fakeRandomDirections car otherCars
+
+
+lowComplexityBoard : Board
+lowComplexityBoard =
+    Board.new
+        |> Board.set ( 1, 1 ) (TwoLaneRoad (Deadend Left) Both)
+        |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+        |> Board.set ( 3, 1 ) (TwoLaneRoad (Deadend Right) Both)
+
+
+highComplexityBoard : Board
+highComplexityBoard =
+    Board.new
+        |> Board.set ( 1, 1 ) (TwoLaneRoad (Curve TopLeft) Both)
+        |> Board.set ( 2, 1 ) (TwoLaneRoad (Deadend Right) Both)
+        |> Board.set ( 1, 2 ) (TwoLaneRoad (Deadend Down) Both)
+
+
+boardThatResemblesAIntersection : Board
+boardThatResemblesAIntersection =
+    Board.new
+        |> Board.set ( 1, 1 ) (TwoLaneRoad (Deadend Left) Both)
+        |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+        |> Board.set ( 3, 1 ) (TwoLaneRoad (Deadend Right) Both)
+        |> Board.set ( 2, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
+
+
+expectedIntersectionTile : Tile
+expectedIntersectionTile =
+    Intersection (Yield Vertical) (T Down)
+
+
+boardThatResemblesACurve : Board
+boardThatResemblesACurve =
+    Board.new
+        |> Board.set ( 1, 1 ) (TwoLaneRoad (Deadend Left) Both)
+        |> Board.set ( 2, 1 ) (TwoLaneRoad (Deadend Right) Both)
+        |> Board.set ( 1, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
+
+
+expectedCurveTile : Tile
+expectedCurveTile =
+    TwoLaneRoad (Curve TopLeft) Both
+
+
+boardThatHasModifiersOnTiles : Board
+boardThatHasModifiersOnTiles =
+    -- A roundabout with two exits
+    Board.new
+        |> Board.set ( 1, 1 ) (TwoLaneRoad (Curve TopLeft) OneWay)
+        |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+        |> Board.set ( 3, 1 ) (TwoLaneRoad (Curve TopRight) OneWay)
+        |> Board.set ( 1, 2 ) (TwoLaneRoad (Regular Vertical) OneWay)
+        -- (2, 2) is empty
+        |> Board.set ( 3, 2 ) (Intersection (Stop Horizontal) (T Right))
+        |> Board.set ( 4, 2 ) (TwoLaneRoad (Deadend Right) Both)
+        |> Board.set ( 5, 2 ) (TwoLaneRoad (Deadend Right) OneWay)
+        |> Board.set ( 1, 3 ) (TwoLaneRoad (Curve BottomLeft) OneWay)
+        |> Board.set ( 2, 3 ) (Intersection (Yield Vertical) (T Down))
+        |> Board.set ( 3, 3 ) (TwoLaneRoad (Curve BottomRight) OneWay)
+        |> Board.set ( 2, 4 ) (TwoLaneRoad (Deadend Down) Both)
+
+
+expectedModifierTileA : Tile
+expectedModifierTileA =
+    TwoLaneRoad (Curve TopLeft) OneWay
+
+
+expectedModifierTileB : Tile
+expectedModifierTileB =
+    Intersection (Stop Horizontal) (T Right)
