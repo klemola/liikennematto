@@ -2,6 +2,10 @@
 
 Liikennematto (_Finnish for a "traffic mat"_) is a prototype village builder game with a tiny scale. Inspired by traffic mats that children play with. The prototype currently works like a board game where cars take turns in roaming around the "game board".
 
+![Screenshot](docs/screenshot.png)
+
+_Liikennematto in action! [Live demo](http://apps.butsku.com/liikennematto/)_
+
 ## Features
 
 ### Simulation
@@ -18,18 +22,17 @@ Liikennematto (_Finnish for a "traffic mat"_) is a prototype village builder gam
 
 ### Map editor
 
--   draw (_place_) tiles of all kind
--   bulldoze (_remove_) tiles
--   blow up the board (_clear it_) with dynamite
+-   draw roads of all kind with the smart editor
+    -   **left click / tap** to place a piece of road
+    -   **right click** to remove road from the tile
 -   toggle intersection control
 -   change traffic direction (one-way / both)
+-   bulldoze (_remove_) tiles [_for touch devices_]
+-   blow up the board (_clear it_) with dynamite
 
 #### Restrictions
 
-Tiles cannot be placed everywhere. In order to avoid awkward road layouts, these restrictions apply:
-
--   intersections cannot be placed right next to each other (add a regular road tile between them)
--   tiles have to "connect" with another tile, unless the surroundings are empty
+Tiles cannot be placed everywhere. In order to avoid awkward road layouts, the editor restricts complexity.
 
 ## Demo & more information
 
@@ -41,7 +44,7 @@ Tiles cannot be placed everywhere. In order to avoid awkward road layouts, these
 
 Read more about the project from [Liikennematto dev blog #1: prototyping traffic simulation with Elm](https://matiasklemola.com/liikennematto-dev-blog-one)
 
-[Follow me on Twitter](https://twitter.com/MatiasKlemola) for updates
+[Follow me on Twitter](https://twitter.com/MatiasKlemola) for updates!
 
 ## Attribution
 
