@@ -80,7 +80,7 @@ update sharedState msg model =
                     )
 
                 ( Dynamite, _ ) ->
-                    ( None
+                    ( SmartConstruction
                     , Cmd.none
                     , SharedState.NewBoard
                     )
