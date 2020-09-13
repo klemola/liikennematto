@@ -3,9 +3,9 @@ module Board exposing
     , applyMask
     , canBuildRoadAt
     , exists
-    , findRoadWithEmptyNeighbor
     , get
     , getSafe
+    , inBounds
     , map
     , new
     , remove
@@ -23,7 +23,6 @@ import Tile
     exposing
         ( IntersectionControl(..)
         , IntersectionShape(..)
-        , RoadKind(..)
         , Tile(..)
         , TrafficDirection(..)
         )
@@ -53,29 +52,6 @@ getSafe : Coords -> Board -> Tile
 getSafe coords board =
     get coords board
         |> Maybe.withDefault Terrain
-
-
-findRoadWithEmptyNeighbor : Orientation -> Direction -> Board -> Maybe ( Coords, Tile )
-findRoadWithEmptyNeighbor targetOrientation emptySide board =
-    let
-        isCompatible coords tile =
-            case tile of
-                TwoLaneRoad (Regular orientation) _ ->
-                    let
-                        potentialLotCoords =
-                            Coords.next coords emptySide
-                    in
-                    (orientation == targetOrientation)
-                        && inBounds potentialLotCoords
-                        && not (exists potentialLotCoords board)
-
-                _ ->
-                    False
-    in
-    board
-        |> Dict.filter isCompatible
-        |> Dict.toList
-        |> List.head
 
 
 exists : Coords -> Board -> Bool
