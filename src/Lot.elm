@@ -4,6 +4,7 @@ module Lot exposing
     , allBuildingKinds
     , anchorDirection
     , anchorTo
+    , coords
     , entryDirection
     )
 
@@ -53,3 +54,8 @@ anchorTo buildingKind ( anchor, _ ) =
             Building buildingKind ( anchor, anchorDirection buildingKind )
     in
     ( lot, anchor )
+
+
+coords : Lot -> Coords
+coords (Building _ ( roadCoords, dirFromRoad )) =
+    Coords.next roadCoords dirFromRoad

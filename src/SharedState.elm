@@ -113,7 +113,8 @@ update sharedState sharedStateUpdate =
         NewBoard ->
             { sharedState
                 | simulationState = Paused
-                , cars = initial.cars
+                , cars = Dict.empty
+                , lots = Dict.empty
                 , board = Board.new
             }
 

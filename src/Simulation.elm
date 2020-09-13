@@ -4,13 +4,13 @@ import Board exposing (Board)
 import Car
 import Coords exposing (Coords)
 import Dict
-import Direction exposing (Direction(..))
+import Direction exposing (Direction(..), Orientation)
 import Lot exposing (Lot(..), allBuildingKinds)
 import Random
 import Random.List
 import Round
 import SharedState exposing (Cars, Lots, SharedState, SharedStateUpdate)
-import Tile exposing (IntersectionControl(..), Tile(..))
+import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..))
 import TrafficLight
 
 
@@ -146,6 +146,7 @@ generateEnvironment board lots cars =
                     |> Dict.values
 
             nextUnusedBuilding =
+                -- Room for improvement: buildings should be shuffled so that they don't have to be built in certain order
                 allBuildingKinds
                     |> List.filter (\building -> not (List.member building existingBuildings))
                     |> List.head
@@ -153,17 +154,56 @@ generateEnvironment board lots cars =
             roadOrientation building =
                 Direction.toOrientation (Lot.entryDirection building)
                     |> Direction.oppositeOrientation
+
+            existingLots =
+                lots
+                    |> Dict.map (\_ lot -> Lot.coords lot)
+                    |> Dict.values
         in
         case nextUnusedBuilding of
             Just building ->
-                board
-                    |> Board.findRoadWithEmptyNeighbor (roadOrientation building) (Lot.anchorDirection building)
+                findLotAnchor
+                    { targetOrientation = roadOrientation building
+                    , targetDirection = Lot.anchorDirection building
+                    , board = board
+                    , existingLots = existingLots
+                    }
                     |> Maybe.map (Lot.anchorTo building)
                     |> Maybe.map (addLot lots cars)
                     |> Maybe.withDefault ( lots, cars )
 
             Nothing ->
                 ( lots, cars )
+
+
+findLotAnchor :
+    { targetOrientation : Orientation
+    , targetDirection : Direction
+    , board : Board
+    , existingLots : List Coords
+    }
+    -> Maybe ( Coords, Tile )
+findLotAnchor { targetOrientation, targetDirection, board, existingLots } =
+    let
+        isCompatible coords tile =
+            case tile of
+                TwoLaneRoad (Regular orientation) _ ->
+                    let
+                        potentialLotCoords =
+                            Coords.next coords targetDirection
+                    in
+                    (orientation == targetOrientation)
+                        && Board.inBounds potentialLotCoords
+                        && not (List.member potentialLotCoords existingLots)
+                        && not (Board.exists potentialLotCoords board)
+
+                _ ->
+                    False
+    in
+    board
+        |> Dict.filter isCompatible
+        |> Dict.toList
+        |> List.head
 
 
 addLot : Lots -> Cars -> ( Lot, Coords ) -> ( Lots, Cars )
@@ -214,12 +254,13 @@ updateTraffic model board cars =
                 Nothing ->
                     cars
 
+        -- Room for improvement: properly reset the activeCarId if the board is cleared
         nextActiveCarId =
             if model.activeCarId == 0 || model.activeCarId == Dict.size cars then
                 -- restart the cycle
                 1
 
             else
-                model.activeCarId + 1
+                min (model.activeCarId + 1) (Dict.size cars)
     in
     ( nextActiveCarId, nextCars )

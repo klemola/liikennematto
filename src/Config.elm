@@ -121,6 +121,10 @@ initialBoard =
         ]
 
 
+
+-- Room for improvement: Car colors should match building main colors by owner
+
+
 initialCars : Dict Int Car
 initialCars =
     Dict.fromList
@@ -131,4 +135,5 @@ initialCars =
 initialLots : Dict Int Lot
 initialLots =
     Dict.fromList
-        []
+        [ ( 1, Building ResidentialA ( ( 3, 10 ), Up ) )
+        ]

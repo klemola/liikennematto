@@ -64,7 +64,7 @@ new kind =
 
 newWithHome : CarKind -> Coords -> Int -> Car
 newWithHome kind homeCoords lotId =
-    Car homeCoords Up kind Moving (Just lotId)
+    Car homeCoords Up kind SkippingRound (Just lotId)
 
 
 isTurning : Car -> Bool
