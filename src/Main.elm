@@ -32,6 +32,7 @@ subs model =
             Sub.batch
                 [ Time.every slowTickSpeed SlowTick
                 , Time.every fastTickSpeed FastTick
+                , Time.every 1000 GenerationStep
                 , onResize ResizeWindow
                 ]
 
@@ -60,6 +61,7 @@ init _ =
 type Msg
     = SlowTick Time.Posix
     | FastTick Time.Posix
+    | GenerationStep Time.Posix
     | ResizeWindow Int Int
     | SimulationMsg Simulation.Msg
     | UIMsg UI.Msg
@@ -85,6 +87,18 @@ update msg model =
             let
                 ( simulation, cmd, sharedStateUpdate ) =
                     Simulation.update model.sharedState UpdateTraffic model.simulation
+
+                nextSharedState =
+                    SharedState.update model.sharedState sharedStateUpdate
+            in
+            ( { model | simulation = simulation, sharedState = nextSharedState }
+            , Cmd.map SimulationMsg cmd
+            )
+
+        GenerationStep _ ->
+            let
+                ( simulation, cmd, sharedStateUpdate ) =
+                    Simulation.update model.sharedState GenerateEnvironment model.simulation
 
                 nextSharedState =
                     SharedState.update model.sharedState sharedStateUpdate

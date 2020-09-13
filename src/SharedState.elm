@@ -1,20 +1,23 @@
 module SharedState exposing
     ( Cars
     , Dimensions
+    , Lots
     , SharedState
     , SharedStateUpdate(..)
     , SimulationSpeed(..)
     , SimulationState(..)
     , initial
+    , nextId
     , simulationSpeedValues
     , update
     )
 
 import Board exposing (Board)
 import Car exposing (Car)
-import Config exposing (boardSize, initialBoard, initialCars)
+import Config exposing (boardSize, initialBoard, initialCars, initialLots)
 import Coords exposing (Coords)
 import Dict exposing (Dict)
+import Lot exposing (Lot)
 
 
 type alias SharedState =
@@ -23,6 +26,7 @@ type alias SharedState =
     , screenSize : ( Int, Int )
     , board : Board
     , cars : Cars
+    , lots : Lots
     }
 
 
@@ -37,6 +41,10 @@ type alias Dimensions =
 
 type alias Cars =
     Dict Int Car
+
+
+type alias Lots =
+    Dict Int Lot
 
 
 type SimulationSpeed
@@ -56,6 +64,7 @@ type SharedStateUpdate
     | RecalculateDimensions Int Int
     | UpdateBoard Board
     | UpdateCars Cars
+    | UpdateLots ( Lots, Cars )
     | NewBoard
     | EditBoardAt Coords Board
 
@@ -72,6 +81,7 @@ initial =
     , screenSize = ( 0, 0 )
     , board = initialBoard
     , cars = initialCars
+    , lots = initialLots
     }
 
 
@@ -96,6 +106,9 @@ update sharedState sharedStateUpdate =
 
         UpdateCars cars ->
             { sharedState | cars = cars }
+
+        UpdateLots ( lots, cars ) ->
+            { sharedState | lots = lots, cars = cars }
 
         NewBoard ->
             { sharedState
@@ -124,6 +137,14 @@ update sharedState sharedStateUpdate =
 
         NoUpdate ->
             sharedState
+
+
+nextId : Dict Int a -> Int
+nextId dict =
+    Dict.keys dict
+        |> List.maximum
+        |> Maybe.map ((+) 1)
+        |> Maybe.withDefault 1
 
 
 maxDimensions : Dimensions

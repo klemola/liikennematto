@@ -1,5 +1,6 @@
 module Graphics exposing
-    ( carAsset
+    ( buildingAsset
+    , carAsset
     , grid
     , intersectionAsset
     , marker
@@ -12,6 +13,7 @@ import Car exposing (Car, CarKind(..))
 import Collage exposing (Collage, image, invisible, shift, square, styled, transparent)
 import Collage.Layout as Layout
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
+import Lot exposing (BuildingKind(..), Lot(..))
 import Tile exposing (IntersectionShape(..), RoadKind(..))
 
 
@@ -138,6 +140,16 @@ carAsset car =
 
         Sedan5 ->
             "car_black_1.png"
+
+
+buildingAsset : BuildingKind -> String
+buildingAsset kind =
+    case kind of
+        ResidentialA ->
+            "residential_a.png"
+
+        ResidentialB ->
+            "residential_b.png"
 
 
 oneWayMarker : RoadKind -> String

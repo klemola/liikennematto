@@ -5,6 +5,7 @@ import Coords exposing (Coords)
 import Dict exposing (Dict)
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
 import Element exposing (rgb255, rgba255)
+import Lot exposing (BuildingKind(..), Lot(..))
 import Tile
     exposing
         ( IntersectionControl(..)
@@ -23,35 +24,6 @@ boardSize =
 
 defaultTile =
     TwoLaneRoad (Regular Horizontal) Both
-
-
-constructionTileGroups =
-    { main =
-        [ TwoLaneRoad (Regular Horizontal) Both
-        , TwoLaneRoad (Regular Vertical) Both
-        ]
-    , intersectionCross =
-        [ Intersection (Signal TrafficLight.default) Crossroads
-        ]
-    , intersectionT =
-        [ Intersection (Yield Vertical) (T Up)
-        , Intersection (Yield Horizontal) (T Right)
-        , Intersection (Yield Vertical) (T Down)
-        , Intersection (Yield Horizontal) (T Left)
-        ]
-    , curve =
-        [ TwoLaneRoad (Curve TopLeft) Both
-        , TwoLaneRoad (Curve TopRight) Both
-        , TwoLaneRoad (Curve BottomLeft) Both
-        , TwoLaneRoad (Curve BottomRight) Both
-        ]
-    , deadend =
-        [ TwoLaneRoad (Deadend Up) Both
-        , TwoLaneRoad (Deadend Right) Both
-        , TwoLaneRoad (Deadend Down) Both
-        , TwoLaneRoad (Deadend Left) Both
-        ]
-    }
 
 
 colors =
@@ -152,9 +124,11 @@ initialBoard =
 initialCars : Dict Int Car
 initialCars =
     Dict.fromList
-        [ ( 1, Car.new Sedan1 )
-        , ( 2, Car.new Sedan2 )
-        , ( 3, Car.new Sedan3 )
-        , ( 4, Car.new Sedan4 )
-        , ( 5, Car.new Sedan5 )
+        [ ( 1, Car.newWithHome Sedan1 ( 3, 10 ) 1 )
         ]
+
+
+initialLots : Dict Int Lot
+initialLots =
+    Dict.fromList
+        []

@@ -131,11 +131,11 @@ applyRule { activeCar, board, currentTile, randomDirections } rule =
             Car.yield activeCar
 
         StopAtIntersection ->
-            if Car.onTheMove activeCar then
-                Car.stopAtIntersection activeCar
+            if Car.isStoppedOrWaiting activeCar then
+                activeCar
 
             else
-                activeCar
+                Car.stopAtIntersection activeCar
 
 
 activeRulesByPriority : Round -> List Rule
@@ -241,7 +241,7 @@ checkIntersectionRules { board, otherCars, nextTile, nextCoords, activeCar } =
             not hasPriority && List.length priorityTraffic > 0
 
         shouldStop =
-            not hasPriority && Car.onTheMove activeCar
+            not hasPriority && not (Car.isStoppedOrWaiting activeCar)
     in
     case nextTile of
         Intersection (Signal trafficLights) _ ->
