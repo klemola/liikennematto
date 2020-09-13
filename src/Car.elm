@@ -4,10 +4,11 @@ module Car exposing
     , Status(..)
     , TurnKind(..)
     , isRespawning
+    , isStoppedOrWaiting
     , isTurning
     , move
     , new
-    , onTheMove
+    , newWithHome
     , skipRound
     , spawn
     , statusDescription
@@ -28,6 +29,7 @@ type alias Car =
     , direction : Direction
     , kind : CarKind
     , status : Status
+    , homeLotId : Maybe Int
     }
 
 
@@ -57,7 +59,12 @@ type TurnKind
 
 new : CarKind -> Car
 new kind =
-    Car ( 0, 0 ) Up kind Respawning
+    Car ( 0, 0 ) Up kind Respawning Nothing
+
+
+newWithHome : CarKind -> Coords -> Int -> Car
+newWithHome kind homeCoords lotId =
+    Car homeCoords Up kind Moving (Just lotId)
 
 
 isTurning : Car -> Bool
@@ -80,16 +87,19 @@ isRespawning car =
             False
 
 
-onTheMove : Car -> Bool
-onTheMove car =
+isStoppedOrWaiting : Car -> Bool
+isStoppedOrWaiting car =
     case car.status of
-        Moving ->
+        WaitingForTrafficLights ->
             True
 
-        Respawning ->
+        StoppedAtIntersection ->
             True
 
-        Turning _ ->
+        Yielding ->
+            True
+
+        SkippingRound ->
             True
 
         _ ->

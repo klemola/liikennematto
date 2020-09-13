@@ -2,9 +2,10 @@ module Board exposing
     ( Board
     , applyMask
     , canBuildRoadAt
+    , exists
+    , findRoadWithEmptyNeighbor
     , get
     , getSafe
-    , has
     , map
     , new
     , remove
@@ -17,7 +18,7 @@ import Config
 import Coords exposing (Coords)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
-import Direction exposing (Direction(..))
+import Direction exposing (Direction(..), Orientation(..))
 import Tile
     exposing
         ( IntersectionControl(..)
@@ -54,14 +55,42 @@ getSafe coords board =
         |> Maybe.withDefault Terrain
 
 
-has : Coords -> Board -> Bool
-has coords board =
+findRoadWithEmptyNeighbor : Orientation -> Direction -> Board -> Maybe ( Coords, Tile )
+findRoadWithEmptyNeighbor targetOrientation emptySide board =
+    let
+        isCompatible coords tile =
+            case tile of
+                TwoLaneRoad (Regular orientation) _ ->
+                    let
+                        potentialLotCoords =
+                            Coords.next coords emptySide
+                    in
+                    (orientation == targetOrientation)
+                        && inBounds potentialLotCoords
+                        && not (exists potentialLotCoords board)
+
+                _ ->
+                    False
+    in
+    board
+        |> Dict.filter isCompatible
+        |> Dict.toList
+        |> List.head
+
+
+exists : Coords -> Board -> Bool
+exists coords board =
     case get coords board of
         Just _ ->
             True
 
         Nothing ->
             False
+
+
+inBounds : Coords -> Bool
+inBounds ( x, y ) =
+    x > 0 && x <= Config.boardSize && y > 0 && y <= Config.boardSize
 
 
 set : Coords -> Tile -> Board -> Board
@@ -138,10 +167,10 @@ chooseTile : Board -> Coords -> Maybe Tile
 chooseTile board origin =
     let
         parallelTiles =
-            { north = has (Coords.next origin Up) board
-            , west = has (Coords.next origin Left) board
-            , east = has (Coords.next origin Right) board
-            , south = has (Coords.next origin Down) board
+            { north = exists (Coords.next origin Up) board
+            , west = exists (Coords.next origin Left) board
+            , east = exists (Coords.next origin Right) board
+            , south = exists (Coords.next origin Down) board
             }
     in
     parallelTiles

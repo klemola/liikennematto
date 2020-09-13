@@ -24,6 +24,7 @@ import Dict
 import Direction exposing (Direction(..), Orientation)
 import Graphics
 import Html exposing (Html)
+import Lot exposing (Lot(..))
 import SharedState exposing (SharedState)
 import Tile
     exposing
@@ -36,9 +37,10 @@ import TrafficLight exposing (TrafficLight, TrafficLightKind(..))
 
 
 view : SharedState -> Html msg
-view { board, cars, dimensions } =
+view { board, cars, lots, dimensions } =
     Layout.stack
         [ renderCars (Dict.values cars) dimensions.tileSize
+        , renderLots (Dict.values lots) dimensions.tileSize
         , renderBoard board dimensions.tileSize
         ]
         |> svg
@@ -161,7 +163,7 @@ renderCars : List Car -> Float -> Collage msg
 renderCars cars tileSize =
     let
         carSize =
-            tileSize * 0.33
+            tileSize * 0.3
 
         shiftAmount =
             carSize * 0.5
@@ -226,6 +228,24 @@ renderCar size car =
     in
     Graphics.texture size (Graphics.carAsset car)
         |> rotate (degrees rotation)
+
+
+renderLots : List Lot -> Float -> Collage msg
+renderLots lots tileSize =
+    List.map (renderLot tileSize) lots
+        |> Collage.group
+
+
+renderLot : Float -> Lot -> Collage msg
+renderLot size lot =
+    case lot of
+        Building kind ( anchor, dirFromRoad ) ->
+            let
+                ( x, y ) =
+                    Coords.next anchor dirFromRoad
+            in
+            Graphics.texture size (Graphics.buildingAsset kind)
+                |> shift ( toFloat x * size - size, size - (toFloat y * size) )
 
 
 rotationDegrees : Direction -> Float

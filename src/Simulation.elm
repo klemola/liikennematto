@@ -1,12 +1,15 @@
 module Simulation exposing (Model, Msg(..), initialModel, update)
 
 import Board exposing (Board)
+import Car
+import Coords exposing (Coords)
 import Dict
 import Direction exposing (Direction(..))
+import Lot exposing (Lot(..), allBuildingKinds)
 import Random
 import Random.List
 import Round
-import SharedState exposing (Cars, SharedState, SharedStateUpdate)
+import SharedState exposing (Cars, Lots, SharedState, SharedStateUpdate)
 import Tile exposing (IntersectionControl(..), Tile(..))
 import TrafficLight
 
@@ -25,7 +28,8 @@ type alias ActiveCarId =
 type Msg
     = UpdateTraffic
     | UpdateEnvironment
-    | CoinToss Bool
+    | GenerateEnvironment
+    | ReceiveCoinTossResult Bool
     | ReceiveRandomDirections (List Direction)
 
 
@@ -62,10 +66,18 @@ update sharedState msg model =
         UpdateEnvironment ->
             ( model
             , Cmd.none
-            , SharedState.UpdateBoard (updateEnvironment sharedState.board)
+            , updateEnvironment sharedState.board
+                |> SharedState.UpdateBoard
             )
 
-        CoinToss result ->
+        GenerateEnvironment ->
+            ( model
+            , Cmd.none
+            , generateEnvironment sharedState.board sharedState.lots sharedState.cars
+                |> SharedState.UpdateLots
+            )
+
+        ReceiveCoinTossResult result ->
             ( { model | coinTossResult = result }, Cmd.none, SharedState.NoUpdate )
 
         ReceiveRandomDirections directions ->
@@ -82,12 +94,12 @@ shuffleDirections =
 tossACoin : Cmd Msg
 tossACoin =
     Random.weighted ( 60, False ) [ ( 40, True ) ]
-        |> Random.generate CoinToss
+        |> Random.generate ReceiveCoinTossResult
 
 
 
 --
--- Environment logic (traffic lights)
+-- Environment logic
 --
 
 
@@ -118,6 +130,58 @@ updateEnvironment board =
                     tile
     in
     Dict.map (\_ tile -> updateTile tile) board
+
+
+generateEnvironment : Board -> Lots -> Cars -> ( Lots, Cars )
+generateEnvironment board lots cars =
+    -- early exit if nothing unique can be generated, or if the road network is too small
+    if Dict.size lots == List.length allBuildingKinds || Dict.size board < 5 then
+        ( lots, cars )
+
+    else
+        let
+            existingBuildings =
+                lots
+                    |> Dict.map (\_ (Building kind _) -> kind)
+                    |> Dict.values
+
+            nextUnusedBuilding =
+                allBuildingKinds
+                    |> List.filter (\building -> not (List.member building existingBuildings))
+                    |> List.head
+
+            roadOrientation building =
+                Direction.toOrientation (Lot.entryDirection building)
+                    |> Direction.oppositeOrientation
+        in
+        case nextUnusedBuilding of
+            Just building ->
+                board
+                    |> Board.findRoadWithEmptyNeighbor (roadOrientation building) (Lot.anchorDirection building)
+                    |> Maybe.map (Lot.anchorTo building)
+                    |> Maybe.map (addLot lots cars)
+                    |> Maybe.withDefault ( lots, cars )
+
+            Nothing ->
+                ( lots, cars )
+
+
+addLot : Lots -> Cars -> ( Lot, Coords ) -> ( Lots, Cars )
+addLot lots cars ( newLot, anchor ) =
+    let
+        nextLotId =
+            SharedState.nextId lots
+
+        nextCarId =
+            SharedState.nextId cars
+
+        newLots =
+            Dict.insert nextLotId newLot lots
+
+        newCars =
+            Dict.insert nextCarId (Car.newWithHome Car.Sedan5 anchor nextLotId) cars
+    in
+    ( newLots, newCars )
 
 
 
