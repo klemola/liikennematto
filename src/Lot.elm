@@ -24,11 +24,19 @@ type alias Anchor =
 type BuildingKind
     = ResidentialA
     | ResidentialB
+    | ResidentialC
+    | ResidentialD
+    | ResidentialE
 
 
 allBuildingKinds : List BuildingKind
 allBuildingKinds =
-    [ ResidentialA, ResidentialB ]
+    [ ResidentialA
+    , ResidentialB
+    , ResidentialC
+    , ResidentialD
+    , ResidentialE
+    ]
 
 
 entryDirection : BuildingKind -> Direction
@@ -39,6 +47,15 @@ entryDirection buildingKind =
 
         ResidentialB ->
             Right
+
+        ResidentialC ->
+            Left
+
+        ResidentialD ->
+            Up
+
+        ResidentialE ->
+            Up
 
 
 anchorDirection : BuildingKind -> Direction

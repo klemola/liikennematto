@@ -34,11 +34,11 @@ type alias Car =
 
 
 type CarKind
-    = Sedan1
-    | Sedan2
-    | Sedan3
-    | Sedan4
-    | Sedan5
+    = SedanA
+    | SedanB
+    | SedanC
+    | SedanD
+    | SedanE
 
 
 type Status

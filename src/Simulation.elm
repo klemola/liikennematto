@@ -2,6 +2,7 @@ module Simulation exposing (Model, Msg(..), initialModel, update)
 
 import Board exposing (Board)
 import Car
+import Config
 import Coords exposing (Coords)
 import Dict
 import Direction exposing (Direction(..), Orientation)
@@ -215,11 +216,14 @@ addLot lots cars ( newLot, anchor ) =
         nextCarId =
             SharedState.nextId cars
 
+        resident =
+            Config.resident newLot
+
         newLots =
             Dict.insert nextLotId newLot lots
 
         newCars =
-            Dict.insert nextCarId (Car.newWithHome Car.Sedan5 anchor nextLotId) cars
+            Dict.insert nextCarId (Car.newWithHome resident anchor nextLotId) cars
     in
     ( newLots, newCars )
 
