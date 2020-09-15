@@ -17,12 +17,12 @@ import TrafficLight
 
 carOne : Car
 carOne =
-    Car.new Car.Sedan1
+    Car.new Car.SedanA
 
 
 carTwo : Car
 carTwo =
-    Car.new Car.Sedan2
+    Car.new Car.SedanB
 
 
 fakeRandomDirections : List Direction

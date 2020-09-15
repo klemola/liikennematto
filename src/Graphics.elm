@@ -126,19 +126,19 @@ roadAsset kind =
 carAsset : Car -> String
 carAsset car =
     case car.kind of
-        Sedan1 ->
+        SedanA ->
             "car_blue_1.png"
 
-        Sedan2 ->
+        SedanB ->
             "car_red_1.png"
 
-        Sedan3 ->
-            "car_green_1.png"
-
-        Sedan4 ->
+        SedanC ->
             "car_yellow_1.png"
 
-        Sedan5 ->
+        SedanD ->
+            "car_green_1.png"
+
+        SedanE ->
             "car_black_1.png"
 
 
@@ -150,6 +150,15 @@ buildingAsset kind =
 
         ResidentialB ->
             "residential_b.png"
+
+        ResidentialC ->
+            "residential_c.png"
+
+        ResidentialD ->
+            "residential_d.png"
+
+        ResidentialE ->
+            "residential_e.png"
 
 
 oneWayMarker : RoadKind -> String

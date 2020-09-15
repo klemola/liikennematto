@@ -121,19 +121,42 @@ initialBoard =
         ]
 
 
+firstLot =
+    Building ResidentialA ( ( 3, 10 ), Up )
 
--- Room for improvement: Car colors should match building main colors by owner
 
-
-initialCars : Dict Int Car
-initialCars =
-    Dict.fromList
-        [ ( 1, Car.newWithHome Sedan1 ( 3, 10 ) 1 )
-        ]
+firstCar =
+    Car.newWithHome (resident firstLot) ( 3, 10 ) 1
 
 
 initialLots : Dict Int Lot
 initialLots =
     Dict.fromList
-        [ ( 1, Building ResidentialA ( ( 3, 10 ), Up ) )
+        [ ( 1, firstLot )
         ]
+
+
+initialCars : Dict Int Car
+initialCars =
+    Dict.fromList
+        [ ( 1, firstCar )
+        ]
+
+
+resident : Lot -> CarKind
+resident (Building buildingKind _) =
+    case buildingKind of
+        ResidentialA ->
+            SedanA
+
+        ResidentialB ->
+            SedanB
+
+        ResidentialC ->
+            SedanC
+
+        ResidentialD ->
+            SedanD
+
+        ResidentialE ->
+            SedanE
