@@ -1,4 +1,4 @@
-module Simulation exposing (Model, Msg(..), initialModel, update)
+module Simulation exposing (Model, Msg(..), initialModel, subscriptions, update)
 
 import Board exposing (Board)
 import Car
@@ -10,8 +10,16 @@ import Lot exposing (Lot(..), allBuildingKinds)
 import Random
 import Random.List
 import Round
-import SharedState exposing (Cars, Lots, SharedState, SharedStateUpdate)
+import SharedState
+    exposing
+        ( Cars
+        , Lots
+        , SharedState
+        , SharedStateUpdate
+        , SimulationState(..)
+        )
 import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..))
+import Time
 import TrafficLight
 
 
@@ -21,10 +29,15 @@ type alias Model =
     }
 
 
+type alias ShuffledBoard =
+    List ( Coords, Tile )
+
+
 type Msg
-    = UpdateTraffic
-    | UpdateEnvironment
-    | GenerateEnvironment
+    = UpdateTraffic Time.Posix
+    | UpdateEnvironment Time.Posix
+    | PrepareGeneration Time.Posix
+    | GenerateEnvironment ShuffledBoard
     | ReceiveCoinTossResult Bool
     | ReceiveRandomDirections (List Direction)
 
@@ -32,8 +45,26 @@ type Msg
 initialModel : Model
 initialModel =
     { coinTossResult = False
-    , randomDirections = List.repeat 4 Right
+    , randomDirections = Direction.all
     }
+
+
+subscriptions : SharedState -> Sub Msg
+subscriptions sharedState =
+    case sharedState.simulationState of
+        Simulation speed ->
+            let
+                ( slowTickSpeed, fastTickSpeed ) =
+                    SharedState.simulationSpeedValues speed
+            in
+            Sub.batch
+                [ Time.every slowTickSpeed UpdateEnvironment
+                , Time.every fastTickSpeed UpdateTraffic
+                , Time.every slowTickSpeed PrepareGeneration
+                ]
+
+        Paused ->
+            Sub.none
 
 
 
@@ -45,30 +76,38 @@ initialModel =
 update : SharedState -> Msg -> Model -> ( Model, Cmd Msg, SharedStateUpdate )
 update sharedState msg model =
     case msg of
-        UpdateTraffic ->
-            let
-                nextCars =
-                    updateTraffic model sharedState.board sharedState.cars
-            in
+        UpdateTraffic _ ->
             ( model
             , Cmd.batch
                 [ tossACoin
                 , shuffleDirections
                 ]
-            , SharedState.UpdateCars nextCars
+            , updateTraffic model sharedState.board sharedState.cars
+                |> SharedState.UpdateCars
             )
 
-        UpdateEnvironment ->
+        UpdateEnvironment _ ->
             ( model
             , Cmd.none
             , updateEnvironment sharedState.board
                 |> SharedState.UpdateBoard
             )
 
-        GenerateEnvironment ->
+        PrepareGeneration _ ->
+            ( model
+            , shuffleBoardAndGenerateEnvironment sharedState.board
+            , SharedState.NoUpdate
+            )
+
+        GenerateEnvironment shuffledBoard ->
             ( model
             , Cmd.none
-            , generateEnvironment sharedState.board sharedState.lots sharedState.cars
+            , generateEnvironment
+                { board = sharedState.board
+                , shuffledBoard = shuffledBoard
+                , cars = sharedState.cars
+                , lots = sharedState.lots
+                }
                 |> SharedState.UpdateLots
             )
 
@@ -90,6 +129,13 @@ tossACoin : Cmd Msg
 tossACoin =
     Random.weighted ( 60, False ) [ ( 40, True ) ]
         |> Random.generate ReceiveCoinTossResult
+
+
+shuffleBoardAndGenerateEnvironment : Board -> Cmd Msg
+shuffleBoardAndGenerateEnvironment board =
+    Dict.toList board
+        |> Random.List.shuffle
+        |> Random.generate GenerateEnvironment
 
 
 
@@ -127,8 +173,14 @@ updateEnvironment board =
     Dict.map (\_ tile -> updateTile tile) board
 
 
-generateEnvironment : Board -> Lots -> Cars -> ( Lots, Cars )
-generateEnvironment board lots cars =
+generateEnvironment :
+    { board : Board
+    , shuffledBoard : ShuffledBoard
+    , lots : Lots
+    , cars : Cars
+    }
+    -> ( Lots, Cars )
+generateEnvironment { board, shuffledBoard, lots, cars } =
     -- early exit if nothing unique can be generated, or if the road network is too small
     if Dict.size lots == List.length allBuildingKinds || Dict.size board < 5 then
         ( lots, cars )
@@ -164,6 +216,7 @@ generateEnvironment board lots cars =
                     { targetOrientation = roadOrientation building
                     , targetDirection = Lot.anchorDirection building
                     , board = board
+                    , shuffledBoard = shuffledBoard
                     , existingLots = existingLots
                     }
                     |> Maybe.map (Lot.anchorTo building)
@@ -178,12 +231,13 @@ findLotAnchor :
     { targetOrientation : Orientation
     , targetDirection : Direction
     , board : Board
+    , shuffledBoard : ShuffledBoard
     , existingLots : List Coords
     }
     -> Maybe ( Coords, Tile )
-findLotAnchor { targetOrientation, targetDirection, board, existingLots } =
+findLotAnchor { targetOrientation, targetDirection, board, shuffledBoard, existingLots } =
     let
-        isCompatible coords tile =
+        isCompatible ( coords, tile ) =
             case tile of
                 TwoLaneRoad (Regular orientation) _ ->
                     let
@@ -198,9 +252,8 @@ findLotAnchor { targetOrientation, targetDirection, board, existingLots } =
                 _ ->
                     False
     in
-    board
-        |> Dict.filter isCompatible
-        |> Dict.toList
+    shuffledBoard
+        |> List.filter isCompatible
         |> List.head
 
 

@@ -4,10 +4,9 @@ import Browser
 import Browser.Dom exposing (getViewport)
 import Browser.Events exposing (onResize)
 import Html exposing (Html)
-import SharedState exposing (SharedState, SharedStateUpdate(..), SimulationState(..))
+import SharedState exposing (SharedState, SharedStateUpdate(..))
 import Simulation exposing (Msg(..))
 import Task
-import Time
 import UI
 
 
@@ -17,27 +16,17 @@ main =
         { init = init
         , view = view
         , update = update
-        , subscriptions = subs
+        , subscriptions = subscriptions
         }
 
 
-subs : Model -> Sub Msg
-subs model =
-    case model.sharedState.simulationState of
-        Simulation speed ->
-            let
-                ( slowTickSpeed, fastTickSpeed ) =
-                    SharedState.simulationSpeedValues speed
-            in
-            Sub.batch
-                [ Time.every slowTickSpeed SlowTick
-                , Time.every fastTickSpeed FastTick
-                , Time.every 1000 GenerationStep
-                , onResize ResizeWindow
-                ]
-
-        Paused ->
-            onResize ResizeWindow
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.batch
+        [ Simulation.subscriptions model.sharedState
+            |> Sub.map SimulationMsg
+        , onResize ResizeWindow
+        ]
 
 
 type alias Model =
@@ -59,10 +48,7 @@ init _ =
 
 
 type Msg
-    = SlowTick Time.Posix
-    | FastTick Time.Posix
-    | GenerationStep Time.Posix
-    | ResizeWindow Int Int
+    = ResizeWindow Int Int
     | SimulationMsg Simulation.Msg
     | UIMsg UI.Msg
 
@@ -70,43 +56,6 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        -- Room for improvement: Tick Msgs could be removed if Simulation subbed directly to ticks
-        SlowTick _ ->
-            let
-                ( simulation, cmd, sharedStateUpdate ) =
-                    Simulation.update model.sharedState UpdateEnvironment model.simulation
-
-                nextSharedState =
-                    SharedState.update model.sharedState sharedStateUpdate
-            in
-            ( { model | simulation = simulation, sharedState = nextSharedState }
-            , Cmd.map SimulationMsg cmd
-            )
-
-        FastTick _ ->
-            let
-                ( simulation, cmd, sharedStateUpdate ) =
-                    Simulation.update model.sharedState UpdateTraffic model.simulation
-
-                nextSharedState =
-                    SharedState.update model.sharedState sharedStateUpdate
-            in
-            ( { model | simulation = simulation, sharedState = nextSharedState }
-            , Cmd.map SimulationMsg cmd
-            )
-
-        GenerationStep _ ->
-            let
-                ( simulation, cmd, sharedStateUpdate ) =
-                    Simulation.update model.sharedState GenerateEnvironment model.simulation
-
-                nextSharedState =
-                    SharedState.update model.sharedState sharedStateUpdate
-            in
-            ( { model | simulation = simulation, sharedState = nextSharedState }
-            , Cmd.map SimulationMsg cmd
-            )
-
         ResizeWindow width height ->
             let
                 nextSharedState =
