@@ -255,10 +255,10 @@ simulationSpeedValues speed =
     -- (Environment update, Traffic update)
     case speed of
         Slow ->
-            ( 1200, 400 )
+            ( 1200, 500 )
 
         Medium ->
-            ( 900, 100 )
+            ( 900, 250 )
 
         Fast ->
-            ( 600, 50 )
+            ( 600, 100 )
