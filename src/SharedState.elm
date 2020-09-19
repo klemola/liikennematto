@@ -17,7 +17,7 @@ import Car exposing (Car)
 import Config exposing (boardSize, initialBoard, initialCars, initialLots)
 import Coords exposing (Coords)
 import Dict exposing (Dict)
-import Lot exposing (Lot)
+import Lot exposing (Lot(..))
 
 
 type alias SharedState =
@@ -120,20 +120,39 @@ update sharedState sharedStateUpdate =
 
         EditBoardAt coords editedBoard ->
             let
-                nextCars =
-                    Dict.map
-                        (\_ car ->
-                            if car.coords == coords then
-                                Car.waitForRespawn car
-
-                            else
-                                car
+                nextLots =
+                    Dict.filter
+                        (\_ (Building _ ( anchorCoords, _ )) ->
+                            Board.exists anchorCoords editedBoard
                         )
-                        sharedState.cars
+                        sharedState.lots
+
+                nextCars =
+                    sharedState.cars
+                        -- Room for improvement: implement general orphan entity handling
+                        |> Dict.filter
+                            (\_ car ->
+                                case car.homeLotId of
+                                    Just lotId ->
+                                        Dict.member lotId nextLots
+
+                                    Nothing ->
+                                        True
+                            )
+                        -- Room for improvement: move the car back to it's lot instead
+                        |> Dict.map
+                            (\_ car ->
+                                if car.coords == coords then
+                                    Car.waitForRespawn car
+
+                                else
+                                    car
+                            )
             in
             { sharedState
                 | board = editedBoard
                 , cars = nextCars
+                , lots = nextLots
             }
 
         NoUpdate ->
