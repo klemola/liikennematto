@@ -258,7 +258,7 @@ simulationSpeedValues speed =
             ( 1200, 500 )
 
         Medium ->
-            ( 900, 250 )
+            ( 900, 300 )
 
         Fast ->
             ( 600, 100 )
