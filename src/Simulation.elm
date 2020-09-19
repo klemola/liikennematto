@@ -146,10 +146,13 @@ generateEnvironment board lots cars =
                     |> Dict.map (\_ (Building kind _) -> kind)
                     |> Dict.values
 
+            -- Room for improvement: buildings should be shuffled so that they don't have to be built in certain order
             nextUnusedBuilding =
-                -- Room for improvement: buildings should be shuffled so that they don't have to be built in certain order
                 allBuildingKinds
-                    |> List.filter (\building -> not (List.member building existingBuildings))
+                    |> List.filter
+                        (\building ->
+                            not (List.member building existingBuildings)
+                        )
                     |> List.head
 
             roadOrientation building =
