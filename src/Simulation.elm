@@ -16,14 +16,9 @@ import TrafficLight
 
 
 type alias Model =
-    { activeCarId : ActiveCarId
-    , coinTossResult : Bool
+    { coinTossResult : Bool
     , randomDirections : List Direction
     }
-
-
-type alias ActiveCarId =
-    Int
 
 
 type Msg
@@ -36,8 +31,7 @@ type Msg
 
 initialModel : Model
 initialModel =
-    { activeCarId = 1
-    , coinTossResult = False
+    { coinTossResult = False
     , randomDirections = List.repeat 4 Right
     }
 
@@ -53,10 +47,10 @@ update sharedState msg model =
     case msg of
         UpdateTraffic ->
             let
-                ( nextActiveCarId, nextCars ) =
+                nextCars =
                     updateTraffic model sharedState.board sharedState.cars
             in
-            ( { model | activeCarId = nextActiveCarId }
+            ( model
             , Cmd.batch
                 [ tossACoin
                 , shuffleDirections
@@ -237,37 +231,51 @@ addLot lots cars ( newLot, anchor ) =
 --
 
 
-updateTraffic : Model -> Board -> Cars -> ( ActiveCarId, Cars )
+updateTraffic : Model -> Board -> Cars -> Cars
 updateTraffic model board cars =
-    let
-        saveChanges updatedCar =
-            Dict.insert model.activeCarId updatedCar cars
+    updateTrafficHelper
+        { updateQueue = Dict.keys cars
+        , cars = cars
+        , model = model
+        , board = board
+        }
 
-        ( activeCar, otherCars ) =
-            ( Dict.get model.activeCarId cars
-            , cars
-                |> Dict.filter (\k _ -> k /= model.activeCarId)
-                |> Dict.values
-            )
 
-        nextCars =
-            case activeCar of
-                Just car ->
-                    Round.new board model.coinTossResult model.randomDirections car otherCars
+updateTrafficHelper :
+    { updateQueue : List Int
+    , cars : Cars
+    , model : Model
+    , board : Board
+    }
+    -> Cars
+updateTrafficHelper { updateQueue, cars, model, board } =
+    case updateQueue of
+        activeCarId :: queue ->
+            let
+                nextRound updatedCar =
+                    updateTrafficHelper
+                        { updateQueue = queue
+                        , cars = Dict.insert activeCarId updatedCar cars
+                        , model = model
+                        , board = board
+                        }
+
+                -- Room for improvement: only query cars that are nearby
+                otherCars =
+                    cars
+                        |> Dict.filter (\k _ -> k /= activeCarId)
+                        |> Dict.values
+            in
+            case Dict.get activeCarId cars of
+                Just activeCar ->
+                    Round.new board model.coinTossResult model.randomDirections activeCar otherCars
                         |> Round.attemptRespawn
                         |> Round.play
-                        |> saveChanges
+                        |> nextRound
 
+                -- this should never happen, but the typesystem doesn't know that
                 Nothing ->
                     cars
 
-        -- Room for improvement: properly reset the activeCarId if the board is cleared
-        nextActiveCarId =
-            if model.activeCarId == 0 || model.activeCarId == Dict.size cars then
-                -- restart the cycle
-                1
-
-            else
-                min (model.activeCarId + 1) (Dict.size cars)
-    in
-    ( nextActiveCarId, nextCars )
+        [] ->
+            cars
