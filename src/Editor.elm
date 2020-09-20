@@ -6,7 +6,8 @@ import Coords exposing (Coords)
 import CustomEvent
 import Element
     exposing
-        ( Element
+        ( Color
+        , Element
         , alignTop
         , column
         , el
@@ -24,7 +25,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
 import Element.Input as Input
-import SharedState exposing (Dimensions, SharedState, SharedStateUpdate)
+import SharedState exposing (Dimensions, Lots, SharedState, SharedStateUpdate)
 import Tile exposing (Tile(..))
 
 
@@ -90,7 +91,7 @@ update sharedState msg model =
                     , Cmd.none
                     , sharedState.board
                         |> Board.set coords (Tile.toggleIntersectionControl tile)
-                        |> SharedState.EditBoardAt coords
+                        |> SharedState.EditTileAt coords
                     )
 
                 ( TrafficDirectionDesigner, Just tile ) ->
@@ -98,7 +99,7 @@ update sharedState msg model =
                     , Cmd.none
                     , sharedState.board
                         |> Board.set coords (Tile.toggleTrafficDirection tile)
-                        |> SharedState.EditBoardAt coords
+                        |> SharedState.EditTileAt coords
                     )
 
                 _ ->
@@ -162,13 +163,27 @@ overlay sharedState model =
         rg =
             List.range 1 Config.boardSize
 
-        col y =
-            List.map (\x -> tileOverlay sharedState.board tileSize model ( x, y )) rg
+        cell x y =
+            tileOverlay
+                { tileSize = tileSize
+                , glowColor =
+                    tileHighlight
+                        { board = sharedState.board
+                        , lots = sharedState.lots
+                        , selectedTool = model
+                        , coords = ( x, y )
+                        }
+                , coords = ( x, y )
+                }
 
         rows =
-            List.map (\y -> row [] (col y)) rg
+            List.map
+                (\y ->
+                    row [] (List.map (\x -> cell x y) rg)
+                )
+                rg
 
-        glowColor =
+        highlight =
             case model of
                 Dynamite ->
                     colors.danger
@@ -177,52 +192,23 @@ overlay sharedState model =
                     colors.transparent
     in
     el
-        [ mouseOver [ Border.innerGlow glowColor tileSize ]
+        [ mouseOver [ Border.innerGlow highlight tileSize ]
         , width size
         , height size
         ]
         (column [] rows)
 
 
-tileOverlay : Board -> Float -> Tool -> Coords -> Element Msg
-tileOverlay board tileSize selectedTool coords =
+tileOverlay :
+    { tileSize : Float
+    , glowColor : Color
+    , coords : Coords
+    }
+    -> Element Msg
+tileOverlay { tileSize, glowColor, coords } =
     let
         tileSizePx =
             px (floor tileSize)
-
-        glowColor =
-            case selectedTool of
-                None ->
-                    colors.transparent
-
-                Bulldozer ->
-                    colors.danger
-
-                Dynamite ->
-                    colors.transparent
-
-                SmartConstruction ->
-                    if Board.canBuildRoadAt coords board then
-                        colors.target
-
-                    else
-                        colors.notAllowed
-
-                IntersectionDesigner ->
-                    case Board.get coords board of
-                        Just (Intersection _ _) ->
-                            colors.target
-
-                        _ ->
-                            colors.notAllowed
-
-                TrafficDirectionDesigner ->
-                    case Board.get coords board of
-                        Just (TwoLaneRoad _ _) ->
-                            colors.target
-
-                        _ ->
-                            colors.notAllowed
     in
     el
         [ width tileSizePx
@@ -232,6 +218,58 @@ tileOverlay board tileSize selectedTool coords =
         , Element.htmlAttribute (CustomEvent.onRightClick <| SecondaryAction coords)
         ]
         Element.none
+
+
+tileHighlight :
+    { board : Board
+    , lots : Lots
+    , selectedTool : Tool
+    , coords : Coords
+    }
+    -> Color
+tileHighlight { board, lots, selectedTool, coords } =
+    case selectedTool of
+        None ->
+            colors.transparent
+
+        Bulldozer ->
+            colors.danger
+
+        Dynamite ->
+            colors.transparent
+
+        SmartConstruction ->
+            let
+                canBuildHere =
+                    Board.canBuildRoadAt coords board
+
+                mightDestroyLot =
+                    SharedState.hasLot lots coords
+            in
+            if canBuildHere && mightDestroyLot then
+                colors.danger
+
+            else if canBuildHere then
+                colors.target
+
+            else
+                colors.notAllowed
+
+        IntersectionDesigner ->
+            case Board.get coords board of
+                Just (Intersection _ _) ->
+                    colors.target
+
+                _ ->
+                    colors.notAllowed
+
+        TrafficDirectionDesigner ->
+            case Board.get coords board of
+                Just (TwoLaneRoad _ _) ->
+                    colors.target
+
+                _ ->
+                    colors.notAllowed
 
 
 toolbar : Model -> Dimensions -> Element Msg

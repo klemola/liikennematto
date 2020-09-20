@@ -6,6 +6,7 @@ module SharedState exposing
     , SharedStateUpdate(..)
     , SimulationSpeed(..)
     , SimulationState(..)
+    , hasLot
     , initial
     , nextId
     , simulationSpeedValues
@@ -67,6 +68,7 @@ type SharedStateUpdate
     | UpdateLots ( Lots, Cars )
     | NewBoard
     | EditBoardAt Coords Board
+    | EditTileAt Coords Board
 
 
 initial : SharedState
@@ -118,41 +120,37 @@ update sharedState sharedStateUpdate =
                 , board = Board.new
             }
 
-        EditBoardAt coords editedBoard ->
+        EditBoardAt coords nextBoard ->
             let
                 nextLots =
                     Dict.filter
-                        (\_ (Building _ ( anchorCoords, _ )) ->
-                            Board.exists anchorCoords editedBoard
+                        (\_ lot ->
+                            Board.exists (Lot.anchorCoords lot) nextBoard && Lot.coords lot /= coords
                         )
                         sharedState.lots
 
                 nextCars =
-                    sharedState.cars
-                        -- Room for improvement: implement general orphan entity handling
-                        |> Dict.filter
-                            (\_ car ->
-                                case car.homeLotId of
-                                    Just lotId ->
-                                        Dict.member lotId nextLots
-
-                                    Nothing ->
-                                        True
-                            )
-                        -- Room for improvement: move the car back to it's lot instead
-                        |> Dict.map
-                            (\_ car ->
-                                if car.coords == coords then
-                                    Car.waitForRespawn car
-
-                                else
-                                    car
-                            )
+                    carsAfterBoardChange
+                        { coords = coords
+                        , nextLots = nextLots
+                        , cars = sharedState.cars
+                        }
             in
             { sharedState
-                | board = editedBoard
+                | board = nextBoard
                 , cars = nextCars
                 , lots = nextLots
+            }
+
+        EditTileAt coords nextBoard ->
+            { sharedState
+                | board = nextBoard
+                , cars =
+                    carsAfterBoardChange
+                        { coords = coords
+                        , nextLots = sharedState.lots
+                        , cars = sharedState.cars
+                        }
             }
 
         NoUpdate ->
@@ -165,6 +163,41 @@ nextId dict =
         |> List.maximum
         |> Maybe.map ((+) 1)
         |> Maybe.withDefault 1
+
+
+carsAfterBoardChange :
+    { coords : Coords
+    , nextLots : Lots
+    , cars : Cars
+    }
+    -> Cars
+carsAfterBoardChange { coords, nextLots, cars } =
+    cars
+        -- Room for improvement: implement general orphan entity handling
+        |> Dict.filter
+            (\_ car ->
+                case car.homeLotId of
+                    Just lotId ->
+                        Dict.member lotId nextLots
+
+                    Nothing ->
+                        True
+            )
+        -- Room for improvement: move the car back to it's lot instead
+        |> Dict.map
+            (\_ car ->
+                if car.coords == coords then
+                    Car.waitForRespawn car
+
+                else
+                    car
+            )
+
+
+hasLot : Lots -> Coords -> Bool
+hasLot lots coords =
+    Dict.values lots
+        |> List.any (\lot -> Lot.coords lot == coords)
 
 
 maxDimensions : Dimensions
