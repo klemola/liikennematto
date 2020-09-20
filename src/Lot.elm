@@ -2,6 +2,7 @@ module Lot exposing
     ( BuildingKind(..)
     , Lot(..)
     , allBuildingKinds
+    , anchorCoords
     , anchorDirection
     , anchorTo
     , coords
@@ -71,6 +72,11 @@ anchorTo buildingKind ( anchor, _ ) =
             Building buildingKind ( anchor, anchorDirection buildingKind )
     in
     ( lot, anchor )
+
+
+anchorCoords : Lot -> Coords
+anchorCoords (Building _ ( anchor, _ )) =
+    anchor
 
 
 coords : Lot -> Coords
