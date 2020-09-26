@@ -21,7 +21,7 @@ import Color
 import Config exposing (boardSize)
 import Coords
 import Dict
-import Direction exposing (Direction(..), Orientation)
+import Direction exposing (Direction(..), Orientation(..))
 import Graphics
 import Html exposing (Html)
 import Lot exposing (Lot(..))
@@ -44,6 +44,14 @@ view { board, cars, lots, dimensions } =
         , renderBoard board dimensions.tileSize
         ]
         |> svg
+
+
+renderColors =
+    { road = Color.rgb255 52 65 67
+    , terrain = Color.rgb255 33 191 154
+    , sidewalk = Color.rgb255 191 213 217
+    , sidewalkEdge = Color.rgb255 44 56 58
+    }
 
 
 renderBoard : Board -> Float -> Collage msg
@@ -98,7 +106,7 @@ renderTile tileSize tile =
             intersection shape []
 
         Terrain ->
-            ground (Color.rgb255 33 191 154)
+            ground renderColors.terrain
 
 
 renderTrafficLight : Float -> TrafficLight -> Collage msg
@@ -241,11 +249,43 @@ renderLot size lot =
     case lot of
         Building kind ( anchor, dirFromRoad ) ->
             let
-                ( x, y ) =
+                origin =
                     Coords.next anchor dirFromRoad
+
+                sidewalkGapSize =
+                    size / 6
+
+                sidewalkGapShift =
+                    floor (size / 2 + (sidewalkGapSize / 2))
+
+                ( sidewalkGapWidth, sidewalkGapHeight ) =
+                    case Direction.toOrientation dirFromRoad of
+                        Vertical ->
+                            ( size / 2, sidewalkGapSize )
+
+                        Horizontal ->
+                            ( sidewalkGapSize, size / 2 )
+
+                entryPointCoords =
+                    Lot.entryDirection kind
+                        |> Coords.shiftTo sidewalkGapShift ( 0, 0 )
+
+                -- sidewalk gap hides terrain between sizewalk and the lot
+                -- Room for improvement: use special road tiles when connected to a lot
+                sidewalkGap =
+                    Collage.rectangle sidewalkGapWidth sidewalkGapHeight
+                        |> styled ( uniform renderColors.sidewalk, invisible )
+                        |> shift (Coords.float entryPointCoords)
             in
-            Graphics.texture size (Graphics.buildingAsset kind)
-                |> shift ( toFloat x * size - size, size - (toFloat y * size) )
+            Collage.group
+                [ sidewalkGap
+                , Graphics.texture size (Graphics.buildingAsset kind)
+                ]
+                |> shift
+                    (origin
+                        |> Coords.float
+                        |> (\( x, y ) -> ( x * size - size, size - y * size ))
+                    )
 
 
 rotationDegrees : Direction -> Float

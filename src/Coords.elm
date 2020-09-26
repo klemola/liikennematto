@@ -4,8 +4,10 @@ module Coords exposing
     , cornerAndNeighbors
     , diagonalNeighbors
     , filterBy
+    , float
     , next
     , parallelNeighbors
+    , shiftTo
     , toString
     )
 
@@ -91,6 +93,27 @@ filterBy : List (Positioned a) -> Coords -> List (Positioned a)
 filterBy thingsWithCoords coords =
     thingsWithCoords
         |> List.filter (\el -> el.coords == coords)
+
+
+shiftTo : Int -> Coords -> Direction -> Coords
+shiftTo distance ( x, y ) dir =
+    case dir of
+        Up ->
+            ( x, y + distance )
+
+        Right ->
+            ( x + distance, y )
+
+        Down ->
+            ( x, y - distance )
+
+        Left ->
+            ( x - distance, y )
+
+
+float : Coords -> ( Float, Float )
+float ( x, y ) =
+    ( toFloat x, toFloat y )
 
 
 toString : Coords -> String
