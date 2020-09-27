@@ -4,7 +4,6 @@ module Board exposing
     , canBuildRoadAt
     , exists
     , get
-    , getSafe
     , inBounds
     , map
     , new
@@ -46,12 +45,6 @@ get coords board =
 getWithIndex : Coords -> Board -> Maybe ( Coords, Tile )
 getWithIndex coords board =
     Dict.find (\key _ -> key == coords) board
-
-
-getSafe : Coords -> Board -> Tile
-getSafe coords board =
-    get coords board
-        |> Maybe.withDefault Terrain
 
 
 exists : Coords -> Board -> Bool

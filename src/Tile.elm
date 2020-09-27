@@ -7,7 +7,6 @@ module Tile exposing
     , connected
     , defaultIntersectionControl
     , fromId
-    , isIntersection
     , isRoad
     , potentialConnections
     , priorityDirections
@@ -24,7 +23,6 @@ import TrafficLight exposing (TrafficLights)
 type Tile
     = TwoLaneRoad RoadKind TrafficDirection
     | Intersection IntersectionControl IntersectionShape
-    | Terrain
 
 
 type RoadKind
@@ -54,16 +52,6 @@ isRoad : Tile -> Bool
 isRoad tile =
     case tile of
         TwoLaneRoad _ _ ->
-            True
-
-        _ ->
-            False
-
-
-isIntersection : Tile -> Bool
-isIntersection tile =
-    case tile of
-        Intersection _ _ ->
             True
 
         _ ->
@@ -116,9 +104,6 @@ potentialConnections tile =
 
         Intersection _ (T dir) ->
             dir :: Direction.cross dir
-
-        Terrain ->
-            []
 
 
 matchesTrafficDirection : Direction -> Tile -> Bool

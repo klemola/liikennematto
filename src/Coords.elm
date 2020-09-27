@@ -113,6 +113,8 @@ shiftTo distance ( x, y ) dir =
 
 float : Coords -> ( Float, Float )
 float ( x, y ) =
+    -- temporary conversion
+    -- Room for improvement: Coords should be Floats anyhow
     ( toFloat x, toFloat y )
 
 

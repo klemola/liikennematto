@@ -8,7 +8,6 @@ import Round
         ( Rule(..)
         , checkCollisionRules
         , checkIntersectionRules
-        , checkMovementRules
         , checkTurningRules
         )
 import Test exposing (..)
@@ -17,13 +16,7 @@ import Test exposing (..)
 suite : Test
 suite =
     describe "Round"
-        [ describe "Movement rules"
-            [ test "allow movement if tiles connect"
-                (\_ -> Expect.equal (checkMovementRules connectedRoadsSetup) Nothing)
-            , test "disallow movement if tiles do not connect"
-                (\_ -> Expect.equal (checkMovementRules disconnectedRoadsSetup) (Just MovementBlocked))
-            ]
-        , describe "Turning rules"
+        [ describe "Turning rules"
             [ test "allow turning when necessary"
                 (\_ -> Expect.equal (checkTurningRules curveSetup) (Just TurningRequired))
             , test "allow turning when car should turn randomly"

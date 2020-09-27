@@ -5,6 +5,7 @@ import Coords exposing (Coords)
 import Dict exposing (Dict)
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
 import Element exposing (rgb255, rgba255)
+import Html.Attributes exposing (dir)
 import Lot exposing (BuildingKind(..), Lot(..))
 import Tile
     exposing
@@ -126,7 +127,12 @@ firstLot =
 
 
 firstCar =
-    Car.newWithHome (resident firstLot) ( 3, 10 ) 1
+    { kind = resident firstLot
+    , coords = ( 3, 10 )
+    , direction = Left
+    , homeLotId = Just 1
+    , status = Moving
+    }
 
 
 initialLots : Dict Int Lot

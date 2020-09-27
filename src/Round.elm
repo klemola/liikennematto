@@ -5,7 +5,6 @@ module Round exposing
     , attemptRespawn
     , checkCollisionRules
     , checkIntersectionRules
-    , checkMovementRules
     , checkTurningRules
     , new
     , play
@@ -23,17 +22,16 @@ type alias Round =
     { board : Board
     , activeCar : Car
     , otherCars : List Car
-    , currentTile : Tile
+    , currentTile : Maybe Tile
     , nextCoords : Coords
-    , nextTile : Tile
+    , nextTile : Maybe Tile
     , coinTossResult : Bool
     , randomDirections : List Direction
     }
 
 
 type Rule
-    = MovementBlocked
-    | TurningRequired
+    = TurningRequired
     | AvoidCollision
     | WaitForTrafficLights
     | YieldAtIntersection
@@ -53,9 +51,9 @@ new board coinTossResult randomDirections activeCar otherCars =
     , randomDirections = randomDirections
     , nextCoords = nextCoords
     , currentTile =
-        Board.getSafe activeCar.coords board
+        Board.get activeCar.coords board
     , nextTile =
-        Board.getSafe nextCoords board
+        Board.get nextCoords board
     }
 
 
@@ -97,9 +95,6 @@ play round =
 applyRule : Round -> Rule -> Car
 applyRule { activeCar, board, currentTile, randomDirections } rule =
     case rule of
-        MovementBlocked ->
-            Car.skipRound activeCar
-
         TurningRequired ->
             let
                 oppositeDirection =
@@ -109,8 +104,12 @@ applyRule { activeCar, board, currentTile, randomDirections } rule =
                     dir /= activeCar.direction && dir /= oppositeDirection
 
                 seeRoadAhead dir =
-                    Board.getSafe (Coords.next activeCar.coords dir) board
-                        |> Tile.connected dir currentTile
+                    case ( currentTile, Board.get (Coords.next activeCar.coords dir) board ) of
+                        ( Just current, Just other ) ->
+                            Tile.connected dir current other
+
+                        _ ->
+                            False
 
                 direction =
                     randomDirections
@@ -143,23 +142,9 @@ activeRulesByPriority round =
     [ checkTurningRules round
     , checkCollisionRules round
     , checkIntersectionRules round
-    , checkMovementRules round
     ]
         -- remove inactive rules
         |> List.filterMap identity
-
-
-checkMovementRules : Round -> Maybe Rule
-checkMovementRules { currentTile, nextTile, activeCar } =
-    let
-        canMove =
-            Tile.connected activeCar.direction currentTile nextTile
-    in
-    if canMove then
-        Nothing
-
-    else
-        Just MovementBlocked
 
 
 checkTurningRules : Round -> Maybe Rule
@@ -172,7 +157,12 @@ checkTurningRules { board, currentTile, nextTile, coinTossResult, activeCar } =
                 |> List.filterMap identity
 
         canContinue =
-            Tile.connected activeCar.direction currentTile nextTile
+            case ( currentTile, nextTile ) of
+                ( Just current, Just next ) ->
+                    Tile.connected activeCar.direction current next
+
+                _ ->
+                    Car.isParkedAtLot activeCar
 
         canTurn =
             not (List.isEmpty leftAndRightTilesFromCarDirection)
@@ -180,10 +170,14 @@ checkTurningRules { board, currentTile, nextTile, coinTossResult, activeCar } =
         -- turn every now and then at an intersection
         -- cars in intersections can block the traffic, so this also works as a sort of a tie-breaker
         shouldTurnRandomly =
-            coinTossResult
-                && Tile.isIntersection currentTile
-                && canTurn
-                && not (Car.isTurning activeCar)
+            case nextTile of
+                Just (Intersection _ _) ->
+                    coinTossResult
+                        && canTurn
+                        && not (Car.isTurning activeCar)
+
+                _ ->
+                    False
     in
     if not canContinue || shouldTurnRandomly then
         Just TurningRequired
@@ -201,17 +195,20 @@ checkCollisionRules { otherCars, nextCoords, nextTile, activeCar } =
         willCollideWithAnother =
             case nextTile of
                 -- car moving towards another in an opposite direction will not cause a collision
-                TwoLaneRoad (Regular _) Both ->
+                Just (TwoLaneRoad (Regular _) Both) ->
                     List.any (\c -> c.coords == nextCoords && c.direction /= oppositeDirection) otherCars
 
                 -- curves are really just another "Regular" piece of road, but the coordinates are not precise
                 -- enough to consider "lanes". Meanwhile we'll fall back on "Regular" road logic
-                TwoLaneRoad (Curve _) Both ->
+                Just (TwoLaneRoad (Curve _) Both) ->
                     List.any (\c -> c.coords == nextCoords && c.direction /= oppositeDirection) otherCars
 
                 -- intersections and deadends should be clear before entering (slightly naive logic)
-                _ ->
+                Just _ ->
                     List.any (\c -> c.coords == nextCoords) otherCars
+
+                Nothing ->
+                    False
     in
     if willCollideWithAnother then
         Just AvoidCollision
@@ -221,10 +218,15 @@ checkCollisionRules { otherCars, nextCoords, nextTile, activeCar } =
 
 
 checkIntersectionRules : Round -> Maybe Rule
-checkIntersectionRules { board, otherCars, nextTile, nextCoords, activeCar } =
+checkIntersectionRules { otherCars, nextTile, nextCoords, activeCar } =
     let
         priorityDirections =
-            Tile.priorityDirections (Board.getSafe nextCoords board)
+            case nextTile of
+                Just tile ->
+                    Tile.priorityDirections tile
+
+                Nothing ->
+                    []
 
         priorityTraffic =
             priorityDirections
@@ -244,14 +246,14 @@ checkIntersectionRules { board, otherCars, nextTile, nextCoords, activeCar } =
             not hasPriority && not (Car.isStoppedOrWaiting activeCar)
     in
     case nextTile of
-        Intersection (Signal trafficLights) _ ->
+        Just (Intersection (Signal trafficLights) _) ->
             if TrafficLight.trafficAllowedFromDirection trafficLights activeCar.direction then
                 Nothing
 
             else
                 Just WaitForTrafficLights
 
-        Intersection (Yield _) _ ->
+        Just (Intersection (Yield _) _) ->
             if shouldYield then
                 Just YieldAtIntersection
 
@@ -259,7 +261,7 @@ checkIntersectionRules { board, otherCars, nextTile, nextCoords, activeCar } =
                 Nothing
 
         -- stop sign doubles as a yield sign
-        Intersection (Stop _) _ ->
+        Just (Intersection (Stop _) _) ->
             if shouldStop then
                 Just StopAtIntersection
 
