@@ -95,7 +95,6 @@ curveSetup =
             Board.new
                 |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
                 |> Board.set ( 2, 1 ) (TwoLaneRoad (Curve TopRight) Both)
-                |> Board.set ( 3, 1 ) Terrain
                 |> Board.set ( 2, 2 ) (TwoLaneRoad (Regular Vertical) Both)
 
         car =

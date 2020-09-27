@@ -12,7 +12,6 @@ import Collage
         , solid
         , square
         , styled
-        , transparent
         , uniform
         )
 import Collage.Layout as Layout
@@ -25,7 +24,8 @@ import Direction exposing (Direction(..), Orientation(..))
 import Graphics
 import Html exposing (Html)
 import Lot exposing (Lot(..))
-import SharedState exposing (SharedState)
+import Maybe.Extra as Maybe
+import SharedState exposing (Lots, SharedState)
 import Tile
     exposing
         ( IntersectionControl(..)
@@ -39,7 +39,7 @@ import TrafficLight exposing (TrafficLight, TrafficLightKind(..))
 view : SharedState -> Html msg
 view { board, cars, lots, dimensions } =
     Layout.stack
-        [ renderCars (Dict.values cars) dimensions.tileSize
+        [ renderCars (Dict.values cars) dimensions.tileSize lots
         , renderLots (Dict.values lots) dimensions.tileSize
         , renderBoard board dimensions.tileSize
         ]
@@ -57,10 +57,15 @@ renderColors =
 renderBoard : Board -> Float -> Collage msg
 renderBoard board tileSize =
     let
+        emptyTile =
+            square tileSize
+                |> styled ( uniform renderColors.terrain, Collage.invisible )
+
         drawTile x y =
             board
-                |> Board.getSafe ( x, y )
-                |> renderTile tileSize
+                |> Board.get ( x, y )
+                |> Maybe.map (renderTile tileSize)
+                |> Maybe.withDefault emptyTile
     in
     Graphics.grid boardSize drawTile
 
@@ -68,10 +73,6 @@ renderBoard board tileSize =
 renderTile : Float -> Tile -> Collage msg
 renderTile tileSize tile =
     let
-        ground color =
-            square tileSize
-                |> styled ( uniform color, Collage.invisible )
-
         intersection shape content =
             Layout.stack (content ++ [ Graphics.texture tileSize (Graphics.intersectionAsset shape) ])
 
@@ -104,9 +105,6 @@ renderTile tileSize tile =
 
         Intersection Uncontrolled shape ->
             intersection shape []
-
-        Terrain ->
-            ground renderColors.terrain
 
 
 renderTrafficLight : Float -> TrafficLight -> Collage msg
@@ -167,59 +165,38 @@ renderSigns tileSize orientation intersectionShape asset =
         |> List.map presentation
 
 
-renderCars : List Car -> Float -> Collage msg
-renderCars cars tileSize =
+renderCars : List Car -> Float -> Lots -> Collage msg
+renderCars cars tileSize lots =
+    List.map (renderCar tileSize lots) cars
+        |> Collage.group
+
+
+renderCar : Float -> Lots -> Car -> Collage msg
+renderCar tileSize lots car =
     let
-        carSize =
+        size =
             tileSize * 0.3
 
-        shiftAmount =
-            carSize * 0.5
+        currentLot =
+            car.homeLotId
+                |> Maybe.map (\id -> Dict.get id lots)
+                |> Maybe.join
 
-        -- fake tiles align the cars to the board beneath
-        fakeTile =
-            square tileSize
-                |> styled ( transparent, invisible )
-
-        baseShift status =
-            case status of
-                Turning _ ->
-                    shiftAmount
+        ( shiftX, shiftY ) =
+            case ( car.status, currentLot ) of
+                ( ParkedAtLot, Just (Building kind _) ) ->
+                    Lot.entryDirection kind
+                        |> Coords.shiftTo (floor (tileSize / 2)) ( 0, 0 )
+                        |> Coords.float
 
                 _ ->
-                    0
+                    alignCarToLane size car
 
-        carShiftCoords status dir =
-            case dir of
-                Up ->
-                    ( shiftAmount, baseShift status )
+        coords =
+            car.coords
+                |> Coords.float
+                |> (\( x, y ) -> ( x * tileSize - tileSize + shiftX, shiftY + tileSize - y * tileSize ))
 
-                Right ->
-                    ( baseShift status, -shiftAmount )
-
-                Down ->
-                    ( -shiftAmount, -(baseShift status) )
-
-                Left ->
-                    ( -(baseShift status), shiftAmount )
-
-        drawCars x y =
-            Coords.filterBy cars ( x, y )
-                |> List.map
-                    (\c ->
-                        renderCar carSize c
-                            |> shift (carShiftCoords c.status c.direction)
-                    )
-                |> List.append [ fakeTile ]
-                |> Layout.stack
-    in
-    -- cars are rendered as an overlaid grid of the same size as the board
-    Graphics.grid boardSize drawCars
-
-
-renderCar : Float -> Car -> Collage msg
-renderCar size car =
-    let
         rotationModifier =
             case car.status of
                 Turning LeftTurn ->
@@ -232,10 +209,58 @@ renderCar size car =
                     0
 
         rotation =
-            rotationDegrees car.direction + rotationModifier
+            dirToRotation car.direction
+                + rotationModifier
+                |> degrees
     in
     Graphics.texture size (Graphics.carAsset car)
-        |> rotate (degrees rotation)
+        |> rotate rotation
+        |> shift coords
+
+
+alignCarToLane : Float -> Car -> ( Float, Float )
+alignCarToLane carSize car =
+    let
+        shiftAmount =
+            carSize * 0.5
+
+        baseShift =
+            case car.status of
+                Turning _ ->
+                    shiftAmount
+
+                _ ->
+                    0
+    in
+    case car.direction of
+        Up ->
+            ( shiftAmount, baseShift )
+
+        Right ->
+            ( baseShift, -shiftAmount )
+
+        Down ->
+            ( -shiftAmount, -baseShift )
+
+        Left ->
+            ( -baseShift, shiftAmount )
+
+
+dirToRotation : Direction -> Float
+dirToRotation dir =
+    -- the values here are based on Collage logic: counter-clockwise rotation (from "Up")
+    case dir of
+        Up ->
+            0
+
+        Right ->
+            270
+
+        Down ->
+            180
+
+        Left ->
+            90
 
 
 renderLots : List Lot -> Float -> Collage msg
@@ -286,20 +311,3 @@ renderLot size lot =
                         |> Coords.float
                         |> (\( x, y ) -> ( x * size - size, size - y * size ))
                     )
-
-
-rotationDegrees : Direction -> Float
-rotationDegrees dir =
-    -- the values here are based on Collage logic: counter-clockwise rotation (from "Up")
-    case dir of
-        Up ->
-            0
-
-        Right ->
-            270
-
-        Down ->
-            180
-
-        Left ->
-            90

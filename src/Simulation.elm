@@ -258,7 +258,7 @@ findLotAnchor { targetOrientation, targetDirection, board, shuffledBoard, existi
 
 
 addLot : Lots -> Cars -> ( Lot, Coords ) -> ( Lots, Cars )
-addLot lots cars ( newLot, anchor ) =
+addLot lots cars ( newLot, _ ) =
     let
         nextLotId =
             SharedState.nextId lots
@@ -273,7 +273,18 @@ addLot lots cars ( newLot, anchor ) =
             Dict.insert nextLotId newLot lots
 
         newCars =
-            Dict.insert nextCarId (Car.newWithHome resident anchor nextLotId) cars
+            case newLot of
+                Building kind _ ->
+                    Dict.insert nextCarId
+                        { kind = resident
+                        , coords = Lot.coords newLot
+                        , direction =
+                            Lot.entryDirection kind
+                                |> Direction.next
+                        , homeLotId = Just nextLotId
+                        , status = Car.ParkedAtLot
+                        }
+                        cars
     in
     ( newLots, newCars )
 

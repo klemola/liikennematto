@@ -3,12 +3,12 @@ module Car exposing
     , CarKind(..)
     , Status(..)
     , TurnKind(..)
+    , isParkedAtLot
     , isRespawning
     , isStoppedOrWaiting
     , isTurning
     , move
     , new
-    , newWithHome
     , skipRound
     , spawn
     , statusDescription
@@ -48,6 +48,7 @@ type Status
     | StoppedAtIntersection
     | Yielding
     | Respawning
+    | ParkedAtLot
     | SkippingRound
 
 
@@ -60,11 +61,6 @@ type TurnKind
 new : CarKind -> Car
 new kind =
     Car ( 0, 0 ) Up kind Respawning Nothing
-
-
-newWithHome : CarKind -> Coords -> Int -> Car
-newWithHome kind homeCoords lotId =
-    Car homeCoords Up kind SkippingRound (Just lotId)
 
 
 isTurning : Car -> Bool
@@ -81,6 +77,16 @@ isRespawning : Car -> Bool
 isRespawning car =
     case car.status of
         Respawning ->
+            True
+
+        _ ->
+            False
+
+
+isParkedAtLot : Car -> Bool
+isParkedAtLot car =
+    case car.status of
+        ParkedAtLot ->
             True
 
         _ ->
@@ -110,7 +116,13 @@ move : Car -> Car
 move car =
     let
         nextCoords =
-            Coords.next car.coords car.direction
+            if isParkedAtLot car then
+                -- implicitly move car to the street from the driveway
+                Direction.previous car.direction
+                    |> Coords.next car.coords
+
+            else
+                Coords.next car.coords car.direction
     in
     { car | coords = nextCoords, status = Moving }
 
@@ -187,6 +199,9 @@ statusDescription status =
 
         Respawning ->
             "Respawning"
+
+        ParkedAtLot ->
+            "Parked @ lot"
 
         SkippingRound ->
             "Skipping the round"
