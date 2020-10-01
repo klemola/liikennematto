@@ -3,7 +3,7 @@ module Main exposing (main)
 import Browser
 import Browser.Dom exposing (getViewport)
 import Browser.Events exposing (onResize)
-import Html exposing (Html)
+import Html
 import SharedState exposing (SharedState, SharedStateUpdate(..))
 import Simulation exposing (Msg(..))
 import Task
@@ -12,7 +12,7 @@ import UI
 
 main : Program () Model Msg
 main =
-    Browser.element
+    Browser.document
         { init = init
         , view = view
         , update = update
@@ -88,6 +88,8 @@ update msg model =
             )
 
 
-view : Model -> Html Msg
+view : Model -> Browser.Document Msg
 view model =
-    Html.map UIMsg (UI.view model.sharedState model.ui)
+    { title = "Liikennematto"
+    , body = [ Html.map UIMsg (UI.view model.sharedState model.ui) ]
+    }

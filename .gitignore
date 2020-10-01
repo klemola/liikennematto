@@ -8,3 +8,5 @@ elm-debug.js
 index.html
 next.html
 Scratchpad.elm
+
+build/
