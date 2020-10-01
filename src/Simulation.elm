@@ -202,7 +202,8 @@ generateEnvironment { board, shuffledBoard, lots, cars } =
                     |> List.head
 
             roadOrientation building =
-                Direction.toOrientation (Lot.entryDirection building)
+                Lot.entryDirection building
+                    |> Direction.toOrientation
                     |> Direction.oppositeOrientation
 
             existingLots =
@@ -219,8 +220,7 @@ generateEnvironment { board, shuffledBoard, lots, cars } =
                     , shuffledBoard = shuffledBoard
                     , existingLots = existingLots
                     }
-                    |> Maybe.map (Lot.anchorTo building)
-                    |> Maybe.map (addLot lots cars)
+                    |> Maybe.map (Lot.anchorTo building >> addLot lots cars)
                     |> Maybe.withDefault ( lots, cars )
 
             Nothing ->

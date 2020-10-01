@@ -5,8 +5,6 @@ module TrafficLight exposing
     , advanceLight
     , advanceTimer
     , default
-    , fromTrafficDirection
-    , isGreen
     , new
     , trafficAllowedFromDirection
     )
@@ -81,20 +79,10 @@ advanceLight tlKind =
             Green
 
 
-isGreen : TrafficLight -> Bool
-isGreen tl =
-    case tl.kind of
-        Green ->
-            True
-
-        _ ->
-            False
-
-
 trafficAllowedFromDirection : TrafficLights -> Direction -> Bool
 trafficAllowedFromDirection trafficLights entryDirection =
     let
         signalXsEntryAllowed tl =
-            isGreen tl && tl.facing == entryDirection
+            tl.kind == Green && tl.facing == entryDirection
     in
     List.any signalXsEntryAllowed trafficLights

@@ -5,7 +5,6 @@ import Coords exposing (Coords)
 import Dict exposing (Dict)
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
 import Element exposing (rgb255, rgba255)
-import Html.Attributes exposing (dir)
 import Lot exposing (BuildingKind(..), Lot(..))
 import Tile
     exposing

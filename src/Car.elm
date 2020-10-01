@@ -52,6 +52,11 @@ type Status
     | SkippingRound
 
 
+stoppedOrWaiting : List Status
+stoppedOrWaiting =
+    [ WaitingForTrafficLights, StoppedAtIntersection, Yielding, SkippingRound ]
+
+
 type TurnKind
     = LeftTurn
     | RightTurn
@@ -75,41 +80,17 @@ isTurning car =
 
 isRespawning : Car -> Bool
 isRespawning car =
-    case car.status of
-        Respawning ->
-            True
-
-        _ ->
-            False
+    car.status == Respawning
 
 
 isParkedAtLot : Car -> Bool
 isParkedAtLot car =
-    case car.status of
-        ParkedAtLot ->
-            True
-
-        _ ->
-            False
+    car.status == ParkedAtLot
 
 
 isStoppedOrWaiting : Car -> Bool
 isStoppedOrWaiting car =
-    case car.status of
-        WaitingForTrafficLights ->
-            True
-
-        StoppedAtIntersection ->
-            True
-
-        Yielding ->
-            True
-
-        SkippingRound ->
-            True
-
-        _ ->
-            False
+    List.member car.status stoppedOrWaiting
 
 
 move : Car -> Car

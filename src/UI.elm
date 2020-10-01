@@ -1,4 +1,4 @@
-module UI exposing (Model, Msg(..), initialModel, menu, update, view)
+module UI exposing (Model, Msg(..), initialModel, update, view)
 
 import Car exposing (Car)
 import Config exposing (borderRadius, borderSize, colors, whitespace)

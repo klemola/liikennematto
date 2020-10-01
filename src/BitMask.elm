@@ -1,7 +1,4 @@
-module BitMask exposing
-    ( fourBitValue
-    , isSurroundedByEmptyTiles
-    )
+module BitMask exposing (fourBitValue)
 
 
 type alias ParallelNeighbors =
@@ -34,8 +31,3 @@ boolToBinary booleanValue =
 
     else
         0
-
-
-isSurroundedByEmptyTiles : Int -> Bool
-isSurroundedByEmptyTiles value =
-    value == 0

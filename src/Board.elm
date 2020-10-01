@@ -5,7 +5,6 @@ module Board exposing
     , exists
     , get
     , inBounds
-    , map
     , new
     , remove
     , roadCoords

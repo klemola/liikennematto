@@ -1,7 +1,6 @@
 module Round exposing
     ( Round
     , Rule(..)
-    , applyRule
     , attemptRespawn
     , checkCollisionRules
     , checkIntersectionRules

@@ -8,7 +8,6 @@ module Tile exposing
     , defaultIntersectionControl
     , fromId
     , isRoad
-    , potentialConnections
     , priorityDirections
     , setIntersectionControl
     , toggleIntersectionControl
