@@ -18,13 +18,13 @@ import Collage.Layout as Layout
 import Collage.Render exposing (svg)
 import Color
 import Config exposing (boardSize)
-import Coords
 import Dict
 import Direction exposing (Direction(..), Orientation(..))
 import Graphics
 import Html exposing (Html)
 import Lot exposing (Lot(..))
 import Maybe.Extra as Maybe
+import Position
 import SharedState exposing (Lots, SharedState)
 import Tile
     exposing
@@ -186,15 +186,15 @@ renderCar tileSize lots car =
             case ( car.status, currentLot ) of
                 ( ParkedAtLot, Just (Building kind _) ) ->
                     Lot.entryDirection kind
-                        |> Coords.shiftTo (floor (tileSize / 2)) ( 0, 0 )
-                        |> Coords.float
+                        |> Position.shiftTo (floor (tileSize / 2)) ( 0, 0 )
+                        |> Position.float
 
                 _ ->
                     alignCarToLane size car
 
-        coords =
-            car.coords
-                |> Coords.float
+        position =
+            car.position
+                |> Position.float
                 |> (\( x, y ) -> ( x * tileSize - tileSize + shiftX, shiftY + tileSize - y * tileSize ))
 
         rotationModifier =
@@ -215,7 +215,7 @@ renderCar tileSize lots car =
     in
     Graphics.texture size (Graphics.carAsset car)
         |> rotate rotation
-        |> shift coords
+        |> shift position
 
 
 alignCarToLane : Float -> Car -> ( Float, Float )
@@ -275,7 +275,7 @@ renderLot size lot =
         Building kind ( anchor, dirFromRoad ) ->
             let
                 origin =
-                    Coords.next anchor dirFromRoad
+                    Position.next anchor dirFromRoad
 
                 sidewalkGapSize =
                     size / 6
@@ -291,16 +291,16 @@ renderLot size lot =
                         Horizontal ->
                             ( sidewalkGapSize, size / 2 )
 
-                entryPointCoords =
+                entryPointPosition =
                     Lot.entryDirection kind
-                        |> Coords.shiftTo sidewalkGapShift ( 0, 0 )
+                        |> Position.shiftTo sidewalkGapShift ( 0, 0 )
 
                 -- sidewalk gap hides terrain between sizewalk and the lot
                 -- Room for improvement: use special road tiles when connected to a lot
                 sidewalkGap =
                     Collage.rectangle sidewalkGapWidth sidewalkGapHeight
                         |> styled ( uniform renderColors.sidewalk, invisible )
-                        |> shift (Coords.float entryPointCoords)
+                        |> shift (Position.float entryPointPosition)
             in
             Collage.group
                 [ sidewalkGap
@@ -308,6 +308,6 @@ renderLot size lot =
                 ]
                 |> shift
                     (origin
-                        |> Coords.float
+                        |> Position.float
                         |> (\( x, y ) -> ( x * size - size, size - y * size ))
                     )

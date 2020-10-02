@@ -2,7 +2,6 @@ module Editor exposing (Model, Msg, initialModel, overlay, toolbar, update)
 
 import Board exposing (Board)
 import Config exposing (borderRadius, borderSize, colors, whitespace)
-import Coords exposing (Coords)
 import CustomEvent
 import Element
     exposing
@@ -25,6 +24,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
 import Element.Input as Input
+import Position exposing (Position)
 import SharedState exposing (Dimensions, Lots, SharedState, SharedStateUpdate)
 import Tile exposing (Tile(..))
 
@@ -43,8 +43,8 @@ type alias Model =
 
 
 type Msg
-    = SelectTile Coords
-    | SecondaryAction Coords
+    = SelectTile Position
+    | SecondaryAction Position
     | SelectTool Tool
 
 
@@ -60,14 +60,14 @@ initialModel =
 update : SharedState -> Msg -> Model -> ( Model, Cmd Msg, SharedStateUpdate )
 update sharedState msg model =
     case msg of
-        SelectTile coords ->
-            case ( model, Board.get coords sharedState.board ) of
+        SelectTile position ->
+            case ( model, Board.get position sharedState.board ) of
                 ( SmartConstruction, _ ) ->
                     ( model
                     , Cmd.none
-                    , if Board.canBuildRoadAt coords sharedState.board then
-                        buildRoad sharedState.board coords
-                            |> SharedState.EditBoardAt coords
+                    , if Board.canBuildRoadAt position sharedState.board then
+                        buildRoad sharedState.board position
+                            |> SharedState.EditBoardAt position
 
                       else
                         SharedState.NoUpdate
@@ -76,8 +76,8 @@ update sharedState msg model =
                 ( Bulldozer, Just _ ) ->
                     ( model
                     , Cmd.none
-                    , removeRoad sharedState.board coords
-                        |> SharedState.EditBoardAt coords
+                    , removeRoad sharedState.board position
+                        |> SharedState.EditBoardAt position
                     )
 
                 ( Dynamite, _ ) ->
@@ -90,28 +90,28 @@ update sharedState msg model =
                     ( model
                     , Cmd.none
                     , sharedState.board
-                        |> Board.set coords (Tile.toggleIntersectionControl tile)
-                        |> SharedState.EditTileAt coords
+                        |> Board.set position (Tile.toggleIntersectionControl tile)
+                        |> SharedState.EditTileAt position
                     )
 
                 ( TrafficDirectionDesigner, Just tile ) ->
                     ( model
                     , Cmd.none
                     , sharedState.board
-                        |> Board.set coords (Tile.toggleTrafficDirection tile)
-                        |> SharedState.EditTileAt coords
+                        |> Board.set position (Tile.toggleTrafficDirection tile)
+                        |> SharedState.EditTileAt position
                     )
 
                 _ ->
                     ( model, Cmd.none, SharedState.NoUpdate )
 
-        SecondaryAction coords ->
+        SecondaryAction position ->
             case model of
                 SmartConstruction ->
                     ( model
                     , Cmd.none
-                    , removeRoad sharedState.board coords
-                        |> SharedState.EditBoardAt coords
+                    , removeRoad sharedState.board position
+                        |> SharedState.EditBoardAt position
                     )
 
                 _ ->
@@ -129,7 +129,7 @@ update sharedState msg model =
             ( nextTool, Cmd.none, SharedState.NoUpdate )
 
 
-buildRoad : Board -> Coords -> Board
+buildRoad : Board -> Position -> Board
 buildRoad board origin =
     let
         boardWithNewTile =
@@ -138,7 +138,7 @@ buildRoad board origin =
     Board.applyMask boardWithNewTile
 
 
-removeRoad : Board -> Coords -> Board
+removeRoad : Board -> Position -> Board
 removeRoad board origin =
     let
         boardWithoutTile =
@@ -171,9 +171,9 @@ overlay sharedState model =
                         { board = sharedState.board
                         , lots = sharedState.lots
                         , selectedTool = model
-                        , coords = ( x, y )
+                        , position = ( x, y )
                         }
-                , coords = ( x, y )
+                , position = ( x, y )
                 }
 
         rows =
@@ -202,10 +202,10 @@ overlay sharedState model =
 tileOverlay :
     { tileSize : Float
     , glowColor : Color
-    , coords : Coords
+    , position : Position
     }
     -> Element Msg
-tileOverlay { tileSize, glowColor, coords } =
+tileOverlay { tileSize, glowColor, position } =
     let
         tileSizePx =
             px (floor tileSize)
@@ -214,8 +214,8 @@ tileOverlay { tileSize, glowColor, coords } =
         [ width tileSizePx
         , height tileSizePx
         , mouseOver [ Border.innerGlow glowColor <| tileSize / 4 ]
-        , Events.onClick (SelectTile coords)
-        , Element.htmlAttribute (CustomEvent.onRightClick <| SecondaryAction coords)
+        , Events.onClick (SelectTile position)
+        , Element.htmlAttribute (CustomEvent.onRightClick <| SecondaryAction position)
         ]
         Element.none
 
@@ -224,10 +224,10 @@ tileHighlight :
     { board : Board
     , lots : Lots
     , selectedTool : Tool
-    , coords : Coords
+    , position : Position
     }
     -> Color
-tileHighlight { board, lots, selectedTool, coords } =
+tileHighlight { board, lots, selectedTool, position } =
     case selectedTool of
         None ->
             colors.transparent
@@ -241,10 +241,10 @@ tileHighlight { board, lots, selectedTool, coords } =
         SmartConstruction ->
             let
                 canBuildHere =
-                    Board.canBuildRoadAt coords board
+                    Board.canBuildRoadAt position board
 
                 mightDestroyLot =
-                    SharedState.hasLot lots coords
+                    SharedState.hasLot lots position
             in
             if canBuildHere && mightDestroyLot then
                 colors.danger
@@ -256,7 +256,7 @@ tileHighlight { board, lots, selectedTool, coords } =
                 colors.notAllowed
 
         IntersectionDesigner ->
-            case Board.get coords board of
+            case Board.get position board of
                 Just (Intersection _ _) ->
                     colors.target
 
@@ -264,7 +264,7 @@ tileHighlight { board, lots, selectedTool, coords } =
                     colors.notAllowed
 
         TrafficDirectionDesigner ->
-            case Board.get coords board of
+            case Board.get position board of
                 Just (TwoLaneRoad _ _) ->
                     colors.target
 

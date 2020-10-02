@@ -11,8 +11,8 @@ module Round exposing
 
 import Board exposing (Board)
 import Car exposing (Car, Status(..))
-import Coords exposing (Coords)
 import Direction exposing (Direction)
+import Position exposing (Position)
 import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..), TrafficDirection(..))
 import TrafficLight
 
@@ -22,7 +22,7 @@ type alias Round =
     , activeCar : Car
     , otherCars : List Car
     , currentTile : Maybe Tile
-    , nextCoords : Coords
+    , nextPosition : Position
     , nextTile : Maybe Tile
     , coinTossResult : Bool
     , randomDirections : List Direction
@@ -40,19 +40,19 @@ type Rule
 new : Board -> Bool -> List Direction -> Car -> List Car -> Round
 new board coinTossResult randomDirections activeCar otherCars =
     let
-        nextCoords =
-            Coords.next activeCar.coords activeCar.direction
+        nextPosition =
+            Position.next activeCar.position activeCar.direction
     in
     { board = board
     , activeCar = activeCar
     , otherCars = otherCars
     , coinTossResult = coinTossResult
     , randomDirections = randomDirections
-    , nextCoords = nextCoords
+    , nextPosition = nextPosition
     , currentTile =
-        Board.get activeCar.coords board
+        Board.get activeCar.position board
     , nextTile =
-        Board.get nextCoords board
+        Board.get nextPosition board
     }
 
 
@@ -62,14 +62,14 @@ attemptRespawn round =
         { otherCars, board, activeCar } =
             round
 
-        isEmptyRoad coords =
-            List.all (\oc -> oc.coords /= coords) otherCars
+        isEmptyRoad position =
+            List.all (\oc -> oc.position /= position) otherCars
 
-        spawn coords =
-            { round | activeCar = Car.spawn coords activeCar }
+        spawn position =
+            { round | activeCar = Car.spawn position activeCar }
     in
     if Car.isRespawning activeCar then
-        Board.roadCoords board
+        Board.roadPosition board
             |> List.filter isEmptyRoad
             |> List.head
             |> Maybe.map spawn
@@ -103,7 +103,7 @@ applyRule { activeCar, board, currentTile, randomDirections } rule =
                     dir /= activeCar.direction && dir /= oppositeDirection
 
                 seeRoadAhead dir =
-                    case ( currentTile, Board.get (Coords.next activeCar.coords dir) board ) of
+                    case ( currentTile, Board.get (Position.next activeCar.position dir) board ) of
                         ( Just current, Just other ) ->
                             Tile.connected dir current other
 
@@ -150,8 +150,8 @@ checkTurningRules : Round -> Maybe Rule
 checkTurningRules { board, currentTile, nextTile, coinTossResult, activeCar } =
     let
         leftAndRightTilesFromCarDirection =
-            [ Board.get (Coords.next activeCar.coords (Direction.previous activeCar.direction)) board
-            , Board.get (Coords.next activeCar.coords (Direction.next activeCar.direction)) board
+            [ Board.get (Position.next activeCar.position (Direction.previous activeCar.direction)) board
+            , Board.get (Position.next activeCar.position (Direction.next activeCar.direction)) board
             ]
                 |> List.filterMap identity
 
@@ -186,7 +186,7 @@ checkTurningRules { board, currentTile, nextTile, coinTossResult, activeCar } =
 
 
 checkCollisionRules : Round -> Maybe Rule
-checkCollisionRules { otherCars, nextCoords, nextTile, activeCar } =
+checkCollisionRules { otherCars, nextPosition, nextTile, activeCar } =
     let
         oppositeDirection =
             Direction.opposite activeCar.direction
@@ -195,16 +195,16 @@ checkCollisionRules { otherCars, nextCoords, nextTile, activeCar } =
             case nextTile of
                 -- car moving towards another in an opposite direction will not cause a collision
                 Just (TwoLaneRoad (Regular _) Both) ->
-                    List.any (\c -> c.coords == nextCoords && c.direction /= oppositeDirection) otherCars
+                    List.any (\c -> c.position == nextPosition && c.direction /= oppositeDirection) otherCars
 
                 -- curves are really just another "Regular" piece of road, but the coordinates are not precise
                 -- enough to consider "lanes". Meanwhile we'll fall back on "Regular" road logic
                 Just (TwoLaneRoad (Curve _) Both) ->
-                    List.any (\c -> c.coords == nextCoords && c.direction /= oppositeDirection) otherCars
+                    List.any (\c -> c.position == nextPosition && c.direction /= oppositeDirection) otherCars
 
                 -- intersections and deadends should be clear before entering (slightly naive logic)
                 Just _ ->
-                    List.any (\c -> c.coords == nextCoords) otherCars
+                    List.any (\c -> c.position == nextPosition) otherCars
 
                 Nothing ->
                     False
@@ -217,7 +217,7 @@ checkCollisionRules { otherCars, nextCoords, nextTile, activeCar } =
 
 
 checkIntersectionRules : Round -> Maybe Rule
-checkIntersectionRules { otherCars, nextTile, nextCoords, activeCar } =
+checkIntersectionRules { otherCars, nextTile, nextPosition, activeCar } =
     let
         priorityDirections =
             case nextTile of
@@ -229,11 +229,11 @@ checkIntersectionRules { otherCars, nextTile, nextCoords, activeCar } =
 
         priorityTraffic =
             priorityDirections
-                -- get tile coordinates relative to the intersection at "nextCoords"
-                |> List.map (Coords.next nextCoords)
+                -- get tile coordinates relative to the intersection at "nextPosition"
+                |> List.map (Position.next nextPosition)
                 -- add the intersection
-                |> List.append [ Coords.next activeCar.coords activeCar.direction ]
-                |> List.concatMap (Coords.filterBy otherCars)
+                |> List.append [ Position.next activeCar.position activeCar.direction ]
+                |> List.concatMap (Position.filterBy otherCars)
 
         hasPriority =
             List.member activeCar.direction priorityDirections

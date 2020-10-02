@@ -2,7 +2,6 @@ module UI exposing (Model, Msg(..), initialModel, update, view)
 
 import Car exposing (Car)
 import Config exposing (borderRadius, borderSize, colors, whitespace)
-import Coords
 import Dict
 import Direction exposing (Orientation(..))
 import Editor
@@ -35,6 +34,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Graphics
 import Html exposing (Html)
+import Position
 import Render
 import SharedState
     exposing
@@ -235,7 +235,7 @@ carStateView dimensions car =
         ]
         [ showCarKind
         , column [ spacing whitespace.tight ]
-            [ text (Coords.toString car.coords)
+            [ text (Position.toString car.position)
             , text (Car.statusDescription car.status)
             ]
         ]

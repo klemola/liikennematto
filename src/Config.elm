@@ -1,11 +1,11 @@
 module Config exposing (..)
 
 import Car exposing (Car, CarKind(..), Status(..), TurnKind(..))
-import Coords exposing (Coords)
 import Dict exposing (Dict)
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
 import Element exposing (rgb255, rgba255)
 import Lot exposing (BuildingKind(..), Lot(..))
+import Position exposing (Position)
 import Tile
     exposing
         ( IntersectionControl(..)
@@ -64,7 +64,7 @@ borderRadius =
     }
 
 
-initialBoard : Dict Coords Tile
+initialBoard : Dict Position Tile
 initialBoard =
     Dict.fromList
         [ ( ( 1, 1 ), TwoLaneRoad (Curve TopLeft) Both )
@@ -127,7 +127,7 @@ firstLot =
 
 firstCar =
     { kind = resident firstLot
-    , coords = ( 3, 10 )
+    , position = ( 3, 10 )
     , direction = Left
     , homeLotId = Just 1
     , status = Moving

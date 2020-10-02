@@ -2,15 +2,15 @@ module Lot exposing
     ( BuildingKind(..)
     , Lot(..)
     , allBuildingKinds
-    , anchorCoords
     , anchorDirection
+    , anchorPosition
     , anchorTo
-    , coords
     , entryDirection
+    , position
     )
 
-import Coords exposing (Coords)
 import Direction exposing (Direction(..))
+import Position exposing (Position)
 
 
 type Lot
@@ -18,8 +18,8 @@ type Lot
 
 
 type alias Anchor =
-    -- road piece coords and direction from the road to the lot
-    ( Coords, Direction )
+    -- road piece position and direction from the road to the lot
+    ( Position, Direction )
 
 
 type BuildingKind
@@ -65,7 +65,7 @@ anchorDirection buildingKind =
         |> Direction.opposite
 
 
-anchorTo : BuildingKind -> ( Coords, a ) -> ( Lot, Coords )
+anchorTo : BuildingKind -> ( Position, a ) -> ( Lot, Position )
 anchorTo buildingKind ( anchor, _ ) =
     let
         lot =
@@ -74,11 +74,11 @@ anchorTo buildingKind ( anchor, _ ) =
     ( lot, anchor )
 
 
-anchorCoords : Lot -> Coords
-anchorCoords (Building _ ( anchor, _ )) =
+anchorPosition : Lot -> Position
+anchorPosition (Building _ ( anchor, _ )) =
     anchor
 
 
-coords : Lot -> Coords
-coords (Building _ ( roadCoords, dirFromRoad )) =
-    Coords.next roadCoords dirFromRoad
+position : Lot -> Position
+position (Building _ ( roadPosition, dirFromRoad )) =
+    Position.next roadPosition dirFromRoad

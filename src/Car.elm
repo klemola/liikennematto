@@ -19,13 +19,13 @@ module Car exposing
     , yield
     )
 
-import Coords exposing (Coords)
 import Direction exposing (Direction(..))
+import Position exposing (Position)
 import Tile exposing (Tile(..))
 
 
 type alias Car =
-    { coords : Coords
+    { position : Position
     , direction : Direction
     , kind : CarKind
     , status : Status
@@ -100,12 +100,12 @@ move car =
             if isParkedAtLot car then
                 -- implicitly move car to the street from the driveway
                 Direction.previous car.direction
-                    |> Coords.next car.coords
+                    |> Position.next car.position
 
             else
-                Coords.next car.coords car.direction
+                Position.next car.position car.direction
     in
-    { car | coords = nextCoords, status = Moving }
+    { car | position = nextCoords, status = Moving }
 
 
 skipRound : Car -> Car
@@ -146,12 +146,12 @@ stopAtIntersection car =
 
 waitForRespawn : Car -> Car
 waitForRespawn car =
-    { car | status = Respawning, coords = ( 0, 0 ) }
+    { car | status = Respawning, position = ( 0, 0 ) }
 
 
-spawn : Coords -> Car -> Car
-spawn coords car =
-    { car | status = SkippingRound, coords = coords }
+spawn : Position -> Car -> Car
+spawn position car =
+    { car | status = SkippingRound, position = position }
 
 
 statusDescription : Status -> String
