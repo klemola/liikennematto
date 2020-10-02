@@ -4,7 +4,7 @@ module Position exposing
     , cornerAndNeighbors
     , diagonalNeighbors
     , filterBy
-    , float
+    , fromInt
     , next
     , parallelNeighbors
     , shiftTo
@@ -15,7 +15,7 @@ import Direction exposing (Corner(..), Direction(..))
 
 
 type alias Position =
-    ( Int, Int )
+    ( Float, Float )
 
 
 type alias Positioned a =
@@ -95,7 +95,7 @@ filterBy thingsWithPosition position =
         |> List.filter (\el -> el.position == position)
 
 
-shiftTo : Int -> Position -> Direction -> Position
+shiftTo : Float -> Position -> Direction -> Position
 shiftTo distance ( x, y ) dir =
     case dir of
         Up ->
@@ -111,10 +111,8 @@ shiftTo distance ( x, y ) dir =
             ( x - distance, y )
 
 
-float : Position -> ( Float, Float )
-float ( x, y ) =
-    -- temporary conversion
-    -- Room for improvement: Coords should be Floats anyhow
+fromInt : ( Int, Int ) -> Position
+fromInt ( x, y ) =
     ( toFloat x, toFloat y )
 
 
@@ -123,7 +121,7 @@ toString position =
     let
         format n =
             n
-                |> String.fromInt
+                |> String.fromFloat
                 |> String.padLeft 2 ' '
     in
     String.join

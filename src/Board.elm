@@ -58,7 +58,11 @@ exists position board =
 
 inBounds : Position -> Bool
 inBounds ( x, y ) =
-    x > 0 && x <= Config.boardSize && y > 0 && y <= Config.boardSize
+    let
+        maxSize =
+            toFloat Config.boardSize
+    in
+    x > 0 && x <= maxSize && y > 0 && y <= maxSize
 
 
 set : Position -> Tile -> Board -> Board
