@@ -63,7 +63,7 @@ renderBoard board tileSize =
 
         drawTile x y =
             board
-                |> Board.get ( x, y )
+                |> Board.get (Position.fromInt ( x, y ))
                 |> Maybe.map (renderTile tileSize)
                 |> Maybe.withDefault emptyTile
     in
@@ -186,15 +186,13 @@ renderCar tileSize lots car =
             case ( car.status, currentLot ) of
                 ( ParkedAtLot, Just (Building kind _) ) ->
                     Lot.entryDirection kind
-                        |> Position.shiftTo (floor (tileSize / 2)) ( 0, 0 )
-                        |> Position.float
+                        |> Position.shiftTo (tileSize / 2) ( 0, 0 )
 
                 _ ->
                     alignCarToLane size car
 
         position =
             car.position
-                |> Position.float
                 |> (\( x, y ) -> ( x * tileSize - tileSize + shiftX, shiftY + tileSize - y * tileSize ))
 
         rotationModifier =
@@ -281,7 +279,7 @@ renderLot size lot =
                     size / 6
 
                 sidewalkGapShift =
-                    floor (size / 2 + (sidewalkGapSize / 2))
+                    size / 2 + (sidewalkGapSize / 2)
 
                 ( sidewalkGapWidth, sidewalkGapHeight ) =
                     case Direction.toOrientation dirFromRoad of
@@ -300,7 +298,7 @@ renderLot size lot =
                 sidewalkGap =
                     Collage.rectangle sidewalkGapWidth sidewalkGapHeight
                         |> styled ( uniform renderColors.sidewalk, invisible )
-                        |> shift (Position.float entryPointPosition)
+                        |> shift entryPointPosition
             in
             Collage.group
                 [ sidewalkGap
@@ -308,6 +306,5 @@ renderLot size lot =
                 ]
                 |> shift
                     (origin
-                        |> Position.float
                         |> (\( x, y ) -> ( x * size - size, size - y * size ))
                     )
