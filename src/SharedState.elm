@@ -16,9 +16,9 @@ module SharedState exposing
 import Board exposing (Board)
 import Car exposing (Car)
 import Config exposing (boardSize, initialBoard, initialCars, initialLots)
-import Coords exposing (Coords)
 import Dict exposing (Dict)
 import Lot exposing (Lot(..))
+import Position exposing (Position)
 
 
 type alias SharedState =
@@ -67,8 +67,8 @@ type SharedStateUpdate
     | UpdateCars Cars
     | UpdateLots ( Lots, Cars )
     | NewBoard
-    | EditBoardAt Coords Board
-    | EditTileAt Coords Board
+    | EditBoardAt Position Board
+    | EditTileAt Position Board
 
 
 initial : SharedState
@@ -120,18 +120,18 @@ update sharedState sharedStateUpdate =
                 , board = Board.new
             }
 
-        EditBoardAt coords nextBoard ->
+        EditBoardAt position nextBoard ->
             let
                 nextLots =
                     Dict.filter
                         (\_ lot ->
-                            Board.exists (Lot.anchorCoords lot) nextBoard && Lot.coords lot /= coords
+                            Board.exists (Lot.anchorPosition lot) nextBoard && Lot.position lot /= position
                         )
                         sharedState.lots
 
                 nextCars =
                     carsAfterBoardChange
-                        { coords = coords
+                        { position = position
                         , nextLots = nextLots
                         , cars = sharedState.cars
                         }
@@ -142,12 +142,12 @@ update sharedState sharedStateUpdate =
                 , lots = nextLots
             }
 
-        EditTileAt coords nextBoard ->
+        EditTileAt position nextBoard ->
             { sharedState
                 | board = nextBoard
                 , cars =
                     carsAfterBoardChange
-                        { coords = coords
+                        { position = position
                         , nextLots = sharedState.lots
                         , cars = sharedState.cars
                         }
@@ -166,12 +166,12 @@ nextId dict =
 
 
 carsAfterBoardChange :
-    { coords : Coords
+    { position : Position
     , nextLots : Lots
     , cars : Cars
     }
     -> Cars
-carsAfterBoardChange { coords, nextLots, cars } =
+carsAfterBoardChange { position, nextLots, cars } =
     cars
         -- Room for improvement: implement general orphan entity handling
         |> Dict.filter
@@ -186,7 +186,7 @@ carsAfterBoardChange { coords, nextLots, cars } =
         -- Room for improvement: move the car back to it's lot instead
         |> Dict.map
             (\_ car ->
-                if car.coords == coords then
+                if car.position == position then
                     Car.waitForRespawn car
 
                 else
@@ -194,10 +194,10 @@ carsAfterBoardChange { coords, nextLots, cars } =
             )
 
 
-hasLot : Lots -> Coords -> Bool
-hasLot lots coords =
+hasLot : Lots -> Position -> Bool
+hasLot lots position =
     Dict.values lots
-        |> List.any (\lot -> Lot.coords lot == coords)
+        |> List.any (\lot -> Lot.position lot == position)
 
 
 maxDimensions : Dimensions

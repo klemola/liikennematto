@@ -7,16 +7,16 @@ module Board exposing
     , inBounds
     , new
     , remove
-    , roadCoords
+    , roadPosition
     , set
     )
 
 import BitMask
 import Config
-import Coords exposing (Coords)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction exposing (Direction(..), Orientation(..))
+import Position exposing (Position)
 import Tile
     exposing
         ( IntersectionControl(..)
@@ -27,7 +27,7 @@ import Tile
 
 
 type alias Board =
-    Dict Coords Tile
+    Dict Position Tile
 
 
 new : Board
@@ -35,20 +35,20 @@ new =
     Dict.fromList []
 
 
-get : Coords -> Board -> Maybe Tile
-get coords board =
-    getWithIndex coords board
+get : Position -> Board -> Maybe Tile
+get position board =
+    getWithIndex position board
         |> Maybe.map Tuple.second
 
 
-getWithIndex : Coords -> Board -> Maybe ( Coords, Tile )
-getWithIndex coords board =
-    Dict.find (\key _ -> key == coords) board
+getWithIndex : Position -> Board -> Maybe ( Position, Tile )
+getWithIndex position board =
+    Dict.find (\key _ -> key == position) board
 
 
-exists : Coords -> Board -> Bool
-exists coords board =
-    case get coords board of
+exists : Position -> Board -> Bool
+exists position board =
+    case get position board of
         Just _ ->
             True
 
@@ -56,28 +56,28 @@ exists coords board =
             False
 
 
-inBounds : Coords -> Bool
+inBounds : Position -> Bool
 inBounds ( x, y ) =
     x > 0 && x <= Config.boardSize && y > 0 && y <= Config.boardSize
 
 
-set : Coords -> Tile -> Board -> Board
-set coords tile board =
-    Dict.insert coords tile board
+set : Position -> Tile -> Board -> Board
+set position tile board =
+    Dict.insert position tile board
 
 
-remove : Coords -> Board -> Board
-remove coords board =
-    Dict.remove coords board
+remove : Position -> Board -> Board
+remove position board =
+    Dict.remove position board
 
 
-map : (Coords -> Tile -> Tile) -> Board -> Board
+map : (Position -> Tile -> Tile) -> Board -> Board
 map fn board =
     Dict.map fn board
 
 
-roadCoords : Board -> List Coords
-roadCoords board =
+roadPosition : Board -> List Position
+roadPosition board =
     board
         |> Dict.filter
             (\_ t ->
@@ -86,14 +86,14 @@ roadCoords board =
         |> Dict.keys
 
 
-canBuildRoadAt : Coords -> Board -> Bool
-canBuildRoadAt coords board =
+canBuildRoadAt : Position -> Board -> Bool
+canBuildRoadAt position board =
     let
         xyz l =
             List.length l < 3
 
         hasLowComplexity corner =
-            Coords.cornerAndNeighbors corner coords
+            Position.cornerAndNeighbors corner position
                 |> List.filterMap (\c -> get c board)
                 |> xyz
     in
@@ -123,22 +123,22 @@ applyMask board =
                     newTile
     in
     map
-        (\coords oldTile ->
-            chooseTile board coords
+        (\position oldTile ->
+            chooseTile board position
                 |> Maybe.withDefault Config.defaultTile
                 |> reApplyModifiersIfNecessary oldTile
         )
         board
 
 
-chooseTile : Board -> Coords -> Maybe Tile
+chooseTile : Board -> Position -> Maybe Tile
 chooseTile board origin =
     let
         parallelTiles =
-            { north = exists (Coords.next origin Up) board
-            , west = exists (Coords.next origin Left) board
-            , east = exists (Coords.next origin Right) board
-            , south = exists (Coords.next origin Down) board
+            { north = exists (Position.next origin Up) board
+            , west = exists (Position.next origin Left) board
+            , east = exists (Position.next origin Right) board
+            , south = exists (Position.next origin Down) board
             }
     in
     parallelTiles

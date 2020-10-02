@@ -3,10 +3,10 @@ module Simulation exposing (Model, Msg(..), initialModel, subscriptions, update)
 import Board exposing (Board)
 import Car
 import Config
-import Coords exposing (Coords)
 import Dict
 import Direction exposing (Direction(..), Orientation)
 import Lot exposing (Lot(..), allBuildingKinds)
+import Position exposing (Position)
 import Random
 import Random.List
 import Round
@@ -30,7 +30,7 @@ type alias Model =
 
 
 type alias ShuffledBoard =
-    List ( Coords, Tile )
+    List ( Position, Tile )
 
 
 type Msg
@@ -208,7 +208,7 @@ generateEnvironment { board, shuffledBoard, lots, cars } =
 
             existingLots =
                 lots
-                    |> Dict.map (\_ lot -> Lot.coords lot)
+                    |> Dict.map (\_ lot -> Lot.position lot)
                     |> Dict.values
         in
         case nextUnusedBuilding of
@@ -232,22 +232,22 @@ findLotAnchor :
     , targetDirection : Direction
     , board : Board
     , shuffledBoard : ShuffledBoard
-    , existingLots : List Coords
+    , existingLots : List Position
     }
-    -> Maybe ( Coords, Tile )
+    -> Maybe ( Position, Tile )
 findLotAnchor { targetOrientation, targetDirection, board, shuffledBoard, existingLots } =
     let
-        isCompatible ( coords, tile ) =
+        isCompatible ( position, tile ) =
             case tile of
                 TwoLaneRoad (Regular orientation) _ ->
                     let
-                        potentialLotCoords =
-                            Coords.next coords targetDirection
+                        potentialLotPosition =
+                            Position.next position targetDirection
                     in
                     (orientation == targetOrientation)
-                        && Board.inBounds potentialLotCoords
-                        && not (List.member potentialLotCoords existingLots)
-                        && not (Board.exists potentialLotCoords board)
+                        && Board.inBounds potentialLotPosition
+                        && not (List.member potentialLotPosition existingLots)
+                        && not (Board.exists potentialLotPosition board)
 
                 _ ->
                     False
@@ -257,7 +257,7 @@ findLotAnchor { targetOrientation, targetDirection, board, shuffledBoard, existi
         |> List.head
 
 
-addLot : Lots -> Cars -> ( Lot, Coords ) -> ( Lots, Cars )
+addLot : Lots -> Cars -> ( Lot, Position ) -> ( Lots, Cars )
 addLot lots cars ( newLot, _ ) =
     let
         nextLotId =
@@ -277,7 +277,7 @@ addLot lots cars ( newLot, _ ) =
                 Building kind _ ->
                     Dict.insert nextCarId
                         { kind = resident
-                        , coords = Lot.coords newLot
+                        , position = Lot.position newLot
                         , direction =
                             Lot.entryDirection kind
                                 |> Direction.next

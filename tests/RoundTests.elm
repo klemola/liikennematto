@@ -100,7 +100,7 @@ suite =
                         (respawnSetup
                             |> Round.attemptRespawn
                             |> .activeCar
-                            |> .coords
+                            |> .position
                         )
                         ( 1, 1 )
                 )

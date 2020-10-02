@@ -1,5 +1,5 @@
-module Coords exposing
-    ( Coords
+module Position exposing
+    ( Position
     , corner
     , cornerAndNeighbors
     , diagonalNeighbors
@@ -14,15 +14,15 @@ module Coords exposing
 import Direction exposing (Corner(..), Direction(..))
 
 
-type alias Coords =
+type alias Position =
     ( Int, Int )
 
 
 type alias Positioned a =
-    { a | coords : Coords }
+    { a | position : Position }
 
 
-next : Coords -> Direction -> Coords
+next : Position -> Direction -> Position
 next ( x, y ) dir =
     case dir of
         Up ->
@@ -38,21 +38,21 @@ next ( x, y ) dir =
             ( x - 1, y )
 
 
-diagonalNeighbors : Coords -> List Coords
-diagonalNeighbors coords =
-    [ corner coords TopLeft
-    , corner coords TopRight
-    , corner coords BottomLeft
-    , corner coords BottomRight
+diagonalNeighbors : Position -> List Position
+diagonalNeighbors position =
+    [ corner position TopLeft
+    , corner position TopRight
+    , corner position BottomLeft
+    , corner position BottomRight
     ]
 
 
-parallelNeighbors : Coords -> List Coords
-parallelNeighbors coords =
-    List.map (next coords) Direction.all
+parallelNeighbors : Position -> List Position
+parallelNeighbors position =
+    List.map (next position) Direction.all
 
 
-corner : Coords -> Corner -> Coords
+corner : Position -> Corner -> Position
 corner ( x, y ) c =
     case c of
         TopLeft ->
@@ -73,29 +73,29 @@ corner ( x, y ) c =
     e.g. Left, TopLeft, Up
 
 -}
-cornerAndNeighbors : Corner -> Coords -> List Coords
-cornerAndNeighbors c coords =
+cornerAndNeighbors : Corner -> Position -> List Position
+cornerAndNeighbors c position =
     case c of
         TopLeft ->
-            [ next coords Left, corner coords TopLeft, next coords Up ]
+            [ next position Left, corner position TopLeft, next position Up ]
 
         TopRight ->
-            [ next coords Up, corner coords TopRight, next coords Right ]
+            [ next position Up, corner position TopRight, next position Right ]
 
         BottomLeft ->
-            [ next coords Down, corner coords BottomLeft, next coords Left ]
+            [ next position Down, corner position BottomLeft, next position Left ]
 
         BottomRight ->
-            [ next coords Right, corner coords BottomRight, next coords Down ]
+            [ next position Right, corner position BottomRight, next position Down ]
 
 
-filterBy : List (Positioned a) -> Coords -> List (Positioned a)
-filterBy thingsWithCoords coords =
-    thingsWithCoords
-        |> List.filter (\el -> el.coords == coords)
+filterBy : List (Positioned a) -> Position -> List (Positioned a)
+filterBy thingsWithPosition position =
+    thingsWithPosition
+        |> List.filter (\el -> el.position == position)
 
 
-shiftTo : Int -> Coords -> Direction -> Coords
+shiftTo : Int -> Position -> Direction -> Position
 shiftTo distance ( x, y ) dir =
     case dir of
         Up ->
@@ -111,15 +111,15 @@ shiftTo distance ( x, y ) dir =
             ( x - distance, y )
 
 
-float : Coords -> ( Float, Float )
+float : Position -> ( Float, Float )
 float ( x, y ) =
     -- temporary conversion
     -- Room for improvement: Coords should be Floats anyhow
     ( toFloat x, toFloat y )
 
 
-toString : Coords -> String
-toString coords =
+toString : Position -> String
+toString position =
     let
         format n =
             n
@@ -129,7 +129,7 @@ toString coords =
     String.join
         " "
         [ "x:"
-        , format (Tuple.first coords)
+        , format (Tuple.first position)
         , "y:"
-        , format (Tuple.second coords)
+        , format (Tuple.second position)
         ]
