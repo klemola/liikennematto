@@ -4,9 +4,10 @@ module Position exposing
     , cornerAndNeighbors
     , diagonalNeighbors
     , filterBy
-    , fromInt
+    , fromIntegers
     , next
     , parallelNeighbors
+    , roundDown
     , shiftTo
     , toString
     )
@@ -111,9 +112,14 @@ shiftTo distance ( x, y ) dir =
             ( x - distance, y )
 
 
-fromInt : ( Int, Int ) -> Position
-fromInt ( x, y ) =
+fromIntegers : ( Int, Int ) -> Position
+fromIntegers ( x, y ) =
     ( toFloat x, toFloat y )
+
+
+roundDown : Position -> Position
+roundDown ( x, y ) =
+    fromIntegers ( truncate x, truncate y )
 
 
 toString : Position -> String
