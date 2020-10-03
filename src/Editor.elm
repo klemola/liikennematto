@@ -171,9 +171,9 @@ overlay sharedState model =
                         { board = sharedState.board
                         , lots = sharedState.lots
                         , selectedTool = model
-                        , position = Position.fromInt ( x, y )
+                        , position = Position.fromIntegers ( x, y )
                         }
-                , position = Position.fromInt ( x, y )
+                , position = Position.fromIntegers ( x, y )
                 }
 
         rows =

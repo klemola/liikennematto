@@ -63,7 +63,7 @@ renderBoard board tileSize =
 
         drawTile x y =
             board
-                |> Board.get (Position.fromInt ( x, y ))
+                |> Board.get (Position.fromIntegers ( x, y ))
                 |> Maybe.map (renderTile tileSize)
                 |> Maybe.withDefault emptyTile
     in
@@ -292,6 +292,7 @@ renderLot size lot =
                 entryPointPosition =
                     Lot.entryDirection kind
                         |> Position.shiftTo sidewalkGapShift ( 0, 0 )
+                        |> Position.roundDown
 
                 -- sidewalk gap hides terrain between sizewalk and the lot
                 -- Room for improvement: use special road tiles when connected to a lot
@@ -307,4 +308,5 @@ renderLot size lot =
                 |> shift
                     (origin
                         |> (\( x, y ) -> ( x * size - size, size - y * size ))
+                        |> Position.roundDown
                     )
