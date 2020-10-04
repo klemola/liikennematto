@@ -2,32 +2,34 @@ module Board exposing
     ( Board
     , applyMask
     , canBuildRoadAt
+    , defaultTile
     , exists
     , get
     , inBounds
     , new
     , remove
-    , roadPosition
+    , roadPiecePositions
     , set
     )
 
 import BitMask
+import Cell exposing (Cell)
 import Config
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction exposing (Direction(..), Orientation(..))
-import Position exposing (Position)
 import Tile
     exposing
         ( IntersectionControl(..)
         , IntersectionShape(..)
+        , RoadKind(..)
         , Tile(..)
         , TrafficDirection(..)
         )
 
 
 type alias Board =
-    Dict Position Tile
+    Dict Cell Tile
 
 
 new : Board
@@ -35,18 +37,14 @@ new =
     Dict.fromList []
 
 
-get : Position -> Board -> Maybe Tile
+get : Cell -> Board -> Maybe Tile
 get position board =
-    getWithIndex position board
+    board
+        |> Dict.find (\key _ -> key == position)
         |> Maybe.map Tuple.second
 
 
-getWithIndex : Position -> Board -> Maybe ( Position, Tile )
-getWithIndex position board =
-    Dict.find (\key _ -> key == position) board
-
-
-exists : Position -> Board -> Bool
+exists : Cell -> Board -> Bool
 exists position board =
     case get position board of
         Just _ ->
@@ -56,32 +54,28 @@ exists position board =
             False
 
 
-inBounds : Position -> Bool
+inBounds : Cell -> Bool
 inBounds ( x, y ) =
-    let
-        maxSize =
-            toFloat Config.boardSize
-    in
-    x > 0 && x <= maxSize && y > 0 && y <= maxSize
+    x > 0 && x <= Config.boardSize && y > 0 && y <= Config.boardSize
 
 
-set : Position -> Tile -> Board -> Board
+set : Cell -> Tile -> Board -> Board
 set position tile board =
     Dict.insert position tile board
 
 
-remove : Position -> Board -> Board
+remove : Cell -> Board -> Board
 remove position board =
     Dict.remove position board
 
 
-map : (Position -> Tile -> Tile) -> Board -> Board
+map : (Cell -> Tile -> Tile) -> Board -> Board
 map fn board =
     Dict.map fn board
 
 
-roadPosition : Board -> List Position
-roadPosition board =
+roadPiecePositions : Board -> List Cell
+roadPiecePositions board =
     board
         |> Dict.filter
             (\_ t ->
@@ -90,18 +84,23 @@ roadPosition board =
         |> Dict.keys
 
 
-canBuildRoadAt : Position -> Board -> Bool
+canBuildRoadAt : Cell -> Board -> Bool
 canBuildRoadAt position board =
     let
         xyz l =
             List.length l < 3
 
         hasLowComplexity corner =
-            Position.cornerAndNeighbors corner position
+            Cell.cornerAndNeighbors corner position
                 |> List.filterMap (\c -> get c board)
                 |> xyz
     in
     List.all hasLowComplexity Direction.corners
+
+
+defaultTile : Tile
+defaultTile =
+    TwoLaneRoad (Regular Horizontal) Both
 
 
 applyMask : Board -> Board
@@ -129,20 +128,20 @@ applyMask board =
     map
         (\position oldTile ->
             chooseTile board position
-                |> Maybe.withDefault Config.defaultTile
+                |> Maybe.withDefault defaultTile
                 |> reApplyModifiersIfNecessary oldTile
         )
         board
 
 
-chooseTile : Board -> Position -> Maybe Tile
+chooseTile : Board -> Cell -> Maybe Tile
 chooseTile board origin =
     let
         parallelTiles =
-            { north = exists (Position.next origin Up) board
-            , west = exists (Position.next origin Left) board
-            , east = exists (Position.next origin Right) board
-            , south = exists (Position.next origin Down) board
+            { north = exists (Cell.next origin Up) board
+            , west = exists (Cell.next origin Left) board
+            , east = exists (Cell.next origin Right) board
+            , south = exists (Cell.next origin Down) board
             }
     in
     parallelTiles

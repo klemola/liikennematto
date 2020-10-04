@@ -11,6 +11,7 @@ module Round exposing
 
 import Board exposing (Board)
 import Car exposing (Car, Status(..))
+import Cell
 import Direction exposing (Direction)
 import Position exposing (Position)
 import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..), TrafficDirection(..))
@@ -41,7 +42,7 @@ new : Board -> Bool -> List Direction -> Car -> List Car -> Round
 new board coinTossResult randomDirections activeCar otherCars =
     let
         nextPosition =
-            Position.next activeCar.position activeCar.direction
+            Position.logicalShiftBy 1 activeCar.position activeCar.direction
     in
     { board = board
     , activeCar = activeCar
@@ -50,9 +51,9 @@ new board coinTossResult randomDirections activeCar otherCars =
     , randomDirections = randomDirections
     , nextPosition = nextPosition
     , currentTile =
-        Board.get activeCar.position board
+        Board.get (activeCar.position |> Cell.fromPosition) board
     , nextTile =
-        Board.get nextPosition board
+        Board.get (nextPosition |> Cell.fromPosition) board
     }
 
 
@@ -62,14 +63,14 @@ attemptRespawn round =
         { otherCars, board, activeCar } =
             round
 
-        isEmptyRoad position =
-            List.all (\oc -> oc.position /= position) otherCars
+        isEmptyRoad cell =
+            List.all (\oc -> oc.position /= Cell.toPosition cell) otherCars
 
-        spawn position =
-            { round | activeCar = Car.spawn position activeCar }
+        spawn cell =
+            { round | activeCar = Car.spawn (Cell.toPosition cell) activeCar }
     in
     if Car.isRespawning activeCar then
-        Board.roadPosition board
+        Board.roadPiecePositions board
             |> List.filter isEmptyRoad
             |> List.head
             |> Maybe.map spawn
@@ -103,7 +104,13 @@ applyRule { activeCar, board, currentTile, randomDirections } rule =
                     dir /= activeCar.direction && dir /= oppositeDirection
 
                 seeRoadAhead dir =
-                    case ( currentTile, Board.get (Position.next activeCar.position dir) board ) of
+                    case
+                        ( currentTile
+                        , Board.get
+                            (Cell.next (activeCar.position |> Cell.fromPosition) dir)
+                            board
+                        )
+                    of
                         ( Just current, Just other ) ->
                             Tile.connected dir current other
 
@@ -149,9 +156,12 @@ activeRulesByPriority round =
 checkTurningRules : Round -> Maybe Rule
 checkTurningRules { board, currentTile, nextTile, coinTossResult, activeCar } =
     let
+        tileRelativeToCarPosition dir =
+            Board.get (Cell.next (activeCar.position |> Cell.fromPosition) dir) board
+
         leftAndRightTilesFromCarDirection =
-            [ Board.get (Position.next activeCar.position (Direction.previous activeCar.direction)) board
-            , Board.get (Position.next activeCar.position (Direction.next activeCar.direction)) board
+            [ tileRelativeToCarPosition (Direction.previous activeCar.direction)
+            , tileRelativeToCarPosition (Direction.next activeCar.direction)
             ]
                 |> List.filterMap identity
 
@@ -169,7 +179,7 @@ checkTurningRules { board, currentTile, nextTile, coinTossResult, activeCar } =
         -- turn every now and then at an intersection
         -- cars in intersections can block the traffic, so this also works as a sort of a tie-breaker
         shouldTurnRandomly =
-            case nextTile of
+            case currentTile of
                 Just (Intersection _ _) ->
                     coinTossResult
                         && canTurn
@@ -230,9 +240,9 @@ checkIntersectionRules { otherCars, nextTile, nextPosition, activeCar } =
         priorityTraffic =
             priorityDirections
                 -- get tile coordinates relative to the intersection at "nextPosition"
-                |> List.map (Position.next nextPosition)
+                |> List.map (Position.logicalShiftBy 1 nextPosition)
                 -- add the intersection
-                |> List.append [ Position.next activeCar.position activeCar.direction ]
+                |> List.append [ Position.logicalShiftBy 1 activeCar.position activeCar.direction ]
                 |> List.concatMap (Position.filterBy otherCars)
 
         hasPriority =

@@ -2,6 +2,7 @@ module Render exposing (view)
 
 import Board exposing (Board)
 import Car exposing (Car, Status(..), TurnKind(..))
+import Cell
 import Collage
     exposing
         ( Collage
@@ -63,7 +64,7 @@ renderBoard board tileSize =
 
         drawTile x y =
             board
-                |> Board.get (Position.fromIntegers ( x, y ))
+                |> Board.get ( x, y )
                 |> Maybe.map (renderTile tileSize)
                 |> Maybe.withDefault emptyTile
     in
@@ -186,7 +187,7 @@ renderCar tileSize lots car =
             case ( car.status, currentLot ) of
                 ( ParkedAtLot, Just (Building kind _) ) ->
                     Lot.entryDirection kind
-                        |> Position.shiftTo (tileSize / 2) ( 0, 0 )
+                        |> Position.visualShiftBy (tileSize / 2) ( 0, 0 )
 
                 _ ->
                     alignCarToLane size car
@@ -273,7 +274,7 @@ renderLot size lot =
         Building kind ( anchor, dirFromRoad ) ->
             let
                 origin =
-                    Position.next anchor dirFromRoad
+                    Cell.next anchor dirFromRoad
 
                 sidewalkGapSize =
                     size / 6
@@ -291,8 +292,7 @@ renderLot size lot =
 
                 entryPointPosition =
                     Lot.entryDirection kind
-                        |> Position.shiftTo sidewalkGapShift ( 0, 0 )
-                        |> Position.roundDown
+                        |> Position.visualShiftBy sidewalkGapShift ( 0, 0 )
 
                 -- sidewalk gap hides terrain between sizewalk and the lot
                 -- Room for improvement: use special road tiles when connected to a lot
@@ -307,6 +307,6 @@ renderLot size lot =
                 ]
                 |> shift
                     (origin
+                        |> Cell.toPosition
                         |> (\( x, y ) -> ( x * size - size, size - y * size ))
-                        |> Position.roundDown
                     )

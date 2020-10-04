@@ -96,16 +96,18 @@ isStoppedOrWaiting car =
 move : Car -> Car
 move car =
     let
-        nextCoords =
+        nextDirection =
             if isParkedAtLot car then
                 -- implicitly move car to the street from the driveway
                 Direction.previous car.direction
-                    |> Position.next car.position
 
             else
-                Position.next car.position car.direction
+                car.direction
+
+        nextPosition =
+            Position.logicalShiftBy 1 car.position nextDirection
     in
-    { car | position = nextCoords, status = Moving }
+    { car | position = nextPosition, status = Moving }
 
 
 skipRound : Car -> Car
