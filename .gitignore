@@ -4,7 +4,7 @@ elm-stuff/
 repl-temp-*
 
 elm.js
-elm-debug.js
+*-debug.js
 index.html
 next.html
 Scratchpad.elm

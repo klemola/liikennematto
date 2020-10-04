@@ -15,8 +15,12 @@ build:
 	ls ./build/assets | awk '{print "<link rel=\"preload\" as=\"image\" href=\"/assets/"$$0"\" />"}' | sed -e '/^.*replaceme/{r /dev/stdin' -e 'd;}' ./src/index.template.html > ./build/index.html
 
 	@echo ">> Creating an archive"
-	zip -rq ./build/matto.zip ./build -x ./build/liikennematto.js
+	cd build && zip -rq matto.zip ./* -x "liikennematto.js" "liikennematto-debug.js"
 	@echo ">> Done!"
+
+check:
+	@mkdir -p ./build
+	elm make src/Main.elm --output=./build/liikennematto-debug.js
 
 dev:
 	elm reactor
@@ -28,4 +32,4 @@ test:
 	elm-test
 
 
-.PHONY: build test
+.PHONY: build check dev serve test
