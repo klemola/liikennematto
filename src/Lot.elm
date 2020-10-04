@@ -2,15 +2,17 @@ module Lot exposing
     ( BuildingKind(..)
     , Lot(..)
     , allBuildingKinds
+    , anchorCell
     , anchorDirection
-    , anchorPosition
     , anchorTo
+    , cell
     , entryDirection
-    , position
+    , resident
     )
 
+import Car exposing (CarKind(..))
+import Cell exposing (Cell)
 import Direction exposing (Direction(..))
-import Position exposing (Position)
 
 
 type Lot
@@ -18,8 +20,8 @@ type Lot
 
 
 type alias Anchor =
-    -- road piece position and direction from the road to the lot
-    ( Position, Direction )
+    -- road piece cell and direction from the road to the lot
+    ( Cell, Direction )
 
 
 type BuildingKind
@@ -65,20 +67,39 @@ anchorDirection buildingKind =
         |> Direction.opposite
 
 
-anchorTo : BuildingKind -> ( Position, a ) -> ( Lot, Position )
+anchorTo : BuildingKind -> ( Cell, a ) -> Lot
 anchorTo buildingKind ( anchor, _ ) =
     let
         lot =
             Building buildingKind ( anchor, anchorDirection buildingKind )
     in
-    ( lot, anchor )
+    lot
 
 
-anchorPosition : Lot -> Position
-anchorPosition (Building _ ( anchor, _ )) =
+anchorCell : Lot -> Cell
+anchorCell (Building _ ( anchor, _ )) =
     anchor
 
 
-position : Lot -> Position
-position (Building _ ( roadPosition, dirFromRoad )) =
-    Position.next roadPosition dirFromRoad
+cell : Lot -> Cell
+cell (Building _ ( roadPosition, dirFromRoad )) =
+    Cell.next roadPosition dirFromRoad
+
+
+resident : Lot -> CarKind
+resident (Building buildingKind _) =
+    case buildingKind of
+        ResidentialA ->
+            SedanA
+
+        ResidentialB ->
+            SedanB
+
+        ResidentialC ->
+            SedanC
+
+        ResidentialD ->
+            SedanD
+
+        ResidentialE ->
+            SedanE

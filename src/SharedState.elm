@@ -15,10 +15,20 @@ module SharedState exposing
 
 import Board exposing (Board)
 import Car exposing (Car)
-import Config exposing (boardSize, initialBoard, initialCars, initialLots)
+import Cell exposing (Cell)
+import Config exposing (boardSize)
 import Dict exposing (Dict)
+import Direction exposing (Corner(..), Direction(..), Orientation(..))
 import Lot exposing (Lot(..))
-import Position exposing (Position)
+import Tile
+    exposing
+        ( IntersectionControl(..)
+        , IntersectionShape(..)
+        , RoadKind(..)
+        , Tile(..)
+        , TrafficDirection(..)
+        )
+import TrafficLight
 
 
 type alias SharedState =
@@ -67,8 +77,8 @@ type SharedStateUpdate
     | UpdateCars Cars
     | UpdateLots ( Lots, Cars )
     | NewBoard
-    | EditBoardAt Position Board
-    | EditTileAt Position Board
+    | EditBoardAt Cell Board
+    | EditTileAt Cell Board
 
 
 initial : SharedState
@@ -82,8 +92,8 @@ initial =
     , dimensions = dimensions
     , screenSize = ( 0, 0 )
     , board = initialBoard
-    , cars = initialCars
-    , lots = initialLots
+    , cars = Dict.empty
+    , lots = Dict.empty
     }
 
 
@@ -120,18 +130,18 @@ update sharedState sharedStateUpdate =
                 , board = Board.new
             }
 
-        EditBoardAt position nextBoard ->
+        EditBoardAt cell nextBoard ->
             let
                 nextLots =
                     Dict.filter
                         (\_ lot ->
-                            Board.exists (Lot.anchorPosition lot) nextBoard && Lot.position lot /= position
+                            Board.exists (Lot.anchorCell lot) nextBoard && Lot.cell lot /= cell
                         )
                         sharedState.lots
 
                 nextCars =
                     carsAfterBoardChange
-                        { position = position
+                        { cell = cell
                         , nextLots = nextLots
                         , cars = sharedState.cars
                         }
@@ -142,12 +152,12 @@ update sharedState sharedStateUpdate =
                 , lots = nextLots
             }
 
-        EditTileAt position nextBoard ->
+        EditTileAt cell nextBoard ->
             { sharedState
                 | board = nextBoard
                 , cars =
                     carsAfterBoardChange
-                        { position = position
+                        { cell = cell
                         , nextLots = sharedState.lots
                         , cars = sharedState.cars
                         }
@@ -166,12 +176,12 @@ nextId dict =
 
 
 carsAfterBoardChange :
-    { position : Position
+    { cell : Cell
     , nextLots : Lots
     , cars : Cars
     }
     -> Cars
-carsAfterBoardChange { position, nextLots, cars } =
+carsAfterBoardChange { cell, nextLots, cars } =
     cars
         -- Room for improvement: implement general orphan entity handling
         |> Dict.filter
@@ -186,7 +196,7 @@ carsAfterBoardChange { position, nextLots, cars } =
         -- Room for improvement: move the car back to it's lot instead
         |> Dict.map
             (\_ car ->
-                if car.position == position then
+                if car.position == Cell.toPosition cell then
                     Car.waitForRespawn car
 
                 else
@@ -194,10 +204,10 @@ carsAfterBoardChange { position, nextLots, cars } =
             )
 
 
-hasLot : Lots -> Position -> Bool
-hasLot lots position =
+hasLot : Lots -> Cell -> Bool
+hasLot lots cell =
     Dict.values lots
-        |> List.any (\lot -> Lot.position lot == position)
+        |> List.any (\lot -> Lot.cell lot == cell)
 
 
 maxDimensions : Dimensions
@@ -295,3 +305,60 @@ simulationSpeedValues speed =
 
         Fast ->
             ( 600, 100 )
+
+
+initialBoard : Dict ( Int, Int ) Tile
+initialBoard =
+    Dict.fromList
+        [ ( ( 1, 1 ), TwoLaneRoad (Curve TopLeft) Both )
+        , ( ( 1, 2 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 1, 3 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 1, 4 ), TwoLaneRoad (Curve BottomLeft) Both )
+        , ( ( 1, 7 ), TwoLaneRoad (Curve TopLeft) Both )
+        , ( ( 1, 8 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 1, 9 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 1, 10 ), TwoLaneRoad (Curve BottomLeft) Both )
+        , ( ( 2, 1 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 2, 4 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 2, 7 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 2, 10 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 3, 1 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 3, 4 ), Intersection (Yield Vertical) (T Down) )
+        , ( ( 3, 5 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 3, 6 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 3, 7 ), Intersection (Yield Vertical) (T Up) )
+        , ( ( 3, 10 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 4, 1 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 4, 4 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 4, 7 ), TwoLaneRoad (Regular Horizontal) OneWay )
+        , ( ( 4, 10 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 5, 1 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 5, 4 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 5, 7 ), TwoLaneRoad (Regular Horizontal) OneWay )
+        , ( ( 5, 10 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 6, 1 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 6, 4 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 6, 7 ), TwoLaneRoad (Regular Horizontal) OneWay )
+        , ( ( 6, 10 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 7, 1 ), TwoLaneRoad (Curve TopRight) Both )
+        , ( ( 7, 2 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 7, 3 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 7, 4 ), Intersection (Signal TrafficLight.default) Crossroads )
+        , ( ( 7, 5 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 7, 6 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 7, 7 ), Intersection (Stop Horizontal) (T Left) )
+        , ( ( 7, 8 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 7, 9 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 7, 10 ), Intersection (Yield Vertical) (T Up) )
+        , ( ( 8, 4 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 8, 10 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 9, 4 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 9, 10 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 10, 4 ), TwoLaneRoad (Curve TopRight) Both )
+        , ( ( 10, 5 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 10, 6 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 10, 7 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 10, 8 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 10, 9 ), TwoLaneRoad (Regular Vertical) Both )
+        , ( ( 10, 10 ), TwoLaneRoad (Curve BottomRight) Both )
+        ]
