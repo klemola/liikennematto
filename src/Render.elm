@@ -2,7 +2,6 @@ module Render exposing (view)
 
 import Board exposing (Board)
 import Car exposing (Car, Status(..), TurnKind(..))
-import Cell
 import Collage
     exposing
         ( Collage
@@ -18,7 +17,7 @@ import Collage
 import Collage.Layout as Layout
 import Collage.Render exposing (svg)
 import Color
-import Config exposing (boardSize)
+import Config exposing (boardSize, tileSize)
 import Dict
 import Direction exposing (Direction(..), Orientation(..))
 import Graphics
@@ -38,12 +37,10 @@ import TrafficLight exposing (TrafficLight, TrafficLightKind(..))
 
 
 view : SharedState -> Html msg
-view { board, cars, lots, dimensions } =
-    Layout.stack
-        [ renderCars (Dict.values cars) dimensions.tileSize lots
-        , renderLots (Dict.values lots) dimensions.tileSize
-        , renderBoard board dimensions.tileSize
-        ]
+view { board, cars, lots } =
+    renderBoard board
+        |> Layout.at Layout.bottomLeft (renderLots (Dict.values lots))
+        |> Layout.at Layout.bottomLeft (renderCars (Dict.values cars) lots)
         |> svg
 
 
@@ -55,8 +52,8 @@ renderColors =
     }
 
 
-renderBoard : Board -> Float -> Collage msg
-renderBoard board tileSize =
+renderBoard : Board -> Collage msg
+renderBoard board =
     let
         emptyTile =
             square tileSize
@@ -74,8 +71,11 @@ renderBoard board tileSize =
 renderTile : Float -> Tile -> Collage msg
 renderTile tileSize tile =
     let
+        renderedSize =
+            Graphics.renderedSizeFromUnits ( 1, 1 ) tileSize
+
         intersection shape content =
-            Layout.stack (content ++ [ Graphics.texture tileSize (Graphics.intersectionAsset shape) ])
+            Layout.stack (content ++ [ Graphics.texture renderedSize (Graphics.intersectionAsset shape) ])
 
         addRoadMarkings roadKind trafficDirection road =
             case trafficDirection of
@@ -83,12 +83,12 @@ renderTile tileSize tile =
                     road
 
                 OneWay ->
-                    Layout.stack [ Graphics.texture tileSize (Graphics.oneWayMarker roadKind), road ]
+                    Layout.stack [ Graphics.texture renderedSize (Graphics.oneWayMarker roadKind), road ]
     in
     case tile of
         TwoLaneRoad kind trafficDirection ->
             Graphics.roadAsset kind
-                |> Graphics.texture tileSize
+                |> Graphics.texture renderedSize
                 |> addRoadMarkings kind trafficDirection
 
         Intersection (Signal trafficLights) shape ->
@@ -138,7 +138,7 @@ renderTrafficLight tileSize tl =
                 Red ->
                     Color.darkRed
     in
-    Graphics.marker tileSize offset tl.facing presentation
+    Graphics.marker offset tl.facing presentation
 
 
 renderSigns : Float -> Orientation -> IntersectionShape -> String -> List (Collage msg)
@@ -159,21 +159,21 @@ renderSigns tileSize orientation intersectionShape asset =
                     Direction.fromOrientation orientation
 
         presentation dir =
-            Graphics.texture size asset
-                |> Graphics.marker tileSize offset dir
+            Graphics.texture ( size, size ) asset
+                |> Graphics.marker offset dir
     in
     locations
         |> List.map presentation
 
 
-renderCars : List Car -> Float -> Lots -> Collage msg
-renderCars cars tileSize lots =
-    List.map (renderCar tileSize lots) cars
+renderCars : List Car -> Lots -> Collage msg
+renderCars cars lots =
+    List.map (renderCar lots) cars
         |> Collage.group
 
 
-renderCar : Float -> Lots -> Car -> Collage msg
-renderCar tileSize lots car =
+renderCar : Lots -> Car -> Collage msg
+renderCar lots car =
     let
         size =
             tileSize * 0.3
@@ -185,16 +185,15 @@ renderCar tileSize lots car =
 
         ( shiftX, shiftY ) =
             case ( car.status, currentLot ) of
-                ( ParkedAtLot, Just (Building kind _) ) ->
-                    Lot.entryDirection kind
-                        |> Position.visualShiftBy (tileSize / 2) ( 0, 0 )
+                ( ParkedAtLot, Just (Building props _ _) ) ->
+                    props.entryDirection
+                        |> Position.shiftBy (tileSize / 2) ( 0, 0 )
 
                 _ ->
                     alignCarToLane size car
 
         position =
             car.position
-                |> (\( x, y ) -> ( x * tileSize - tileSize + shiftX, shiftY + tileSize - y * tileSize ))
 
         rotationModifier =
             case car.status of
@@ -212,7 +211,7 @@ renderCar tileSize lots car =
                 + rotationModifier
                 |> degrees
     in
-    Graphics.texture size (Graphics.carAsset car)
+    Graphics.texture ( size, size ) (Graphics.carAsset car)
         |> rotate rotation
         |> shift position
 
@@ -262,51 +261,47 @@ dirToRotation dir =
             90
 
 
-renderLots : List Lot -> Float -> Collage msg
-renderLots lots tileSize =
-    List.map (renderLot tileSize) lots
+renderLots : List Lot -> Collage msg
+renderLots lots =
+    List.map (renderLot tileSize) (Debug.log "lots" lots)
         |> Collage.group
 
 
 renderLot : Float -> Lot -> Collage msg
-renderLot size lot =
+renderLot tileSize lot =
     case lot of
-        Building kind ( anchor, dirFromRoad ) ->
+        Building buildingProps position ( _, dirFromRoad ) ->
             let
-                origin =
-                    Cell.next anchor dirFromRoad
+                { width, height } =
+                    buildingProps
 
                 sidewalkGapSize =
-                    size / 6
+                    tileSize / 6
 
                 sidewalkGapShift =
-                    size / 2 + (sidewalkGapSize / 2)
+                    tileSize / 2 + (sidewalkGapSize / 2)
 
                 ( sidewalkGapWidth, sidewalkGapHeight ) =
                     case Direction.toOrientation dirFromRoad of
                         Vertical ->
-                            ( size / 2, sidewalkGapSize )
+                            ( tileSize / 2, sidewalkGapSize )
 
                         Horizontal ->
-                            ( sidewalkGapSize, size / 2 )
+                            ( sidewalkGapSize, tileSize / 2 )
 
                 entryPointPosition =
-                    Lot.entryDirection kind
-                        |> Position.visualShiftBy sidewalkGapShift ( 0, 0 )
+                    buildingProps.entryDirection
+                        |> Position.shiftBy sidewalkGapShift ( 0, 0 )
 
-                -- sidewalk gap hides terrain between sizewalk and the lot
+                -- sidewalk gap hides terrain between sidewalk and the lot
                 -- Room for improvement: use special road tiles when connected to a lot
                 sidewalkGap =
                     Collage.rectangle sidewalkGapWidth sidewalkGapHeight
                         |> styled ( uniform renderColors.sidewalk, invisible )
                         |> shift entryPointPosition
             in
-            Collage.group
-                [ sidewalkGap
-                , Graphics.texture size (Graphics.buildingAsset kind)
+            Layout.stack
+                [ Graphics.texture ( width, height ) (Graphics.buildingAsset buildingProps.kind)
+                , sidewalkGap
                 ]
-                |> shift
-                    (origin
-                        |> Cell.toPosition
-                        |> (\( x, y ) -> ( x * size - size, size - y * size ))
-                    )
+                |> shift position

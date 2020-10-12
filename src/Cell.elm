@@ -1,14 +1,15 @@
 module Cell exposing
     ( Cell
+    , bottomLeftCorner
     , corner
     , cornerAndNeighbors
     , diagonalNeighbors
     , fromPosition
     , next
     , parallelNeighbors
-    , toPosition
     )
 
+import Config exposing (boardSize, tileSize)
 import Direction exposing (Corner(..), Direction(..))
 import Position exposing (Position)
 
@@ -84,11 +85,22 @@ cornerAndNeighbors c position =
             [ next position Right, corner position BottomRight, next position Down ]
 
 
-toPosition : Cell -> Position
-toPosition ( x, y ) =
-    ( toFloat x, toFloat y )
+bottomLeftCorner : Cell -> Position
+bottomLeftCorner ( cellX, cellY ) =
+    let
+        ( x, y ) =
+            ( toFloat cellX, toFloat cellY )
+
+        ( adjustedX, adjustedY ) =
+            ( x - 1, toFloat boardSize - y )
+    in
+    ( adjustedX * tileSize, adjustedY * tileSize )
 
 
 fromPosition : Position -> Cell
 fromPosition ( x, y ) =
-    ( truncate x, truncate y )
+    let
+        boardHeight =
+            toFloat boardSize * tileSize
+    in
+    ( floor ((x / tileSize) + 1), floor (boardHeight - y / tileSize) )

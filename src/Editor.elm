@@ -2,7 +2,7 @@ module Editor exposing (Model, Msg, initialModel, overlay, toolbar, update)
 
 import Board exposing (Board)
 import Cell exposing (Cell)
-import Config exposing (borderRadius, borderSize, colors, whitespace)
+import Config exposing (borderRadius, borderSize, colors, tileSize, whitespace)
 import CustomEvent
 import Element
     exposing
@@ -154,9 +154,6 @@ removeRoad board origin =
 overlay : SharedState -> Model -> Element Msg
 overlay sharedState model =
     let
-        tileSize =
-            sharedState.dimensions.tileSize
-
         size =
             px (Config.boardSize * floor tileSize)
 
@@ -165,8 +162,7 @@ overlay sharedState model =
 
         cell x y =
             tileOverlay
-                { tileSize = tileSize
-                , glowColor =
+                { glowColor =
                     tileHighlight
                         { board = sharedState.board
                         , lots = sharedState.lots
@@ -200,12 +196,11 @@ overlay sharedState model =
 
 
 tileOverlay :
-    { tileSize : Float
-    , glowColor : Color
+    { glowColor : Color
     , cell : Cell
     }
     -> Element Msg
-tileOverlay { tileSize, glowColor, cell } =
+tileOverlay { glowColor, cell } =
     let
         tileSizePx =
             px (floor tileSize)

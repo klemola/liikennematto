@@ -1,27 +1,36 @@
 module Lot exposing
     ( BuildingKind(..)
+    , BuildingProperties
     , Lot(..)
-    , allBuildingKinds
-    , anchorCell
-    , anchorDirection
+    , allBuildings
     , anchorTo
-    , cell
-    , entryDirection
+    , entryCell
+    , inBounds
     , resident
     )
 
 import Car exposing (CarKind(..))
 import Cell exposing (Cell)
+import Config exposing (tileSize)
 import Direction exposing (Direction(..))
+import Position exposing (Position)
 
 
 type Lot
-    = Building BuildingKind Anchor
+    = Building BuildingProperties Position Anchor
 
 
 type alias Anchor =
     -- road piece cell and direction from the road to the lot
     ( Cell, Direction )
+
+
+type alias BuildingProperties =
+    { kind : BuildingKind
+    , width : Float
+    , height : Float
+    , entryDirection : Direction
+    }
 
 
 type BuildingKind
@@ -32,63 +41,76 @@ type BuildingKind
     | ResidentialE
 
 
-allBuildingKinds : List BuildingKind
-allBuildingKinds =
-    [ ResidentialA
-    , ResidentialB
-    , ResidentialC
-    , ResidentialD
-    , ResidentialE
+allBuildings : List BuildingProperties
+allBuildings =
+    [ buildingProperties ResidentialA
+    , buildingProperties ResidentialB
+    , buildingProperties ResidentialC
+    , buildingProperties ResidentialD
+    , buildingProperties ResidentialE
     ]
 
 
-entryDirection : BuildingKind -> Direction
-entryDirection buildingKind =
-    case buildingKind of
-        ResidentialA ->
-            Down
-
-        ResidentialB ->
-            Right
-
-        ResidentialC ->
-            Left
-
-        ResidentialD ->
-            Up
-
-        ResidentialE ->
-            Up
-
-
-anchorDirection : BuildingKind -> Direction
-anchorDirection buildingKind =
-    entryDirection buildingKind
-        |> Direction.opposite
-
-
-anchorTo : BuildingKind -> ( Cell, a ) -> Lot
-anchorTo buildingKind ( anchor, _ ) =
+anchorTo : BuildingProperties -> ( Cell, a ) -> Lot
+anchorTo properties ( anchorCell, _ ) =
     let
-        lot =
-            Building buildingKind ( anchor, anchorDirection buildingKind )
+        anchor =
+            ( anchorCell, Direction.opposite properties.entryDirection )
+                |> Debug.log "anchor"
+
+        position =
+            Tuple.second anchor
+                |> Cell.next anchorCell
+                |> Cell.bottomLeftCorner
     in
-    lot
+    Building properties position anchor
 
 
-anchorCell : Lot -> Cell
-anchorCell (Building _ ( anchor, _ )) =
-    anchor
-
-
-cell : Lot -> Cell
-cell (Building _ ( roadPosition, dirFromRoad )) =
+entryCell : Lot -> Cell
+entryCell (Building _ _ ( roadPosition, dirFromRoad )) =
     Cell.next roadPosition dirFromRoad
 
 
+inBounds : Cell -> Lot -> Bool
+inBounds cell (Building props ( lotX, lotY ) _) =
+    let
+        ( cellX, cellY ) =
+            Cell.bottomLeftCorner cell
+
+        ( cellWidth, cellHeight ) =
+            ( tileSize, tileSize )
+
+        ( lotWidth, lotHeight ) =
+            ( props.width, props.height )
+    in
+    (cellX < lotX + lotWidth)
+        && (cellX + cellWidth > lotX)
+        && (cellY < lotY + lotHeight)
+        && (cellY + cellHeight > lotY)
+
+
+buildingProperties : BuildingKind -> BuildingProperties
+buildingProperties kind =
+    case kind of
+        ResidentialA ->
+            BuildingProperties kind tileSize tileSize Down
+
+        ResidentialB ->
+            BuildingProperties kind tileSize tileSize Right
+
+        ResidentialC ->
+            BuildingProperties kind tileSize tileSize Left
+
+        ResidentialD ->
+            BuildingProperties kind tileSize tileSize Up
+
+        ResidentialE ->
+            BuildingProperties kind (2 * tileSize) (2 * tileSize) Down
+
+
 resident : Lot -> CarKind
-resident (Building buildingKind _) =
-    case buildingKind of
+resident (Building { kind } _ _) =
+    case kind of
         ResidentialA ->
             SedanA
 

@@ -9,6 +9,11 @@ boardSize =
     10
 
 
+tileSize : Float
+tileSize =
+    80
+
+
 colors =
     { mainBackground = rgb255 68 115 120
     , toolbarBackground = rgb255 159 192 198

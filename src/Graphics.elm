@@ -5,6 +5,7 @@ module Graphics exposing
     , intersectionAsset
     , marker
     , oneWayMarker
+    , renderedSizeFromUnits
     , roadAsset
     , texture
     )
@@ -12,6 +13,7 @@ module Graphics exposing
 import Car exposing (Car, CarKind(..))
 import Collage exposing (Collage, image, invisible, shift, square, styled, transparent)
 import Collage.Layout as Layout
+import Config exposing (tileSize)
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
 import Lot exposing (BuildingKind(..), Lot(..))
 import Tile exposing (IntersectionShape(..), RoadKind(..))
@@ -35,8 +37,8 @@ grid size getCollage =
     Layout.horizontal rows
 
 
-marker : Float -> Float -> Direction -> Collage msg -> Collage msg
-marker tileSize offset side presentation =
+marker : Float -> Direction -> Collage msg -> Collage msg
+marker offset side presentation =
     let
         ( anchor, shiftAmount ) =
             case side of
@@ -65,9 +67,14 @@ marker tileSize offset side presentation =
         |> positionedPresentation
 
 
-texture : Float -> String -> Collage msg
+texture : ( Float, Float ) -> String -> Collage msg
 texture size asset =
-    image ( size, size ) ("assets/" ++ asset)
+    image size ("assets/" ++ asset)
+
+
+renderedSizeFromUnits : ( Int, Int ) -> Float -> ( Float, Float )
+renderedSizeFromUnits ( x, y ) multiplier =
+    ( toFloat x * multiplier, toFloat y * multiplier )
 
 
 intersectionAsset : IntersectionShape -> String

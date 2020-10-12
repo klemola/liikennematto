@@ -12,6 +12,7 @@ module Round exposing
 import Board exposing (Board)
 import Car exposing (Car, Status(..))
 import Cell
+import Config exposing (tileSize)
 import Direction exposing (Direction)
 import Position exposing (Position)
 import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..), TrafficDirection(..))
@@ -42,7 +43,7 @@ new : Board -> Bool -> List Direction -> Car -> List Car -> Round
 new board coinTossResult randomDirections activeCar otherCars =
     let
         nextPosition =
-            Position.logicalShiftBy 1 activeCar.position activeCar.direction
+            Position.shiftBy tileSize activeCar.position activeCar.direction
     in
     { board = board
     , activeCar = activeCar
@@ -64,10 +65,10 @@ attemptRespawn round =
             round
 
         isEmptyRoad cell =
-            List.all (\oc -> oc.position /= Cell.toPosition cell) otherCars
+            List.all (\oc -> oc.position /= Cell.bottomLeftCorner cell) otherCars
 
         spawn cell =
-            { round | activeCar = Car.spawn (Cell.toPosition cell) activeCar }
+            { round | activeCar = Car.spawn (Cell.bottomLeftCorner cell) activeCar }
     in
     if Car.isRespawning activeCar then
         Board.roadPiecePositions board
@@ -240,9 +241,9 @@ checkIntersectionRules { otherCars, nextTile, nextPosition, activeCar } =
         priorityTraffic =
             priorityDirections
                 -- get tile coordinates relative to the intersection at "nextPosition"
-                |> List.map (Position.logicalShiftBy 1 nextPosition)
+                |> List.map (Position.shiftBy tileSize nextPosition)
                 -- add the intersection
-                |> List.append [ Position.logicalShiftBy 1 activeCar.position activeCar.direction ]
+                |> List.append [ Position.shiftBy tileSize activeCar.position activeCar.direction ]
                 |> List.concatMap (Position.filterBy otherCars)
 
         hasPriority =
