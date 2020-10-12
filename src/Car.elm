@@ -19,6 +19,7 @@ module Car exposing
     , yield
     )
 
+import Config exposing (tileSize)
 import Direction exposing (Direction(..))
 import Position exposing (Position)
 import Tile exposing (Tile(..))
@@ -105,7 +106,7 @@ move car =
                 car.direction
 
         nextPosition =
-            Position.logicalShiftBy 1 car.position nextDirection
+            Position.shiftBy tileSize car.position nextDirection
     in
     { car | position = nextPosition, status = Moving }
 

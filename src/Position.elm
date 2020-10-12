@@ -1,9 +1,8 @@
 module Position exposing
     ( Position
     , filterBy
-    , logicalShiftBy
+    , shiftBy
     , toString
-    , visualShiftBy
     )
 
 import Direction exposing (Direction(..))
@@ -22,8 +21,8 @@ filterBy thingsWithPosition position =
     List.filter (\el -> el.position == position) thingsWithPosition
 
 
-visualShiftBy : Float -> Position -> Direction -> Position
-visualShiftBy distance ( x, y ) dir =
+shiftBy : Float -> Position -> Direction -> Position
+shiftBy distance ( x, y ) dir =
     case dir of
         Up ->
             ( x, y + distance )
@@ -33,24 +32,6 @@ visualShiftBy distance ( x, y ) dir =
 
         Down ->
             ( x, y - distance )
-
-        Left ->
-            ( x - distance, y )
-
-
-{-| Temporary workaround for non-obvious y coordinate direction in the car position
--}
-logicalShiftBy : Float -> Position -> Direction -> Position
-logicalShiftBy distance ( x, y ) dir =
-    case dir of
-        Up ->
-            ( x, y - distance )
-
-        Right ->
-            ( x + distance, y )
-
-        Down ->
-            ( x, y + distance )
 
         Left ->
             ( x - distance, y )

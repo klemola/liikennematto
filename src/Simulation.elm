@@ -5,8 +5,7 @@ import Car
 import Cell exposing (Cell)
 import Dict
 import Direction exposing (Direction(..), Orientation)
-import Lot exposing (Lot(..), allBuildingKinds)
-import Position
+import Lot exposing (Lot(..), allBuildings)
 import Random
 import Random.List
 import Round
@@ -59,7 +58,8 @@ subscriptions sharedState =
             in
             Sub.batch
                 [ Time.every slowTickSpeed UpdateEnvironment
-                , Time.every fastTickSpeed UpdateTraffic
+
+                -- , Time.every fastTickSpeed UpdateTraffic
                 , Time.every slowTickSpeed PrepareGeneration
                 ]
 
@@ -182,40 +182,38 @@ generateEnvironment :
     -> ( Lots, Cars )
 generateEnvironment { board, shuffledBoard, lots, cars } =
     -- early exit if nothing unique can be generated, or if the road network is too small
-    if Dict.size lots == List.length allBuildingKinds || Dict.size board < 5 then
+    if Dict.size lots == List.length allBuildings || Dict.size board < 5 then
         ( lots, cars )
 
     else
         let
             existingBuildings =
                 lots
-                    |> Dict.map (\_ (Building kind _) -> kind)
+                    |> Dict.map (\_ (Building { kind } _ _) -> kind)
                     |> Dict.values
 
             -- Room for improvement: buildings should be shuffled so that they don't have to be built in certain order
             nextUnusedBuilding =
-                allBuildingKinds
+                allBuildings
                     |> List.filter
-                        (\building ->
-                            not (List.member building existingBuildings)
+                        (\{ kind } ->
+                            not (List.member kind existingBuildings)
                         )
                     |> List.head
 
             roadOrientation building =
-                Lot.entryDirection building
+                building.entryDirection
                     |> Direction.toOrientation
                     |> Direction.oppositeOrientation
 
             existingLots =
-                lots
-                    |> Dict.map (\_ lot -> Lot.cell lot)
-                    |> Dict.values
+                Dict.values lots
         in
         case nextUnusedBuilding of
             Just building ->
                 findLotAnchor
                     { targetOrientation = roadOrientation building
-                    , targetDirection = Lot.anchorDirection building
+                    , targetDirection = Direction.opposite building.entryDirection
                     , board = board
                     , shuffledBoard = shuffledBoard
                     , existingLots = existingLots
@@ -232,7 +230,7 @@ findLotAnchor :
     , targetDirection : Direction
     , board : Board
     , shuffledBoard : ShuffledBoard
-    , existingLots : List Cell
+    , existingLots : List Lot
     }
     -> Maybe ( Cell, Tile )
 findLotAnchor { targetOrientation, targetDirection, board, shuffledBoard, existingLots } =
@@ -246,7 +244,7 @@ findLotAnchor { targetOrientation, targetDirection, board, shuffledBoard, existi
                     in
                     (orientation == targetOrientation)
                         && Board.inBounds potentialLotCell
-                        && not (List.member potentialLotCell existingLots)
+                        && not (List.any (Lot.inBounds potentialLotCell) existingLots)
                         && not (Board.exists potentialLotCell board)
 
                 _ ->
@@ -271,11 +269,11 @@ addLot lots cars newLot =
 
         newCars =
             case newLot of
-                Building kind _ ->
+                Building buildingProps _ _ ->
                     Dict.insert nextCarId
                         { kind = Lot.resident newLot
-                        , position = Cell.toPosition (Lot.cell newLot)
-                        , direction = Direction.next (Lot.entryDirection kind)
+                        , position = Cell.bottomLeftCorner (Lot.entryCell newLot)
+                        , direction = Direction.next buildingProps.entryDirection
                         , homeLotId = Just nextLotId
                         , status = Car.ParkedAtLot
                         }

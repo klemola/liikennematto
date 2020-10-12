@@ -29,6 +29,7 @@ serve:
 	python3 -m http.server --directory ./build
 
 test:
+	clear
 	elm-test
 
 

@@ -2,7 +2,9 @@ module Fixtures exposing (..)
 
 import Board exposing (Board)
 import Car exposing (Car)
+import Config exposing (tileSize)
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
+import Lot exposing (Lot(..))
 import Round exposing (Round)
 import Tile
     exposing
@@ -364,3 +366,41 @@ expectedModifierTileA =
 expectedModifierTileB : Tile
 expectedModifierTileB =
     Intersection (Stop Horizontal) (T Right)
+
+
+
+-- Lots
+
+
+oneByOneBuildingProperties : Lot.BuildingProperties
+oneByOneBuildingProperties =
+    { kind = Lot.ResidentialA
+    , width = tileSize
+    , height = tileSize
+    , entryDirection = Down
+    }
+
+
+oneByOneLot : Lot
+oneByOneLot =
+    Building
+        oneByOneBuildingProperties
+        ( 0, tileSize * 9 )
+        ( ( 1, 2 ), Up )
+
+
+twoByTwoBuildingProperties : Lot.BuildingProperties
+twoByTwoBuildingProperties =
+    { kind = Lot.ResidentialE
+    , width = tileSize * 2
+    , height = tileSize * 2
+    , entryDirection = Down
+    }
+
+
+twoByTwoLot : Lot
+twoByTwoLot =
+    Building
+        twoByTwoBuildingProperties
+        ( 0, tileSize * 8 )
+        ( ( 1, 3 ), Up )

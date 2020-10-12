@@ -16,7 +16,6 @@ module SharedState exposing
 import Board exposing (Board)
 import Car exposing (Car)
 import Cell exposing (Cell)
-import Config exposing (boardSize)
 import Dict exposing (Dict)
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
 import Lot exposing (Lot(..))
@@ -46,7 +45,6 @@ type alias Dimensions =
     , menu : Int
     , menuButton : Int
     , text : Int
-    , tileSize : Float
     }
 
 
@@ -84,12 +82,8 @@ type SharedStateUpdate
 initial : SharedState
 initial =
     -- Room for improvement: require screen size as parameter in order to avoid temporary values (zeros)
-    let
-        dimensions =
-            { maxDimensions | tileSize = 0 }
-    in
     { simulationState = Simulation Medium
-    , dimensions = dimensions
+    , dimensions = maxDimensions
     , screenSize = ( 0, 0 )
     , board = initialBoard
     , cars = Dict.empty
@@ -135,7 +129,13 @@ update sharedState sharedStateUpdate =
                 nextLots =
                     Dict.filter
                         (\_ lot ->
-                            Board.exists (Lot.anchorCell lot) nextBoard && Lot.cell lot /= cell
+                            let
+                                anchorCell =
+                                    case lot of
+                                        Building _ _ ( aCell, _ ) ->
+                                            aCell
+                            in
+                            Board.exists anchorCell nextBoard && not (Lot.inBounds cell lot)
                         )
                         sharedState.lots
 
@@ -196,7 +196,7 @@ carsAfterBoardChange { cell, nextLots, cars } =
         -- Room for improvement: move the car back to it's lot instead
         |> Dict.map
             (\_ car ->
-                if car.position == Cell.toPosition cell then
+                if car.position == Cell.bottomLeftCorner cell then
                     Car.waitForRespawn car
 
                 else
@@ -206,8 +206,7 @@ carsAfterBoardChange { cell, nextLots, cars } =
 
 hasLot : Lots -> Cell -> Bool
 hasLot lots cell =
-    Dict.values lots
-        |> List.any (\lot -> Lot.cell lot == cell)
+    List.any (Lot.inBounds cell) (Dict.values lots)
 
 
 maxDimensions : Dimensions
@@ -216,7 +215,6 @@ maxDimensions =
     , menu = 200
     , menuButton = 18
     , text = 14
-    , tileSize = 80
     }
 
 
@@ -228,9 +226,6 @@ nextDimensions dimensions ( screenWidth, screenHeight ) =
     let
         ( paddingX, paddingY ) =
             ( 60, 40 )
-
-        maxBoardSize =
-            maxDimensions.tileSize * toFloat boardSize
 
         initialSpace =
             screenWidth - paddingX
@@ -249,23 +244,10 @@ nextDimensions dimensions ( screenWidth, screenHeight ) =
         menuSize =
             (availableUISpace - toolbarSize)
                 |> valueOrMax maxDimensions.menu
-
-        availableBoardSpace =
-            initialSpace - menuSize - toolbarSize
-
-        boardSizePx =
-            (screenHeight - paddingY)
-                |> min availableBoardSpace
-                |> min maxBoardSize
-                |> floorToEven
-
-        tileSize =
-            floorToEven (boardSizePx / toFloat boardSize)
     in
     { dimensions
         | toolbar = floor toolbarSize
         , menu = floor menuSize
-        , tileSize = tileSize
     }
 
 
