@@ -58,8 +58,7 @@ subscriptions sharedState =
             in
             Sub.batch
                 [ Time.every slowTickSpeed UpdateEnvironment
-
-                -- , Time.every fastTickSpeed UpdateTraffic
+                , Time.every fastTickSpeed UpdateTraffic
                 , Time.every slowTickSpeed PrepareGeneration
                 ]
 

@@ -57,7 +57,6 @@ anchorTo properties ( anchorCell, _ ) =
     let
         anchor =
             ( anchorCell, Direction.opposite properties.entryDirection )
-                |> Debug.log "anchor"
 
         position =
             Tuple.second anchor

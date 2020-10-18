@@ -237,29 +237,29 @@ alignCarToDriveway { entryDirection } =
 alignCarToLane : Float -> Car -> ( Float, Float )
 alignCarToLane carSize car =
     let
-        shiftAmount =
-            carSize * 0.5
-
         baseShift =
-            case car.status of
-                Turning _ ->
-                    shiftAmount
+            tileSize / 2
 
-                _ ->
-                    0
+        -- closest lane from the bottom left corner of a tile
+        nearLaneShift =
+            0.33 * tileSize
+
+        -- furthest lane from...
+        distantLaneShift =
+            0.66 * tileSize
     in
     case car.direction of
         Up ->
-            ( shiftAmount, baseShift )
+            ( distantLaneShift, baseShift )
 
         Right ->
-            ( baseShift, -shiftAmount )
+            ( baseShift, nearLaneShift )
 
         Down ->
-            ( -shiftAmount, -baseShift )
+            ( nearLaneShift, baseShift )
 
         Left ->
-            ( -baseShift, shiftAmount )
+            ( baseShift, distantLaneShift )
 
 
 dirToRotation : Direction -> Float

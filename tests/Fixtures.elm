@@ -62,7 +62,7 @@ connectedRoadsSetup =
 
         car =
             carOne
-                |> Car.spawn ( 1, 1 )
+                |> Car.spawn ( 0, 720 )
                 |> Car.turn Right
 
         otherCars =
@@ -81,7 +81,7 @@ disconnectedRoadsSetup =
 
         car =
             carOne
-                |> Car.spawn ( 1, 1 )
+                |> Car.spawn ( 0, 720 )
                 |> Car.turn Right
 
         otherCars =
@@ -101,7 +101,7 @@ curveSetup =
 
         car =
             carOne
-                |> Car.spawn ( 2, 1 )
+                |> Car.spawn ( 80, 720 )
                 |> Car.turn Right
 
         otherCars =
@@ -120,7 +120,7 @@ randomTurnSetup =
 
         car =
             carOne
-                |> Car.spawn ( 1, 1 )
+                |> Car.spawn ( 0, 720 )
                 |> Car.turn Right
 
         otherCars =
@@ -139,12 +139,12 @@ collisionSetup =
 
         car =
             carOne
-                |> Car.spawn ( 1, 1 )
+                |> Car.spawn ( 0, 720 )
                 |> Car.turn Right
 
         otherCars =
             [ carTwo
-                |> Car.spawn ( 2, 1 )
+                |> Car.spawn ( 80, 720 )
                 |> Car.turn Right
             ]
     in
@@ -161,12 +161,12 @@ noCollisionSetup =
 
         car =
             carOne
-                |> Car.spawn ( 1, 1 )
+                |> Car.spawn ( 0, 720 )
                 |> Car.turn Right
 
         otherCars =
             [ carTwo
-                |> Car.spawn ( 2, 1 )
+                |> Car.spawn ( 80, 720 )
                 |> Car.turn Left
             ]
     in
@@ -183,7 +183,7 @@ redTrafficLightsSetup =
 
         car =
             carOne
-                |> Car.spawn ( 1, 1 )
+                |> Car.spawn ( 0, 720 )
                 |> Car.turn Right
 
         otherCars =
@@ -202,7 +202,7 @@ greenTrafficLightsSetup =
 
         car =
             carOne
-                |> Car.spawn ( 1, 1 )
+                |> Car.spawn ( 0, 720 )
                 |> Car.turn Down
 
         otherCars =
@@ -223,13 +223,13 @@ yieldSetup hasPriorityTraffic =
 
         car =
             carOne
-                |> Car.spawn ( 1, 2 )
+                |> Car.spawn ( 0, 640 )
                 |> Car.turn Right
 
         otherCars =
             if hasPriorityTraffic then
                 [ carTwo
-                    |> Car.spawn ( 2, 1 )
+                    |> Car.spawn ( 80, 720 )
                     |> Car.turn Down
                 ]
 
@@ -262,7 +262,7 @@ stopSetup =
 
         car =
             carOne
-                |> Car.spawn ( 1, 2 )
+                |> Car.spawn ( 0, 640 )
                 |> Car.turn Right
                 |> Car.move
 
@@ -284,13 +284,13 @@ yieldAfterStopSetup =
 
         car =
             carOne
-                |> Car.spawn ( 1, 2 )
+                |> Car.spawn ( 0, 640 )
                 |> Car.turn Right
                 |> Car.stopAtIntersection
 
         otherCars =
             [ carTwo
-                |> Car.spawn ( 2, 1 )
+                |> Car.spawn ( 80, 720 )
                 |> Car.turn Down
             ]
     in
