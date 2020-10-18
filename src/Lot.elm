@@ -1,5 +1,6 @@
 module Lot exposing
-    ( BuildingKind(..)
+    ( Anchor
+    , BuildingKind(..)
     , BuildingProperties
     , Lot(..)
     , allBuildings
