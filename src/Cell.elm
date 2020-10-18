@@ -94,13 +94,21 @@ bottomLeftCorner ( cellX, cellY ) =
         ( adjustedX, adjustedY ) =
             ( x - 1, toFloat boardSize - y )
     in
-    ( adjustedX * tileSize, adjustedY * tileSize )
+    if adjustedX < 0 || adjustedY < 0 then
+        ( 0, 0 )
+
+    else
+        ( adjustedX * tileSize, adjustedY * tileSize )
 
 
 fromPosition : Position -> Cell
 fromPosition ( x, y ) =
     let
-        boardHeight =
+        boardSizeScaled =
             toFloat boardSize * tileSize
     in
-    ( floor ((x / tileSize) + 1), floor (boardHeight - y / tileSize) )
+    if x >= boardSizeScaled || y >= boardSizeScaled then
+        ( 0, 0 )
+
+    else
+        ( floor ((x / tileSize) + 1), floor ((boardSizeScaled - y) / tileSize) )
