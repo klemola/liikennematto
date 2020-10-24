@@ -2,10 +2,12 @@ module Fixtures exposing (..)
 
 import Board exposing (Board)
 import Car exposing (Car)
+import Cell
 import Config exposing (tileSize)
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
-import Lot exposing (Lot(..))
+import Lot exposing (Anchor, Lot(..))
 import Round exposing (Round)
+import SharedState exposing (SharedState)
 import Tile
     exposing
         ( IntersectionControl(..)
@@ -335,6 +337,37 @@ boardThatResemblesACurve =
         |> Board.set ( 1, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
 
 
+boardThatHasAVerticalRoadAtLeftSide : Board
+boardThatHasAVerticalRoadAtLeftSide =
+    Board.new
+        |> Board.set ( 1, 1 ) (TwoLaneRoad (Deadend Up) Both)
+        |> Board.set ( 1, 2 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> Board.set ( 1, 3 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> Board.set ( 1, 4 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> Board.set ( 1, 5 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> Board.set ( 1, 6 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> Board.set ( 1, 7 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> Board.set ( 1, 8 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> Board.set ( 1, 9 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> Board.set ( 1, 10 ) (TwoLaneRoad (Deadend Down) Both)
+
+
+boardThatHasParallelRoads : Board
+boardThatHasParallelRoads =
+    boardThatHasAVerticalRoadAtLeftSide
+        -- create second road
+        |> Board.set ( 3, 1 ) (TwoLaneRoad (Deadend Up) Both)
+        |> Board.set ( 3, 2 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> Board.set ( 3, 3 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> Board.set ( 3, 4 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> Board.set ( 3, 5 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> Board.set ( 3, 6 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> Board.set ( 3, 7 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> Board.set ( 3, 8 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> Board.set ( 3, 9 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> Board.set ( 3, 10 ) (TwoLaneRoad (Deadend Down) Both)
+
+
 expectedCurveTile : Tile
 expectedCurveTile =
     TwoLaneRoad (Curve TopLeft) Both
@@ -400,7 +433,33 @@ twoByTwoBuildingProperties =
 
 twoByTwoLot : Lot
 twoByTwoLot =
+    createTwoByTwoLot ( ( 1, 3 ), Up )
+
+
+createTwoByTwoLot : Anchor -> Lot
+createTwoByTwoLot ( anchorCell, anchorDir ) =
     Building
-        twoByTwoBuildingProperties
-        ( 0, tileSize * 8 )
-        ( ( 1, 3 ), Up )
+        { twoByTwoBuildingProperties | entryDirection = Direction.opposite anchorDir }
+        (Cell.next anchorCell anchorDir
+            |> Cell.bottomLeftCorner
+        )
+        ( anchorCell, anchorDir )
+
+
+
+-- SharedState/World
+
+
+emptySharedState : SharedState
+emptySharedState =
+    SharedState.initial |> (\ss -> { ss | board = Board.new })
+
+
+sharedStateWithEmptySpace : SharedState
+sharedStateWithEmptySpace =
+    { emptySharedState | board = boardThatHasAVerticalRoadAtLeftSide }
+
+
+sharedStateWithParallelRoads : SharedState
+sharedStateWithParallelRoads =
+    { emptySharedState | board = boardThatHasParallelRoads }

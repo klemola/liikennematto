@@ -305,7 +305,7 @@ renderLot lot =
 
 
 sidewalkMask : Lot.Anchor -> Lot.BuildingProperties -> Collage msg
-sidewalkMask ( _, dirFromRoad ) buildingProps =
+sidewalkMask ( _, dirFromRoad ) building =
     -- sidewalk mask hides terrain between sidewalk and the lot
     -- Room for improvement: use special road tiles when connected to a lot
     let
@@ -324,13 +324,12 @@ sidewalkMask ( _, dirFromRoad ) buildingProps =
                     ( maskSize, tileSize / 2 )
 
         entryPointPosition =
-            -- Room for improvement: should not assume that bigger lots have their entry points in a corner
-            case buildingProps.entryDirection of
+            case building.entryDirection of
                 Up ->
-                    ( tileSize / 2, tileSize + maskOverlap )
+                    ( building.width - tileSize / 2, building.height + maskOverlap )
 
                 Right ->
-                    ( tileSize + maskOverlap, tileSize / 2 )
+                    ( building.width + maskOverlap, building.height - tileSize / 2 )
 
                 Down ->
                     ( tileSize / 2, -maskOverlap )

@@ -3,8 +3,10 @@ module Lot exposing
     , BuildingKind(..)
     , BuildingProperties
     , Lot(..)
+    , adjustOriginByAnchor
     , allBuildings
     , anchorTo
+    , boundingBox
     , entryCell
     , inBounds
     , resident
@@ -12,6 +14,7 @@ module Lot exposing
 
 import Car exposing (CarKind(..))
 import Cell exposing (Cell)
+import Collision exposing (BoundingBox)
 import Config exposing (tileSize)
 import Direction exposing (Direction(..))
 import Position exposing (Position)
@@ -40,15 +43,21 @@ type BuildingKind
     | ResidentialC
     | ResidentialD
     | ResidentialE
+    | TwoByOneTest
+    | ThreeByThreeTest
+    | TwoByThreeTest
 
 
 allBuildings : List BuildingProperties
 allBuildings =
     [ buildingProperties ResidentialA
     , buildingProperties ResidentialB
-    , buildingProperties ResidentialC
-    , buildingProperties ResidentialD
     , buildingProperties ResidentialE
+    , buildingProperties ResidentialC
+    , buildingProperties TwoByOneTest
+    , buildingProperties ResidentialD
+    , buildingProperties TwoByThreeTest
+    , buildingProperties ThreeByThreeTest
     ]
 
 
@@ -62,8 +71,33 @@ anchorTo properties ( anchorCell, _ ) =
             Tuple.second anchor
                 |> Cell.next anchorCell
                 |> Cell.bottomLeftCorner
+                |> adjustOriginByAnchor properties
     in
     Building properties position anchor
+
+
+adjustOriginByAnchor : BuildingProperties -> Position -> Position
+adjustOriginByAnchor { entryDirection, width, height } origin =
+    let
+        anchorDirection =
+            Direction.opposite entryDirection
+    in
+    case anchorDirection of
+        Up ->
+            origin
+
+        Right ->
+            origin
+
+        Down ->
+            ( Tuple.first origin - (width - tileSize)
+            , Tuple.second origin - (height - tileSize)
+            )
+
+        Left ->
+            ( Tuple.first origin - (width - tileSize)
+            , Tuple.second origin - (height - tileSize)
+            )
 
 
 entryCell : Lot -> Cell
@@ -71,22 +105,14 @@ entryCell (Building _ _ ( roadPosition, dirFromRoad )) =
     Cell.next roadPosition dirFromRoad
 
 
+boundingBox : Lot -> BoundingBox
+boundingBox (Building props ( lotX, lotY ) _) =
+    { x = lotX, y = lotY, width = props.width, height = props.height }
+
+
 inBounds : Cell -> Lot -> Bool
-inBounds cell (Building props ( lotX, lotY ) _) =
-    let
-        ( cellX, cellY ) =
-            Cell.bottomLeftCorner cell
-
-        ( cellWidth, cellHeight ) =
-            ( tileSize, tileSize )
-
-        ( lotWidth, lotHeight ) =
-            ( props.width, props.height )
-    in
-    (cellX < lotX + lotWidth)
-        && (cellX + cellWidth > lotX)
-        && (cellY < lotY + lotHeight)
-        && (cellY + cellHeight > lotY)
+inBounds cell lot =
+    Collision.aabb (Cell.boundingBox cell) (boundingBox lot)
 
 
 buildingProperties : BuildingKind -> BuildingProperties
@@ -107,21 +133,39 @@ buildingProperties kind =
         ResidentialE ->
             BuildingProperties kind (2 * tileSize) (2 * tileSize) Down
 
+        TwoByOneTest ->
+            BuildingProperties kind (2 * tileSize) tileSize Left
 
-resident : Lot -> CarKind
+        ThreeByThreeTest ->
+            BuildingProperties kind (3 * tileSize) (3 * tileSize) Right
+
+        TwoByThreeTest ->
+            BuildingProperties kind (2 * tileSize) (3 * tileSize) Up
+
+
+resident : Lot -> Maybe CarKind
 resident (Building { kind } _ _) =
     case kind of
         ResidentialA ->
-            SedanA
+            Just SedanA
 
         ResidentialB ->
-            SedanB
+            Just SedanB
 
         ResidentialC ->
-            SedanC
+            Just SedanC
 
         ResidentialD ->
-            SedanD
+            Just SedanD
 
         ResidentialE ->
-            SedanE
+            Just SedanE
+
+        TwoByOneTest ->
+            Nothing
+
+        ThreeByThreeTest ->
+            Nothing
+
+        TwoByThreeTest ->
+            Nothing
