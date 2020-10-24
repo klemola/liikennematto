@@ -167,6 +167,15 @@ buildingAsset kind =
         ResidentialE ->
             "residential_e.png"
 
+        TwoByOneTest ->
+            "geometry_test_2x1.png"
+
+        ThreeByThreeTest ->
+            "geometry_test_3x3.png"
+
+        TwoByThreeTest ->
+            "geometry_test_2x3.png"
+
 
 oneWayMarker : RoadKind -> String
 oneWayMarker roadKind =

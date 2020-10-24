@@ -1,6 +1,7 @@
 module Cell exposing
     ( Cell
     , bottomLeftCorner
+    , boundingBox
     , corner
     , cornerAndNeighbors
     , diagonalNeighbors
@@ -9,6 +10,7 @@ module Cell exposing
     , parallelNeighbors
     )
 
+import Collision exposing (BoundingBox)
 import Config exposing (boardSize, tileSize)
 import Direction exposing (Corner(..), Direction(..))
 import Position exposing (Position)
@@ -112,3 +114,12 @@ fromPosition ( x, y ) =
 
     else
         ( floor ((x / tileSize) + 1), floor ((boardSizeScaled - y) / tileSize) )
+
+
+boundingBox : Cell -> BoundingBox
+boundingBox cell =
+    let
+        ( x, y ) =
+            bottomLeftCorner cell
+    in
+    { x = x, y = y, width = tileSize, height = tileSize }

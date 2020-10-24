@@ -8,6 +8,7 @@ module SharedState exposing
     , SimulationState(..)
     , hasLot
     , initial
+    , isEmptyArea
     , nextId
     , simulationSpeedValues
     , update
@@ -16,9 +17,11 @@ module SharedState exposing
 import Board exposing (Board)
 import Car exposing (Car)
 import Cell exposing (Cell)
+import Collision
 import Dict exposing (Dict)
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
 import Lot exposing (Lot(..))
+import Position exposing (Position)
 import Tile
     exposing
         ( IntersectionControl(..)
@@ -207,6 +210,31 @@ carsAfterBoardChange { cell, nextLots, cars } =
 hasLot : Lots -> Cell -> Bool
 hasLot lots cell =
     List.any (Lot.inBounds cell) (Dict.values lots)
+
+
+isEmptyArea : { origin : Position, width : Float, height : Float } -> SharedState -> Bool
+isEmptyArea { origin, width, height } sharedState =
+    let
+        roadBoundingBoxes =
+            sharedState.board
+                |> Dict.keys
+                |> List.map Cell.boundingBox
+
+        lotBoundingBoxes =
+            sharedState.lots
+                |> Dict.values
+                |> List.map Lot.boundingBox
+
+        areaBoundingBox =
+            { x = Tuple.first origin, y = Tuple.second origin, width = width, height = height }
+
+        inBoardBounds =
+            Board.inBounds areaBoundingBox
+
+        noCollision _ =
+            not <| List.any (Collision.aabb areaBoundingBox) (roadBoundingBoxes ++ lotBoundingBoxes)
+    in
+    inBoardBounds && noCollision ()
 
 
 maxDimensions : Dimensions
