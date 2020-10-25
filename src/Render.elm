@@ -62,14 +62,14 @@ renderBoard board =
         drawTile x y =
             board
                 |> Board.get ( x, y )
-                |> Maybe.map (renderTile tileSize)
+                |> Maybe.map renderTile
                 |> Maybe.withDefault emptyTile
     in
     Graphics.grid boardSize drawTile
 
 
-renderTile : Float -> Tile -> Collage msg
-renderTile tileSize tile =
+renderTile : Tile -> Collage msg
+renderTile tile =
     let
         renderedSize =
             Graphics.renderedSizeFromUnits ( 1, 1 ) tileSize
@@ -93,23 +93,23 @@ renderTile tileSize tile =
 
         Intersection (Signal trafficLights) shape ->
             trafficLights
-                |> List.map (renderTrafficLight tileSize)
+                |> List.map renderTrafficLight
                 |> intersection shape
 
         Intersection (Yield orientation) shape ->
-            renderSigns tileSize orientation shape "yield_sign.png"
+            renderSigns orientation shape "yield_sign.png"
                 |> intersection shape
 
         Intersection (Stop orientation) shape ->
-            renderSigns tileSize orientation shape "stop_sign.png"
+            renderSigns orientation shape "stop_sign.png"
                 |> intersection shape
 
         Intersection Uncontrolled shape ->
             intersection shape []
 
 
-renderTrafficLight : Float -> TrafficLight -> Collage msg
-renderTrafficLight tileSize tl =
+renderTrafficLight : TrafficLight -> Collage msg
+renderTrafficLight tl =
     let
         markerSize =
             tileSize * 0.1
@@ -141,8 +141,8 @@ renderTrafficLight tileSize tl =
     Graphics.marker offset tl.facing presentation
 
 
-renderSigns : Float -> Orientation -> IntersectionShape -> String -> List (Collage msg)
-renderSigns tileSize orientation intersectionShape asset =
+renderSigns : Orientation -> IntersectionShape -> String -> List (Collage msg)
+renderSigns orientation intersectionShape asset =
     let
         size =
             tileSize * 0.25
@@ -189,7 +189,7 @@ renderCar lots car =
                     alignCarToDriveway lot.content.entryDirection
 
                 _ ->
-                    alignCarToLane size car
+                    alignCarToLane car
 
         ( x, y ) =
             car.position
@@ -234,8 +234,8 @@ alignCarToDriveway entryDirection =
             ( 0, tileSize / 2 )
 
 
-alignCarToLane : Float -> Car -> ( Float, Float )
-alignCarToLane carSize car =
+alignCarToLane : Car -> ( Float, Float )
+alignCarToLane car =
     let
         baseShift =
             tileSize / 2
