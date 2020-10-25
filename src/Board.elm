@@ -15,7 +15,7 @@ module Board exposing
 import BitMask
 import Cell exposing (Cell)
 import Collision exposing (BoundingBox)
-import Config exposing (boardSize, tileSize)
+import Config exposing (boardSizeScaled)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction exposing (Direction(..), Orientation(..))
@@ -57,11 +57,7 @@ exists position board =
 
 inBounds : BoundingBox -> Bool
 inBounds bb =
-    let
-        logicalBoardSize =
-            toFloat boardSize * tileSize
-    in
-    bb.x >= 0 && bb.x + bb.width <= logicalBoardSize && bb.y >= 0 && bb.y + bb.height <= logicalBoardSize
+    bb.x >= 0 && bb.x + bb.width <= boardSizeScaled && bb.y >= 0 && bb.y + bb.height <= boardSizeScaled
 
 
 set : Cell -> Tile -> Board -> Board

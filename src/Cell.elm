@@ -11,7 +11,7 @@ module Cell exposing
     )
 
 import Collision exposing (BoundingBox)
-import Config exposing (boardSize, tileSize)
+import Config exposing (boardSize, boardSizeScaled, tileSize)
 import Direction exposing (Corner(..), Direction(..))
 import Position exposing (Position)
 
@@ -91,24 +91,17 @@ bottomLeftCorner : Cell -> Position
 bottomLeftCorner ( cellX, cellY ) =
     let
         ( x, y ) =
-            ( toFloat cellX, toFloat cellY )
-
-        ( adjustedX, adjustedY ) =
-            ( x - 1, toFloat boardSize - y )
+            ( toFloat (cellX - 1), toFloat (boardSize - cellY) )
     in
-    if adjustedX < 0 || adjustedY < 0 then
+    if x < 0 || y < 0 then
         ( 0, 0 )
 
     else
-        ( adjustedX * tileSize, adjustedY * tileSize )
+        ( x * tileSize, y * tileSize )
 
 
 fromPosition : Position -> Cell
 fromPosition ( x, y ) =
-    let
-        boardSizeScaled =
-            toFloat boardSize * tileSize
-    in
     if x >= boardSizeScaled || y >= boardSizeScaled then
         ( 0, 0 )
 

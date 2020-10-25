@@ -3,10 +3,9 @@ module Simulation exposing (Model, Msg(..), initialModel, subscriptions, update)
 import Board exposing (Board)
 import Car
 import Cell exposing (Cell)
-import Config exposing (tileSize)
 import Dict
 import Direction exposing (Direction(..), Orientation)
-import Lot exposing (BuildingKind, Lot, NewLot)
+import Lot exposing (Lot, NewLot)
 import Random
 import Random.List
 import Round
@@ -18,7 +17,7 @@ import SharedState
         , SharedStateUpdate
         , SimulationState(..)
         )
-import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..))
+import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..), TrafficDirection(..))
 import Time
 import TrafficLight
 
@@ -101,7 +100,7 @@ update sharedState msg model =
 
         GenerateEnvironment shuffledBoard ->
             let
-                { board, cars, lots } =
+                { board, lots } =
                     sharedState
 
                 -- skip the generation if nothing unique can be generated, or if the road network is too small
@@ -233,20 +232,19 @@ findLotAnchor { targetOrientation, targetDirection, newLot, sharedState, shuffle
     let
         isCompatible ( cell, tile ) =
             case tile of
-                TwoLaneRoad (Regular orientation) _ ->
-                    (orientation == targetOrientation)
-                        && SharedState.isEmptyArea
-                            { origin =
-                                Cell.next cell targetDirection
-                                    |> Cell.bottomLeftCorner
-                                    |> Lot.adjustOriginByAnchor newLot
-                            , width = newLot.width
-                            , height = newLot.height
-                            }
-                            sharedState
+                TwoLaneRoad (Regular orientation) Both ->
+                    (orientation == targetOrientation) && hasEnoughSpaceAround cell
 
                 _ ->
                     False
+
+        hasEnoughSpaceAround cell =
+            SharedState.isEmptyArea
+                { origin = Lot.bottomLeftCorner newLot ( cell, targetDirection )
+                , width = newLot.width
+                , height = newLot.height
+                }
+                sharedState
     in
     shuffledBoard
         |> List.filter isCompatible

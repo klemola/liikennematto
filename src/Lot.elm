@@ -4,10 +4,10 @@ module Lot exposing
     , BuildingKind(..)
     , Lot
     , NewLot
-    , adjustOriginByAnchor
     , all
     , anchorCell
     , anchorTo
+    , bottomLeftCorner
     , boundingBox
     , entryCell
     , inBounds
@@ -80,10 +80,7 @@ anchorTo newLot ( aCell, _ ) =
             ( aCell, Direction.opposite newLot.content.entryDirection )
 
         position =
-            Tuple.second anchor
-                |> Cell.next aCell
-                |> Cell.bottomLeftCorner
-                |> adjustOriginByAnchor newLot
+            bottomLeftCorner newLot anchor
     in
     { content = newLot.content
     , width = newLot.width
@@ -93,13 +90,15 @@ anchorTo newLot ( aCell, _ ) =
     }
 
 
-adjustOriginByAnchor : NewLot -> Position -> Position
-adjustOriginByAnchor { content, width, height } origin =
+bottomLeftCorner : NewLot -> Anchor -> Position
+bottomLeftCorner { content, width, height } ( aCell, aDir ) =
     let
-        anchorDirection =
-            Direction.opposite content.entryDirection
+        origin =
+            -- entry cell (inside lot)
+            Cell.next aCell aDir
+                |> Cell.bottomLeftCorner
     in
-    case anchorDirection of
+    case aDir of
         Up ->
             origin
 

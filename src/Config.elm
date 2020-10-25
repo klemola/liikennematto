@@ -14,6 +14,11 @@ tileSize =
     80
 
 
+boardSizeScaled : Float
+boardSizeScaled =
+    toFloat boardSize * tileSize
+
+
 colors =
     { mainBackground = rgb255 68 115 120
     , toolbarBackground = rgb255 159 192 198
