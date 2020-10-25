@@ -15,7 +15,7 @@ import Collage exposing (Collage, image, invisible, shift, square, styled, trans
 import Collage.Layout as Layout
 import Config exposing (tileSize)
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
-import Lot exposing (BuildingKind(..), Lot(..))
+import Lot exposing (BuildingKind(..))
 import Tile exposing (IntersectionShape(..), RoadKind(..))
 
 

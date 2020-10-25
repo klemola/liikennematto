@@ -5,7 +5,7 @@ import Car exposing (Car)
 import Cell
 import Config exposing (tileSize)
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
-import Lot exposing (Anchor, Lot(..))
+import Lot exposing (Anchor, Lot)
 import Round exposing (Round)
 import SharedState exposing (SharedState)
 import Tile
@@ -405,29 +405,35 @@ expectedModifierTileB =
 -- Lots
 
 
-oneByOneBuildingProperties : Lot.BuildingProperties
-oneByOneBuildingProperties =
-    { kind = Lot.ResidentialA
+oneByOneNewLot : Lot.NewLot
+oneByOneNewLot =
+    { content =
+        { kind = Lot.ResidentialA
+        , entryDirection = Down
+        }
     , width = tileSize
     , height = tileSize
-    , entryDirection = Down
     }
 
 
 oneByOneLot : Lot
 oneByOneLot =
-    Building
-        oneByOneBuildingProperties
-        ( 0, tileSize * 9 )
-        ( ( 1, 2 ), Up )
+    { content = oneByOneNewLot.content
+    , width = oneByOneNewLot.width
+    , height = oneByOneNewLot.height
+    , position = ( 0, tileSize * 9 )
+    , anchor = ( ( 1, 2 ), Up )
+    }
 
 
-twoByTwoBuildingProperties : Lot.BuildingProperties
-twoByTwoBuildingProperties =
-    { kind = Lot.ResidentialE
+twoByTwoNewLot : Lot.NewLot
+twoByTwoNewLot =
+    { content =
+        { kind = Lot.ResidentialE
+        , entryDirection = Down
+        }
     , width = tileSize * 2
     , height = tileSize * 2
-    , entryDirection = Down
     }
 
 
@@ -438,12 +444,18 @@ twoByTwoLot =
 
 createTwoByTwoLot : Anchor -> Lot
 createTwoByTwoLot ( anchorCell, anchorDir ) =
-    Building
-        { twoByTwoBuildingProperties | entryDirection = Direction.opposite anchorDir }
-        (Cell.next anchorCell anchorDir
+    let
+        content =
+            twoByTwoNewLot.content
+    in
+    { content = { content | entryDirection = Direction.opposite anchorDir }
+    , width = twoByTwoNewLot.width
+    , height = twoByTwoNewLot.height
+    , position =
+        Cell.next anchorCell anchorDir
             |> Cell.bottomLeftCorner
-        )
-        ( anchorCell, anchorDir )
+    , anchor = ( anchorCell, anchorDir )
+    }
 
 
 
