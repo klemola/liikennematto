@@ -20,6 +20,7 @@ build:
 
 check:
 	@mkdir -p ./build
+	clear
 	elm make src/Main.elm --output=./build/liikennematto-debug.js
 
 dev:

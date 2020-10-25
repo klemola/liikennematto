@@ -22,7 +22,7 @@ import Dict
 import Direction exposing (Direction(..), Orientation(..))
 import Graphics
 import Html exposing (Html)
-import Lot exposing (Lot(..))
+import Lot exposing (Lot)
 import Maybe.Extra as Maybe
 import SharedState exposing (Lots, SharedState)
 import Tile
@@ -185,8 +185,8 @@ renderCar lots car =
 
         ( shiftX, shiftY ) =
             case ( car.status, currentLot ) of
-                ( ParkedAtLot, Just (Building props _ _) ) ->
-                    alignCarToDriveway props
+                ( ParkedAtLot, Just lot ) ->
+                    alignCarToDriveway lot.content.entryDirection
 
                 _ ->
                     alignCarToLane size car
@@ -218,8 +218,8 @@ renderCar lots car =
         |> shift position
 
 
-alignCarToDriveway : Lot.BuildingProperties -> ( Float, Float )
-alignCarToDriveway { entryDirection } =
+alignCarToDriveway : Direction -> ( Float, Float )
+alignCarToDriveway entryDirection =
     case entryDirection of
         Up ->
             ( tileSize / 2, tileSize )
@@ -287,25 +287,23 @@ renderLots lots =
 
 renderLot : Lot -> Collage msg
 renderLot lot =
-    case lot of
-        Building buildingProps ( x, y ) anchor ->
-            let
-                { width, height } =
-                    buildingProps
+    let
+        ( x, y ) =
+            lot.position
 
-                building =
-                    Graphics.texture ( width, height ) (Graphics.buildingAsset buildingProps.kind)
+        building =
+            Graphics.texture ( lot.width, lot.height ) (Graphics.buildingAsset lot.content.kind)
 
-                mask =
-                    sidewalkMask anchor buildingProps
-            in
-            building
-                |> Layout.at Layout.bottomLeft mask
-                |> shift ( x + buildingProps.width / 2, y + buildingProps.height / 2 )
+        mask =
+            sidewalkMask lot
+    in
+    building
+        |> Layout.at Layout.bottomLeft mask
+        |> shift ( x + lot.width / 2, y + lot.height / 2 )
 
 
-sidewalkMask : Lot.Anchor -> Lot.BuildingProperties -> Collage msg
-sidewalkMask ( _, dirFromRoad ) building =
+sidewalkMask : Lot -> Collage msg
+sidewalkMask lot =
     -- sidewalk mask hides terrain between sidewalk and the lot
     -- Room for improvement: use special road tiles when connected to a lot
     let
@@ -316,7 +314,7 @@ sidewalkMask ( _, dirFromRoad ) building =
             tileSize / 16
 
         ( maskWidth, maskHeight ) =
-            case Direction.toOrientation dirFromRoad of
+            case Direction.toOrientation (Tuple.second lot.anchor) of
                 Vertical ->
                     ( tileSize / 2, maskSize )
 
@@ -324,12 +322,12 @@ sidewalkMask ( _, dirFromRoad ) building =
                     ( maskSize, tileSize / 2 )
 
         entryPointPosition =
-            case building.entryDirection of
+            case lot.content.entryDirection of
                 Up ->
-                    ( building.width - tileSize / 2, building.height + maskOverlap )
+                    ( lot.width - tileSize / 2, lot.height + maskOverlap )
 
                 Right ->
-                    ( building.width + maskOverlap, building.height - tileSize / 2 )
+                    ( lot.width + maskOverlap, lot.height - tileSize / 2 )
 
                 Down ->
                     ( tileSize / 2, -maskOverlap )

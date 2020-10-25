@@ -6,7 +6,7 @@ import Cell exposing (Cell)
 import Config exposing (tileSize)
 import Dict
 import Direction exposing (Direction(..), Orientation)
-import Lot exposing (BuildingProperties, Lot(..), allBuildings)
+import Lot exposing (BuildingKind, Lot, NewLot)
 import Random
 import Random.List
 import Round
@@ -106,7 +106,7 @@ update sharedState msg model =
 
                 -- skip the generation if nothing unique can be generated, or if the road network is too small
                 ssUpdate =
-                    if Dict.size lots == List.length allBuildings || Dict.size board < 5 then
+                    if Dict.size lots == List.length Lot.all || Dict.size board < 5 then
                         SharedState.NoUpdate
 
                     else
@@ -186,35 +186,35 @@ generateEnvironment sharedState shuffledBoard =
         { lots, cars } =
             sharedState
 
-        existingBuildings =
+        existingBuildingKinds =
             lots
-                |> Dict.map (\_ (Building { kind } _ _) -> kind)
+                |> Dict.map (\_ lot -> lot.content.kind)
                 |> Dict.values
 
-        -- Room for improvement: buildings should be shuffled so that they don't have to be built in certain order
-        nextUnusedBuilding =
-            allBuildings
+        -- Room for improvement: lots should be shuffled so that they don't have to be built in certain order
+        nextUnusedLot =
+            Lot.all
                 |> List.filter
-                    (\{ kind } ->
-                        not (List.member kind existingBuildings)
+                    (\{ content } ->
+                        not (List.member content.kind existingBuildingKinds)
                     )
                 |> List.head
 
-        roadOrientation building =
-            building.entryDirection
+        roadOrientation newLot =
+            newLot.content.entryDirection
                 |> Direction.toOrientation
                 |> Direction.oppositeOrientation
     in
-    case nextUnusedBuilding of
-        Just building ->
+    case nextUnusedLot of
+        Just newLot ->
             findLotAnchor
-                { targetOrientation = roadOrientation building
-                , targetDirection = Direction.opposite building.entryDirection
-                , building = building
+                { targetOrientation = roadOrientation newLot
+                , targetDirection = Direction.opposite newLot.content.entryDirection
+                , newLot = newLot
                 , sharedState = sharedState
                 , shuffledBoard = shuffledBoard
                 }
-                |> Maybe.map (Lot.anchorTo building >> addLot lots cars)
+                |> Maybe.map (Lot.anchorTo newLot >> addLot lots cars)
                 |> Maybe.withDefault ( lots, cars )
 
         Nothing ->
@@ -224,12 +224,12 @@ generateEnvironment sharedState shuffledBoard =
 findLotAnchor :
     { targetOrientation : Orientation
     , targetDirection : Direction
-    , building : BuildingProperties
+    , newLot : NewLot
     , sharedState : SharedState
     , shuffledBoard : ShuffledBoard
     }
     -> Maybe ( Cell, Tile )
-findLotAnchor { targetOrientation, targetDirection, building, sharedState, shuffledBoard } =
+findLotAnchor { targetOrientation, targetDirection, newLot, sharedState, shuffledBoard } =
     let
         isCompatible ( cell, tile ) =
             case tile of
@@ -239,9 +239,9 @@ findLotAnchor { targetOrientation, targetDirection, building, sharedState, shuff
                             { origin =
                                 Cell.next cell targetDirection
                                     |> Cell.bottomLeftCorner
-                                    |> Lot.adjustOriginByAnchor building
-                            , width = building.width
-                            , height = building.height
+                                    |> Lot.adjustOriginByAnchor newLot
+                            , width = newLot.width
+                            , height = newLot.height
                             }
                             sharedState
 
@@ -254,7 +254,7 @@ findLotAnchor { targetOrientation, targetDirection, building, sharedState, shuff
 
 
 addLot : Lots -> Cars -> Lot -> ( Lots, Cars )
-addLot lots cars newLot =
+addLot lots cars lot =
     let
         nextLotId =
             SharedState.nextId lots
@@ -263,15 +263,15 @@ addLot lots cars newLot =
             SharedState.nextId cars
 
         newLots =
-            Dict.insert nextLotId newLot lots
+            Dict.insert nextLotId lot lots
 
         newCars =
-            case ( newLot, Lot.resident newLot ) of
-                ( Building buildingProps _ _, Just carKind ) ->
+            case Lot.resident lot of
+                Just carKind ->
                     Dict.insert nextCarId
                         { kind = carKind
-                        , position = Cell.bottomLeftCorner (Lot.entryCell newLot)
-                        , direction = Direction.next buildingProps.entryDirection
+                        , position = Cell.bottomLeftCorner (Lot.entryCell lot)
+                        , direction = Direction.next lot.content.entryDirection
                         , homeLotId = Just nextLotId
                         , status = Car.ParkedAtLot
                         }

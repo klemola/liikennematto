@@ -20,7 +20,7 @@ import Cell exposing (Cell)
 import Collision
 import Dict exposing (Dict)
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
-import Lot exposing (Lot(..))
+import Lot exposing (Lot)
 import Position exposing (Position)
 import Tile
     exposing
@@ -132,13 +132,7 @@ update sharedState sharedStateUpdate =
                 nextLots =
                     Dict.filter
                         (\_ lot ->
-                            let
-                                anchorCell =
-                                    case lot of
-                                        Building _ _ ( aCell, _ ) ->
-                                            aCell
-                            in
-                            Board.exists anchorCell nextBoard && not (Lot.inBounds cell lot)
+                            Board.exists (Lot.anchorCell lot) nextBoard && not (Lot.inBounds cell lot)
                         )
                         sharedState.lots
 
