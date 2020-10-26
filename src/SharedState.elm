@@ -6,6 +6,7 @@ module SharedState exposing
     , SharedStateUpdate(..)
     , SimulationSpeed(..)
     , SimulationState(..)
+    , addLot
     , hasLot
     , initial
     , isEmptyArea
@@ -72,11 +73,11 @@ type SimulationState
 
 type SharedStateUpdate
     = NoUpdate
+    | Replace SharedState
     | UpdateSimulationState SimulationState
     | RecalculateDimensions Int Int
     | UpdateBoard Board
     | UpdateCars Cars
-    | UpdateLots ( Lots, Cars )
     | NewBoard
     | EditBoardAt Cell Board
     | EditTileAt Cell Board
@@ -97,6 +98,9 @@ initial =
 update : SharedState -> SharedStateUpdate -> SharedState
 update sharedState sharedStateUpdate =
     case sharedStateUpdate of
+        Replace nextSharedState ->
+            nextSharedState
+
         UpdateSimulationState state ->
             { sharedState | simulationState = state }
 
@@ -115,9 +119,6 @@ update sharedState sharedStateUpdate =
 
         UpdateCars cars ->
             { sharedState | cars = cars }
-
-        UpdateLots ( lots, cars ) ->
-            { sharedState | lots = lots, cars = cars }
 
         NewBoard ->
             { sharedState
@@ -204,6 +205,39 @@ carsAfterBoardChange { cell, nextLots, cars } =
 hasLot : Lots -> Cell -> Bool
 hasLot lots cell =
     List.any (Lot.inBounds cell) (Dict.values lots)
+
+
+addLot : SharedState -> Lot -> SharedState
+addLot sharedState lot =
+    let
+        { lots, cars } =
+            sharedState
+
+        nextLotId =
+            nextId lots
+
+        nextCarId =
+            nextId cars
+
+        newLots =
+            Dict.insert nextLotId lot lots
+
+        newCars =
+            case Lot.resident lot of
+                Just carKind ->
+                    Dict.insert nextCarId
+                        { kind = carKind
+                        , position = Cell.bottomLeftCorner (Lot.entryCell lot)
+                        , direction = Direction.next lot.content.entryDirection
+                        , homeLotId = Just nextLotId
+                        , status = Car.ParkedAtLot
+                        }
+                        cars
+
+                _ ->
+                    cars
+    in
+    { sharedState | lots = newLots, cars = newCars }
 
 
 isEmptyArea : { origin : Position, width : Float, height : Float } -> SharedState -> Bool

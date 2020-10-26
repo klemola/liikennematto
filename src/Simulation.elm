@@ -1,7 +1,7 @@
 module Simulation exposing (Model, Msg(..), initialModel, subscriptions, update)
 
 import Board exposing (Board)
-import Car
+import Car exposing (Car)
 import Cell exposing (Cell)
 import Dict
 import Direction exposing (Direction(..), Orientation)
@@ -36,7 +36,7 @@ type Msg
     = UpdateTraffic Time.Posix
     | UpdateEnvironment Time.Posix
     | PrepareGeneration Time.Posix
-    | GenerateEnvironment ShuffledBoard
+    | GenerateEnvironment ( ShuffledBoard, Maybe NewLot )
     | ReceiveCoinTossResult Bool
     | ReceiveRandomDirections (List Direction)
 
@@ -93,29 +93,37 @@ update sharedState msg model =
             )
 
         PrepareGeneration _ ->
-            ( model
-            , shuffleBoardAndGenerateEnvironment sharedState.board
-            , SharedState.NoUpdate
-            )
-
-        GenerateEnvironment shuffledBoard ->
             let
-                { board, lots } =
-                    sharedState
+                currentLotsAmount =
+                    Dict.size sharedState.lots
 
-                -- skip the generation if nothing unique can be generated, or if the road network is too small
-                ssUpdate =
-                    if Dict.size lots == List.length Lot.all || Dict.size board < 5 then
-                        SharedState.NoUpdate
+                existingBuildingKinds =
+                    sharedState.lots
+                        |> Dict.map (\_ lot -> lot.content.kind)
+                        |> Dict.values
 
-                    else
-                        generateEnvironment sharedState shuffledBoard
-                            |> SharedState.UpdateLots
+                unusedLots =
+                    List.filter (\{ content } -> not (List.member content.kind existingBuildingKinds)) Lot.all
             in
-            ( model
-            , Cmd.none
-            , ssUpdate
-            )
+            -- skip the generation if nothing unique can be generated, or if the road network is too small
+            if List.isEmpty unusedLots || (Dict.size sharedState.board * 4) < currentLotsAmount then
+                ( model, Cmd.none, SharedState.NoUpdate )
+
+            else
+                ( model
+                , prepareRandomDataForGeneration sharedState.board unusedLots
+                , SharedState.NoUpdate
+                )
+
+        GenerateEnvironment ( shuffledBoard, potentialNewLot ) ->
+            let
+                ssUpdate =
+                    potentialNewLot
+                        |> Maybe.andThen (generateEnvironment sharedState shuffledBoard)
+                        |> Maybe.map (\lot -> SharedState.Replace (SharedState.addLot sharedState lot))
+                        |> Maybe.withDefault SharedState.NoUpdate
+            in
+            ( model, Cmd.none, ssUpdate )
 
         ReceiveCoinTossResult result ->
             ( { model | coinTossResult = result }, Cmd.none, SharedState.NoUpdate )
@@ -137,10 +145,13 @@ tossACoin =
         |> Random.generate ReceiveCoinTossResult
 
 
-shuffleBoardAndGenerateEnvironment : Board -> Cmd Msg
-shuffleBoardAndGenerateEnvironment board =
-    Dict.toList board
-        |> Random.List.shuffle
+prepareRandomDataForGeneration : Board -> List NewLot -> Cmd Msg
+prepareRandomDataForGeneration board unusedLots =
+    Random.List.choose unusedLots
+        -- keep just the random "head"
+        |> Random.map Tuple.first
+        -- combine it with the shuffled board
+        |> Random.map2 Tuple.pair (Random.List.shuffle (Dict.toList board))
         |> Random.generate GenerateEnvironment
 
 
@@ -179,45 +190,22 @@ updateEnvironment board =
     Dict.map (\_ tile -> updateTile tile) board
 
 
-generateEnvironment : SharedState -> ShuffledBoard -> ( Lots, Cars )
-generateEnvironment sharedState shuffledBoard =
+generateEnvironment : SharedState -> ShuffledBoard -> NewLot -> Maybe Lot
+generateEnvironment sharedState shuffledBoard newLot =
     let
-        { lots, cars } =
-            sharedState
-
-        existingBuildingKinds =
-            lots
-                |> Dict.map (\_ lot -> lot.content.kind)
-                |> Dict.values
-
-        -- Room for improvement: lots should be shuffled so that they don't have to be built in certain order
-        nextUnusedLot =
-            Lot.all
-                |> List.filter
-                    (\{ content } ->
-                        not (List.member content.kind existingBuildingKinds)
-                    )
-                |> List.head
-
-        roadOrientation newLot =
+        roadOrientation =
             newLot.content.entryDirection
                 |> Direction.toOrientation
                 |> Direction.oppositeOrientation
     in
-    case nextUnusedLot of
-        Just newLot ->
-            findLotAnchor
-                { targetOrientation = roadOrientation newLot
-                , targetDirection = Direction.opposite newLot.content.entryDirection
-                , newLot = newLot
-                , sharedState = sharedState
-                , shuffledBoard = shuffledBoard
-                }
-                |> Maybe.map (Lot.anchorTo newLot >> addLot lots cars)
-                |> Maybe.withDefault ( lots, cars )
-
-        Nothing ->
-            ( lots, cars )
+    findLotAnchor
+        { targetOrientation = roadOrientation
+        , targetDirection = Direction.opposite newLot.content.entryDirection
+        , newLot = newLot
+        , sharedState = sharedState
+        , shuffledBoard = shuffledBoard
+        }
+        |> Maybe.map (Lot.anchorTo newLot)
 
 
 findLotAnchor :
@@ -249,36 +237,6 @@ findLotAnchor { targetOrientation, targetDirection, newLot, sharedState, shuffle
     shuffledBoard
         |> List.filter isCompatible
         |> List.head
-
-
-addLot : Lots -> Cars -> Lot -> ( Lots, Cars )
-addLot lots cars lot =
-    let
-        nextLotId =
-            SharedState.nextId lots
-
-        nextCarId =
-            SharedState.nextId cars
-
-        newLots =
-            Dict.insert nextLotId lot lots
-
-        newCars =
-            case Lot.resident lot of
-                Just carKind ->
-                    Dict.insert nextCarId
-                        { kind = carKind
-                        , position = Cell.bottomLeftCorner (Lot.entryCell lot)
-                        , direction = Direction.next lot.content.entryDirection
-                        , homeLotId = Just nextLotId
-                        , status = Car.ParkedAtLot
-                        }
-                        cars
-
-                _ ->
-                    cars
-    in
-    ( newLots, newCars )
 
 
 
