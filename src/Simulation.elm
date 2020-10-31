@@ -1,4 +1,4 @@
-module Simulation exposing (Model, Msg(..), initialModel, subscriptions, update)
+module Simulation exposing (Model, Msg(..), init, subscriptions, update)
 
 import Board exposing (Board)
 import Car exposing (Car)
@@ -6,6 +6,7 @@ import Cell exposing (Cell)
 import Dict
 import Direction exposing (Direction(..), Orientation)
 import Lot exposing (Lot, NewLot)
+import Process
 import Random
 import Random.List
 import Round
@@ -17,6 +18,7 @@ import SharedState
         , SharedStateUpdate
         , SimulationState(..)
         )
+import Task
 import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..), TrafficDirection(..))
 import Time
 import TrafficLight
@@ -35,17 +37,19 @@ type alias ShuffledBoard =
 type Msg
     = UpdateTraffic Time.Posix
     | UpdateEnvironment Time.Posix
-    | PrepareGeneration Time.Posix
+    | PrepareGeneration ()
     | GenerateEnvironment ( ShuffledBoard, Maybe NewLot )
     | ReceiveCoinTossResult Bool
     | ReceiveRandomDirections (List Direction)
 
 
-initialModel : Model
-initialModel =
-    { coinTossResult = False
-    , randomDirections = Direction.all
-    }
+init : ( Model, Cmd Msg )
+init =
+    ( { coinTossResult = False
+      , randomDirections = Direction.all
+      }
+    , prepareGenerationAfterRandomDelay
+    )
 
 
 subscriptions : SharedState -> Sub Msg
@@ -59,7 +63,6 @@ subscriptions sharedState =
             Sub.batch
                 [ Time.every slowTickSpeed UpdateEnvironment
                 , Time.every fastTickSpeed UpdateTraffic
-                , Time.every slowTickSpeed PrepareGeneration
                 ]
 
         Paused ->
@@ -105,13 +108,19 @@ update sharedState msg model =
                 unusedLots =
                     List.filter (\{ content } -> not (List.member content.kind existingBuildingKinds)) Lot.all
             in
-            -- skip the generation if nothing unique can be generated, or if the road network is too small
-            if List.isEmpty unusedLots || (Dict.size sharedState.board * 4) < currentLotsAmount then
-                ( model, Cmd.none, SharedState.NoUpdate )
+            -- skip the generation if nothing new can be generated, or if the road network is too small
+            if sharedState.simulationState == Paused || List.isEmpty unusedLots || (Dict.size sharedState.board * 4) < currentLotsAmount then
+                ( model
+                , prepareGenerationAfterRandomDelay
+                , SharedState.NoUpdate
+                )
 
             else
                 ( model
-                , prepareRandomDataForGeneration sharedState.board unusedLots
+                , Cmd.batch
+                    [ generateEnvironmentWithRandomData sharedState.board unusedLots
+                    , prepareGenerationAfterRandomDelay
+                    ]
                 , SharedState.NoUpdate
                 )
 
@@ -145,14 +154,31 @@ tossACoin =
         |> Random.generate ReceiveCoinTossResult
 
 
-prepareRandomDataForGeneration : Board -> List NewLot -> Cmd Msg
-prepareRandomDataForGeneration board unusedLots =
+generateEnvironmentWithRandomData : Board -> List NewLot -> Cmd Msg
+generateEnvironmentWithRandomData board unusedLots =
     Random.List.choose unusedLots
         -- keep just the random "head"
         |> Random.map Tuple.first
         -- combine it with the shuffled board
         |> Random.map2 Tuple.pair (Random.List.shuffle (Dict.toList board))
         |> Random.generate GenerateEnvironment
+
+
+prepareGenerationAfterRandomDelay : Cmd Msg
+prepareGenerationAfterRandomDelay =
+    let
+        randomMillis =
+            Random.int 1000 3500
+    in
+    Time.now
+        |> Task.map
+            (Time.posixToMillis
+                >> Random.initialSeed
+                >> Random.step randomMillis
+                >> Tuple.first
+            )
+        |> Task.andThen (toFloat >> Process.sleep)
+        |> Task.perform PrepareGeneration
 
 
 
