@@ -38,12 +38,19 @@ type alias Model =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { simulation = Simulation.initialModel
+    let
+        ( initialSimulationModel, simulationCmd ) =
+            Simulation.init
+    in
+    ( { simulation = initialSimulationModel
       , ui = UI.initialModel
       , sharedState = SharedState.initial
       }
       -- simulate a screen resize
-    , Task.perform (\{ viewport } -> ResizeWindow (round viewport.width) (round viewport.height)) getViewport
+    , Cmd.batch
+        [ Task.perform (\{ viewport } -> ResizeWindow (round viewport.width) (round viewport.height)) getViewport
+        , Cmd.map SimulationMsg simulationCmd
+        ]
     )
 
 
