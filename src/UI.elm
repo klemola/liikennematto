@@ -1,4 +1,4 @@
-module UI exposing (Model, Msg(..), initialModel, update, view)
+module UI exposing (Model, Msg(..), initialModel, recalculateDimensions, update, view)
 
 import Car exposing (Car)
 import Config exposing (borderRadius, borderSize, colors, whitespace)
@@ -38,27 +38,39 @@ import Position
 import Render
 import SharedState
     exposing
-        ( Dimensions
-        , SharedState
+        ( SharedState
         , SharedStateUpdate
         , SimulationSpeed(..)
         , SimulationState(..)
         )
+import Task
 
 
 type Msg
     = SetSimulationState SimulationState
+    | RecalculateDimensions ( Int, Int )
     | EditorMsg Editor.Msg
 
 
 type alias Model =
     { editor : Editor.Model
+    , dimensions : Dimensions
+    }
+
+
+type alias Dimensions =
+    { toolbar : Int
+    , menu : Int
+    , menuButton : Int
+    , text : Int
     }
 
 
 initialModel : Model
 initialModel =
-    { editor = Editor.initialModel }
+    { editor = Editor.initialModel
+    , dimensions = maxDimensions
+    }
 
 
 update : SharedState -> Msg -> Model -> ( Model, Cmd Msg, SharedStateUpdate )
@@ -66,6 +78,18 @@ update sharedState msg model =
     case msg of
         SetSimulationState state ->
             ( model, Cmd.none, SharedState.UpdateSimulationState state )
+
+        RecalculateDimensions ( screenWidth, screenHeight ) ->
+            let
+                dimensions =
+                    nextDimensions model.dimensions ( toFloat screenWidth, toFloat screenHeight )
+            in
+            ( { model
+                | dimensions = dimensions
+              }
+            , Cmd.none
+            , SharedState.NoUpdate
+            )
 
         EditorMsg editorMsg ->
             let
@@ -76,6 +100,67 @@ update sharedState msg model =
             , Cmd.map EditorMsg cmd
             , sharedStateUpdate
             )
+
+
+recalculateDimensions : ( Int, Int ) -> Cmd Msg
+recalculateDimensions screenSize =
+    Task.succeed screenSize
+        |> Task.perform RecalculateDimensions
+
+
+maxDimensions : Dimensions
+maxDimensions =
+    { toolbar = 71
+    , menu = 200
+    , menuButton = 18
+    , text = 14
+    }
+
+
+nextDimensions : Dimensions -> ( Float, Float ) -> Dimensions
+nextDimensions dimensions ( screenWidth, screenHeight ) =
+    -- dimensions are calculated to make the board and the UI fit the screen
+    -- landscape is the only supported orientation
+    -- implicit square board
+    let
+        ( paddingX, paddingY ) =
+            ( 60, 40 )
+
+        initialSpace =
+            screenWidth - paddingX
+
+        availableUISpace =
+            initialSpace * 0.4
+
+        toolbarButtonSize =
+            min maxDimensions.toolbar (availableUISpace * 0.15 |> floor)
+
+        toolbarSize =
+            min maxDimensions.toolbar (toolbarButtonSize + 21)
+
+        menuSize =
+            min maxDimensions.menu (floorToEven availableUISpace - toolbarSize)
+    in
+    { dimensions
+        | toolbar = toolbarSize
+        , menu = menuSize
+    }
+
+
+floorToEven : Float -> Int
+floorToEven num =
+    let
+        floored =
+            truncate num
+
+        isEven =
+            modBy 2 floored == 0
+    in
+    if isEven then
+        floored
+
+    else
+        max (floored - 1) 0
 
 
 view : SharedState -> Model -> Html Msg
@@ -90,7 +175,7 @@ view sharedState model =
                 |> Element.map EditorMsg
 
         toolbar =
-            Editor.toolbar model.editor sharedState.dimensions
+            Editor.toolbar model.editor model.dimensions.toolbar
                 |> Element.map EditorMsg
 
         simulationBorderColor =
@@ -125,20 +210,20 @@ view sharedState model =
                     , Background.color colors.terrain
                     ]
                     simulation
-                , menu sharedState
+                , menu sharedState model
                 ]
             )
         )
 
 
-menu : SharedState -> Element Msg
-menu sharedState =
+menu : SharedState -> Model -> Element Msg
+menu sharedState model =
     column
         [ Font.family [ Font.monospace ]
         , Font.color colors.text
-        , Font.size sharedState.dimensions.text
+        , Font.size model.dimensions.text
         , alignTop
-        , width (px sharedState.dimensions.menu)
+        , width (px model.dimensions.menu)
         , padding whitespace.tight
         , spacing whitespace.regular
         , Background.color colors.toolbarBackground
@@ -152,14 +237,14 @@ menu sharedState =
             }
         , Border.color colors.heavyBorder
         ]
-        [ simulationControl sharedState
-        , debug sharedState
+        [ simulationControl sharedState model
+        , debug sharedState model
         , projectInfo
         ]
 
 
-simulationControl : SharedState -> Element Msg
-simulationControl { simulationState, dimensions } =
+simulationControl : SharedState -> Model -> Element Msg
+simulationControl { simulationState } { dimensions } =
     let
         isSelected speed =
             case simulationState of
@@ -173,19 +258,19 @@ simulationControl { simulationState, dimensions } =
         [ width fill
         , spacing whitespace.tight
         ]
-        [ controlButton dimensions "⏸️" (SetSimulationState Paused) (simulationState == Paused)
-        , controlButton dimensions "🐌" (SetSimulationState (Simulation Slow)) (isSelected Slow)
-        , controlButton dimensions "🐇" (SetSimulationState (Simulation Medium)) (isSelected Medium)
-        , controlButton dimensions "🐆" (SetSimulationState (Simulation Fast)) (isSelected Fast)
+        [ controlButton dimensions.menuButton "⏸️" (SetSimulationState Paused) (simulationState == Paused)
+        , controlButton dimensions.menuButton "🐌" (SetSimulationState (Simulation Slow)) (isSelected Slow)
+        , controlButton dimensions.menuButton "🐇" (SetSimulationState (Simulation Medium)) (isSelected Medium)
+        , controlButton dimensions.menuButton "🐆" (SetSimulationState (Simulation Fast)) (isSelected Fast)
         ]
 
 
-controlButton : Dimensions -> String -> Msg -> Bool -> Element Msg
-controlButton dimensions label msg selected =
+controlButton : Int -> String -> Msg -> Bool -> Element Msg
+controlButton fontSize label msg selected =
     Input.button
         [ Background.color colors.buttonBackground
         , width (fillPortion 1)
-        , Font.size dimensions.menuButton
+        , Font.size fontSize
         , padding whitespace.tight
         , Border.width borderSize.light
         , Border.rounded borderRadius.light
@@ -203,19 +288,19 @@ controlButton dimensions label msg selected =
         }
 
 
-debug : SharedState -> Element Msg
-debug sharedState =
+debug : SharedState -> Model -> Element Msg
+debug sharedState { dimensions } =
     column [ spacing whitespace.tight, width fill ]
         (Dict.values sharedState.cars
-            |> List.map (carStateView sharedState.dimensions)
+            |> List.map (carStateView dimensions.text)
         )
 
 
-carStateView : Dimensions -> Car -> Element msg
-carStateView dimensions car =
+carStateView : Int -> Car -> Element msg
+carStateView fontSize car =
     let
         showCarKind =
-            image [ width (px dimensions.text) ]
+            image [ width (px fontSize) ]
                 { description = ""
                 , src = "assets/" ++ Graphics.carAsset car
                 }
