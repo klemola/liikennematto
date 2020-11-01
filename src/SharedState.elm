@@ -1,6 +1,5 @@
 module SharedState exposing
     ( Cars
-    , Dimensions
     , Lots
     , SharedState
     , SharedStateUpdate(..)
@@ -11,6 +10,7 @@ module SharedState exposing
     , initial
     , isEmptyArea
     , nextId
+    , setScreen
     , simulationSpeedValues
     , update
     )
@@ -36,19 +36,10 @@ import TrafficLight
 
 type alias SharedState =
     { simulationState : SimulationState
-    , dimensions : Dimensions
     , screenSize : ( Int, Int )
     , board : Board
     , cars : Cars
     , lots : Lots
-    }
-
-
-type alias Dimensions =
-    { toolbar : Int
-    , menu : Int
-    , menuButton : Int
-    , text : Int
     }
 
 
@@ -75,7 +66,6 @@ type SharedStateUpdate
     = NoUpdate
     | Replace SharedState
     | UpdateSimulationState SimulationState
-    | RecalculateDimensions Int Int
     | UpdateBoard Board
     | UpdateCars Cars
     | NewBoard
@@ -87,7 +77,6 @@ initial : SharedState
 initial =
     -- Room for improvement: require screen size as parameter in order to avoid temporary values (zeros)
     { simulationState = Simulation Medium
-    , dimensions = maxDimensions
     , screenSize = ( 0, 0 )
     , board = initialBoard
     , cars = Dict.empty
@@ -103,16 +92,6 @@ update sharedState sharedStateUpdate =
 
         UpdateSimulationState state ->
             { sharedState | simulationState = state }
-
-        RecalculateDimensions screenWidth screenHeight ->
-            let
-                dimensions =
-                    nextDimensions sharedState.dimensions ( toFloat screenWidth, toFloat screenHeight )
-            in
-            { sharedState
-                | screenSize = ( screenHeight, screenHeight )
-                , dimensions = dimensions
-            }
 
         UpdateBoard board ->
             { sharedState | board = board }
@@ -240,6 +219,11 @@ addLot sharedState lot =
     { sharedState | lots = newLots, cars = newCars }
 
 
+setScreen : ( Int, Int ) -> SharedState -> SharedState
+setScreen ( width, height ) sharedState =
+    { sharedState | screenSize = ( width, height ) }
+
+
 isEmptyArea : { origin : Position, width : Float, height : Float } -> SharedState -> Bool
 isEmptyArea { origin, width, height } sharedState =
     let
@@ -263,72 +247,6 @@ isEmptyArea { origin, width, height } sharedState =
             not <| List.any (Collision.aabb areaBoundingBox) (roadBoundingBoxes ++ lotBoundingBoxes)
     in
     inBoardBounds && noCollision ()
-
-
-maxDimensions : Dimensions
-maxDimensions =
-    { toolbar = 71
-    , menu = 200
-    , menuButton = 18
-    , text = 14
-    }
-
-
-nextDimensions : Dimensions -> ( Float, Float ) -> Dimensions
-nextDimensions dimensions ( screenWidth, screenHeight ) =
-    -- dimensions are calculated to make the board and the UI fit the screen
-    -- landscape is the only supported orientation
-    -- implicit square board
-    let
-        ( paddingX, paddingY ) =
-            ( 60, 40 )
-
-        initialSpace =
-            screenWidth - paddingX
-
-        availableUISpace =
-            initialSpace * 0.4
-
-        toolbarButtonSize =
-            (availableUISpace * 0.15)
-                |> valueOrMax maxDimensions.toolbar
-
-        toolbarSize =
-            (toolbarButtonSize + 21)
-                |> valueOrMax maxDimensions.toolbar
-
-        menuSize =
-            (availableUISpace - toolbarSize)
-                |> valueOrMax maxDimensions.menu
-    in
-    { dimensions
-        | toolbar = floor toolbarSize
-        , menu = floor menuSize
-    }
-
-
-valueOrMax : Int -> Float -> Float
-valueOrMax value max =
-    min (toFloat value) max
-
-
-floorToEven : Float -> Float
-floorToEven num =
-    let
-        floored =
-            truncate num
-
-        isEven =
-            modBy 2 floored == 0
-
-        result =
-            if isEven then
-                floored
-
-            else
-                max (floored - 1) 0
-    in
-    toFloat result
 
 
 simulationSpeedValues : SimulationSpeed -> ( Float, Float )

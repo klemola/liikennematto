@@ -25,7 +25,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
 import Element.Input as Input
-import SharedState exposing (Dimensions, Lots, SharedState, SharedStateUpdate)
+import SharedState exposing (Lots, SharedState, SharedStateUpdate)
 import Tile exposing (Tile(..))
 
 
@@ -267,10 +267,10 @@ tileHighlight { board, lots, selectedTool, cell } =
                     colors.notAllowed
 
 
-toolbar : Model -> Dimensions -> Element Msg
-toolbar model dimensions =
+toolbar : Model -> Int -> Element Msg
+toolbar model currentWidth =
     column
-        [ width (px dimensions.toolbar)
+        [ width (px currentWidth)
         , alignTop
         , padding whitespace.tight
         , Background.color colors.toolbarBackground

@@ -46,9 +46,9 @@ init _ =
       , ui = UI.initialModel
       , sharedState = SharedState.initial
       }
-      -- simulate a screen resize
     , Cmd.batch
-        [ Task.perform (\{ viewport } -> ResizeWindow (round viewport.width) (round viewport.height)) getViewport
+        [ -- simulate a screen resize
+          Task.perform (\{ viewport } -> ResizeWindow (round viewport.width) (round viewport.height)) getViewport
         , Cmd.map SimulationMsg simulationCmd
         ]
     )
@@ -64,11 +64,10 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ResizeWindow width height ->
-            let
-                nextSharedState =
-                    SharedState.update model.sharedState (RecalculateDimensions width height)
-            in
-            ( { model | sharedState = nextSharedState }, Cmd.none )
+            ( { model | sharedState = SharedState.setScreen ( width, height ) model.sharedState }
+            , UI.recalculateDimensions ( width, height )
+                |> Cmd.map UIMsg
+            )
 
         SimulationMsg simulationMsg ->
             let
