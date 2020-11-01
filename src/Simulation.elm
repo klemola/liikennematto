@@ -15,7 +15,6 @@ import SharedState
         ( Cars
         , Lots
         , SharedState
-        , SharedStateUpdate
         , SimulationState(..)
         )
 import Task
@@ -75,24 +74,24 @@ subscriptions sharedState =
 --
 
 
-update : SharedState -> Msg -> Model -> ( Model, Cmd Msg, SharedStateUpdate )
+update : SharedState -> Msg -> Model -> ( Model, SharedState, Cmd Msg )
 update sharedState msg model =
     case msg of
         UpdateTraffic _ ->
             ( model
+            , sharedState
+                |> SharedState.setCars (updateTraffic model sharedState.board sharedState.cars)
             , Cmd.batch
                 [ tossACoin
                 , shuffleDirections
                 ]
-            , updateTraffic model sharedState.board sharedState.cars
-                |> SharedState.UpdateCars
             )
 
         UpdateEnvironment _ ->
             ( model
+            , sharedState
+                |> SharedState.setBoard (updateEnvironment sharedState.board)
             , Cmd.none
-            , updateEnvironment sharedState.board
-                |> SharedState.UpdateBoard
             )
 
         PrepareGeneration _ ->
@@ -108,37 +107,34 @@ update sharedState msg model =
                 unusedLots =
                     List.filter (\{ content } -> not (List.member content.kind existingBuildingKinds)) Lot.all
             in
-            -- skip the generation if nothing new can be generated, or if the road network is too small
-            if sharedState.simulationState == Paused || List.isEmpty unusedLots || (Dict.size sharedState.board * 4) < currentLotsAmount then
-                ( model
-                , prepareGenerationAfterRandomDelay
-                , SharedState.NoUpdate
-                )
+            ( model
+            , sharedState
+            , -- skip the generation if nothing new can be generated, or if the road network is too small
+              if sharedState.simulationState == Paused || List.isEmpty unusedLots || (Dict.size sharedState.board * 4) < currentLotsAmount then
+                prepareGenerationAfterRandomDelay
 
-            else
-                ( model
-                , Cmd.batch
+              else
+                Cmd.batch
                     [ generateEnvironmentWithRandomData sharedState.board unusedLots
                     , prepareGenerationAfterRandomDelay
                     ]
-                , SharedState.NoUpdate
-                )
+            )
 
         GenerateEnvironment ( shuffledBoard, potentialNewLot ) ->
             let
-                ssUpdate =
+                nextSharedState =
                     potentialNewLot
                         |> Maybe.andThen (generateEnvironment sharedState shuffledBoard)
-                        |> Maybe.map (\lot -> SharedState.Replace (SharedState.addLot sharedState lot))
-                        |> Maybe.withDefault SharedState.NoUpdate
+                        |> Maybe.map (\lot -> SharedState.addLot lot sharedState)
+                        |> Maybe.withDefault sharedState
             in
-            ( model, Cmd.none, ssUpdate )
+            ( model, nextSharedState, Cmd.none )
 
         ReceiveCoinTossResult result ->
-            ( { model | coinTossResult = result }, Cmd.none, SharedState.NoUpdate )
+            ( { model | coinTossResult = result }, sharedState, Cmd.none )
 
         ReceiveRandomDirections directions ->
-            ( { model | randomDirections = directions }, Cmd.none, SharedState.NoUpdate )
+            ( { model | randomDirections = directions }, sharedState, Cmd.none )
 
 
 shuffleDirections : Cmd Msg
