@@ -4,7 +4,7 @@ import Browser
 import Browser.Dom exposing (getViewport)
 import Browser.Events exposing (onResize)
 import Html
-import SharedState exposing (SharedState, SharedStateUpdate(..))
+import SharedState exposing (SharedState)
 import Simulation exposing (Msg(..))
 import Task
 import UI
@@ -71,11 +71,8 @@ update msg model =
 
         SimulationMsg simulationMsg ->
             let
-                ( simulation, cmd, sharedStateUpdate ) =
+                ( simulation, nextSharedState, cmd ) =
                     Simulation.update model.sharedState simulationMsg model.simulation
-
-                nextSharedState =
-                    SharedState.update model.sharedState sharedStateUpdate
             in
             ( { model | simulation = simulation, sharedState = nextSharedState }
             , Cmd.map SimulationMsg cmd
@@ -83,11 +80,8 @@ update msg model =
 
         UIMsg uiMsg ->
             let
-                ( ui, cmd, sharedStateUpdate ) =
+                ( ui, nextSharedState, cmd ) =
                     UI.update model.sharedState uiMsg model.ui
-
-                nextSharedState =
-                    SharedState.update model.sharedState sharedStateUpdate
             in
             ( { model | ui = ui, sharedState = nextSharedState }
             , Cmd.map UIMsg cmd

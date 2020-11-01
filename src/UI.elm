@@ -39,7 +39,6 @@ import Render
 import SharedState
     exposing
         ( SharedState
-        , SharedStateUpdate
         , SimulationSpeed(..)
         , SimulationState(..)
         )
@@ -73,11 +72,15 @@ initialModel =
     }
 
 
-update : SharedState -> Msg -> Model -> ( Model, Cmd Msg, SharedStateUpdate )
+update : SharedState -> Msg -> Model -> ( Model, SharedState, Cmd Msg )
 update sharedState msg model =
     case msg of
         SetSimulationState state ->
-            ( model, Cmd.none, SharedState.UpdateSimulationState state )
+            ( model
+            , sharedState
+                |> SharedState.setSimulationState state
+            , Cmd.none
+            )
 
         RecalculateDimensions ( screenWidth, screenHeight ) ->
             let
@@ -87,18 +90,19 @@ update sharedState msg model =
             ( { model
                 | dimensions = dimensions
               }
+            , sharedState
             , Cmd.none
-            , SharedState.NoUpdate
             )
 
         EditorMsg editorMsg ->
             let
-                ( editor, cmd, sharedStateUpdate ) =
+                ( editor, sharedStateUpdate, cmd ) =
+                    -- TODO: editor should be at same hierarchy level as UI
                     Editor.update sharedState editorMsg model.editor
             in
             ( { model | editor = editor }
-            , Cmd.map EditorMsg cmd
             , sharedStateUpdate
+            , Cmd.map EditorMsg cmd
             )
 
 

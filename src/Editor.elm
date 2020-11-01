@@ -25,7 +25,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
 import Element.Input as Input
-import SharedState exposing (Lots, SharedState, SharedStateUpdate)
+import SharedState exposing (Lots, SharedState)
 import Tile exposing (Tile(..))
 
 
@@ -57,65 +57,64 @@ initialModel =
 -- Update
 
 
-update : SharedState -> Msg -> Model -> ( Model, Cmd Msg, SharedStateUpdate )
+update : SharedState -> Msg -> Model -> ( Model, SharedState, Cmd Msg )
 update sharedState msg model =
     case msg of
         SelectTile cell ->
             case ( model, Board.get cell sharedState.board ) of
                 ( SmartConstruction, _ ) ->
                     ( model
-                    , Cmd.none
                     , if Board.canBuildRoadAt cell sharedState.board then
-                        buildRoad sharedState.board cell
-                            |> SharedState.EditBoardAt cell
+                        sharedState
+                            |> SharedState.editBoardAt cell (buildRoad sharedState.board cell)
 
                       else
-                        SharedState.NoUpdate
+                        sharedState
+                    , Cmd.none
                     )
 
                 ( Bulldozer, Just _ ) ->
                     ( model
+                    , sharedState
+                        |> SharedState.editBoardAt cell (removeRoad sharedState.board cell)
                     , Cmd.none
-                    , removeRoad sharedState.board cell
-                        |> SharedState.EditBoardAt cell
                     )
 
                 ( Dynamite, _ ) ->
                     ( SmartConstruction
+                    , SharedState.newBoard sharedState
                     , Cmd.none
-                    , SharedState.NewBoard
                     )
 
                 ( IntersectionDesigner, Just tile ) ->
                     ( model
+                    , sharedState
+                        -- move Board.set to SharedState
+                        |> SharedState.editTileAt cell (Board.set cell (Tile.toggleIntersectionControl tile) sharedState.board)
                     , Cmd.none
-                    , sharedState.board
-                        |> Board.set cell (Tile.toggleIntersectionControl tile)
-                        |> SharedState.EditTileAt cell
                     )
 
                 ( TrafficDirectionDesigner, Just tile ) ->
                     ( model
+                    , sharedState
+                        |> SharedState.editTileAt cell (Board.set cell (Tile.toggleTrafficDirection tile) sharedState.board)
                     , Cmd.none
-                    , sharedState.board
-                        |> Board.set cell (Tile.toggleTrafficDirection tile)
-                        |> SharedState.EditTileAt cell
                     )
 
                 _ ->
-                    ( model, Cmd.none, SharedState.NoUpdate )
+                    ( model, sharedState, Cmd.none )
 
         SecondaryAction cell ->
             case model of
                 SmartConstruction ->
                     ( model
+                    , sharedState
+                        |> SharedState.editBoardAt cell (removeRoad sharedState.board cell)
                     , Cmd.none
-                    , removeRoad sharedState.board cell
-                        |> SharedState.EditBoardAt cell
                     )
 
                 _ ->
-                    ( model, Cmd.none, SharedState.NoUpdate )
+                    ( model, sharedState, Cmd.none )
 
         SelectTool tool ->
             let
@@ -126,7 +125,7 @@ update sharedState msg model =
                     else
                         tool
             in
-            ( nextTool, Cmd.none, SharedState.NoUpdate )
+            ( nextTool, sharedState, Cmd.none )
 
 
 buildRoad : Board -> Cell -> Board

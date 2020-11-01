@@ -2,17 +2,21 @@ module SharedState exposing
     ( Cars
     , Lots
     , SharedState
-    , SharedStateUpdate(..)
     , SimulationSpeed(..)
     , SimulationState(..)
     , addLot
+    , editBoardAt
+    , editTileAt
     , hasLot
     , initial
     , isEmptyArea
+    , newBoard
     , nextId
+    , setBoard
+    , setCars
     , setScreen
+    , setSimulationState
     , simulationSpeedValues
-    , update
     )
 
 import Board exposing (Board)
@@ -62,17 +66,6 @@ type SimulationState
     | Paused
 
 
-type SharedStateUpdate
-    = NoUpdate
-    | Replace SharedState
-    | UpdateSimulationState SimulationState
-    | UpdateBoard Board
-    | UpdateCars Cars
-    | NewBoard
-    | EditBoardAt Cell Board
-    | EditTileAt Cell Board
-
-
 initial : SharedState
 initial =
     -- Room for improvement: require screen size as parameter in order to avoid temporary values (zeros)
@@ -84,64 +77,8 @@ initial =
     }
 
 
-update : SharedState -> SharedStateUpdate -> SharedState
-update sharedState sharedStateUpdate =
-    case sharedStateUpdate of
-        Replace nextSharedState ->
-            nextSharedState
 
-        UpdateSimulationState state ->
-            { sharedState | simulationState = state }
-
-        UpdateBoard board ->
-            { sharedState | board = board }
-
-        UpdateCars cars ->
-            { sharedState | cars = cars }
-
-        NewBoard ->
-            { sharedState
-                | simulationState = Paused
-                , cars = Dict.empty
-                , lots = Dict.empty
-                , board = Board.new
-            }
-
-        EditBoardAt cell nextBoard ->
-            let
-                nextLots =
-                    Dict.filter
-                        (\_ lot ->
-                            Board.exists (Lot.anchorCell lot) nextBoard && not (Lot.inBounds cell lot)
-                        )
-                        sharedState.lots
-
-                nextCars =
-                    carsAfterBoardChange
-                        { cell = cell
-                        , nextLots = nextLots
-                        , cars = sharedState.cars
-                        }
-            in
-            { sharedState
-                | board = nextBoard
-                , cars = nextCars
-                , lots = nextLots
-            }
-
-        EditTileAt cell nextBoard ->
-            { sharedState
-                | board = nextBoard
-                , cars =
-                    carsAfterBoardChange
-                        { cell = cell
-                        , nextLots = sharedState.lots
-                        , cars = sharedState.cars
-                        }
-            }
-
-        NoUpdate ->
-            sharedState
+-- Internals
 
 
 nextId : Dict Int a -> Int
@@ -152,42 +89,12 @@ nextId dict =
         |> Maybe.withDefault 1
 
 
-carsAfterBoardChange :
-    { cell : Cell
-    , nextLots : Lots
-    , cars : Cars
-    }
-    -> Cars
-carsAfterBoardChange { cell, nextLots, cars } =
-    cars
-        -- Room for improvement: implement general orphan entity handling
-        |> Dict.filter
-            (\_ car ->
-                case car.homeLotId of
-                    Just lotId ->
-                        Dict.member lotId nextLots
 
-                    Nothing ->
-                        True
-            )
-        -- Room for improvement: move the car back to it's lot instead
-        |> Dict.map
-            (\_ car ->
-                if car.position == Cell.bottomLeftCorner cell then
-                    Car.waitForRespawn car
-
-                else
-                    car
-            )
+-- Modifications
 
 
-hasLot : Lots -> Cell -> Bool
-hasLot lots cell =
-    List.any (Lot.inBounds cell) (Dict.values lots)
-
-
-addLot : SharedState -> Lot -> SharedState
-addLot sharedState lot =
+addLot : Lot -> SharedState -> SharedState
+addLot lot sharedState =
     let
         { lots, cars } =
             sharedState
@@ -219,9 +126,80 @@ addLot sharedState lot =
     { sharedState | lots = newLots, cars = newCars }
 
 
+setSimulationState : SimulationState -> SharedState -> SharedState
+setSimulationState state sharedState =
+    { sharedState | simulationState = state }
+
+
+setBoard : Board -> SharedState -> SharedState
+setBoard board sharedState =
+    { sharedState | board = board }
+
+
+newBoard : SharedState -> SharedState
+newBoard sharedState =
+    { sharedState
+        | simulationState = Paused
+        , cars = Dict.empty
+        , lots = Dict.empty
+        , board = Board.new
+    }
+
+
+setCars : Cars -> SharedState -> SharedState
+setCars cars sharedState =
+    { sharedState | cars = cars }
+
+
 setScreen : ( Int, Int ) -> SharedState -> SharedState
 setScreen ( width, height ) sharedState =
     { sharedState | screenSize = ( width, height ) }
+
+
+editBoardAt : Cell -> Board -> SharedState -> SharedState
+editBoardAt cell nextBoard sharedState =
+    let
+        nextLots =
+            Dict.filter
+                (\_ lot ->
+                    Board.exists (Lot.anchorCell lot) nextBoard && not (Lot.inBounds cell lot)
+                )
+                sharedState.lots
+
+        nextCars =
+            carsAfterBoardChange
+                { cell = cell
+                , nextLots = nextLots
+                , cars = sharedState.cars
+                }
+    in
+    { sharedState
+        | board = nextBoard
+        , cars = nextCars
+        , lots = nextLots
+    }
+
+
+editTileAt : Cell -> Board -> SharedState -> SharedState
+editTileAt cell nextBoard sharedState =
+    { sharedState
+        | board = nextBoard
+        , cars =
+            carsAfterBoardChange
+                { cell = cell
+                , nextLots = sharedState.lots
+                , cars = sharedState.cars
+                }
+    }
+
+
+
+-- Queries
+
+
+hasLot : Lots -> Cell -> Bool
+hasLot lots cell =
+    List.any (Lot.inBounds cell) (Dict.values lots)
 
 
 isEmptyArea : { origin : Position, width : Float, height : Float } -> SharedState -> Bool
@@ -247,6 +225,35 @@ isEmptyArea { origin, width, height } sharedState =
             not <| List.any (Collision.aabb areaBoundingBox) (roadBoundingBoxes ++ lotBoundingBoxes)
     in
     inBoardBounds && noCollision ()
+
+
+carsAfterBoardChange :
+    { cell : Cell
+    , nextLots : Lots
+    , cars : Cars
+    }
+    -> Cars
+carsAfterBoardChange { cell, nextLots, cars } =
+    cars
+        -- Room for improvement: implement general orphan entity handling
+        |> Dict.filter
+            (\_ car ->
+                case car.homeLotId of
+                    Just lotId ->
+                        Dict.member lotId nextLots
+
+                    Nothing ->
+                        True
+            )
+        -- Room for improvement: move the car back to it's lot instead
+        |> Dict.map
+            (\_ car ->
+                if car.position == Cell.bottomLeftCorner cell then
+                    Car.waitForRespawn car
+
+                else
+                    car
+            )
 
 
 simulationSpeedValues : SimulationSpeed -> ( Float, Float )
