@@ -1,15 +1,15 @@
-module SharedState exposing
+module World exposing
     ( Cars
     , Lots
-    , SharedState
     , SimulationSpeed(..)
     , SimulationState(..)
+    , World
     , addLot
     , editBoardAt
     , editTileAt
     , hasLot
-    , initial
     , isEmptyArea
+    , new
     , newBoard
     , nextId
     , setBoard
@@ -38,7 +38,7 @@ import Tile
 import TrafficLight
 
 
-type alias SharedState =
+type alias World =
     { simulationState : SimulationState
     , screenSize : ( Int, Int )
     , board : Board
@@ -66,8 +66,8 @@ type SimulationState
     | Paused
 
 
-initial : SharedState
-initial =
+new : World
+new =
     -- Room for improvement: require screen size as parameter in order to avoid temporary values (zeros)
     { simulationState = Simulation Medium
     , screenSize = ( 0, 0 )
@@ -93,11 +93,11 @@ nextId dict =
 -- Modifications
 
 
-addLot : Lot -> SharedState -> SharedState
-addLot lot sharedState =
+addLot : Lot -> World -> World
+addLot lot world =
     let
         { lots, cars } =
-            sharedState
+            world
 
         nextLotId =
             nextId lots
@@ -123,22 +123,22 @@ addLot lot sharedState =
                 _ ->
                     cars
     in
-    { sharedState | lots = newLots, cars = newCars }
+    { world | lots = newLots, cars = newCars }
 
 
-setSimulationState : SimulationState -> SharedState -> SharedState
-setSimulationState state sharedState =
-    { sharedState | simulationState = state }
+setSimulationState : SimulationState -> World -> World
+setSimulationState state world =
+    { world | simulationState = state }
 
 
-setBoard : Board -> SharedState -> SharedState
-setBoard board sharedState =
-    { sharedState | board = board }
+setBoard : Board -> World -> World
+setBoard board world =
+    { world | board = board }
 
 
-newBoard : SharedState -> SharedState
-newBoard sharedState =
-    { sharedState
+newBoard : World -> World
+newBoard world =
+    { world
         | simulationState = Paused
         , cars = Dict.empty
         , lots = Dict.empty
@@ -146,49 +146,49 @@ newBoard sharedState =
     }
 
 
-setCars : Cars -> SharedState -> SharedState
-setCars cars sharedState =
-    { sharedState | cars = cars }
+setCars : Cars -> World -> World
+setCars cars world =
+    { world | cars = cars }
 
 
-setScreen : ( Int, Int ) -> SharedState -> SharedState
-setScreen ( width, height ) sharedState =
-    { sharedState | screenSize = ( width, height ) }
+setScreen : ( Int, Int ) -> World -> World
+setScreen ( width, height ) world =
+    { world | screenSize = ( width, height ) }
 
 
-editBoardAt : Cell -> Board -> SharedState -> SharedState
-editBoardAt cell nextBoard sharedState =
+editBoardAt : Cell -> Board -> World -> World
+editBoardAt cell nextBoard world =
     let
         nextLots =
             Dict.filter
                 (\_ lot ->
                     Board.exists (Lot.anchorCell lot) nextBoard && not (Lot.inBounds cell lot)
                 )
-                sharedState.lots
+                world.lots
 
         nextCars =
             carsAfterBoardChange
                 { cell = cell
                 , nextLots = nextLots
-                , cars = sharedState.cars
+                , cars = world.cars
                 }
     in
-    { sharedState
+    { world
         | board = nextBoard
         , cars = nextCars
         , lots = nextLots
     }
 
 
-editTileAt : Cell -> Board -> SharedState -> SharedState
-editTileAt cell nextBoard sharedState =
-    { sharedState
+editTileAt : Cell -> Board -> World -> World
+editTileAt cell nextBoard world =
+    { world
         | board = nextBoard
         , cars =
             carsAfterBoardChange
                 { cell = cell
-                , nextLots = sharedState.lots
-                , cars = sharedState.cars
+                , nextLots = world.lots
+                , cars = world.cars
                 }
     }
 
@@ -202,16 +202,16 @@ hasLot lots cell =
     List.any (Lot.inBounds cell) (Dict.values lots)
 
 
-isEmptyArea : { origin : Position, width : Float, height : Float } -> SharedState -> Bool
-isEmptyArea { origin, width, height } sharedState =
+isEmptyArea : { origin : Position, width : Float, height : Float } -> World -> Bool
+isEmptyArea { origin, width, height } world =
     let
         roadBoundingBoxes =
-            sharedState.board
+            world.board
                 |> Dict.keys
                 |> List.map Cell.boundingBox
 
         lotBoundingBoxes =
-            sharedState.lots
+            world.lots
                 |> Dict.values
                 |> List.map Lot.boundingBox
 

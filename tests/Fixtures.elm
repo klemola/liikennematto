@@ -7,7 +7,6 @@ import Config exposing (tileSize)
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
 import Lot exposing (Anchor, Lot)
 import Round exposing (Round)
-import SharedState exposing (SharedState)
 import Tile
     exposing
         ( IntersectionControl(..)
@@ -17,6 +16,7 @@ import Tile
         , TrafficDirection(..)
         )
 import TrafficLight
+import World exposing (World)
 
 
 carOne : Car
@@ -459,19 +459,19 @@ createTwoByTwoLot ( anchorCell, anchorDir ) =
 
 
 
--- SharedState/World
+-- World
 
 
-emptySharedState : SharedState
-emptySharedState =
-    SharedState.initial |> (\ss -> { ss | board = Board.new })
+emptyWorld : World
+emptyWorld =
+    World.new |> (\world -> { world | board = Board.new })
 
 
-sharedStateWithEmptySpace : SharedState
-sharedStateWithEmptySpace =
-    { emptySharedState | board = boardThatHasAVerticalRoadAtLeftSide }
+worldWithEmptySpace : World
+worldWithEmptySpace =
+    { emptyWorld | board = boardThatHasAVerticalRoadAtLeftSide }
 
 
-sharedStateWithParallelRoads : SharedState
-sharedStateWithParallelRoads =
-    { emptySharedState | board = boardThatHasParallelRoads }
+worldWithParallelRoads : World
+worldWithParallelRoads =
+    { emptyWorld | board = boardThatHasParallelRoads }

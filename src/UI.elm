@@ -36,13 +36,13 @@ import Graphics
 import Html exposing (Html)
 import Position
 import Render
-import SharedState
-    exposing
-        ( SharedState
-        , SimulationSpeed(..)
-        , SimulationState(..)
-        )
 import Task
+import World
+    exposing
+        ( SimulationSpeed(..)
+        , SimulationState(..)
+        , World
+        )
 
 
 type Msg
@@ -72,13 +72,13 @@ initialModel =
     }
 
 
-update : SharedState -> Msg -> Model -> ( Model, SharedState, Cmd Msg )
-update sharedState msg model =
+update : World -> Msg -> Model -> ( Model, World, Cmd Msg )
+update world msg model =
     case msg of
         SetSimulationState state ->
             ( model
-            , sharedState
-                |> SharedState.setSimulationState state
+            , world
+                |> World.setSimulationState state
             , Cmd.none
             )
 
@@ -90,18 +90,18 @@ update sharedState msg model =
             ( { model
                 | dimensions = dimensions
               }
-            , sharedState
+            , world
             , Cmd.none
             )
 
         EditorMsg editorMsg ->
             let
-                ( editor, sharedStateUpdate, cmd ) =
+                ( editor, worldUpdate, cmd ) =
                     -- TODO: editor should be at same hierarchy level as UI
-                    Editor.update sharedState editorMsg model.editor
+                    Editor.update world editorMsg model.editor
             in
             ( { model | editor = editor }
-            , sharedStateUpdate
+            , worldUpdate
             , Cmd.map EditorMsg cmd
             )
 
@@ -167,15 +167,15 @@ floorToEven num =
         max (floored - 1) 0
 
 
-view : SharedState -> Model -> Html Msg
-view sharedState model =
+view : World -> Model -> Html Msg
+view world model =
     let
         simulation =
-            Render.view sharedState
+            Render.view world
                 |> Element.html
 
         editor =
-            Editor.overlay sharedState model.editor
+            Editor.overlay world model.editor
                 |> Element.map EditorMsg
 
         toolbar =
@@ -183,7 +183,7 @@ view sharedState model =
                 |> Element.map EditorMsg
 
         simulationBorderColor =
-            case sharedState.simulationState of
+            case world.simulationState of
                 Paused ->
                     colors.selected
 
@@ -214,14 +214,14 @@ view sharedState model =
                     , Background.color colors.terrain
                     ]
                     simulation
-                , menu sharedState model
+                , menu world model
                 ]
             )
         )
 
 
-menu : SharedState -> Model -> Element Msg
-menu sharedState model =
+menu : World -> Model -> Element Msg
+menu world model =
     column
         [ Font.family [ Font.monospace ]
         , Font.color colors.text
@@ -241,13 +241,13 @@ menu sharedState model =
             }
         , Border.color colors.heavyBorder
         ]
-        [ simulationControl sharedState model
-        , debug sharedState model
+        [ simulationControl world model
+        , debug world model
         , projectInfo
         ]
 
 
-simulationControl : SharedState -> Model -> Element Msg
+simulationControl : World -> Model -> Element Msg
 simulationControl { simulationState } { dimensions } =
     let
         isSelected speed =
@@ -292,10 +292,10 @@ controlButton fontSize label msg selected =
         }
 
 
-debug : SharedState -> Model -> Element Msg
-debug sharedState { dimensions } =
+debug : World -> Model -> Element Msg
+debug world { dimensions } =
     column [ spacing whitespace.tight, width fill ]
-        (Dict.values sharedState.cars
+        (Dict.values world.cars
             |> List.map (carStateView dimensions.text)
         )
 
