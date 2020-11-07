@@ -4,10 +4,10 @@ import Browser
 import Browser.Dom exposing (getViewport)
 import Browser.Events exposing (onResize)
 import Html
-import SharedState exposing (SharedState)
 import Simulation exposing (Msg(..))
 import Task
 import UI
+import World exposing (World)
 
 
 main : Program () Model Msg
@@ -23,7 +23,7 @@ main =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Simulation.subscriptions model.sharedState
+        [ Simulation.subscriptions model.world
             |> Sub.map SimulationMsg
         , onResize ResizeWindow
         ]
@@ -32,7 +32,7 @@ subscriptions model =
 type alias Model =
     { simulation : Simulation.Model
     , ui : UI.Model
-    , sharedState : SharedState
+    , world : World
     }
 
 
@@ -44,7 +44,7 @@ init _ =
     in
     ( { simulation = initialSimulationModel
       , ui = UI.initialModel
-      , sharedState = SharedState.initial
+      , world = World.new
       }
     , Cmd.batch
         [ -- simulate a screen resize
@@ -64,26 +64,26 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ResizeWindow width height ->
-            ( { model | sharedState = SharedState.setScreen ( width, height ) model.sharedState }
+            ( { model | world = World.setScreen ( width, height ) model.world }
             , UI.recalculateDimensions ( width, height )
                 |> Cmd.map UIMsg
             )
 
         SimulationMsg simulationMsg ->
             let
-                ( simulation, nextSharedState, cmd ) =
-                    Simulation.update model.sharedState simulationMsg model.simulation
+                ( simulation, nextWorld, cmd ) =
+                    Simulation.update model.world simulationMsg model.simulation
             in
-            ( { model | simulation = simulation, sharedState = nextSharedState }
+            ( { model | simulation = simulation, world = nextWorld }
             , Cmd.map SimulationMsg cmd
             )
 
         UIMsg uiMsg ->
             let
-                ( ui, nextSharedState, cmd ) =
-                    UI.update model.sharedState uiMsg model.ui
+                ( ui, nextWorld, cmd ) =
+                    UI.update model.world uiMsg model.ui
             in
-            ( { model | ui = ui, sharedState = nextSharedState }
+            ( { model | ui = ui, world = nextWorld }
             , Cmd.map UIMsg cmd
             )
 
@@ -91,5 +91,5 @@ update msg model =
 view : Model -> Browser.Document Msg
 view model =
     { title = "Liikennematto"
-    , body = [ Html.map UIMsg (UI.view model.sharedState model.ui) ]
+    , body = [ Html.map UIMsg (UI.view model.world model.ui) ]
     }

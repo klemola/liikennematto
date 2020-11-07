@@ -24,7 +24,6 @@ import Graphics
 import Html exposing (Html)
 import Lot exposing (Lot)
 import Maybe.Extra as Maybe
-import SharedState exposing (Lots, SharedState)
 import Tile
     exposing
         ( IntersectionControl(..)
@@ -33,9 +32,10 @@ import Tile
         , TrafficDirection(..)
         )
 import TrafficLight exposing (TrafficLight, TrafficLightKind(..))
+import World exposing (Lots, World)
 
 
-view : SharedState -> Html msg
+view : World -> Html msg
 view { board, cars, lots } =
     renderBoard board
         |> Layout.at Layout.bottomLeft

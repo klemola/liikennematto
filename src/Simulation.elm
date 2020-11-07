@@ -10,17 +10,17 @@ import Process
 import Random
 import Random.List
 import Round
-import SharedState
-    exposing
-        ( Cars
-        , Lots
-        , SharedState
-        , SimulationState(..)
-        )
 import Task
 import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..), TrafficDirection(..))
 import Time
 import TrafficLight
+import World
+    exposing
+        ( Cars
+        , Lots
+        , SimulationState(..)
+        , World
+        )
 
 
 type alias Model =
@@ -51,13 +51,13 @@ init =
     )
 
 
-subscriptions : SharedState -> Sub Msg
-subscriptions sharedState =
-    case sharedState.simulationState of
+subscriptions : World -> Sub Msg
+subscriptions world =
+    case world.simulationState of
         Simulation speed ->
             let
                 ( slowTickSpeed, fastTickSpeed ) =
-                    SharedState.simulationSpeedValues speed
+                    World.simulationSpeedValues speed
             in
             Sub.batch
                 [ Time.every slowTickSpeed UpdateEnvironment
@@ -74,13 +74,13 @@ subscriptions sharedState =
 --
 
 
-update : SharedState -> Msg -> Model -> ( Model, SharedState, Cmd Msg )
-update sharedState msg model =
+update : World -> Msg -> Model -> ( Model, World, Cmd Msg )
+update world msg model =
     case msg of
         UpdateTraffic _ ->
             ( model
-            , sharedState
-                |> SharedState.setCars (updateTraffic model sharedState.board sharedState.cars)
+            , world
+                |> World.setCars (updateTraffic model world.board world.cars)
             , Cmd.batch
                 [ tossACoin
                 , shuffleDirections
@@ -89,18 +89,18 @@ update sharedState msg model =
 
         UpdateEnvironment _ ->
             ( model
-            , sharedState
-                |> SharedState.setBoard (updateEnvironment sharedState.board)
+            , world
+                |> World.setBoard (updateEnvironment world.board)
             , Cmd.none
             )
 
         PrepareGeneration _ ->
             let
                 currentLotsAmount =
-                    Dict.size sharedState.lots
+                    Dict.size world.lots
 
                 existingBuildingKinds =
-                    sharedState.lots
+                    world.lots
                         |> Dict.map (\_ lot -> lot.content.kind)
                         |> Dict.values
 
@@ -108,33 +108,33 @@ update sharedState msg model =
                     List.filter (\{ content } -> not (List.member content.kind existingBuildingKinds)) Lot.all
             in
             ( model
-            , sharedState
+            , world
             , -- skip the generation if nothing new can be generated, or if the road network is too small
-              if sharedState.simulationState == Paused || List.isEmpty unusedLots || (Dict.size sharedState.board * 4) < currentLotsAmount then
+              if world.simulationState == Paused || List.isEmpty unusedLots || (Dict.size world.board * 4) < currentLotsAmount then
                 prepareGenerationAfterRandomDelay
 
               else
                 Cmd.batch
-                    [ generateEnvironmentWithRandomData sharedState.board unusedLots
+                    [ generateEnvironmentWithRandomData world.board unusedLots
                     , prepareGenerationAfterRandomDelay
                     ]
             )
 
         GenerateEnvironment ( shuffledBoard, potentialNewLot ) ->
             let
-                nextSharedState =
+                nextWorld =
                     potentialNewLot
-                        |> Maybe.andThen (generateEnvironment sharedState shuffledBoard)
-                        |> Maybe.map (\lot -> SharedState.addLot lot sharedState)
-                        |> Maybe.withDefault sharedState
+                        |> Maybe.andThen (generateEnvironment world shuffledBoard)
+                        |> Maybe.map (\lot -> World.addLot lot world)
+                        |> Maybe.withDefault world
             in
-            ( model, nextSharedState, Cmd.none )
+            ( model, nextWorld, Cmd.none )
 
         ReceiveCoinTossResult result ->
-            ( { model | coinTossResult = result }, sharedState, Cmd.none )
+            ( { model | coinTossResult = result }, world, Cmd.none )
 
         ReceiveRandomDirections directions ->
-            ( { model | randomDirections = directions }, sharedState, Cmd.none )
+            ( { model | randomDirections = directions }, world, Cmd.none )
 
 
 shuffleDirections : Cmd Msg
@@ -185,7 +185,7 @@ prepareGenerationAfterRandomDelay =
 
 updateEnvironment : Board -> Board
 updateEnvironment board =
-    -- Room for improvement: consider moving traffic light state from tiles to SharedState
+    -- Room for improvement: consider moving traffic light state from tiles to World
     -- in order to make Tiles passive
     let
         updateTrafficLight tl =
@@ -212,8 +212,8 @@ updateEnvironment board =
     Dict.map (\_ tile -> updateTile tile) board
 
 
-generateEnvironment : SharedState -> ShuffledBoard -> NewLot -> Maybe Lot
-generateEnvironment sharedState shuffledBoard newLot =
+generateEnvironment : World -> ShuffledBoard -> NewLot -> Maybe Lot
+generateEnvironment world shuffledBoard newLot =
     let
         roadOrientation =
             newLot.content.entryDirection
@@ -224,7 +224,7 @@ generateEnvironment sharedState shuffledBoard newLot =
         { targetOrientation = roadOrientation
         , targetDirection = Direction.opposite newLot.content.entryDirection
         , newLot = newLot
-        , sharedState = sharedState
+        , world = world
         , shuffledBoard = shuffledBoard
         }
         |> Maybe.map (Lot.anchorTo newLot)
@@ -234,11 +234,11 @@ findLotAnchor :
     { targetOrientation : Orientation
     , targetDirection : Direction
     , newLot : NewLot
-    , sharedState : SharedState
+    , world : World
     , shuffledBoard : ShuffledBoard
     }
     -> Maybe ( Cell, Tile )
-findLotAnchor { targetOrientation, targetDirection, newLot, sharedState, shuffledBoard } =
+findLotAnchor { targetOrientation, targetDirection, newLot, world, shuffledBoard } =
     let
         isCompatible ( cell, tile ) =
             case tile of
@@ -249,12 +249,12 @@ findLotAnchor { targetOrientation, targetDirection, newLot, sharedState, shuffle
                     False
 
         hasEnoughSpaceAround cell =
-            SharedState.isEmptyArea
+            World.isEmptyArea
                 { origin = Lot.bottomLeftCorner newLot ( cell, targetDirection )
                 , width = newLot.width
                 , height = newLot.height
                 }
-                sharedState
+                world
     in
     shuffledBoard
         |> List.filter isCompatible

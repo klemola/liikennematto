@@ -25,8 +25,8 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
 import Element.Input as Input
-import SharedState exposing (Lots, SharedState)
 import Tile exposing (Tile(..))
+import World exposing (Lots, World)
 
 
 type Tool
@@ -57,64 +57,64 @@ initialModel =
 -- Update
 
 
-update : SharedState -> Msg -> Model -> ( Model, SharedState, Cmd Msg )
-update sharedState msg model =
+update : World -> Msg -> Model -> ( Model, World, Cmd Msg )
+update world msg model =
     case msg of
         SelectTile cell ->
-            case ( model, Board.get cell sharedState.board ) of
+            case ( model, Board.get cell world.board ) of
                 ( SmartConstruction, _ ) ->
                     ( model
-                    , if Board.canBuildRoadAt cell sharedState.board then
-                        sharedState
-                            |> SharedState.editBoardAt cell (buildRoad sharedState.board cell)
+                    , if Board.canBuildRoadAt cell world.board then
+                        world
+                            |> World.editBoardAt cell (buildRoad world.board cell)
 
                       else
-                        sharedState
+                        world
                     , Cmd.none
                     )
 
                 ( Bulldozer, Just _ ) ->
                     ( model
-                    , sharedState
-                        |> SharedState.editBoardAt cell (removeRoad sharedState.board cell)
+                    , world
+                        |> World.editBoardAt cell (removeRoad world.board cell)
                     , Cmd.none
                     )
 
                 ( Dynamite, _ ) ->
                     ( SmartConstruction
-                    , SharedState.newBoard sharedState
+                    , World.newBoard world
                     , Cmd.none
                     )
 
                 ( IntersectionDesigner, Just tile ) ->
                     ( model
-                    , sharedState
-                        -- move Board.set to SharedState
-                        |> SharedState.editTileAt cell (Board.set cell (Tile.toggleIntersectionControl tile) sharedState.board)
+                    , world
+                        -- move Board.set to World
+                        |> World.editTileAt cell (Board.set cell (Tile.toggleIntersectionControl tile) world.board)
                     , Cmd.none
                     )
 
                 ( TrafficDirectionDesigner, Just tile ) ->
                     ( model
-                    , sharedState
-                        |> SharedState.editTileAt cell (Board.set cell (Tile.toggleTrafficDirection tile) sharedState.board)
+                    , world
+                        |> World.editTileAt cell (Board.set cell (Tile.toggleTrafficDirection tile) world.board)
                     , Cmd.none
                     )
 
                 _ ->
-                    ( model, sharedState, Cmd.none )
+                    ( model, world, Cmd.none )
 
         SecondaryAction cell ->
             case model of
                 SmartConstruction ->
                     ( model
-                    , sharedState
-                        |> SharedState.editBoardAt cell (removeRoad sharedState.board cell)
+                    , world
+                        |> World.editBoardAt cell (removeRoad world.board cell)
                     , Cmd.none
                     )
 
                 _ ->
-                    ( model, sharedState, Cmd.none )
+                    ( model, world, Cmd.none )
 
         SelectTool tool ->
             let
@@ -125,7 +125,7 @@ update sharedState msg model =
                     else
                         tool
             in
-            ( nextTool, sharedState, Cmd.none )
+            ( nextTool, world, Cmd.none )
 
 
 buildRoad : Board -> Cell -> Board
@@ -150,8 +150,8 @@ removeRoad board origin =
 -- Views
 
 
-overlay : SharedState -> Model -> Element Msg
-overlay sharedState model =
+overlay : World -> Model -> Element Msg
+overlay world model =
     let
         size =
             px (Config.boardSize * floor tileSize)
@@ -163,8 +163,8 @@ overlay sharedState model =
             tileOverlay
                 { glowColor =
                     tileHighlight
-                        { board = sharedState.board
-                        , lots = sharedState.lots
+                        { board = world.board
+                        , lots = world.lots
                         , selectedTool = model
                         , cell = ( x, y )
                         }
@@ -238,7 +238,7 @@ tileHighlight { board, lots, selectedTool, cell } =
                     Board.canBuildRoadAt cell board
 
                 mightDestroyLot =
-                    SharedState.hasLot lots cell
+                    World.hasLot lots cell
             in
             if canBuildHere && mightDestroyLot then
                 colors.danger
