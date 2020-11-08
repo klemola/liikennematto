@@ -52,9 +52,9 @@ new world coinTossResult randomDirections activeCar otherCars =
     , randomDirections = randomDirections
     , nextPosition = nextPosition
     , currentTile =
-        World.getCellContents (Cell.fromPosition activeCar.position) world
+        World.tileAt (Cell.fromPosition activeCar.position) world
     , nextTile =
-        World.getCellContents (Cell.fromPosition nextPosition) world
+        World.tileAt (Cell.fromPosition nextPosition) world
     }
 
 
@@ -71,7 +71,8 @@ attemptRespawn round =
             { round | activeCar = Car.spawn (Cell.bottomLeftCorner cell) activeCar }
     in
     if Car.isRespawning activeCar then
-        World.getRoadCells world
+        world
+            |> World.roadCells
             |> List.filter isEmptyRoad
             |> List.head
             |> Maybe.map spawn
@@ -107,7 +108,7 @@ applyRule { activeCar, world, currentTile, randomDirections } rule =
                 seeRoadAhead dir =
                     case
                         ( currentTile
-                        , World.getCellContents
+                        , World.tileAt
                             (Cell.next (activeCar.position |> Cell.fromPosition) dir)
                             world
                         )
@@ -158,7 +159,7 @@ checkTurningRules : Round -> Maybe Rule
 checkTurningRules { world, currentTile, nextTile, coinTossResult, activeCar } =
     let
         tileRelativeToCarPosition dir =
-            World.getCellContents (Cell.next (Cell.fromPosition activeCar.position) dir) world
+            World.tileAt (Cell.next (Cell.fromPosition activeCar.position) dir) world
 
         leftAndRightTilesFromCarDirection =
             [ tileRelativeToCarPosition (Direction.previous activeCar.direction)

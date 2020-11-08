@@ -60,12 +60,12 @@ update : World -> Msg -> Model -> ( Model, World, Cmd Msg )
 update world msg model =
     case msg of
         SelectTile cell ->
-            case ( model, World.getCellContents cell world ) of
+            case ( model, World.tileAt cell world ) of
                 ( SmartConstruction, _ ) ->
                     ( model
                     , if World.canBuildRoadAt cell world then
                         world
-                            |> World.withNewRoad cell
+                            |> World.buildRoadAt cell
 
                       else
                         world
@@ -75,27 +75,28 @@ update world msg model =
                 ( Bulldozer, Just _ ) ->
                     ( model
                     , world
-                        |> World.withEmptyCell cell
+                        |> World.removeRoadAt cell
                     , Cmd.none
                     )
 
                 ( Dynamite, _ ) ->
                     ( SmartConstruction
-                    , World.withEmptyBoard world
+                    , world
+                        |> World.reset
                     , Cmd.none
                     )
 
                 ( IntersectionDesigner, Just tile ) ->
                     ( model
                     , world
-                        |> World.withUpdatedCell cell (Tile.toggleIntersectionControl tile)
+                        |> World.withTileAt cell (Tile.toggleIntersectionControl tile)
                     , Cmd.none
                     )
 
                 ( TrafficDirectionDesigner, Just tile ) ->
                     ( model
                     , world
-                        |> World.withUpdatedCell cell (Tile.toggleTrafficDirection tile)
+                        |> World.withTileAt cell (Tile.toggleTrafficDirection tile)
                     , Cmd.none
                     )
 
@@ -107,7 +108,7 @@ update world msg model =
                 SmartConstruction ->
                     ( model
                     , world
-                        |> World.withEmptyCell cell
+                        |> World.removeRoadAt cell
                     , Cmd.none
                     )
 
@@ -228,7 +229,7 @@ tileHighlight { world, selectedTool, cell } =
                 colors.notAllowed
 
         IntersectionDesigner ->
-            case World.getCellContents cell world of
+            case World.tileAt cell world of
                 Just (Intersection _ _) ->
                     colors.target
 
@@ -236,7 +237,7 @@ tileHighlight { world, selectedTool, cell } =
                     colors.notAllowed
 
         TrafficDirectionDesigner ->
-            case World.getCellContents cell world of
+            case World.tileAt cell world of
                 Just (TwoLaneRoad _ _) ->
                     colors.target
 

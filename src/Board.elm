@@ -4,7 +4,6 @@ module Board exposing
     , defaultTile
     , exists
     , inBounds
-    , new
     )
 
 import BitMask
@@ -25,11 +24,6 @@ import Tile
 
 type alias Board =
     Dict Cell Tile
-
-
-new : Board
-new =
-    Dict.fromList []
 
 
 exists : Cell -> Board -> Bool
