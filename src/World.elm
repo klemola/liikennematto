@@ -4,23 +4,24 @@ module World exposing
     , SimulationSpeed(..)
     , SimulationState(..)
     , World
+    , buildRoadAt
     , canBuildRoadAt
-    , getCellContents
-    , getRoadCells
     , hasLot
     , isEmptyArea
     , new
     , newWithInitialBoard
+    , removeRoadAt
+    , reset
+    , roadCells
+    , setCar
     , simulationSpeedValues
+    , tileAt
     , withBoard
-    , withEmptyBoard
-    , withEmptyCell
-    , withNewLot
-    , withNewRoad
+    , withCar
+    , withLot
     , withScreen
     , withSimulationState
-    , withUpdatedCar
-    , withUpdatedCell
+    , withTileAt
     )
 
 import Board exposing (Board)
@@ -52,12 +53,16 @@ type alias World =
     }
 
 
+type alias Id =
+    Int
+
+
 type alias Cars =
-    Dict Int Car
+    Dict Id Car
 
 
 type alias Lots =
-    Dict Int Lot
+    Dict Id Lot
 
 
 type SimulationSpeed
@@ -73,10 +78,9 @@ type SimulationState
 
 new : World
 new =
-    -- Room for improvement: require screen size as parameter in order to avoid temporary values (zeros)
     { simulationState = Simulation Medium
     , screenSize = ( 0, 0 )
-    , board = Board.new
+    , board = Dict.empty
     , cars = Dict.empty
     , lots = Dict.empty
     }
@@ -91,7 +95,7 @@ newWithInitialBoard =
 -- Internals
 
 
-nextId : Dict Int a -> Int
+nextId : Dict Id a -> Id
 nextId dict =
     Dict.keys dict
         |> List.maximum
@@ -113,8 +117,8 @@ withScreen ( width, height ) world =
     { world | screenSize = ( width, height ) }
 
 
-withNewLot : Lot -> World -> World
-withNewLot lot world =
+withLot : Lot -> World -> World
+withLot lot world =
     let
         { lots, cars } =
             world
@@ -122,33 +126,27 @@ withNewLot lot world =
         nextLotId =
             nextId lots
 
-        nextCarId =
-            nextId cars
-
-        newLots =
-            Dict.insert nextLotId lot lots
-
-        newCars =
-            case Lot.resident lot of
-                Just carKind ->
-                    Dict.insert nextCarId
+        worldWithNewLot =
+            { world | lots = Dict.insert nextLotId lot lots }
+    in
+    Lot.resident lot
+        |> Maybe.map
+            (\carKind ->
+                worldWithNewLot
+                    |> withCar
                         { kind = carKind
                         , position = Cell.bottomLeftCorner (Lot.entryCell lot)
                         , direction = Direction.next lot.content.entryDirection
                         , homeLotId = Just nextLotId
                         , status = Car.ParkedAtLot
                         }
-                        cars
-
-                _ ->
-                    cars
-    in
-    { world | lots = newLots, cars = newCars }
+            )
+        |> Maybe.withDefault worldWithNewLot
 
 
-withUpdatedCar : Int -> Car -> World -> World
-withUpdatedCar id car world =
-    { world | cars = Dict.insert id car world.cars }
+withCar : Car -> World -> World
+withCar car world =
+    { world | cars = Dict.insert (nextId world.cars) car world.cars }
 
 
 withBoard : Board -> World -> World
@@ -156,18 +154,8 @@ withBoard board world =
     { world | board = board }
 
 
-withEmptyBoard : World -> World
-withEmptyBoard world =
-    { world
-        | simulationState = Paused
-        , cars = Dict.empty
-        , lots = Dict.empty
-        , board = Board.new
-    }
-
-
-withUpdatedCell : Cell -> Tile -> World -> World
-withUpdatedCell cell tile world =
+withTileAt : Cell -> Tile -> World -> World
+withTileAt cell tile world =
     { world
         | board = Dict.insert cell tile world.board
         , cars =
@@ -179,20 +167,13 @@ withUpdatedCell cell tile world =
     }
 
 
-withEmptyCell : Cell -> World -> World
-withEmptyCell cell world =
-    worldAfterBoardChange
-        { cell = cell
-        , nextBoard =
-            world.board
-                |> Dict.remove cell
-                |> Board.applyMask
-        , world = world
-        }
+setCar : Id -> Car -> World -> World
+setCar id car world =
+    { world | cars = Dict.insert id car world.cars }
 
 
-withNewRoad : Cell -> World -> World
-withNewRoad cell world =
+buildRoadAt : Cell -> World -> World
+buildRoadAt cell world =
     worldAfterBoardChange
         { cell = cell
         , nextBoard =
@@ -203,19 +184,40 @@ withNewRoad cell world =
         }
 
 
+removeRoadAt : Cell -> World -> World
+removeRoadAt cell world =
+    worldAfterBoardChange
+        { cell = cell
+        , nextBoard =
+            world.board
+                |> Dict.remove cell
+                |> Board.applyMask
+        , world = world
+        }
+
+
+reset : World -> World
+reset world =
+    { world
+        | cars = new.cars
+        , lots = new.lots
+        , board = new.board
+    }
+
+
 
 -- Queries
 
 
-getCellContents : Cell -> World -> Maybe Tile
-getCellContents cell { board } =
+tileAt : Cell -> World -> Maybe Tile
+tileAt cell { board } =
     board
         |> Dict.find (\key _ -> key == cell)
         |> Maybe.map Tuple.second
 
 
-getRoadCells : World -> List Cell
-getRoadCells { board } =
+roadCells : World -> List Cell
+roadCells { board } =
     board
         |> Dict.filter
             (\_ t ->
@@ -237,7 +239,7 @@ canBuildRoadAt cell world =
 
         hasLowComplexity corner =
             Cell.cornerAndNeighbors corner cell
-                |> List.filterMap (\c -> getCellContents c world)
+                |> List.filterMap (\c -> tileAt c world)
                 |> withinAllowedComplexity
     in
     List.all hasLowComplexity Direction.corners

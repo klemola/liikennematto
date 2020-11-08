@@ -119,7 +119,7 @@ update world msg model =
                 nextWorld =
                     potentialNewLot
                         |> Maybe.andThen (generateEnvironment world shuffledBoard)
-                        |> Maybe.map (\lot -> World.withNewLot lot world)
+                        |> Maybe.map (\lot -> World.withLot lot world)
                         |> Maybe.withDefault world
             in
             ( model, nextWorld, Cmd.none )
@@ -287,7 +287,7 @@ updateTrafficHelper { updateQueue, model, world } =
                         , model = model
                         , world =
                             world
-                                |> World.withUpdatedCar activeCarId updatedCar
+                                |> World.setCar activeCarId updatedCar
                         }
 
                 -- Room for improvement: only query cars that are nearby
