@@ -1,6 +1,5 @@
 module Editor exposing (Model, Msg, initialModel, overlay, toolbar, update)
 
-import Board exposing (Board)
 import Cell exposing (Cell)
 import Config exposing (borderRadius, borderSize, colors, tileSize, whitespace)
 import CustomEvent
@@ -26,7 +25,7 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Input as Input
 import Tile exposing (Tile(..))
-import World exposing (Lots, World)
+import World exposing (World)
 
 
 type Tool
@@ -61,12 +60,12 @@ update : World -> Msg -> Model -> ( Model, World, Cmd Msg )
 update world msg model =
     case msg of
         SelectTile cell ->
-            case ( model, Board.get cell world.board ) of
+            case ( model, World.getCellContents cell world ) of
                 ( SmartConstruction, _ ) ->
                     ( model
-                    , if Board.canBuildRoadAt cell world.board then
+                    , if World.canBuildRoadAt cell world then
                         world
-                            |> World.editBoardAt cell (buildRoad world.board cell)
+                            |> World.withNewRoad cell
 
                       else
                         world
@@ -76,28 +75,27 @@ update world msg model =
                 ( Bulldozer, Just _ ) ->
                     ( model
                     , world
-                        |> World.editBoardAt cell (removeRoad world.board cell)
+                        |> World.withEmptyCell cell
                     , Cmd.none
                     )
 
                 ( Dynamite, _ ) ->
                     ( SmartConstruction
-                    , World.newBoard world
+                    , World.withEmptyBoard world
                     , Cmd.none
                     )
 
                 ( IntersectionDesigner, Just tile ) ->
                     ( model
                     , world
-                        -- move Board.set to World
-                        |> World.editTileAt cell (Board.set cell (Tile.toggleIntersectionControl tile) world.board)
+                        |> World.withUpdatedCell cell (Tile.toggleIntersectionControl tile)
                     , Cmd.none
                     )
 
                 ( TrafficDirectionDesigner, Just tile ) ->
                     ( model
                     , world
-                        |> World.editTileAt cell (Board.set cell (Tile.toggleTrafficDirection tile) world.board)
+                        |> World.withUpdatedCell cell (Tile.toggleTrafficDirection tile)
                     , Cmd.none
                     )
 
@@ -109,7 +107,7 @@ update world msg model =
                 SmartConstruction ->
                     ( model
                     , world
-                        |> World.editBoardAt cell (removeRoad world.board cell)
+                        |> World.withEmptyCell cell
                     , Cmd.none
                     )
 
@@ -126,24 +124,6 @@ update world msg model =
                         tool
             in
             ( nextTool, world, Cmd.none )
-
-
-buildRoad : Board -> Cell -> Board
-buildRoad board origin =
-    let
-        boardWithNewTile =
-            Board.set origin Board.defaultTile board
-    in
-    Board.applyMask boardWithNewTile
-
-
-removeRoad : Board -> Cell -> Board
-removeRoad board origin =
-    let
-        boardWithoutTile =
-            Board.remove origin board
-    in
-    Board.applyMask boardWithoutTile
 
 
 
@@ -163,8 +143,7 @@ overlay world model =
             tileOverlay
                 { glowColor =
                     tileHighlight
-                        { board = world.board
-                        , lots = world.lots
+                        { world = world
                         , selectedTool = model
                         , cell = ( x, y )
                         }
@@ -215,13 +194,12 @@ tileOverlay { glowColor, cell } =
 
 
 tileHighlight :
-    { board : Board
-    , lots : Lots
+    { world : World
     , selectedTool : Tool
     , cell : Cell
     }
     -> Color
-tileHighlight { board, lots, selectedTool, cell } =
+tileHighlight { world, selectedTool, cell } =
     case selectedTool of
         None ->
             colors.transparent
@@ -235,10 +213,10 @@ tileHighlight { board, lots, selectedTool, cell } =
         SmartConstruction ->
             let
                 canBuildHere =
-                    Board.canBuildRoadAt cell board
+                    World.canBuildRoadAt cell world
 
                 mightDestroyLot =
-                    World.hasLot lots cell
+                    World.hasLot cell world
             in
             if canBuildHere && mightDestroyLot then
                 colors.danger
@@ -250,7 +228,7 @@ tileHighlight { board, lots, selectedTool, cell } =
                 colors.notAllowed
 
         IntersectionDesigner ->
-            case Board.get cell board of
+            case World.getCellContents cell world of
                 Just (Intersection _ _) ->
                     colors.target
 
@@ -258,7 +236,7 @@ tileHighlight { board, lots, selectedTool, cell } =
                     colors.notAllowed
 
         TrafficDirectionDesigner ->
-            case Board.get cell board of
+            case World.getCellContents cell world of
                 Just (TwoLaneRoad _ _) ->
                     colors.target
 

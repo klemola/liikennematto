@@ -1,7 +1,5 @@
 module Simulation exposing (Model, Msg(..), init, subscriptions, update)
 
-import Board exposing (Board)
-import Car exposing (Car)
 import Cell exposing (Cell)
 import Dict
 import Direction exposing (Direction(..), Orientation)
@@ -16,9 +14,7 @@ import Time
 import TrafficLight
 import World
     exposing
-        ( Cars
-        , Lots
-        , SimulationState(..)
+        ( SimulationState(..)
         , World
         )
 
@@ -79,8 +75,7 @@ update world msg model =
     case msg of
         UpdateTraffic _ ->
             ( model
-            , world
-                |> World.setCars (updateTraffic model world.board world.cars)
+            , updateTraffic model world
             , Cmd.batch
                 [ tossACoin
                 , shuffleDirections
@@ -89,8 +84,7 @@ update world msg model =
 
         UpdateEnvironment _ ->
             ( model
-            , world
-                |> World.setBoard (updateEnvironment world.board)
+            , updateEnvironment world
             , Cmd.none
             )
 
@@ -115,7 +109,7 @@ update world msg model =
 
               else
                 Cmd.batch
-                    [ generateEnvironmentWithRandomData world.board unusedLots
+                    [ generateEnvironmentWithRandomData world unusedLots
                     , prepareGenerationAfterRandomDelay
                     ]
             )
@@ -125,7 +119,7 @@ update world msg model =
                 nextWorld =
                     potentialNewLot
                         |> Maybe.andThen (generateEnvironment world shuffledBoard)
-                        |> Maybe.map (\lot -> World.addLot lot world)
+                        |> Maybe.map (\lot -> World.withNewLot lot world)
                         |> Maybe.withDefault world
             in
             ( model, nextWorld, Cmd.none )
@@ -150,13 +144,13 @@ tossACoin =
         |> Random.generate ReceiveCoinTossResult
 
 
-generateEnvironmentWithRandomData : Board -> List NewLot -> Cmd Msg
-generateEnvironmentWithRandomData board unusedLots =
+generateEnvironmentWithRandomData : World -> List NewLot -> Cmd Msg
+generateEnvironmentWithRandomData world unusedLots =
     Random.List.choose unusedLots
         -- keep just the random "head"
         |> Random.map Tuple.first
         -- combine it with the shuffled board
-        |> Random.map2 Tuple.pair (Random.List.shuffle (Dict.toList board))
+        |> Random.map2 Tuple.pair (Random.List.shuffle (Dict.toList world.board))
         |> Random.generate GenerateEnvironment
 
 
@@ -183,8 +177,8 @@ prepareGenerationAfterRandomDelay =
 --
 
 
-updateEnvironment : Board -> Board
-updateEnvironment board =
+updateEnvironment : World -> World
+updateEnvironment world =
     -- Room for improvement: consider moving traffic light state from tiles to World
     -- in order to make Tiles passive
     let
@@ -209,7 +203,8 @@ updateEnvironment board =
                 _ ->
                     tile
     in
-    Dict.map (\_ tile -> updateTile tile) board
+    world
+        |> World.withBoard (Dict.map (\_ tile -> updateTile tile) world.board)
 
 
 generateEnvironment : World -> ShuffledBoard -> NewLot -> Maybe Lot
@@ -267,51 +262,50 @@ findLotAnchor { targetOrientation, targetDirection, newLot, world, shuffledBoard
 --
 
 
-updateTraffic : Model -> Board -> Cars -> Cars
-updateTraffic model board cars =
+updateTraffic : Model -> World -> World
+updateTraffic model world =
     updateTrafficHelper
-        { updateQueue = Dict.keys cars
-        , cars = cars
+        { updateQueue = Dict.keys world.cars
         , model = model
-        , board = board
+        , world = world
         }
 
 
 updateTrafficHelper :
     { updateQueue : List Int
-    , cars : Cars
     , model : Model
-    , board : Board
+    , world : World
     }
-    -> Cars
-updateTrafficHelper { updateQueue, cars, model, board } =
+    -> World
+updateTrafficHelper { updateQueue, model, world } =
     case updateQueue of
         activeCarId :: queue ->
             let
                 nextRound updatedCar =
                     updateTrafficHelper
                         { updateQueue = queue
-                        , cars = Dict.insert activeCarId updatedCar cars
                         , model = model
-                        , board = board
+                        , world =
+                            world
+                                |> World.withUpdatedCar activeCarId updatedCar
                         }
 
                 -- Room for improvement: only query cars that are nearby
                 otherCars =
-                    cars
+                    world.cars
                         |> Dict.filter (\k _ -> k /= activeCarId)
                         |> Dict.values
             in
-            case Dict.get activeCarId cars of
+            case Dict.get activeCarId world.cars of
                 Just activeCar ->
-                    Round.new board model.coinTossResult model.randomDirections activeCar otherCars
+                    Round.new world model.coinTossResult model.randomDirections activeCar otherCars
                         |> Round.attemptRespawn
                         |> Round.play
                         |> nextRound
 
                 -- this should never happen, but the typesystem doesn't know that
                 Nothing ->
-                    cars
+                    world
 
         [] ->
-            cars
+            world

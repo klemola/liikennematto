@@ -4,6 +4,7 @@ import Board exposing (Board)
 import Car exposing (Car)
 import Cell
 import Config exposing (tileSize)
+import Dict
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
 import Lot exposing (Anchor, Lot)
 import Round exposing (Round)
@@ -42,8 +43,8 @@ respawnSetup : Round
 respawnSetup =
     let
         board =
-            Board.new
-                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+            World.new
+                |> World.withUpdatedCell ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
 
         car =
             carOne
@@ -58,9 +59,9 @@ connectedRoadsSetup : Round
 connectedRoadsSetup =
     let
         board =
-            Board.new
-                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+            World.new
+                |> World.withUpdatedCell ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> World.withUpdatedCell ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
 
         car =
             carOne
@@ -77,9 +78,9 @@ disconnectedRoadsSetup : Round
 disconnectedRoadsSetup =
     let
         board =
-            Board.new
-                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Vertical) Both)
+            World.new
+                |> World.withUpdatedCell ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> World.withUpdatedCell ( 2, 1 ) (TwoLaneRoad (Regular Vertical) Both)
 
         car =
             carOne
@@ -96,10 +97,10 @@ curveSetup : Round
 curveSetup =
     let
         board =
-            Board.new
-                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> Board.set ( 2, 1 ) (TwoLaneRoad (Curve TopRight) Both)
-                |> Board.set ( 2, 2 ) (TwoLaneRoad (Regular Vertical) Both)
+            World.new
+                |> World.withUpdatedCell ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> World.withUpdatedCell ( 2, 1 ) (TwoLaneRoad (Curve TopRight) Both)
+                |> World.withUpdatedCell ( 2, 2 ) (TwoLaneRoad (Regular Vertical) Both)
 
         car =
             carOne
@@ -116,9 +117,9 @@ randomTurnSetup : Round
 randomTurnSetup =
     let
         board =
-            Board.new
-                |> Board.set ( 1, 1 ) (Intersection (Yield Vertical) Crossroads)
-                |> Board.set ( 1, 2 ) (TwoLaneRoad (Regular Vertical) Both)
+            World.new
+                |> World.withUpdatedCell ( 1, 1 ) (Intersection (Yield Vertical) Crossroads)
+                |> World.withUpdatedCell ( 1, 2 ) (TwoLaneRoad (Regular Vertical) Both)
 
         car =
             carOne
@@ -135,9 +136,9 @@ collisionSetup : Round
 collisionSetup =
     let
         board =
-            Board.new
-                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+            World.new
+                |> World.withUpdatedCell ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> World.withUpdatedCell ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
 
         car =
             carOne
@@ -157,9 +158,9 @@ noCollisionSetup : Round
 noCollisionSetup =
     let
         board =
-            Board.new
-                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+            World.new
+                |> World.withUpdatedCell ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> World.withUpdatedCell ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
 
         car =
             carOne
@@ -179,9 +180,9 @@ redTrafficLightsSetup : Round
 redTrafficLightsSetup =
     let
         board =
-            Board.new
-                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> Board.set ( 2, 1 ) (Intersection (Signal TrafficLight.default) Crossroads)
+            World.new
+                |> World.withUpdatedCell ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> World.withUpdatedCell ( 2, 1 ) (Intersection (Signal TrafficLight.default) Crossroads)
 
         car =
             carOne
@@ -198,9 +199,9 @@ greenTrafficLightsSetup : Round
 greenTrafficLightsSetup =
     let
         board =
-            Board.new
-                |> Board.set ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> Board.set ( 1, 2 ) (Intersection (Signal TrafficLight.default) Crossroads)
+            World.new
+                |> World.withUpdatedCell ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> World.withUpdatedCell ( 1, 2 ) (Intersection (Signal TrafficLight.default) Crossroads)
 
         car =
             carOne
@@ -217,11 +218,11 @@ yieldSetup : Bool -> Round
 yieldSetup hasPriorityTraffic =
     let
         board =
-            Board.new
-                |> Board.set ( 1, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Vertical) Both)
-                |> Board.set ( 2, 2 ) (Intersection (Yield Horizontal) (T Left))
-                |> Board.set ( 2, 3 ) (TwoLaneRoad (Regular Vertical) Both)
+            World.new
+                |> World.withUpdatedCell ( 1, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> World.withUpdatedCell ( 2, 1 ) (TwoLaneRoad (Regular Vertical) Both)
+                |> World.withUpdatedCell ( 2, 2 ) (Intersection (Yield Horizontal) (T Left))
+                |> World.withUpdatedCell ( 2, 3 ) (TwoLaneRoad (Regular Vertical) Both)
 
         car =
             carOne
@@ -255,12 +256,12 @@ stopSetup : Round
 stopSetup =
     let
         board =
-            Board.new
-                |> Board.set ( 1, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> Board.set ( 2, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> Board.set ( 3, 1 ) (TwoLaneRoad (Regular Vertical) Both)
-                |> Board.set ( 3, 2 ) (Intersection (Stop Horizontal) (T Left))
-                |> Board.set ( 3, 3 ) (TwoLaneRoad (Regular Vertical) Both)
+            World.new
+                |> World.withUpdatedCell ( 1, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> World.withUpdatedCell ( 2, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> World.withUpdatedCell ( 3, 1 ) (TwoLaneRoad (Regular Vertical) Both)
+                |> World.withUpdatedCell ( 3, 2 ) (Intersection (Stop Horizontal) (T Left))
+                |> World.withUpdatedCell ( 3, 3 ) (TwoLaneRoad (Regular Vertical) Both)
 
         car =
             carOne
@@ -278,11 +279,11 @@ yieldAfterStopSetup : Round
 yieldAfterStopSetup =
     let
         board =
-            Board.new
-                |> Board.set ( 1, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Vertical) Both)
-                |> Board.set ( 2, 2 ) (Intersection (Stop Horizontal) (T Left))
-                |> Board.set ( 2, 3 ) (TwoLaneRoad (Regular Vertical) Both)
+            World.new
+                |> World.withUpdatedCell ( 1, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> World.withUpdatedCell ( 2, 1 ) (TwoLaneRoad (Regular Vertical) Both)
+                |> World.withUpdatedCell ( 2, 2 ) (Intersection (Stop Horizontal) (T Left))
+                |> World.withUpdatedCell ( 2, 3 ) (TwoLaneRoad (Regular Vertical) Both)
 
         car =
             carOne
@@ -299,106 +300,123 @@ yieldAfterStopSetup =
     Round.new board False fakeRandomDirections car otherCars
 
 
-lowComplexityBoard : Board
-lowComplexityBoard =
-    Board.new
-        |> Board.set ( 1, 1 ) (TwoLaneRoad (Deadend Left) Both)
-        |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
-        |> Board.set ( 3, 1 ) (TwoLaneRoad (Deadend Right) Both)
 
-
-highComplexityBoard : Board
-highComplexityBoard =
-    Board.new
-        |> Board.set ( 1, 1 ) (TwoLaneRoad (Curve TopLeft) Both)
-        |> Board.set ( 2, 1 ) (TwoLaneRoad (Deadend Right) Both)
-        |> Board.set ( 1, 2 ) (TwoLaneRoad (Deadend Down) Both)
+-- Boards
 
 
 boardThatResemblesAIntersection : Board
 boardThatResemblesAIntersection =
-    Board.new
-        |> Board.set ( 1, 1 ) (TwoLaneRoad (Deadend Left) Both)
-        |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
-        |> Board.set ( 3, 1 ) (TwoLaneRoad (Deadend Right) Both)
-        |> Board.set ( 2, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
-
-
-expectedIntersectionTile : Tile
-expectedIntersectionTile =
-    Intersection (Yield Vertical) (T Down)
-
-
-boardThatResemblesACurve : Board
-boardThatResemblesACurve =
-    Board.new
-        |> Board.set ( 1, 1 ) (TwoLaneRoad (Deadend Left) Both)
-        |> Board.set ( 2, 1 ) (TwoLaneRoad (Deadend Right) Both)
-        |> Board.set ( 1, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
-
-
-boardThatHasAVerticalRoadAtLeftSide : Board
-boardThatHasAVerticalRoadAtLeftSide =
-    Board.new
-        |> Board.set ( 1, 1 ) (TwoLaneRoad (Deadend Up) Both)
-        |> Board.set ( 1, 2 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> Board.set ( 1, 3 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> Board.set ( 1, 4 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> Board.set ( 1, 5 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> Board.set ( 1, 6 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> Board.set ( 1, 7 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> Board.set ( 1, 8 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> Board.set ( 1, 9 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> Board.set ( 1, 10 ) (TwoLaneRoad (Deadend Down) Both)
-
-
-boardThatHasParallelRoads : Board
-boardThatHasParallelRoads =
-    boardThatHasAVerticalRoadAtLeftSide
-        -- create second road
-        |> Board.set ( 3, 1 ) (TwoLaneRoad (Deadend Up) Both)
-        |> Board.set ( 3, 2 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> Board.set ( 3, 3 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> Board.set ( 3, 4 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> Board.set ( 3, 5 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> Board.set ( 3, 6 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> Board.set ( 3, 7 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> Board.set ( 3, 8 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> Board.set ( 3, 9 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> Board.set ( 3, 10 ) (TwoLaneRoad (Deadend Down) Both)
-
-
-expectedCurveTile : Tile
-expectedCurveTile =
-    TwoLaneRoad (Curve TopLeft) Both
+    Dict.fromList
+        [ ( ( 1, 1 ), TwoLaneRoad (Deadend Left) Both )
+        , ( ( 2, 1 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 3, 1 ), TwoLaneRoad (Deadend Right) Both )
+        , ( ( 2, 2 ), TwoLaneRoad (Regular Horizontal) Both )
+        ]
 
 
 boardThatHasModifiersOnTiles : Board
 boardThatHasModifiersOnTiles =
     -- A roundabout with two exits
-    Board.new
-        |> Board.set ( 1, 1 ) (TwoLaneRoad (Curve TopLeft) OneWay)
-        |> Board.set ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
-        |> Board.set ( 3, 1 ) (TwoLaneRoad (Curve TopRight) OneWay)
-        |> Board.set ( 1, 2 ) (TwoLaneRoad (Regular Vertical) OneWay)
+    Dict.fromList
+        [ ( ( 1, 1 ), TwoLaneRoad (Curve TopLeft) OneWay )
+        , ( ( 2, 1 ), TwoLaneRoad (Regular Horizontal) Both )
+        , ( ( 3, 1 ), TwoLaneRoad (Curve TopRight) OneWay )
+        , ( ( 1, 2 ), TwoLaneRoad (Regular Vertical) OneWay )
+
         -- (2, 2) is empty
-        |> Board.set ( 3, 2 ) (Intersection (Stop Horizontal) (T Right))
-        |> Board.set ( 4, 2 ) (TwoLaneRoad (Deadend Right) Both)
-        |> Board.set ( 5, 2 ) (TwoLaneRoad (Deadend Right) OneWay)
-        |> Board.set ( 1, 3 ) (TwoLaneRoad (Curve BottomLeft) OneWay)
-        |> Board.set ( 2, 3 ) (Intersection (Yield Vertical) (T Down))
-        |> Board.set ( 3, 3 ) (TwoLaneRoad (Curve BottomRight) OneWay)
-        |> Board.set ( 2, 4 ) (TwoLaneRoad (Deadend Down) Both)
+        , ( ( 3, 2 ), Intersection (Stop Horizontal) (T Right) )
+        , ( ( 4, 2 ), TwoLaneRoad (Deadend Right) Both )
+        , ( ( 5, 2 ), TwoLaneRoad (Deadend Right) OneWay )
+        , ( ( 1, 3 ), TwoLaneRoad (Curve BottomLeft) OneWay )
+        , ( ( 2, 3 ), Intersection (Yield Vertical) (T Down) )
+        , ( ( 3, 3 ), TwoLaneRoad (Curve BottomRight) OneWay )
+        , ( ( 2, 4 ), TwoLaneRoad (Deadend Down) Both )
+        ]
 
 
-expectedModifierTileA : Tile
-expectedModifierTileA =
+modifierTileA : Tile
+modifierTileA =
     TwoLaneRoad (Curve TopLeft) OneWay
 
 
-expectedModifierTileB : Tile
-expectedModifierTileB =
+modifierTileB : Tile
+modifierTileB =
     Intersection (Stop Horizontal) (T Right)
+
+
+intersectionTile : Tile
+intersectionTile =
+    Intersection (Yield Vertical) (T Down)
+
+
+boardThatResemblesACurve : Board
+boardThatResemblesACurve =
+    Dict.fromList
+        [ ( ( 1, 1 ), TwoLaneRoad (Deadend Left) Both )
+        , ( ( 2, 1 ), TwoLaneRoad (Deadend Right) Both )
+        , ( ( 1, 2 ), TwoLaneRoad (Regular Horizontal) Both )
+        ]
+
+
+curveTile : Tile
+curveTile =
+    TwoLaneRoad (Curve TopLeft) Both
+
+
+
+-- Worlds
+
+
+emptyWorld : World
+emptyWorld =
+    World.new |> (\world -> { world | board = Board.new })
+
+
+lowComplexityWorld : World
+lowComplexityWorld =
+    World.new
+        |> World.withUpdatedCell ( 1, 1 ) (TwoLaneRoad (Deadend Left) Both)
+        |> World.withUpdatedCell ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+        |> World.withUpdatedCell ( 3, 1 ) (TwoLaneRoad (Deadend Right) Both)
+
+
+highComplexityWorld : World
+highComplexityWorld =
+    World.new
+        |> World.withUpdatedCell ( 1, 1 ) (TwoLaneRoad (Curve TopLeft) Both)
+        |> World.withUpdatedCell ( 2, 1 ) (TwoLaneRoad (Deadend Right) Both)
+        |> World.withUpdatedCell ( 1, 2 ) (TwoLaneRoad (Deadend Down) Both)
+
+
+worldThatHasAVerticalRoadAtLeftSide : World
+worldThatHasAVerticalRoadAtLeftSide =
+    World.new
+        |> World.withUpdatedCell ( 1, 1 ) (TwoLaneRoad (Deadend Up) Both)
+        |> World.withUpdatedCell ( 1, 2 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> World.withUpdatedCell ( 1, 3 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> World.withUpdatedCell ( 1, 4 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> World.withUpdatedCell ( 1, 5 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> World.withUpdatedCell ( 1, 6 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> World.withUpdatedCell ( 1, 7 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> World.withUpdatedCell ( 1, 8 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> World.withUpdatedCell ( 1, 9 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> World.withUpdatedCell ( 1, 10 ) (TwoLaneRoad (Deadend Down) Both)
+
+
+worldThatHasParallelRoads : World
+worldThatHasParallelRoads =
+    worldThatHasAVerticalRoadAtLeftSide
+        -- create second road
+        |> World.withUpdatedCell ( 3, 1 ) (TwoLaneRoad (Deadend Up) Both)
+        |> World.withUpdatedCell ( 3, 2 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> World.withUpdatedCell ( 3, 3 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> World.withUpdatedCell ( 3, 4 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> World.withUpdatedCell ( 3, 5 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> World.withUpdatedCell ( 3, 6 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> World.withUpdatedCell ( 3, 7 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> World.withUpdatedCell ( 3, 8 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> World.withUpdatedCell ( 3, 9 ) (TwoLaneRoad (Regular Vertical) Both)
+        |> World.withUpdatedCell ( 3, 10 ) (TwoLaneRoad (Deadend Down) Both)
 
 
 
@@ -456,22 +474,3 @@ createTwoByTwoLot ( anchorCell, anchorDir ) =
             |> Cell.bottomLeftCorner
     , anchor = ( anchorCell, anchorDir )
     }
-
-
-
--- World
-
-
-emptyWorld : World
-emptyWorld =
-    World.new |> (\world -> { world | board = Board.new })
-
-
-worldWithEmptySpace : World
-worldWithEmptySpace =
-    { emptyWorld | board = boardThatHasAVerticalRoadAtLeftSide }
-
-
-worldWithParallelRoads : World
-worldWithParallelRoads =
-    { emptyWorld | board = boardThatHasParallelRoads }

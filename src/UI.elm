@@ -78,7 +78,7 @@ update world msg model =
         SetSimulationState state ->
             ( model
             , world
-                |> World.setSimulationState state
+                |> World.withSimulationState state
             , Cmd.none
             )
 
