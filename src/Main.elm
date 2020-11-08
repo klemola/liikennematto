@@ -44,7 +44,7 @@ init _ =
     in
     ( { simulation = initialSimulationModel
       , ui = UI.initialModel
-      , world = World.new
+      , world = World.newWithInitialBoard
       }
     , Cmd.batch
         [ -- simulate a screen resize
@@ -64,7 +64,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ResizeWindow width height ->
-            ( { model | world = World.setScreen ( width, height ) model.world }
+            ( { model | world = World.withScreen ( width, height ) model.world }
             , UI.recalculateDimensions ( width, height )
                 |> Cmd.map UIMsg
             )

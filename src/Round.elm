@@ -9,7 +9,6 @@ module Round exposing
     , play
     )
 
-import Board exposing (Board)
 import Car exposing (Car, Status(..))
 import Cell
 import Config exposing (tileSize)
@@ -17,10 +16,11 @@ import Direction exposing (Direction)
 import Position exposing (Position)
 import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..), TrafficDirection(..))
 import TrafficLight
+import World exposing (World)
 
 
 type alias Round =
-    { board : Board
+    { world : World
     , activeCar : Car
     , otherCars : List Car
     , currentTile : Maybe Tile
@@ -39,29 +39,29 @@ type Rule
     | StopAtIntersection
 
 
-new : Board -> Bool -> List Direction -> Car -> List Car -> Round
-new board coinTossResult randomDirections activeCar otherCars =
+new : World -> Bool -> List Direction -> Car -> List Car -> Round
+new world coinTossResult randomDirections activeCar otherCars =
     let
         nextPosition =
             Position.shiftBy tileSize activeCar.position activeCar.direction
     in
-    { board = board
+    { world = world
     , activeCar = activeCar
     , otherCars = otherCars
     , coinTossResult = coinTossResult
     , randomDirections = randomDirections
     , nextPosition = nextPosition
     , currentTile =
-        Board.get (activeCar.position |> Cell.fromPosition) board
+        World.getCellContents (Cell.fromPosition activeCar.position) world
     , nextTile =
-        Board.get (nextPosition |> Cell.fromPosition) board
+        World.getCellContents (Cell.fromPosition nextPosition) world
     }
 
 
 attemptRespawn : Round -> Round
 attemptRespawn round =
     let
-        { otherCars, board, activeCar } =
+        { otherCars, world, activeCar } =
             round
 
         isEmptyRoad cell =
@@ -71,7 +71,7 @@ attemptRespawn round =
             { round | activeCar = Car.spawn (Cell.bottomLeftCorner cell) activeCar }
     in
     if Car.isRespawning activeCar then
-        Board.roadPiecePositions board
+        World.getRoadCells world
             |> List.filter isEmptyRoad
             |> List.head
             |> Maybe.map spawn
@@ -94,7 +94,7 @@ play round =
 
 
 applyRule : Round -> Rule -> Car
-applyRule { activeCar, board, currentTile, randomDirections } rule =
+applyRule { activeCar, world, currentTile, randomDirections } rule =
     case rule of
         TurningRequired ->
             let
@@ -107,9 +107,9 @@ applyRule { activeCar, board, currentTile, randomDirections } rule =
                 seeRoadAhead dir =
                     case
                         ( currentTile
-                        , Board.get
+                        , World.getCellContents
                             (Cell.next (activeCar.position |> Cell.fromPosition) dir)
-                            board
+                            world
                         )
                     of
                         ( Just current, Just other ) ->
@@ -155,10 +155,10 @@ activeRulesByPriority round =
 
 
 checkTurningRules : Round -> Maybe Rule
-checkTurningRules { board, currentTile, nextTile, coinTossResult, activeCar } =
+checkTurningRules { world, currentTile, nextTile, coinTossResult, activeCar } =
     let
         tileRelativeToCarPosition dir =
-            Board.get (Cell.next (activeCar.position |> Cell.fromPosition) dir) board
+            World.getCellContents (Cell.next (Cell.fromPosition activeCar.position) dir) world
 
         leftAndRightTilesFromCarDirection =
             [ tileRelativeToCarPosition (Direction.previous activeCar.direction)

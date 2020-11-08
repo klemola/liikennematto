@@ -4,19 +4,23 @@ module World exposing
     , SimulationSpeed(..)
     , SimulationState(..)
     , World
-    , addLot
-    , editBoardAt
-    , editTileAt
+    , canBuildRoadAt
+    , getCellContents
+    , getRoadCells
     , hasLot
     , isEmptyArea
     , new
-    , newBoard
-    , nextId
-    , setBoard
-    , setCars
-    , setScreen
-    , setSimulationState
+    , newWithInitialBoard
     , simulationSpeedValues
+    , withBoard
+    , withEmptyBoard
+    , withEmptyCell
+    , withNewLot
+    , withNewRoad
+    , withScreen
+    , withSimulationState
+    , withUpdatedCar
+    , withUpdatedCell
     )
 
 import Board exposing (Board)
@@ -24,6 +28,7 @@ import Car exposing (Car)
 import Cell exposing (Cell)
 import Collision
 import Dict exposing (Dict)
+import Dict.Extra as Dict
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
 import Lot exposing (Lot)
 import Position exposing (Position)
@@ -71,10 +76,15 @@ new =
     -- Room for improvement: require screen size as parameter in order to avoid temporary values (zeros)
     { simulationState = Simulation Medium
     , screenSize = ( 0, 0 )
-    , board = initialBoard
+    , board = Board.new
     , cars = Dict.empty
     , lots = Dict.empty
     }
+
+
+newWithInitialBoard : World
+newWithInitialBoard =
+    new |> withBoard initialBoard
 
 
 
@@ -93,8 +103,18 @@ nextId dict =
 -- Modifications
 
 
-addLot : Lot -> World -> World
-addLot lot world =
+withSimulationState : SimulationState -> World -> World
+withSimulationState state world =
+    { world | simulationState = state }
+
+
+withScreen : ( Int, Int ) -> World -> World
+withScreen ( width, height ) world =
+    { world | screenSize = ( width, height ) }
+
+
+withNewLot : Lot -> World -> World
+withNewLot lot world =
     let
         { lots, cars } =
             world
@@ -126,18 +146,18 @@ addLot lot world =
     { world | lots = newLots, cars = newCars }
 
 
-setSimulationState : SimulationState -> World -> World
-setSimulationState state world =
-    { world | simulationState = state }
+withUpdatedCar : Int -> Car -> World -> World
+withUpdatedCar id car world =
+    { world | cars = Dict.insert id car world.cars }
 
 
-setBoard : Board -> World -> World
-setBoard board world =
+withBoard : Board -> World -> World
+withBoard board world =
     { world | board = board }
 
 
-newBoard : World -> World
-newBoard world =
+withEmptyBoard : World -> World
+withEmptyBoard world =
     { world
         | simulationState = Paused
         , cars = Dict.empty
@@ -146,44 +166,10 @@ newBoard world =
     }
 
 
-setCars : Cars -> World -> World
-setCars cars world =
-    { world | cars = cars }
-
-
-setScreen : ( Int, Int ) -> World -> World
-setScreen ( width, height ) world =
-    { world | screenSize = ( width, height ) }
-
-
-editBoardAt : Cell -> Board -> World -> World
-editBoardAt cell nextBoard world =
-    let
-        nextLots =
-            Dict.filter
-                (\_ lot ->
-                    Board.exists (Lot.anchorCell lot) nextBoard && not (Lot.inBounds cell lot)
-                )
-                world.lots
-
-        nextCars =
-            carsAfterBoardChange
-                { cell = cell
-                , nextLots = nextLots
-                , cars = world.cars
-                }
-    in
+withUpdatedCell : Cell -> Tile -> World -> World
+withUpdatedCell cell tile world =
     { world
-        | board = nextBoard
-        , cars = nextCars
-        , lots = nextLots
-    }
-
-
-editTileAt : Cell -> Board -> World -> World
-editTileAt cell nextBoard world =
-    { world
-        | board = nextBoard
+        | board = Dict.insert cell tile world.board
         , cars =
             carsAfterBoardChange
                 { cell = cell
@@ -193,13 +179,68 @@ editTileAt cell nextBoard world =
     }
 
 
+withEmptyCell : Cell -> World -> World
+withEmptyCell cell world =
+    worldAfterBoardChange
+        { cell = cell
+        , nextBoard =
+            world.board
+                |> Dict.remove cell
+                |> Board.applyMask
+        , world = world
+        }
+
+
+withNewRoad : Cell -> World -> World
+withNewRoad cell world =
+    worldAfterBoardChange
+        { cell = cell
+        , nextBoard =
+            world.board
+                |> Dict.insert cell Board.defaultTile
+                |> Board.applyMask
+        , world = world
+        }
+
+
 
 -- Queries
 
 
-hasLot : Lots -> Cell -> Bool
-hasLot lots cell =
+getCellContents : Cell -> World -> Maybe Tile
+getCellContents cell { board } =
+    board
+        |> Dict.find (\key _ -> key == cell)
+        |> Maybe.map Tuple.second
+
+
+getRoadCells : World -> List Cell
+getRoadCells { board } =
+    board
+        |> Dict.filter
+            (\_ t ->
+                Tile.isRoad t
+            )
+        |> Dict.keys
+
+
+hasLot : Cell -> World -> Bool
+hasLot cell { lots } =
     List.any (Lot.inBounds cell) (Dict.values lots)
+
+
+canBuildRoadAt : Cell -> World -> Bool
+canBuildRoadAt cell world =
+    let
+        withinAllowedComplexity l =
+            List.length l < 3
+
+        hasLowComplexity corner =
+            Cell.cornerAndNeighbors corner cell
+                |> List.filterMap (\c -> getCellContents c world)
+                |> withinAllowedComplexity
+    in
+    List.all hasLowComplexity Direction.corners
 
 
 isEmptyArea : { origin : Position, width : Float, height : Float } -> World -> Bool
@@ -225,6 +266,34 @@ isEmptyArea { origin, width, height } world =
             not <| List.any (Collision.aabb areaBoundingBox) (roadBoundingBoxes ++ lotBoundingBoxes)
     in
     inBoardBounds && noCollision ()
+
+
+
+-- Utility
+
+
+worldAfterBoardChange : { cell : Cell, nextBoard : Board, world : World } -> World
+worldAfterBoardChange { cell, nextBoard, world } =
+    let
+        nextLots =
+            Dict.filter
+                (\_ lot ->
+                    Board.exists (Lot.anchorCell lot) nextBoard && not (Lot.inBounds cell lot)
+                )
+                world.lots
+
+        nextCars =
+            carsAfterBoardChange
+                { cell = cell
+                , nextLots = nextLots
+                , cars = world.cars
+                }
+    in
+    { world
+        | board = nextBoard
+        , cars = nextCars
+        , lots = nextLots
+    }
 
 
 carsAfterBoardChange :

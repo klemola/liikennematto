@@ -61,7 +61,7 @@ renderBoard board =
 
         drawTile x y =
             board
-                |> Board.get ( x, y )
+                |> Dict.get ( x, y )
                 |> Maybe.map renderTile
                 |> Maybe.withDefault emptyTile
     in
