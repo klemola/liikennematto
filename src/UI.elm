@@ -39,8 +39,7 @@ import Render
 import Task
 import World
     exposing
-        ( SimulationSpeed(..)
-        , SimulationState(..)
+        ( SimulationState(..)
         , World
         )
 
@@ -242,30 +241,20 @@ menu world model =
         , Border.color colors.heavyBorder
         ]
         [ simulationControl world model
-        , debug world model
         , projectInfo
+        , debug world model
         ]
 
 
 simulationControl : World -> Model -> Element Msg
 simulationControl { simulationState } { dimensions } =
-    let
-        isSelected speed =
-            case simulationState of
-                Simulation currentSpeed ->
-                    speed == currentSpeed
-
-                Paused ->
-                    False
-    in
     row
         [ width fill
         , spacing whitespace.tight
         ]
         [ controlButton dimensions.menuButton "⏸️" (SetSimulationState Paused) (simulationState == Paused)
-        , controlButton dimensions.menuButton "🐌" (SetSimulationState (Simulation Slow)) (isSelected Slow)
-        , controlButton dimensions.menuButton "🐇" (SetSimulationState (Simulation Medium)) (isSelected Medium)
-        , controlButton dimensions.menuButton "🐆" (SetSimulationState (Simulation Fast)) (isSelected Fast)
+        , controlButton dimensions.menuButton "🐌" (SetSimulationState RunningAtSlowSpeed) (simulationState == RunningAtSlowSpeed)
+        , controlButton dimensions.menuButton "🐇" (SetSimulationState RunningAtNormalSpeed) (simulationState == RunningAtNormalSpeed)
         ]
 
 
@@ -273,8 +262,9 @@ controlButton : Int -> String -> Msg -> Bool -> Element Msg
 controlButton fontSize label msg selected =
     Input.button
         [ Background.color colors.buttonBackground
-        , width (fillPortion 1)
         , Font.size fontSize
+        , Font.center
+        , width fill
         , padding whitespace.tight
         , Border.width borderSize.light
         , Border.rounded borderRadius.light

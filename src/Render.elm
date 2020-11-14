@@ -17,7 +17,7 @@ import Collage
 import Collage.Layout as Layout
 import Collage.Render exposing (svg)
 import Color
-import Config exposing (boardSize, tileSize)
+import Config exposing (boardSize, carSize, tileSize)
 import Dict
 import Direction exposing (Direction(..), Orientation(..))
 import Graphics
@@ -62,7 +62,7 @@ renderBoard board =
         drawTile x y =
             board
                 |> Dict.get ( x, y )
-                |> Maybe.map renderTile
+                |> Maybe.map (renderTile >> Layout.showEnvelope)
                 |> Maybe.withDefault emptyTile
     in
     Graphics.grid boardSize drawTile
@@ -175,27 +175,10 @@ renderCars cars lots =
 renderCar : Lots -> Car -> Collage msg
 renderCar lots car =
     let
-        size =
-            tileSize * 0.3
-
         currentLot =
             car.homeLotId
                 |> Maybe.map (\id -> Dict.get id lots)
                 |> Maybe.join
-
-        ( shiftX, shiftY ) =
-            case ( car.status, currentLot ) of
-                ( ParkedAtLot, Just lot ) ->
-                    alignCarToDriveway lot.content.entryDirection
-
-                _ ->
-                    alignCarToLane car
-
-        ( x, y ) =
-            car.position
-
-        position =
-            ( x + shiftX, y + shiftY )
 
         rotationModifier =
             case car.status of
@@ -209,57 +192,11 @@ renderCar lots car =
                     0
 
         rotation =
-            dirToRotation car.direction
-                + rotationModifier
-                |> degrees
+            degrees (dirToRotation car.direction + rotationModifier)
     in
-    Graphics.texture ( size, size ) (Graphics.carAsset car)
+    Graphics.texture ( carSize, carSize ) (Graphics.carAsset car)
         |> rotate rotation
-        |> shift position
-
-
-alignCarToDriveway : Direction -> ( Float, Float )
-alignCarToDriveway entryDirection =
-    case entryDirection of
-        Up ->
-            ( tileSize / 2, tileSize )
-
-        Right ->
-            ( tileSize, tileSize / 2 )
-
-        Down ->
-            ( tileSize / 2, 0 )
-
-        Left ->
-            ( 0, tileSize / 2 )
-
-
-alignCarToLane : Car -> ( Float, Float )
-alignCarToLane car =
-    let
-        baseShift =
-            tileSize / 2
-
-        -- closest lane from the bottom left corner of a tile
-        nearLaneShift =
-            0.33 * tileSize
-
-        -- furthest lane from...
-        distantLaneShift =
-            0.66 * tileSize
-    in
-    case car.direction of
-        Up ->
-            ( distantLaneShift, baseShift )
-
-        Right ->
-            ( baseShift, nearLaneShift )
-
-        Down ->
-            ( nearLaneShift, baseShift )
-
-        Left ->
-            ( baseShift, distantLaneShift )
+        |> shift car.position
 
 
 dirToRotation : Direction -> Float
