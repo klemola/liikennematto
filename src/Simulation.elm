@@ -90,9 +90,6 @@ update world msg model =
 
         PrepareGeneration _ ->
             let
-                currentLotsAmount =
-                    Dict.size world.lots
-
                 existingBuildingKinds =
                     world.lots
                         |> Dict.map (\_ lot -> lot.content.kind)
@@ -100,11 +97,14 @@ update world msg model =
 
                 unusedLots =
                     List.filter (\{ content } -> not (List.member content.kind existingBuildingKinds)) Lot.all
+
+                largeEnoughRoadNetwork =
+                    Dict.size world.board > 4 * max 1 (Dict.size world.lots + 1)
             in
             ( model
             , world
             , -- skip the generation if nothing new can be generated, or if the road network is too small
-              if world.simulationState == Paused || List.isEmpty unusedLots || (Dict.size world.board * 4) < currentLotsAmount then
+              if world.simulationState == Paused || List.isEmpty unusedLots || not largeEnoughRoadNetwork then
                 prepareGenerationAfterRandomDelay
 
               else
