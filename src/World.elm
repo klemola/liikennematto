@@ -17,7 +17,6 @@ module World exposing
     , simulationSpeedValues
     , tileAt
     , withBoard
-    , withCar
     , withLot
     , withScreen
     , withSimulationState
@@ -41,7 +40,6 @@ import Tile
         , Tile(..)
         , TrafficDirection(..)
         )
-import TrafficLight
 
 
 type alias World =
@@ -120,14 +118,11 @@ withScreen ( width, height ) world =
 withLot : Lot -> World -> World
 withLot lot world =
     let
-        { lots, cars } =
-            world
-
         nextLotId =
-            nextId lots
+            nextId world.lots
 
         worldWithNewLot =
-            { world | lots = Dict.insert nextLotId lot lots }
+            { world | lots = Dict.insert nextLotId lot world.lots }
     in
     Lot.resident lot
         |> Maybe.map

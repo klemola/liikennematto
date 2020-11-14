@@ -127,7 +127,7 @@ nextDimensions dimensions ( screenWidth, screenHeight ) =
     -- landscape is the only supported orientation
     -- implicit square board
     let
-        ( paddingX, paddingY ) =
+        ( paddingX, _ ) =
             ( 60, 40 )
 
         initialSpace =

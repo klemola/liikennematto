@@ -91,7 +91,7 @@ anchorTo newLot ( aCell, _ ) =
 
 
 bottomLeftCorner : NewLot -> Anchor -> Position
-bottomLeftCorner { content, width, height } ( aCell, aDir ) =
+bottomLeftCorner { width, height } ( aCell, aDir ) =
     let
         origin =
             -- entry cell (inside lot)

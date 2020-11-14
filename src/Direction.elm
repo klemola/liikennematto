@@ -10,7 +10,6 @@ module Direction exposing
     , next
     , opposite
     , oppositeOrientation
-    , orientations
     , previous
     , toOrientation
     )
@@ -67,11 +66,6 @@ fromOrientation orientation =
 
         Horizontal ->
             horizontal
-
-
-orientations : List Orientation
-orientations =
-    [ Vertical, Horizontal ]
 
 
 opposite : Direction -> Direction

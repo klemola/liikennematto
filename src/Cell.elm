@@ -2,12 +2,9 @@ module Cell exposing
     ( Cell
     , bottomLeftCorner
     , boundingBox
-    , corner
     , cornerAndNeighbors
-    , diagonalNeighbors
     , fromPosition
     , next
-    , parallelNeighbors
     )
 
 import Collision exposing (BoundingBox)
@@ -34,20 +31,6 @@ next ( x, y ) dir =
 
         Left ->
             ( x - 1, y )
-
-
-diagonalNeighbors : Cell -> List Cell
-diagonalNeighbors position =
-    [ corner position TopLeft
-    , corner position TopRight
-    , corner position BottomLeft
-    , corner position BottomRight
-    ]
-
-
-parallelNeighbors : Cell -> List Cell
-parallelNeighbors position =
-    List.map (next position) Direction.all
 
 
 corner : Cell -> Corner -> Cell
