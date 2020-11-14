@@ -1,7 +1,6 @@
 module World exposing
     ( Cars
     , Lots
-    , SimulationSpeed(..)
     , SimulationState(..)
     , World
     , buildRoadAt
@@ -14,7 +13,6 @@ module World exposing
     , reset
     , roadCells
     , setCar
-    , simulationSpeedValues
     , tileAt
     , withBoard
     , withLot
@@ -63,20 +61,15 @@ type alias Lots =
     Dict Id Lot
 
 
-type SimulationSpeed
-    = Slow
-    | Medium
-    | Fast
-
-
 type SimulationState
-    = Simulation SimulationSpeed
+    = RunningAtNormalSpeed
+    | RunningAtSlowSpeed
     | Paused
 
 
 new : World
 new =
-    { simulationState = Simulation Medium
+    { simulationState = RunningAtNormalSpeed
     , screenSize = ( 0, 0 )
     , board = Dict.empty
     , cars = Dict.empty
@@ -320,20 +313,6 @@ carsAfterBoardChange { cell, nextLots, cars } =
                 else
                     car
             )
-
-
-simulationSpeedValues : SimulationSpeed -> ( Float, Float )
-simulationSpeedValues speed =
-    -- (Environment update, Traffic update)
-    case speed of
-        Slow ->
-            ( 1200, 500 )
-
-        Medium ->
-            ( 900, 300 )
-
-        Fast ->
-            ( 600, 100 )
 
 
 initialBoard : Dict ( Int, Int ) Tile

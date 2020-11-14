@@ -14,6 +14,11 @@ tileSize =
     80
 
 
+carSize : Float
+carSize =
+    24
+
+
 boardSizeScaled : Float
 boardSizeScaled =
     toFloat boardSize * tileSize

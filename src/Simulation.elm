@@ -1,5 +1,6 @@
 module Simulation exposing (Model, Msg(..), init, subscriptions, update)
 
+import Browser.Events as Events
 import Cell exposing (Cell)
 import Dict
 import Direction exposing (Direction(..), Orientation)
@@ -9,7 +10,13 @@ import Random
 import Random.List
 import Round
 import Task
-import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..), TrafficDirection(..))
+import Tile
+    exposing
+        ( IntersectionControl(..)
+        , RoadKind(..)
+        , Tile(..)
+        , TrafficDirection(..)
+        )
 import Time
 import TrafficLight
 import World
@@ -48,20 +55,28 @@ init =
 
 
 subscriptions : World -> Sub Msg
-subscriptions world =
-    case world.simulationState of
-        Simulation speed ->
-            let
-                ( slowTickSpeed, fastTickSpeed ) =
-                    World.simulationSpeedValues speed
-            in
-            Sub.batch
-                [ Time.every slowTickSpeed UpdateEnvironment
-                , Time.every fastTickSpeed UpdateTraffic
-                ]
+subscriptions { simulationState } =
+    if simulationState == Paused then
+        Sub.none
+
+    else
+        Sub.batch
+            [ Time.every (environmentUpdateInterval simulationState) UpdateEnvironment
+            , Events.onAnimationFrame UpdateTraffic
+            ]
+
+
+environmentUpdateInterval : SimulationState -> Float
+environmentUpdateInterval speed =
+    case speed of
+        RunningAtSlowSpeed ->
+            1400
+
+        RunningAtNormalSpeed ->
+            700
 
         Paused ->
-            Sub.none
+            0
 
 
 
