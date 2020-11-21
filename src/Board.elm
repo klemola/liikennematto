@@ -81,10 +81,10 @@ chooseTile : Board -> Cell -> Maybe Tile
 chooseTile board origin =
     let
         parallelTiles =
-            { north = exists (Cell.next origin Up) board
-            , west = exists (Cell.next origin Left) board
-            , east = exists (Cell.next origin Right) board
-            , south = exists (Cell.next origin Down) board
+            { north = exists (Cell.next Up origin) board
+            , west = exists (Cell.next Left origin) board
+            , east = exists (Cell.next Right origin) board
+            , south = exists (Cell.next Down origin) board
             }
     in
     parallelTiles

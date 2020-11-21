@@ -1,6 +1,7 @@
 module UI exposing (Model, Msg(..), initialModel, recalculateDimensions, update, view)
 
 import Car exposing (Car)
+import Cell
 import Config exposing (borderRadius, borderSize, colors, whitespace)
 import Dict
 import Direction exposing (Orientation(..))
@@ -37,6 +38,7 @@ import Html exposing (Html)
 import Position
 import Render
 import Task
+import Tile
 import World
     exposing
         ( SimulationState(..)
@@ -286,12 +288,12 @@ debug : World -> Model -> Element Msg
 debug world { dimensions } =
     column [ spacing whitespace.tight, width fill ]
         (Dict.values world.cars
-            |> List.map (carStateView dimensions.text)
+            |> List.map (carStateView dimensions.text world)
         )
 
 
-carStateView : Int -> Car -> Element msg
-carStateView fontSize car =
+carStateView : Int -> World -> Car -> Element msg
+carStateView fontSize world car =
     let
         showCarKind =
             image [ width (px fontSize) ]
@@ -315,6 +317,11 @@ carStateView fontSize car =
         [ showCarKind
         , column [ spacing whitespace.tight ]
             [ text (Position.toString car.position)
+            , text
+                (World.tileAt (Cell.fromPosition car.position) world
+                    |> Maybe.map Tile.toString
+                    |> Maybe.withDefault "None"
+                )
             , text (Car.statusDescription car.status)
             ]
         ]

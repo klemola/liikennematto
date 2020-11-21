@@ -11,6 +11,7 @@ module Lot exposing
     , boundingBox
     , entryCell
     , inBounds
+    , parkingSpot
     , resident
     )
 
@@ -95,7 +96,8 @@ bottomLeftCorner { width, height } ( aCell, aDir ) =
     let
         origin =
             -- entry cell (inside lot)
-            Cell.next aCell aDir
+            aCell
+                |> Cell.next aDir
                 |> Cell.bottomLeftCorner
     in
     case aDir of
@@ -116,13 +118,36 @@ bottomLeftCorner { width, height } ( aCell, aDir ) =
             )
 
 
+parkingSpot : Lot -> Position
+parkingSpot lot =
+    let
+        ( originX, originY ) =
+            Cell.bottomLeftCorner (entryCell lot)
+
+        ( shiftX, shiftY ) =
+            case lot.content.entryDirection of
+                Up ->
+                    ( tileSize / 2, tileSize )
+
+                Right ->
+                    ( tileSize, tileSize / 2 )
+
+                Down ->
+                    ( tileSize / 2, 0 )
+
+                Left ->
+                    ( 0, tileSize / 2 )
+    in
+    ( originX + shiftX, originY + shiftY )
+
+
 entryCell : Lot -> Cell
 entryCell lot =
     let
         ( aCell, aDir ) =
             lot.anchor
     in
-    Cell.next aCell aDir
+    Cell.next aDir aCell
 
 
 anchorCell : Lot -> Cell

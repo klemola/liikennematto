@@ -23,16 +23,13 @@ type alias Round =
     { world : World
     , activeCar : Car
     , otherCars : List Car
-    , currentTile : Maybe Tile
-    , nextPosition : Position
-    , nextTile : Maybe Tile
     , coinTossResult : Bool
     , randomDirections : List Direction
     }
 
 
 type Rule
-    = TurningRequired
+    = TurningRequired (List Direction)
     | AvoidCollision
     | WaitForTrafficLights
     | YieldAtIntersection
@@ -50,11 +47,6 @@ new world coinTossResult randomDirections activeCar otherCars =
     , otherCars = otherCars
     , coinTossResult = coinTossResult
     , randomDirections = randomDirections
-    , nextPosition = nextPosition
-    , currentTile =
-        World.tileAt (Cell.fromPosition activeCar.position) world
-    , nextTile =
-        World.tileAt (Cell.fromPosition nextPosition) world
     }
 
 
@@ -95,38 +87,15 @@ play round =
 
 
 applyRule : Round -> Rule -> Car
-applyRule { activeCar, world, currentTile, randomDirections } rule =
+applyRule { activeCar, world, randomDirections } rule =
     case rule of
-        TurningRequired ->
-            let
-                oppositeDirection =
-                    Direction.opposite activeCar.direction
+        TurningRequired validTurningDirections ->
+            case List.head validTurningDirections of
+                Just dir ->
+                    Car.turn dir activeCar
 
-                isLeftOrRightTurn dir =
-                    dir /= activeCar.direction && dir /= oppositeDirection
-
-                seeRoadAhead dir =
-                    case
-                        ( currentTile
-                        , World.tileAt
-                            (Cell.next (activeCar.position |> Cell.fromPosition) dir)
-                            world
-                        )
-                    of
-                        ( Just current, Just other ) ->
-                            Tile.connected dir current other
-
-                        _ ->
-                            False
-
-                direction =
-                    randomDirections
-                        |> List.filter isLeftOrRightTurn
-                        |> List.filter seeRoadAhead
-                        |> List.head
-                        |> Maybe.withDefault oppositeDirection
-            in
-            Car.turn direction activeCar
+                Nothing ->
+                    Car.turn (Direction.opposite activeCar.direction) activeCar
 
         AvoidCollision ->
             Car.skipRound activeCar
@@ -156,27 +125,26 @@ activeRulesByPriority round =
 
 
 checkTurningRules : Round -> Maybe Rule
-checkTurningRules { world, currentTile, nextTile, coinTossResult, activeCar } =
+checkTurningRules { world, coinTossResult, activeCar } =
     let
-        tileRelativeToCarPosition dir =
-            World.tileAt (Cell.next (Cell.fromPosition activeCar.position) dir) world
+        currentCell =
+            Cell.fromPosition activeCar.position
 
-        leftAndRightTilesFromCarDirection =
-            [ tileRelativeToCarPosition (Direction.previous activeCar.direction)
-            , tileRelativeToCarPosition (Direction.next activeCar.direction)
-            ]
-                |> List.filterMap identity
+        currentTile =
+            World.tileAt currentCell world
+
+        validTurningDirections =
+            []
 
         canContinue =
-            case ( currentTile, nextTile ) of
-                ( Just current, Just next ) ->
-                    Tile.connected activeCar.direction current next
-
-                _ ->
-                    Car.isParkedAtLot activeCar
+            World.hasConnectedRoad
+                { currentCell = currentCell
+                , direction = activeCar.direction
+                , world = world
+                }
 
         canTurn =
-            not (List.isEmpty leftAndRightTilesFromCarDirection)
+            not (List.isEmpty validTurningDirections)
 
         -- turn every now and then at an intersection
         -- cars in intersections can block the traffic, so this also works as a sort of a tie-breaker
@@ -191,35 +159,24 @@ checkTurningRules { world, currentTile, nextTile, coinTossResult, activeCar } =
                     False
     in
     if not canContinue || shouldTurnRandomly then
-        Just TurningRequired
+        Just (TurningRequired validTurningDirections)
 
     else
         Nothing
 
 
 checkCollisionRules : Round -> Maybe Rule
-checkCollisionRules { otherCars, nextPosition, nextTile, activeCar } =
+checkCollisionRules { otherCars, activeCar } =
     let
         oppositeDirection =
             Direction.opposite activeCar.direction
 
+        nextPosition =
+            Position.shiftBy 1 activeCar.position activeCar.direction
+
+        -- TODO use a bounding box with padding -> larger than the car
         willCollideWithAnother =
-            case nextTile of
-                -- car moving towards another in an opposite direction will not cause a collision
-                Just (TwoLaneRoad (Regular _) Both) ->
-                    List.any (\c -> c.position == nextPosition && c.direction /= oppositeDirection) otherCars
-
-                -- curves are really just another "Regular" piece of road, but the coordinates are not precise
-                -- enough to consider "lanes". Meanwhile we'll fall back on "Regular" road logic
-                Just (TwoLaneRoad (Curve _) Both) ->
-                    List.any (\c -> c.position == nextPosition && c.direction /= oppositeDirection) otherCars
-
-                -- intersections and deadends should be clear before entering (slightly naive logic)
-                Just _ ->
-                    List.any (\c -> c.position == nextPosition) otherCars
-
-                Nothing ->
-                    False
+            False
     in
     if willCollideWithAnother then
         Just AvoidCollision
@@ -229,8 +186,16 @@ checkCollisionRules { otherCars, nextPosition, nextTile, activeCar } =
 
 
 checkIntersectionRules : Round -> Maybe Rule
-checkIntersectionRules { otherCars, nextTile, nextPosition, activeCar } =
+checkIntersectionRules { otherCars, activeCar, world } =
     let
+        nextTile =
+            World.tileAt
+                (activeCar.position
+                    |> Cell.fromPosition
+                    |> Cell.next activeCar.direction
+                )
+                world
+
         priorityDirections =
             case nextTile of
                 Just tile ->
@@ -238,6 +203,9 @@ checkIntersectionRules { otherCars, nextTile, nextPosition, activeCar } =
 
                 Nothing ->
                     []
+
+        nextPosition =
+            Position.shiftBy 1 activeCar.position activeCar.direction
 
         priorityTraffic =
             priorityDirections

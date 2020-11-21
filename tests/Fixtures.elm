@@ -465,7 +465,8 @@ createTwoByTwoLot ( anchorCell, anchorDir ) =
     , width = twoByTwoNewLot.width
     , height = twoByTwoNewLot.height
     , position =
-        Cell.next anchorCell anchorDir
+        anchorCell
+            |> Cell.next anchorDir
             |> Cell.bottomLeftCorner
     , anchor = ( anchorCell, anchorDir )
     }

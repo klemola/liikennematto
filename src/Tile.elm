@@ -10,6 +10,7 @@ module Tile exposing
     , isRoad
     , priorityDirections
     , setIntersectionControl
+    , toString
     , toggleIntersectionControl
     , toggleTrafficDirection
     )
@@ -236,3 +237,16 @@ ids =
 fromId : Int -> Maybe Tile
 fromId fourBitId =
     Dict.get fourBitId ids
+
+
+toString : Tile -> String
+toString tile =
+    case tile of
+        TwoLaneRoad _ Both ->
+            "Two-way road"
+
+        TwoLaneRoad _ OneWay ->
+            "One-way road"
+
+        Intersection _ _ ->
+            "Intersection"

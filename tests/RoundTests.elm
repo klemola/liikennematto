@@ -1,6 +1,7 @@
 module RoundTests exposing (suite)
 
 import Car exposing (Status(..), TurnKind(..))
+import Direction exposing (Direction(..))
 import Expect
 import Fixtures exposing (..)
 import Round
@@ -18,9 +19,9 @@ suite =
     describe "Round"
         [ describe "Turning rules"
             [ test "allow turning when necessary"
-                (\_ -> Expect.equal (checkTurningRules curveSetup) (Just TurningRequired))
+                (\_ -> Expect.equal (checkTurningRules curveSetup) (Just (TurningRequired [ Down ])))
             , test "allow turning when car should turn randomly"
-                (\_ -> Expect.equal (checkTurningRules randomTurnSetup) (Just TurningRequired))
+                (\_ -> Expect.equal (checkTurningRules randomTurnSetup) (Just (TurningRequired [ Down ])))
             , test "disallow turning if it's not possible"
                 (\_ -> Expect.equal (checkTurningRules connectedRoadsSetup) Nothing)
             ]
