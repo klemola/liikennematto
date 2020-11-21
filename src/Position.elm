@@ -42,7 +42,8 @@ toString position =
     let
         format n =
             n
-                |> String.fromFloat
+                |> truncate
+                |> String.fromInt
                 |> String.padLeft 2 ' '
     in
     String.join

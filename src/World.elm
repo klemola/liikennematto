@@ -5,6 +5,7 @@ module World exposing
     , World
     , buildRoadAt
     , canBuildRoadAt
+    , hasConnectedRoad
     , hasLot
     , isEmptyArea
     , new
@@ -25,6 +26,7 @@ import Board exposing (Board)
 import Car exposing (Car)
 import Cell exposing (Cell)
 import Collision
+import Config exposing (tileSize)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
@@ -123,7 +125,7 @@ withLot lot world =
                 worldWithNewLot
                     |> withCar
                         { kind = carKind
-                        , position = Cell.bottomLeftCorner (Lot.entryCell lot)
+                        , position = Lot.parkingSpot lot
                         , direction = Direction.next lot.content.entryDirection
                         , homeLotId = Just nextLotId
                         , status = Car.ParkedAtLot
@@ -217,6 +219,23 @@ roadCells { board } =
 hasLot : Cell -> World -> Bool
 hasLot cell { lots } =
     List.any (Lot.inBounds cell) (Dict.values lots)
+
+
+hasConnectedRoad : { currentCell : Cell, direction : Direction, world : World } -> Bool
+hasConnectedRoad { currentCell, direction, world } =
+    case
+        ( tileAt currentCell world
+        , tileAt (Cell.next direction currentCell) world
+        )
+    of
+        ( Just current, Just next ) ->
+            Tile.connected direction current next
+
+        ( Nothing, Just next ) ->
+            hasLot currentCell world
+
+        _ ->
+            False
 
 
 canBuildRoadAt : Cell -> World -> Bool
@@ -315,7 +334,7 @@ carsAfterBoardChange { cell, nextLots, cars } =
             )
 
 
-initialBoard : Dict ( Int, Int ) Tile
+initialBoard : Board
 initialBoard =
     Dict.fromList
         [ ( ( 2, 5 ), TwoLaneRoad (Deadend Left) Both )

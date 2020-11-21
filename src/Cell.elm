@@ -17,8 +17,8 @@ type alias Cell =
     ( Int, Int )
 
 
-next : Cell -> Direction -> Cell
-next ( x, y ) dir =
+next : Direction -> Cell -> Cell
+next dir ( x, y ) =
     case dir of
         Up ->
             ( x, y - 1 )
@@ -33,8 +33,8 @@ next ( x, y ) dir =
             ( x - 1, y )
 
 
-corner : Cell -> Corner -> Cell
-corner ( x, y ) c =
+corner : Corner -> Cell -> Cell
+corner c ( x, y ) =
     case c of
         TopLeft ->
             ( x - 1, y - 1 )
@@ -58,16 +58,16 @@ cornerAndNeighbors : Corner -> Cell -> List Cell
 cornerAndNeighbors c position =
     case c of
         TopLeft ->
-            [ next position Left, corner position TopLeft, next position Up ]
+            [ next Left position, corner TopLeft position, next Up position ]
 
         TopRight ->
-            [ next position Up, corner position TopRight, next position Right ]
+            [ next Up position, corner TopRight position, next Right position ]
 
         BottomLeft ->
-            [ next position Down, corner position BottomLeft, next position Left ]
+            [ next Down position, corner BottomLeft position, next Left position ]
 
         BottomRight ->
-            [ next position Right, corner position BottomRight, next position Down ]
+            [ next Right position, corner BottomRight position, next Down position ]
 
 
 bottomLeftCorner : Cell -> Position

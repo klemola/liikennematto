@@ -96,15 +96,10 @@ isStoppedOrWaiting car =
 
 move : Car -> Car
 move car =
-    if isParkedAtLot car then
-        -- implicitly move car to the street from the driveway
-        { car | position = Position.shiftBy tileSize car.position (Direction.previous car.direction), status = Moving }
-
-    else
-        { car
-            | position = Position.shiftBy 1 car.position car.direction
-            , status = Moving
-        }
+    { car
+        | position = Position.shiftBy 1 car.position car.direction
+        , status = Moving
+    }
 
 
 skipRound : Car -> Car
