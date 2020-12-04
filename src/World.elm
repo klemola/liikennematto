@@ -1,6 +1,8 @@
 module World exposing
     ( Cars
     , Lots
+    , RoadConnectionKind(..)
+    , RoadConnections
     , SimulationState(..)
     , World
     , buildRoadAt
@@ -26,12 +28,15 @@ import Board exposing (Board)
 import Car exposing (Car)
 import Cell exposing (Cell)
 import Collision
-import Config exposing (tileSize)
+import Config exposing (innerLaneOffset, outerLaneOffset, tileSize)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
+import Graph exposing (Edge, Graph, Node)
+import List
 import Lot exposing (Lot)
 import Position exposing (Position)
+import Set exposing (Set)
 import Tile
     exposing
         ( IntersectionControl(..)
@@ -46,6 +51,7 @@ type alias World =
     { simulationState : SimulationState
     , screenSize : ( Int, Int )
     , board : Board
+    , roadConnections : RoadConnections
     , cars : Cars
     , lots : Lots
     }
@@ -53,6 +59,28 @@ type alias World =
 
 type alias Id =
     Int
+
+
+type alias RoadConnections =
+    Graph RoadConnection Lane
+
+
+type alias RoadConnection =
+    { position : Position
+    , direction : Direction
+    , kind : RoadConnectionKind
+    }
+
+
+type RoadConnectionKind
+    = LaneStart
+    | LaneEnd
+    | DeadendEntry
+    | DeadendExit
+
+
+type alias Lane =
+    ()
 
 
 type alias Cars =
@@ -74,6 +102,7 @@ new =
     { simulationState = RunningAtNormalSpeed
     , screenSize = ( 0, 0 )
     , board = Dict.empty
+    , roadConnections = Graph.empty
     , cars = Dict.empty
     , lots = Dict.empty
     }
@@ -81,7 +110,9 @@ new =
 
 newWithInitialBoard : World
 newWithInitialBoard =
-    new |> withBoard initialBoard
+    new
+        |> withBoard initialBoard
+        |> withRoadConnections
 
 
 
@@ -144,6 +175,11 @@ withBoard board world =
     { world | board = board }
 
 
+withRoadConnections : World -> World
+withRoadConnections world =
+    { world | roadConnections = createRoadConnections world.board }
+
+
 withTileAt : Cell -> Tile -> World -> World
 withTileAt cell tile world =
     { world
@@ -192,6 +228,7 @@ reset world =
         | cars = new.cars
         , lots = new.lots
         , board = new.board
+        , roadConnections = new.roadConnections
     }
 
 
@@ -281,6 +318,179 @@ isEmptyArea { origin, width, height } world =
 -- Utility
 
 
+createRoadConnections : Board -> RoadConnections
+createRoadConnections board =
+    let
+        tilePriority ( _, tile ) =
+            case tile of
+                TwoLaneRoad (Deadend _) _ ->
+                    0
+
+                TwoLaneRoad (Curve _) _ ->
+                    1
+
+                _ ->
+                    2
+
+        nodes =
+            createConnectionNodes
+                { board = board
+                , nodes = []
+                , visitedPositions = Set.empty
+                , remainingTiles =
+                    Dict.toList board
+                        |> List.sortBy tilePriority
+                }
+
+        edges =
+            createLanes nodes
+
+        sizes =
+            Debug.log "# nodes /edges " ( List.length nodes, List.length edges )
+    in
+    Graph.fromNodesAndEdges nodes edges
+
+
+createConnectionNodes :
+    { board : Board
+    , nodes : List (Node RoadConnection)
+    , visitedPositions : Set Position
+    , remainingTiles : List ( Cell, Tile )
+    }
+    -> List (Node RoadConnection)
+createConnectionNodes { nodes, board, remainingTiles, visitedPositions } =
+    case remainingTiles of
+        [] ->
+            nodes
+
+        ( cell, tile ) :: otherTiles ->
+            let
+                tileNodes =
+                    toNodes (Cell.bottomLeftCorner cell) tile
+
+                maybeCreateNode nodeSpec currentNodes =
+                    if Set.member nodeSpec.position visitedPositions then
+                        currentNodes
+
+                    else
+                        Node (List.length currentNodes) nodeSpec :: currentNodes
+            in
+            createConnectionNodes
+                { board = board
+                , nodes =
+                    tileNodes
+                        |> List.foldl maybeCreateNode nodes
+                , visitedPositions =
+                    tileNodes
+                        |> List.map .position
+                        |> Set.fromList
+                        |> Set.union visitedPositions
+                , remainingTiles = otherTiles
+                }
+
+
+toNodes : Position -> Tile -> List RoadConnection
+toNodes ( originX, originY ) tile =
+    let
+        mapDirToRoadConnections startKind endKind dir =
+            case dir of
+                Up ->
+                    [ { position = ( originX + innerLaneOffset, originY + tileSize ), direction = Down, kind = endKind }
+                    , { position = ( originX + outerLaneOffset, originY + tileSize ), direction = Up, kind = startKind }
+                    ]
+
+                Right ->
+                    [ { position = ( originX + tileSize, originY + innerLaneOffset ), direction = Right, kind = startKind }
+                    , { position = ( originX + tileSize, originY + outerLaneOffset ), direction = Left, kind = endKind }
+                    ]
+
+                Down ->
+                    [ { position = ( originX + innerLaneOffset, originY ), direction = Down, kind = startKind }
+                    , { position = ( originX + outerLaneOffset, originY ), direction = Up, kind = endKind }
+                    ]
+
+                Left ->
+                    [ { position = ( originX, originY + innerLaneOffset ), direction = Right, kind = endKind }
+                    , { position = ( originX, originY + outerLaneOffset ), direction = Left, kind = startKind }
+                    ]
+    in
+    case tile of
+        TwoLaneRoad (Regular _) _ ->
+            []
+
+        TwoLaneRoad (Deadend dir) _ ->
+            mapDirToRoadConnections DeadendExit DeadendEntry (Direction.opposite dir)
+
+        _ ->
+            Tile.potentialConnections tile
+                |> List.concatMap (mapDirToRoadConnections LaneStart LaneEnd)
+
+
+createLanes : List (Node RoadConnection) -> List (Edge ())
+createLanes nodes =
+    nodes
+        |> List.filterMap (toEdges nodes)
+
+
+toEdges : List (Node RoadConnection) -> Node RoadConnection -> Maybe (Edge ())
+toEdges nodes current =
+    -- TODO connect intersection, curve and deadend nodes
+    let
+        startsLane nodeKind =
+            nodeKind == LaneStart
+
+        terminatesLane nodeKind =
+            nodeKind == LaneEnd || nodeKind == DeadendEntry
+
+        matchOtherNode other =
+            let
+                ( aDir, bDir ) =
+                    ( current.label.direction, other.label.direction )
+
+                ( ( aX, aY ), ( bX, bY ) ) =
+                    ( current.label.position, other.label.position )
+            in
+            (aDir == bDir)
+                && startsLane current.label.kind
+                && terminatesLane other.label.kind
+                && (case aDir of
+                        Up ->
+                            aY < bY && aX == bX
+
+                        Right ->
+                            aX < bX && aY == bY
+
+                        Down ->
+                            aY > bY && aX == bX
+
+                        Left ->
+                            aX > bX && aY == bY
+                   )
+
+        matchSortProperty match =
+            case current.label.direction of
+                Up ->
+                    Tuple.second match.label.position
+
+                Right ->
+                    Tuple.first match.label.position
+
+                Down ->
+                    0 - Tuple.second match.label.position
+
+                Left ->
+                    0 - Tuple.first match.label.position
+    in
+    nodes
+        |> List.filter matchOtherNode
+        |> List.sortBy matchSortProperty
+        |> List.head
+        |> Maybe.map
+            (\match ->
+                Edge current.id match.id ()
+            )
+
+
 worldAfterBoardChange : { cell : Cell, nextBoard : Board, world : World } -> World
 worldAfterBoardChange { cell, nextBoard, world } =
     let
@@ -300,6 +510,7 @@ worldAfterBoardChange { cell, nextBoard, world } =
     in
     { world
         | board = nextBoard
+        , roadConnections = createRoadConnections nextBoard
         , cars = nextCars
         , lots = nextLots
     }

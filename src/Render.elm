@@ -12,6 +12,8 @@ import Collage
         , solid
         , square
         , styled
+        , thin
+        , traced
         , uniform
         )
 import Collage.Layout as Layout
@@ -20,6 +22,7 @@ import Color
 import Config exposing (boardSize, carSize, tileSize)
 import Dict
 import Direction exposing (Direction(..), Orientation(..))
+import Graph
 import Graphics
 import Html exposing (Html)
 import Lot exposing (Lot)
@@ -32,15 +35,16 @@ import Tile
         , TrafficDirection(..)
         )
 import TrafficLight exposing (TrafficLight, TrafficLightKind(..))
-import World exposing (Lots, World)
+import World exposing (Lots, RoadConnectionKind(..), RoadConnections, World)
 
 
 view : World -> Html msg
-view { board, cars, lots } =
+view { board, cars, lots, roadConnections } =
     renderBoard board
         |> Layout.at Layout.bottomLeft
             (renderLots (Dict.values lots))
         |> Layout.at Layout.bottomLeft (renderCars (Dict.values cars) lots)
+        |> Layout.at Layout.bottomLeft (renderRoadConnections roadConnections)
         |> svg
 
 
@@ -62,7 +66,7 @@ renderBoard board =
         drawTile x y =
             board
                 |> Dict.get ( x, y )
-                |> Maybe.map (renderTile >> Layout.showEnvelope)
+                |> Maybe.map renderTile
                 |> Maybe.withDefault emptyTile
     in
     Graphics.grid boardSize drawTile
@@ -275,3 +279,59 @@ sidewalkMask lot =
     Collage.rectangle maskWidth maskHeight
         |> styled ( uniform renderColors.sidewalk, invisible )
         |> shift entryPointPosition
+
+
+renderRoadConnections : RoadConnections -> Collage msg
+renderRoadConnections roadConnections =
+    let
+        nodeColor kind =
+            case kind of
+                LaneStart ->
+                    Color.white
+
+                LaneEnd ->
+                    Color.lightBlue
+
+                DeadendEntry ->
+                    Color.lightPurple
+
+                DeadendExit ->
+                    Color.darkGray
+
+        nodes =
+            roadConnections
+                |> Graph.nodes
+                |> List.map
+                    (\node ->
+                        Collage.circle 3
+                            |> styled ( uniform (nodeColor node.label.kind), invisible )
+                            |> shift node.label.position
+                    )
+                |> Collage.group
+
+        edges =
+            roadConnections
+                |> Graph.edges
+                |> List.filterMap
+                    (\edge ->
+                        let
+                            fromNode =
+                                Graph.get edge.from roadConnections
+
+                            toNode =
+                                Graph.get edge.to roadConnections
+                        in
+                        Maybe.map2
+                            (\fromNodeCtx toNodeCtx ->
+                                Collage.segment fromNodeCtx.node.label.position toNodeCtx.node.label.position
+                                    |> traced (solid thin (uniform Color.orange))
+                            )
+                            fromNode
+                            toNode
+                    )
+                |> Collage.group
+    in
+    Collage.group
+        [ nodes
+        , edges
+        ]

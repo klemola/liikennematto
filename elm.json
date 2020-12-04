@@ -1,6 +1,8 @@
 {
     "type": "application",
-    "source-directories": ["src"],
+    "source-directories": [
+        "src"
+    ],
     "elm-version": "0.19.1",
     "dependencies": {
         "direct": {
@@ -12,16 +14,19 @@
             "elm/random": "1.0.0",
             "elm/time": "1.0.0",
             "elm-community/dict-extra": "2.4.0",
+            "elm-community/graph": "6.0.0",
             "elm-community/maybe-extra": "5.2.0",
             "elm-community/random-extra": "3.1.0",
             "mdgriffith/elm-ui": "1.1.7",
             "timjs/elm-collage": "2.0.2"
         },
         "indirect": {
+            "avh4/elm-fifo": "1.0.4",
             "elm/svg": "1.0.1",
             "elm/url": "1.0.0",
             "elm/virtual-dom": "1.0.2",
             "elm-community/basics-extra": "4.0.0",
+            "elm-community/intdict": "3.0.0",
             "owanturist/elm-union-find": "1.0.0"
         }
     },

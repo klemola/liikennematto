@@ -8,6 +8,7 @@ module Tile exposing
     , defaultIntersectionControl
     , fromId
     , isRoad
+    , potentialConnections
     , priorityDirections
     , setIntersectionControl
     , toString
@@ -15,8 +16,10 @@ module Tile exposing
     , toggleTrafficDirection
     )
 
+import Config exposing (tileSize)
 import Dict exposing (Dict)
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
+import Position exposing (Position)
 import TrafficLight exposing (TrafficLights)
 
 
