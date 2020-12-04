@@ -14,6 +14,16 @@ tileSize =
     80
 
 
+innerLaneOffset : Float
+innerLaneOffset =
+    26
+
+
+outerLaneOffset : Float
+outerLaneOffset =
+    52
+
+
 carSize : Float
 carSize =
     24
