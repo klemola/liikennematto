@@ -27,6 +27,7 @@ import Graphics
 import Html exposing (Html)
 import Lot exposing (Lot)
 import Maybe.Extra as Maybe
+import RoadNetwork exposing (ConnectionKind(..), RoadNetwork)
 import Tile
     exposing
         ( IntersectionControl(..)
@@ -35,16 +36,16 @@ import Tile
         , TrafficDirection(..)
         )
 import TrafficLight exposing (TrafficLight, TrafficLightKind(..))
-import World exposing (Lots, RoadConnectionKind(..), RoadConnections, World)
+import World exposing (Lots, World)
 
 
 view : World -> Html msg
-view { board, cars, lots, roadConnections } =
+view { board, cars, lots, roadNetwork } =
     renderBoard board
         |> Layout.at Layout.bottomLeft
             (renderLots (Dict.values lots))
         |> Layout.at Layout.bottomLeft (renderCars (Dict.values cars) lots)
-        |> Layout.at Layout.bottomLeft (renderRoadConnections roadConnections)
+        |> Layout.at Layout.bottomLeft (renderRoadNetwork roadNetwork)
         |> svg
 
 
@@ -281,8 +282,8 @@ sidewalkMask lot =
         |> shift entryPointPosition
 
 
-renderRoadConnections : RoadConnections -> Collage msg
-renderRoadConnections roadConnections =
+renderRoadNetwork : RoadNetwork -> Collage msg
+renderRoadNetwork roadNetwork =
     let
         nodeColor kind =
             case kind of
@@ -302,7 +303,7 @@ renderRoadConnections roadConnections =
                     Color.lightYellow
 
         nodes =
-            roadConnections
+            roadNetwork
                 |> Graph.nodes
                 |> List.map
                     (\node ->
@@ -313,16 +314,16 @@ renderRoadConnections roadConnections =
                 |> Collage.group
 
         edges =
-            roadConnections
+            roadNetwork
                 |> Graph.edges
                 |> List.filterMap
                     (\edge ->
                         let
                             fromNode =
-                                Graph.get edge.from roadConnections
+                                Graph.get edge.from roadNetwork
 
                             toNode =
-                                Graph.get edge.to roadConnections
+                                Graph.get edge.to roadNetwork
                         in
                         Maybe.map2
                             (\fromNodeCtx toNodeCtx ->
