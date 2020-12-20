@@ -1,8 +1,6 @@
 module World exposing
     ( Cars
     , Lots
-    , RoadConnectionKind(..)
-    , RoadConnections
     , SimulationState(..)
     , World
     , buildRoadAt
@@ -27,17 +25,14 @@ module World exposing
 import Board exposing (Board)
 import Car exposing (Car)
 import Cell exposing (Cell)
-import Collision exposing (BoundingBox)
-import Config exposing (innerLaneOffset, outerLaneOffset, tileSize)
+import Collision
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
-import Graph exposing (Edge, Graph, Node)
 import List
 import Lot exposing (Lot)
-import Maybe.Extra as Maybe
 import Position exposing (Position)
-import Set exposing (Set)
+import RoadNetwork exposing (RoadNetwork)
 import Tile
     exposing
         ( IntersectionControl(..)
@@ -52,7 +47,7 @@ type alias World =
     { simulationState : SimulationState
     , screenSize : ( Int, Int )
     , board : Board
-    , roadConnections : RoadConnections
+    , roadNetwork : RoadNetwork
     , cars : Cars
     , lots : Lots
     }
@@ -60,30 +55,6 @@ type alias World =
 
 type alias Id =
     Int
-
-
-type alias RoadConnections =
-    Graph RoadConnection Lane
-
-
-type alias RoadConnection =
-    { position : Position
-    , direction : Direction
-    , cell : Cell
-    , kind : RoadConnectionKind
-    }
-
-
-type RoadConnectionKind
-    = LaneStart
-    | LaneEnd
-    | DeadendEntry
-    | DeadendExit
-    | Stopgap
-
-
-type alias Lane =
-    ()
 
 
 type alias Cars =
@@ -105,7 +76,7 @@ new =
     { simulationState = RunningAtNormalSpeed
     , screenSize = ( 0, 0 )
     , board = Dict.empty
-    , roadConnections = Graph.empty
+    , roadNetwork = RoadNetwork.new
     , cars = Dict.empty
     , lots = Dict.empty
     }
@@ -180,7 +151,7 @@ withBoard board world =
 
 withRoadConnections : World -> World
 withRoadConnections world =
-    { world | roadConnections = createRoadConnections world.board }
+    { world | roadNetwork = RoadNetwork.fromBoard world.board }
 
 
 withTileAt : Cell -> Tile -> World -> World
@@ -231,7 +202,7 @@ reset world =
         | cars = new.cars
         , lots = new.lots
         , board = new.board
-        , roadConnections = new.roadConnections
+        , roadNetwork = new.roadNetwork
     }
 
 
@@ -321,355 +292,6 @@ isEmptyArea { origin, width, height } world =
 -- Utility
 
 
-createRoadConnections : Board -> RoadConnections
-createRoadConnections board =
-    let
-        tilePriority ( _, tile ) =
-            case tile of
-                TwoLaneRoad (Deadend _) _ ->
-                    0
-
-                Intersection _ _ ->
-                    1
-
-                _ ->
-                    2
-
-        nodes =
-            createConnectionNodes
-                { board = board
-                , nodes = Dict.empty
-                , remainingTiles =
-                    Dict.toList board
-                        |> List.sortBy tilePriority
-                }
-                |> Dict.values
-
-        edges =
-            createLanes nodes
-
-        sizes =
-            Debug.log "# nodes /edges " ( List.length nodes, List.length edges )
-    in
-    Graph.fromNodesAndEdges nodes edges
-
-
-createConnectionNodes :
-    { board : Board
-    , nodes : Dict Position (Node RoadConnection)
-    , remainingTiles : List ( Cell, Tile )
-    }
-    -> Dict Position (Node RoadConnection)
-createConnectionNodes { nodes, board, remainingTiles } =
-    case remainingTiles of
-        [] ->
-            nodes
-
-        ( cell, tile ) :: otherTiles ->
-            let
-                tileNodes =
-                    toNodes board cell tile
-
-                maybeCreateNode nodeSpec currentNodes =
-                    if Dict.member nodeSpec.position currentNodes then
-                        currentNodes
-
-                    else
-                        currentNodes
-                            |> Dict.insert nodeSpec.position (Node (Dict.size currentNodes) nodeSpec)
-            in
-            createConnectionNodes
-                { board = board
-                , nodes =
-                    tileNodes
-                        |> List.foldl maybeCreateNode nodes
-                , remainingTiles = otherTiles
-                }
-
-
-toNodes : Board -> Cell -> Tile -> List RoadConnection
-toNodes board cell tile =
-    let
-        ( originX, originY ) =
-            Cell.bottomLeftCorner cell
-
-        checkStopgap base dir =
-            if
-                board
-                    |> Dict.get (Cell.next dir cell)
-                    |> Maybe.unwrap False (hasStopgapInbetween tile)
-            then
-                Stopgap
-
-            else
-                base
-
-        mapDirToRoadConnections startKind endKind dir =
-            case dir of
-                Up ->
-                    [ { position = ( originX + innerLaneOffset, originY + tileSize )
-                      , direction = Down
-                      , cell = cell
-                      , kind = checkStopgap endKind dir
-                      }
-                    , { position = ( originX + outerLaneOffset, originY + tileSize )
-                      , direction = Up
-                      , cell = cell
-                      , kind = checkStopgap startKind dir
-                      }
-                    ]
-
-                Right ->
-                    [ { position = ( originX + tileSize, originY + innerLaneOffset )
-                      , direction = Right
-                      , cell = cell
-                      , kind = checkStopgap startKind dir
-                      }
-                    , { position = ( originX + tileSize, originY + outerLaneOffset )
-                      , direction = Left
-                      , cell = cell
-                      , kind = checkStopgap endKind dir
-                      }
-                    ]
-
-                Down ->
-                    [ { position = ( originX + innerLaneOffset, originY )
-                      , direction = Down
-                      , cell = cell
-                      , kind = checkStopgap startKind dir
-                      }
-                    , { position = ( originX + outerLaneOffset, originY )
-                      , direction = Up
-                      , cell = cell
-                      , kind = checkStopgap endKind dir
-                      }
-                    ]
-
-                Left ->
-                    [ { position = ( originX, originY + innerLaneOffset )
-                      , direction = Right
-                      , cell = cell
-                      , kind = checkStopgap endKind dir
-                      }
-                    , { position = ( originX, originY + outerLaneOffset )
-                      , direction = Left
-                      , cell = cell
-                      , kind = checkStopgap startKind dir
-                      }
-                    ]
-    in
-    case tile of
-        TwoLaneRoad (Regular _) _ ->
-            []
-
-        TwoLaneRoad (Deadend dir) _ ->
-            mapDirToRoadConnections DeadendExit DeadendEntry (Direction.opposite dir)
-
-        _ ->
-            Tile.potentialConnections tile
-                |> List.concatMap (mapDirToRoadConnections LaneStart LaneEnd)
-
-
-isCurveOrIntersection : Tile -> Bool
-isCurveOrIntersection tile =
-    case tile of
-        TwoLaneRoad (Curve _) _ ->
-            True
-
-        Intersection _ _ ->
-            True
-
-        _ ->
-            False
-
-
-hasStopgapInbetween : Tile -> Tile -> Bool
-hasStopgapInbetween tileA tileB =
-    isCurveOrIntersection tileA && isCurveOrIntersection tileB
-
-
-createLanes : List (Node RoadConnection) -> List (Edge ())
-createLanes nodes =
-    nodes
-        |> List.concatMap (toEdges nodes)
-
-
-toEdges : List (Node RoadConnection) -> Node RoadConnection -> List (Edge ())
-toEdges nodes current =
-    let
-        hasSameDirection other =
-            getDirection current == getDirection other
-
-        isFacing other =
-            let
-                ( ( aX, aY ), ( bX, bY ) ) =
-                    ( getPosition current, getPosition other )
-            in
-            case getDirection current of
-                Up ->
-                    aY < bY && aX == bX
-
-                Right ->
-                    aX < bX && aY == bY
-
-                Down ->
-                    aY > bY && aX == bX
-
-                Left ->
-                    aX > bX && aY == bY
-
-        isPotentialConnection other =
-            hasSameDirection other
-                && isFacing other
-
-        closestTo match =
-            case getDirection current of
-                Up ->
-                    Tuple.second match.label.position
-
-                Right ->
-                    Tuple.first match.label.position
-
-                Down ->
-                    0 - Tuple.second match.label.position
-
-                Left ->
-                    0 - Tuple.first match.label.position
-    in
-    case current.label.kind of
-        LaneStart ->
-            nodes
-                |> List.filter isPotentialConnection
-                |> List.sortBy closestTo
-                |> List.head
-                |> Maybe.andThen
-                    (\other ->
-                        if other.label.kind == LaneEnd then
-                            Just other
-
-                        else
-                            Nothing
-                    )
-                |> Maybe.map (connect current >> List.singleton)
-                |> Maybe.withDefault []
-
-        _ ->
-            if startsEdge current then
-                connectNodesWithinCell { nodes = nodes, current = current }
-
-            else
-                []
-
-
-connectNodesWithinCell : { nodes : List (Node RoadConnection), current : Node RoadConnection } -> List (Edge ())
-connectNodesWithinCell { nodes, current } =
-    nodes
-        |> List.filterMap
-            (\other ->
-                if endsEdge other && connectsWithinCell current other then
-                    Just (connect current other)
-
-                else
-                    Nothing
-            )
-
-
-startsEdge : Node RoadConnection -> Bool
-startsEdge node =
-    node.label.kind == LaneEnd || node.label.kind == Stopgap
-
-
-endsEdge : Node RoadConnection -> Bool
-endsEdge node =
-    node.label.kind == LaneStart || node.label.kind == Stopgap
-
-
-getPosition : Node RoadConnection -> Position
-getPosition node =
-    node.label.position
-
-
-getDirection : Node RoadConnection -> Direction
-getDirection node =
-    node.label.direction
-
-
-connectsWithinCell : Node RoadConnection -> Node RoadConnection -> Bool
-connectsWithinCell current other =
-    let
-        ( fromDir, toDir ) =
-            ( getDirection current, getDirection other )
-
-        range =
-            tileSize / 2
-
-        otherBB =
-            nodeArea other
-
-        leftBB =
-            nodeConnectionRangeToLeft current (range + innerLaneOffset)
-
-        rightBB =
-            nodeConnectionRangeToRight current range
-
-        canContinueLeft =
-            (toDir == fromDir || toDir == Direction.previous fromDir) && Collision.aabb leftBB otherBB
-
-        canContinueRight =
-            (toDir == fromDir || toDir == Direction.next fromDir) && Collision.aabb rightBB otherBB
-    in
-    canContinueLeft || canContinueRight
-
-
-nodeConnectionRangeToLeft : Node RoadConnection -> Float -> BoundingBox
-nodeConnectionRangeToLeft node range =
-    let
-        bb =
-            nodeConnectionRangeToRight node range
-
-        leftDir =
-            Direction.previous (getDirection node)
-
-        ( shiftedX, shiftedY ) =
-            Position.shiftBy range ( bb.x, bb.y ) leftDir
-    in
-    { bb | x = shiftedX, y = shiftedY }
-
-
-nodeConnectionRangeToRight : Node RoadConnection -> Float -> BoundingBox
-nodeConnectionRangeToRight node range =
-    let
-        ( nodeX, nodeY ) =
-            getPosition node
-    in
-    case getDirection node of
-        Up ->
-            BoundingBox nodeX nodeY range tileSize
-
-        Right ->
-            BoundingBox nodeX (nodeY - range) tileSize range
-
-        Down ->
-            BoundingBox (nodeX - range) (nodeY - tileSize) range tileSize
-
-        Left ->
-            BoundingBox (nodeX - tileSize) nodeY tileSize range
-
-
-nodeArea : Node RoadConnection -> BoundingBox
-nodeArea node =
-    let
-        ( x, y ) =
-            getPosition node
-    in
-    BoundingBox (x - 5) (y - 5) 10 10
-
-
-connect : Node RoadConnection -> Node RoadConnection -> Edge ()
-connect current match =
-    Edge current.id match.id ()
-
-
 worldAfterBoardChange : { cell : Cell, nextBoard : Board, world : World } -> World
 worldAfterBoardChange { cell, nextBoard, world } =
     let
@@ -689,7 +311,7 @@ worldAfterBoardChange { cell, nextBoard, world } =
     in
     { world
         | board = nextBoard
-        , roadConnections = createRoadConnections nextBoard
+        , roadNetwork = RoadNetwork.fromBoard nextBoard
         , cars = nextCars
         , lots = nextLots
     }
