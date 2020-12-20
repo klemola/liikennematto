@@ -298,6 +298,9 @@ renderRoadConnections roadConnections =
                 DeadendExit ->
                     Color.darkGray
 
+                Stopgap ->
+                    Color.lightYellow
+
         nodes =
             roadConnections
                 |> Graph.nodes
