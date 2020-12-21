@@ -21,7 +21,7 @@ innerLaneOffset =
 
 outerLaneOffset : Float
 outerLaneOffset =
-    52
+    54
 
 
 carSize : Float

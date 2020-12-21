@@ -21,8 +21,8 @@ filterBy thingsWithPosition position =
     List.filter (\el -> el.position == position) thingsWithPosition
 
 
-shiftBy : Float -> Position -> Direction -> Position
-shiftBy distance ( x, y ) dir =
+shiftBy : Float -> Direction -> Position -> Position
+shiftBy distance dir ( x, y ) =
     case dir of
         Up ->
             ( x, y + distance )

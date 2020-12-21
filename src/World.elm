@@ -29,7 +29,6 @@ import Collision
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
-import List
 import Lot exposing (Lot)
 import Position exposing (Position)
 import RoadNetwork exposing (RoadNetwork)
