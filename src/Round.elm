@@ -40,7 +40,7 @@ new : World -> Bool -> List Direction -> Car -> List Car -> Round
 new world coinTossResult randomDirections activeCar otherCars =
     let
         nextPosition =
-            Position.shiftBy tileSize activeCar.position activeCar.direction
+            Position.shiftBy tileSize activeCar.direction activeCar.position
     in
     { world = world
     , activeCar = activeCar
@@ -172,7 +172,7 @@ checkCollisionRules { otherCars, activeCar } =
             Direction.opposite activeCar.direction
 
         nextPosition =
-            Position.shiftBy 1 activeCar.position activeCar.direction
+            Position.shiftBy 1 activeCar.direction activeCar.position
 
         -- TODO use a bounding box with padding -> larger than the car
         willCollideWithAnother =
@@ -205,14 +205,14 @@ checkIntersectionRules { otherCars, activeCar, world } =
                     []
 
         nextPosition =
-            Position.shiftBy 1 activeCar.position activeCar.direction
+            Position.shiftBy 1 activeCar.direction activeCar.position
 
         priorityTraffic =
             priorityDirections
                 -- get tile coordinates relative to the intersection at "nextPosition"
-                |> List.map (Position.shiftBy tileSize nextPosition)
+                |> List.map (\dir -> Position.shiftBy tileSize dir nextPosition)
                 -- add the intersection
-                |> List.append [ Position.shiftBy tileSize activeCar.position activeCar.direction ]
+                |> List.append [ Position.shiftBy tileSize activeCar.direction activeCar.position ]
                 |> List.concatMap (Position.filterBy otherCars)
 
         hasPriority =

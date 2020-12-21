@@ -118,37 +118,52 @@ toConnections board cell tile =
             []
 
         TwoLaneRoad (Deadend dir) _ ->
-            connectionsByTileEntryDirection
-                { board = board
-                , cell = cell
-                , tile = tile
-                , baseConnectionKinds = ( DeadendExit, DeadendEntry )
-                , direction = Direction.opposite dir
-                }
+            deadendConnections cell dir
 
         _ ->
             Tile.potentialConnections tile
-                |> List.concatMap
-                    (\dir ->
-                        connectionsByTileEntryDirection
-                            { board = board
-                            , cell = cell
-                            , tile = tile
-                            , baseConnectionKinds = ( LaneStart, LaneEnd )
-                            , direction = dir
-                            }
-                    )
+                |> List.concatMap (connectionsByTileEntryDirection board cell tile)
 
 
-connectionsByTileEntryDirection :
-    { board : Board
-    , cell : Cell
-    , tile : Tile
-    , baseConnectionKinds : ( ConnectionKind, ConnectionKind )
-    , direction : Direction
-    }
-    -> List Connection
-connectionsByTileEntryDirection { board, cell, tile, baseConnectionKinds, direction } =
+deadendConnections : Cell -> Direction -> List Connection
+deadendConnections cell direction =
+    let
+        halfTile =
+            tileSize / 2
+
+        connectionOffsetFromTileCenter =
+            halfTile - innerLaneOffset
+
+        tileCenterPosition =
+            Cell.bottomLeftCorner cell
+                |> Position.shiftBy halfTile Up
+                |> Position.shiftBy halfTile Right
+
+        entryConnection =
+            { position =
+                tileCenterPosition
+                    |> Position.shiftBy connectionOffsetFromTileCenter (Direction.next direction)
+            , direction = direction
+            , cell = cell
+            , kind = DeadendEntry
+            }
+
+        exitConnection =
+            { position =
+                tileCenterPosition
+                    |> Position.shiftBy connectionOffsetFromTileCenter (Direction.previous direction)
+            , direction = Direction.opposite direction
+            , cell = cell
+            , kind = DeadendExit
+            }
+    in
+    [ entryConnection
+    , exitConnection
+    ]
+
+
+connectionsByTileEntryDirection : Board -> Cell -> Tile -> Direction -> List Connection
+connectionsByTileEntryDirection board cell tile direction =
     let
         ( originX, originY ) =
             Cell.bottomLeftCorner cell
@@ -163,7 +178,7 @@ connectionsByTileEntryDirection { board, cell, tile, baseConnectionKinds, direct
                 ( Stopgap, Stopgap )
 
             else
-                baseConnectionKinds
+                ( LaneStart, LaneEnd )
     in
     case direction of
         Up ->
@@ -253,18 +268,28 @@ createLanes nodes =
 
 toEdges : List (Node Connection) -> Node Connection -> List (Edge Lane)
 toEdges nodes current =
-    case current.label.kind of
-        LaneStart ->
-            findLaneEnd nodes current
-                |> Maybe.map List.singleton
-                |> Maybe.withDefault []
+    let
+        potentialResultToEdges =
+            Maybe.unwrap [] List.singleton
 
-        _ ->
-            if startsEdgeInsideCell current then
-                findLanesInsideCell nodes current
+        matcherFn =
+            case current.label.kind of
+                LaneStart ->
+                    findLaneEnd nodes >> potentialResultToEdges
 
-            else
-                []
+                LaneEnd ->
+                    findLanesInsideCell nodes
+
+                DeadendEntry ->
+                    connectDeadendEntryWithExit >> potentialResultToEdges
+
+                DeadendExit ->
+                    findLaneEnd nodes >> potentialResultToEdges
+
+                Stopgap ->
+                    findLanesInsideCell nodes
+    in
+    matcherFn current
 
 
 findLaneEnd : List (Node Connection) -> Node Connection -> Maybe (Edge Lane)
@@ -275,7 +300,7 @@ findLaneEnd nodes current =
                 && isFacing current other
 
         checkCompatibility other =
-            if other.label.kind == LaneEnd then
+            if other.label.kind == LaneEnd || other.label.kind == DeadendEntry then
                 Just other
 
             else
@@ -339,7 +364,7 @@ nodeConnectionRangeToLeft node range =
             Direction.previous (getDirection node)
 
         ( shiftedX, shiftedY ) =
-            Position.shiftBy range ( bb.x, bb.y ) leftDir
+            Position.shiftBy range leftDir ( bb.x, bb.y )
     in
     { bb | x = shiftedX, y = shiftedY }
 
@@ -364,6 +389,13 @@ nodeConnectionRangeToRight node range =
             BoundingBox (nodeX - tileSize) nodeY tileSize range
 
 
+connectDeadendEntryWithExit : Node Connection -> Maybe (Edge Lane)
+connectDeadendEntryWithExit entry =
+    -- an assumption about node creation order (implied ID) is a cheap way to create the edge
+    -- Room for improvement: really try to find a node that is at the expected Position
+    Just { from = entry.id, to = entry.id + 1, label = () }
+
+
 
 -- Utility
 
@@ -378,14 +410,9 @@ getDirection node =
     node.label.direction
 
 
-startsEdgeInsideCell : Node Connection -> Bool
-startsEdgeInsideCell node =
-    node.label.kind == LaneEnd || node.label.kind == Stopgap
-
-
 endsEdgeInsideCell : Node Connection -> Bool
 endsEdgeInsideCell node =
-    node.label.kind == LaneStart || node.label.kind == Stopgap
+    node.label.kind == LaneStart || node.label.kind == Stopgap || node.label.kind == DeadendExit
 
 
 nodeArea : Node Connection -> BoundingBox

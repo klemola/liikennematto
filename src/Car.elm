@@ -97,7 +97,7 @@ isStoppedOrWaiting car =
 move : Car -> Car
 move car =
     { car
-        | position = Position.shiftBy 1 car.position car.direction
+        | position = Position.shiftBy 1 car.direction car.position
         , status = Moving
     }
 
