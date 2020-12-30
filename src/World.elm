@@ -150,7 +150,7 @@ withBoard board world =
 
 withRoadConnections : World -> World
 withRoadConnections world =
-    { world | roadNetwork = RoadNetwork.fromBoard world.board }
+    { world | roadNetwork = RoadNetwork.fromBoardAndLots world.board world.lots }
 
 
 withTileAt : Cell -> Tile -> World -> World
@@ -307,10 +307,17 @@ worldAfterBoardChange { cell, nextBoard, world } =
                 , nextLots = nextLots
                 , cars = world.cars
                 }
+
+        roadNetwork =
+            RoadNetwork.fromBoardAndLots nextBoard world.lots
+
+        dot =
+            RoadNetwork.toDotString roadNetwork
+                |> Debug.log "dot"
     in
     { world
         | board = nextBoard
-        , roadNetwork = RoadNetwork.fromBoard nextBoard
+        , roadNetwork = roadNetwork
         , cars = nextCars
         , lots = nextLots
     }

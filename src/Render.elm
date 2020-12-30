@@ -299,6 +299,9 @@ renderRoadNetwork roadNetwork =
                 DeadendExit ->
                     Color.darkGray
 
+                LotEntry ->
+                    Color.lightGreen
+
                 Stopgap ->
                     Color.lightYellow
 
