@@ -2,6 +2,7 @@ module Cell exposing
     ( Cell
     , bottomLeftCorner
     , boundingBox
+    , center
     , cornerAndNeighbors
     , fromPosition
     , next
@@ -81,6 +82,15 @@ bottomLeftCorner ( cellX, cellY ) =
 
     else
         ( x * tileSize, y * tileSize )
+
+
+center : Cell -> Position
+center cell =
+    let
+        ( x, y ) =
+            bottomLeftCorner cell
+    in
+    ( x + tileSize / 2, y + tileSize / 2 )
 
 
 fromPosition : Position -> Cell

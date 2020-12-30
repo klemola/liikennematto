@@ -1,12 +1,16 @@
-module RoadNetwork exposing (ConnectionKind(..), RoadNetwork, fromBoard, new)
+module RoadNetwork exposing (ConnectionKind(..), RoadNetwork, fromBoardAndLots, new, toDotString)
 
 import Board exposing (Board)
 import Cell exposing (Cell)
 import Collision exposing (BoundingBox)
 import Config exposing (innerLaneOffset, outerLaneOffset, tileSize)
 import Dict exposing (Dict)
-import Direction exposing (Direction(..))
+import Dict.Extra as Dict
+import Direction exposing (Direction(..), Orientation(..))
 import Graph exposing (Edge, Graph, Node)
+import Graph.DOT
+import Html exposing (node)
+import Lot exposing (Lot)
 import Maybe.Extra as Maybe
 import Position exposing (Position)
 import Tile exposing (RoadKind(..), Tile(..))
@@ -21,6 +25,9 @@ type alias Connection =
     , direction : Direction
     , cell : Cell
     , kind : ConnectionKind
+
+    -- Room for improvement: support more than one lot per (anchor) cell
+    , lot : Maybe Int
     }
 
 
@@ -29,6 +36,7 @@ type ConnectionKind
     | LaneEnd
     | DeadendEntry
     | DeadendExit
+    | LotEntry
     | Stopgap
 
 
@@ -41,8 +49,8 @@ new =
     Graph.empty
 
 
-fromBoard : Board -> RoadNetwork
-fromBoard board =
+fromBoardAndLots : Board -> Dict Int Lot -> RoadNetwork
+fromBoardAndLots board lots =
     let
         tilePriority ( _, tile ) =
             case tile of
@@ -58,6 +66,7 @@ fromBoard board =
         nodes =
             createConnections
                 { board = board
+                , lots = lots
                 , nodes = Dict.empty
                 , remainingTiles =
                     Dict.toList board
@@ -80,11 +89,12 @@ fromBoard board =
 
 createConnections :
     { board : Board
+    , lots : Dict Int Lot
     , nodes : Dict Position (Node Connection)
     , remainingTiles : List ( Cell, Tile )
     }
     -> Dict Position (Node Connection)
-createConnections { nodes, board, remainingTiles } =
+createConnections { nodes, board, remainingTiles, lots } =
     case remainingTiles of
         [] ->
             nodes
@@ -92,7 +102,7 @@ createConnections { nodes, board, remainingTiles } =
         ( cell, tile ) :: otherTiles ->
             let
                 connectionsInTile =
-                    toConnections board cell tile
+                    toConnections board cell tile lots
 
                 maybeCreateNode nodeSpec currentNodes =
                     if Dict.member nodeSpec.position currentNodes then
@@ -104,6 +114,7 @@ createConnections { nodes, board, remainingTiles } =
             in
             createConnections
                 { board = board
+                , lots = lots
                 , nodes =
                     connectionsInTile
                         |> List.foldl maybeCreateNode nodes
@@ -111,11 +122,11 @@ createConnections { nodes, board, remainingTiles } =
                 }
 
 
-toConnections : Board -> Cell -> Tile -> List Connection
-toConnections board cell tile =
+toConnections : Board -> Cell -> Tile -> Dict Int Lot -> List Connection
+toConnections board cell tile lots =
     case tile of
-        TwoLaneRoad (Regular _) _ ->
-            []
+        TwoLaneRoad (Regular orientation) _ ->
+            lotConnections cell orientation lots
 
         TwoLaneRoad (Deadend dir) _ ->
             deadendConnections cell dir
@@ -125,8 +136,70 @@ toConnections board cell tile =
                 |> List.concatMap (connectionsByTileEntryDirection board cell tile)
 
 
+lotConnections : Cell -> Orientation -> Dict Int Lot -> List Connection
+lotConnections cell orientation lots =
+    case Dict.find (\_ lot -> Lot.anchorCell lot == cell) lots of
+        Just ( id, lot ) ->
+            let
+                trafficDirection =
+                    case orientation of
+                        Vertical ->
+                            Up
+
+                        Horizontal ->
+                            Right
+
+                ( posA, posB ) =
+                    laneCenterPositionsByDirection cell trafficDirection
+
+                ( position, direction ) =
+                    if Tuple.second lot.anchor == Direction.next trafficDirection then
+                        ( posA, trafficDirection )
+
+                    else
+                        ( posB, Direction.opposite trafficDirection )
+            in
+            [ { position = position
+              , direction = direction
+              , cell = cell
+              , kind = LotEntry
+              , lot = Just id
+              }
+            ]
+
+        Nothing ->
+            []
+
+
 deadendConnections : Cell -> Direction -> List Connection
-deadendConnections cell direction =
+deadendConnections cell trafficDirection =
+    let
+        ( entryPosition, exitPosition ) =
+            laneCenterPositionsByDirection cell trafficDirection
+
+        entryConnection =
+            { position = entryPosition
+            , direction = trafficDirection
+            , cell = cell
+            , kind = DeadendEntry
+            , lot = Nothing
+            }
+
+        exitConnection =
+            { position = exitPosition
+            , direction = Direction.opposite trafficDirection
+            , cell = cell
+            , kind = DeadendExit
+            , lot = Nothing
+            }
+    in
+    [ entryConnection
+    , exitConnection
+    ]
+
+
+laneCenterPositionsByDirection : Cell -> Direction -> ( Position, Position )
+laneCenterPositionsByDirection cell trafficDirection =
     let
         halfTile =
             tileSize / 2
@@ -135,31 +208,13 @@ deadendConnections cell direction =
             halfTile - innerLaneOffset
 
         tileCenterPosition =
-            Cell.bottomLeftCorner cell
-                |> Position.shiftBy halfTile Up
-                |> Position.shiftBy halfTile Right
-
-        entryConnection =
-            { position =
-                tileCenterPosition
-                    |> Position.shiftBy connectionOffsetFromTileCenter (Direction.next direction)
-            , direction = direction
-            , cell = cell
-            , kind = DeadendEntry
-            }
-
-        exitConnection =
-            { position =
-                tileCenterPosition
-                    |> Position.shiftBy connectionOffsetFromTileCenter (Direction.previous direction)
-            , direction = Direction.opposite direction
-            , cell = cell
-            , kind = DeadendExit
-            }
+            Cell.center cell
     in
-    [ entryConnection
-    , exitConnection
-    ]
+    ( tileCenterPosition
+        |> Position.shiftBy connectionOffsetFromTileCenter (Direction.next trafficDirection)
+    , tileCenterPosition
+        |> Position.shiftBy connectionOffsetFromTileCenter (Direction.previous trafficDirection)
+    )
 
 
 connectionsByTileEntryDirection : Board -> Cell -> Tile -> Direction -> List Connection
@@ -186,11 +241,13 @@ connectionsByTileEntryDirection board cell tile direction =
               , direction = Up
               , cell = cell
               , kind = startConnectionKind
+              , lot = Nothing
               }
             , { position = ( originX + innerLaneOffset, originY + tileSize )
               , direction = Down
               , cell = cell
               , kind = endConnectionKind
+              , lot = Nothing
               }
             ]
 
@@ -199,11 +256,13 @@ connectionsByTileEntryDirection board cell tile direction =
               , direction = Right
               , cell = cell
               , kind = startConnectionKind
+              , lot = Nothing
               }
             , { position = ( originX + tileSize, originY + outerLaneOffset )
               , direction = Left
               , cell = cell
               , kind = endConnectionKind
+              , lot = Nothing
               }
             ]
 
@@ -212,11 +271,13 @@ connectionsByTileEntryDirection board cell tile direction =
               , direction = Down
               , cell = cell
               , kind = startConnectionKind
+              , lot = Nothing
               }
             , { position = ( originX + outerLaneOffset, originY )
               , direction = Up
               , cell = cell
               , kind = endConnectionKind
+              , lot = Nothing
               }
             ]
 
@@ -225,11 +286,13 @@ connectionsByTileEntryDirection board cell tile direction =
               , direction = Left
               , cell = cell
               , kind = startConnectionKind
+              , lot = Nothing
               }
             , { position = ( originX, originY + innerLaneOffset )
               , direction = Right
               , cell = cell
               , kind = endConnectionKind
+              , lot = Nothing
               }
             ]
 
@@ -286,6 +349,9 @@ toEdges nodes current =
                 DeadendExit ->
                     findLaneEnd nodes >> potentialResultToEdges
 
+                LotEntry ->
+                    findLaneEnd nodes >> potentialResultToEdges
+
                 Stopgap ->
                     findLanesInsideCell nodes
     in
@@ -300,7 +366,7 @@ findLaneEnd nodes current =
                 && isFacing current other
 
         checkCompatibility other =
-            if other.label.kind == LaneEnd || other.label.kind == DeadendEntry then
+            if other.label.kind == LaneEnd || other.label.kind == DeadendEntry || other.label.kind == LotEntry then
                 Just other
 
             else
@@ -467,3 +533,19 @@ closestToOriginOrdering current other =
 
         Left ->
             0 - otherX
+
+
+
+-- Debug
+
+
+toDotString : RoadNetwork -> String
+toDotString =
+    let
+        nodeFormatter =
+            \connection -> Just (Debug.toString connection.kind)
+
+        edgeFormatter =
+            \_ -> Nothing
+    in
+    Graph.DOT.output nodeFormatter edgeFormatter
