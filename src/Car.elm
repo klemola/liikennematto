@@ -3,10 +3,10 @@ module Car exposing
     , CarKind(..)
     , Status(..)
     , TurnKind(..)
-    , isParkedAtLot
     , isRespawning
     , isStoppedOrWaiting
     , isTurning
+    , markAsConfused
     , move
     , new
     , skipRound
@@ -19,18 +19,19 @@ module Car exposing
     , yield
     )
 
-import Config exposing (tileSize)
 import Direction exposing (Direction(..))
 import Position exposing (Position)
+import RoadNetwork exposing (RNNodeContext)
 import Tile exposing (Tile(..))
 
 
 type alias Car =
     { position : Position
-    , direction : Direction
+    , rotation : Float
     , kind : CarKind
     , status : Status
     , homeLotId : Maybe Int
+    , route : List RNNodeContext
     }
 
 
@@ -51,6 +52,7 @@ type Status
     | Respawning
     | ParkedAtLot
     | SkippingRound
+    | Confused
 
 
 stoppedOrWaiting : List Status
@@ -66,7 +68,13 @@ type TurnKind
 
 new : CarKind -> Car
 new kind =
-    Car ( 0, 0 ) Up kind Respawning Nothing
+    { position = ( 0, 0 )
+    , rotation = Direction.toRadians Up
+    , kind = kind
+    , status = Respawning
+    , homeLotId = Nothing
+    , route = []
+    }
 
 
 isTurning : Car -> Bool
@@ -84,11 +92,6 @@ isRespawning car =
     car.status == Respawning
 
 
-isParkedAtLot : Car -> Bool
-isParkedAtLot car =
-    car.status == ParkedAtLot
-
-
 isStoppedOrWaiting : Car -> Bool
 isStoppedOrWaiting car =
     List.member car.status stoppedOrWaiting
@@ -96,8 +99,26 @@ isStoppedOrWaiting car =
 
 move : Car -> Car
 move car =
+    let
+        ( x, y ) =
+            car.position
+
+        rotationInPolar =
+            car.rotation + degrees 90
+
+        rotationWithLimit =
+            -- adjust rotation for pre-polar adjusted value of < 270°
+            if rotationInPolar - degrees 360 >= 0 then
+                rotationInPolar - degrees 360
+
+            else
+                rotationInPolar
+
+        ( addX, addY ) =
+            fromPolar ( 1, rotationWithLimit )
+    in
     { car
-        | position = Position.shiftBy 1 car.direction car.position
+        | position = ( x + addX, y + addY )
         , status = Moving
     }
 
@@ -107,20 +128,80 @@ skipRound car =
     { car | status = SkippingRound }
 
 
-turn : Direction -> Car -> Car
-turn nextDirection car =
+turn : Float -> Car -> Car
+turn target car =
     let
+        ( nextRotation, rotationComplete ) =
+            rotateImmediatelyInPlace
+                { target = target
+                , currentRotation = car.rotation
+                }
+
         turnDirection =
-            if Direction.previous car.direction == nextDirection then
+            if target == 0 || target > nextRotation then
                 LeftTurn
 
-            else if Direction.next car.direction == nextDirection then
+            else
                 RightTurn
 
+        nextStatus =
+            if rotationComplete then
+                Moving
+
             else
-                UTurn
+                Turning turnDirection
     in
-    { car | direction = nextDirection, status = Turning turnDirection }
+    { car
+        | rotation = nextRotation
+        , status = nextStatus
+    }
+
+
+rotateImmediatelyInPlace :
+    { target : Float
+    , currentRotation : Float
+    }
+    -> ( Float, Bool )
+rotateImmediatelyInPlace { target, currentRotation } =
+    let
+        foo =
+            Debug.log "current / target" ( currentRotation, target )
+    in
+    ( target
+    , True
+    )
+
+
+rotateIncrementallyInPlace :
+    { target : Float
+    , currentRotation : Float
+    }
+    -> ( Float, Bool )
+rotateIncrementallyInPlace { target, currentRotation } =
+    let
+        rotationPerStep =
+            0.05
+
+        rotationAfterStep =
+            if target == 0 then
+                min (degrees 360) (currentRotation + rotationPerStep)
+
+            else
+                min target (currentRotation + rotationPerStep)
+
+        nextRotation =
+            if rotationAfterStep >= degrees 360 then
+                0
+
+            else
+                rotationAfterStep
+
+        foo =
+            Debug.log "rotation / target" ( nextRotation, target )
+    in
+    ( nextRotation
+    , nextRotation == target || nextRotation == 0
+    )
 
 
 waitForTrafficLights : Car -> Car
@@ -146,6 +227,11 @@ waitForRespawn car =
 spawn : Position -> Car -> Car
 spawn position car =
     { car | status = SkippingRound, position = position }
+
+
+markAsConfused : Car -> Car
+markAsConfused car =
+    { car | status = Confused }
 
 
 statusDescription : Status -> String
@@ -180,3 +266,6 @@ statusDescription status =
 
         SkippingRound ->
             "Skipping the round"
+
+        Confused ->
+            "Confused"

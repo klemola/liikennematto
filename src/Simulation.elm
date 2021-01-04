@@ -253,7 +253,7 @@ findLotAnchor { targetOrientation, targetDirection, newLot, world, shuffledBoard
         isCompatible ( cell, tile ) =
             case tile of
                 TwoLaneRoad (Regular orientation) Both ->
-                    (orientation == targetOrientation) && hasEnoughSpaceAround cell
+                    (orientation == targetOrientation) && hasEnoughSpaceAround cell && not (World.hasLotAnchor cell world)
 
                 _ ->
                     False

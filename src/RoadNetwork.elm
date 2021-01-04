@@ -1,13 +1,25 @@
-module RoadNetwork exposing (ConnectionKind(..), RoadNetwork, fromBoardAndLots, new, toDotString)
+module RoadNetwork exposing
+    ( Connection
+    , ConnectionKind(..)
+    , RNNodeContext
+    , RoadNetwork
+    , findNodeByLotId
+    , findNodeByNodeId
+    , fromBoardAndLots
+    , getFirstOutgoingConnection
+    , new
+    , nodeBoundingBox
+    , toDotString
+    )
 
 import Board exposing (Board)
 import Cell exposing (Cell)
 import Collision exposing (BoundingBox)
-import Config exposing (innerLaneOffset, outerLaneOffset, tileSize)
+import Config exposing (innerLaneOffset, nodeSize, outerLaneOffset, tileSize)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction exposing (Direction(..), Orientation(..))
-import Graph exposing (Edge, Graph, Node)
+import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
 import Graph.DOT
 import Html exposing (node)
 import Lot exposing (Lot)
@@ -20,6 +32,10 @@ type alias RoadNetwork =
     Graph Connection Lane
 
 
+type alias RNNodeContext =
+    NodeContext Connection Lane
+
+
 type alias Connection =
     { position : Position
     , direction : Direction
@@ -27,7 +43,7 @@ type alias Connection =
     , kind : ConnectionKind
 
     -- Room for improvement: support more than one lot per (anchor) cell
-    , lot : Maybe Int
+    , lotId : Maybe Int
     }
 
 
@@ -163,7 +179,7 @@ lotConnections cell orientation lots =
               , direction = direction
               , cell = cell
               , kind = LotEntry
-              , lot = Just id
+              , lotId = Just id
               }
             ]
 
@@ -182,7 +198,7 @@ deadendConnections cell trafficDirection =
             , direction = trafficDirection
             , cell = cell
             , kind = DeadendEntry
-            , lot = Nothing
+            , lotId = Nothing
             }
 
         exitConnection =
@@ -190,7 +206,7 @@ deadendConnections cell trafficDirection =
             , direction = Direction.opposite trafficDirection
             , cell = cell
             , kind = DeadendExit
-            , lot = Nothing
+            , lotId = Nothing
             }
     in
     [ entryConnection
@@ -241,13 +257,13 @@ connectionsByTileEntryDirection board cell tile direction =
               , direction = Up
               , cell = cell
               , kind = startConnectionKind
-              , lot = Nothing
+              , lotId = Nothing
               }
             , { position = ( originX + innerLaneOffset, originY + tileSize )
               , direction = Down
               , cell = cell
               , kind = endConnectionKind
-              , lot = Nothing
+              , lotId = Nothing
               }
             ]
 
@@ -256,13 +272,13 @@ connectionsByTileEntryDirection board cell tile direction =
               , direction = Right
               , cell = cell
               , kind = startConnectionKind
-              , lot = Nothing
+              , lotId = Nothing
               }
             , { position = ( originX + tileSize, originY + outerLaneOffset )
               , direction = Left
               , cell = cell
               , kind = endConnectionKind
-              , lot = Nothing
+              , lotId = Nothing
               }
             ]
 
@@ -271,13 +287,13 @@ connectionsByTileEntryDirection board cell tile direction =
               , direction = Down
               , cell = cell
               , kind = startConnectionKind
-              , lot = Nothing
+              , lotId = Nothing
               }
             , { position = ( originX + outerLaneOffset, originY )
               , direction = Up
               , cell = cell
               , kind = endConnectionKind
-              , lot = Nothing
+              , lotId = Nothing
               }
             ]
 
@@ -286,13 +302,13 @@ connectionsByTileEntryDirection board cell tile direction =
               , direction = Left
               , cell = cell
               , kind = startConnectionKind
-              , lot = Nothing
+              , lotId = Nothing
               }
             , { position = ( originX, originY + innerLaneOffset )
               , direction = Right
               , cell = cell
               , kind = endConnectionKind
-              , lot = Nothing
+              , lotId = Nothing
               }
             ]
 
@@ -403,7 +419,7 @@ connectsWithinCell current other =
             tileSize / 2
 
         otherBB =
-            nodeArea other
+            nodeBoundingBox other
 
         leftBB =
             nodeConnectionRangeToLeft current (range + innerLaneOffset)
@@ -481,13 +497,9 @@ endsEdgeInsideCell node =
     node.label.kind == LaneStart || node.label.kind == Stopgap || node.label.kind == DeadendExit
 
 
-nodeArea : Node Connection -> BoundingBox
-nodeArea node =
-    let
-        ( x, y ) =
-            getPosition node
-    in
-    BoundingBox (x - 5) (y - 5) 10 10
+nodeBoundingBox : Node Connection -> BoundingBox
+nodeBoundingBox node =
+    Collision.boundingBoxAroundCenter (getPosition node) nodeSize
 
 
 hasSameDirection : Node Connection -> Node Connection -> Bool
@@ -533,6 +545,39 @@ closestToOriginOrdering current other =
 
         Left ->
             0 - otherX
+
+
+
+-- Queries
+
+
+findNodeByLotId : Int -> RoadNetwork -> Maybe RNNodeContext
+findNodeByLotId lotId roadNetwork =
+    roadNetwork
+        |> Graph.fold
+            (\ctx acc ->
+                if ctx.node.label.lotId == Just lotId then
+                    Just ctx
+
+                else
+                    acc
+            )
+            Nothing
+
+
+findNodeByNodeId : RoadNetwork -> NodeId -> Maybe RNNodeContext
+findNodeByNodeId roadNetwork nodeId =
+    Graph.get nodeId roadNetwork
+
+
+getFirstOutgoingConnection : RoadNetwork -> RNNodeContext -> Maybe RNNodeContext
+getFirstOutgoingConnection roadNetwork nodeCtx =
+    case Graph.alongOutgoingEdges nodeCtx of
+        nodeId :: others ->
+            findNodeByNodeId roadNetwork nodeId
+
+        _ ->
+            Nothing
 
 
 

@@ -1,5 +1,6 @@
 module Position exposing
     ( Position
+    , difference
     , filterBy
     , shiftBy
     , toString
@@ -35,6 +36,11 @@ shiftBy distance dir ( x, y ) =
 
         Left ->
             ( x - distance, y )
+
+
+difference : Position -> Position -> Position
+difference ( fromX, fromY ) ( toX, toY ) =
+    ( toX - fromX, toY - fromY )
 
 
 toString : Position -> String

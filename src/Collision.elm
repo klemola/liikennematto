@@ -1,4 +1,6 @@
-module Collision exposing (BoundingBox, aabb)
+module Collision exposing (BoundingBox, aabb, boundingBoxAroundCenter)
+
+import Position exposing (Position)
 
 
 type alias BoundingBox =
@@ -6,6 +8,15 @@ type alias BoundingBox =
     , y : Float
     , width : Float
     , height : Float
+    }
+
+
+boundingBoxAroundCenter : Position -> Float -> BoundingBox
+boundingBoxAroundCenter ( x, y ) size =
+    { x = x - size / 2
+    , y = y - size / 2
+    , width = size
+    , height = size
     }
 
 

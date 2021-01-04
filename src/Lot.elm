@@ -12,10 +12,8 @@ module Lot exposing
     , entryCell
     , inBounds
     , parkingSpot
-    , resident
     )
 
-import Car exposing (CarKind(..))
 import Cell exposing (Cell)
 import Collision exposing (BoundingBox)
 import Config exposing (tileSize)
@@ -167,25 +165,3 @@ boundingBox lot =
 inBounds : Cell -> Lot -> Bool
 inBounds cell lot =
     Collision.aabb (Cell.boundingBox cell) (boundingBox lot)
-
-
-resident : Lot -> Maybe CarKind
-resident lot =
-    case lot.content.kind of
-        ResidentialA ->
-            Just SedanA
-
-        ResidentialB ->
-            Just SedanB
-
-        ResidentialC ->
-            Just SedanC
-
-        ResidentialD ->
-            Just SedanD
-
-        ResidentialE ->
-            Just SedanE
-
-        _ ->
-            Nothing

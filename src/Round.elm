@@ -4,16 +4,17 @@ module Round exposing
     , attemptRespawn
     , checkCollisionRules
     , checkIntersectionRules
-    , checkTurningRules
     , new
     , play
     )
 
 import Car exposing (Car, Status(..))
 import Cell
+import Collision
 import Config exposing (tileSize)
 import Direction exposing (Direction)
 import Position exposing (Position)
+import RoadNetwork exposing (RoadNetwork)
 import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..), TrafficDirection(..))
 import TrafficLight
 import World exposing (World)
@@ -29,8 +30,7 @@ type alias Round =
 
 
 type Rule
-    = TurningRequired (List Direction)
-    | AvoidCollision
+    = AvoidCollision
     | WaitForTrafficLights
     | YieldAtIntersection
     | StopAtIntersection
@@ -38,10 +38,6 @@ type Rule
 
 new : World -> Bool -> List Direction -> Car -> List Car -> Round
 new world coinTossResult randomDirections activeCar otherCars =
-    let
-        nextPosition =
-            Position.shiftBy tileSize activeCar.direction activeCar.position
-    in
     { world = world
     , activeCar = activeCar
     , otherCars = otherCars
@@ -80,23 +76,61 @@ play round =
         activeRulesByPriority round
             |> List.head
             |> Maybe.map (applyRule round)
-            |> Maybe.withDefault (Car.move round.activeCar)
+            |> Maybe.withDefault (updateCar round.world round.activeCar)
 
     else
         round.activeCar
 
 
+updateCar : World -> Car -> Car
+updateCar world car =
+    let
+        carCenterPointBoundingBox =
+            Collision.boundingBoxAroundCenter car.position 1
+
+        angleToDestination destination =
+            Position.difference car.position destination
+                |> (\( diffX, diffY ) -> atan2 diffY diffX)
+                |> (+) (degrees 270)
+    in
+    case
+        car.route
+    of
+        nodeCtx :: rest ->
+            let
+                { node } =
+                    nodeCtx
+            in
+            case car.status of
+                Moving ->
+                    if Collision.aabb (RoadNetwork.nodeBoundingBox node) carCenterPointBoundingBox then
+                        { car
+                            | route =
+                                RoadNetwork.getFirstOutgoingConnection world.roadNetwork nodeCtx
+                                    |> Maybe.map List.singleton
+                                    |> Maybe.withDefault []
+                            , status = ParkedAtLot
+                        }
+
+                    else
+                        Car.move car
+
+                ParkedAtLot ->
+                    Car.turn (angleToDestination node.label.position) car
+
+                Turning _ ->
+                    Car.turn (angleToDestination node.label.position) car
+
+                _ ->
+                    car
+
+        _ ->
+            Car.markAsConfused car
+
+
 applyRule : Round -> Rule -> Car
 applyRule { activeCar, world, randomDirections } rule =
     case rule of
-        TurningRequired validTurningDirections ->
-            case List.head validTurningDirections of
-                Just dir ->
-                    Car.turn dir activeCar
-
-                Nothing ->
-                    Car.turn (Direction.opposite activeCar.direction) activeCar
-
         AvoidCollision ->
             Car.skipRound activeCar
 
@@ -116,64 +150,16 @@ applyRule { activeCar, world, randomDirections } rule =
 
 activeRulesByPriority : Round -> List Rule
 activeRulesByPriority round =
-    [ checkTurningRules round
-    , checkCollisionRules round
+    [ checkCollisionRules round
     , checkIntersectionRules round
     ]
         -- remove inactive rules
         |> List.filterMap identity
 
 
-checkTurningRules : Round -> Maybe Rule
-checkTurningRules { world, coinTossResult, activeCar } =
-    let
-        currentCell =
-            Cell.fromPosition activeCar.position
-
-        currentTile =
-            World.tileAt currentCell world
-
-        validTurningDirections =
-            []
-
-        canContinue =
-            World.hasConnectedRoad
-                { currentCell = currentCell
-                , direction = activeCar.direction
-                , world = world
-                }
-
-        canTurn =
-            not (List.isEmpty validTurningDirections)
-
-        -- turn every now and then at an intersection
-        -- cars in intersections can block the traffic, so this also works as a sort of a tie-breaker
-        shouldTurnRandomly =
-            case currentTile of
-                Just (Intersection _ _) ->
-                    coinTossResult
-                        && canTurn
-                        && not (Car.isTurning activeCar)
-
-                _ ->
-                    False
-    in
-    if not canContinue || shouldTurnRandomly then
-        Just (TurningRequired validTurningDirections)
-
-    else
-        Nothing
-
-
 checkCollisionRules : Round -> Maybe Rule
 checkCollisionRules { otherCars, activeCar } =
     let
-        oppositeDirection =
-            Direction.opposite activeCar.direction
-
-        nextPosition =
-            Position.shiftBy 1 activeCar.direction activeCar.position
-
         -- TODO use a bounding box with padding -> larger than the car
         willCollideWithAnother =
             False
@@ -189,12 +175,7 @@ checkIntersectionRules : Round -> Maybe Rule
 checkIntersectionRules { otherCars, activeCar, world } =
     let
         nextTile =
-            World.tileAt
-                (activeCar.position
-                    |> Cell.fromPosition
-                    |> Cell.next activeCar.direction
-                )
-                world
+            Nothing
 
         priorityDirections =
             case nextTile of
@@ -205,18 +186,13 @@ checkIntersectionRules { otherCars, activeCar, world } =
                     []
 
         nextPosition =
-            Position.shiftBy 1 activeCar.direction activeCar.position
+            ( 0, 0 )
 
         priorityTraffic =
-            priorityDirections
-                -- get tile coordinates relative to the intersection at "nextPosition"
-                |> List.map (\dir -> Position.shiftBy tileSize dir nextPosition)
-                -- add the intersection
-                |> List.append [ Position.shiftBy tileSize activeCar.direction activeCar.position ]
-                |> List.concatMap (Position.filterBy otherCars)
+            []
 
         hasPriority =
-            List.member activeCar.direction priorityDirections
+            False
 
         shouldYield =
             not hasPriority && List.length priorityTraffic > 0
@@ -226,11 +202,8 @@ checkIntersectionRules { otherCars, activeCar, world } =
     in
     case nextTile of
         Just (Intersection (Signal trafficLights) _) ->
-            if TrafficLight.trafficAllowedFromDirection trafficLights activeCar.direction then
-                Nothing
-
-            else
-                Just WaitForTrafficLights
+            --- TODO: dummy
+            Just WaitForTrafficLights
 
         Just (Intersection (Yield _) _) ->
             if shouldYield then

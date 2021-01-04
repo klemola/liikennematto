@@ -184,41 +184,10 @@ renderCar lots car =
             car.homeLotId
                 |> Maybe.map (\id -> Dict.get id lots)
                 |> Maybe.join
-
-        rotationModifier =
-            case car.status of
-                Turning LeftTurn ->
-                    -45
-
-                Turning RightTurn ->
-                    45
-
-                _ ->
-                    0
-
-        rotation =
-            degrees (dirToRotation car.direction + rotationModifier)
     in
     Graphics.texture ( carSize, carSize ) (Graphics.carAsset car)
-        |> rotate rotation
+        |> rotate car.rotation
         |> shift car.position
-
-
-dirToRotation : Direction -> Float
-dirToRotation dir =
-    -- the values here are based on Collage logic: counter-clockwise rotation (from "Up")
-    case dir of
-        Up ->
-            0
-
-        Right ->
-            270
-
-        Down ->
-            180
-
-        Left ->
-            90
 
 
 renderLots : List Lot -> Collage msg
@@ -310,7 +279,7 @@ renderRoadNetwork roadNetwork =
                 |> Graph.nodes
                 |> List.map
                     (\node ->
-                        Collage.circle 3
+                        Collage.circle Config.nodeSize
                             |> styled ( uniform (nodeColor node.label.kind), invisible )
                             |> shift node.label.position
                     )
