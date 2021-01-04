@@ -37,6 +37,7 @@ import Graphics
 import Html exposing (Html)
 import Position
 import Render
+import RoadNetwork
 import Task
 import Tile
 import World
@@ -288,12 +289,12 @@ debug : World -> Model -> Element Msg
 debug world { dimensions } =
     column [ spacing whitespace.tight, width fill ]
         (Dict.values world.cars
-            |> List.map (carStateView dimensions.text world)
+            |> List.map (carStateView dimensions.text)
         )
 
 
-carStateView : Int -> World -> Car -> Element msg
-carStateView fontSize world car =
+carStateView : Int -> Car -> Element msg
+carStateView fontSize car =
     let
         showCarKind =
             image [ width (px fontSize) ]
@@ -317,11 +318,6 @@ carStateView fontSize world car =
         [ showCarKind
         , column [ spacing whitespace.tight ]
             [ text (Position.toString car.position)
-            , text
-                (World.tileAt (Cell.fromPosition car.position) world
-                    |> Maybe.map Tile.toString
-                    |> Maybe.withDefault "None"
-                )
             , text (Car.statusDescription car.status)
             ]
         ]

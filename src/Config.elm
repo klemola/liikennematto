@@ -29,6 +29,11 @@ carSize =
     24
 
 
+nodeSize : Float
+nodeSize =
+    4
+
+
 boardSizeScaled : Float
 boardSizeScaled =
     toFloat boardSize * tileSize

@@ -7,11 +7,14 @@ module Direction exposing
     , corners
     , cross
     , fromOrientation
+    , fromRadians
     , next
     , opposite
     , oppositeOrientation
     , previous
+    , toDegrees
     , toOrientation
+    , toRadians
     )
 
 
@@ -161,3 +164,51 @@ cross fromDir =
 corners : List Corner
 corners =
     [ TopLeft, TopRight, BottomLeft, BottomRight ]
+
+
+toDegrees : Direction -> Float
+toDegrees dir =
+    case dir of
+        Up ->
+            0
+
+        Right ->
+            270
+
+        Down ->
+            180
+
+        Left ->
+            90
+
+
+toRadians : Direction -> Float
+toRadians =
+    toDegrees >> degrees
+
+
+fromRadians : Float -> Direction
+fromRadians rad =
+    if rad == 0 then
+        Up
+
+    else
+        let
+            piOver4 =
+                pi / 4
+
+            cardinalRad =
+                piOver4 * (toFloat <| round (rad / piOver4))
+        in
+        case round cardinalRad of
+            270 ->
+                Right
+
+            180 ->
+                Down
+
+            90 ->
+                Left
+
+            _ ->
+                Up

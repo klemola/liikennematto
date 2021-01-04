@@ -7,6 +7,7 @@ module World exposing
     , canBuildRoadAt
     , hasConnectedRoad
     , hasLot
+    , hasLotAnchor
     , isEmptyArea
     , new
     , newWithInitialBoard
@@ -23,13 +24,13 @@ module World exposing
     )
 
 import Board exposing (Board)
-import Car exposing (Car)
+import Car exposing (Car, CarKind(..))
 import Cell exposing (Cell)
 import Collision
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
-import Lot exposing (Lot)
+import Lot exposing (BuildingKind(..), Lot)
 import Position exposing (Position)
 import RoadNetwork exposing (RoadNetwork)
 import Tile
@@ -120,21 +121,37 @@ withLot lot world =
         nextLotId =
             nextId world.lots
 
+        nextLots =
+            Dict.insert nextLotId lot world.lots
+
         worldWithNewLot =
-            { world | lots = Dict.insert nextLotId lot world.lots }
+            { world
+                | lots = nextLots
+
+                -- this breaks previous lots
+                , roadNetwork = RoadNetwork.fromBoardAndLots world.board nextLots
+            }
+
+        createCar carKind =
+            worldWithNewLot
+                |> withCar
+                    { kind = carKind
+                    , position = Lot.parkingSpot lot
+                    , rotation =
+                        lot.content.entryDirection
+                            |> Direction.next
+                            |> Direction.toRadians
+                    , status = Car.ParkedAtLot
+                    , homeLotId = Just nextLotId
+                    , route =
+                        worldWithNewLot.roadNetwork
+                            |> RoadNetwork.findNodeByLotId nextLotId
+                            |> Maybe.map List.singleton
+                            |> Maybe.withDefault []
+                    }
     in
-    Lot.resident lot
-        |> Maybe.map
-            (\carKind ->
-                worldWithNewLot
-                    |> withCar
-                        { kind = carKind
-                        , position = Lot.parkingSpot lot
-                        , direction = Direction.next lot.content.entryDirection
-                        , homeLotId = Just nextLotId
-                        , status = Car.ParkedAtLot
-                        }
-            )
+    resident lot
+        |> Maybe.map createCar
         |> Maybe.withDefault worldWithNewLot
 
 
@@ -231,6 +248,11 @@ hasLot cell { lots } =
     List.any (Lot.inBounds cell) (Dict.values lots)
 
 
+hasLotAnchor : Cell -> World -> Bool
+hasLotAnchor cell { lots } =
+    List.any (\lot -> Lot.anchorCell lot == cell) (Dict.values lots)
+
+
 hasConnectedRoad : { currentCell : Cell, direction : Direction, world : World } -> Bool
 hasConnectedRoad { currentCell, direction, world } =
     case
@@ -287,6 +309,19 @@ isEmptyArea { origin, width, height } world =
     inBoardBounds && noCollision ()
 
 
+hasValidAnchorCell : Board -> Lot -> Bool
+hasValidAnchorCell board lot =
+    case Dict.get (Lot.anchorCell lot) board of
+        Just (TwoLaneRoad (Regular Vertical) _) ->
+            True
+
+        Just (TwoLaneRoad (Regular Horizontal) _) ->
+            True
+
+        _ ->
+            False
+
+
 
 -- Utility
 
@@ -297,7 +332,7 @@ worldAfterBoardChange { cell, nextBoard, world } =
         nextLots =
             Dict.filter
                 (\_ lot ->
-                    Board.exists (Lot.anchorCell lot) nextBoard && not (Lot.inBounds cell lot)
+                    hasValidAnchorCell nextBoard lot && not (Lot.inBounds cell lot)
                 )
                 world.lots
 
@@ -311,9 +346,9 @@ worldAfterBoardChange { cell, nextBoard, world } =
         roadNetwork =
             RoadNetwork.fromBoardAndLots nextBoard world.lots
 
-        dot =
-            RoadNetwork.toDotString roadNetwork
-                |> Debug.log "dot"
+        -- dot =
+        --     RoadNetwork.toDotString roadNetwork
+        --         |> Debug.log "dot"
     in
     { world
         | board = nextBoard
@@ -341,15 +376,41 @@ carsAfterBoardChange { cell, nextLots, cars } =
                     Nothing ->
                         True
             )
-        -- Room for improvement: move the car back to it's lot instead
+        -- TODO: reset car destination and move the car back to it's lot
         |> Dict.map
             (\_ car ->
-                if car.position == Cell.bottomLeftCorner cell then
-                    Car.waitForRespawn car
+                if car.route == [] then
+                    car
 
                 else
-                    car
+                    Car.markAsConfused car
             )
+
+
+
+-- Data
+
+
+resident : Lot -> Maybe CarKind
+resident lot =
+    case lot.content.kind of
+        ResidentialA ->
+            Just SedanA
+
+        ResidentialB ->
+            Just SedanB
+
+        ResidentialC ->
+            Just SedanC
+
+        ResidentialD ->
+            Just SedanD
+
+        ResidentialE ->
+            Just SedanE
+
+        _ ->
+            Nothing
 
 
 initialBoard : Board
