@@ -6,7 +6,7 @@ module RoadNetwork exposing
     , findNodeByLotId
     , findNodeByNodeId
     , fromBoardAndLots
-    , getFirstOutgoingConnection
+    , getOutgoingConnections
     , new
     , nodeBoundingBox
     , toDotString
@@ -567,14 +567,9 @@ findNodeByNodeId roadNetwork nodeId =
     Graph.get nodeId roadNetwork
 
 
-getFirstOutgoingConnection : RoadNetwork -> RNNodeContext -> Maybe RNNodeContext
-getFirstOutgoingConnection roadNetwork nodeCtx =
-    case Graph.alongOutgoingEdges nodeCtx of
-        nodeId :: others ->
-            findNodeByNodeId roadNetwork nodeId
-
-        _ ->
-            Nothing
+getOutgoingConnections : RNNodeContext -> List NodeId
+getOutgoingConnections nodeCtx =
+    Graph.alongOutgoingEdges nodeCtx
 
 
 

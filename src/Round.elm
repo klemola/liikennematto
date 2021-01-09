@@ -14,7 +14,8 @@ import Collision
 import Direction exposing (Direction)
 import Position exposing (Position)
 import Random
-import RoadNetwork
+import Random.List
+import RoadNetwork exposing (RoadNetwork)
 import Tile
     exposing
         ( IntersectionControl(..)
@@ -106,16 +107,7 @@ updateCar round =
             case activeCar.status of
                 Moving ->
                     if Collision.aabb (RoadNetwork.nodeBoundingBox node) carCenterPointBoundingBox then
-                        -- TODO: move route advancement logic to a separate function
-                        ( { activeCar
-                            | route =
-                                RoadNetwork.getFirstOutgoingConnection world.roadNetwork nodeCtx
-                                    |> Maybe.map List.singleton
-                                    |> Maybe.withDefault []
-                            , status = ParkedAtLot
-                          }
-                        , seed
-                        )
+                        chooseNextRoute activeCar round.world.roadNetwork nodeCtx round.seed
 
                     else
                         ( Car.move activeCar, seed )
@@ -135,6 +127,31 @@ updateCar round =
 
         _ ->
             ( Car.markAsConfused activeCar, seed )
+
+
+chooseNextRoute : Car -> RoadNetwork -> RoadNetwork.RNNodeContext -> Random.Seed -> ( Car, Random.Seed )
+chooseNextRoute car roadNetwork nodeCtx seed =
+    let
+        randomConnectionGenerator =
+            RoadNetwork.getOutgoingConnections nodeCtx
+                |> Random.List.choose
+                |> Random.map Tuple.first
+
+        ( connection, nextSeed ) =
+            Random.step randomConnectionGenerator seed
+
+        nextRoute =
+            connection
+                |> Maybe.andThen (RoadNetwork.findNodeByNodeId roadNetwork)
+                |> Maybe.map List.singleton
+                |> Maybe.withDefault []
+    in
+    ( { car
+        | route = nextRoute
+        , status = ParkedAtLot
+      }
+    , nextSeed
+    )
 
 
 applyRule : Round -> Rule -> Car
