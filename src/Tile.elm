@@ -11,7 +11,6 @@ module Tile exposing
     , potentialConnections
     , priorityDirections
     , setIntersectionControl
-    , toString
     , toggleIntersectionControl
     , toggleTrafficDirection
     )
@@ -19,7 +18,6 @@ module Tile exposing
 import Config exposing (tileSize)
 import Dict exposing (Dict)
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
-import Position exposing (Position)
 import TrafficLight exposing (TrafficLights)
 
 
@@ -240,16 +238,3 @@ ids =
 fromId : Int -> Maybe Tile
 fromId fourBitId =
     Dict.get fourBitId ids
-
-
-toString : Tile -> String
-toString tile =
-    case tile of
-        TwoLaneRoad _ Both ->
-            "Two-way road"
-
-        TwoLaneRoad _ OneWay ->
-            "One-way road"
-
-        Intersection _ _ ->
-            "Intersection"

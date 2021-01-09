@@ -66,7 +66,7 @@ connectedRoadsSetup =
         car =
             carOne
                 |> Car.spawn ( 0, 720 )
-                |> Car.turn Right
+                |> Car.turn (Direction.toRadians Right)
 
         otherCars =
             []
@@ -85,7 +85,7 @@ disconnectedRoadsSetup =
         car =
             carOne
                 |> Car.spawn ( 0, 720 )
-                |> Car.turn Right
+                |> Car.turn (Direction.toRadians Right)
 
         otherCars =
             []
@@ -105,7 +105,7 @@ curveSetup =
         car =
             carOne
                 |> Car.spawn ( 80, 720 )
-                |> Car.turn Right
+                |> Car.turn (Direction.toRadians Right)
 
         otherCars =
             []
@@ -124,7 +124,7 @@ randomTurnSetup =
         car =
             carOne
                 |> Car.spawn ( 0, 720 )
-                |> Car.turn Right
+                |> Car.turn (Direction.toRadians Right)
 
         otherCars =
             []
@@ -143,12 +143,12 @@ collisionSetup =
         car =
             carOne
                 |> Car.spawn ( 0, 720 )
-                |> Car.turn Right
+                |> Car.turn (Direction.toRadians Right)
 
         otherCars =
             [ carTwo
                 |> Car.spawn ( 80, 720 )
-                |> Car.turn Right
+                |> Car.turn (Direction.toRadians Right)
             ]
     in
     Round.new world False fakeRandomDirections car otherCars
@@ -165,12 +165,12 @@ noCollisionSetup =
         car =
             carOne
                 |> Car.spawn ( 0, 720 )
-                |> Car.turn Right
+                |> Car.turn (Direction.toRadians Right)
 
         otherCars =
             [ carTwo
                 |> Car.spawn ( 80, 720 )
-                |> Car.turn Left
+                |> Car.turn (Direction.toRadians Left)
             ]
     in
     Round.new world False fakeRandomDirections car otherCars
@@ -187,7 +187,7 @@ redTrafficLightsSetup =
         car =
             carOne
                 |> Car.spawn ( 0, 720 )
-                |> Car.turn Right
+                |> Car.turn (Direction.toRadians Right)
 
         otherCars =
             []
@@ -206,7 +206,7 @@ greenTrafficLightsSetup =
         car =
             carOne
                 |> Car.spawn ( 0, 720 )
-                |> Car.turn Down
+                |> Car.turn (Direction.toRadians Down)
 
         otherCars =
             []
@@ -227,13 +227,13 @@ yieldSetup hasPriorityTraffic =
         car =
             carOne
                 |> Car.spawn ( 0, 640 )
-                |> Car.turn Right
+                |> Car.turn (Direction.toRadians Right)
 
         otherCars =
             if hasPriorityTraffic then
                 [ carTwo
                     |> Car.spawn ( 80, 720 )
-                    |> Car.turn Down
+                    |> Car.turn (Direction.toRadians Down)
                 ]
 
             else
@@ -266,7 +266,7 @@ stopSetup =
         car =
             carOne
                 |> Car.spawn ( 0, 640 )
-                |> Car.turn Right
+                |> Car.turn (Direction.toRadians Right)
                 |> Car.move
 
         otherCars =
@@ -288,13 +288,13 @@ yieldAfterStopSetup =
         car =
             carOne
                 |> Car.spawn ( 0, 640 )
-                |> Car.turn Right
+                |> Car.turn (Direction.toRadians Right)
                 |> Car.stopAtIntersection
 
         otherCars =
             [ carTwo
                 |> Car.spawn ( 80, 720 )
-                |> Car.turn Down
+                |> Car.turn (Direction.toRadians Down)
             ]
     in
     Round.new world False fakeRandomDirections car otherCars

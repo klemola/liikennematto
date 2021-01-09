@@ -11,10 +11,9 @@ module Round exposing
 import Car exposing (Car, Status(..))
 import Cell
 import Collision
-import Config exposing (tileSize)
 import Direction exposing (Direction)
 import Position exposing (Position)
-import RoadNetwork exposing (RoadNetwork)
+import RoadNetwork
 import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..), TrafficDirection(..))
 import TrafficLight
 import World exposing (World)
@@ -87,11 +86,6 @@ updateCar world car =
     let
         carCenterPointBoundingBox =
             Collision.boundingBoxAroundCenter car.position 1
-
-        angleToDestination destination =
-            Position.difference car.position destination
-                |> (\( diffX, diffY ) -> atan2 diffY diffX)
-                |> (+) (degrees 270)
     in
     case
         car.route
@@ -104,6 +98,7 @@ updateCar world car =
             case car.status of
                 Moving ->
                     if Collision.aabb (RoadNetwork.nodeBoundingBox node) carCenterPointBoundingBox then
+                        -- TODO: move route advancement logic to a separate function
                         { car
                             | route =
                                 RoadNetwork.getFirstOutgoingConnection world.roadNetwork nodeCtx
@@ -116,10 +111,10 @@ updateCar world car =
                         Car.move car
 
                 ParkedAtLot ->
-                    Car.turn (angleToDestination node.label.position) car
+                    Car.turn (Position.toAngleRadians car.position node.label.position) car
 
                 Turning _ ->
-                    Car.turn (angleToDestination node.label.position) car
+                    Car.turn (Position.toAngleRadians car.position node.label.position) car
 
                 _ ->
                     car
@@ -129,7 +124,7 @@ updateCar world car =
 
 
 applyRule : Round -> Rule -> Car
-applyRule { activeCar, world, randomDirections } rule =
+applyRule { activeCar } rule =
     case rule of
         AvoidCollision ->
             Car.skipRound activeCar

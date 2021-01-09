@@ -345,10 +345,6 @@ worldAfterBoardChange { cell, nextBoard, world } =
 
         roadNetwork =
             RoadNetwork.fromBoardAndLots nextBoard world.lots
-
-        -- dot =
-        --     RoadNetwork.toDotString roadNetwork
-        --         |> Debug.log "dot"
     in
     { world
         | board = nextBoard
@@ -376,7 +372,6 @@ carsAfterBoardChange { cell, nextLots, cars } =
                     Nothing ->
                         True
             )
-        -- TODO: reset car destination and move the car back to it's lot
         |> Dict.map
             (\_ car ->
                 if car.route == [] then

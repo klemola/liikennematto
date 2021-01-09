@@ -3,6 +3,7 @@ module Position exposing
     , difference
     , filterBy
     , shiftBy
+    , toAngleRadians
     , toString
     )
 
@@ -41,6 +42,22 @@ shiftBy distance dir ( x, y ) =
 difference : Position -> Position -> Position
 difference ( fromX, fromY ) ( toX, toY ) =
     ( toX - fromX, toY - fromY )
+
+
+toAngleRadians : Position -> Position -> Float
+toAngleRadians origin destination =
+    let
+        ( diffX, diffY ) =
+            difference origin destination
+
+        angle =
+            atan2 diffY diffX
+    in
+    if angle < 0 then
+        angle + 2 * pi
+
+    else
+        angle
 
 
 toString : Position -> String

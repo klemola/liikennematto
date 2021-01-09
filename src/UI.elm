@@ -1,7 +1,6 @@
 module UI exposing (Model, Msg(..), initialModel, recalculateDimensions, update, view)
 
 import Car exposing (Car)
-import Cell
 import Config exposing (borderRadius, borderSize, colors, whitespace)
 import Dict
 import Direction exposing (Orientation(..))
@@ -16,7 +15,6 @@ import Element
         , column
         , el
         , fill
-        , fillPortion
         , height
         , image
         , inFront
@@ -37,9 +35,7 @@ import Graphics
 import Html exposing (Html)
 import Position
 import Render
-import RoadNetwork
 import Task
-import Tile
 import World
     exposing
         ( SimulationState(..)
