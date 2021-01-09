@@ -13,8 +13,15 @@ import Cell
 import Collision
 import Direction exposing (Direction)
 import Position exposing (Position)
+import Random
 import RoadNetwork
-import Tile exposing (IntersectionControl(..), RoadKind(..), Tile(..), TrafficDirection(..))
+import Tile
+    exposing
+        ( IntersectionControl(..)
+        , RoadKind(..)
+        , Tile(..)
+        , TrafficDirection(..)
+        )
 import TrafficLight
 import World exposing (World)
 
@@ -23,8 +30,7 @@ type alias Round =
     { world : World
     , activeCar : Car
     , otherCars : List Car
-    , coinTossResult : Bool
-    , randomDirections : List Direction
+    , seed : Random.Seed
     }
 
 
@@ -35,13 +41,12 @@ type Rule
     | StopAtIntersection
 
 
-new : World -> Bool -> List Direction -> Car -> List Car -> Round
-new world coinTossResult randomDirections activeCar otherCars =
+new : World -> Random.Seed -> Car -> List Car -> Round
+new world seed activeCar otherCars =
     { world = world
     , activeCar = activeCar
     , otherCars = otherCars
-    , coinTossResult = coinTossResult
-    , randomDirections = randomDirections
+    , seed = seed
     }
 
 
@@ -69,62 +74,71 @@ attemptRespawn round =
         round
 
 
-play : Round -> Car
+play : Round -> ( Car, Random.Seed )
 play round =
     if not (Car.isRespawning round.activeCar) then
         activeRulesByPriority round
             |> List.head
-            |> Maybe.map (applyRule round)
-            |> Maybe.withDefault (updateCar round.world round.activeCar)
+            |> Maybe.map (\rule -> ( applyRule round rule, round.seed ))
+            |> Maybe.withDefault (updateCar round)
 
     else
-        round.activeCar
+        ( round.activeCar, round.seed )
 
 
-updateCar : World -> Car -> Car
-updateCar world car =
+updateCar : Round -> ( Car, Random.Seed )
+updateCar round =
     let
+        { activeCar, world, seed } =
+            round
+
         carCenterPointBoundingBox =
-            Collision.boundingBoxAroundCenter car.position 1
+            Collision.boundingBoxAroundCenter activeCar.position 1
     in
     case
-        car.route
+        activeCar.route
     of
         nodeCtx :: rest ->
             let
                 { node } =
                     nodeCtx
             in
-            case car.status of
+            case activeCar.status of
                 Moving ->
                     if Collision.aabb (RoadNetwork.nodeBoundingBox node) carCenterPointBoundingBox then
                         -- TODO: move route advancement logic to a separate function
-                        { car
+                        ( { activeCar
                             | route =
                                 RoadNetwork.getFirstOutgoingConnection world.roadNetwork nodeCtx
                                     |> Maybe.map List.singleton
                                     |> Maybe.withDefault []
                             , status = ParkedAtLot
-                        }
+                          }
+                        , seed
+                        )
 
                     else
-                        Car.move car
+                        ( Car.move activeCar, seed )
 
                 ParkedAtLot ->
-                    Car.turn (Position.toAngleRadians car.position node.label.position) car
+                    ( Car.turn (Position.toAngleRadians activeCar.position node.label.position) activeCar
+                    , seed
+                    )
 
                 Turning _ ->
-                    Car.turn (Position.toAngleRadians car.position node.label.position) car
+                    ( Car.turn (Position.toAngleRadians activeCar.position node.label.position) activeCar
+                    , seed
+                    )
 
                 _ ->
-                    car
+                    ( activeCar, seed )
 
         _ ->
-            Car.markAsConfused car
+            ( Car.markAsConfused activeCar, seed )
 
 
 applyRule : Round -> Rule -> Car
-applyRule { activeCar } rule =
+applyRule { activeCar, seed } rule =
     case rule of
         AvoidCollision ->
             Car.skipRound activeCar

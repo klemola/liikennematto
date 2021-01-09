@@ -27,8 +27,7 @@ import World
 
 
 type alias Model =
-    { coinTossResult : Bool
-    , randomDirections : List Direction
+    { seed : Random.Seed
     }
 
 
@@ -39,19 +38,16 @@ type alias ShuffledBoard =
 type Msg
     = UpdateTraffic Time.Posix
     | UpdateEnvironment Time.Posix
-    | PrepareGeneration ()
-    | GenerateEnvironment ( ShuffledBoard, Maybe NewLot )
-    | ReceiveCoinTossResult Bool
-    | ReceiveRandomDirections (List Direction)
+    | GenerateEnvironment ()
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( { coinTossResult = False
-      , randomDirections = Direction.all
-      }
-    , prepareGenerationAfterRandomDelay
-    )
+    let
+        seed =
+            Random.initialSeed 666
+    in
+    ( { seed = seed }, generateEnvironmentAfterDelay seed )
 
 
 subscriptions : World -> Sub Msg
@@ -89,12 +85,13 @@ update : World -> Msg -> Model -> ( Model, World, Cmd Msg )
 update world msg model =
     case msg of
         UpdateTraffic _ ->
-            ( model
-            , updateTraffic model world
-            , Cmd.batch
-                [ tossACoin
-                , shuffleDirections
-                ]
+            let
+                ( nextWorld, nextSeed ) =
+                    updateTraffic world model.seed
+            in
+            ( { model | seed = nextSeed }
+            , nextWorld
+            , Cmd.none
             )
 
         UpdateEnvironment _ ->
@@ -103,87 +100,29 @@ update world msg model =
             , Cmd.none
             )
 
-        PrepareGeneration _ ->
+        GenerateEnvironment _ ->
             let
-                existingBuildingKinds =
-                    world.lots
-                        |> Dict.map (\_ lot -> lot.content.kind)
-                        |> Dict.values
-
-                unusedLots =
-                    List.filter (\{ content } -> not (List.member content.kind existingBuildingKinds)) Lot.all
-
-                largeEnoughRoadNetwork =
-                    Dict.size world.board > 4 * max 1 (Dict.size world.lots + 1)
+                ( nextWorld, nextSeed ) =
+                    attemptGenerateEnvironment world model.seed
             in
-            ( model
-            , world
-            , -- skip the generation if nothing new can be generated, or if the road network is too small
-              if world.simulationState == Paused || List.isEmpty unusedLots || not largeEnoughRoadNetwork then
-                prepareGenerationAfterRandomDelay
-
-              else
-                Cmd.batch
-                    [ generateEnvironmentWithRandomData world unusedLots
-                    , prepareGenerationAfterRandomDelay
-                    ]
+            ( { model | seed = nextSeed }
+            , nextWorld
+            , generateEnvironmentAfterDelay nextSeed
             )
 
-        GenerateEnvironment ( shuffledBoard, potentialNewLot ) ->
-            let
-                nextWorld =
-                    potentialNewLot
-                        |> Maybe.andThen (generateEnvironment world shuffledBoard)
-                        |> Maybe.map (\lot -> World.withLot lot world)
-                        |> Maybe.withDefault world
-            in
-            ( model, nextWorld, Cmd.none )
 
-        ReceiveCoinTossResult result ->
-            ( { model | coinTossResult = result }, world, Cmd.none )
-
-        ReceiveRandomDirections directions ->
-            ( { model | randomDirections = directions }, world, Cmd.none )
-
-
-shuffleDirections : Cmd Msg
-shuffleDirections =
-    Direction.all
-        |> Random.List.shuffle
-        |> Random.generate ReceiveRandomDirections
-
-
-tossACoin : Cmd Msg
-tossACoin =
-    Random.weighted ( 60, False ) [ ( 40, True ) ]
-        |> Random.generate ReceiveCoinTossResult
-
-
-generateEnvironmentWithRandomData : World -> List NewLot -> Cmd Msg
-generateEnvironmentWithRandomData world unusedLots =
-    Random.List.choose unusedLots
-        -- keep just the random "head"
-        |> Random.map Tuple.first
-        -- combine it with the shuffled board
-        |> Random.map2 Tuple.pair (Random.List.shuffle (Dict.toList world.board))
-        |> Random.generate GenerateEnvironment
-
-
-prepareGenerationAfterRandomDelay : Cmd Msg
-prepareGenerationAfterRandomDelay =
+generateEnvironmentAfterDelay : Random.Seed -> Cmd Msg
+generateEnvironmentAfterDelay seed =
     let
         randomMillis =
-            Random.int 1000 3500
+            seed
+                |> Random.step (Random.int 1000 3500)
+                |> Tuple.first
     in
-    Time.now
-        |> Task.map
-            (Time.posixToMillis
-                >> Random.initialSeed
-                >> Random.step randomMillis
-                >> Tuple.first
-            )
-        |> Task.andThen (toFloat >> Process.sleep)
-        |> Task.perform PrepareGeneration
+    randomMillis
+        |> toFloat
+        |> Process.sleep
+        |> Task.perform GenerateEnvironment
 
 
 
@@ -222,34 +161,62 @@ updateEnvironment world =
         |> World.withBoard (Dict.map (\_ tile -> updateTile tile) world.board)
 
 
-generateEnvironment : World -> ShuffledBoard -> NewLot -> Maybe Lot
-generateEnvironment world shuffledBoard newLot =
+attemptGenerateEnvironment : World -> Random.Seed -> ( World, Random.Seed )
+attemptGenerateEnvironment world seed =
     let
-        roadOrientation =
+        largeEnoughRoadNetwork =
+            Dict.size world.board > 4 * max 1 (Dict.size world.lots + 1)
+
+        existingBuildingKinds =
+            world.lots
+                |> Dict.map (\_ lot -> lot.content.kind)
+                |> Dict.values
+
+        unusedLots =
+            List.filter (\{ content } -> not (List.member content.kind existingBuildingKinds)) Lot.all
+    in
+    if world.simulationState == Paused || List.isEmpty unusedLots || not largeEnoughRoadNetwork then
+        ( world, seed )
+
+    else
+        generateEnvironment world seed unusedLots
+
+
+generateEnvironment : World -> Random.Seed -> List NewLot -> ( World, Random.Seed )
+generateEnvironment world seed unusedLots =
+    let
+        randomLot =
+            unusedLots
+                |> Random.List.choose
+                |> Random.map Tuple.first
+
+        ( potentialNewLot, nextSeed ) =
+            Random.step randomLot seed
+
+        nextWorld =
+            potentialNewLot
+                |> Maybe.andThen (findLotAnchor world seed)
+                |> Maybe.map Lot.fromNewLot
+                |> Maybe.map (\lot -> World.withLot lot world)
+                |> Maybe.withDefault world
+    in
+    ( nextWorld, nextSeed )
+
+
+findLotAnchor : World -> Random.Seed -> NewLot -> Maybe ( NewLot, Cell )
+findLotAnchor world seed newLot =
+    let
+        ( shuffledBoard, _ ) =
+            Random.step (Random.List.shuffle (Dict.toList world.board)) seed
+
+        targetOrientation =
             newLot.content.entryDirection
                 |> Direction.toOrientation
                 |> Direction.oppositeOrientation
-    in
-    findLotAnchor
-        { targetOrientation = roadOrientation
-        , targetDirection = Direction.opposite newLot.content.entryDirection
-        , newLot = newLot
-        , world = world
-        , shuffledBoard = shuffledBoard
-        }
-        |> Maybe.map (Lot.anchorTo newLot)
 
+        targetDirection =
+            Direction.opposite newLot.content.entryDirection
 
-findLotAnchor :
-    { targetOrientation : Orientation
-    , targetDirection : Direction
-    , newLot : NewLot
-    , world : World
-    , shuffledBoard : ShuffledBoard
-    }
-    -> Maybe ( Cell, Tile )
-findLotAnchor { targetOrientation, targetDirection, newLot, world, shuffledBoard } =
-    let
         isCompatible ( cell, tile ) =
             case tile of
                 TwoLaneRoad (Regular orientation) Both ->
@@ -269,6 +236,7 @@ findLotAnchor { targetOrientation, targetDirection, newLot, world, shuffledBoard
     shuffledBoard
         |> List.filter isCompatible
         |> List.head
+        |> Maybe.map (\( cell, _ ) -> ( newLot, cell ))
 
 
 
@@ -277,29 +245,29 @@ findLotAnchor { targetOrientation, targetDirection, newLot, world, shuffledBoard
 --
 
 
-updateTraffic : Model -> World -> World
-updateTraffic model world =
+updateTraffic : World -> Random.Seed -> ( World, Random.Seed )
+updateTraffic world seed =
     updateTrafficHelper
         { updateQueue = Dict.keys world.cars
-        , model = model
+        , seed = seed
         , world = world
         }
 
 
 updateTrafficHelper :
     { updateQueue : List Int
-    , model : Model
+    , seed : Random.Seed
     , world : World
     }
-    -> World
-updateTrafficHelper { updateQueue, model, world } =
+    -> ( World, Random.Seed )
+updateTrafficHelper { updateQueue, seed, world } =
     case updateQueue of
         activeCarId :: queue ->
             let
-                nextRound updatedCar =
+                nextRound ( updatedCar, nextSeed ) =
                     updateTrafficHelper
                         { updateQueue = queue
-                        , model = model
+                        , seed = nextSeed
                         , world =
                             world
                                 |> World.setCar activeCarId updatedCar
@@ -313,14 +281,14 @@ updateTrafficHelper { updateQueue, model, world } =
             in
             case Dict.get activeCarId world.cars of
                 Just activeCar ->
-                    Round.new world model.coinTossResult model.randomDirections activeCar otherCars
+                    Round.new world seed activeCar otherCars
                         |> Round.attemptRespawn
                         |> Round.play
                         |> nextRound
 
                 -- this should never happen, but the typesystem doesn't know that
                 Nothing ->
-                    world
+                    ( world, seed )
 
         [] ->
-            world
+            ( world, seed )

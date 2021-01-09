@@ -6,10 +6,10 @@ module Lot exposing
     , NewLot
     , all
     , anchorCell
-    , anchorTo
     , bottomLeftCorner
     , boundingBox
     , entryCell
+    , fromNewLot
     , inBounds
     , parkingSpot
     )
@@ -72,8 +72,8 @@ all =
     ]
 
 
-anchorTo : NewLot -> ( Cell, a ) -> Lot
-anchorTo newLot ( aCell, _ ) =
+fromNewLot : ( NewLot, Cell ) -> Lot
+fromNewLot ( newLot, aCell ) =
     let
         anchor =
             ( aCell, Direction.opposite newLot.content.entryDirection )
