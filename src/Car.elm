@@ -63,7 +63,6 @@ stoppedOrWaiting =
 type TurnKind
     = LeftTurn
     | RightTurn
-    | UTurn
 
 
 new : CarKind -> Car
@@ -103,19 +102,8 @@ move car =
         ( x, y ) =
             car.position
 
-        rotationInPolar =
-            car.rotation + degrees 90
-
-        rotationWithLimit =
-            -- adjust rotation for pre-polar adjusted value of < 270°
-            if rotationInPolar - degrees 360 >= 0 then
-                rotationInPolar - degrees 360
-
-            else
-                rotationInPolar
-
         ( addX, addY ) =
-            fromPolar ( 1, rotationWithLimit )
+            fromPolar ( 1, car.rotation )
     in
     { car
         | position = ( x + addX, y + addY )
@@ -130,78 +118,11 @@ skipRound car =
 
 turn : Float -> Car -> Car
 turn target car =
-    let
-        ( nextRotation, rotationComplete ) =
-            rotateImmediatelyInPlace
-                { target = target
-                , currentRotation = car.rotation
-                }
-
-        turnDirection =
-            if target == 0 || target > nextRotation then
-                LeftTurn
-
-            else
-                RightTurn
-
-        nextStatus =
-            if rotationComplete then
-                Moving
-
-            else
-                Turning turnDirection
-    in
+    -- TODO: incremental rotation using cubic bézier curves
     { car
-        | rotation = nextRotation
-        , status = nextStatus
+        | rotation = target
+        , status = Moving
     }
-
-
-rotateImmediatelyInPlace :
-    { target : Float
-    , currentRotation : Float
-    }
-    -> ( Float, Bool )
-rotateImmediatelyInPlace { target, currentRotation } =
-    let
-        foo =
-            Debug.log "current / target" ( currentRotation, target )
-    in
-    ( target
-    , True
-    )
-
-
-rotateIncrementallyInPlace :
-    { target : Float
-    , currentRotation : Float
-    }
-    -> ( Float, Bool )
-rotateIncrementallyInPlace { target, currentRotation } =
-    let
-        rotationPerStep =
-            0.05
-
-        rotationAfterStep =
-            if target == 0 then
-                min (degrees 360) (currentRotation + rotationPerStep)
-
-            else
-                min target (currentRotation + rotationPerStep)
-
-        nextRotation =
-            if rotationAfterStep >= degrees 360 then
-                0
-
-            else
-                rotationAfterStep
-
-        foo =
-            Debug.log "rotation / target" ( nextRotation, target )
-    in
-    ( nextRotation
-    , nextRotation == target || nextRotation == 0
-    )
 
 
 waitForTrafficLights : Car -> Car
@@ -234,6 +155,15 @@ markAsConfused car =
     { car | status = Confused }
 
 
+turnDirection : Car -> Float -> TurnKind
+turnDirection car target =
+    if target == 0 || target > car.rotation then
+        LeftTurn
+
+    else
+        RightTurn
+
+
 statusDescription : Status -> String
 statusDescription status =
     case status of
@@ -245,9 +175,6 @@ statusDescription status =
 
         Turning RightTurn ->
             "Turning right"
-
-        Turning UTurn ->
-            "Making a U-turn"
 
         WaitingForTrafficLights ->
             "Stopped @ traffic lights"

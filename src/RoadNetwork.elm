@@ -92,9 +92,6 @@ fromBoardAndLots board lots =
 
         edges =
             createLanes nodes
-
-        sizes =
-            Debug.log "# nodes /edges " ( List.length nodes, List.length edges )
     in
     Graph.fromNodesAndEdges nodes edges
 
@@ -401,7 +398,7 @@ findLanesInsideCell nodes current =
     nodes
         |> List.filterMap
             (\other ->
-                if endsEdgeInsideCell other && connectsWithinCell current other then
+                if current.id /= other.id && endsEdgeInsideCell other && connectsWithinCell current other then
                     Just (connect current other)
 
                 else
@@ -584,11 +581,33 @@ getFirstOutgoingConnection roadNetwork nodeCtx =
 -- Debug
 
 
+connectionKindToString : ConnectionKind -> String
+connectionKindToString kind =
+    case kind of
+        LaneStart ->
+            "Lane start"
+
+        LaneEnd ->
+            "Lane end"
+
+        DeadendEntry ->
+            "Deadend entry"
+
+        DeadendExit ->
+            "Deadend exit"
+
+        LotEntry ->
+            "Lot entry"
+
+        Stopgap ->
+            "Stopgap"
+
+
 toDotString : RoadNetwork -> String
 toDotString =
     let
         nodeFormatter =
-            \connection -> Just (Debug.toString connection.kind)
+            \connection -> Just (connectionKindToString connection.kind)
 
         edgeFormatter =
             \_ -> Nothing

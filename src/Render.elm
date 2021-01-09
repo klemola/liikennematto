@@ -179,12 +179,6 @@ renderCars cars lots =
 
 renderCar : Lots -> Car -> Collage msg
 renderCar lots car =
-    let
-        currentLot =
-            car.homeLotId
-                |> Maybe.map (\id -> Dict.get id lots)
-                |> Maybe.join
-    in
     Graphics.texture ( carSize, carSize ) (Graphics.carAsset car)
         |> rotate car.rotation
         |> shift car.position
