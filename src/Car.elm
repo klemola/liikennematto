@@ -10,11 +10,11 @@ module Car exposing
     , move
     , new
     , skipRound
-    , spawn
     , statusDescription
     , stopAtIntersection
     , turn
     , waitForTrafficLights
+    , withHome
     , yield
     )
 
@@ -72,6 +72,11 @@ new kind =
     , homeLotId = Nothing
     , route = []
     }
+
+
+withHome : Int -> Car -> Car
+withHome lotId car =
+    { car | homeLotId = Just lotId }
 
 
 isTurning : Car -> Bool
@@ -138,14 +143,9 @@ stopAtIntersection car =
     { car | status = StoppedAtIntersection }
 
 
-spawn : Position -> Car -> Car
-spawn position car =
-    { car | status = SkippingRound, position = position }
-
-
 markAsConfused : Car -> Car
 markAsConfused car =
-    { car | status = Confused }
+    { car | status = Confused, route = [] }
 
 
 turnDirection : Car -> Float -> TurnKind

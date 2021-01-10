@@ -1,7 +1,6 @@
 module Round exposing
     ( Round
     , Rule(..)
-    , attemptRespawn
     , checkCollisionRules
     , checkIntersectionRules
     , new
@@ -49,30 +48,6 @@ new world seed activeCar otherCars =
     , otherCars = otherCars
     , seed = seed
     }
-
-
-attemptRespawn : Round -> Round
-attemptRespawn round =
-    let
-        { otherCars, world, activeCar } =
-            round
-
-        isEmptyRoad cell =
-            List.all (\oc -> oc.position /= Cell.bottomLeftCorner cell) otherCars
-
-        spawn cell =
-            { round | activeCar = Car.spawn (Cell.bottomLeftCorner cell) activeCar }
-    in
-    if Car.isConfused activeCar then
-        world
-            |> World.roadCells
-            |> List.filter isEmptyRoad
-            |> List.head
-            |> Maybe.map spawn
-            |> Maybe.withDefault round
-
-    else
-        round
 
 
 play : Round -> ( Car, Random.Seed )

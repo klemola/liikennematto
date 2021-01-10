@@ -127,28 +127,17 @@ withLot lot world =
         worldWithNewLot =
             { world
                 | lots = nextLots
-
-                -- this breaks previous lots
                 , roadNetwork = RoadNetwork.fromBoardAndLots world.board nextLots
             }
 
+        -- Room for improvement: create the resident/car separately
         createCar carKind =
             worldWithNewLot
                 |> withCar
-                    { kind = carKind
-                    , position = Lot.parkingSpot lot
-                    , rotation =
-                        lot.content.entryDirection
-                            |> Direction.next
-                            |> Direction.toRadians
-                    , status = Car.ParkedAtLot
-                    , homeLotId = Just nextLotId
-                    , route =
-                        worldWithNewLot.roadNetwork
-                            |> RoadNetwork.findNodeByLotId nextLotId
-                            |> Maybe.map List.singleton
-                            |> Maybe.withDefault []
-                    }
+                    (Car.new carKind
+                        |> Car.withHome nextLotId
+                        |> moveCarToHome worldWithNewLot
+                    )
     in
     resident lot
         |> Maybe.map createCar
@@ -178,7 +167,7 @@ withTileAt cell tile world =
             carsAfterBoardChange
                 { cell = cell
                 , nextLots = world.lots
-                , cars = world.cars
+                , world = world
                 }
     }
 
@@ -340,7 +329,7 @@ worldAfterBoardChange { cell, nextBoard, world } =
             carsAfterBoardChange
                 { cell = cell
                 , nextLots = nextLots
-                , cars = world.cars
+                , world = world
                 }
 
         roadNetwork =
@@ -357,11 +346,11 @@ worldAfterBoardChange { cell, nextBoard, world } =
 carsAfterBoardChange :
     { cell : Cell
     , nextLots : Lots
-    , cars : Cars
+    , world : World
     }
     -> Cars
-carsAfterBoardChange { cell, nextLots, cars } =
-    cars
+carsAfterBoardChange { cell, nextLots, world } =
+    world.cars
         -- Room for improvement: implement general orphan entity handling
         |> Dict.filter
             (\_ car ->
@@ -372,14 +361,36 @@ carsAfterBoardChange { cell, nextLots, cars } =
                     Nothing ->
                         True
             )
-        |> Dict.map
-            (\_ car ->
-                if car.route == [] then
-                    car
+        |> Dict.map (\_ car -> moveCarToHome world car)
 
-                else
-                    Car.markAsConfused car
-            )
+
+moveCarToHome : World -> Car -> Car
+moveCarToHome world car =
+    let
+        home =
+            car.homeLotId
+                |> Maybe.andThen (\lotId -> Dict.get lotId world.lots)
+
+        route =
+            car.homeLotId
+                |> Maybe.andThen (RoadNetwork.findNodeByLotId world.roadNetwork)
+                |> Maybe.map List.singleton
+                |> Maybe.withDefault []
+    in
+    case home of
+        Just lot ->
+            { car
+                | position = Lot.parkingSpot lot
+                , rotation =
+                    lot.content.entryDirection
+                        |> Direction.next
+                        |> Direction.toRadians
+                , status = Car.ParkedAtLot
+                , route = route
+            }
+
+        Nothing ->
+            Car.markAsConfused car
 
 
 

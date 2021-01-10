@@ -548,8 +548,8 @@ closestToOriginOrdering current other =
 -- Queries
 
 
-findNodeByLotId : Int -> RoadNetwork -> Maybe RNNodeContext
-findNodeByLotId lotId roadNetwork =
+findNodeByLotId : RoadNetwork -> Int -> Maybe RNNodeContext
+findNodeByLotId roadNetwork lotId =
     roadNetwork
         |> Graph.fold
             (\ctx acc ->
