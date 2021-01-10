@@ -7,6 +7,8 @@ import Config exposing (tileSize)
 import Dict
 import Direction exposing (Corner(..), Direction(..), Orientation(..))
 import Lot exposing (Anchor, Lot)
+import Position exposing (Position)
+import Random
 import Round exposing (Round)
 import Tile
     exposing
@@ -18,6 +20,11 @@ import Tile
         )
 import TrafficLight
 import World exposing (World)
+
+
+seed : Random.Seed
+seed =
+    Random.initialSeed 42
 
 
 carOne : Car
@@ -52,7 +59,7 @@ respawnSetup =
         otherCars =
             []
     in
-    Round.new world False fakeRandomDirections car otherCars
+    Round.new world seed car otherCars
 
 
 connectedRoadsSetup : Round
@@ -64,14 +71,12 @@ connectedRoadsSetup =
                 |> World.withTileAt ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
 
         car =
-            carOne
-                |> Car.spawn ( 0, 720 )
-                |> Car.turn (Direction.toRadians Right)
+            spawn carOne ( 0, 720 ) Right
 
         otherCars =
             []
     in
-    Round.new world False fakeRandomDirections car otherCars
+    Round.new world seed car otherCars
 
 
 disconnectedRoadsSetup : Round
@@ -83,14 +88,12 @@ disconnectedRoadsSetup =
                 |> World.withTileAt ( 2, 1 ) (TwoLaneRoad (Regular Vertical) Both)
 
         car =
-            carOne
-                |> Car.spawn ( 0, 720 )
-                |> Car.turn (Direction.toRadians Right)
+            spawn carOne ( 0, 720 ) Right
 
         otherCars =
             []
     in
-    Round.new world False fakeRandomDirections car otherCars
+    Round.new world seed car otherCars
 
 
 curveSetup : Round
@@ -103,33 +106,12 @@ curveSetup =
                 |> World.withTileAt ( 2, 2 ) (TwoLaneRoad (Regular Vertical) Both)
 
         car =
-            carOne
-                |> Car.spawn ( 80, 720 )
-                |> Car.turn (Direction.toRadians Right)
+            spawn carOne ( 80, 720 ) Right
 
         otherCars =
             []
     in
-    Round.new world False fakeRandomDirections car otherCars
-
-
-randomTurnSetup : Round
-randomTurnSetup =
-    let
-        world =
-            World.new
-                |> World.withTileAt ( 1, 1 ) (Intersection (Yield Vertical) Crossroads)
-                |> World.withTileAt ( 1, 2 ) (TwoLaneRoad (Regular Vertical) Both)
-
-        car =
-            carOne
-                |> Car.spawn ( 0, 720 )
-                |> Car.turn (Direction.toRadians Right)
-
-        otherCars =
-            []
-    in
-    Round.new world True fakeRandomDirections car otherCars
+    Round.new world seed car otherCars
 
 
 collisionSetup : Round
@@ -141,17 +123,13 @@ collisionSetup =
                 |> World.withTileAt ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
 
         car =
-            carOne
-                |> Car.spawn ( 0, 720 )
-                |> Car.turn (Direction.toRadians Right)
+            spawn carOne ( 0, 720 ) Right
 
         otherCars =
-            [ carTwo
-                |> Car.spawn ( 80, 720 )
-                |> Car.turn (Direction.toRadians Right)
+            [ spawn carTwo ( 80, 720 ) Right
             ]
     in
-    Round.new world False fakeRandomDirections car otherCars
+    Round.new world seed car otherCars
 
 
 noCollisionSetup : Round
@@ -163,17 +141,13 @@ noCollisionSetup =
                 |> World.withTileAt ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
 
         car =
-            carOne
-                |> Car.spawn ( 0, 720 )
-                |> Car.turn (Direction.toRadians Right)
+            spawn carOne ( 0, 720 ) Right
 
         otherCars =
-            [ carTwo
-                |> Car.spawn ( 80, 720 )
-                |> Car.turn (Direction.toRadians Left)
+            [ spawn carTwo ( 80, 720 ) Left
             ]
     in
-    Round.new world False fakeRandomDirections car otherCars
+    Round.new world seed car otherCars
 
 
 redTrafficLightsSetup : Round
@@ -185,14 +159,12 @@ redTrafficLightsSetup =
                 |> World.withTileAt ( 2, 1 ) (Intersection (Signal TrafficLight.default) Crossroads)
 
         car =
-            carOne
-                |> Car.spawn ( 0, 720 )
-                |> Car.turn (Direction.toRadians Right)
+            spawn carOne ( 0, 720 ) Right
 
         otherCars =
             []
     in
-    Round.new world False fakeRandomDirections car otherCars
+    Round.new world seed car otherCars
 
 
 greenTrafficLightsSetup : Round
@@ -204,14 +176,12 @@ greenTrafficLightsSetup =
                 |> World.withTileAt ( 1, 2 ) (Intersection (Signal TrafficLight.default) Crossroads)
 
         car =
-            carOne
-                |> Car.spawn ( 0, 720 )
-                |> Car.turn (Direction.toRadians Down)
+            spawn carOne ( 0, 720 ) Down
 
         otherCars =
             []
     in
-    Round.new world False fakeRandomDirections car otherCars
+    Round.new world seed car otherCars
 
 
 yieldSetup : Bool -> Round
@@ -225,21 +195,17 @@ yieldSetup hasPriorityTraffic =
                 |> World.withTileAt ( 2, 3 ) (TwoLaneRoad (Regular Vertical) Both)
 
         car =
-            carOne
-                |> Car.spawn ( 0, 640 )
-                |> Car.turn (Direction.toRadians Right)
+            spawn carOne ( 0, 640 ) Right
 
         otherCars =
             if hasPriorityTraffic then
-                [ carTwo
-                    |> Car.spawn ( 80, 720 )
-                    |> Car.turn (Direction.toRadians Down)
+                [ spawn carTwo ( 80, 720 ) Down
                 ]
 
             else
                 []
     in
-    Round.new world False fakeRandomDirections car otherCars
+    Round.new world seed car otherCars
 
 
 yieldWithPriorityTrafficSetup : Round
@@ -264,15 +230,13 @@ stopSetup =
                 |> World.withTileAt ( 3, 3 ) (TwoLaneRoad (Regular Vertical) Both)
 
         car =
-            carOne
-                |> Car.spawn ( 0, 640 )
-                |> Car.turn (Direction.toRadians Right)
+            spawn carOne ( 0, 640 ) Right
                 |> Car.move
 
         otherCars =
             []
     in
-    Round.new world False fakeRandomDirections car otherCars
+    Round.new world seed car otherCars
 
 
 yieldAfterStopSetup : Round
@@ -286,18 +250,19 @@ yieldAfterStopSetup =
                 |> World.withTileAt ( 2, 3 ) (TwoLaneRoad (Regular Vertical) Both)
 
         car =
-            carOne
-                |> Car.spawn ( 0, 640 )
-                |> Car.turn (Direction.toRadians Right)
+            spawn carOne ( 0, 640 ) Right
                 |> Car.stopAtIntersection
 
         otherCars =
-            [ carTwo
-                |> Car.spawn ( 80, 720 )
-                |> Car.turn (Direction.toRadians Down)
+            [ spawn carTwo ( 80, 720 ) Down
             ]
     in
-    Round.new world False fakeRandomDirections car otherCars
+    Round.new world seed car otherCars
+
+
+spawn : Car -> Position -> Direction -> Car
+spawn car position direction =
+    { car | position = position, rotation = Direction.toRadians direction }
 
 
 

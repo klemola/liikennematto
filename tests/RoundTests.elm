@@ -1,6 +1,6 @@
 module RoundTests exposing (suite)
 
-import Car exposing (Status(..), TurnKind(..))
+import Car exposing (Car, Status(..), TurnKind(..))
 import Direction exposing (Direction(..))
 import Expect
 import Fixtures exposing (..)
@@ -44,7 +44,7 @@ suite =
                     Expect.equal
                         (collisionSetup
                             |> Round.play
-                            |> .status
+                            |> getStatus
                         )
                         SkippingRound
                 )
@@ -53,7 +53,7 @@ suite =
                     Expect.equal
                         (curveSetup
                             |> Round.play
-                            |> .status
+                            |> getStatus
                         )
                         (Turning RightTurn)
                 )
@@ -62,7 +62,7 @@ suite =
                     Expect.equal
                         (redTrafficLightsSetup
                             |> Round.play
-                            |> .status
+                            |> getStatus
                         )
                         WaitingForTrafficLights
                 )
@@ -71,7 +71,7 @@ suite =
                     Expect.equal
                         (yieldWithPriorityTrafficSetup
                             |> Round.play
-                            |> .status
+                            |> getStatus
                         )
                         Yielding
                 )
@@ -80,32 +80,14 @@ suite =
                     Expect.equal
                         (stopSetup
                             |> Round.play
-                            |> .status
+                            |> getStatus
                         )
                         StoppedAtIntersection
                 )
             ]
-        , describe "Respawn"
-            [ test "works for a car that is waiting to spawn"
-                (\_ ->
-                    Expect.equal
-                        (respawnSetup
-                            |> Round.attemptRespawn
-                            |> .activeCar
-                            |> .position
-                        )
-                        ( 0, 720 )
-                )
-            , test "does nothing for a car that has already spawned"
-                (\_ ->
-                    Expect.equal
-                        (connectedRoadsSetup
-                            |> Round.attemptRespawn
-                            |> .activeCar
-                        )
-                        (connectedRoadsSetup
-                            |> .activeCar
-                        )
-                )
-            ]
         ]
+
+
+getStatus : ( Car, a ) -> Car.Status
+getStatus ( car, _ ) =
+    car.status
