@@ -282,7 +282,6 @@ updateTrafficHelper { updateQueue, seed, world } =
             case Dict.get activeCarId world.cars of
                 Just activeCar ->
                     Round.new world seed activeCar otherCars
-                        |> Round.attemptRespawn
                         |> Round.play
                         |> nextRound
 
