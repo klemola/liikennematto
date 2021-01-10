@@ -3,7 +3,7 @@ module Car exposing
     , CarKind(..)
     , Status(..)
     , TurnKind(..)
-    , isRespawning
+    , isConfused
     , isStoppedOrWaiting
     , isTurning
     , markAsConfused
@@ -14,7 +14,6 @@ module Car exposing
     , statusDescription
     , stopAtIntersection
     , turn
-    , waitForRespawn
     , waitForTrafficLights
     , yield
     )
@@ -49,7 +48,6 @@ type Status
     | WaitingForTrafficLights
     | StoppedAtIntersection
     | Yielding
-    | Respawning
     | ParkedAtLot
     | SkippingRound
     | Confused
@@ -70,7 +68,7 @@ new kind =
     { position = ( 0, 0 )
     , rotation = Direction.toRadians Up
     , kind = kind
-    , status = Respawning
+    , status = Confused
     , homeLotId = Nothing
     , route = []
     }
@@ -86,9 +84,9 @@ isTurning car =
             False
 
 
-isRespawning : Car -> Bool
-isRespawning car =
-    car.status == Respawning
+isConfused : Car -> Bool
+isConfused car =
+    car.status == Confused
 
 
 isStoppedOrWaiting : Car -> Bool
@@ -140,11 +138,6 @@ stopAtIntersection car =
     { car | status = StoppedAtIntersection }
 
 
-waitForRespawn : Car -> Car
-waitForRespawn car =
-    { car | status = Respawning, position = ( 0, 0 ) }
-
-
 spawn : Position -> Car -> Car
 spawn position car =
     { car | status = SkippingRound, position = position }
@@ -184,9 +177,6 @@ statusDescription status =
 
         Yielding ->
             "Yielding"
-
-        Respawning ->
-            "Respawning"
 
         ParkedAtLot ->
             "Parked @ lot"

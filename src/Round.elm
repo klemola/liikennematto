@@ -63,7 +63,7 @@ attemptRespawn round =
         spawn cell =
             { round | activeCar = Car.spawn (Cell.bottomLeftCorner cell) activeCar }
     in
-    if Car.isRespawning activeCar then
+    if Car.isConfused activeCar then
         world
             |> World.roadCells
             |> List.filter isEmptyRoad
@@ -77,14 +77,14 @@ attemptRespawn round =
 
 play : Round -> ( Car, Random.Seed )
 play round =
-    if not (Car.isRespawning round.activeCar) then
+    if Car.isConfused round.activeCar then
+        ( round.activeCar, round.seed )
+
+    else
         activeRulesByPriority round
             |> List.head
             |> Maybe.map (\rule -> ( applyRule round rule, round.seed ))
             |> Maybe.withDefault (updateCar round)
-
-    else
-        ( round.activeCar, round.seed )
 
 
 updateCar : Round -> ( Car, Random.Seed )
@@ -92,22 +92,20 @@ updateCar round =
     let
         { activeCar, world, seed } =
             round
-
-        carCenterPointBoundingBox =
-            Collision.boundingBoxAroundCenter activeCar.position 1
     in
-    case
-        activeCar.route
-    of
+    case activeCar.route of
         nodeCtx :: rest ->
             let
                 { node } =
                     nodeCtx
+
+                carCenterPointBoundingBox =
+                    Collision.boundingBoxAroundCenter activeCar.position 1
             in
             case activeCar.status of
                 Moving ->
                     if Collision.aabb (RoadNetwork.nodeBoundingBox node) carCenterPointBoundingBox then
-                        chooseNextRoute activeCar round.world.roadNetwork nodeCtx round.seed
+                        chooseNextConnection round nodeCtx
 
                     else
                         ( Car.move activeCar, seed )
@@ -129,8 +127,8 @@ updateCar round =
             ( Car.markAsConfused activeCar, seed )
 
 
-chooseNextRoute : Car -> RoadNetwork -> RoadNetwork.RNNodeContext -> Random.Seed -> ( Car, Random.Seed )
-chooseNextRoute car roadNetwork nodeCtx seed =
+chooseNextConnection : Round -> RoadNetwork.RNNodeContext -> ( Car, Random.Seed )
+chooseNextConnection { activeCar, seed, world } nodeCtx =
     let
         randomConnectionGenerator =
             RoadNetwork.getOutgoingConnections nodeCtx
@@ -142,11 +140,11 @@ chooseNextRoute car roadNetwork nodeCtx seed =
 
         nextRoute =
             connection
-                |> Maybe.andThen (RoadNetwork.findNodeByNodeId roadNetwork)
+                |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
                 |> Maybe.map List.singleton
                 |> Maybe.withDefault []
     in
-    ( { car
+    ( { activeCar
         | route = nextRoute
         , status = ParkedAtLot
       }
