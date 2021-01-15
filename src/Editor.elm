@@ -1,30 +1,33 @@
 module Editor exposing (Model, Msg, initialModel, overlay, toolbar, update)
 
 import Cell exposing (Cell)
-import Config exposing (borderRadius, borderSize, colors, tileSize, whitespace)
+import Config
+    exposing
+        ( colors
+        , tileSize
+        , whitespace
+        )
 import CustomEvent
 import Element
     exposing
         ( Color
         , Element
-        , alignTop
+        , alignLeft
         , column
         , el
         , fill
         , height
         , image
         , mouseOver
-        , padding
         , px
         , row
         , spacing
         , width
         )
-import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
-import Element.Input as Input
 import Tile exposing (Tile(..))
+import UI
 import World exposing (World)
 
 
@@ -49,7 +52,7 @@ type Msg
 
 initialModel : Model
 initialModel =
-    None
+    SmartConstruction
 
 
 
@@ -245,23 +248,11 @@ tileHighlight { world, selectedTool, cell } =
                     colors.notAllowed
 
 
-toolbar : Model -> Int -> Element Msg
-toolbar model currentWidth =
-    column
-        [ width (px currentWidth)
-        , alignTop
-        , padding whitespace.tight
-        , Background.color colors.toolbarBackground
-        , Border.rounded borderRadius.heavy
-        , Border.solid
-        , Border.widthEach
-            { top = borderSize.heavy
-            , bottom = borderSize.heavy
-            , left = borderSize.light
-            , right = borderSize.light
-            }
-        , Border.color colors.heavyBorder
-        , spacing whitespace.tight
+toolbar : Model -> Element Msg
+toolbar model =
+    row
+        [ spacing whitespace.tight
+        , alignLeft
         ]
         [ toolbarButton model SmartConstruction
         , toolbarButton model IntersectionDesigner
@@ -297,20 +288,4 @@ toolbarButton selectedTool tool =
         show =
             image [ width fill ] { description = "", src = "assets/" ++ asset }
     in
-    Input.button
-        [ Background.color colors.buttonBackground
-        , width fill
-        , Border.width borderSize.light
-        , Border.solid
-        , Border.rounded borderRadius.light
-        , Border.color
-            (if selectedTool == tool then
-                colors.selected
-
-             else
-                colors.lightBorder
-            )
-        ]
-        { onPress = Just (SelectTool tool)
-        , label = show
-        }
+    UI.controlButton show (SelectTool tool) (selectedTool == tool)

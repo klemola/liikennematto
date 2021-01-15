@@ -3,7 +3,19 @@ module Main exposing (main)
 import Browser
 import Browser.Dom exposing (getViewport)
 import Browser.Events exposing (onResize)
-import Html
+import Config
+    exposing
+        ( borderRadius
+        , borderSize
+        , colors
+        , whitespace
+        )
+import Editor
+import Element
+import Element.Background as Background
+import Element.Border as Border
+import Html exposing (Html)
+import Render
 import Simulation exposing (Msg(..))
 import Task
 import UI
@@ -23,7 +35,7 @@ main =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Simulation.subscriptions model.world
+        [ Simulation.subscriptions model.simulation
             |> Sub.map SimulationMsg
         , onResize ResizeWindow
         ]
@@ -31,7 +43,8 @@ subscriptions model =
 
 type alias Model =
     { simulation : Simulation.Model
-    , ui : UI.Model
+    , editor : Editor.Model
+    , inDebugMode : Bool
     , world : World
     }
 
@@ -43,8 +56,9 @@ init _ =
             Simulation.init
     in
     ( { simulation = initialSimulationModel
-      , ui = UI.initialModel
+      , editor = Editor.initialModel
       , world = World.newWithInitialBoard
+      , inDebugMode = False
       }
     , Cmd.batch
         [ -- simulate a screen resize
@@ -56,8 +70,9 @@ init _ =
 
 type Msg
     = ResizeWindow Int Int
+    | ToggleDebugMode
     | SimulationMsg Simulation.Msg
-    | UIMsg UI.Msg
+    | EditorMsg Editor.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -65,8 +80,12 @@ update msg model =
     case msg of
         ResizeWindow width height ->
             ( { model | world = World.withScreen ( width, height ) model.world }
-            , UI.recalculateDimensions ( width, height )
-                |> Cmd.map UIMsg
+            , Cmd.none
+            )
+
+        ToggleDebugMode ->
+            ( { model | inDebugMode = not model.inDebugMode }
+            , Cmd.none
             )
 
         SimulationMsg simulationMsg ->
@@ -74,22 +93,113 @@ update msg model =
                 ( simulation, nextWorld, cmd ) =
                     Simulation.update model.world simulationMsg model.simulation
             in
-            ( { model | simulation = simulation, world = nextWorld }
+            ( { model
+                | simulation = simulation
+                , world = nextWorld
+              }
             , Cmd.map SimulationMsg cmd
             )
 
-        UIMsg uiMsg ->
+        EditorMsg editorMsg ->
             let
-                ( ui, nextWorld, cmd ) =
-                    UI.update model.world uiMsg model.ui
+                ( editor, nextWorld, cmd ) =
+                    Editor.update model.world editorMsg model.editor
             in
-            ( { model | ui = ui, world = nextWorld }
-            , Cmd.map UIMsg cmd
+            ( { model
+                | editor = editor
+                , world = nextWorld
+              }
+            , Cmd.map EditorMsg cmd
             )
 
 
 view : Model -> Browser.Document Msg
 view model =
     { title = "Liikennematto"
-    , body = [ Html.map UIMsg (UI.view model.world model.ui) ]
+    , body = [ ui model ]
     }
+
+
+ui : Model -> Html Msg
+ui model =
+    let
+        render =
+            Render.view model.world
+                |> Element.html
+
+        editor =
+            Editor.overlay model.world model.editor
+                |> Element.map EditorMsg
+
+        controls =
+            Element.row
+                [ Element.width Element.fill
+                , Element.padding whitespace.tight
+                , Background.color colors.menuBackground
+                , Border.rounded borderRadius.heavy
+                , Border.solid
+                , Border.widthEach
+                    { top = borderSize.light
+                    , bottom = borderSize.light
+                    , left = borderSize.heavy
+                    , right = borderSize.heavy
+                    }
+                , Border.color colors.heavyBorder
+                ]
+                [ Editor.toolbar model.editor
+                    |> Element.map EditorMsg
+                , Element.row
+                    [ Element.alignRight
+                    , Element.spacing whitespace.tight
+                    ]
+                    [ UI.controlButton (Element.text "🐛") ToggleDebugMode model.inDebugMode
+                    , UI.simulationControl
+                        model.simulation
+                        |> Element.map SimulationMsg
+                    ]
+                ]
+
+        debug =
+            if model.inDebugMode then
+                UI.debug model.world
+
+            else
+                Element.none
+
+        simulationBorderColor =
+            case model.simulation.simulation of
+                Simulation.Paused ->
+                    colors.selected
+
+                _ ->
+                    colors.heavyBorder
+    in
+    Element.layout
+        [ Background.color colors.mainBackground
+        , Element.width Element.fill
+        , Element.height Element.fill
+        ]
+        (Element.el
+            [ Element.centerX
+            , Element.centerY
+            , Element.padding whitespace.regular
+            ]
+            (Element.column
+                [ Element.spacing whitespace.regular
+                , Element.onRight debug
+                ]
+                [ Element.el
+                    [ Element.inFront editor
+                    , Element.alignTop
+                    , Border.solid
+                    , Border.width borderSize.heavy
+                    , Border.rounded borderRadius.heavy
+                    , Border.color simulationBorderColor
+                    , Background.color colors.terrain
+                    ]
+                    render
+                , controls
+                , UI.projectInfo
+                ]
+            )
+        )

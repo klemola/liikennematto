@@ -1,7 +1,8 @@
-module Simulation exposing (Model, Msg(..), init, subscriptions, update)
+module Simulation exposing (Model, Msg(..), SimulationState(..), init, subscriptions, update)
 
 import Browser.Events as Events
 import Cell exposing (Cell)
+import Config
 import Dict
 import Direction exposing (Direction(..), Orientation)
 import Lot exposing (Lot, NewLot)
@@ -19,16 +20,18 @@ import Tile
         )
 import Time
 import TrafficLight
-import World
-    exposing
-        ( SimulationState(..)
-        , World
-        )
+import World exposing (World)
 
 
 type alias Model =
     { seed : Random.Seed
+    , simulation : SimulationState
     }
+
+
+type SimulationState
+    = Running
+    | Paused
 
 
 type alias ShuffledBoard =
@@ -36,7 +39,8 @@ type alias ShuffledBoard =
 
 
 type Msg
-    = UpdateTraffic Time.Posix
+    = SetSimulation SimulationState
+    | UpdateTraffic Time.Posix
     | UpdateEnvironment Time.Posix
     | GenerateEnvironment ()
 
@@ -47,32 +51,23 @@ init =
         seed =
             Random.initialSeed 666
     in
-    ( { seed = seed }, generateEnvironmentAfterDelay seed )
+    ( { seed = seed
+      , simulation = Running
+      }
+    , generateEnvironmentAfterDelay seed
+    )
 
 
-subscriptions : World -> Sub Msg
-subscriptions { simulationState } =
-    if simulationState == Paused then
+subscriptions : Model -> Sub Msg
+subscriptions { simulation } =
+    if simulation == Paused then
         Sub.none
 
     else
         Sub.batch
-            [ Time.every (environmentUpdateInterval simulationState) UpdateEnvironment
+            [ Time.every Config.environmentUpdateFrequency UpdateEnvironment
             , Events.onAnimationFrame UpdateTraffic
             ]
-
-
-environmentUpdateInterval : SimulationState -> Float
-environmentUpdateInterval speed =
-    case speed of
-        RunningAtSlowSpeed ->
-            1400
-
-        RunningAtNormalSpeed ->
-            700
-
-        Paused ->
-            0
 
 
 
@@ -84,6 +79,9 @@ environmentUpdateInterval speed =
 update : World -> Msg -> Model -> ( Model, World, Cmd Msg )
 update world msg model =
     case msg of
+        SetSimulation simulation ->
+            ( { model | simulation = simulation }, world, Cmd.none )
+
         UpdateTraffic _ ->
             let
                 ( nextWorld, nextSeed ) =
@@ -103,7 +101,7 @@ update world msg model =
         GenerateEnvironment _ ->
             let
                 ( nextWorld, nextSeed ) =
-                    attemptGenerateEnvironment world model.seed
+                    attemptGenerateEnvironment world model.seed model.simulation
             in
             ( { model | seed = nextSeed }
             , nextWorld
@@ -161,8 +159,8 @@ updateEnvironment world =
         |> World.withBoard (Dict.map (\_ tile -> updateTile tile) world.board)
 
 
-attemptGenerateEnvironment : World -> Random.Seed -> ( World, Random.Seed )
-attemptGenerateEnvironment world seed =
+attemptGenerateEnvironment : World -> Random.Seed -> SimulationState -> ( World, Random.Seed )
+attemptGenerateEnvironment world seed simulation =
     let
         largeEnoughRoadNetwork =
             Dict.size world.board > 4 * max 1 (Dict.size world.lots + 1)
@@ -175,7 +173,7 @@ attemptGenerateEnvironment world seed =
         unusedLots =
             List.filter (\{ content } -> not (List.member content.kind existingBuildingKinds)) Lot.all
     in
-    if world.simulationState == Paused || List.isEmpty unusedLots || not largeEnoughRoadNetwork then
+    if simulation == Paused || List.isEmpty unusedLots || not largeEnoughRoadNetwork then
         ( world, seed )
 
     else
