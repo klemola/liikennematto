@@ -39,9 +39,31 @@ boardSizeScaled =
     toFloat boardSize * tileSize
 
 
+environmentUpdateFrequency : Float
+environmentUpdateFrequency =
+    1000
+
+
+type alias UiDimensions =
+    { toolbar : Int
+    , controlButton : Int
+    , panel : Int
+    , text : Int
+    }
+
+
+uiDimensions : UiDimensions
+uiDimensions =
+    { toolbar = 80
+    , controlButton = 72
+    , panel = 200
+    , text = 14
+    }
+
+
 colors =
     { mainBackground = rgb255 68 115 120
-    , toolbarBackground = rgb255 159 192 198
+    , menuBackground = rgb255 159 192 198
     , buttonBackground = rgb255 228 228 235
     , listItemBackground = rgb255 109 151 156
     , text = rgb255 52 65 67

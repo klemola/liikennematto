@@ -1,7 +1,6 @@
 module World exposing
     ( Cars
     , Lots
-    , SimulationState(..)
     , World
     , buildRoadAt
     , canBuildRoadAt
@@ -13,13 +12,11 @@ module World exposing
     , newWithInitialBoard
     , removeRoadAt
     , reset
-    , roadCells
     , setCar
     , tileAt
     , withBoard
     , withLot
     , withScreen
-    , withSimulationState
     , withTileAt
     )
 
@@ -44,8 +41,7 @@ import Tile
 
 
 type alias World =
-    { simulationState : SimulationState
-    , screenSize : ( Int, Int )
+    { screenSize : ( Int, Int )
     , board : Board
     , roadNetwork : RoadNetwork
     , cars : Cars
@@ -65,16 +61,9 @@ type alias Lots =
     Dict Id Lot
 
 
-type SimulationState
-    = RunningAtNormalSpeed
-    | RunningAtSlowSpeed
-    | Paused
-
-
 new : World
 new =
-    { simulationState = RunningAtNormalSpeed
-    , screenSize = ( 0, 0 )
+    { screenSize = ( 0, 0 )
     , board = Dict.empty
     , roadNetwork = RoadNetwork.new
     , cars = Dict.empty
@@ -103,11 +92,6 @@ nextId dict =
 
 
 -- Modifications
-
-
-withSimulationState : SimulationState -> World -> World
-withSimulationState state world =
-    { world | simulationState = state }
 
 
 withScreen : ( Int, Int ) -> World -> World
@@ -220,16 +204,6 @@ tileAt cell { board } =
     board
         |> Dict.find (\key _ -> key == cell)
         |> Maybe.map Tuple.second
-
-
-roadCells : World -> List Cell
-roadCells { board } =
-    board
-        |> Dict.filter
-            (\_ t ->
-                Tile.isRoad t
-            )
-        |> Dict.keys
 
 
 hasLot : Cell -> World -> Bool
