@@ -1,35 +1,13 @@
-module UI exposing (controlButton, debug, projectInfo, simulationControl)
+module UI exposing (ControlButtonSize(..), controlButton, icon, projectInfo, simulationControl)
 
-import Car exposing (Car)
 import Config exposing (borderRadius, borderSize, colors, uiDimensions, whitespace)
-import Dict
 import Direction exposing (Orientation(..))
-import Element
-    exposing
-        ( Element
-        , alignRight
-        , clipX
-        , column
-        , el
-        , fill
-        , height
-        , image
-        , newTabLink
-        , padding
-        , px
-        , row
-        , spacing
-        , text
-        , width
-        )
+import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
-import Graphics
-import Position
 import Simulation exposing (Msg(..), SimulationState(..))
-import World exposing (World)
 
 
 simulationControl : Simulation.Model -> Element Simulation.Msg
@@ -43,22 +21,41 @@ simulationControl { simulation } =
                 Paused ->
                     ( "▶️", True, SetSimulation Running )
     in
-    controlButton (text label) msg selected
+    controlButton { label = Element.text label, onPress = msg, selected = selected, size = CBLarge }
 
 
-controlButtonSize : Element.Length
-controlButtonSize =
-    px (uiDimensions.controlButton - (2 * borderSize.light))
+type ControlButtonSize
+    = CBSmall
+    | CBLarge
 
 
-controlButton : Element msg -> msg -> Bool -> Element msg
-controlButton label onPress selected =
+controlButton :
+    { label : Element msg
+    , onPress : msg
+    , selected : Bool
+    , size : ControlButtonSize
+    }
+    -> Element msg
+controlButton { label, onPress, selected, size } =
+    let
+        ( buttonSize, fontSize ) =
+            case size of
+                CBSmall ->
+                    ( Element.px (uiDimensions.controlButtonS - (2 * borderSize.light))
+                    , uiDimensions.controlButtonS // 2
+                    )
+
+                CBLarge ->
+                    ( Element.px (uiDimensions.controlButtonL - (2 * borderSize.light))
+                    , uiDimensions.controlButtonL // 2
+                    )
+    in
     Input.button
         [ Background.color colors.buttonBackground
-        , Font.size (uiDimensions.controlButton // 2)
+        , Font.size fontSize
         , Font.center
-        , width controlButtonSize
-        , height controlButtonSize
+        , Element.width buttonSize
+        , Element.height buttonSize
         , Border.width borderSize.light
         , Border.rounded borderRadius.light
         , Border.solid
@@ -75,74 +72,14 @@ controlButton label onPress selected =
         }
 
 
-debug : World -> Element msg
-debug world =
-    el [ Element.paddingXY whitespace.regular 0 ]
-        (column
-            [ width (px uiDimensions.panel)
-            , padding whitespace.regular
-            , spacing whitespace.tight
-            , Background.color colors.menuBackground
-            , Border.rounded borderRadius.heavy
-            , Border.solid
-            , Border.widthEach
-                { top = borderSize.heavy
-                , bottom = borderSize.heavy
-                , left = borderSize.light
-                , right = borderSize.light
-                }
-            , Border.color colors.heavyBorder
-            ]
-            [ el
-                [ Font.size 16
-                , Font.bold
-                , Font.color colors.text
-                ]
-                (text "Debug")
-            , column
-                [ spacing whitespace.tight
-                , width fill
-                ]
-                (Dict.values world.cars
-                    |> List.map (carStateView uiDimensions.text)
-                )
-            ]
-        )
-
-
-carStateView : Int -> Car -> Element msg
-carStateView fontSize car =
-    let
-        showCarKind =
-            image [ width (px fontSize) ]
-                { description = ""
-                , src = "assets/" ++ Graphics.carAsset car
-                }
-    in
-    row
-        [ width fill
-        , padding whitespace.tight
-        , spacing whitespace.regular
-        , clipX
-        , Font.color colors.textInverse
-        , Font.size 13
-        , Background.color colors.listItemBackground
-        , Border.solid
-        , Border.rounded borderRadius.light
-        , Border.width borderSize.light
-        , Border.color colors.listItemBackground
-        ]
-        [ showCarKind
-        , column [ spacing whitespace.tight ]
-            [ text (Position.toString car.position)
-            , text (Car.statusDescription car.status)
-            ]
-        ]
+icon : String -> Element msg
+icon filename =
+    Element.image [ Element.width Element.fill ] { description = "", src = "assets/" ++ filename }
 
 
 projectInfo : Element msg
 projectInfo =
-    row
+    Element.row
         [ Font.family
             [ Font.typeface "Helvetica"
             , Font.typeface "sans-serif"
@@ -150,23 +87,23 @@ projectInfo =
         , Font.size uiDimensions.text
         , Background.color colors.textInverse
         , Border.rounded borderRadius.light
-        , width fill
-        , padding whitespace.regular
-        , spacing whitespace.regular
+        , Element.width Element.fill
+        , Element.padding whitespace.regular
+        , Element.spacing whitespace.regular
         ]
-        [ el
+        [ Element.el
             [ Font.size 16
             , Font.bold
             ]
-            (text "Liikennematto")
-        , row
-            [ spacing whitespace.tight
-            , alignRight
+            (Element.text "Liikennematto")
+        , Element.row
+            [ Element.spacing whitespace.tight
+            , Element.alignRight
             ]
             [ link "https://github.com/klemola/liikennematto" "GitHub"
-            , text "｜"
+            , Element.text "｜"
             , link "https://matiasklemola.com/liikennematto-dev-blog-one" "Blog"
-            , text "｜"
+            , Element.text "｜"
             , link "https://twitter.com/MatiasKlemola" "Twitter"
             ]
         ]
@@ -174,9 +111,9 @@ projectInfo =
 
 link : String -> String -> Element msg
 link url label =
-    newTabLink
+    Element.newTabLink
         [ Font.color colors.link
         ]
         { url = url
-        , label = text label
+        , label = Element.text label
         }
