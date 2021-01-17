@@ -39,13 +39,24 @@ import TrafficLight exposing (TrafficLight, TrafficLightKind(..))
 import World exposing (Lots, World)
 
 
-view : World -> Html msg
-view { board, cars, lots, roadNetwork } =
-    renderBoard board
-        |> Layout.at Layout.bottomLeft
-            (renderLots (Dict.values lots))
-        |> Layout.at Layout.bottomLeft (renderCars (Dict.values cars) lots)
-        |> Layout.at Layout.bottomLeft (renderRoadNetwork roadNetwork)
+view : World -> Bool -> Html msg
+view { board, cars, lots, roadNetwork } showRoadNetwork =
+    let
+        base =
+            renderBoard board
+                |> Layout.at Layout.bottomLeft
+                    (renderLots (Dict.values lots))
+                |> Layout.at Layout.bottomLeft (renderCars (Dict.values cars) lots)
+
+        withConditionalLayers =
+            if showRoadNetwork then
+                base
+                    |> Layout.at Layout.bottomLeft (renderRoadNetwork roadNetwork)
+
+            else
+                base
+    in
+    withConditionalLayers
         |> svg
 
 

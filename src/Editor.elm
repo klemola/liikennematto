@@ -8,26 +8,11 @@ import Config
         , whitespace
         )
 import CustomEvent
-import Element
-    exposing
-        ( Color
-        , Element
-        , alignLeft
-        , column
-        , el
-        , fill
-        , height
-        , image
-        , mouseOver
-        , px
-        , row
-        , spacing
-        , width
-        )
+import Element exposing (Color, Element)
 import Element.Border as Border
 import Element.Events as Events
 import Tile exposing (Tile(..))
-import UI
+import UI exposing (ControlButtonSize(..))
 import World exposing (World)
 
 
@@ -138,7 +123,7 @@ overlay : World -> Model -> Element Msg
 overlay world model =
     let
         size =
-            px (Config.boardSize * floor tileSize)
+            Element.px (Config.boardSize * floor tileSize)
 
         rg =
             List.range 1 Config.boardSize
@@ -157,7 +142,7 @@ overlay world model =
         rows =
             List.map
                 (\y ->
-                    row [] (List.map (\x -> cell x y) rg)
+                    Element.row [] (List.map (\x -> cell x y) rg)
                 )
                 rg
 
@@ -169,12 +154,12 @@ overlay world model =
                 _ ->
                     colors.transparent
     in
-    el
-        [ mouseOver [ Border.innerGlow highlight tileSize ]
-        , width size
-        , height size
+    Element.el
+        [ Element.mouseOver [ Border.innerGlow highlight tileSize ]
+        , Element.width size
+        , Element.height size
         ]
-        (column [] rows)
+        (Element.column [] rows)
 
 
 tileOverlay :
@@ -185,12 +170,12 @@ tileOverlay :
 tileOverlay { glowColor, cell } =
     let
         tileSizePx =
-            px (floor tileSize)
+            Element.px (floor tileSize)
     in
-    el
-        [ width tileSizePx
-        , height tileSizePx
-        , mouseOver [ Border.innerGlow glowColor <| tileSize / 4 ]
+    Element.el
+        [ Element.width tileSizePx
+        , Element.height tileSizePx
+        , Element.mouseOver [ Border.innerGlow glowColor <| tileSize / 4 ]
         , Events.onClick (SelectTile cell)
         , Element.htmlAttribute (CustomEvent.onRightClick <| SecondaryAction cell)
         ]
@@ -250,9 +235,9 @@ tileHighlight { world, selectedTool, cell } =
 
 toolbar : Model -> Element Msg
 toolbar model =
-    row
-        [ spacing whitespace.tight
-        , alignLeft
+    Element.row
+        [ Element.spacing whitespace.tight
+        , Element.alignLeft
         ]
         [ toolbarButton model SmartConstruction
         , toolbarButton model IntersectionDesigner
@@ -284,8 +269,5 @@ toolbarButton selectedTool tool =
 
                 None ->
                     "__none__"
-
-        show =
-            image [ width fill ] { description = "", src = "assets/" ++ asset }
     in
-    UI.controlButton show (SelectTool tool) (selectedTool == tool)
+    UI.controlButton { label = UI.icon asset, onPress = SelectTool tool, selected = selectedTool == tool, size = CBLarge }

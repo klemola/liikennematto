@@ -10,6 +10,7 @@ import Config
         , colors
         , whitespace
         )
+import DebugPanel
 import Editor
 import Element
 import Element.Background as Background
@@ -18,7 +19,7 @@ import Html exposing (Html)
 import Render
 import Simulation exposing (Msg(..))
 import Task
-import UI
+import UI exposing (ControlButtonSize(..))
 import World exposing (World)
 
 
@@ -44,7 +45,7 @@ subscriptions model =
 type alias Model =
     { simulation : Simulation.Model
     , editor : Editor.Model
-    , inDebugMode : Bool
+    , debugPanel : Maybe DebugPanel.Model
     , world : World
     }
 
@@ -57,8 +58,8 @@ init _ =
     in
     ( { simulation = initialSimulationModel
       , editor = Editor.initialModel
+      , debugPanel = Nothing
       , world = World.newWithInitialBoard
-      , inDebugMode = False
       }
     , Cmd.batch
         [ -- simulate a screen resize
@@ -73,6 +74,7 @@ type Msg
     | ToggleDebugMode
     | SimulationMsg Simulation.Msg
     | EditorMsg Editor.Msg
+    | DebugPanelMsg DebugPanel.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -84,7 +86,16 @@ update msg model =
             )
 
         ToggleDebugMode ->
-            ( { model | inDebugMode = not model.inDebugMode }
+            let
+                nextDebugPanel =
+                    case model.debugPanel of
+                        Just _ ->
+                            Nothing
+
+                        Nothing ->
+                            Just DebugPanel.initialModel
+            in
+            ( { model | debugPanel = nextDebugPanel }
             , Cmd.none
             )
 
@@ -112,6 +123,19 @@ update msg model =
             , Cmd.map EditorMsg cmd
             )
 
+        DebugPanelMsg debugPanelMsg ->
+            let
+                ( debugPanel, cmd ) =
+                    model.debugPanel
+                        |> Maybe.map (DebugPanel.update debugPanelMsg >> Tuple.mapFirst Just)
+                        |> Maybe.withDefault ( model.debugPanel, Cmd.none )
+            in
+            ( { model
+                | debugPanel = debugPanel
+              }
+            , Cmd.map DebugPanelMsg cmd
+            )
+
 
 view : Model -> Browser.Document Msg
 view model =
@@ -123,8 +147,13 @@ view model =
 ui : Model -> Html Msg
 ui model =
     let
+        isRoadNetworkVisible =
+            model.debugPanel
+                |> Maybe.map DebugPanel.isRoadNetworkVisible
+                |> Maybe.withDefault False
+
         render =
-            Render.view model.world
+            Render.view model.world isRoadNetworkVisible
                 |> Element.html
 
         editor =
@@ -152,19 +181,26 @@ ui model =
                     [ Element.alignRight
                     , Element.spacing whitespace.tight
                     ]
-                    [ UI.controlButton (Element.text "🐛") ToggleDebugMode model.inDebugMode
+                    [ UI.controlButton
+                        { label = Element.text "🐛"
+                        , onPress = ToggleDebugMode
+                        , selected = model.debugPanel /= Nothing
+                        , size = CBLarge
+                        }
                     , UI.simulationControl
                         model.simulation
                         |> Element.map SimulationMsg
                     ]
                 ]
 
-        debug =
-            if model.inDebugMode then
-                UI.debug model.world
+        debugPanel =
+            case model.debugPanel of
+                Just debugPanelModel ->
+                    DebugPanel.view debugPanelModel model.world
+                        |> Element.map DebugPanelMsg
 
-            else
-                Element.none
+                Nothing ->
+                    Element.none
 
         simulationBorderColor =
             case model.simulation.simulation of
@@ -178,15 +214,15 @@ ui model =
         [ Background.color colors.mainBackground
         , Element.width Element.fill
         , Element.height Element.fill
+        , Element.inFront debugPanel
         ]
         (Element.el
-            [ Element.centerX
+            [ Element.padding whitespace.regular
+            , Element.centerX
             , Element.centerY
-            , Element.padding whitespace.regular
             ]
             (Element.column
                 [ Element.spacing whitespace.regular
-                , Element.onRight debug
                 ]
                 [ Element.el
                     [ Element.inFront editor

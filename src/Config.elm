@@ -46,8 +46,10 @@ environmentUpdateFrequency =
 
 type alias UiDimensions =
     { toolbar : Int
-    , controlButton : Int
+    , controlButtonS : Int
+    , controlButtonL : Int
     , panel : Int
+    , overlay : Int
     , text : Int
     }
 
@@ -55,8 +57,10 @@ type alias UiDimensions =
 uiDimensions : UiDimensions
 uiDimensions =
     { toolbar = 80
-    , controlButton = 72
-    , panel = 200
+    , controlButtonS = 42
+    , controlButtonL = 72
+    , panel = 256
+    , overlay = 256
     , text = 14
     }
 
