@@ -12,7 +12,7 @@ import Element exposing (Color, Element)
 import Element.Border as Border
 import Element.Events as Events
 import Tile exposing (Tile(..))
-import UI exposing (ControlButtonSize(..))
+import UI exposing (ControlButtonSize)
 import World exposing (World)
 
 
@@ -233,22 +233,22 @@ tileHighlight { world, selectedTool, cell } =
                     colors.notAllowed
 
 
-toolbar : Model -> Element Msg
-toolbar model =
+toolbar : Model -> ControlButtonSize -> Element Msg
+toolbar model controlButtonSize =
     Element.row
         [ Element.spacing whitespace.tight
         , Element.alignLeft
         ]
-        [ toolbarButton model SmartConstruction
-        , toolbarButton model IntersectionDesigner
-        , toolbarButton model TrafficDirectionDesigner
-        , toolbarButton model Bulldozer
-        , toolbarButton model Dynamite
+        [ toolbarButton model SmartConstruction controlButtonSize
+        , toolbarButton model IntersectionDesigner controlButtonSize
+        , toolbarButton model TrafficDirectionDesigner controlButtonSize
+        , toolbarButton model Bulldozer controlButtonSize
+        , toolbarButton model Dynamite controlButtonSize
         ]
 
 
-toolbarButton : Tool -> Tool -> Element Msg
-toolbarButton selectedTool tool =
+toolbarButton : Tool -> Tool -> ControlButtonSize -> Element Msg
+toolbarButton selectedTool tool controlButtonSize =
     let
         asset =
             case tool of
@@ -270,4 +270,9 @@ toolbarButton selectedTool tool =
                 None ->
                     "__none__"
     in
-    UI.controlButton { label = UI.icon asset, onPress = SelectTool tool, selected = selectedTool == tool, size = CBLarge }
+    UI.controlButton
+        { label = UI.icon asset
+        , onPress = SelectTool tool
+        , selected = selectedTool == tool
+        , size = controlButtonSize
+        }

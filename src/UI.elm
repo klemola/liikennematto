@@ -10,8 +10,8 @@ import Element.Input as Input
 import Simulation exposing (Msg(..), SimulationState(..))
 
 
-simulationControl : Simulation.Model -> Element Simulation.Msg
-simulationControl { simulation } =
+simulationControl : Simulation.Model -> ControlButtonSize -> Element Simulation.Msg
+simulationControl { simulation } controlButtonSize =
     let
         ( label, selected, msg ) =
             case simulation of
@@ -21,7 +21,7 @@ simulationControl { simulation } =
                 Paused ->
                     ( "▶️", True, SetSimulation Running )
     in
-    controlButton { label = Element.text label, onPress = msg, selected = selected, size = CBLarge }
+    controlButton { label = Element.text label, onPress = msg, selected = selected, size = controlButtonSize }
 
 
 type ControlButtonSize
@@ -80,22 +80,24 @@ icon filename =
 projectInfo : Element msg
 projectInfo =
     Element.row
-        [ Font.family
+        [ Element.width Element.shrink
+        , Element.padding whitespace.regular
+        , Element.spacing whitespace.regular
+        , Element.alignRight
+        , Font.family
             [ Font.typeface "Helvetica"
             , Font.typeface "sans-serif"
             ]
         , Font.size uiDimensions.text
         , Background.color colors.textInverse
-        , Border.rounded borderRadius.light
-        , Element.width Element.fill
-        , Element.padding whitespace.regular
-        , Element.spacing whitespace.regular
+        , Border.roundEach
+            { topLeft = 0
+            , topRight = 0
+            , bottomRight = 0
+            , bottomLeft = borderRadius.heavy
+            }
         ]
-        [ Element.el
-            [ Font.size 16
-            , Font.bold
-            ]
-            (Element.text "Liikennematto")
+        [ Element.el [ Font.bold ] (Element.text "Liikennematto")
         , Element.row
             [ Element.spacing whitespace.tight
             , Element.alignRight

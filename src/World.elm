@@ -16,7 +16,6 @@ module World exposing
     , tileAt
     , withBoard
     , withLot
-    , withScreen
     , withTileAt
     )
 
@@ -41,8 +40,7 @@ import Tile
 
 
 type alias World =
-    { screenSize : ( Int, Int )
-    , board : Board
+    { board : Board
     , roadNetwork : RoadNetwork
     , cars : Cars
     , lots : Lots
@@ -63,8 +61,7 @@ type alias Lots =
 
 new : World
 new =
-    { screenSize = ( 0, 0 )
-    , board = Dict.empty
+    { board = Dict.empty
     , roadNetwork = RoadNetwork.new
     , cars = Dict.empty
     , lots = Dict.empty
@@ -92,11 +89,6 @@ nextId dict =
 
 
 -- Modifications
-
-
-withScreen : ( Int, Int ) -> World -> World
-withScreen ( width, height ) world =
-    { world | screenSize = ( width, height ) }
 
 
 withLot : Lot -> World -> World
