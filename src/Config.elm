@@ -51,6 +51,7 @@ type alias UiDimensions =
     , panel : Int
     , overlay : Int
     , text : Int
+    , smallControlsBreakpoint : Int
     }
 
 
@@ -58,10 +59,11 @@ uiDimensions : UiDimensions
 uiDimensions =
     { toolbar = 80
     , controlButtonS = 42
-    , controlButtonL = 72
+    , controlButtonL = 64
     , panel = 256
     , overlay = 256
     , text = 14
+    , smallControlsBreakpoint = 720
     }
 
 

@@ -5,14 +5,16 @@ import Browser.Dom exposing (getViewport)
 import Browser.Events exposing (onResize)
 import Config
     exposing
-        ( borderRadius
+        ( boardSizeScaled
+        , borderRadius
         , borderSize
         , colors
+        , uiDimensions
         , whitespace
         )
 import DebugPanel
 import Editor
-import Element
+import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Html exposing (Html)
@@ -47,6 +49,14 @@ type alias Model =
     , editor : Editor.Model
     , debugPanel : Maybe DebugPanel.Model
     , world : World
+    , screen : Screen
+    }
+
+
+type alias Screen =
+    { width : Int
+    , height : Int
+    , orientation : Element.Orientation
     }
 
 
@@ -60,6 +70,11 @@ init _ =
       , editor = Editor.initialModel
       , debugPanel = Nothing
       , world = World.newWithInitialBoard
+      , screen =
+            { width = 375
+            , height = 667
+            , orientation = Element.Landscape
+            }
       }
     , Cmd.batch
         [ -- simulate a screen resize
@@ -81,7 +96,18 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ResizeWindow width height ->
-            ( { model | world = World.withScreen ( width, height ) model.world }
+            ( { model
+                | screen =
+                    { width = width
+                    , height = height
+                    , orientation =
+                        if width < height then
+                            Element.Portrait
+
+                        else
+                            Element.Landscape
+                    }
+              }
             , Cmd.none
             )
 
@@ -101,11 +127,11 @@ update msg model =
 
         SimulationMsg simulationMsg ->
             let
-                ( simulation, nextWorld, cmd ) =
+                ( nextSimulation, nextWorld, cmd ) =
                     Simulation.update model.world simulationMsg model.simulation
             in
             ( { model
-                | simulation = simulation
+                | simulation = nextSimulation
                 , world = nextWorld
               }
             , Cmd.map SimulationMsg cmd
@@ -113,11 +139,11 @@ update msg model =
 
         EditorMsg editorMsg ->
             let
-                ( editor, nextWorld, cmd ) =
+                ( nextEditor, nextWorld, cmd ) =
                     Editor.update model.world editorMsg model.editor
             in
             ( { model
-                | editor = editor
+                | editor = nextEditor
                 , world = nextWorld
               }
             , Cmd.map EditorMsg cmd
@@ -125,13 +151,13 @@ update msg model =
 
         DebugPanelMsg debugPanelMsg ->
             let
-                ( debugPanel, cmd ) =
+                ( nextDebugPanel, cmd ) =
                     model.debugPanel
                         |> Maybe.map (DebugPanel.update debugPanelMsg >> Tuple.mapFirst Just)
                         |> Maybe.withDefault ( model.debugPanel, Cmd.none )
             in
             ( { model
-                | debugPanel = debugPanel
+                | debugPanel = nextDebugPanel
               }
             , Cmd.map DebugPanelMsg cmd
             )
@@ -146,96 +172,127 @@ view model =
 
 ui : Model -> Html Msg
 ui model =
+    Element.layout
+        [ Background.color colors.mainBackground
+        , Element.width Element.fill
+        , Element.height Element.fill
+        , Element.inFront (controls model)
+        , Element.inFront UI.projectInfo
+        , Element.inFront (debugPanel model)
+        ]
+        (render model)
+
+
+render : Model -> Element Msg
+render model =
     let
         isRoadNetworkVisible =
             model.debugPanel
                 |> Maybe.map DebugPanel.isRoadNetworkVisible
                 |> Maybe.withDefault False
 
-        render =
-            Render.view model.world isRoadNetworkVisible
-                |> Element.html
+        renderedSize =
+            floor boardSizeScaled
 
-        editor =
-            Editor.overlay model.world model.editor
-                |> Element.map EditorMsg
+        ( viewportWidth, viewportHeight ) =
+            ( min model.screen.width renderedSize, min model.screen.height renderedSize )
 
-        controls =
-            Element.row
-                [ Element.width Element.fill
-                , Element.padding whitespace.tight
-                , Background.color colors.menuBackground
+        ( overflowStrategy, showBorders ) =
+            if renderedSize > model.screen.width || renderedSize > model.screen.height then
+                ( Element.scrollbars, False )
+
+            else
+                ( Element.clip, True )
+
+        maybeBorder =
+            if showBorders then
+                [ Border.solid
+                , Border.width borderSize.heavy
                 , Border.rounded borderRadius.heavy
-                , Border.solid
-                , Border.widthEach
-                    { top = borderSize.light
-                    , bottom = borderSize.light
-                    , left = borderSize.heavy
-                    , right = borderSize.heavy
-                    }
-                , Border.color colors.heavyBorder
-                ]
-                [ Editor.toolbar model.editor
-                    |> Element.map EditorMsg
-                , Element.row
-                    [ Element.alignRight
-                    , Element.spacing whitespace.tight
-                    ]
-                    [ UI.controlButton
-                        { label = Element.text "🐛"
-                        , onPress = ToggleDebugMode
-                        , selected = model.debugPanel /= Nothing
-                        , size = CBLarge
-                        }
-                    , UI.simulationControl
-                        model.simulation
-                        |> Element.map SimulationMsg
-                    ]
+                , Border.color
+                    (case model.simulation.simulation of
+                        Simulation.Paused ->
+                            colors.selected
+
+                        _ ->
+                            colors.heavyBorder
+                    )
                 ]
 
-        debugPanel =
-            case model.debugPanel of
-                Just debugPanelModel ->
-                    DebugPanel.view debugPanelModel model.world
-                        |> Element.map DebugPanelMsg
-
-                Nothing ->
-                    Element.none
-
-        simulationBorderColor =
-            case model.simulation.simulation of
-                Simulation.Paused ->
-                    colors.selected
-
-                _ ->
-                    colors.heavyBorder
+            else
+                []
     in
-    Element.layout
-        [ Background.color colors.mainBackground
-        , Element.width Element.fill
-        , Element.height Element.fill
-        , Element.inFront debugPanel
-        ]
-        (Element.el
-            [ Element.padding whitespace.regular
-            , Element.centerX
-            , Element.centerY
-            ]
-            (Element.column
-                [ Element.spacing whitespace.regular
-                ]
-                [ Element.el
-                    [ Element.inFront editor
-                    , Element.alignTop
-                    , Border.solid
-                    , Border.width borderSize.heavy
-                    , Border.rounded borderRadius.heavy
-                    , Border.color simulationBorderColor
-                    , Background.color colors.terrain
-                    ]
-                    render
-                , controls
-                , UI.projectInfo
-                ]
+    Render.view model.world isRoadNetworkVisible
+        |> Element.html
+        |> Element.el
+            ([ Element.width (Element.px viewportWidth)
+             , Element.height (Element.px viewportHeight)
+             , Element.inFront
+                (Editor.overlay model.world model.editor
+                    |> Element.map EditorMsg
+                )
+             , Element.centerX
+             , Element.centerY
+             , Background.color colors.terrain
+             , overflowStrategy
+             ]
+                |> List.append maybeBorder
             )
-        )
+
+
+controls : Model -> Element Msg
+controls model =
+    let
+        width =
+            min model.screen.width (floor boardSizeScaled)
+
+        controlButtonSize =
+            if min model.screen.width model.screen.height < uiDimensions.smallControlsBreakpoint then
+                CBSmall
+
+            else
+                CBLarge
+    in
+    Element.row
+        [ Element.width (Element.px width)
+        , Element.padding whitespace.tight
+        , Element.spacing whitespace.regular
+        , Element.alignBottom
+        , Element.centerX
+        , Background.color colors.menuBackground
+        , Border.roundEach
+            { topLeft = borderRadius.heavy
+            , topRight = borderRadius.heavy
+            , bottomLeft = 0
+            , bottomRight = 0
+            }
+        , Border.solid
+        , Border.color colors.heavyBorder
+        ]
+        [ Editor.toolbar model.editor controlButtonSize
+            |> Element.map EditorMsg
+        , Element.row
+            [ Element.alignRight
+            , Element.spacing whitespace.tight
+            ]
+            [ UI.controlButton
+                { label = Element.text "🐛"
+                , onPress = ToggleDebugMode
+                , selected = model.debugPanel /= Nothing
+                , size = controlButtonSize
+                }
+            , UI.simulationControl model.simulation controlButtonSize
+                |> Element.map SimulationMsg
+            ]
+        ]
+
+
+debugPanel : Model -> Element Msg
+debugPanel model =
+    case model.debugPanel of
+        Just debugPanelModel ->
+            DebugPanel.view debugPanelModel model.world
+                |> Element.map DebugPanelMsg
+
+        Nothing ->
+            Element.none
