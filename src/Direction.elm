@@ -170,16 +170,16 @@ toDegrees : Direction -> Float
 toDegrees dir =
     case dir of
         Up ->
-            0
+            90
 
         Right ->
-            270
+            0
 
         Down ->
-            180
+            270
 
         Left ->
-            90
+            180
 
 
 toRadians : Direction -> Float

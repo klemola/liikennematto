@@ -21,7 +21,6 @@ import Dict.Extra as Dict
 import Direction exposing (Direction(..), Orientation(..))
 import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
 import Graph.DOT
-import Html exposing (node)
 import Lot exposing (Lot)
 import Maybe.Extra as Maybe
 import Position exposing (Position)

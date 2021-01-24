@@ -8,13 +8,9 @@ module Round exposing
     )
 
 import Car exposing (Car, Status(..))
-import Cell
-import Collision
-import Direction exposing (Direction)
-import Position exposing (Position)
 import Random
 import Random.List
-import RoadNetwork exposing (RoadNetwork)
+import RoadNetwork
 import Tile
     exposing
         ( IntersectionControl(..)
@@ -22,7 +18,6 @@ import Tile
         , Tile(..)
         , TrafficDirection(..)
         )
-import TrafficLight
 import World exposing (World)
 
 
@@ -65,45 +60,38 @@ play round =
 updateCar : Round -> ( Car, Random.Seed )
 updateCar round =
     let
-        { activeCar, world, seed } =
+        { activeCar, seed } =
             round
     in
-    case activeCar.route of
-        nodeCtx :: rest ->
-            let
-                { node } =
-                    nodeCtx
+    case activeCar.status of
+        Moving ->
+            if Car.isAtTheEndOfLocalPath activeCar then
+                chooseNextConnection round
 
-                carCenterPointBoundingBox =
-                    Collision.boundingBoxAroundCenter activeCar.position 1
-            in
-            case activeCar.status of
-                Moving ->
-                    if Collision.aabb (RoadNetwork.nodeBoundingBox node) carCenterPointBoundingBox then
-                        chooseNextConnection round nodeCtx
+            else
+                ( Car.move activeCar, seed )
 
-                    else
-                        ( Car.move activeCar, seed )
-
-                ParkedAtLot ->
-                    ( Car.turn (Position.toAngleRadians activeCar.position node.label.position) activeCar
-                    , seed
-                    )
-
-                Turning _ ->
-                    ( Car.turn (Position.toAngleRadians activeCar.position node.label.position) activeCar
-                    , seed
-                    )
-
-                _ ->
-                    ( activeCar, seed )
+        ParkedAtLot ->
+            ( Car.beginLeaveLot activeCar
+            , seed
+            )
 
         _ ->
-            ( Car.markAsConfused activeCar, seed )
+            ( activeCar, seed )
 
 
-chooseNextConnection : Round -> RoadNetwork.RNNodeContext -> ( Car, Random.Seed )
-chooseNextConnection { activeCar, seed, world } nodeCtx =
+chooseNextConnection : Round -> ( Car, Random.Seed )
+chooseNextConnection round =
+    case round.activeCar.route of
+        nodeCtx :: _ ->
+            chooseRandomRoute round nodeCtx
+
+        _ ->
+            ( Car.markAsConfused round.activeCar, round.seed )
+
+
+chooseRandomRoute : Round -> RoadNetwork.RNNodeContext -> ( Car, Random.Seed )
+chooseRandomRoute { activeCar, seed, world } nodeCtx =
     let
         randomConnectionGenerator =
             RoadNetwork.getOutgoingConnections nodeCtx
@@ -113,22 +101,30 @@ chooseNextConnection { activeCar, seed, world } nodeCtx =
         ( connection, nextSeed ) =
             Random.step randomConnectionGenerator seed
 
-        nextRoute =
-            connection
-                |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
-                |> Maybe.map List.singleton
-                |> Maybe.withDefault []
+        ( nextRoute, nextLocalPath ) =
+            case
+                connection
+                    |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
+            of
+                Just nextNodeCtx ->
+                    ( [ nextNodeCtx ]
+                    , Car.linearLocalPathToTarget nextNodeCtx.node.label.position activeCar
+                    )
+
+                Nothing ->
+                    ( [], [] )
     in
     ( { activeCar
         | route = nextRoute
-        , status = ParkedAtLot
+        , localPath = nextLocalPath
+        , status = Moving
       }
     , nextSeed
     )
 
 
 applyRule : Round -> Rule -> Car
-applyRule { activeCar, seed } rule =
+applyRule { activeCar } rule =
     case rule of
         AvoidCollision ->
             Car.skipRound activeCar
@@ -175,17 +171,6 @@ checkIntersectionRules { otherCars, activeCar, world } =
     let
         nextTile =
             Nothing
-
-        priorityDirections =
-            case nextTile of
-                Just tile ->
-                    Tile.priorityDirections tile
-
-                Nothing ->
-                    []
-
-        nextPosition =
-            ( 0, 0 )
 
         priorityTraffic =
             []

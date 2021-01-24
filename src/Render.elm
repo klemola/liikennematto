@@ -1,7 +1,7 @@
 module Render exposing (view)
 
 import Board exposing (Board)
-import Car exposing (Car, Status(..), TurnKind(..))
+import Car exposing (Car, Status(..))
 import Collage
     exposing
         ( Collage
@@ -27,6 +27,8 @@ import Graphics
 import Html exposing (Html)
 import Lot exposing (Lot)
 import Maybe.Extra as Maybe
+import Pixels
+import Point2d
 import RoadNetwork exposing (ConnectionKind(..), RoadNetwork)
 import Tile
     exposing
@@ -36,7 +38,7 @@ import Tile
         , TrafficDirection(..)
         )
 import TrafficLight exposing (TrafficLight, TrafficLightKind(..))
-import World exposing (Lots, World)
+import World exposing (World)
 
 
 view : World -> Bool -> Html msg
@@ -46,7 +48,7 @@ view { board, cars, lots, roadNetwork } showRoadNetwork =
             renderBoard board
                 |> Layout.at Layout.bottomLeft
                     (renderLots (Dict.values lots))
-                |> Layout.at Layout.bottomLeft (renderCars (Dict.values cars) lots)
+                |> Layout.at Layout.bottomLeft (renderCars (Dict.values cars))
 
         withConditionalLayers =
             if showRoadNetwork then
@@ -182,17 +184,27 @@ renderSigns orientation intersectionShape asset =
         |> List.map presentation
 
 
-renderCars : List Car -> Lots -> Collage msg
-renderCars cars lots =
-    List.map (renderCar lots) cars
+renderCars : List Car -> Collage msg
+renderCars cars =
+    List.map renderCar cars
         |> Collage.group
 
 
-renderCar : Lots -> Car -> Collage msg
-renderCar lots car =
-    Graphics.texture ( carSize, carSize ) (Graphics.carAsset car)
-        |> rotate car.rotation
-        |> shift car.position
+renderCar : Car -> Collage msg
+renderCar car =
+    let
+        spline =
+            car.localPath
+                |> List.map (Point2d.toTuple Pixels.inPixels)
+                |> Collage.path
+                |> traced (solid thin (uniform Color.red))
+    in
+    Collage.group
+        [ Graphics.texture ( carSize, carSize ) (Graphics.carAsset car)
+            |> rotate car.rotation
+            |> shift car.position
+        , spline
+        ]
 
 
 renderLots : List Lot -> Collage msg
