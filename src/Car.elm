@@ -2,10 +2,11 @@ module Car exposing
     ( Car
     , CarKind(..)
     , Status(..)
-    , TurnKind(..)
+    , beginLeaveLot
+    , isAtTheEndOfLocalPath
     , isConfused
     , isStoppedOrWaiting
-    , isTurning
+    , linearLocalPathToTarget
     , markAsConfused
     , move
     , new
@@ -18,8 +19,15 @@ module Car exposing
     , yield
     )
 
+import Config exposing (tileSize)
+import CubicSpline2d
 import Direction exposing (Direction(..))
+import Direction2d
+import Pixels exposing (Pixels)
+import Point2d exposing (Point2d)
+import Polyline2d
 import Position exposing (Position)
+import Quantity
 import RoadNetwork exposing (RNNodeContext)
 import Tile exposing (Tile(..))
 
@@ -31,7 +39,12 @@ type alias Car =
     , status : Status
     , homeLotId : Maybe Int
     , route : List RNNodeContext
+    , localPath : LocalPath
     }
+
+
+type alias LocalPath =
+    List (Point2d Pixels ())
 
 
 type CarKind
@@ -44,7 +57,6 @@ type CarKind
 
 type Status
     = Moving
-    | Turning TurnKind
     | WaitingForTrafficLights
     | StoppedAtIntersection
     | Yielding
@@ -58,11 +70,6 @@ stoppedOrWaiting =
     [ WaitingForTrafficLights, StoppedAtIntersection, Yielding, SkippingRound ]
 
 
-type TurnKind
-    = LeftTurn
-    | RightTurn
-
-
 new : CarKind -> Car
 new kind =
     { position = ( 0, 0 )
@@ -71,22 +78,13 @@ new kind =
     , status = Confused
     , homeLotId = Nothing
     , route = []
+    , localPath = []
     }
 
 
 withHome : Int -> Car -> Car
 withHome lotId car =
     { car | homeLotId = Just lotId }
-
-
-isTurning : Car -> Bool
-isTurning car =
-    case car.status of
-        Turning _ ->
-            True
-
-        _ ->
-            False
 
 
 isConfused : Car -> Bool
@@ -99,19 +97,48 @@ isStoppedOrWaiting car =
     List.member car.status stoppedOrWaiting
 
 
+isAtTheEndOfLocalPath : Car -> Bool
+isAtTheEndOfLocalPath car =
+    List.isEmpty car.localPath
+
+
+positionAsPoint2D : Car -> Point2d Pixels.Pixels ()
+positionAsPoint2D car =
+    Point2d.fromTuple Pixels.pixels car.position
+
+
 move : Car -> Car
 move car =
-    let
-        ( x, y ) =
-            car.position
+    case car.localPath of
+        next :: others ->
+            if
+                Point2d.distanceFrom (positionAsPoint2D car) next
+                    |> Quantity.lessThan (Pixels.pixels 1)
+            then
+                { car
+                    | position = Point2d.toTuple Pixels.inPixels next
+                    , localPath = others
+                }
 
-        ( addX, addY ) =
-            fromPolar ( 1, car.rotation )
-    in
-    { car
-        | position = ( x + addX, y + addY )
-        , status = Moving
-    }
+            else
+                let
+                    ( x, y ) =
+                        car.position
+
+                    nextRotation =
+                        Position.toAngleRadians car.position (Point2d.toTuple Pixels.inPixels next)
+
+                    ( addX, addY ) =
+                        fromPolar ( 1, nextRotation )
+                in
+                { car
+                    | position = ( x + addX, y + addY )
+                    , rotation = nextRotation
+                    , status = Moving
+                }
+
+        _ ->
+            car
 
 
 skipRound : Car -> Car
@@ -148,13 +175,65 @@ markAsConfused car =
     { car | status = Confused, route = [] }
 
 
-turnDirection : Car -> Float -> TurnKind
-turnDirection car target =
-    if target == 0 || target > car.rotation then
-        LeftTurn
+beginLeaveLot : Car -> Car
+beginLeaveLot car =
+    case car.route of
+        target :: _ ->
+            -- TODO: check if the node is a LotEntry
+            { car
+                | status = Moving
+                , localPath = leaveLotSpline car.position target.node.label.position car.rotation
+            }
 
-    else
-        RightTurn
+        _ ->
+            car
+
+
+linearLocalPathToTarget : Position -> Car -> LocalPath
+linearLocalPathToTarget target car =
+    let
+        start =
+            positionAsPoint2D car
+
+        end =
+            Point2d.fromTuple Pixels.pixels target
+    in
+    List.map (\step -> Point2d.interpolateFrom start end step) [ 0, 0.25, 0.5, 0.75, 1 ]
+
+
+leaveLotSpline : Position -> Position -> Float -> LocalPath
+leaveLotSpline ( originX, originY ) ( targetX, targetY ) rotation =
+    let
+        directionToTarget =
+            Direction2d.radians rotation
+
+        origin =
+            Point2d.pixels originX originY
+
+        target =
+            Point2d.pixels targetX targetY
+
+        handleDistance =
+            Point2d.distanceFrom origin target
+                |> Quantity.half
+
+        targetCp =
+            target |> Point2d.translateIn directionToTarget (Pixels.pixels (tileSize / 2))
+
+        midpoint =
+            Point2d.midpoint origin targetCp
+
+        handleCp1 =
+            Point2d.midpoint origin midpoint
+                |> Point2d.translateIn (Direction2d.rotateClockwise directionToTarget) handleDistance
+
+        handleCp2 =
+            midpoint
+                |> Point2d.translateIn (Direction2d.rotateCounterclockwise directionToTarget) handleDistance
+    in
+    CubicSpline2d.fromControlPoints origin handleCp1 handleCp2 targetCp
+        |> CubicSpline2d.segments 16
+        |> Polyline2d.vertices
 
 
 statusDescription : Status -> String
@@ -162,12 +241,6 @@ statusDescription status =
     case status of
         Moving ->
             "Moving"
-
-        Turning LeftTurn ->
-            "Turning left"
-
-        Turning RightTurn ->
-            "Turning right"
 
         WaitingForTrafficLights ->
             "Stopped @ traffic lights"

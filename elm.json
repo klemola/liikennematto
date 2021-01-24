@@ -17,6 +17,8 @@
             "elm-community/graph": "6.0.0",
             "elm-community/maybe-extra": "5.2.0",
             "elm-community/random-extra": "3.1.0",
+            "ianmackenzie/elm-geometry": "3.9.0",
+            "ianmackenzie/elm-units": "2.7.0",
             "mdgriffith/elm-ui": "1.1.7",
             "timjs/elm-collage": "2.0.2"
         },
@@ -27,6 +29,11 @@
             "elm/virtual-dom": "1.0.2",
             "elm-community/basics-extra": "4.0.0",
             "elm-community/intdict": "3.0.0",
+            "ianmackenzie/elm-1d-parameter": "1.0.1",
+            "ianmackenzie/elm-float-extra": "1.1.0",
+            "ianmackenzie/elm-interval": "2.0.0",
+            "ianmackenzie/elm-triangular-mesh": "1.1.0",
+            "ianmackenzie/elm-units-interval": "2.3.0",
             "owanturist/elm-union-find": "1.0.0"
         }
     },

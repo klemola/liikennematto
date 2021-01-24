@@ -1,6 +1,6 @@
 module RoundTests exposing (suite)
 
-import Car exposing (Car, Status(..), TurnKind(..))
+import Car exposing (Car, Status(..))
 import Direction exposing (Direction(..))
 import Expect
 import Fixtures exposing (..)
@@ -55,7 +55,7 @@ suite =
                             |> Round.play
                             |> getStatus
                         )
-                        (Turning RightTurn)
+                        Moving
                 )
             , test "can stop the car at traffic lights"
                 (\_ ->
