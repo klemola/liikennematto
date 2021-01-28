@@ -101,26 +101,13 @@ chooseRandomRoute { activeCar, seed, world } nodeCtx =
         ( connection, nextSeed ) =
             Random.step randomConnectionGenerator seed
 
-        ( nextRoute, nextLocalPath ) =
-            case
-                connection
-                    |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
-            of
-                Just nextNodeCtx ->
-                    ( [ nextNodeCtx ]
-                    , Car.linearLocalPathToTarget nextNodeCtx.node.label.position activeCar
-                    )
-
-                Nothing ->
-                    ( [], [] )
+        nextCar =
+            connection
+                |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
+                |> Maybe.map (Car.buildRoute activeCar)
+                |> Maybe.withDefault activeCar
     in
-    ( { activeCar
-        | route = nextRoute
-        , localPath = nextLocalPath
-        , status = Moving
-      }
-    , nextSeed
-    )
+    ( nextCar, nextSeed )
 
 
 applyRule : Round -> Rule -> Car
