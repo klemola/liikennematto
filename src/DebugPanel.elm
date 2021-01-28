@@ -171,6 +171,6 @@ carStateView fontSize car =
         [ showCarKind
         , Element.column [ Element.spacing whitespace.tight ]
             [ Element.text (Position.toString car.position)
-            , Element.text (Car.statusDescription car.status)
+            , Element.text (Car.statusDescription car)
             ]
         ]
