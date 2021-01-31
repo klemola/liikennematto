@@ -337,22 +337,21 @@ moveCarToHome world car =
             car.homeLotId
                 |> Maybe.andThen (\lotId -> Dict.get lotId world.lots)
 
-        route =
+        nextCarBase =
             car.homeLotId
                 |> Maybe.andThen (RoadNetwork.findNodeByLotId world.roadNetwork)
-                |> Maybe.map List.singleton
-                |> Maybe.withDefault []
+                |> Maybe.map (Car.buildRoute car)
+                |> Maybe.withDefault car
     in
     case home of
         Just lot ->
-            { car
+            { nextCarBase
                 | position = Lot.parkingSpot lot
                 , rotation =
                     lot.content.entryDirection
                         |> Direction.next
                         |> Direction.toRadians
                 , status = Car.ParkedAtLot
-                , route = route
             }
 
         Nothing ->

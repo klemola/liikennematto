@@ -169,7 +169,11 @@ stopAtIntersection car =
 
 markAsConfused : Car -> Car
 markAsConfused car =
-    { car | status = Confused, route = [] }
+    { car
+        | status = Confused
+        , route = []
+        , localPath = []
+    }
 
 
 beginLeaveLot : Car -> Car
@@ -199,18 +203,15 @@ localPathToTarget car { node } =
 
         origin =
             positionAsPoint2D car.position
-                |> Debug.log "🏁 origin"
 
         target =
             positionAsPoint2D node.label.position
-                |> Debug.log "🎯 target"
 
         angleToTarget =
             Direction2d.from origin target
                 |> Maybe.map (Direction2d.angleFrom carDirection)
                 |> Maybe.withDefault (Angle.degrees 0)
                 |> Angle.inDegrees
-                |> Debug.log "📐 angle to target"
     in
     if node.label.kind == LotEntry && car.status == ParkedAtLot then
         leaveLotSpline origin target carDirection
@@ -219,7 +220,6 @@ localPathToTarget car { node } =
         linearLocalPathToTarget origin target
 
     else if abs angleToTarget < 10 then
-        -- TODO: check if car is always fully rotated after the previous local path
         linearLocalPathToTarget origin target
 
     else if abs angleToTarget |> isWithinRoundingErrorOf 90 then
@@ -248,19 +248,18 @@ leaveLotSpline origin target direction =
                 |> Quantity.half
 
         targetCp =
-            target
-                |> Point2d.translateIn direction (Pixels.pixels (tileSize / 2))
+            Point2d.translateIn direction (Pixels.pixels (tileSize / 2)) target
 
         midpoint =
             Point2d.midpoint origin targetCp
 
         handleCp1 =
-            Point2d.midpoint origin midpoint
+            midpoint
+                |> Point2d.midpoint origin
                 |> Point2d.translateIn (Direction2d.rotateClockwise direction) handleDistance
 
         handleCp2 =
-            midpoint
-                |> Point2d.translateIn (Direction2d.rotateCounterclockwise direction) handleDistance
+            Point2d.translateIn (Direction2d.rotateCounterclockwise direction) handleDistance midpoint
     in
     CubicSpline2d.fromControlPoints origin handleCp1 handleCp2 targetCp
         |> CubicSpline2d.segments 16
@@ -270,13 +269,14 @@ leaveLotSpline origin target direction =
 uTurnSpline : Point2d Pixels () -> Point2d Pixels () -> Direction2d () -> LocalPath
 uTurnSpline origin target direction =
     let
+        turnDistance =
+            Pixels.pixels (tileSize / 4)
+
         handleCp1 =
-            origin
-                |> Point2d.translateIn direction (Pixels.pixels (tileSize / 4))
+            Point2d.translateIn direction turnDistance origin
 
         handleCp2 =
-            target
-                |> Point2d.translateIn direction (Pixels.pixels (tileSize / 4))
+            Point2d.translateIn direction turnDistance target
     in
     CubicSpline2d.fromControlPoints origin handleCp1 handleCp2 target
         |> CubicSpline2d.segments 16
@@ -286,13 +286,25 @@ uTurnSpline origin target direction =
 curveSpline : Point2d Pixels () -> Point2d Pixels () -> Direction2d () -> LocalPath
 curveSpline origin target direction =
     let
+        angleToTarget =
+            Direction2d.from origin target
+                |> Maybe.map (Direction2d.angleFrom direction)
+                |> Maybe.withDefault (Angle.degrees 0)
+
+        distanceToTarget =
+            Point2d.distanceFrom origin target
+
+        distanceToCorner =
+            Quantity.multiplyBy (Angle.cos angleToTarget) distanceToTarget
+
+        corner =
+            Point2d.translateIn direction distanceToCorner origin
+
         handleCp1 =
-            origin
-                |> Point2d.translateIn direction (Pixels.pixels (tileSize / 4))
+            Point2d.midpoint origin corner
 
         handleCp2 =
-            origin
-                |> Point2d.translateIn direction (Pixels.pixels (tileSize / 2))
+            Point2d.midpoint corner target
     in
     CubicSpline2d.fromControlPoints origin handleCp1 handleCp2 target
         |> CubicSpline2d.segments 16
