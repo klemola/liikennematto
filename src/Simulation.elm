@@ -4,8 +4,7 @@ import Browser.Events as Events
 import Cell exposing (Cell)
 import Config
 import Dict
-import Direction exposing (Direction(..), Orientation)
-import Lot exposing (Lot, NewLot)
+import Lot exposing (NewLot)
 import Process
 import Random
 import Random.List
@@ -32,10 +31,6 @@ type alias Model =
 type SimulationState
     = Running
     | Paused
-
-
-type alias ShuffledBoard =
-    List ( Cell, Tile )
 
 
 type Msg
@@ -209,11 +204,12 @@ findLotAnchor world seed newLot =
 
         targetOrientation =
             newLot.content.entryDirection
-                |> Direction.toOrientation
-                |> Direction.oppositeOrientation
+                -- TODO: change, this is stupid
+                |> Tile.toOrientation
+                |> Tile.oppositeOrientation
 
         targetDirection =
-            Direction.opposite newLot.content.entryDirection
+            Cell.oppositeOrthogonalDirection newLot.content.entryDirection
 
         isCompatible ( cell, tile ) =
             case tile of

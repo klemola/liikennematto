@@ -7,14 +7,12 @@ module Car exposing
     , isAtTheEndOfLocalPath
     , isConfused
     , isStoppedOrWaiting
-    , linearLocalPathToTarget
     , markAsConfused
     , move
     , new
     , skipRound
     , statusDescription
     , stopAtIntersection
-    , turn
     , waitForTrafficLights
     , withHome
     , yield
@@ -23,19 +21,21 @@ module Car exposing
 import Angle
 import Config exposing (tileSize)
 import CubicSpline2d
-import Direction exposing (Direction(..))
 import Direction2d exposing (Direction2d)
 import Pixels exposing (Pixels)
 import Point2d exposing (Point2d)
 import Polyline2d
-import Position exposing (Position)
 import Quantity
 import RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Tile exposing (Tile(..))
 
 
+type alias LMPoint2d =
+    Point2d Pixels ()
+
+
 type alias Car =
-    { position : Position
+    { position : LMPoint2d
     , rotation : Float
     , kind : CarKind
     , status : Status
@@ -46,7 +46,7 @@ type alias Car =
 
 
 type alias LocalPath =
-    List (Point2d Pixels ())
+    List LMPoint2d
 
 
 type CarKind
@@ -74,8 +74,10 @@ stoppedOrWaiting =
 
 new : CarKind -> Car
 new kind =
-    { position = ( 0, 0 )
-    , rotation = Direction.toRadians Up
+    { position = Point2d.origin
+
+    -- TODO: check
+    , rotation = 0
     , kind = kind
     , status = Confused
     , homeLotId = Nothing
@@ -109,28 +111,32 @@ move car =
     case car.localPath of
         next :: others ->
             if
-                Point2d.distanceFrom (positionAsPoint2D car.position) next
+                Point2d.distanceFrom car.position next
                     |> Quantity.lessThan (Pixels.pixels 1)
             then
                 { car
-                    | position = Point2d.toTuple Pixels.inPixels next
+                    | position = next
                     , localPath = others
                 }
 
             else
                 let
-                    ( x, y ) =
-                        car.position
+                    carDirection =
+                        Direction2d.radians car.rotation
 
-                    nextRotation =
-                        Position.toAngleRadians car.position (Point2d.toTuple Pixels.inPixels next)
+                    angleToTarget =
+                        Direction2d.from car.position next
+                            |> Maybe.map Direction2d.toAngle
+                            |> Maybe.withDefault (Angle.degrees 0)
 
-                    ( addX, addY ) =
-                        fromPolar ( 1, nextRotation )
+                    nextPosition =
+                        Point2d.translateIn carDirection (Pixels.pixels 1) car.position
                 in
                 { car
-                    | position = ( x + addX, y + addY )
-                    , rotation = nextRotation
+                    | position = nextPosition
+                    , rotation =
+                        angleToTarget
+                            |> Angle.inRadians
                     , status = Moving
                 }
 
@@ -141,15 +147,6 @@ move car =
 skipRound : Car -> Car
 skipRound car =
     { car | status = SkippingRound }
-
-
-turn : Float -> Car -> Car
-turn target car =
-    -- TODO: incremental rotation using cubic bézier curves
-    { car
-        | rotation = target
-        , status = Moving
-    }
 
 
 waitForTrafficLights : Car -> Car
@@ -202,10 +199,10 @@ localPathToTarget car { node } =
             Direction2d.radians car.rotation
 
         origin =
-            positionAsPoint2D car.position
+            car.position
 
         target =
-            positionAsPoint2D node.label.position
+            node.label.position
 
         angleToTarget =
             Direction2d.from origin target
@@ -234,13 +231,13 @@ isWithinRoundingErrorOf target value =
     round value == target || floor value == target
 
 
-linearLocalPathToTarget : Point2d Pixels () -> Point2d Pixels () -> LocalPath
+linearLocalPathToTarget : LMPoint2d -> LMPoint2d -> LocalPath
 linearLocalPathToTarget origin target =
     [ 0, 0.25, 0.5, 0.75, 1 ]
         |> List.map (\step -> Point2d.interpolateFrom origin target step)
 
 
-leaveLotSpline : Point2d Pixels () -> Point2d Pixels () -> Direction2d () -> LocalPath
+leaveLotSpline : LMPoint2d -> LMPoint2d -> Direction2d () -> LocalPath
 leaveLotSpline origin target direction =
     let
         handleDistance =
@@ -266,7 +263,7 @@ leaveLotSpline origin target direction =
         |> Polyline2d.vertices
 
 
-uTurnSpline : Point2d Pixels () -> Point2d Pixels () -> Direction2d () -> LocalPath
+uTurnSpline : LMPoint2d -> LMPoint2d -> Direction2d () -> LocalPath
 uTurnSpline origin target direction =
     let
         turnDistance =
@@ -283,7 +280,7 @@ uTurnSpline origin target direction =
         |> Polyline2d.vertices
 
 
-curveSpline : Point2d Pixels () -> Point2d Pixels () -> Direction2d () -> LocalPath
+curveSpline : LMPoint2d -> LMPoint2d -> Direction2d () -> LocalPath
 curveSpline origin target direction =
     let
         angleToTarget =
@@ -309,11 +306,6 @@ curveSpline origin target direction =
     CubicSpline2d.fromControlPoints origin handleCp1 handleCp2 target
         |> CubicSpline2d.segments 16
         |> Polyline2d.vertices
-
-
-positionAsPoint2D : Position -> Point2d Pixels.Pixels ()
-positionAsPoint2D position =
-    Point2d.fromTuple Pixels.pixels position
 
 
 statusDescription : Car -> String

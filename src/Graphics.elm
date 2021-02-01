@@ -3,7 +3,6 @@ module Graphics exposing
     , carAsset
     , grid
     , intersectionAsset
-    , marker
     , oneWayMarker
     , renderedSizeFromUnits
     , roadAsset
@@ -11,12 +10,11 @@ module Graphics exposing
     )
 
 import Car exposing (Car, CarKind(..))
-import Collage exposing (Collage, image, invisible, shift, square, styled, transparent)
+import Cell exposing (Corner(..), OrthogonalDirection(..))
+import Collage exposing (Collage, image)
 import Collage.Layout as Layout
-import Config exposing (tileSize)
-import Direction exposing (Corner(..), Direction(..), Orientation(..))
 import Lot exposing (BuildingKind(..))
-import Tile exposing (IntersectionShape(..), RoadKind(..))
+import Tile exposing (IntersectionShape(..), Orientation(..), RoadKind(..))
 
 
 grid : Int -> (Int -> Int -> Collage msg) -> Collage msg
@@ -35,36 +33,6 @@ grid size getCollage =
                 |> List.map col
     in
     Layout.horizontal rows
-
-
-marker : Float -> Direction -> Collage msg -> Collage msg
-marker offset side presentation =
-    let
-        ( anchor, shiftAmount ) =
-            case side of
-                Up ->
-                    ( Layout.top, ( 0, -offset ) )
-
-                Right ->
-                    ( Layout.right, ( -offset, 0 ) )
-
-                Down ->
-                    ( Layout.bottom, ( 0, offset ) )
-
-                Left ->
-                    ( Layout.left, ( offset, 0 ) )
-
-        boundaries =
-            square tileSize
-                |> styled ( transparent, invisible )
-
-        positionedPresentation =
-            presentation
-                |> shift shiftAmount
-                |> Layout.at anchor
-    in
-    boundaries
-        |> positionedPresentation
 
 
 texture : ( Float, Float ) -> String -> Collage msg

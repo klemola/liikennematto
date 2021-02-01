@@ -4,7 +4,6 @@ module World exposing
     , World
     , buildRoadAt
     , canBuildRoadAt
-    , hasConnectedRoad
     , hasLot
     , hasLotAnchor
     , isEmptyArea
@@ -19,20 +18,23 @@ module World exposing
     , withTileAt
     )
 
+import Angle
 import Board exposing (Board)
 import Car exposing (Car, CarKind(..))
-import Cell exposing (Cell)
+import Cell exposing (Cell, Corner(..), OrthogonalDirection(..))
 import Collision
 import Dict exposing (Dict)
 import Dict.Extra as Dict
-import Direction exposing (Corner(..), Direction(..), Orientation(..))
+import Direction2d
 import Lot exposing (BuildingKind(..), Lot)
-import Position exposing (Position)
+import Pixels exposing (Pixels)
+import Point2d exposing (Point2d)
 import RoadNetwork exposing (RoadNetwork)
 import Tile
     exposing
         ( IntersectionControl(..)
         , IntersectionShape(..)
+        , Orientation(..)
         , RoadKind(..)
         , Tile(..)
         , TrafficDirection(..)
@@ -45,6 +47,10 @@ type alias World =
     , cars : Cars
     , lots : Lots
     }
+
+
+type alias LMPoint2d =
+    Point2d Pixels ()
 
 
 type alias Id =
@@ -208,23 +214,6 @@ hasLotAnchor cell { lots } =
     List.any (\lot -> Lot.anchorCell lot == cell) (Dict.values lots)
 
 
-hasConnectedRoad : { currentCell : Cell, direction : Direction, world : World } -> Bool
-hasConnectedRoad { currentCell, direction, world } =
-    case
-        ( tileAt currentCell world
-        , tileAt (Cell.next direction currentCell) world
-        )
-    of
-        ( Just current, Just next ) ->
-            Tile.connected direction current next
-
-        ( Nothing, Just next ) ->
-            hasLot currentCell world
-
-        _ ->
-            False
-
-
 canBuildRoadAt : Cell -> World -> Bool
 canBuildRoadAt cell world =
     let
@@ -236,12 +225,15 @@ canBuildRoadAt cell world =
                 |> List.filterMap (\c -> tileAt c world)
                 |> withinAllowedComplexity
     in
-    List.all hasLowComplexity Direction.corners
+    List.all hasLowComplexity Cell.corners
 
 
-isEmptyArea : { origin : Position, width : Float, height : Float } -> World -> Bool
+isEmptyArea : { origin : LMPoint2d, width : Float, height : Float } -> World -> Bool
 isEmptyArea { origin, width, height } world =
     let
+        ( originX, originY ) =
+            Point2d.toTuple Pixels.inPixels origin
+
         roadBoundingBoxes =
             world.board
                 |> Dict.keys
@@ -253,7 +245,7 @@ isEmptyArea { origin, width, height } world =
                 |> List.map Lot.boundingBox
 
         areaBoundingBox =
-            { x = Tuple.first origin, y = Tuple.second origin, width = width, height = height }
+            { x = originX, y = originY, width = width, height = height }
 
         inBoardBounds =
             Board.inBounds areaBoundingBox
@@ -315,7 +307,7 @@ carsAfterBoardChange :
     , world : World
     }
     -> Cars
-carsAfterBoardChange { cell, nextLots, world } =
+carsAfterBoardChange { nextLots, world } =
     world.cars
         -- Room for improvement: implement general orphan entity handling
         |> Dict.filter
@@ -349,8 +341,10 @@ moveCarToHome world car =
                 | position = Lot.parkingSpot lot
                 , rotation =
                     lot.content.entryDirection
-                        |> Direction.next
-                        |> Direction.toRadians
+                        |> Cell.orthogonalDirectionToLmDirection
+                        |> Direction2d.rotateClockwise
+                        |> Direction2d.toAngle
+                        |> Angle.inRadians
                 , status = Car.ParkedAtLot
             }
 

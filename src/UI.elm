@@ -1,7 +1,6 @@
 module UI exposing (ControlButtonSize(..), controlButton, icon, projectInfo, simulationControl)
 
 import Config exposing (borderRadius, borderSize, colors, uiDimensions, whitespace)
-import Direction exposing (Orientation(..))
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border

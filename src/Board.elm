@@ -2,20 +2,19 @@ module Board exposing
     ( Board
     , applyMask
     , defaultTile
-    , exists
     , inBounds
     )
 
 import BitMask
-import Cell exposing (Cell)
+import Cell exposing (Cell, OrthogonalDirection(..))
 import Collision exposing (BoundingBox)
 import Config exposing (boardSizeScaled)
 import Dict exposing (Dict)
-import Direction exposing (Direction(..), Orientation(..))
 import Tile
     exposing
         ( IntersectionControl(..)
         , IntersectionShape(..)
+        , Orientation(..)
         , RoadKind(..)
         , Tile(..)
         , TrafficDirection(..)

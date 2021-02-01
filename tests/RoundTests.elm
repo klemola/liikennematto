@@ -1,7 +1,6 @@
 module RoundTests exposing (suite)
 
 import Car exposing (Car, Status(..))
-import Direction exposing (Direction(..))
 import Expect
 import Fixtures exposing (..)
 import Round

@@ -8,24 +8,24 @@ module Lot exposing
     , anchorCell
     , bottomLeftCorner
     , boundingBox
-    , entryCell
     , fromNewLot
     , inBounds
     , parkingSpot
     )
 
-import Cell exposing (Cell)
+import Cell exposing (Cell, OrthogonalDirection(..))
 import Collision exposing (BoundingBox)
 import Config exposing (tileSize)
-import Direction exposing (Direction(..))
-import Position exposing (Position)
+import Pixels exposing (Pixels)
+import Point2d exposing (Point2d)
+import Vector2d
 
 
 type alias Lot =
     { content : Building
     , width : Float
     , height : Float
-    , position : Position
+    , position : LMPoint2D
     , anchor : Anchor
     }
 
@@ -39,12 +39,12 @@ type alias NewLot =
 
 type alias Anchor =
     -- road piece cell and direction from the road to the lot
-    ( Cell, Direction )
+    ( Cell, OrthogonalDirection )
 
 
 type alias Building =
     { kind : BuildingKind
-    , entryDirection : Direction
+    , entryDirection : OrthogonalDirection
     }
 
 
@@ -59,16 +59,20 @@ type BuildingKind
     | TwoByThreeTest
 
 
+type alias LMPoint2D =
+    Point2d Pixels ()
+
+
 all : List NewLot
 all =
     [ { content = Building ResidentialA Down, width = tileSize, height = tileSize }
     , { content = Building ResidentialB Right, width = tileSize, height = tileSize }
     , { content = Building ResidentialC Left, width = tileSize, height = tileSize }
+    , { content = Building ResidentialD Up, width = tileSize, height = tileSize }
     , { content = Building ResidentialE Down, width = 2 * tileSize, height = 2 * tileSize }
     , { content = Building TwoByOneTest Left, width = 2 * tileSize, height = tileSize }
     , { content = Building ThreeByThreeTest Right, width = 3 * tileSize, height = 3 * tileSize }
     , { content = Building TwoByThreeTest Up, width = 2 * tileSize, height = 3 * tileSize }
-    , { content = Building ResidentialD Up, width = tileSize, height = tileSize }
     ]
 
 
@@ -76,7 +80,7 @@ fromNewLot : ( NewLot, Cell ) -> Lot
 fromNewLot ( newLot, aCell ) =
     let
         anchor =
-            ( aCell, Direction.opposite newLot.content.entryDirection )
+            ( aCell, Cell.oppositeOrthogonalDirection newLot.content.entryDirection )
 
         position =
             bottomLeftCorner newLot anchor
@@ -89,37 +93,33 @@ fromNewLot ( newLot, aCell ) =
     }
 
 
-bottomLeftCorner : NewLot -> Anchor -> Position
+bottomLeftCorner : NewLot -> Anchor -> LMPoint2D
 bottomLeftCorner { width, height } ( aCell, aDir ) =
     let
         origin =
-            -- entry cell (inside lot)
             aCell
                 |> Cell.next aDir
                 |> Cell.bottomLeftCorner
+
+        adjustedForVerticalEntry =
+            origin
+                |> Point2d.translateBy (Vector2d.pixels (width - tileSize) (height - tileSize))
     in
     case aDir of
-        Up ->
-            origin
-
-        Right ->
-            origin
-
         Down ->
-            ( Tuple.first origin - (width - tileSize)
-            , Tuple.second origin - (height - tileSize)
-            )
+            adjustedForVerticalEntry
 
         Left ->
-            ( Tuple.first origin - (width - tileSize)
-            , Tuple.second origin - (height - tileSize)
-            )
+            adjustedForVerticalEntry
+
+        _ ->
+            origin
 
 
-parkingSpot : Lot -> Position
+parkingSpot : Lot -> LMPoint2D
 parkingSpot lot =
     let
-        ( originX, originY ) =
+        origin =
             Cell.bottomLeftCorner (entryCell lot)
 
         ( shiftX, shiftY ) =
@@ -136,7 +136,8 @@ parkingSpot lot =
                 Left ->
                     ( 0, tileSize / 2 )
     in
-    ( originX + shiftX, originY + shiftY )
+    origin
+        |> Point2d.translateBy (Vector2d.pixels shiftX shiftY)
 
 
 entryCell : Lot -> Cell
@@ -157,7 +158,7 @@ boundingBox : Lot -> BoundingBox
 boundingBox lot =
     let
         ( x, y ) =
-            lot.position
+            Point2d.toTuple Pixels.inPixels lot.position
     in
     { x = x, y = y, width = lot.width, height = lot.height }
 

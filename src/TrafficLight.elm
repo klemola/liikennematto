@@ -6,10 +6,9 @@ module TrafficLight exposing
     , advanceTimer
     , default
     , new
-    , trafficAllowedFromDirection
     )
 
-import Direction exposing (Direction(..))
+import Cell exposing (OrthogonalDirection(..))
 
 
 type TrafficLightKind
@@ -20,7 +19,7 @@ type TrafficLightKind
 
 type alias TrafficLight =
     { kind : TrafficLightKind
-    , facing : Direction
+    , facing : OrthogonalDirection
     , timeRemaining : Int
     }
 
@@ -29,20 +28,7 @@ type alias TrafficLights =
     List TrafficLight
 
 
-fromTrafficDirection : List Direction -> List TrafficLight
-fromTrafficDirection direction =
-    case direction of
-        [ Up, Down ] ->
-            [ new Green Up, new Green Down ]
-
-        [ Left, Right ] ->
-            [ new Red Left, new Red Right ]
-
-        _ ->
-            []
-
-
-new : TrafficLightKind -> Direction -> TrafficLight
+new : TrafficLightKind -> OrthogonalDirection -> TrafficLight
 new kind facing =
     case kind of
         Green ->
@@ -57,8 +43,11 @@ new kind facing =
 
 default : List TrafficLight
 default =
-    Direction.byOrientation
-        |> List.concatMap fromTrafficDirection
+    [ new Green Up
+    , new Green Down
+    , new Red Left
+    , new Red Right
+    ]
 
 
 advanceTimer : TrafficLight -> TrafficLight
@@ -77,12 +66,3 @@ advanceLight tlKind =
 
         Red ->
             Green
-
-
-trafficAllowedFromDirection : TrafficLights -> Direction -> Bool
-trafficAllowedFromDirection trafficLights entryDirection =
-    let
-        signalXsEntryAllowed tl =
-            tl.kind == Green && tl.facing == entryDirection
-    in
-    List.any signalXsEntryAllowed trafficLights

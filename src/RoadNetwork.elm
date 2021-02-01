@@ -8,23 +8,25 @@ module RoadNetwork exposing
     , fromBoardAndLots
     , getOutgoingConnections
     , new
-    , nodeBoundingBox
     , toDotString
     )
 
+import Angle
 import Board exposing (Board)
-import Cell exposing (Cell)
-import Collision exposing (BoundingBox)
-import Config exposing (innerLaneOffset, nodeSize, outerLaneOffset, tileSize)
+import BoundingBox2d exposing (BoundingBox2d)
+import Cell exposing (Cell, OrthogonalDirection(..))
+import Config exposing (innerLaneOffset, outerLaneOffset, tileSize)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
-import Direction exposing (Direction(..), Orientation(..))
+import Direction2d exposing (Direction2d)
 import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
 import Graph.DOT
 import Lot exposing (Lot)
 import Maybe.Extra as Maybe
-import Position exposing (Position)
-import Tile exposing (RoadKind(..), Tile(..))
+import Pixels exposing (Pixels)
+import Point2d exposing (Point2d)
+import Tile exposing (Orientation(..), RoadKind(..), Tile(..))
+import Vector2d
 
 
 type alias RoadNetwork =
@@ -35,9 +37,21 @@ type alias RNNodeContext =
     NodeContext Connection Lane
 
 
+type alias LMPoint2d =
+    Point2d Pixels ()
+
+
+type alias LMDirection2d =
+    Direction2d ()
+
+
+type alias LMBoundingBox2d =
+    BoundingBox2d Pixels ()
+
+
 type alias Connection =
-    { position : Position
-    , direction : Direction
+    { position : LMPoint2d
+    , direction : LMDirection2d
     , cell : Cell
     , kind : ConnectionKind
 
@@ -102,10 +116,10 @@ fromBoardAndLots board lots =
 createConnections :
     { board : Board
     , lots : Dict Int Lot
-    , nodes : Dict Position (Node Connection)
+    , nodes : Dict ( Float, Float ) (Node Connection)
     , remainingTiles : List ( Cell, Tile )
     }
-    -> Dict Position (Node Connection)
+    -> Dict ( Float, Float ) (Node Connection)
 createConnections { nodes, board, remainingTiles, lots } =
     case remainingTiles of
         [] ->
@@ -117,12 +131,17 @@ createConnections { nodes, board, remainingTiles, lots } =
                     toConnections board cell tile lots
 
                 maybeCreateNode nodeSpec currentNodes =
-                    if Dict.member nodeSpec.position currentNodes then
+                    let
+                        key =
+                            nodeSpec.position
+                                |> Point2d.toTuple Pixels.inPixels
+                    in
+                    if Dict.member key currentNodes then
                         currentNodes
 
                     else
                         currentNodes
-                            |> Dict.insert nodeSpec.position (Node (Dict.size currentNodes) nodeSpec)
+                            |> Dict.insert key (Node (Dict.size currentNodes) nodeSpec)
             in
             createConnections
                 { board = board
@@ -138,38 +157,44 @@ toConnections : Board -> Cell -> Tile -> Dict Int Lot -> List Connection
 toConnections board cell tile lots =
     case tile of
         TwoLaneRoad (Regular orientation) _ ->
-            lotConnections cell orientation lots
+            let
+                trafficDirection =
+                    if orientation == Vertical then
+                        Cell.up
+
+                    else
+                        Cell.right
+            in
+            lotConnections cell trafficDirection lots
 
         TwoLaneRoad (Deadend dir) _ ->
-            deadendConnections cell dir
+            dir
+                |> Cell.orthogonalDirectionToLmDirection
+                |> deadendConnections cell
 
         _ ->
             Tile.potentialConnections tile
                 |> List.concatMap (connectionsByTileEntryDirection board cell tile)
 
 
-lotConnections : Cell -> Orientation -> Dict Int Lot -> List Connection
-lotConnections cell orientation lots =
+lotConnections : Cell -> LMDirection2d -> Dict Int Lot -> List Connection
+lotConnections cell trafficDirection lots =
     case Dict.find (\_ lot -> Lot.anchorCell lot == cell) lots of
         Just ( id, lot ) ->
             let
-                trafficDirection =
-                    case orientation of
-                        Vertical ->
-                            Up
-
-                        Horizontal ->
-                            Right
-
                 ( posA, posB ) =
                     laneCenterPositionsByDirection cell trafficDirection
 
+                anchorDirection =
+                    Tuple.second lot.anchor
+                        |> Cell.orthogonalDirectionToLmDirection
+
                 ( position, direction ) =
-                    if Tuple.second lot.anchor == Direction.next trafficDirection then
+                    if anchorDirection == Direction2d.rotateClockwise trafficDirection then
                         ( posA, trafficDirection )
 
                     else
-                        ( posB, Direction.opposite trafficDirection )
+                        ( posB, Direction2d.reverse trafficDirection )
             in
             [ { position = position
               , direction = direction
@@ -183,7 +208,7 @@ lotConnections cell orientation lots =
             []
 
 
-deadendConnections : Cell -> Direction -> List Connection
+deadendConnections : Cell -> LMDirection2d -> List Connection
 deadendConnections cell trafficDirection =
     let
         ( entryPosition, exitPosition ) =
@@ -199,7 +224,7 @@ deadendConnections cell trafficDirection =
 
         exitConnection =
             { position = exitPosition
-            , direction = Direction.opposite trafficDirection
+            , direction = Direction2d.reverse trafficDirection
             , cell = cell
             , kind = DeadendExit
             , lotId = Nothing
@@ -210,29 +235,31 @@ deadendConnections cell trafficDirection =
     ]
 
 
-laneCenterPositionsByDirection : Cell -> Direction -> ( Position, Position )
+laneCenterPositionsByDirection : Cell -> LMDirection2d -> ( LMPoint2d, LMPoint2d )
 laneCenterPositionsByDirection cell trafficDirection =
     let
         halfTile =
             tileSize / 2
 
         connectionOffsetFromTileCenter =
-            halfTile - innerLaneOffset
+            halfTile
+                - innerLaneOffset
+                |> Pixels.pixels
 
         tileCenterPosition =
             Cell.center cell
     in
     ( tileCenterPosition
-        |> Position.shiftBy connectionOffsetFromTileCenter (Direction.next trafficDirection)
+        |> Point2d.translateIn (Direction2d.rotateClockwise trafficDirection) connectionOffsetFromTileCenter
     , tileCenterPosition
-        |> Position.shiftBy connectionOffsetFromTileCenter (Direction.previous trafficDirection)
+        |> Point2d.translateIn (Direction2d.rotateCounterclockwise trafficDirection) connectionOffsetFromTileCenter
     )
 
 
-connectionsByTileEntryDirection : Board -> Cell -> Tile -> Direction -> List Connection
+connectionsByTileEntryDirection : Board -> Cell -> Tile -> OrthogonalDirection -> List Connection
 connectionsByTileEntryDirection board cell tile direction =
     let
-        ( originX, originY ) =
+        origin =
             Cell.bottomLeftCorner cell
 
         isStopgapTile =
@@ -246,17 +273,21 @@ connectionsByTileEntryDirection board cell tile direction =
 
             else
                 ( LaneStart, LaneEnd )
+
+        shift x y =
+            origin
+                |> Point2d.translateBy (Vector2d.pixels x y)
     in
     case direction of
         Up ->
-            [ { position = ( originX + outerLaneOffset, originY + tileSize )
-              , direction = Up
+            [ { position = shift outerLaneOffset tileSize
+              , direction = Cell.up
               , cell = cell
               , kind = startConnectionKind
               , lotId = Nothing
               }
-            , { position = ( originX + innerLaneOffset, originY + tileSize )
-              , direction = Down
+            , { position = shift innerLaneOffset tileSize
+              , direction = Cell.down
               , cell = cell
               , kind = endConnectionKind
               , lotId = Nothing
@@ -264,14 +295,14 @@ connectionsByTileEntryDirection board cell tile direction =
             ]
 
         Right ->
-            [ { position = ( originX + tileSize, originY + innerLaneOffset )
-              , direction = Right
+            [ { position = shift tileSize innerLaneOffset
+              , direction = Cell.right
               , cell = cell
               , kind = startConnectionKind
               , lotId = Nothing
               }
-            , { position = ( originX + tileSize, originY + outerLaneOffset )
-              , direction = Left
+            , { position = shift tileSize outerLaneOffset
+              , direction = Cell.left
               , cell = cell
               , kind = endConnectionKind
               , lotId = Nothing
@@ -279,14 +310,14 @@ connectionsByTileEntryDirection board cell tile direction =
             ]
 
         Down ->
-            [ { position = ( originX + innerLaneOffset, originY )
-              , direction = Down
+            [ { position = shift innerLaneOffset 0
+              , direction = Cell.down
               , cell = cell
               , kind = startConnectionKind
               , lotId = Nothing
               }
-            , { position = ( originX + outerLaneOffset, originY )
-              , direction = Up
+            , { position = shift outerLaneOffset 0
+              , direction = Cell.up
               , cell = cell
               , kind = endConnectionKind
               , lotId = Nothing
@@ -294,14 +325,14 @@ connectionsByTileEntryDirection board cell tile direction =
             ]
 
         Left ->
-            [ { position = ( originX, originY + outerLaneOffset )
-              , direction = Left
+            [ { position = shift 0 outerLaneOffset
+              , direction = Cell.left
               , cell = cell
               , kind = startConnectionKind
               , lotId = Nothing
               }
-            , { position = ( originX, originY + innerLaneOffset )
-              , direction = Right
+            , { position = shift 0 innerLaneOffset
+              , direction = Cell.right
               , cell = cell
               , kind = endConnectionKind
               , lotId = Nothing
@@ -374,7 +405,8 @@ findLaneEnd : List (Node Connection) -> Node Connection -> Maybe (Edge Lane)
 findLaneEnd nodes current =
     let
         isPotentialConnection other =
-            hasSameDirection current other
+            (other.id /= current.id)
+                && hasSameDirection current other
                 && isFacing current other
 
         checkCompatibility other =
@@ -414,57 +446,54 @@ connectsWithinCell current other =
         range =
             tileSize / 2
 
-        otherBB =
-            nodeBoundingBox other
+        target =
+            getPosition other
 
-        leftBB =
-            nodeConnectionRangeToLeft current (range + innerLaneOffset)
+        leftLookupArea =
+            connectionLookupAreaToLeft current (range + innerLaneOffset)
 
-        rightBB =
-            nodeConnectionRangeToRight current range
+        rightLookupArea =
+            connectionLookupAreaToRight current range
 
         canContinueLeft =
-            (toDir == fromDir || toDir == Direction.previous fromDir) && Collision.aabb leftBB otherBB
+            (toDir == fromDir || toDir == Direction2d.rotateCounterclockwise fromDir) && BoundingBox2d.contains target leftLookupArea
 
         canContinueRight =
-            (toDir == fromDir || toDir == Direction.next fromDir) && Collision.aabb rightBB otherBB
+            (toDir == fromDir || toDir == Direction2d.rotateClockwise fromDir) && BoundingBox2d.contains target rightLookupArea
     in
     canContinueLeft || canContinueRight
 
 
-nodeConnectionRangeToLeft : Node Connection -> Float -> BoundingBox
-nodeConnectionRangeToLeft node range =
+connectionLookupAreaToLeft : Node Connection -> Float -> LMBoundingBox2d
+connectionLookupAreaToLeft node range =
     let
         bb =
-            nodeConnectionRangeToRight node range
+            connectionLookupAreaToRight node range
 
         leftDir =
-            Direction.previous (getDirection node)
-
-        ( shiftedX, shiftedY ) =
-            Position.shiftBy range leftDir ( bb.x, bb.y )
+            Direction2d.rotateCounterclockwise (getDirection node)
     in
-    { bb | x = shiftedX, y = shiftedY }
+    BoundingBox2d.translateIn leftDir (Pixels.pixels range) bb
 
 
-nodeConnectionRangeToRight : Node Connection -> Float -> BoundingBox
-nodeConnectionRangeToRight node range =
+connectionLookupAreaToRight : Node Connection -> Float -> LMBoundingBox2d
+connectionLookupAreaToRight node range =
     let
-        ( nodeX, nodeY ) =
+        origin =
             getPosition node
+
+        nodeDirection =
+            getDirection node
+
+        nodeDirectionRotatedRight =
+            Direction2d.rotateClockwise nodeDirection
+
+        otherCorner =
+            origin
+                |> Point2d.translateIn nodeDirection (Pixels.pixels tileSize)
+                |> Point2d.translateIn nodeDirectionRotatedRight (Pixels.pixels range)
     in
-    case getDirection node of
-        Up ->
-            BoundingBox nodeX nodeY range tileSize
-
-        Right ->
-            BoundingBox nodeX (nodeY - range) tileSize range
-
-        Down ->
-            BoundingBox (nodeX - range) (nodeY - tileSize) range tileSize
-
-        Left ->
-            BoundingBox (nodeX - tileSize) nodeY tileSize range
+    BoundingBox2d.from origin otherCorner
 
 
 connectDeadendEntryWithExit : Node Connection -> Maybe (Edge Lane)
@@ -478,12 +507,12 @@ connectDeadendEntryWithExit entry =
 -- Utility
 
 
-getPosition : Node Connection -> Position
+getPosition : Node Connection -> LMPoint2d
 getPosition node =
     node.label.position
 
 
-getDirection : Node Connection -> Direction
+getDirection : Node Connection -> LMDirection2d
 getDirection node =
     node.label.direction
 
@@ -491,11 +520,6 @@ getDirection node =
 endsEdgeInsideCell : Node Connection -> Bool
 endsEdgeInsideCell node =
     node.label.kind == LaneStart || node.label.kind == Stopgap || node.label.kind == DeadendExit
-
-
-nodeBoundingBox : Node Connection -> BoundingBox
-nodeBoundingBox node =
-    Collision.boundingBoxAroundCenter (getPosition node) nodeSize
 
 
 hasSameDirection : Node Connection -> Node Connection -> Bool
@@ -506,41 +530,43 @@ hasSameDirection current other =
 isFacing : Node Connection -> Node Connection -> Bool
 isFacing current other =
     let
-        ( ( aX, aY ), ( bX, bY ) ) =
-            ( getPosition current, getPosition other )
+        origin =
+            getPosition current
+
+        target =
+            getPosition other
+
+        direction =
+            getDirection current
+
+        -- foo =
+        --     Debug.log "isFacing"
+        --         { currentId = current.id
+        --         , currentKind = current.label.kind
+        --         , currentDir = direction |> Direction2d.toAngle |> Angle.inDegrees
+        --         , otherId = other.id
+        --         , otherKind = other.label.kind
+        --         , otherDir = getDirection other |> Direction2d.toAngle |> Angle.inDegrees
+        --         }
+        angleToTarget =
+            Direction2d.from origin target
+                |> Maybe.map (Direction2d.angleFrom direction)
+                |> Maybe.withDefault (Angle.degrees 0)
     in
-    case getDirection current of
-        Up ->
-            aY < bY && aX == bX
-
-        Right ->
-            aX < bX && aY == bY
-
-        Down ->
-            aY > bY && aX == bX
-
-        Left ->
-            aX > bX && aY == bY
+    Angle.inDegrees angleToTarget == 0
 
 
 closestToOriginOrdering : Node Connection -> Node Connection -> Float
 closestToOriginOrdering current other =
     let
-        ( otherX, otherY ) =
+        origin =
+            getPosition current
+
+        target =
             getPosition other
     in
-    case getDirection current of
-        Up ->
-            otherY
-
-        Right ->
-            otherX
-
-        Down ->
-            0 - otherY
-
-        Left ->
-            0 - otherX
+    Point2d.distanceFrom origin target
+        |> Pixels.inPixels
 
 
 

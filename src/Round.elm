@@ -142,7 +142,6 @@ activeRulesByPriority round =
 checkCollisionRules : Round -> Maybe Rule
 checkCollisionRules { otherCars, activeCar } =
     let
-        -- TODO use a bounding box with padding -> larger than the car
         willCollideWithAnother =
             False
     in
@@ -155,44 +154,4 @@ checkCollisionRules { otherCars, activeCar } =
 
 checkIntersectionRules : Round -> Maybe Rule
 checkIntersectionRules { otherCars, activeCar, world } =
-    let
-        nextTile =
-            Nothing
-
-        priorityTraffic =
-            []
-
-        hasPriority =
-            False
-
-        shouldYield =
-            not hasPriority && List.length priorityTraffic > 0
-
-        shouldStop =
-            not hasPriority && not (Car.isStoppedOrWaiting activeCar)
-    in
-    case nextTile of
-        Just (Intersection (Signal trafficLights) _) ->
-            --- TODO: dummy
-            Just WaitForTrafficLights
-
-        Just (Intersection (Yield _) _) ->
-            if shouldYield then
-                Just YieldAtIntersection
-
-            else
-                Nothing
-
-        -- stop sign doubles as a yield sign
-        Just (Intersection (Stop _) _) ->
-            if shouldStop then
-                Just StopAtIntersection
-
-            else if shouldYield then
-                Just YieldAtIntersection
-
-            else
-                Nothing
-
-        _ ->
-            Nothing
+    Nothing

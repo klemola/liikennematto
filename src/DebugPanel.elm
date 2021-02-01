@@ -8,7 +8,8 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Graphics
-import Position
+import Pixels exposing (Pixels)
+import Point2d exposing (Point2d)
 import RoadNetwork
 import UI exposing (ControlButtonSize(..))
 import World exposing (World)
@@ -24,6 +25,10 @@ type Msg
     = ToggleShowRoadNetwork
     | ShowDotString String
     | HideDotString
+
+
+type alias LMPoint2d =
+    Point2d Pixels ()
 
 
 initialModel : Model
@@ -170,7 +175,28 @@ carStateView fontSize car =
         ]
         [ showCarKind
         , Element.column [ Element.spacing whitespace.tight ]
-            [ Element.text (Position.toString car.position)
+            [ Element.text (formatPosition car.position)
             , Element.text (Car.statusDescription car)
             ]
+        ]
+
+
+formatPosition : LMPoint2d -> String
+formatPosition position =
+    let
+        ( x, y ) =
+            Point2d.toTuple Pixels.inPixels position
+
+        format n =
+            n
+                |> truncate
+                |> String.fromInt
+                |> String.padLeft 2 ' '
+    in
+    String.join
+        " "
+        [ "x:"
+        , format x
+        , "y:"
+        , format y
         ]
