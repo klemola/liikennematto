@@ -1,25 +1,37 @@
 module Fixtures exposing (..)
 
+import Angle
 import Board exposing (Board)
 import Car exposing (Car)
-import Cell
+import Cell exposing (Corner(..), OrthogonalDirection(..))
 import Config exposing (tileSize)
 import Dict
-import Direction exposing (Corner(..), Direction(..), Orientation(..))
+import Direction2d
 import Lot exposing (Anchor, Lot)
-import Position exposing (Position)
+import Pixels exposing (Pixels)
+import Point2d exposing (Point2d)
 import Random
 import Round exposing (Round)
 import Tile
     exposing
         ( IntersectionControl(..)
         , IntersectionShape(..)
+        , Orientation(..)
         , RoadKind(..)
         , Tile(..)
         , TrafficDirection(..)
         )
 import TrafficLight
 import World exposing (World)
+
+
+type alias LMPoint2d =
+    Point2d Pixels ()
+
+
+toLMPoint2d : ( Float, Float ) -> LMPoint2d
+toLMPoint2d =
+    Point2d.fromTuple Pixels.pixels
 
 
 seed : Random.Seed
@@ -37,7 +49,7 @@ carTwo =
     Car.new Car.SedanB
 
 
-fakeRandomDirections : List Direction
+fakeRandomDirections : List Cell.OrthogonalDirection
 fakeRandomDirections =
     [ Right, Left, Right, Down ]
 
@@ -260,9 +272,16 @@ yieldAfterStopSetup =
     Round.new world seed car otherCars
 
 
-spawn : Car -> Position -> Direction -> Car
-spawn car position direction =
-    { car | position = position, rotation = Direction.toRadians direction }
+spawn : Car -> ( Float, Float ) -> OrthogonalDirection -> Car
+spawn car origin direction =
+    { car
+        | position = toLMPoint2d origin
+        , rotation =
+            direction
+                |> Cell.orthogonalDirectionToLmDirection
+                |> Direction2d.toAngle
+                |> Angle.inDegrees
+    }
 
 
 
@@ -399,7 +418,7 @@ oneByOneLot =
     { content = oneByOneNewLot.content
     , width = oneByOneNewLot.width
     , height = oneByOneNewLot.height
-    , position = ( 0, tileSize * 9 )
+    , position = toLMPoint2d ( 0, tileSize * 9 )
     , anchor = ( ( 1, 2 ), Up )
     }
 
@@ -426,7 +445,7 @@ createTwoByTwoLot ( anchorCell, anchorDir ) =
         content =
             twoByTwoNewLot.content
     in
-    { content = { content | entryDirection = Direction.opposite anchorDir }
+    { content = { content | entryDirection = Cell.oppositeOrthogonalDirection anchorDir }
     , width = twoByTwoNewLot.width
     , height = twoByTwoNewLot.height
     , position =

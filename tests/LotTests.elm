@@ -1,6 +1,5 @@
 module LotTests exposing (suite)
 
-import Direction exposing (Direction(..))
 import Expect
 import Fixtures
 import Lot

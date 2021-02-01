@@ -1,6 +1,5 @@
 module Config exposing (..)
 
-import Direction exposing (Corner(..), Direction(..), Orientation(..))
 import Element exposing (rgb255, rgba255)
 
 

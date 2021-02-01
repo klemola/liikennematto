@@ -1,23 +1,22 @@
 module Tile exposing
     ( IntersectionControl(..)
     , IntersectionShape(..)
+    , Orientation(..)
     , RoadKind(..)
     , Tile(..)
     , TrafficDirection(..)
-    , connected
     , defaultIntersectionControl
     , fromId
-    , isRoad
+    , oppositeOrientation
     , potentialConnections
-    , priorityDirections
     , setIntersectionControl
+    , toOrientation
     , toggleIntersectionControl
     , toggleTrafficDirection
     )
 
-import Config exposing (tileSize)
+import Cell exposing (Corner(..), OrthogonalDirection(..))
 import Dict exposing (Dict)
-import Direction exposing (Corner(..), Direction(..), Orientation(..))
 import TrafficLight exposing (TrafficLights)
 
 
@@ -26,10 +25,15 @@ type Tile
     | Intersection IntersectionControl IntersectionShape
 
 
+type Orientation
+    = Vertical
+    | Horizontal
+
+
 type RoadKind
     = Regular Orientation
     | Curve Corner
-    | Deadend Direction
+    | Deadend OrthogonalDirection
 
 
 type TrafficDirection
@@ -41,49 +45,22 @@ type IntersectionControl
     = Signal TrafficLights
     | Yield Orientation
     | Stop Orientation
-    | Uncontrolled
 
 
 type IntersectionShape
-    = T Direction
+    = T OrthogonalDirection
     | Crossroads
 
 
-isRoad : Tile -> Bool
-isRoad tile =
-    case tile of
-        TwoLaneRoad _ _ ->
-            True
-
-        _ ->
-            False
-
-
-priorityDirections : Tile -> List Direction
-priorityDirections tile =
-    let
-        priority trafficControlOrientation =
-            trafficControlOrientation
-                |> Direction.oppositeOrientation
-                |> Direction.fromOrientation
-    in
-    case tile of
-        Intersection (Yield orientation) _ ->
-            priority orientation
-
-        Intersection (Stop orientation) _ ->
-            priority orientation
-
-        -- Other tile kinds don't have priority (e.g. signal controlled intersections)
-        _ ->
-            []
-
-
-potentialConnections : Tile -> List Direction
+potentialConnections : Tile -> List OrthogonalDirection
 potentialConnections tile =
     case tile of
         TwoLaneRoad (Regular orientation) _ ->
-            Direction.fromOrientation orientation
+            if orientation == Vertical then
+                [ Up, Down ]
+
+            else
+                [ Left, Right ]
 
         TwoLaneRoad (Curve TopRight) _ ->
             [ Left, Down ]
@@ -98,51 +75,13 @@ potentialConnections tile =
             [ Right, Up ]
 
         TwoLaneRoad (Deadend dir) _ ->
-            [ Direction.opposite dir ]
+            [ Cell.oppositeOrthogonalDirection dir ]
 
         Intersection _ Crossroads ->
-            Direction.all
+            Cell.allODs
 
         Intersection _ (T dir) ->
-            dir :: Direction.cross dir
-
-
-matchesTrafficDirection : Direction -> Tile -> Bool
-matchesTrafficDirection dir destination =
-    case destination of
-        TwoLaneRoad (Curve TopRight) OneWay ->
-            dir == Up
-
-        TwoLaneRoad (Curve TopLeft) OneWay ->
-            dir == Left
-
-        TwoLaneRoad (Curve BottomRight) OneWay ->
-            dir == Right
-
-        TwoLaneRoad (Curve BottomLeft) OneWay ->
-            dir == Down
-
-        TwoLaneRoad _ OneWay ->
-            dir == Right || dir == Up
-
-        _ ->
-            True
-
-
-connected : Direction -> Tile -> Tile -> Bool
-connected trafficDirection origin destination =
-    let
-        originConnections =
-            potentialConnections origin
-
-        destinationConnections =
-            potentialConnections destination
-
-        connects dir =
-            dir == trafficDirection && List.member (Direction.opposite dir) destinationConnections
-    in
-    matchesTrafficDirection trafficDirection destination
-        && List.any connects originConnections
+            dir :: Cell.crossOrthogonalDirection dir
 
 
 toggleIntersectionControl : Tile -> Tile
@@ -178,12 +117,38 @@ toggleIntersectionControl tile =
             tile
 
 
+toOrientation : OrthogonalDirection -> Orientation
+toOrientation dir =
+    case dir of
+        Up ->
+            Vertical
+
+        Right ->
+            Horizontal
+
+        Down ->
+            Vertical
+
+        Left ->
+            Horizontal
+
+
+oppositeOrientation : Orientation -> Orientation
+oppositeOrientation orientation =
+    case orientation of
+        Vertical ->
+            Horizontal
+
+        Horizontal ->
+            Vertical
+
+
 defaultIntersectionControl : IntersectionShape -> IntersectionControl
 defaultIntersectionControl shape =
     case shape of
         T dir ->
-            Direction.toOrientation dir
-                |> Direction.oppositeOrientation
+            toOrientation dir
+                |> oppositeOrientation
                 |> Yield
 
         Crossroads ->

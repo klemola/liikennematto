@@ -2,7 +2,6 @@ module BoardTests exposing (suite)
 
 import Board
 import Dict
-import Direction exposing (Direction(..), Orientation(..))
 import Expect
 import Fixtures
 import Test exposing (Test, describe, test)

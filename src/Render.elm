@@ -2,10 +2,10 @@ module Render exposing (view)
 
 import Board exposing (Board)
 import Car exposing (Car, Status(..))
+import Cell exposing (OrthogonalDirection(..))
 import Collage
     exposing
         ( Collage
-        , circle
         , invisible
         , rotate
         , shift
@@ -21,14 +21,13 @@ import Collage.Render exposing (svg)
 import Color
 import Config exposing (boardSize, carSize, tileSize)
 import Dict
-import Direction exposing (Direction(..), Orientation(..))
 import Graph
 import Graphics
 import Html exposing (Html)
 import Lot exposing (Lot)
 import Maybe.Extra as Maybe
-import Pixels
-import Point2d
+import Pixels exposing (Pixels)
+import Point2d exposing (Point2d)
 import RoadNetwork exposing (ConnectionKind(..), RoadNetwork)
 import Tile
     exposing
@@ -37,8 +36,12 @@ import Tile
         , Tile(..)
         , TrafficDirection(..)
         )
-import TrafficLight exposing (TrafficLight, TrafficLightKind(..))
+import Vector2d
 import World exposing (World)
+
+
+type alias LMPoint2d =
+    Point2d Pixels ()
 
 
 view : World -> Bool -> Html msg
@@ -92,9 +95,6 @@ renderTile tile =
         renderedSize =
             Graphics.renderedSizeFromUnits ( 1, 1 ) tileSize
 
-        intersection shape content =
-            Layout.stack (content ++ [ Graphics.texture renderedSize (Graphics.intersectionAsset shape) ])
-
         addRoadMarkings roadKind trafficDirection road =
             case trafficDirection of
                 Both ->
@@ -109,79 +109,8 @@ renderTile tile =
                 |> Graphics.texture renderedSize
                 |> addRoadMarkings kind trafficDirection
 
-        Intersection (Signal trafficLights) shape ->
-            trafficLights
-                |> List.map renderTrafficLight
-                |> intersection shape
-
-        Intersection (Yield orientation) shape ->
-            renderSigns orientation shape "yield_sign.png"
-                |> intersection shape
-
-        Intersection (Stop orientation) shape ->
-            renderSigns orientation shape "stop_sign.png"
-                |> intersection shape
-
-        Intersection Uncontrolled shape ->
-            intersection shape []
-
-
-renderTrafficLight : TrafficLight -> Collage msg
-renderTrafficLight tl =
-    let
-        markerSize =
-            tileSize * 0.1
-
-        borderSize =
-            markerSize * 0.16
-
-        offset =
-            markerSize + (2 * borderSize)
-
-        border =
-            solid borderSize <| uniform Color.grey
-
-        presentation =
-            circle markerSize
-                |> styled ( uniform (toColor tl.kind), border )
-
-        toColor tlKind =
-            case tlKind of
-                Green ->
-                    Color.darkGreen
-
-                Yellow ->
-                    Color.darkYellow
-
-                Red ->
-                    Color.darkRed
-    in
-    Graphics.marker offset tl.facing presentation
-
-
-renderSigns : Orientation -> IntersectionShape -> String -> List (Collage msg)
-renderSigns orientation intersectionShape asset =
-    let
-        size =
-            tileSize * 0.25
-
-        offset =
-            size * 0.5
-
-        locations =
-            case intersectionShape of
-                T dir ->
-                    [ dir ]
-
-                Crossroads ->
-                    Direction.fromOrientation orientation
-
-        presentation dir =
-            Graphics.texture ( size, size ) asset
-                |> Graphics.marker offset dir
-    in
-    locations
-        |> List.map presentation
+        Intersection _ shape ->
+            Graphics.texture renderedSize (Graphics.intersectionAsset shape)
 
 
 renderCars : List Car -> Collage msg
@@ -202,7 +131,7 @@ renderCar car =
     Collage.group
         [ Graphics.texture ( carSize, carSize ) (Graphics.carAsset car)
             |> rotate car.rotation
-            |> shift car.position
+            |> shift (Point2d.toTuple Pixels.inPixels car.position)
         , spline
         ]
 
@@ -216,8 +145,10 @@ renderLots lots =
 renderLot : Lot -> Collage msg
 renderLot lot =
     let
-        ( x, y ) =
+        lotCenterPoint =
             lot.position
+                |> Point2d.translateBy (Vector2d.pixels (lot.width / 2) (lot.height / 2))
+                |> toRenderPosition
 
         building =
             Graphics.texture ( lot.width, lot.height ) (Graphics.buildingAsset lot.content.kind)
@@ -227,7 +158,7 @@ renderLot lot =
     in
     building
         |> Layout.at Layout.bottomLeft mask
-        |> shift ( x + lot.width / 2, y + lot.height / 2 )
+        |> shift lotCenterPoint
 
 
 sidewalkMask : Lot -> Collage msg
@@ -242,12 +173,11 @@ sidewalkMask lot =
             tileSize / 16
 
         ( maskWidth, maskHeight ) =
-            case Direction.toOrientation (Tuple.second lot.anchor) of
-                Vertical ->
-                    ( tileSize / 2, maskSize )
+            if Cell.isVertical <| Tuple.second lot.anchor then
+                ( tileSize / 2, maskSize )
 
-                Horizontal ->
-                    ( maskSize, tileSize / 2 )
+            else
+                ( maskSize, tileSize / 2 )
 
         entryPointPosition =
             case lot.content.entryDirection of
@@ -298,7 +228,7 @@ renderRoadNetwork roadNetwork =
                     (\node ->
                         Collage.circle Config.nodeSize
                             |> styled ( uniform (nodeColor node.label.kind), invisible )
-                            |> shift node.label.position
+                            |> shift (toRenderPosition node.label.position)
                     )
                 |> Collage.group
 
@@ -316,7 +246,14 @@ renderRoadNetwork roadNetwork =
                         in
                         Maybe.map2
                             (\fromNodeCtx toNodeCtx ->
-                                Collage.segment fromNodeCtx.node.label.position toNodeCtx.node.label.position
+                                let
+                                    from =
+                                        toRenderPosition fromNodeCtx.node.label.position
+
+                                    to =
+                                        toRenderPosition toNodeCtx.node.label.position
+                                in
+                                Collage.segment from to
                                     |> traced (solid thin (uniform Color.orange))
                             )
                             fromNode
@@ -328,3 +265,8 @@ renderRoadNetwork roadNetwork =
         [ nodes
         , edges
         ]
+
+
+toRenderPosition : LMPoint2d -> ( Float, Float )
+toRenderPosition =
+    Point2d.toTuple Pixels.inPixels
