@@ -97,7 +97,7 @@ bottomLeftCorner { width, height } ( aCell, aDir ) =
 
         adjustedForVerticalEntry =
             origin
-                |> Geometry.translatePointBy (width - tileSize) (height - tileSize)
+                |> Geometry.translatePointBy (tileSize - width) (tileSize - height)
     in
     case aDir of
         Down ->

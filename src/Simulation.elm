@@ -220,12 +220,12 @@ findLotAnchor world seed newLot =
                 _ ->
                     False
 
+        lotBoundingBox cell =
+            Lot.bottomLeftCorner newLot ( cell, targetDirection )
+                |> Geometry.boundingBoxWithDimensions newLot.width newLot.height
+
         hasEnoughSpaceAround cell =
-            world
-                |> World.isEmptyArea
-                    (Lot.bottomLeftCorner newLot ( cell, targetDirection )
-                        |> Geometry.boundingBoxWithDimensions newLot.width newLot.height
-                    )
+            World.isEmptyArea (lotBoundingBox cell) world
     in
     shuffledBoard
         |> List.filter isCompatible

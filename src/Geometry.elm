@@ -12,6 +12,7 @@ module Geometry exposing
     , isPointAt
     , leaveLotSpline
     , linearLocalPathToTarget
+    , noBoundingBoxOverlap
     , pointFromPosition
     , pointToPosition
     , pointToPositionAsTuple
@@ -153,6 +154,11 @@ boundingBoxWithDimensions width height origin =
                 |> translatePointIn Direction2d.positiveY height
     in
     BoundingBox2d.from origin otherCorner
+
+
+noBoundingBoxOverlap : LMBoundingBox2d -> LMBoundingBox2d -> Bool
+noBoundingBoxOverlap bb1 bb2 =
+    not <| BoundingBox2d.overlappingByAtLeast (Pixels.pixels 1) bb1 bb2
 
 
 

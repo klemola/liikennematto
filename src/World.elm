@@ -240,8 +240,7 @@ isEmptyArea testAreaBB world =
 
         noCollision _ =
             (roadBoundingBoxes ++ lotBoundingBoxes)
-                |> List.any (BoundingBox2d.isContainedIn testAreaBB)
-                |> not
+                |> List.all (Geometry.noBoundingBoxOverlap testAreaBB)
     in
     inBoardBounds && noCollision ()
 
