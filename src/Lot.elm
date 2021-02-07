@@ -16,16 +16,14 @@ module Lot exposing
 import Cell exposing (Cell, OrthogonalDirection(..))
 import Collision exposing (BoundingBox)
 import Config exposing (tileSize)
-import Pixels exposing (Pixels)
-import Point2d exposing (Point2d)
-import Vector2d
+import Geometry exposing (LMPoint2d)
 
 
 type alias Lot =
     { content : Building
     , width : Float
     , height : Float
-    , position : LMPoint2D
+    , position : LMPoint2d
     , anchor : Anchor
     }
 
@@ -59,10 +57,6 @@ type BuildingKind
     | TwoByThreeTest
 
 
-type alias LMPoint2D =
-    Point2d Pixels ()
-
-
 all : List NewLot
 all =
     [ { content = Building ResidentialA Down, width = tileSize, height = tileSize }
@@ -93,7 +87,7 @@ fromNewLot ( newLot, aCell ) =
     }
 
 
-bottomLeftCorner : NewLot -> Anchor -> LMPoint2D
+bottomLeftCorner : NewLot -> Anchor -> LMPoint2d
 bottomLeftCorner { width, height } ( aCell, aDir ) =
     let
         origin =
@@ -103,7 +97,7 @@ bottomLeftCorner { width, height } ( aCell, aDir ) =
 
         adjustedForVerticalEntry =
             origin
-                |> Point2d.translateBy (Vector2d.pixels (width - tileSize) (height - tileSize))
+                |> Geometry.translatePointBy (width - tileSize) (height - tileSize)
     in
     case aDir of
         Down ->
@@ -116,7 +110,7 @@ bottomLeftCorner { width, height } ( aCell, aDir ) =
             origin
 
 
-parkingSpot : Lot -> LMPoint2D
+parkingSpot : Lot -> LMPoint2d
 parkingSpot lot =
     let
         origin =
@@ -137,7 +131,7 @@ parkingSpot lot =
                     ( 0, tileSize / 2 )
     in
     origin
-        |> Point2d.translateBy (Vector2d.pixels shiftX shiftY)
+        |> Geometry.translatePointBy shiftX shiftY
 
 
 entryCell : Lot -> Cell
@@ -157,8 +151,8 @@ anchorCell lot =
 boundingBox : Lot -> BoundingBox
 boundingBox lot =
     let
-        ( x, y ) =
-            Point2d.toTuple Pixels.inPixels lot.position
+        { x, y } =
+            Geometry.pointToPosition lot.position
     in
     { x = x, y = y, width = lot.width, height = lot.height }
 

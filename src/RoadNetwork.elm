@@ -13,20 +13,19 @@ module RoadNetwork exposing
 
 import Angle
 import Board exposing (Board)
-import BoundingBox2d exposing (BoundingBox2d)
+import BoundingBox2d
 import Cell exposing (Cell, OrthogonalDirection(..))
 import Config exposing (innerLaneOffset, outerLaneOffset, tileSize)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
-import Direction2d exposing (Direction2d)
+import Direction2d
+import Geometry exposing (LMBoundingBox2d, LMDirection2d, LMPoint2d)
 import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
 import Graph.DOT
 import Lot exposing (Lot)
 import Maybe.Extra as Maybe
-import Pixels exposing (Pixels)
-import Point2d exposing (Point2d)
+import Point2d
 import Tile exposing (Orientation(..), RoadKind(..), Tile(..))
-import Vector2d
 
 
 type alias RoadNetwork =
@@ -35,18 +34,6 @@ type alias RoadNetwork =
 
 type alias RNNodeContext =
     NodeContext Connection Lane
-
-
-type alias LMPoint2d =
-    Point2d Pixels ()
-
-
-type alias LMDirection2d =
-    Direction2d ()
-
-
-type alias LMBoundingBox2d =
-    BoundingBox2d Pixels ()
 
 
 type alias Connection =
@@ -113,13 +100,18 @@ fromBoardAndLots board lots =
 -- Connections
 
 
+type alias NodesMemo =
+    -- Index nodes by their position (x, y) to avoid duplicates
+    Dict ( Float, Float ) (Node Connection)
+
+
 createConnections :
     { board : Board
     , lots : Dict Int Lot
-    , nodes : Dict ( Float, Float ) (Node Connection)
+    , nodes : NodesMemo
     , remainingTiles : List ( Cell, Tile )
     }
-    -> Dict ( Float, Float ) (Node Connection)
+    -> NodesMemo
 createConnections { nodes, board, remainingTiles, lots } =
     case remainingTiles of
         [] ->
@@ -133,8 +125,7 @@ createConnections { nodes, board, remainingTiles, lots } =
                 maybeCreateNode nodeSpec currentNodes =
                     let
                         key =
-                            nodeSpec.position
-                                |> Point2d.toTuple Pixels.inPixels
+                            Geometry.pointToPositionAsTuple nodeSpec.position
                     in
                     if Dict.member key currentNodes then
                         currentNodes
@@ -242,17 +233,15 @@ laneCenterPositionsByDirection cell trafficDirection =
             tileSize / 2
 
         connectionOffsetFromTileCenter =
-            halfTile
-                - innerLaneOffset
-                |> Pixels.pixels
+            halfTile - innerLaneOffset
 
         tileCenterPosition =
             Cell.center cell
     in
     ( tileCenterPosition
-        |> Point2d.translateIn (Direction2d.rotateClockwise trafficDirection) connectionOffsetFromTileCenter
+        |> Geometry.translatePointIn (Direction2d.rotateClockwise trafficDirection) connectionOffsetFromTileCenter
     , tileCenterPosition
-        |> Point2d.translateIn (Direction2d.rotateCounterclockwise trafficDirection) connectionOffsetFromTileCenter
+        |> Geometry.translatePointIn (Direction2d.rotateCounterclockwise trafficDirection) connectionOffsetFromTileCenter
     )
 
 
@@ -276,7 +265,7 @@ connectionsByTileEntryDirection board cell tile direction =
 
         shift x y =
             origin
-                |> Point2d.translateBy (Vector2d.pixels x y)
+                |> Geometry.translatePointBy x y
     in
     case direction of
         Up ->
@@ -473,7 +462,7 @@ connectionLookupAreaToLeft node range =
         leftDir =
             Direction2d.rotateCounterclockwise (getDirection node)
     in
-    BoundingBox2d.translateIn leftDir (Pixels.pixels range) bb
+    Geometry.translateBoundingBoxIn leftDir range bb
 
 
 connectionLookupAreaToRight : Node Connection -> Float -> LMBoundingBox2d
@@ -490,8 +479,8 @@ connectionLookupAreaToRight node range =
 
         otherCorner =
             origin
-                |> Point2d.translateIn nodeDirection (Pixels.pixels tileSize)
-                |> Point2d.translateIn nodeDirectionRotatedRight (Pixels.pixels range)
+                |> Geometry.translatePointIn nodeDirection tileSize
+                |> Geometry.translatePointIn nodeDirectionRotatedRight range
     in
     BoundingBox2d.from origin otherCorner
 
@@ -539,19 +528,9 @@ isFacing current other =
         direction =
             getDirection current
 
-        -- foo =
-        --     Debug.log "isFacing"
-        --         { currentId = current.id
-        --         , currentKind = current.label.kind
-        --         , currentDir = direction |> Direction2d.toAngle |> Angle.inDegrees
-        --         , otherId = other.id
-        --         , otherKind = other.label.kind
-        --         , otherDir = getDirection other |> Direction2d.toAngle |> Angle.inDegrees
-        --         }
         angleToTarget =
-            Direction2d.from origin target
-                |> Maybe.map (Direction2d.angleFrom direction)
-                |> Maybe.withDefault (Angle.degrees 0)
+            origin
+                |> Geometry.angleFromDirection direction target
     in
     Angle.inDegrees angleToTarget == 0
 
@@ -566,7 +545,7 @@ closestToOriginOrdering current other =
             getPosition other
     in
     Point2d.distanceFrom origin target
-        |> Pixels.inPixels
+        |> Geometry.toFloat
 
 
 

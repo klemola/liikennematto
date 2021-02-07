@@ -26,9 +26,8 @@ import Collision
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction2d
+import Geometry exposing (LMPoint2d)
 import Lot exposing (BuildingKind(..), Lot)
-import Pixels exposing (Pixels)
-import Point2d exposing (Point2d)
 import RoadNetwork exposing (RoadNetwork)
 import Tile
     exposing
@@ -47,10 +46,6 @@ type alias World =
     , cars : Cars
     , lots : Lots
     }
-
-
-type alias LMPoint2d =
-    Point2d Pixels ()
 
 
 type alias Id =
@@ -231,8 +226,8 @@ canBuildRoadAt cell world =
 isEmptyArea : { origin : LMPoint2d, width : Float, height : Float } -> World -> Bool
 isEmptyArea { origin, width, height } world =
     let
-        ( originX, originY ) =
-            Point2d.toTuple Pixels.inPixels origin
+        { x, y } =
+            Geometry.pointToPosition origin
 
         roadBoundingBoxes =
             world.board
@@ -245,7 +240,7 @@ isEmptyArea { origin, width, height } world =
                 |> List.map Lot.boundingBox
 
         areaBoundingBox =
-            { x = originX, y = originY, width = width, height = height }
+            { x = x, y = y, width = width, height = height }
 
         inBoardBounds =
             Board.inBounds areaBoundingBox

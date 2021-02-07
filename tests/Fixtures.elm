@@ -7,9 +7,8 @@ import Cell exposing (Corner(..), OrthogonalDirection(..))
 import Config exposing (tileSize)
 import Dict
 import Direction2d
+import Geometry
 import Lot exposing (Anchor, Lot)
-import Pixels exposing (Pixels)
-import Point2d exposing (Point2d)
 import Random
 import Round exposing (Round)
 import Tile
@@ -23,15 +22,6 @@ import Tile
         )
 import TrafficLight
 import World exposing (World)
-
-
-type alias LMPoint2d =
-    Point2d Pixels ()
-
-
-toLMPoint2d : ( Float, Float ) -> LMPoint2d
-toLMPoint2d =
-    Point2d.fromTuple Pixels.pixels
 
 
 seed : Random.Seed
@@ -275,7 +265,7 @@ yieldAfterStopSetup =
 spawn : Car -> ( Float, Float ) -> OrthogonalDirection -> Car
 spawn car origin direction =
     { car
-        | position = toLMPoint2d origin
+        | position = Geometry.pointFromPosition origin
         , rotation =
             direction
                 |> Cell.orthogonalDirectionToLmDirection
@@ -418,7 +408,7 @@ oneByOneLot =
     { content = oneByOneNewLot.content
     , width = oneByOneNewLot.width
     , height = oneByOneNewLot.height
-    , position = toLMPoint2d ( 0, tileSize * 9 )
+    , position = Geometry.pointFromPosition ( 0, tileSize * 9 )
     , anchor = ( ( 1, 2 ), Up )
     }
 

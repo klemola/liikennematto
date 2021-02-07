@@ -21,13 +21,12 @@ import Collage.Render exposing (svg)
 import Color
 import Config exposing (boardSize, carSize, tileSize)
 import Dict
+import Geometry
 import Graph
 import Graphics
 import Html exposing (Html)
 import Lot exposing (Lot)
 import Maybe.Extra as Maybe
-import Pixels exposing (Pixels)
-import Point2d exposing (Point2d)
 import RoadNetwork exposing (ConnectionKind(..), RoadNetwork)
 import Tile
     exposing
@@ -36,12 +35,7 @@ import Tile
         , Tile(..)
         , TrafficDirection(..)
         )
-import Vector2d
 import World exposing (World)
-
-
-type alias LMPoint2d =
-    Point2d Pixels ()
 
 
 view : World -> Bool -> Html msg
@@ -124,14 +118,14 @@ renderCar car =
     let
         spline =
             car.localPath
-                |> List.map (Point2d.toTuple Pixels.inPixels)
+                |> List.map Geometry.pointToPositionAsTuple
                 |> Collage.path
                 |> traced (solid thin (uniform Color.red))
     in
     Collage.group
         [ Graphics.texture ( carSize, carSize ) (Graphics.carAsset car)
             |> rotate car.rotation
-            |> shift (Point2d.toTuple Pixels.inPixels car.position)
+            |> shift (Geometry.pointToPositionAsTuple car.position)
         , spline
         ]
 
@@ -147,8 +141,8 @@ renderLot lot =
     let
         lotCenterPoint =
             lot.position
-                |> Point2d.translateBy (Vector2d.pixels (lot.width / 2) (lot.height / 2))
-                |> toRenderPosition
+                |> Geometry.translatePointBy (lot.width / 2) (lot.height / 2)
+                |> Geometry.pointToPositionAsTuple
 
         building =
             Graphics.texture ( lot.width, lot.height ) (Graphics.buildingAsset lot.content.kind)
@@ -228,7 +222,7 @@ renderRoadNetwork roadNetwork =
                     (\node ->
                         Collage.circle Config.nodeSize
                             |> styled ( uniform (nodeColor node.label.kind), invisible )
-                            |> shift (toRenderPosition node.label.position)
+                            |> shift (Geometry.pointToPositionAsTuple node.label.position)
                     )
                 |> Collage.group
 
@@ -248,10 +242,10 @@ renderRoadNetwork roadNetwork =
                             (\fromNodeCtx toNodeCtx ->
                                 let
                                     from =
-                                        toRenderPosition fromNodeCtx.node.label.position
+                                        Geometry.pointToPositionAsTuple fromNodeCtx.node.label.position
 
                                     to =
-                                        toRenderPosition toNodeCtx.node.label.position
+                                        Geometry.pointToPositionAsTuple toNodeCtx.node.label.position
                                 in
                                 Collage.segment from to
                                     |> traced (solid thin (uniform Color.orange))
@@ -265,8 +259,3 @@ renderRoadNetwork roadNetwork =
         [ nodes
         , edges
         ]
-
-
-toRenderPosition : LMPoint2d -> ( Float, Float )
-toRenderPosition =
-    Point2d.toTuple Pixels.inPixels

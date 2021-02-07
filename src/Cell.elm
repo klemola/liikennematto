@@ -22,22 +22,13 @@ module Cell exposing
 
 import Collision exposing (BoundingBox)
 import Config exposing (boardSize, tileSize)
-import Direction2d exposing (Direction2d)
-import Pixels exposing (Pixels)
-import Point2d exposing (Point2d)
-import Vector2d
+import Direction2d
+import Geometry exposing (LMDirection2d, LMPoint2d)
+import Point2d
 
 
 type alias Cell =
     ( Int, Int )
-
-
-type alias LMPoint2D =
-    Point2d Pixels ()
-
-
-type alias LMDirection2d =
-    Direction2d ()
 
 
 
@@ -213,7 +204,7 @@ cornerAndNeighbors c position =
             [ next Right position, corner BottomRight position, next Down position ]
 
 
-bottomLeftCorner : Cell -> LMPoint2D
+bottomLeftCorner : Cell -> LMPoint2d
 bottomLeftCorner ( cellX, cellY ) =
     let
         ( x, y ) =
@@ -223,20 +214,23 @@ bottomLeftCorner ( cellX, cellY ) =
         Point2d.origin
 
     else
-        Point2d.fromTuple Pixels.pixels ( x * tileSize, y * tileSize )
+        Geometry.pointFromPosition
+            { x = x * tileSize
+            , y = y * tileSize
+            }
 
 
-center : Cell -> LMPoint2D
+center : Cell -> LMPoint2d
 center cell =
     bottomLeftCorner cell
-        |> Point2d.translateBy (Vector2d.pixels (tileSize / 2) (tileSize / 2))
+        |> Geometry.translatePointBy (tileSize / 2) (tileSize / 2)
 
 
 boundingBox : Cell -> BoundingBox
 boundingBox cell =
     let
-        ( x, y ) =
+        { x, y } =
             bottomLeftCorner cell
-                |> Point2d.toTuple Pixels.inPixels
+                |> Geometry.pointToPosition
     in
     { x = x, y = y, width = tileSize, height = tileSize }

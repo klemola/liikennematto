@@ -19,19 +19,11 @@ module Car exposing
     )
 
 import Angle
-import Config exposing (tileSize)
-import CubicSpline2d
-import Direction2d exposing (Direction2d)
-import Pixels exposing (Pixels)
-import Point2d exposing (Point2d)
-import Polyline2d
-import Quantity
+import Direction2d
+import Geometry exposing (LMPoint2d, LocalPath)
+import Point2d
 import RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Tile exposing (Tile(..))
-
-
-type alias LMPoint2d =
-    Point2d Pixels ()
 
 
 type alias Car =
@@ -43,10 +35,6 @@ type alias Car =
     , route : List RNNodeContext
     , localPath : LocalPath
     }
-
-
-type alias LocalPath =
-    List LMPoint2d
 
 
 type CarKind
@@ -111,8 +99,8 @@ move car =
     case car.localPath of
         next :: others ->
             if
-                Point2d.distanceFrom car.position next
-                    |> Quantity.lessThan (Pixels.pixels 1)
+                car.position
+                    |> Geometry.isPointAt next
             then
                 { car
                     | position = next
@@ -124,18 +112,15 @@ move car =
                     carDirection =
                         Direction2d.radians car.rotation
 
-                    angleToTarget =
-                        Direction2d.from car.position next
-                            |> Maybe.map Direction2d.toAngle
-                            |> Maybe.withDefault (Angle.degrees 0)
-
                     nextPosition =
-                        Point2d.translateIn carDirection (Pixels.pixels 1) car.position
+                        car.position
+                            |> Geometry.translatePointIn carDirection 1
                 in
                 { car
                     | position = nextPosition
                     , rotation =
-                        angleToTarget
+                        car.position
+                            |> Geometry.angleToTarget next
                             |> Angle.inRadians
                     , status = Moving
                 }
@@ -204,108 +189,30 @@ localPathToTarget car { node } =
         target =
             node.label.position
 
-        angleToTarget =
-            Direction2d.from origin target
-                |> Maybe.map (Direction2d.angleFrom carDirection)
-                |> Maybe.withDefault (Angle.degrees 0)
+        angleDegreesToTarget =
+            origin
+                |> Geometry.angleFromDirection carDirection target
                 |> Angle.inDegrees
     in
     if node.label.kind == LotEntry && car.status == ParkedAtLot then
-        leaveLotSpline origin target carDirection
+        Geometry.leaveLotSpline origin target carDirection
 
     else if node.label.kind == LotEntry then
-        linearLocalPathToTarget origin target
+        Geometry.linearLocalPathToTarget origin target
 
-    else if abs angleToTarget < 10 then
-        linearLocalPathToTarget origin target
+    else if abs angleDegreesToTarget < 10 then
+        Geometry.linearLocalPathToTarget origin target
 
-    else if abs angleToTarget |> isWithinRoundingErrorOf 90 then
-        uTurnSpline origin target carDirection
+    else if abs angleDegreesToTarget |> isWithinRoundingErrorOf 90 then
+        Geometry.uTurnSpline origin target carDirection
 
     else
-        curveSpline origin target carDirection
+        Geometry.curveSpline origin target carDirection
 
 
 isWithinRoundingErrorOf : Int -> Float -> Bool
 isWithinRoundingErrorOf target value =
     round value == target || floor value == target
-
-
-linearLocalPathToTarget : LMPoint2d -> LMPoint2d -> LocalPath
-linearLocalPathToTarget origin target =
-    [ 0, 0.25, 0.5, 0.75, 1 ]
-        |> List.map (\step -> Point2d.interpolateFrom origin target step)
-
-
-leaveLotSpline : LMPoint2d -> LMPoint2d -> Direction2d () -> LocalPath
-leaveLotSpline origin target direction =
-    let
-        handleDistance =
-            Point2d.distanceFrom origin target
-                |> Quantity.half
-
-        targetCp =
-            Point2d.translateIn direction (Pixels.pixels (tileSize / 2)) target
-
-        midpoint =
-            Point2d.midpoint origin targetCp
-
-        handleCp1 =
-            midpoint
-                |> Point2d.midpoint origin
-                |> Point2d.translateIn (Direction2d.rotateClockwise direction) handleDistance
-
-        handleCp2 =
-            Point2d.translateIn (Direction2d.rotateCounterclockwise direction) handleDistance midpoint
-    in
-    CubicSpline2d.fromControlPoints origin handleCp1 handleCp2 targetCp
-        |> CubicSpline2d.segments 16
-        |> Polyline2d.vertices
-
-
-uTurnSpline : LMPoint2d -> LMPoint2d -> Direction2d () -> LocalPath
-uTurnSpline origin target direction =
-    let
-        turnDistance =
-            Pixels.pixels (tileSize / 4)
-
-        handleCp1 =
-            Point2d.translateIn direction turnDistance origin
-
-        handleCp2 =
-            Point2d.translateIn direction turnDistance target
-    in
-    CubicSpline2d.fromControlPoints origin handleCp1 handleCp2 target
-        |> CubicSpline2d.segments 16
-        |> Polyline2d.vertices
-
-
-curveSpline : LMPoint2d -> LMPoint2d -> Direction2d () -> LocalPath
-curveSpline origin target direction =
-    let
-        angleToTarget =
-            Direction2d.from origin target
-                |> Maybe.map (Direction2d.angleFrom direction)
-                |> Maybe.withDefault (Angle.degrees 0)
-
-        distanceToTarget =
-            Point2d.distanceFrom origin target
-
-        distanceToCorner =
-            Quantity.multiplyBy (Angle.cos angleToTarget) distanceToTarget
-
-        corner =
-            Point2d.translateIn direction distanceToCorner origin
-
-        handleCp1 =
-            Point2d.midpoint origin corner
-
-        handleCp2 =
-            Point2d.midpoint corner target
-    in
-    CubicSpline2d.fromControlPoints origin handleCp1 handleCp2 target
-        |> CubicSpline2d.segments 16
-        |> Polyline2d.vertices
 
 
 statusDescription : Car -> String
