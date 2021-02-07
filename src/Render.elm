@@ -1,5 +1,6 @@
 module Render exposing (view)
 
+import Angle
 import Board exposing (Board)
 import Car exposing (Car, Status(..))
 import Cell exposing (OrthogonalDirection(..))
@@ -124,7 +125,7 @@ renderCar car =
     in
     Collage.group
         [ Graphics.texture ( carSize, carSize ) (Graphics.carAsset car)
-            |> rotate car.rotation
+            |> rotate (Angle.inRadians car.rotation)
             |> shift (Geometry.pointToPositionAsTuple car.position)
         , spline
         ]

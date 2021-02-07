@@ -18,7 +18,7 @@ module Car exposing
     , yield
     )
 
-import Angle
+import Angle exposing (Angle)
 import Direction2d
 import Geometry exposing (LMPoint2d, LocalPath)
 import Point2d
@@ -28,7 +28,7 @@ import Tile exposing (Tile(..))
 
 type alias Car =
     { position : LMPoint2d
-    , rotation : Float
+    , rotation : Angle
     , kind : CarKind
     , status : Status
     , homeLotId : Maybe Int
@@ -63,9 +63,7 @@ stoppedOrWaiting =
 new : CarKind -> Car
 new kind =
     { position = Point2d.origin
-
-    -- TODO: check
-    , rotation = 0
+    , rotation = Angle.degrees 0
     , kind = kind
     , status = Confused
     , homeLotId = Nothing
@@ -110,7 +108,7 @@ move car =
             else
                 let
                     carDirection =
-                        Direction2d.radians car.rotation
+                        Direction2d.fromAngle car.rotation
 
                     nextPosition =
                         car.position
@@ -121,7 +119,6 @@ move car =
                     , rotation =
                         car.position
                             |> Geometry.angleToTarget next
-                            |> Angle.inRadians
                     , status = Moving
                 }
 
@@ -181,7 +178,7 @@ localPathToTarget : Car -> RNNodeContext -> LocalPath
 localPathToTarget car { node } =
     let
         carDirection =
-            Direction2d.radians car.rotation
+            Direction2d.fromAngle car.rotation
 
         origin =
             car.position

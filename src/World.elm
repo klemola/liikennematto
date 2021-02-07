@@ -18,7 +18,6 @@ module World exposing
     , withTileAt
     )
 
-import Angle
 import Board exposing (Board)
 import BoundingBox2d
 import Car exposing (Car, CarKind(..))
@@ -335,7 +334,6 @@ moveCarToHome world car =
                         |> Cell.orthogonalDirectionToLmDirection
                         |> Direction2d.rotateClockwise
                         |> Direction2d.toAngle
-                        |> Angle.inRadians
                 , status = Car.ParkedAtLot
             }
 
