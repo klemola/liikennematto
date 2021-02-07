@@ -263,9 +263,9 @@ yieldAfterStopSetup =
 
 
 spawn : Car -> ( Float, Float ) -> OrthogonalDirection -> Car
-spawn car origin direction =
+spawn car ( x, y ) direction =
     { car
-        | position = Geometry.pointFromPosition origin
+        | position = Geometry.pointFromPosition (Geometry.LMEntityPositionUnitless x y)
         , rotation =
             direction
                 |> Cell.orthogonalDirectionToLmDirection
@@ -408,7 +408,7 @@ oneByOneLot =
     { content = oneByOneNewLot.content
     , width = oneByOneNewLot.width
     , height = oneByOneNewLot.height
-    , position = Geometry.pointFromPosition ( 0, tileSize * 9 )
+    , position = Geometry.pointFromPosition (Geometry.LMEntityPositionUnitless 0 (tileSize * 9))
     , anchor = ( ( 1, 2 ), Up )
     }
 

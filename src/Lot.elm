@@ -13,10 +13,10 @@ module Lot exposing
     , parkingSpot
     )
 
+import BoundingBox2d
 import Cell exposing (Cell, OrthogonalDirection(..))
-import Collision exposing (BoundingBox)
 import Config exposing (tileSize)
-import Geometry exposing (LMPoint2d)
+import Geometry exposing (LMBoundingBox2d, LMPoint2d)
 
 
 type alias Lot =
@@ -148,15 +148,12 @@ anchorCell lot =
     Tuple.first lot.anchor
 
 
-boundingBox : Lot -> BoundingBox
+boundingBox : Lot -> LMBoundingBox2d
 boundingBox lot =
-    let
-        { x, y } =
-            Geometry.pointToPosition lot.position
-    in
-    { x = x, y = y, width = lot.width, height = lot.height }
+    lot.position
+        |> Geometry.boundingBoxWithDimensions lot.width lot.height
 
 
 inBounds : Cell -> Lot -> Bool
 inBounds cell lot =
-    Collision.aabb (Cell.boundingBox cell) (boundingBox lot)
+    BoundingBox2d.isContainedIn (boundingBox lot) (Cell.boundingBox cell)

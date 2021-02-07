@@ -4,6 +4,7 @@ import Browser.Events as Events
 import Cell exposing (Cell)
 import Config
 import Dict
+import Geometry
 import Lot exposing (NewLot)
 import Process
 import Random
@@ -220,12 +221,11 @@ findLotAnchor world seed newLot =
                     False
 
         hasEnoughSpaceAround cell =
-            World.isEmptyArea
-                { origin = Lot.bottomLeftCorner newLot ( cell, targetDirection )
-                , width = newLot.width
-                , height = newLot.height
-                }
-                world
+            world
+                |> World.isEmptyArea
+                    (Lot.bottomLeftCorner newLot ( cell, targetDirection )
+                        |> Geometry.boundingBoxWithDimensions newLot.width newLot.height
+                    )
     in
     shuffledBoard
         |> List.filter isCompatible

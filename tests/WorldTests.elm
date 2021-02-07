@@ -15,7 +15,7 @@ suite =
         [ describe "World.isEmptyArea"
             [ test "correctly determines if an area is empty (not existings lots)"
                 (\_ ->
-                    World.isEmptyArea { origin = Geometry.pointFromPosition ( 80, 160 ), width = 160, height = 160 } Fixtures.worldThatHasAVerticalRoadAtLeftSide
+                    World.isEmptyArea (createBoundingBox ( 80, 160 ) 160 160) Fixtures.worldThatHasAVerticalRoadAtLeftSide
                         |> Expect.true "Expected the \"world\" to have space."
                 )
             , test "correctly determines if an area is empty (existing lot in target area)"
@@ -28,17 +28,17 @@ suite =
                             Fixtures.worldThatHasAVerticalRoadAtLeftSide
                                 |> (\world -> { world | lots = Dict.fromList [ ( 1, lot ) ] })
                     in
-                    World.isEmptyArea { origin = Geometry.pointFromPosition ( 80, 160 ), width = 160, height = 160 } withLot
+                    World.isEmptyArea (createBoundingBox ( 80, 160 ) 160 160) withLot
                         |> Expect.false "Expected the \"world\" *not* to have space."
                 )
             , test "correctly determines if an area is empty (not enough space between roads)"
                 (\_ ->
-                    World.isEmptyArea { origin = Geometry.pointFromPosition ( 80, 160 ), width = 160, height = 160 } Fixtures.worldThatHasParallelRoads
+                    World.isEmptyArea (createBoundingBox ( 80, 160 ) 160 160) Fixtures.worldThatHasParallelRoads
                         |> Expect.false "Expected the \"world\" *not* to have space."
                 )
             , test "reports area as filled if it's out of board bounds"
                 (\_ ->
-                    World.isEmptyArea { origin = Geometry.pointFromPosition ( 720, 80 ), width = 240, height = 160 } Fixtures.worldThatHasAVerticalRoadAtLeftSide
+                    World.isEmptyArea (createBoundingBox ( 720, 80 ) 240 160) Fixtures.worldThatHasAVerticalRoadAtLeftSide
                         |> Expect.false "Expected the \"world\" *not* to have space."
                 )
             ]
@@ -55,3 +55,7 @@ suite =
                 )
             ]
         ]
+
+
+createBoundingBox ( x, y ) width height =
+    Geometry.boundingBoxWithDimensions width height (Geometry.pointFromPosition { x = x, y = y })

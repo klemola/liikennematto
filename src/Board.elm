@@ -6,10 +6,12 @@ module Board exposing
     )
 
 import BitMask
+import BoundingBox2d
 import Cell exposing (Cell, OrthogonalDirection(..))
-import Collision exposing (BoundingBox)
 import Config exposing (boardSizeScaled)
 import Dict exposing (Dict)
+import Geometry exposing (LMBoundingBox2d)
+import Point2d
 import Tile
     exposing
         ( IntersectionControl(..)
@@ -35,9 +37,14 @@ exists cell board =
             False
 
 
-inBounds : BoundingBox -> Bool
-inBounds bb =
-    bb.x >= 0 && bb.x + bb.width <= boardSizeScaled && bb.y >= 0 && bb.y + bb.height <= boardSizeScaled
+boundingBox : LMBoundingBox2d
+boundingBox =
+    Geometry.boundingBoxWithDimensions boardSizeScaled boardSizeScaled Point2d.origin
+
+
+inBounds : LMBoundingBox2d -> Bool
+inBounds testBB =
+    BoundingBox2d.isContainedIn boundingBox testBB
 
 
 defaultTile : Tile
