@@ -20,10 +20,9 @@ module Cell exposing
     , up
     )
 
-import Collision exposing (BoundingBox)
 import Config exposing (boardSize, tileSize)
 import Direction2d
-import Geometry exposing (LMDirection2d, LMPoint2d)
+import Geometry exposing (LMBoundingBox2d, LMDirection2d, LMPoint2d)
 import Point2d
 
 
@@ -226,11 +225,7 @@ center cell =
         |> Geometry.translatePointBy (tileSize / 2) (tileSize / 2)
 
 
-boundingBox : Cell -> BoundingBox
+boundingBox : Cell -> LMBoundingBox2d
 boundingBox cell =
-    let
-        { x, y } =
-            bottomLeftCorner cell
-                |> Geometry.pointToPosition
-    in
-    { x = x, y = y, width = tileSize, height = tileSize }
+    bottomLeftCorner cell
+        |> Geometry.boundingBoxWithDimensions tileSize tileSize

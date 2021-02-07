@@ -20,13 +20,13 @@ module World exposing
 
 import Angle
 import Board exposing (Board)
+import BoundingBox2d
 import Car exposing (Car, CarKind(..))
 import Cell exposing (Cell, Corner(..), OrthogonalDirection(..))
-import Collision
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction2d
-import Geometry exposing (LMPoint2d)
+import Geometry exposing (LMBoundingBox2d)
 import Lot exposing (BuildingKind(..), Lot)
 import RoadNetwork exposing (RoadNetwork)
 import Tile
@@ -223,12 +223,9 @@ canBuildRoadAt cell world =
     List.all hasLowComplexity Cell.corners
 
 
-isEmptyArea : { origin : LMPoint2d, width : Float, height : Float } -> World -> Bool
-isEmptyArea { origin, width, height } world =
+isEmptyArea : LMBoundingBox2d -> World -> Bool
+isEmptyArea testAreaBB world =
     let
-        { x, y } =
-            Geometry.pointToPosition origin
-
         roadBoundingBoxes =
             world.board
                 |> Dict.keys
@@ -239,14 +236,13 @@ isEmptyArea { origin, width, height } world =
                 |> Dict.values
                 |> List.map Lot.boundingBox
 
-        areaBoundingBox =
-            { x = x, y = y, width = width, height = height }
-
         inBoardBounds =
-            Board.inBounds areaBoundingBox
+            Board.inBounds testAreaBB
 
         noCollision _ =
-            not <| List.any (Collision.aabb areaBoundingBox) (roadBoundingBoxes ++ lotBoundingBoxes)
+            (roadBoundingBoxes ++ lotBoundingBoxes)
+                |> List.any (BoundingBox2d.isContainedIn testAreaBB)
+                |> not
     in
     inBoardBounds && noCollision ()
 

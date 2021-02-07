@@ -7,6 +7,7 @@ module Geometry exposing
     , LocalPath
     , angleFromDirection
     , angleToTarget
+    , boundingBoxWithDimensions
     , curveSpline
     , isPointAt
     , leaveLotSpline
@@ -141,6 +142,17 @@ angleFromDirection direction target origin =
     Direction2d.from origin target
         |> Maybe.map (Direction2d.angleFrom direction)
         |> Maybe.withDefault (Angle.degrees 0)
+
+
+boundingBoxWithDimensions : Float -> Float -> LMPoint2d -> LMBoundingBox2d
+boundingBoxWithDimensions width height origin =
+    let
+        otherCorner =
+            origin
+                |> translatePointIn Direction2d.positiveX width
+                |> translatePointIn Direction2d.positiveY height
+    in
+    BoundingBox2d.from origin otherCorner
 
 
 
