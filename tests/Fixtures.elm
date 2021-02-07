@@ -270,7 +270,6 @@ spawn car ( x, y ) direction =
             direction
                 |> Cell.orthogonalDirectionToLmDirection
                 |> Direction2d.toAngle
-                |> Angle.inDegrees
     }
 
 
