@@ -88,6 +88,7 @@ controls model world =
             { label = UI.icon "road_network_debug.png"
             , onPress = ToggleShowRoadNetwork
             , selected = model.showRoadNetwork
+            , disabled = False
             , size = CBLarge
             }
         , UI.controlButton
@@ -96,6 +97,7 @@ controls model world =
                 RoadNetwork.toDotString world.roadNetwork
                     |> ShowDotString
             , selected = False
+            , disabled = False
             , size = CBLarge
             }
         ]
@@ -126,6 +128,7 @@ dotStringView dotString =
                             { label = Element.text "❌"
                             , onPress = HideDotString
                             , selected = False
+                            , disabled = False
                             , size =
                                 CBSmall
                             }

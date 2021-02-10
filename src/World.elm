@@ -14,12 +14,12 @@ module World exposing
     , setCar
     , tileAt
     , withBoard
+    , withCar
     , withLot
     , withTileAt
     )
 
 import Board exposing (Board)
-import BoundingBox2d
 import Car exposing (Car, CarKind(..))
 import Cell exposing (Cell, Corner(..), OrthogonalDirection(..))
 import Dict exposing (Dict)
@@ -306,7 +306,7 @@ carsAfterBoardChange { nextLots, world } =
                         Dict.member lotId nextLots
 
                     Nothing ->
-                        True
+                        False
             )
         |> Dict.map (\_ car -> moveCarToHome world car)
 

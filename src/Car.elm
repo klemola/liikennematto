@@ -3,6 +3,7 @@ module Car exposing
     , CarKind(..)
     , Status(..)
     , beginLeaveLot
+    , boundingBox
     , buildRoute
     , isAtTheEndOfLocalPath
     , isConfused
@@ -15,12 +16,16 @@ module Car exposing
     , stopAtIntersection
     , waitForTrafficLights
     , withHome
+    , withPosition
+    , withRotation
+    , withRoute
     , yield
     )
 
 import Angle exposing (Angle)
+import Config exposing (carSize)
 import Direction2d
-import Geometry exposing (LMPoint2d, LocalPath)
+import Geometry exposing (LMBoundingBox2d, LMPoint2d, LocalPath)
 import Point2d
 import RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Tile exposing (Tile(..))
@@ -43,6 +48,7 @@ type CarKind
     | SedanC
     | SedanD
     | SedanE
+    | TestCar
 
 
 type Status
@@ -77,6 +83,21 @@ withHome lotId car =
     { car | homeLotId = Just lotId }
 
 
+withPosition : LMPoint2d -> Car -> Car
+withPosition position car =
+    { car | position = position }
+
+
+withRotation : Angle -> Car -> Car
+withRotation rotation car =
+    { car | rotation = rotation }
+
+
+withRoute : RNNodeContext -> Car -> Car
+withRoute nodeCtx car =
+    buildRoute car nodeCtx
+
+
 isConfused : Car -> Bool
 isConfused car =
     car.status == Confused
@@ -90,6 +111,11 @@ isStoppedOrWaiting car =
 isAtTheEndOfLocalPath : Car -> Bool
 isAtTheEndOfLocalPath car =
     List.isEmpty car.localPath
+
+
+boundingBox : Car -> LMBoundingBox2d
+boundingBox car =
+    Geometry.boundingBoxFromCircle car.position carSize
 
 
 move : Car -> Car

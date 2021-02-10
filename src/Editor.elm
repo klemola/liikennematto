@@ -274,5 +274,6 @@ toolbarButton selectedTool tool controlButtonSize =
         { label = UI.icon asset
         , onPress = SelectTool tool
         , selected = selectedTool == tool
+        , disabled = False
         , size = controlButtonSize
         }

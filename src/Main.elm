@@ -279,8 +279,11 @@ controls model =
                 { label = Element.text "🐛"
                 , onPress = ToggleDebugMode
                 , selected = model.debugPanel /= Nothing
+                , disabled = False
                 , size = controlButtonSize
                 }
+            , UI.carSpawnControl model.simulation controlButtonSize
+                |> Element.map SimulationMsg
             , UI.simulationControl model.simulation controlButtonSize
                 |> Element.map SimulationMsg
             ]

@@ -43,6 +43,11 @@ environmentUpdateFrequency =
     1000
 
 
+dequeueFrequency : Float
+dequeueFrequency =
+    500
+
+
 type alias UiDimensions =
     { toolbar : Int
     , controlButtonS : Int

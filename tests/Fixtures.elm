@@ -1,6 +1,5 @@
 module Fixtures exposing (..)
 
-import Angle
 import Board exposing (Board)
 import Car exposing (Car)
 import Cell exposing (Corner(..), OrthogonalDirection(..))
