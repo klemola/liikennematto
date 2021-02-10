@@ -1,4 +1,4 @@
-module UI exposing (ControlButtonSize(..), controlButton, icon, projectInfo, simulationControl)
+module UI exposing (ControlButtonSize(..), carSpawnControl, controlButton, icon, projectInfo, simulationControl)
 
 import Config exposing (borderRadius, borderSize, colors, uiDimensions, whitespace)
 import Element exposing (Element)
@@ -20,7 +20,28 @@ simulationControl { simulation } controlButtonSize =
                 Paused ->
                     ( "▶️", True, SetSimulation Running )
     in
-    controlButton { label = Element.text label, onPress = msg, selected = selected, size = controlButtonSize }
+    controlButton
+        { label = Element.text label
+        , onPress = msg
+        , selected = selected
+        , disabled = False
+        , size = controlButtonSize
+        }
+
+
+carSpawnControl : Simulation.Model -> ControlButtonSize -> Element Simulation.Msg
+carSpawnControl { carSpawnQueue } controlButtonSize =
+    let
+        disabled =
+            carSpawnQueue >= Simulation.maxCarSpawnQueueSize
+    in
+    controlButton
+        { label = Element.text "🚗"
+        , onPress = Simulation.SpawnTestCar
+        , selected = False
+        , disabled = disabled
+        , size = controlButtonSize
+        }
 
 
 type ControlButtonSize
@@ -32,10 +53,11 @@ controlButton :
     { label : Element msg
     , onPress : msg
     , selected : Bool
+    , disabled : Bool
     , size : ControlButtonSize
     }
     -> Element msg
-controlButton { label, onPress, selected, size } =
+controlButton { label, onPress, selected, disabled, size } =
     let
         ( buttonSize, fontSize ) =
             case size of
@@ -48,6 +70,13 @@ controlButton { label, onPress, selected, size } =
                     ( Element.px (uiDimensions.controlButtonL - (2 * borderSize.light))
                     , uiDimensions.controlButtonL // 2
                     )
+
+        alpha =
+            if disabled then
+                0.5
+
+            else
+                1
     in
     Input.button
         [ Background.color colors.buttonBackground
@@ -55,6 +84,7 @@ controlButton { label, onPress, selected, size } =
         , Font.center
         , Element.width buttonSize
         , Element.height buttonSize
+        , Element.alpha alpha
         , Border.width borderSize.light
         , Border.rounded borderRadius.light
         , Border.solid
@@ -66,7 +96,12 @@ controlButton { label, onPress, selected, size } =
                 colors.lightBorder
             )
         ]
-        { onPress = Just onPress
+        { onPress =
+            if disabled then
+                Nothing
+
+            else
+                Just onPress
         , label = label
         }
 

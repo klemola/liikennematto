@@ -116,6 +116,9 @@ carAsset car =
         SedanE ->
             "car_black_1.png"
 
+        TestCar ->
+            "car_white_1.png"
+
 
 buildingAsset : BuildingKind -> String
 buildingAsset kind =

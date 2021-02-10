@@ -7,6 +7,7 @@ module Geometry exposing
     , LocalPath
     , angleFromDirection
     , angleToTarget
+    , boundingBoxFromCircle
     , boundingBoxWithDimensions
     , curveSpline
     , isPointAt
@@ -27,6 +28,7 @@ module Geometry exposing
 
 import Angle exposing (Angle)
 import BoundingBox2d exposing (BoundingBox2d)
+import Circle2d
 import Config exposing (tileSize)
 import CubicSpline2d exposing (CubicSpline2d)
 import Direction2d exposing (Direction2d)
@@ -154,6 +156,12 @@ boundingBoxWithDimensions width height origin =
                 |> translatePointIn Direction2d.positiveY height
     in
     BoundingBox2d.from origin otherCorner
+
+
+boundingBoxFromCircle : LMPoint2d -> Float -> LMBoundingBox2d
+boundingBoxFromCircle position radius =
+    Circle2d.atPoint position (Pixels.pixels radius)
+        |> Circle2d.boundingBox
 
 
 noBoundingBoxOverlap : LMBoundingBox2d -> LMBoundingBox2d -> Bool

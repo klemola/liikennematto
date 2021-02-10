@@ -1,14 +1,26 @@
-module Simulation exposing (Model, Msg(..), SimulationState(..), init, subscriptions, update)
+module Simulation exposing
+    ( Model
+    , Msg(..)
+    , SimulationState(..)
+    , init
+    , maxCarSpawnQueueSize
+    , subscriptions
+    , update
+    )
 
+import BoundingBox2d exposing (BoundingBox2d)
 import Browser.Events as Events
+import Car
 import Cell exposing (Cell)
 import Config
 import Dict
+import Direction2d
 import Geometry
 import Lot exposing (NewLot)
 import Process
 import Random
 import Random.List
+import RoadNetwork exposing (RNNodeContext)
 import Round
 import Task
 import Tile
@@ -26,6 +38,7 @@ import World exposing (World)
 type alias Model =
     { seed : Random.Seed
     , simulation : SimulationState
+    , carSpawnQueue : Int
     }
 
 
@@ -39,6 +52,8 @@ type Msg
     | UpdateTraffic Time.Posix
     | UpdateEnvironment Time.Posix
     | GenerateEnvironment ()
+    | CheckQueues Time.Posix
+    | SpawnTestCar
 
 
 init : ( Model, Cmd Msg )
@@ -49,9 +64,15 @@ init =
     in
     ( { seed = seed
       , simulation = Running
+      , carSpawnQueue = 0
       }
     , generateEnvironmentAfterDelay seed
     )
+
+
+maxCarSpawnQueueSize : Int
+maxCarSpawnQueueSize =
+    5
 
 
 subscriptions : Model -> Sub Msg
@@ -62,6 +83,7 @@ subscriptions { simulation } =
     else
         Sub.batch
             [ Time.every Config.environmentUpdateFrequency UpdateEnvironment
+            , Time.every Config.dequeueFrequency CheckQueues
             , Events.onAnimationFrame UpdateTraffic
             ]
 
@@ -102,6 +124,22 @@ update world msg model =
             ( { model | seed = nextSeed }
             , nextWorld
             , generateEnvironmentAfterDelay nextSeed
+            )
+
+        CheckQueues _ ->
+            let
+                ( nextCarSpawnQueue, nextWorld ) =
+                    dequeueCarSpawn model.carSpawnQueue model.seed world
+            in
+            ( { model | carSpawnQueue = nextCarSpawnQueue }
+            , nextWorld
+            , Cmd.none
+            )
+
+        SpawnTestCar ->
+            ( { model | carSpawnQueue = model.carSpawnQueue + 1 }
+            , world
+            , Cmd.none
             )
 
 
@@ -285,3 +323,59 @@ updateTrafficHelper { updateQueue, seed, world } =
 
         [] ->
             ( world, seed )
+
+
+
+-- Queues
+
+
+dequeueCarSpawn : Int -> Random.Seed -> World -> ( Int, World )
+dequeueCarSpawn queue seed world =
+    let
+        canSpawnCar =
+            queue > 0
+    in
+    if canSpawnCar then
+        RoadNetwork.getRandomNode world.roadNetwork seed
+            |> Maybe.andThen (validateSpawnConditions world)
+            |> Maybe.map (spawnCar world)
+            |> Maybe.map (Tuple.pair <| queue - 1)
+            |> Maybe.withDefault ( queue, world )
+
+    else
+        ( queue, world )
+
+
+validateSpawnConditions : World -> RNNodeContext -> Maybe RNNodeContext
+validateSpawnConditions world nodeCtx =
+    let
+        notAtSpawnPosition car =
+            Car.boundingBox car
+                |> BoundingBox2d.contains nodeCtx.node.label.position
+                |> not
+
+        reasonableAmountOfTraffic =
+            Dict.size world.board > Dict.size world.cars
+
+        spawnPositionHasEnoughSpace =
+            Dict.values world.cars
+                |> List.all notAtSpawnPosition
+    in
+    if reasonableAmountOfTraffic && spawnPositionHasEnoughSpace then
+        Just nodeCtx
+
+    else
+        Nothing
+
+
+spawnCar : World -> RNNodeContext -> World
+spawnCar world nodeCtx =
+    let
+        car =
+            Car.new Car.TestCar
+                |> Car.withPosition nodeCtx.node.label.position
+                |> Car.withRotation (Direction2d.toAngle nodeCtx.node.label.direction)
+                |> Car.withRoute nodeCtx
+    in
+    world
+        |> World.withCar car

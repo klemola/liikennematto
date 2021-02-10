@@ -7,6 +7,7 @@ module RoadNetwork exposing
     , findNodeByNodeId
     , fromBoardAndLots
     , getOutgoingConnections
+    , getRandomNode
     , new
     , toDotString
     )
@@ -25,6 +26,8 @@ import Graph.DOT
 import Lot exposing (Lot)
 import Maybe.Extra as Maybe
 import Point2d
+import Random
+import Random.Extra
 import Tile exposing (Orientation(..), RoadKind(..), Tile(..))
 
 
@@ -569,6 +572,19 @@ findNodeByLotId roadNetwork lotId =
 findNodeByNodeId : RoadNetwork -> NodeId -> Maybe RNNodeContext
 findNodeByNodeId roadNetwork nodeId =
     Graph.get nodeId roadNetwork
+
+
+getRandomNode : RoadNetwork -> Random.Seed -> Maybe RNNodeContext
+getRandomNode roadNetwork seed =
+    let
+        randomNodeIdGenerator =
+            roadNetwork
+                |> Graph.nodeIds
+                |> Random.Extra.sample
+    in
+    Random.step randomNodeIdGenerator seed
+        |> Tuple.first
+        |> Maybe.andThen (findNodeByNodeId roadNetwork)
 
 
 getOutgoingConnections : RNNodeContext -> List NodeId
