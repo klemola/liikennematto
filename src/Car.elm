@@ -5,13 +5,13 @@ module Car exposing
     , beginLeaveLot
     , boundingBox
     , buildRoute
+    , giveWay
     , isAtTheEndOfLocalPath
     , isConfused
     , isStoppedOrWaiting
     , markAsConfused
     , move
     , new
-    , skipRound
     , statusDescription
     , stopAtIntersection
     , waitForTrafficLights
@@ -57,13 +57,13 @@ type Status
     | StoppedAtIntersection
     | Yielding
     | ParkedAtLot
-    | SkippingRound
+    | GivingWay
     | Confused
 
 
 stoppedOrWaiting : List Status
 stoppedOrWaiting =
-    [ WaitingForTrafficLights, StoppedAtIntersection, Yielding, SkippingRound ]
+    [ WaitingForTrafficLights, StoppedAtIntersection, Yielding ]
 
 
 new : CarKind -> Car
@@ -129,6 +129,7 @@ move car =
                 { car
                     | position = next
                     , localPath = others
+                    , status = Moving
                 }
 
             else
@@ -152,11 +153,6 @@ move car =
             car
 
 
-skipRound : Car -> Car
-skipRound car =
-    { car | status = SkippingRound }
-
-
 waitForTrafficLights : Car -> Car
 waitForTrafficLights car =
     { car | status = WaitingForTrafficLights }
@@ -170,6 +166,11 @@ yield car =
 stopAtIntersection : Car -> Car
 stopAtIntersection car =
     { car | status = StoppedAtIntersection }
+
+
+giveWay : Car -> Car
+giveWay car =
+    { car | status = GivingWay }
 
 
 markAsConfused : Car -> Car
@@ -256,8 +257,8 @@ statusDescription car =
         ParkedAtLot ->
             "Parked @ lot"
 
-        SkippingRound ->
-            "Skipping the round"
+        GivingWay ->
+            "Giving way"
 
         Confused ->
             "Confused"
