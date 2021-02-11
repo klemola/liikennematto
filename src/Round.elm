@@ -7,7 +7,12 @@ module Round exposing
     , play
     )
 
+import Angle
 import Car exposing (Car, Status(..))
+import Config exposing (tileSize)
+import Geometry
+import Point2d
+import Quantity
 import Random
 import Random.List
 import RoadNetwork
@@ -76,6 +81,11 @@ updateCar round =
             , seed
             )
 
+        GivingWay ->
+            ( Car.move activeCar
+            , seed
+            )
+
         _ ->
             ( activeCar, seed )
 
@@ -114,7 +124,7 @@ applyRule : Round -> Rule -> Car
 applyRule { activeCar } rule =
     case rule of
         AvoidCollision ->
-            Car.skipRound activeCar
+            Car.giveWay activeCar
 
         WaitForTrafficLights ->
             Car.waitForTrafficLights activeCar
@@ -142,14 +152,48 @@ activeRulesByPriority round =
 checkCollisionRules : Round -> Maybe Rule
 checkCollisionRules { otherCars, activeCar } =
     let
-        willCollideWithAnother =
-            False
+        potentialCollisions =
+            otherCars
+                |> List.filter (mightCollide activeCar)
     in
-    if willCollideWithAnother then
+    if not <| List.isEmpty potentialCollisions then
         Just AvoidCollision
 
     else
         Nothing
+
+
+nearCollisionCheckDistance =
+    Geometry.toLMUnits <| tileSize / 4
+
+
+farCheckCheckDistance =
+    Geometry.toLMUnits tileSize
+
+
+carRotationTolerance =
+    Angle.degrees 5
+
+
+mightCollide : Car -> Car -> Bool
+mightCollide activeCar otherCar =
+    let
+        distanceBetweenCars =
+            Point2d.distanceFrom activeCar.position otherCar.position
+
+        checkRequired =
+            otherCar.status == Moving
+
+        couldCollideFromBehind =
+            -- TODO check that active car is behind other
+            Quantity.lessThan nearCollisionCheckDistance distanceBetweenCars
+                && Quantity.equalWithin carRotationTolerance activeCar.rotation otherCar.rotation
+
+        couldCollideAtAnAngle =
+            Quantity.lessThan farCheckCheckDistance distanceBetweenCars
+                && Geometry.pathsCouldCollide activeCar.localPath otherCar.localPath
+    in
+    checkRequired && (couldCollideFromBehind || couldCollideAtAnAngle)
 
 
 checkIntersectionRules : Round -> Maybe Rule

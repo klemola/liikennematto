@@ -8,7 +8,7 @@ module Simulation exposing
     , update
     )
 
-import BoundingBox2d exposing (BoundingBox2d)
+import BoundingBox2d
 import Browser.Events as Events
 import Car
 import Cell exposing (Cell)
