@@ -23,9 +23,14 @@ outerLaneOffset =
     54
 
 
-carSize : Float
-carSize =
+carLength : Float
+carLength =
     24
+
+
+carWidth : Float
+carWidth =
+    12
 
 
 nodeSize : Float

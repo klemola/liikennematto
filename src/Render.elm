@@ -2,6 +2,7 @@ module Render exposing (view)
 
 import Angle
 import Board exposing (Board)
+import BoundingBox2d
 import Car exposing (Car, Status(..))
 import Cell exposing (OrthogonalDirection(..))
 import Collage
@@ -20,7 +21,7 @@ import Collage
 import Collage.Layout as Layout
 import Collage.Render exposing (svg)
 import Color
-import Config exposing (boardSize, carSize, tileSize)
+import Config exposing (boardSize, carLength, carWidth, tileSize)
 import Dict
 import Geometry
 import Graph
@@ -124,10 +125,11 @@ renderCar car =
                 |> traced (solid thin (uniform Color.red))
     in
     Collage.group
-        [ Graphics.texture ( carSize, carSize ) (Graphics.carAsset car)
+        [ Graphics.texture ( carLength, carWidth ) (Graphics.carAsset car)
             |> rotate (Angle.inRadians car.rotation)
             |> shift (Geometry.pointToPositionAsTuple car.position)
         , spline
+        , renderBoundingBox (Car.boundingBox car)
         ]
 
 
@@ -260,3 +262,19 @@ renderRoadNetwork roadNetwork =
         [ nodes
         , edges
         ]
+
+
+renderBoundingBox : Geometry.LMBoundingBox2d -> Collage msg
+renderBoundingBox boundingBox =
+    let
+        ( bbWidth, bbHeight ) =
+            BoundingBox2d.dimensions boundingBox
+                |> Tuple.mapBoth Geometry.toFloat Geometry.toFloat
+
+        bbPosition =
+            BoundingBox2d.centerPoint boundingBox
+                |> Geometry.pointToPositionAsTuple
+    in
+    Collage.rectangle bbWidth bbHeight
+        |> styled ( uniform Color.blue, invisible )
+        |> shift bbPosition

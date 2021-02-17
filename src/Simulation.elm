@@ -375,6 +375,7 @@ spawnCar world nodeCtx =
             Car.new Car.TestCar
                 |> Car.withPosition nodeCtx.node.label.position
                 |> Car.withRotation (Direction2d.toAngle nodeCtx.node.label.direction)
+                |> Car.withVelocity Car.maxVelocity
                 |> Car.withRoute nodeCtx
     in
     world

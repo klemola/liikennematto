@@ -5,6 +5,7 @@ module Geometry exposing
     , LMEntityPositionUnitless
     , LMPoint2d
     , LocalPath
+    , accelerationToString
     , angleFromDirection
     , angleToTarget
     , boundingBoxFromCircle
@@ -15,10 +16,12 @@ module Geometry exposing
     , linearLocalPathToTarget
     , noBoundingBoxOverlap
     , pathsCouldCollide
+    , pixelsToMetersRatio
     , pointFromPosition
     , pointToPosition
     , pointToPositionAsTuple
     , pointToString
+    , speedToString
     , toFloat
     , toLMUnits
     , translateBoundingBoxIn
@@ -27,18 +30,21 @@ module Geometry exposing
     , uTurnSpline
     )
 
+import Acceleration exposing (Acceleration)
 import Angle exposing (Angle)
 import BoundingBox2d exposing (BoundingBox2d)
 import Circle2d
 import Config exposing (tileSize)
 import CubicSpline2d exposing (CubicSpline2d)
 import Direction2d exposing (Direction2d)
+import Length
 import LineSegment2d
 import Maybe.Extra
 import Pixels exposing (Pixels)
 import Point2d exposing (Point2d)
 import Polyline2d exposing (Polyline2d)
-import Quantity exposing (Quantity)
+import Quantity exposing (Quantity, Rate)
+import Speed exposing (Speed)
 import Vector2d
 
 
@@ -74,24 +80,49 @@ type alias LMEntityPositionUnitless =
     { x : Float, y : Float }
 
 
-translatePointBy : Float -> Float -> LMPoint2d -> LMPoint2d
-translatePointBy x y =
-    Point2d.translateBy (Vector2d.pixels x y)
+
+-- Constants
 
 
-translatePointIn : LMDirection2d -> Float -> LMPoint2d -> LMPoint2d
-translatePointIn direction amount =
-    Point2d.translateIn direction (Pixels.pixels amount)
+pixelsToMetersRatio : Quantity Float (Rate Pixels.Pixels Length.Meters)
+pixelsToMetersRatio =
+    Pixels.pixels 5 |> Quantity.per (Length.meters 1)
 
 
-pointToPosition : LMPoint2d -> LMEntityPositionUnitless
-pointToPosition =
-    Point2d.toPixels
+
+-- Conversion
 
 
-pointToPositionAsTuple : LMPoint2d -> ( Float, Float )
-pointToPositionAsTuple =
-    Point2d.toTuple Pixels.inPixels
+toFloat : Quantity Float LMEntityUnits -> Float
+toFloat =
+    Pixels.toFloat
+
+
+toLMUnits : Float -> Quantity Float LMEntityUnits
+toLMUnits val =
+    Pixels.pixels val
+
+
+speedToString : Speed -> String
+speedToString speed =
+    let
+        speedValue =
+            speed
+                |> Quantity.unwrap
+                |> String.fromFloat
+    in
+    "Speed: " ++ speedValue ++ " m/s"
+
+
+accelerationToString : Acceleration -> String
+accelerationToString acceleration =
+    let
+        accelerationValue =
+            acceleration
+                |> Quantity.unwrap
+                |> String.fromFloat
+    in
+    "Acceleration: " ++ accelerationValue ++ " m/s²"
 
 
 pointToString : LMPoint2d -> String
@@ -115,29 +146,42 @@ pointToString point =
         ]
 
 
+
+-- Points
+
+
+translatePointBy : Float -> Float -> LMPoint2d -> LMPoint2d
+translatePointBy x y =
+    Point2d.translateBy (Vector2d.pixels x y)
+
+
+translatePointIn : LMDirection2d -> Float -> LMPoint2d -> LMPoint2d
+translatePointIn direction amount =
+    Point2d.translateIn direction (Pixels.pixels amount)
+
+
+pointToPosition : LMPoint2d -> LMEntityPositionUnitless
+pointToPosition =
+    Point2d.toPixels
+
+
+pointToPositionAsTuple : LMPoint2d -> ( Float, Float )
+pointToPositionAsTuple =
+    Point2d.toTuple Pixels.inPixels
+
+
 pointFromPosition : LMEntityPositionUnitless -> LMPoint2d
 pointFromPosition { x, y } =
     Point2d.pixels x y
 
 
-translateBoundingBoxIn : LMDirection2d -> Float -> LMBoundingBox2d -> LMBoundingBox2d
-translateBoundingBoxIn direction amount =
-    BoundingBox2d.translateIn direction (Pixels.pixels amount)
-
-
-toFloat : Quantity Float LMEntityUnits -> Float
-toFloat =
-    Pixels.toFloat
-
-
-toLMUnits : Float -> Quantity Float LMEntityUnits
-toLMUnits val =
-    Pixels.pixels val
-
-
 isPointAt : LMPoint2d -> LMPoint2d -> Bool
 isPointAt target origin =
     Point2d.equalWithin (Pixels.pixels 1) origin target
+
+
+
+-- Angles
 
 
 angleToTarget : LMPoint2d -> LMPoint2d -> Angle
@@ -152,6 +196,15 @@ angleFromDirection direction target origin =
     Direction2d.from origin target
         |> Maybe.map (Direction2d.angleFrom direction)
         |> Maybe.withDefault (Angle.degrees 0)
+
+
+
+-- Bounding boxes
+
+
+translateBoundingBoxIn : LMDirection2d -> Float -> LMBoundingBox2d -> LMBoundingBox2d
+translateBoundingBoxIn direction amount =
+    BoundingBox2d.translateIn direction (Pixels.pixels amount)
 
 
 boundingBoxWithDimensions : Float -> Float -> LMPoint2d -> LMBoundingBox2d
@@ -274,7 +327,7 @@ cubicSplineToLocalPath spline =
 pathsCouldCollide : LocalPath -> LocalPath -> Bool
 pathsCouldCollide path1 path2 =
     let
-        -- TODO: Lower the segments amount here to optimize
+        -- Room for improvement: Lower the segments amount here to optimize
         path1AsPolyline =
             Polyline2d.fromVertices path1
 

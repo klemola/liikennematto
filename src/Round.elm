@@ -8,10 +8,13 @@ module Round exposing
     )
 
 import Angle
+import BoundingBox2d
 import Car exposing (Car, Status(..))
 import Config exposing (tileSize)
+import Direction2d
 import Geometry
-import Point2d
+import Maybe.Extra
+import Point2d exposing (toTuple)
 import Quantity
 import Random
 import Random.List
@@ -36,6 +39,7 @@ type alias Round =
 
 type Rule
     = AvoidCollision
+    | PreventCollision
     | WaitForTrafficLights
     | YieldAtIntersection
     | StopAtIntersection
@@ -56,14 +60,49 @@ play round =
         ( round.activeCar, round.seed )
 
     else
-        activeRulesByPriority round
-            |> List.head
-            |> Maybe.map (\rule -> ( applyRule round rule, round.seed ))
-            |> Maybe.withDefault (updateCar round)
+        let
+            rule =
+                ruleToApply round
+        in
+        rule
+            |> Maybe.map (applyRule round)
+            |> Maybe.withDefault round.activeCar
+            |> (\car -> updateCar rule { round | activeCar = car })
 
 
-updateCar : Round -> ( Car, Random.Seed )
-updateCar round =
+ruleToApply : Round -> Maybe Rule
+ruleToApply round =
+    Maybe.Extra.orListLazy
+        [ \() -> checkCollisionRules round
+        , \() -> checkIntersectionRules round
+        ]
+
+
+applyRule : Round -> Rule -> Car
+applyRule { activeCar } rule =
+    case rule of
+        AvoidCollision ->
+            Car.giveWay activeCar
+
+        PreventCollision ->
+            Car.break activeCar
+
+        WaitForTrafficLights ->
+            Car.waitForTrafficLights activeCar
+
+        YieldAtIntersection ->
+            Car.yield activeCar
+
+        StopAtIntersection ->
+            if Car.isStoppedOrWaiting activeCar then
+                activeCar
+
+            else
+                Car.stopAtIntersection activeCar
+
+
+updateCar : Maybe Rule -> Round -> ( Car, Random.Seed )
+updateCar activeRule round =
     let
         { activeCar, seed } =
             round
@@ -71,7 +110,14 @@ updateCar round =
     case activeCar.status of
         Moving ->
             if Car.isAtTheEndOfLocalPath activeCar then
-                chooseNextConnection round
+                let
+                    ( nextCar, nextSeed ) =
+                        chooseNextConnection round
+                in
+                ( nextCar
+                    |> Car.move
+                , nextSeed
+                )
 
             else
                 ( Car.move activeCar, seed )
@@ -81,8 +127,16 @@ updateCar round =
             , seed
             )
 
-        GivingWay ->
-            ( Car.move activeCar
+        Stopping ->
+            let
+                base =
+                    if Maybe.Extra.isNothing activeRule then
+                        Car.startMoving activeCar
+
+                    else
+                        activeCar
+            in
+            ( Car.move base
             , seed
             )
 
@@ -120,54 +174,39 @@ chooseRandomRoute { activeCar, seed, world } nodeCtx =
     ( nextCar, nextSeed )
 
 
-applyRule : Round -> Rule -> Car
-applyRule { activeCar } rule =
-    case rule of
-        AvoidCollision ->
-            Car.giveWay activeCar
-
-        WaitForTrafficLights ->
-            Car.waitForTrafficLights activeCar
-
-        YieldAtIntersection ->
-            Car.yield activeCar
-
-        StopAtIntersection ->
-            if Car.isStoppedOrWaiting activeCar then
-                activeCar
-
-            else
-                Car.stopAtIntersection activeCar
-
-
-activeRulesByPriority : Round -> List Rule
-activeRulesByPriority round =
-    [ checkCollisionRules round
-    , checkIntersectionRules round
-    ]
-        -- remove inactive rules
-        |> List.filterMap identity
-
-
 checkCollisionRules : Round -> Maybe Rule
 checkCollisionRules { otherCars, activeCar } =
+    Maybe.Extra.orListLazy
+        [ \() -> checkNearCollision activeCar otherCars
+        , \() -> checkPathCollision activeCar otherCars
+        ]
+
+
+collisionCheckDistance =
+    Geometry.toLMUnits 20
+
+
+checkNearCollision : Car -> List Car -> Maybe Rule
+checkNearCollision activeCar otherCars =
     let
-        potentialCollisions =
-            otherCars
-                |> List.filter (mightCollide activeCar)
+        carDirection =
+            Direction2d.fromAngle activeCar.rotation
+
+        shiftedActiveCarBB =
+            Car.boundingBox activeCar
+                |> BoundingBox2d.translateIn carDirection collisionCheckDistance
+
+        collisionWith otherCar =
+            BoundingBox2d.intersects shiftedActiveCarBB (Car.boundingBox otherCar)
     in
-    if not <| List.isEmpty potentialCollisions then
-        Just AvoidCollision
+    if List.any collisionWith otherCars then
+        Just PreventCollision
 
     else
         Nothing
 
 
-nearCollisionCheckDistance =
-    Geometry.toLMUnits <| tileSize / 4
-
-
-farCheckCheckDistance =
+farCollisionCheckDistance =
     Geometry.toLMUnits tileSize
 
 
@@ -175,25 +214,27 @@ carRotationTolerance =
     Angle.degrees 5
 
 
-mightCollide : Car -> Car -> Bool
-mightCollide activeCar otherCar =
+checkPathCollision : Car -> List Car -> Maybe Rule
+checkPathCollision activeCar otherCars =
+    if List.any (pathsCouldCollideWith activeCar) otherCars then
+        Just AvoidCollision
+
+    else
+        Nothing
+
+
+pathsCouldCollideWith : Car -> Car -> Bool
+pathsCouldCollideWith activeCar otherCar =
     let
         distanceBetweenCars =
             Point2d.distanceFrom activeCar.position otherCar.position
 
-        checkRequired =
-            otherCar.status == Moving
-
-        couldCollideFromBehind =
-            -- TODO check that active car is behind other
-            Quantity.lessThan nearCollisionCheckDistance distanceBetweenCars
-                && Quantity.equalWithin carRotationTolerance activeCar.rotation otherCar.rotation
-
-        couldCollideAtAnAngle =
-            Quantity.lessThan farCheckCheckDistance distanceBetweenCars
-                && Geometry.pathsCouldCollide activeCar.localPath otherCar.localPath
+        roughlyGoingTheSameWay =
+            Quantity.equalWithin carRotationTolerance activeCar.rotation otherCar.rotation
     in
-    checkRequired && (couldCollideFromBehind || couldCollideAtAnAngle)
+    not roughlyGoingTheSameWay
+        && Quantity.lessThan farCollisionCheckDistance distanceBetweenCars
+        && Geometry.pathsCouldCollide activeCar.localPath otherCar.localPath
 
 
 checkIntersectionRules : Round -> Maybe Rule

@@ -45,7 +45,7 @@ suite =
                             |> Round.play
                             |> getStatus
                         )
-                        SkippingRound
+                        Stopping
                 )
             , test "can make the car turn"
                 (\_ ->
