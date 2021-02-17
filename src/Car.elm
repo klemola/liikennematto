@@ -4,36 +4,47 @@ module Car exposing
     , Status(..)
     , beginLeaveLot
     , boundingBox
+    , break
     , buildRoute
     , giveWay
     , isAtTheEndOfLocalPath
     , isConfused
     , isStoppedOrWaiting
     , markAsConfused
+    , maxVelocity
     , move
     , new
+    , startMoving
     , statusDescription
     , stopAtIntersection
     , waitForTrafficLights
+    , withDefaultVelocityAndAcceleration
     , withHome
     , withPosition
     , withRotation
     , withRoute
+    , withVelocity
     , yield
     )
 
+import Acceleration exposing (Acceleration)
 import Angle exposing (Angle)
-import Config exposing (carSize)
+import Config exposing (carWidth)
 import Direction2d
+import Duration
 import Geometry exposing (LMBoundingBox2d, LMPoint2d, LocalPath)
 import Point2d
+import Quantity
 import RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
+import Speed exposing (Speed)
 import Tile exposing (Tile(..))
 
 
 type alias Car =
     { position : LMPoint2d
     , rotation : Angle
+    , velocity : Speed
+    , acceleration : Acceleration
     , kind : CarKind
     , status : Status
     , homeLotId : Maybe Int
@@ -57,8 +68,24 @@ type Status
     | StoppedAtIntersection
     | Yielding
     | ParkedAtLot
-    | GivingWay
+    | Stopping
     | Confused
+
+
+maxVelocity =
+    Speed.metersPerSecond 11.1
+
+
+speedUp =
+    Acceleration.metersPerSecondSquared 5
+
+
+breakingSlow =
+    Acceleration.metersPerSecondSquared -15
+
+
+breakingFast =
+    Acceleration.metersPerSecondSquared -30
 
 
 stoppedOrWaiting : List Status
@@ -70,6 +97,8 @@ new : CarKind -> Car
 new kind =
     { position = Point2d.origin
     , rotation = Angle.degrees 0
+    , velocity = Quantity.zero
+    , acceleration = speedUp
     , kind = kind
     , status = Confused
     , homeLotId = Nothing
@@ -91,6 +120,23 @@ withPosition position car =
 withRotation : Angle -> Car -> Car
 withRotation rotation car =
     { car | rotation = rotation }
+
+
+withVelocity : Speed -> Car -> Car
+withVelocity velocity car =
+    { car | velocity = velocity }
+
+
+withAcceleration : Acceleration -> Car -> Car
+withAcceleration acceleration car =
+    { car | acceleration = acceleration }
+
+
+withDefaultVelocityAndAcceleration : Car -> Car
+withDefaultVelocityAndAcceleration car =
+    car
+        |> withVelocity Quantity.zero
+        |> withAcceleration speedUp
 
 
 withRoute : RNNodeContext -> Car -> Car
@@ -115,7 +161,8 @@ isAtTheEndOfLocalPath car =
 
 boundingBox : Car -> LMBoundingBox2d
 boundingBox car =
-    Geometry.boundingBoxFromCircle car.position carSize
+    -- Room for improvement: use a more realistic bounding box
+    Geometry.boundingBoxFromCircle car.position (carWidth / 1.5)
 
 
 move : Car -> Car
@@ -129,7 +176,6 @@ move car =
                 { car
                     | position = next
                     , localPath = others
-                    , status = Moving
                 }
 
             else
@@ -137,16 +183,31 @@ move car =
                     carDirection =
                         Direction2d.fromAngle car.rotation
 
+                    nextVelocity =
+                        car.velocity
+                            |> Quantity.plus (Quantity.for (Duration.milliseconds 16) car.acceleration)
+                            |> Quantity.clamp Quantity.zero maxVelocity
+
                     nextPosition =
                         car.position
-                            |> Geometry.translatePointIn carDirection 1
+                            |> Point2d.at_ Geometry.pixelsToMetersRatio
+                            |> Point2d.translateIn carDirection (Quantity.for (Duration.milliseconds 16) nextVelocity)
+                            |> Point2d.at Geometry.pixelsToMetersRatio
+
+                    nextStatus =
+                        if car.acceleration |> Quantity.lessThan speedUp then
+                            Stopping
+
+                        else
+                            car.status
                 in
                 { car
                     | position = nextPosition
+                    , velocity = nextVelocity
                     , rotation =
                         car.position
                             |> Geometry.angleToTarget next
-                    , status = Moving
+                    , status = nextStatus
                 }
 
         _ ->
@@ -170,7 +231,26 @@ stopAtIntersection car =
 
 giveWay : Car -> Car
 giveWay car =
-    { car | status = GivingWay }
+    { car
+        | status = Moving
+        , acceleration = breakingSlow
+    }
+
+
+break : Car -> Car
+break car =
+    { car
+        | status = Stopping
+        , acceleration = breakingFast
+    }
+
+
+startMoving : Car -> Car
+startMoving car =
+    { car
+        | status = Moving
+    }
+        |> withDefaultVelocityAndAcceleration
 
 
 markAsConfused : Car -> Car
@@ -257,8 +337,8 @@ statusDescription car =
         ParkedAtLot ->
             "Parked @ lot"
 
-        GivingWay ->
-            "Giving way"
+        Stopping ->
+            "Stopping"
 
         Confused ->
             "Confused"
