@@ -27,7 +27,6 @@ import Dict.Extra as Dict
 import Direction2d
 import Geometry exposing (LMBoundingBox2d)
 import Lot exposing (BuildingKind(..), Lot)
-import Quantity
 import RoadNetwork exposing (RoadNetwork)
 import Tile
     exposing

@@ -12,9 +12,8 @@ import BoundingBox2d
 import Car exposing (Car, Status(..))
 import Config exposing (tileSize)
 import Direction2d
-import Geometry
+import Geometry exposing (LMTriangle2d)
 import Maybe.Extra
-import Point2d exposing (toTuple)
 import Quantity
 import Random
 import Random.List
@@ -26,6 +25,7 @@ import Tile
         , Tile(..)
         , TrafficDirection(..)
         )
+import Triangle2d
 import World exposing (World)
 
 
@@ -192,12 +192,13 @@ checkNearCollision activeCar otherCars =
         carDirection =
             Direction2d.fromAngle activeCar.rotation
 
-        shiftedActiveCarBB =
+        forwardShiftedCarBB =
             Car.boundingBox activeCar
                 |> BoundingBox2d.translateIn carDirection collisionCheckDistance
 
         collisionWith otherCar =
-            BoundingBox2d.intersects shiftedActiveCarBB (Car.boundingBox otherCar)
+            Car.boundingBox otherCar
+                |> BoundingBox2d.intersects forwardShiftedCarBB
     in
     if List.any collisionWith otherCars then
         Just PreventCollision
@@ -206,34 +207,41 @@ checkNearCollision activeCar otherCars =
         Nothing
 
 
-farCollisionCheckDistance =
-    Geometry.toLMUnits tileSize
-
-
 carRotationTolerance =
     Angle.degrees 5
 
 
+fieldOfView =
+    Angle.degrees 70
+
+
 checkPathCollision : Car -> List Car -> Maybe Rule
 checkPathCollision activeCar otherCars =
-    if List.any (pathsCouldCollideWith activeCar) otherCars then
+    let
+        carDirection =
+            Direction2d.fromAngle activeCar.rotation
+
+        carSightTriangle =
+            Geometry.fieldOfViewTriangle activeCar.position carDirection fieldOfView tileSize
+    in
+    if List.any (pathsCouldCollideWith carSightTriangle activeCar) otherCars then
         Just AvoidCollision
 
     else
         Nothing
 
 
-pathsCouldCollideWith : Car -> Car -> Bool
-pathsCouldCollideWith activeCar otherCar =
+pathsCouldCollideWith : LMTriangle2d -> Car -> Car -> Bool
+pathsCouldCollideWith fieldOfViewTriangle activeCar otherCar =
     let
-        distanceBetweenCars =
-            Point2d.distanceFrom activeCar.position otherCar.position
+        checkRequired =
+            Triangle2d.contains otherCar.position fieldOfViewTriangle
 
         roughlyGoingTheSameWay =
             Quantity.equalWithin carRotationTolerance activeCar.rotation otherCar.rotation
     in
-    not roughlyGoingTheSameWay
-        && Quantity.lessThan farCollisionCheckDistance distanceBetweenCars
+    checkRequired
+        && not roughlyGoingTheSameWay
         && Geometry.pathsCouldCollide activeCar.localPath otherCar.localPath
 
 

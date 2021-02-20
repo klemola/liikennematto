@@ -4,6 +4,7 @@ module Geometry exposing
     , LMDirection2d
     , LMEntityPositionUnitless
     , LMPoint2d
+    , LMTriangle2d
     , LocalPath
     , accelerationToString
     , angleFromDirection
@@ -11,6 +12,7 @@ module Geometry exposing
     , boundingBoxFromCircle
     , boundingBoxWithDimensions
     , curveSpline
+    , fieldOfViewTriangle
     , isPointAt
     , leaveLotSpline
     , linearLocalPathToTarget
@@ -45,6 +47,7 @@ import Point2d exposing (Point2d)
 import Polyline2d exposing (Polyline2d)
 import Quantity exposing (Quantity, Rate)
 import Speed exposing (Speed)
+import Triangle2d exposing (Triangle2d)
 import Vector2d
 
 
@@ -70,6 +73,10 @@ type alias LMBoundingBox2d =
 
 type alias LMPolyline2d =
     Polyline2d LMEntityUnits LMEntityCoordinates
+
+
+type alias LMTriangle2d =
+    Triangle2d LMEntityUnits LMEntityCoordinates
 
 
 type alias LMCubicSpline2d =
@@ -227,6 +234,30 @@ boundingBoxFromCircle position radius =
 noBoundingBoxOverlap : LMBoundingBox2d -> LMBoundingBox2d -> Bool
 noBoundingBoxOverlap bb1 bb2 =
     not <| BoundingBox2d.overlappingByAtLeast (Pixels.pixels 1) bb1 bb2
+
+
+
+-- Triangles and field of view
+
+
+fieldOfViewTriangle : LMPoint2d -> LMDirection2d -> Angle -> Float -> LMTriangle2d
+fieldOfViewTriangle origin direction fov distance =
+    let
+        leftVertexDirection =
+            Direction2d.rotateBy fov direction
+
+        rightVertexDirection =
+            Direction2d.rotateBy (Quantity.minus Quantity.zero fov) direction
+
+        farLeftVertex =
+            origin
+                |> translatePointIn leftVertexDirection distance
+
+        farRightVertex =
+            origin
+                |> translatePointIn rightVertexDirection distance
+    in
+    Triangle2d.fromVertices ( origin, farLeftVertex, farRightVertex )
 
 
 
