@@ -236,7 +236,7 @@ laneCenterPositionsByDirection cell trafficDirection =
             tileSize / 2
 
         connectionOffsetFromTileCenter =
-            halfTile - innerLaneOffset
+            Geometry.toLMUnits <| halfTile - innerLaneOffset
 
         tileCenterPosition =
             Cell.center cell
@@ -482,8 +482,8 @@ connectionLookupAreaToRight node range =
 
         otherCorner =
             origin
-                |> Geometry.translatePointIn nodeDirection tileSize
-                |> Geometry.translatePointIn nodeDirectionRotatedRight range
+                |> Geometry.translatePointIn nodeDirection (Geometry.toLMUnits tileSize)
+                |> Geometry.translatePointIn nodeDirectionRotatedRight (Geometry.toLMUnits range)
     in
     BoundingBox2d.from origin otherCorner
 

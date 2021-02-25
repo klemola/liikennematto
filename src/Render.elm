@@ -2,9 +2,9 @@ module Render exposing (view)
 
 import Angle
 import Board exposing (Board)
-import BoundingBox2d
 import Car exposing (Car, Status(..))
 import Cell exposing (OrthogonalDirection(..))
+import Circle2d
 import Collage
     exposing
         ( Collage
@@ -129,7 +129,7 @@ renderCar car =
             |> rotate (Angle.inRadians car.rotation)
             |> shift (Geometry.pointToPositionAsTuple car.position)
         , spline
-        , renderBoundingBox (Car.boundingBox car)
+        , renderCarCollisionDetection car
         ]
 
 
@@ -264,17 +264,12 @@ renderRoadNetwork roadNetwork =
         ]
 
 
-renderBoundingBox : Geometry.LMBoundingBox2d -> Collage msg
-renderBoundingBox boundingBox =
-    let
-        ( bbWidth, bbHeight ) =
-            BoundingBox2d.dimensions boundingBox
-                |> Tuple.mapBoth Geometry.toFloat Geometry.toFloat
-
-        bbPosition =
-            BoundingBox2d.centerPoint boundingBox
-                |> Geometry.pointToPositionAsTuple
-    in
-    Collage.rectangle bbWidth bbHeight
+renderCarCollisionDetection : Car -> Collage msg
+renderCarCollisionDetection car =
+    Collage.circle
+        (Geometry.circleAt car.position (carLength / 2)
+            |> Circle2d.radius
+            |> Geometry.toFloat
+        )
         |> styled ( uniform Color.blue, invisible )
-        |> shift bbPosition
+        |> shift (Geometry.pointToPositionAsTuple car.position)

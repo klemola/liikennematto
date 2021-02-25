@@ -5,6 +5,7 @@ module Car exposing
     , beginLeaveLot
     , boundingBox
     , break
+    , build
     , buildRoute
     , giveWay
     , isAtTheEndOfLocalPath
@@ -14,15 +15,14 @@ module Car exposing
     , maxVelocity
     , move
     , new
+    , speedUp
     , startMoving
     , statusDescription
     , stopAtIntersection
     , waitForTrafficLights
-    , withDefaultVelocityAndAcceleration
     , withHome
     , withPosition
     , withRotation
-    , withRoute
     , withVelocity
     , yield
     )
@@ -41,6 +41,20 @@ import Tile exposing (Tile(..))
 
 
 type alias Car =
+    { id : Int
+    , position : LMPoint2d
+    , rotation : Angle
+    , velocity : Speed
+    , acceleration : Acceleration
+    , kind : CarKind
+    , status : Status
+    , homeLotId : Maybe Int
+    , route : List RNNodeContext
+    , localPath : LocalPath
+    }
+
+
+type alias NewCar =
     { position : LMPoint2d
     , rotation : Angle
     , velocity : Speed
@@ -73,6 +87,7 @@ type Status
 
 
 maxVelocity =
+    -- roughly 40km/h
     Speed.metersPerSecond 11.1
 
 
@@ -93,7 +108,7 @@ stoppedOrWaiting =
     [ WaitingForTrafficLights, StoppedAtIntersection, Yielding ]
 
 
-new : CarKind -> Car
+new : CarKind -> NewCar
 new kind =
     { position = Point2d.origin
     , rotation = Angle.degrees 0
@@ -107,41 +122,39 @@ new kind =
     }
 
 
-withHome : Int -> Car -> Car
+withHome : Int -> NewCar -> NewCar
 withHome lotId car =
     { car | homeLotId = Just lotId }
 
 
-withPosition : LMPoint2d -> Car -> Car
+withPosition : LMPoint2d -> NewCar -> NewCar
 withPosition position car =
     { car | position = position }
 
 
-withRotation : Angle -> Car -> Car
+withRotation : Angle -> NewCar -> NewCar
 withRotation rotation car =
     { car | rotation = rotation }
 
 
-withVelocity : Speed -> Car -> Car
+withVelocity : Speed -> NewCar -> NewCar
 withVelocity velocity car =
     { car | velocity = velocity }
 
 
-withAcceleration : Acceleration -> Car -> Car
-withAcceleration acceleration car =
-    { car | acceleration = acceleration }
-
-
-withDefaultVelocityAndAcceleration : Car -> Car
-withDefaultVelocityAndAcceleration car =
-    car
-        |> withVelocity Quantity.zero
-        |> withAcceleration speedUp
-
-
-withRoute : RNNodeContext -> Car -> Car
-withRoute nodeCtx car =
-    buildRoute car nodeCtx
+build : Int -> NewCar -> Car
+build id newCar =
+    { id = id
+    , position = newCar.position
+    , rotation = newCar.rotation
+    , velocity = newCar.velocity
+    , acceleration = newCar.acceleration
+    , kind = newCar.kind
+    , status = newCar.status
+    , homeLotId = newCar.homeLotId
+    , route = newCar.route
+    , localPath = newCar.localPath
+    }
 
 
 isConfused : Car -> Bool
@@ -249,8 +262,9 @@ startMoving : Car -> Car
 startMoving car =
     { car
         | status = Moving
+        , velocity = Quantity.zero
+        , acceleration = speedUp
     }
-        |> withDefaultVelocityAndAcceleration
 
 
 markAsConfused : Car -> Car
