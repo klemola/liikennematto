@@ -2,6 +2,7 @@ module World exposing
     ( Cars
     , Lots
     , World
+    , addLot
     , buildRoadAt
     , canBuildRoadAt
     , hasLot
@@ -12,10 +13,9 @@ module World exposing
     , removeRoadAt
     , reset
     , setCar
+    , spawnCar
     , tileAt
     , withBoard
-    , withCar
-    , withLot
     , withTileAt
     )
 
@@ -27,7 +27,8 @@ import Dict.Extra as Dict
 import Direction2d
 import Geometry exposing (LMBoundingBox2d)
 import Lot exposing (BuildingKind(..), Lot)
-import RoadNetwork exposing (RoadNetwork)
+import Quantity
+import RoadNetwork exposing (RNNodeContext, RoadNetwork)
 import Tile
     exposing
         ( IntersectionControl(..)
@@ -91,40 +92,6 @@ nextId dict =
 -- Modifications
 
 
-withLot : Lot -> World -> World
-withLot lot world =
-    let
-        nextLotId =
-            nextId world.lots
-
-        nextLots =
-            Dict.insert nextLotId lot world.lots
-
-        worldWithNewLot =
-            { world
-                | lots = nextLots
-                , roadNetwork = RoadNetwork.fromBoardAndLots world.board nextLots
-            }
-
-        -- Room for improvement: create the resident/car separately
-        createCar carKind =
-            worldWithNewLot
-                |> withCar
-                    (Car.new carKind
-                        |> Car.withHome nextLotId
-                        |> moveCarToHome worldWithNewLot
-                    )
-    in
-    resident lot
-        |> Maybe.map createCar
-        |> Maybe.withDefault worldWithNewLot
-
-
-withCar : Car -> World -> World
-withCar car world =
-    { world | cars = Dict.insert (nextId world.cars) car world.cars }
-
-
 withBoard : Board -> World -> World
 withBoard board world =
     { world | board = board }
@@ -146,6 +113,63 @@ withTileAt cell tile world =
                 , world = world
                 }
     }
+
+
+addLot : Lot -> World -> World
+addLot lot world =
+    let
+        nextLotId =
+            nextId world.lots
+
+        nextLots =
+            Dict.insert nextLotId lot world.lots
+    in
+    { world
+        | lots = nextLots
+        , roadNetwork = RoadNetwork.fromBoardAndLots world.board nextLots
+    }
+        |> addLotResident nextLotId
+
+
+addLotResident : Int -> World -> World
+addLotResident lotId world =
+    let
+        carId =
+            nextId world.cars
+
+        createCar kind =
+            Car.new kind
+                |> Car.withHome lotId
+                |> Car.build carId
+                |> moveCarToHome world
+
+        addToWorld car =
+            { world | cars = Dict.insert carId car world.cars }
+    in
+    world.lots
+        |> Dict.get lotId
+        |> Maybe.andThen resident
+        |> Maybe.map (createCar >> addToWorld)
+        |> Maybe.withDefault world
+
+
+spawnCar : World -> RNNodeContext -> World
+spawnCar world nodeCtx =
+    let
+        id =
+            nextId world.cars
+
+        car =
+            Car.new Car.TestCar
+                |> Car.withPosition nodeCtx.node.label.position
+                |> Car.withRotation (Direction2d.toAngle nodeCtx.node.label.direction)
+                |> Car.withVelocity Car.maxVelocity
+                |> Car.build id
+
+        withRoute =
+            Car.buildRoute car nodeCtx
+    in
+    { world | cars = Dict.insert id withRoute world.cars }
 
 
 setCar : Id -> Car -> World -> World
@@ -334,8 +358,9 @@ moveCarToHome world car =
                         |> Direction2d.rotateClockwise
                         |> Direction2d.toAngle
                 , status = Car.ParkedAtLot
+                , velocity = Quantity.zero
+                , acceleration = Car.speedUp
             }
-                |> Car.withDefaultVelocityAndAcceleration
 
         Nothing ->
             Car.markAsConfused car

@@ -1,5 +1,6 @@
 module Geometry exposing
     ( LMBoundingBox2d
+    , LMCircle2d
     , LMCubicSpline2d
     , LMDirection2d
     , LMEntityPositionUnitless
@@ -11,6 +12,7 @@ module Geometry exposing
     , angleToTarget
     , boundingBoxFromCircle
     , boundingBoxWithDimensions
+    , circleAt
     , curveSpline
     , fieldOfViewTriangle
     , isPointAt
@@ -35,7 +37,7 @@ module Geometry exposing
 import Acceleration exposing (Acceleration)
 import Angle exposing (Angle)
 import BoundingBox2d exposing (BoundingBox2d)
-import Circle2d
+import Circle2d exposing (Circle2d)
 import Config exposing (tileSize)
 import CubicSpline2d exposing (CubicSpline2d)
 import Direction2d exposing (Direction2d)
@@ -79,6 +81,10 @@ type alias LMTriangle2d =
     Triangle2d LMEntityUnits LMEntityCoordinates
 
 
+type alias LMCircle2d =
+    Circle2d LMEntityUnits LMEntityCoordinates
+
+
 type alias LMCubicSpline2d =
     CubicSpline2d LMEntityUnits LMEntityCoordinates
 
@@ -94,6 +100,11 @@ type alias LMEntityPositionUnitless =
 pixelsToMetersRatio : Quantity Float (Rate Pixels.Pixels Length.Meters)
 pixelsToMetersRatio =
     Pixels.pixels 5 |> Quantity.per (Length.meters 1)
+
+
+splineSegmentsAmount : Int
+splineSegmentsAmount =
+    16
 
 
 
@@ -162,9 +173,9 @@ translatePointBy x y =
     Point2d.translateBy (Vector2d.pixels x y)
 
 
-translatePointIn : LMDirection2d -> Float -> LMPoint2d -> LMPoint2d
+translatePointIn : LMDirection2d -> Quantity Float LMEntityUnits -> LMPoint2d -> LMPoint2d
 translatePointIn direction amount =
-    Point2d.translateIn direction (Pixels.pixels amount)
+    Point2d.translateIn direction amount
 
 
 pointToPosition : LMPoint2d -> LMEntityPositionUnitless
@@ -219,16 +230,10 @@ boundingBoxWithDimensions width height origin =
     let
         otherCorner =
             origin
-                |> translatePointIn Direction2d.positiveX width
-                |> translatePointIn Direction2d.positiveY height
+                |> translatePointIn Direction2d.positiveX (toLMUnits width)
+                |> translatePointIn Direction2d.positiveY (toLMUnits height)
     in
     BoundingBox2d.from origin otherCorner
-
-
-boundingBoxFromCircle : LMPoint2d -> Float -> LMBoundingBox2d
-boundingBoxFromCircle position radius =
-    Circle2d.atPoint position (Pixels.pixels radius)
-        |> Circle2d.boundingBox
 
 
 noBoundingBoxOverlap : LMBoundingBox2d -> LMBoundingBox2d -> Bool
@@ -236,11 +241,26 @@ noBoundingBoxOverlap bb1 bb2 =
     not <| BoundingBox2d.overlappingByAtLeast (Pixels.pixels 1) bb1 bb2
 
 
+boundingBoxFromCircle : LMPoint2d -> Float -> LMBoundingBox2d
+boundingBoxFromCircle position radius =
+    circleAt position radius
+        |> Circle2d.boundingBox
+
+
+
+-- Circles
+
+
+circleAt : LMPoint2d -> Float -> LMCircle2d
+circleAt position radius =
+    Circle2d.atPoint position (Pixels.pixels radius)
+
+
 
 -- Triangles and field of view
 
 
-fieldOfViewTriangle : LMPoint2d -> LMDirection2d -> Angle -> Float -> LMTriangle2d
+fieldOfViewTriangle : LMPoint2d -> LMDirection2d -> Angle -> Quantity Float LMEntityUnits -> LMTriangle2d
 fieldOfViewTriangle origin direction fov distance =
     let
         leftVertexDirection =
@@ -268,11 +288,6 @@ type alias LocalPath =
     List LMPoint2d
 
 
-splineSegmentsAmount : Int
-splineSegmentsAmount =
-    16
-
-
 linearLocalPathToTarget : LMPoint2d -> LMPoint2d -> LocalPath
 linearLocalPathToTarget origin target =
     [ 0, 0.25, 0.5, 0.75, 1 ]
@@ -288,7 +303,7 @@ leaveLotSpline origin target direction =
 
         targetCp =
             target
-                |> translatePointIn direction (tileSize / 2)
+                |> translatePointIn direction (toLMUnits <| tileSize / 2)
 
         midpoint =
             Point2d.midpoint origin targetCp

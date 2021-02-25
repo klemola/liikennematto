@@ -14,7 +14,6 @@ import Car
 import Cell exposing (Cell)
 import Config
 import Dict
-import Direction2d
 import Geometry
 import Lot exposing (NewLot)
 import Process
@@ -22,6 +21,7 @@ import Random
 import Random.List
 import RoadNetwork exposing (RNNodeContext)
 import Round
+import Set exposing (Set)
 import Task
 import Tile
     exposing
@@ -38,6 +38,7 @@ import World exposing (World)
 type alias Model =
     { seed : Random.Seed
     , simulation : SimulationState
+    , carsWithPriority : Set Int
     , carSpawnQueue : Int
     }
 
@@ -64,6 +65,7 @@ init =
     in
     ( { seed = seed
       , simulation = Running
+      , carsWithPriority = Set.empty
       , carSpawnQueue = 0
       }
     , generateEnvironmentAfterDelay seed
@@ -103,7 +105,7 @@ update world msg model =
         UpdateTraffic _ ->
             let
                 ( nextWorld, nextSeed ) =
-                    updateTraffic world model.seed
+                    updateTraffic world model
             in
             ( { model | seed = nextSeed }
             , nextWorld
@@ -229,7 +231,7 @@ generateEnvironment world seed unusedLots =
             potentialNewLot
                 |> Maybe.andThen (findLotAnchor world seed)
                 |> Maybe.map Lot.fromNewLot
-                |> Maybe.map (\lot -> World.withLot lot world)
+                |> Maybe.map (\lot -> World.addLot lot world)
                 |> Maybe.withDefault world
     in
     ( nextWorld, nextSeed )
@@ -277,11 +279,12 @@ findLotAnchor world seed newLot =
 --
 
 
-updateTraffic : World -> Random.Seed -> ( World, Random.Seed )
-updateTraffic world seed =
+updateTraffic : World -> Model -> ( World, Random.Seed )
+updateTraffic world { seed, carsWithPriority } =
     updateTrafficHelper
         { updateQueue = Dict.keys world.cars
         , seed = seed
+        , carsWithPriority = carsWithPriority
         , world = world
         }
 
@@ -289,20 +292,22 @@ updateTraffic world seed =
 updateTrafficHelper :
     { updateQueue : List Int
     , seed : Random.Seed
+    , carsWithPriority : Set Int
     , world : World
     }
     -> ( World, Random.Seed )
-updateTrafficHelper { updateQueue, seed, world } =
+updateTrafficHelper { updateQueue, seed, carsWithPriority, world } =
     case updateQueue of
         activeCarId :: queue ->
             let
-                nextRound ( updatedCar, nextSeed ) =
+                nextRound roundResults =
                     updateTrafficHelper
                         { updateQueue = queue
-                        , seed = nextSeed
+                        , seed = roundResults.seed
+                        , carsWithPriority = roundResults.carsWithPriority
                         , world =
                             world
-                                |> World.setCar activeCarId updatedCar
+                                |> World.setCar activeCarId roundResults.car
                         }
 
                 -- Room for improvement: only query cars that are nearby
@@ -313,8 +318,16 @@ updateTrafficHelper { updateQueue, seed, world } =
             in
             case Dict.get activeCarId world.cars of
                 Just activeCar ->
-                    Round.new world seed activeCar otherCars
-                        |> Round.play
+                    let
+                        round =
+                            { world = world
+                            , activeCar = activeCar
+                            , otherCars = otherCars
+                            , seed = seed
+                            , carsWithPriority = carsWithPriority
+                            }
+                    in
+                    Round.play round
                         |> nextRound
 
                 -- this should never happen, but the typesystem doesn't know that
@@ -326,7 +339,9 @@ updateTrafficHelper { updateQueue, seed, world } =
 
 
 
+--
 -- Queues
+--
 
 
 dequeueCarSpawn : Int -> Random.Seed -> World -> ( Int, World )
@@ -338,7 +353,7 @@ dequeueCarSpawn queue seed world =
     if canSpawnCar then
         RoadNetwork.getRandomNode world.roadNetwork seed
             |> Maybe.andThen (validateSpawnConditions world)
-            |> Maybe.map (spawnCar world)
+            |> Maybe.map (World.spawnCar world)
             |> Maybe.map (Tuple.pair <| queue - 1)
             |> Maybe.withDefault ( queue, world )
 
@@ -366,17 +381,3 @@ validateSpawnConditions world nodeCtx =
 
     else
         Nothing
-
-
-spawnCar : World -> RNNodeContext -> World
-spawnCar world nodeCtx =
-    let
-        car =
-            Car.new Car.TestCar
-                |> Car.withPosition nodeCtx.node.label.position
-                |> Car.withRotation (Direction2d.toAngle nodeCtx.node.label.direction)
-                |> Car.withVelocity Car.maxVelocity
-                |> Car.withRoute nodeCtx
-    in
-    world
-        |> World.withCar car
