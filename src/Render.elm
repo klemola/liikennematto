@@ -9,11 +9,8 @@ import Collage
     exposing
         ( Collage
         , invisible
-        , rotate
-        , shift
         , solid
         , square
-        , styled
         , thin
         , traced
         , uniform
@@ -21,8 +18,9 @@ import Collage
 import Collage.Layout as Layout
 import Collage.Render exposing (svg)
 import Color
-import Config exposing (boardSize, carLength, carWidth, tileSize)
+import Config exposing (boardSize, carFieldOfView, carLength, carWidth, tileSize)
 import Dict
+import Direction2d
 import Geometry
 import Graph
 import Graphics
@@ -37,6 +35,7 @@ import Tile
         , Tile(..)
         , TrafficDirection(..)
         )
+import Triangle2d
 import World exposing (World)
 
 
@@ -74,7 +73,7 @@ renderBoard board =
     let
         emptyTile =
             square tileSize
-                |> styled ( uniform renderColors.terrain, Collage.invisible )
+                |> Collage.styled ( uniform renderColors.terrain, Collage.invisible )
 
         drawTile x y =
             board
@@ -117,19 +116,13 @@ renderCars cars =
 
 renderCar : Car -> Collage msg
 renderCar car =
-    let
-        spline =
-            car.localPath
-                |> List.map Geometry.pointToPositionAsTuple
-                |> Collage.path
-                |> traced (solid thin (uniform Color.red))
-    in
     Collage.group
         [ Graphics.texture ( carLength, carWidth ) (Graphics.carAsset car)
-            |> rotate (Angle.inRadians car.rotation)
-            |> shift (Geometry.pointToPositionAsTuple car.position)
-        , spline
+            |> Collage.rotate (Angle.inRadians car.rotation)
+            |> Collage.shift (Geometry.pointToPositionAsTuple car.position)
+        , renderCarFieldOfView car
         , renderCarCollisionDetection car
+        , renderCarPath car
         ]
 
 
@@ -155,7 +148,7 @@ renderLot lot =
     in
     building
         |> Layout.at Layout.bottomLeft mask
-        |> shift lotCenterPoint
+        |> Collage.shift lotCenterPoint
 
 
 sidewalkMask : Lot -> Collage msg
@@ -191,8 +184,8 @@ sidewalkMask lot =
                     ( -maskOverlap, tileSize / 2 )
     in
     Collage.rectangle maskWidth maskHeight
-        |> styled ( uniform renderColors.sidewalk, invisible )
-        |> shift entryPointPosition
+        |> Collage.styled ( uniform renderColors.sidewalk, invisible )
+        |> Collage.shift entryPointPosition
 
 
 renderRoadNetwork : RoadNetwork -> Collage msg
@@ -224,8 +217,8 @@ renderRoadNetwork roadNetwork =
                 |> List.map
                     (\node ->
                         Collage.circle Config.nodeSize
-                            |> styled ( uniform (nodeColor node.label.kind), invisible )
-                            |> shift (Geometry.pointToPositionAsTuple node.label.position)
+                            |> Collage.styled ( uniform (nodeColor node.label.kind), invisible )
+                            |> Collage.shift (Geometry.pointToPositionAsTuple node.label.position)
                     )
                 |> Collage.group
 
@@ -264,6 +257,18 @@ renderRoadNetwork roadNetwork =
         ]
 
 
+
+-- Debug
+
+
+renderCarPath : Car -> Collage msg
+renderCarPath car =
+    car.localPath
+        |> List.map Geometry.pointToPositionAsTuple
+        |> Collage.path
+        |> traced (solid thin (uniform Color.red))
+
+
 renderCarCollisionDetection : Car -> Collage msg
 renderCarCollisionDetection car =
     Collage.circle
@@ -271,5 +276,27 @@ renderCarCollisionDetection car =
             |> Circle2d.radius
             |> Geometry.toFloat
         )
-        |> styled ( uniform Color.blue, invisible )
-        |> shift (Geometry.pointToPositionAsTuple car.position)
+        |> Collage.styled ( uniform Color.blue, invisible )
+        |> Collage.shift (Geometry.pointToPositionAsTuple car.position)
+        |> Collage.opacity 0.5
+
+
+renderCarFieldOfView : Car -> Collage msg
+renderCarFieldOfView car =
+    let
+        carDirection =
+            Direction2d.fromAngle car.rotation
+
+        triangle =
+            Geometry.fieldOfViewTriangle car.position carDirection carFieldOfView (Geometry.toLMUnits tileSize)
+
+        ( p1, p2, p3 ) =
+            Triangle2d.vertices triangle
+    in
+    Collage.polygon
+        [ Geometry.pointToPositionAsTuple p1
+        , Geometry.pointToPositionAsTuple p2
+        , Geometry.pointToPositionAsTuple p3
+        ]
+        |> Collage.styled ( uniform Color.purple, invisible )
+        |> Collage.opacity 0.5

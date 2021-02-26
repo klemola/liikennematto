@@ -1,6 +1,25 @@
 module Config exposing (..)
 
+import Acceleration exposing (Acceleration)
+import Angle exposing (Angle)
 import Element exposing (rgb255, rgba255)
+import Speed exposing (Speed)
+
+
+
+--
+-- Unitless constants
+--
+
+
+environmentUpdateFrequency : Float
+environmentUpdateFrequency =
+    1000
+
+
+dequeueFrequency : Float
+dequeueFrequency =
+    500
 
 
 boardSize : Int
@@ -11,6 +30,16 @@ boardSize =
 tileSize : Float
 tileSize =
     80
+
+
+boardSizeScaled : Float
+boardSizeScaled =
+    toFloat boardSize * tileSize
+
+
+laneWidth : Float
+laneWidth =
+    42
 
 
 innerLaneOffset : Float
@@ -38,19 +67,43 @@ nodeSize =
     4
 
 
-boardSizeScaled : Float
-boardSizeScaled =
-    toFloat boardSize * tileSize
+
+--
+-- Unit constants
+--
 
 
-environmentUpdateFrequency : Float
-environmentUpdateFrequency =
-    1000
+maxVelocity : Speed
+maxVelocity =
+    Speed.metersPerSecond 11.1
 
 
-dequeueFrequency : Float
-dequeueFrequency =
-    500
+carRotationTolerance : Angle
+carRotationTolerance =
+    Angle.degrees 5
+
+
+carFieldOfView : Angle
+carFieldOfView =
+    Angle.degrees 45
+
+
+acceleration :
+    { speedUp : Acceleration
+    , breakingSlow : Acceleration
+    , breakingFast : Acceleration
+    }
+acceleration =
+    { speedUp = Acceleration.metersPerSecondSquared 5
+    , breakingSlow = Acceleration.metersPerSecondSquared -10
+    , breakingFast = Acceleration.metersPerSecondSquared -30
+    }
+
+
+
+--
+-- Visuals
+--
 
 
 type alias UiDimensions =
