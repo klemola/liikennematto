@@ -22,6 +22,7 @@ module World exposing
 import Board exposing (Board)
 import Car exposing (Car, CarKind(..))
 import Cell exposing (Cell, Corner(..), OrthogonalDirection(..))
+import Config exposing (acceleration, maxVelocity)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction2d
@@ -163,7 +164,7 @@ spawnCar world nodeCtx =
             Car.new Car.TestCar
                 |> Car.withPosition nodeCtx.node.label.position
                 |> Car.withRotation (Direction2d.toAngle nodeCtx.node.label.direction)
-                |> Car.withVelocity Car.maxVelocity
+                |> Car.withVelocity maxVelocity
                 |> Car.build id
 
         withRoute =
@@ -359,7 +360,7 @@ moveCarToHome world car =
                         |> Direction2d.toAngle
                 , status = Car.ParkedAtLot
                 , velocity = Quantity.zero
-                , acceleration = Car.speedUp
+                , acceleration = acceleration.speedUp
             }
 
         Nothing ->

@@ -266,8 +266,11 @@ fieldOfViewTriangle origin direction fov distance =
         leftVertexDirection =
             Direction2d.rotateBy fov direction
 
+        rightVertexAngle =
+            Quantity.minus fov (Angle.degrees 360)
+
         rightVertexDirection =
-            Direction2d.rotateBy (Quantity.minus Quantity.zero fov) direction
+            Direction2d.rotateBy rightVertexAngle direction
 
         farLeftVertex =
             origin

@@ -6,10 +6,9 @@ module Round exposing
     , play
     )
 
-import Angle
 import Car exposing (Car, Status(..))
 import Circle2d
-import Config exposing (carLength, tileSize)
+import Config exposing (carFieldOfView, carLength, carRotationTolerance, tileSize)
 import Direction2d
 import Geometry exposing (LMTriangle2d, toLMUnits)
 import Maybe.Extra
@@ -54,22 +53,6 @@ type Rule
     | StopAtIntersection
 
 
-carProximityCutoff =
-    toLMUnits tileSize
-
-
-collisionCheckDistance =
-    toLMUnits 20
-
-
-carRotationTolerance =
-    Angle.degrees 5
-
-
-fieldOfView =
-    Angle.degrees 70
-
-
 play : Round -> RoundResults
 play round =
     if Car.isConfused round.activeCar then
@@ -98,7 +81,7 @@ checkRules round =
             applyRule round rule
 
         Nothing ->
-            if round.activeCar.status == Stopping then
+            if Car.isStopping round.activeCar then
                 applyCarAction round Car.startMoving
 
             else
@@ -241,9 +224,17 @@ atSafeDistanceFrom car1 car2 =
 --
 
 
+carProximityCutoff =
+    toLMUnits tileSize
+
+
 checkCollisionRules : Round -> Maybe Rule
 checkCollisionRules { otherCars, activeCar, carsWithPriority } =
-    if Set.member activeCar.id carsWithPriority then
+    let
+        hasPriority =
+            Set.member activeCar.id carsWithPriority
+    in
+    if hasPriority then
         Nothing
 
     else
@@ -261,13 +252,14 @@ checkNearCollision activeCar otherCars =
 
         forwardShiftedCarPosition =
             activeCar.position
-                |> Geometry.translatePointIn carDirection collisionCheckDistance
+                |> Geometry.translatePointIn carDirection (toLMUnits <| carLength / 2)
+
+        -- A circle that covers the front half of the car, and the area right before the car
+        checkArea =
+            Geometry.circleAt forwardShiftedCarPosition (carLength / 2)
     in
     collisionWith otherCars
-        (\otherCar ->
-            Geometry.circleAt otherCar.position (carLength / 2)
-                |> Circle2d.contains forwardShiftedCarPosition
-        )
+        (\otherCar -> Circle2d.intersectsBoundingBox (Car.boundingBox otherCar) checkArea)
         |> Maybe.map PreventCollision
 
 
@@ -278,10 +270,10 @@ checkPathCollision activeCar otherCars =
             Direction2d.fromAngle activeCar.rotation
 
         carSightTriangle =
-            Geometry.fieldOfViewTriangle activeCar.position carDirection fieldOfView carProximityCutoff
+            Geometry.fieldOfViewTriangle activeCar.position carDirection carFieldOfView carProximityCutoff
     in
     collisionWith otherCars (pathsCouldCollideWith carSightTriangle activeCar)
-        |> Maybe.map PreventCollision
+        |> Maybe.map AvoidCollision
 
 
 pathsCouldCollideWith : LMTriangle2d -> Car -> Car -> Bool
@@ -290,11 +282,11 @@ pathsCouldCollideWith fieldOfViewTriangle activeCar otherCar =
         checkRequired =
             Triangle2d.contains otherCar.position fieldOfViewTriangle
 
-        roughlyGoingTheSameWay =
+        headingRoughlyInTheSameDirection =
             Quantity.equalWithin carRotationTolerance activeCar.rotation otherCar.rotation
     in
     checkRequired
-        && not roughlyGoingTheSameWay
+        && not headingRoughlyInTheSameDirection
         && Geometry.pathsCouldCollide activeCar.localPath otherCar.localPath
 
 

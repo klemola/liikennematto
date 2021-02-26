@@ -11,11 +11,10 @@ module Car exposing
     , isAtTheEndOfLocalPath
     , isConfused
     , isStoppedOrWaiting
+    , isStopping
     , markAsConfused
-    , maxVelocity
     , move
     , new
-    , speedUp
     , startMoving
     , statusDescription
     , stopAtIntersection
@@ -29,7 +28,7 @@ module Car exposing
 
 import Acceleration exposing (Acceleration)
 import Angle exposing (Angle)
-import Config exposing (carWidth)
+import Config exposing (acceleration, carWidth, maxVelocity)
 import Direction2d
 import Duration
 import Geometry exposing (LMBoundingBox2d, LMPoint2d, LocalPath)
@@ -82,25 +81,7 @@ type Status
     | StoppedAtIntersection
     | Yielding
     | ParkedAtLot
-    | Stopping
     | Confused
-
-
-maxVelocity =
-    -- roughly 40km/h
-    Speed.metersPerSecond 11.1
-
-
-speedUp =
-    Acceleration.metersPerSecondSquared 5
-
-
-breakingSlow =
-    Acceleration.metersPerSecondSquared -15
-
-
-breakingFast =
-    Acceleration.metersPerSecondSquared -30
 
 
 stoppedOrWaiting : List Status
@@ -113,7 +94,7 @@ new kind =
     { position = Point2d.origin
     , rotation = Angle.degrees 0
     , velocity = Quantity.zero
-    , acceleration = speedUp
+    , acceleration = acceleration.speedUp
     , kind = kind
     , status = Confused
     , homeLotId = Nothing
@@ -172,6 +153,11 @@ isAtTheEndOfLocalPath car =
     List.isEmpty car.localPath
 
 
+isStopping : Car -> Bool
+isStopping car =
+    car.acceleration |> Quantity.lessThanOrEqualTo acceleration.breakingSlow
+
+
 boundingBox : Car -> LMBoundingBox2d
 boundingBox car =
     -- Room for improvement: use a more realistic bounding box
@@ -206,13 +192,6 @@ move car =
                             |> Point2d.at_ Geometry.pixelsToMetersRatio
                             |> Point2d.translateIn carDirection (Quantity.for (Duration.milliseconds 16) nextVelocity)
                             |> Point2d.at Geometry.pixelsToMetersRatio
-
-                    nextStatus =
-                        if car.acceleration |> Quantity.lessThan speedUp then
-                            Stopping
-
-                        else
-                            car.status
                 in
                 { car
                     | position = nextPosition
@@ -220,7 +199,6 @@ move car =
                     , rotation =
                         car.position
                             |> Geometry.angleToTarget next
-                    , status = nextStatus
                 }
 
         _ ->
@@ -244,26 +222,19 @@ stopAtIntersection car =
 
 giveWay : Car -> Car
 giveWay car =
-    { car
-        | status = Moving
-        , acceleration = breakingSlow
-    }
+    { car | acceleration = acceleration.breakingSlow }
 
 
 break : Car -> Car
 break car =
-    { car
-        | status = Stopping
-        , acceleration = breakingFast
-    }
+    { car | acceleration = acceleration.breakingFast }
 
 
 startMoving : Car -> Car
 startMoving car =
     { car
         | status = Moving
-        , velocity = Quantity.zero
-        , acceleration = speedUp
+        , acceleration = acceleration.speedUp
     }
 
 
@@ -271,6 +242,7 @@ markAsConfused : Car -> Car
 markAsConfused car =
     { car
         | status = Confused
+        , velocity = Quantity.zero
         , route = []
         , localPath = []
     }
@@ -350,9 +322,6 @@ statusDescription car =
 
         ParkedAtLot ->
             "Parked @ lot"
-
-        Stopping ->
-            "Stopping"
 
         Confused ->
             "Confused"
