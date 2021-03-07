@@ -1,4 +1,4 @@
-module DebugPanel exposing (Model, Msg, initialModel, isRoadNetworkVisible, update, view)
+module DebugPanel exposing (Model, Msg, initialModel, update, view)
 
 import Car exposing (Car)
 import Config exposing (borderRadius, borderSize, colors, uiDimensions, whitespace)
@@ -16,12 +16,14 @@ import World exposing (World)
 
 type alias Model =
     { showRoadNetwork : Bool
+    , showCarDebugVisuals : Bool
     , roadNetworkDotString : Maybe String
     }
 
 
 type Msg
     = ToggleShowRoadNetwork
+    | ToggleShowCarDebugVisuals
     | ShowDotString String
     | HideDotString
 
@@ -29,13 +31,9 @@ type Msg
 initialModel : Model
 initialModel =
     { showRoadNetwork = False
+    , showCarDebugVisuals = False
     , roadNetworkDotString = Nothing
     }
-
-
-isRoadNetworkVisible : Model -> Bool
-isRoadNetworkVisible { showRoadNetwork } =
-    showRoadNetwork
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -43,6 +41,9 @@ update msg model =
     case msg of
         ToggleShowRoadNetwork ->
             ( { model | showRoadNetwork = not model.showRoadNetwork }, Cmd.none )
+
+        ToggleShowCarDebugVisuals ->
+            ( { model | showCarDebugVisuals = not model.showCarDebugVisuals }, Cmd.none )
 
         ShowDotString dotString ->
             ( { model | roadNetworkDotString = Just dotString }, Cmd.none )
@@ -87,6 +88,13 @@ controls model world =
         [ UI.controlButton
             { label = UI.icon "road_network_debug.png"
             , onPress = ToggleShowRoadNetwork
+            , selected = model.showRoadNetwork
+            , disabled = False
+            , size = CBLarge
+            }
+        , UI.controlButton
+            { label = UI.icon "car_white_1.png"
+            , onPress = ToggleShowCarDebugVisuals
             , selected = model.showRoadNetwork
             , disabled = False
             , size = CBLarge
