@@ -186,10 +186,16 @@ ui model =
 render : Model -> Element Msg
 render model =
     let
-        isRoadNetworkVisible =
-            model.debugPanel
-                |> Maybe.map DebugPanel.isRoadNetworkVisible
-                |> Maybe.withDefault False
+        debugLayers =
+            { showRoadNetwork =
+                model.debugPanel
+                    |> Maybe.map .showRoadNetwork
+                    |> Maybe.withDefault False
+            , showCarDebugVisuals =
+                model.debugPanel
+                    |> Maybe.map .showCarDebugVisuals
+                    |> Maybe.withDefault False
+            }
 
         renderedSize =
             floor boardSizeScaled
@@ -222,7 +228,7 @@ render model =
             else
                 []
     in
-    Render.view model.world isRoadNetworkVisible
+    Render.view model.world debugLayers
         |> Element.html
         |> Element.el
             ([ Element.width (Element.px viewportWidth)

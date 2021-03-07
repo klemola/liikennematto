@@ -12,7 +12,6 @@ import Config exposing (carFieldOfView, carLength, carRotationTolerance, tileSiz
 import Direction2d
 import Geometry exposing (LMTriangle2d, toLMUnits)
 import Maybe.Extra
-import Point2d
 import Quantity
 import Random
 import Random.List
@@ -62,7 +61,6 @@ play round =
         round
             |> checkRules
             |> updateCar
-            |> checkPriority
             |> toResults
 
 
@@ -82,7 +80,7 @@ checkRules round =
 
         Nothing ->
             if Car.isStopping round.activeCar then
-                applyCarAction round Car.startMoving
+                applyCarAction Car.startMoving round
 
             else
                 round
@@ -120,21 +118,21 @@ applyRule round rule =
             }
 
         WaitForTrafficLights ->
-            applyCarAction round Car.waitForTrafficLights
+            applyCarAction Car.waitForTrafficLights round
 
         YieldAtIntersection ->
-            applyCarAction round Car.yield
+            applyCarAction Car.yield round
 
         StopAtIntersection ->
             if Car.isStoppedOrWaiting activeCar then
                 round
 
             else
-                applyCarAction round Car.stopAtIntersection
+                applyCarAction Car.stopAtIntersection round
 
 
-applyCarAction : Round -> (Car -> Car) -> Round
-applyCarAction round action =
+applyCarAction : (Car -> Car) -> Round -> Round
+applyCarAction action round =
     { round | activeCar = action round.activeCar }
 
 
@@ -147,20 +145,24 @@ updateCar round =
     case activeCar.status of
         Moving ->
             if Car.isAtTheEndOfLocalPath activeCar then
-                let
-                    nextRound =
-                        chooseNextConnection round
-                in
-                applyCarAction nextRound Car.move
+                round
+                    |> removeActiveCarPriority
+                    |> chooseNextConnection
+                    |> applyCarAction Car.move
 
             else
-                applyCarAction round Car.move
+                applyCarAction Car.move round
 
         ParkedAtLot ->
-            applyCarAction round Car.beginLeaveLot
+            applyCarAction Car.beginLeaveLot round
 
         _ ->
             round
+
+
+removeActiveCarPriority : Round -> Round
+removeActiveCarPriority round =
+    { round | carsWithPriority = Set.remove round.activeCar.id round.carsWithPriority }
 
 
 chooseNextConnection : Round -> Round
@@ -170,7 +172,7 @@ chooseNextConnection round =
             chooseRandomRoute round nodeCtx
 
         _ ->
-            applyCarAction round Car.markAsConfused
+            applyCarAction Car.markAsConfused round
 
 
 chooseRandomRoute : Round -> RoadNetwork.RNNodeContext -> Round
@@ -196,28 +198,6 @@ chooseRandomRoute round nodeCtx =
     { round | activeCar = nextCar, seed = nextSeed }
 
 
-checkPriority : Round -> Round
-checkPriority round =
-    let
-        activeCarHasPriority =
-            Set.member round.activeCar.id round.carsWithPriority
-
-        shouldClearPriority () =
-            List.all (atSafeDistanceFrom round.activeCar) round.otherCars
-    in
-    if activeCarHasPriority && shouldClearPriority () then
-        { round | carsWithPriority = Set.remove round.activeCar.id round.carsWithPriority }
-
-    else
-        round
-
-
-atSafeDistanceFrom : Car -> Car -> Bool
-atSafeDistanceFrom car1 car2 =
-    Point2d.distanceFrom car1.position car2.position
-        |> Quantity.greaterThanOrEqualTo carProximityCutoff
-
-
 
 --
 -- Rules
@@ -230,18 +210,15 @@ carProximityCutoff =
 
 checkCollisionRules : Round -> Maybe Rule
 checkCollisionRules { otherCars, activeCar, carsWithPriority } =
-    let
-        hasPriority =
-            Set.member activeCar.id carsWithPriority
-    in
-    if hasPriority then
-        Nothing
+    Maybe.Extra.orListLazy
+        [ \() -> checkNearCollision activeCar otherCars
+        , \() ->
+            if Set.member activeCar.id carsWithPriority then
+                Nothing
 
-    else
-        Maybe.Extra.orListLazy
-            [ \() -> checkNearCollision activeCar otherCars
-            , \() -> checkPathCollision activeCar otherCars
-            ]
+            else
+                checkPathCollision activeCar otherCars
+        ]
 
 
 checkNearCollision : Car -> List Car -> Maybe Rule
