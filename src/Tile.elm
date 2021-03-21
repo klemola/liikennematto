@@ -45,6 +45,7 @@ type IntersectionControl
     = Signal TrafficLights
     | Yield Orientation
     | Stop Orientation
+    | Uncontrolled
 
 
 type IntersectionShape
@@ -196,7 +197,7 @@ ids =
         , ( 12, TwoLaneRoad (Curve TopLeft) Both )
         , ( 13, Intersection (Yield Horizontal) (T Right) )
         , ( 14, Intersection (Yield Vertical) (T Down) )
-        , ( 15, Intersection (Signal TrafficLight.default) Crossroads )
+        , ( 15, Intersection Uncontrolled Crossroads )
         ]
 
 

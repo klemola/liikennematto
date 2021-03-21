@@ -1,11 +1,12 @@
 module RoundTests exposing (suite)
 
-import Car exposing (Car, Status(..))
+import Car exposing (Status(..))
 import Expect
 import Fixtures exposing (..)
 import Round
     exposing
-        ( Rule(..)
+        ( RoundResults
+        , Rule(..)
         , checkCollisionRules
         , checkIntersectionRules
         )
@@ -16,10 +17,14 @@ suite : Test
 suite =
     describe "Round"
         [ describe "Collision rules"
-            [ test "allow movement if there will be no collision"
-                (\_ -> Expect.equal (checkCollisionRules noCollisionSetup) Nothing)
-            , test "disallow movement if it will cause a collision"
-                (\_ -> Expect.equal (checkCollisionRules collisionSetup) (Just AvoidCollision))
+            [ test "allow movement if there will be no collision (straight road, different lanes)"
+                (\_ -> Expect.equal (checkCollisionRules noCollisionSetupDifferentLanes) Nothing)
+            , test "allow movement if there will be no collision (intersection)"
+                (\_ -> Expect.equal (checkCollisionRules noCollisionSetupIntersection) Nothing)
+            , test "disallow movement if it will cause a collision (paths intersect)"
+                (\_ -> Expect.equal (checkCollisionRules collisionSetupPathsIntersect) (Just (AvoidCollision 2)))
+            , test "disallow movement if it will cause a collision (near collision)"
+                (\_ -> Expect.equal (checkCollisionRules collisionSetupNearCollision) (Just (PreventCollision 2)))
             ]
         , describe "Intersection rules"
             [ test "allow movement if the car is not facing a intersection"
@@ -41,7 +46,7 @@ suite =
             [ test "can prevent car movement"
                 (\_ ->
                     Expect.equal
-                        (collisionSetup
+                        (collisionSetupNearCollision
                             |> Round.play
                             |> getStatus
                         )
@@ -87,6 +92,6 @@ suite =
         ]
 
 
-getStatus : ( Car, a ) -> Car.Status
-getStatus ( car, _ ) =
+getStatus : RoundResults -> Car.Status
+getStatus { car } =
     car.status
