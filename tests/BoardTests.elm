@@ -5,7 +5,6 @@ import Dict
 import Expect
 import Fixtures
 import Test exposing (Test, describe, test)
-import Tile exposing (IntersectionControl(..), IntersectionShape(..), Tile(..))
 
 
 suite : Test
@@ -29,24 +28,6 @@ suite =
                                 tile == Just Fixtures.curveTile
                            )
                         |> Expect.true "Expected a curve road piece after the mask is applied."
-                )
-            , test "Retains traffic direction in tiles after the mask is applied"
-                (\_ ->
-                    Board.applyMask Fixtures.boardThatHasModifiersOnTiles
-                        |> Dict.get ( 1, 1 )
-                        |> (\tile ->
-                                tile == Just Fixtures.modifierTileA
-                           )
-                        |> Expect.true "Expected tile modifier to remain."
-                )
-            , test "Retains intersection control in tiles after the mask is applied"
-                (\_ ->
-                    Board.applyMask Fixtures.boardThatHasModifiersOnTiles
-                        |> Dict.get ( 3, 2 )
-                        |> (\tile ->
-                                tile == Just Fixtures.modifierTileB
-                           )
-                        |> Expect.true "Expected tile modifier to remain."
                 )
             ]
         ]

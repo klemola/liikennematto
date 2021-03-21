@@ -18,13 +18,6 @@ import Random
 import Random.List
 import RoadNetwork
 import Set exposing (Set)
-import Tile
-    exposing
-        ( IntersectionControl(..)
-        , RoadKind(..)
-        , Tile(..)
-        , TrafficDirection(..)
-        )
 import Triangle2d
 import World exposing (World)
 

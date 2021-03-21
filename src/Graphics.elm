@@ -2,19 +2,17 @@ module Graphics exposing
     ( buildingAsset
     , carAsset
     , grid
-    , intersectionAsset
-    , oneWayMarker
     , renderedSizeFromUnits
-    , roadAsset
     , texture
+    , tileAsset
     )
 
+import Board exposing (Tile)
 import Car exposing (Car, CarKind(..))
 import Cell exposing (Corner(..), OrthogonalDirection(..))
 import Collage exposing (Collage, image)
 import Collage.Layout as Layout
 import Lot exposing (BuildingKind(..))
-import Tile exposing (IntersectionShape(..), Orientation(..), RoadKind(..))
 
 
 grid : Int -> (Int -> Int -> Collage msg) -> Collage msg
@@ -45,57 +43,59 @@ renderedSizeFromUnits ( x, y ) multiplier =
     ( toFloat x * multiplier, toFloat y * multiplier )
 
 
-intersectionAsset : IntersectionShape -> String
-intersectionAsset shape =
-    case shape of
-        T Up ->
-            "intersection_2_lanes_t_up.png"
-
-        T Right ->
-            "intersection_2_lanes_t_right.png"
-
-        T Down ->
-            "intersection_2_lanes_t_down.png"
-
-        T Left ->
-            "intersection_2_lanes_t_left.png"
-
-        Crossroads ->
-            "intersection_2_lanes_x.png"
-
-
-roadAsset : RoadKind -> String
-roadAsset kind =
-    case kind of
-        Regular Horizontal ->
+tileAsset : Tile -> String
+tileAsset tile =
+    case tile of
+        0 ->
             "road_2_lanes_horizontal.png"
 
-        Regular Vertical ->
-            "road_2_lanes_vertical.png"
-
-        Curve TopRight ->
-            "road_2_lanes_curve_top_right.png"
-
-        Curve TopLeft ->
-            "road_2_lanes_curve_top_left.png"
-
-        Curve BottomRight ->
-            "road_2_lanes_curve_bottom_right.png"
-
-        Curve BottomLeft ->
-            "road_2_lanes_curve_bottom_left.png"
-
-        Deadend Up ->
-            "road_2_lanes_deadend_up.png"
-
-        Deadend Right ->
-            "road_2_lanes_deadend_right.png"
-
-        Deadend Down ->
+        1 ->
             "road_2_lanes_deadend_down.png"
 
-        Deadend Left ->
+        2 ->
+            "road_2_lanes_deadend_right.png"
+
+        3 ->
+            "road_2_lanes_curve_bottom_right.png"
+
+        4 ->
             "road_2_lanes_deadend_left.png"
+
+        5 ->
+            "road_2_lanes_curve_bottom_left.png"
+
+        6 ->
+            "road_2_lanes_horizontal.png"
+
+        7 ->
+            "intersection_2_lanes_t_up.png"
+
+        8 ->
+            "road_2_lanes_deadend_up.png"
+
+        9 ->
+            "road_2_lanes_vertical.png"
+
+        10 ->
+            "road_2_lanes_curve_top_right.png"
+
+        11 ->
+            "intersection_2_lanes_t_left.png"
+
+        12 ->
+            "road_2_lanes_curve_top_left.png"
+
+        13 ->
+            "intersection_2_lanes_t_right.png"
+
+        14 ->
+            "intersection_2_lanes_t_down.png"
+
+        15 ->
+            "intersection_2_lanes_x.png"
+
+        _ ->
+            "road_not_found.png"
 
 
 carAsset : Car -> String
@@ -146,28 +146,3 @@ buildingAsset kind =
 
         TwoByThreeTest ->
             "geometry_test_2x3.png"
-
-
-oneWayMarker : RoadKind -> String
-oneWayMarker roadKind =
-    case roadKind of
-        Curve TopLeft ->
-            "arrow_topleft.png"
-
-        Curve TopRight ->
-            "arrow_topright.png"
-
-        Curve BottomLeft ->
-            "arrow_bottomleft.png"
-
-        Curve BottomRight ->
-            "arrow_bottomright.png"
-
-        Regular Vertical ->
-            "arrow_up.png"
-
-        Deadend Up ->
-            "arrow_up.png"
-
-        _ ->
-            "arrow_right.png"

@@ -1,8 +1,15 @@
 module Board exposing
     ( Board
+    , Tile
     , applyMask
     , defaultTile
     , inBounds
+    , isCurve
+    , isDeadend
+    , isIntersection
+    , potentialConnections
+    , twoLaneRoadHorizontal
+    , twoLaneRoadVertical
     )
 
 import BitMask
@@ -12,29 +19,60 @@ import Config exposing (boardSizeScaled)
 import Dict exposing (Dict)
 import Geometry exposing (LMBoundingBox2d)
 import Point2d
-import Tile
-    exposing
-        ( IntersectionControl(..)
-        , IntersectionShape(..)
-        , Orientation(..)
-        , RoadKind(..)
-        , Tile(..)
-        , TrafficDirection(..)
-        )
+import Set exposing (Set)
 
 
 type alias Board =
     Dict Cell Tile
 
 
+type alias Tile =
+    Int
+
+
 exists : Cell -> Board -> Bool
 exists cell board =
-    case Dict.get cell board of
-        Just _ ->
-            True
+    Dict.member cell board
 
-        Nothing ->
-            False
+
+twoLaneRoadHorizontal : Tile
+twoLaneRoadHorizontal =
+    6
+
+
+twoLaneRoadVertical : Tile
+twoLaneRoadVertical =
+    9
+
+
+deadendTiles : Set Tile
+deadendTiles =
+    Set.fromList [ 1, 2, 4, 8 ]
+
+
+isDeadend : Tile -> Bool
+isDeadend tile =
+    Set.member tile deadendTiles
+
+
+intersectionTiles : Set Tile
+intersectionTiles =
+    Set.fromList [ 7, 11, 13, 14, 15 ]
+
+
+isIntersection : Tile -> Bool
+isIntersection tile =
+    Set.member tile intersectionTiles
+
+
+curveTiles : Set Tile
+curveTiles =
+    Set.fromList [ 3, 5, 10, 12 ]
+
+
+isCurve : Tile -> Bool
+isCurve tile =
+    Set.member tile curveTiles
 
 
 boundingBox : LMBoundingBox2d
@@ -49,41 +87,15 @@ inBounds testBB =
 
 defaultTile : Tile
 defaultTile =
-    TwoLaneRoad (Regular Horizontal) Both
+    0
 
 
 applyMask : Board -> Board
 applyMask board =
-    let
-        -- applies modifiers (traffic direction, intersection control type) if new tile is compatible
-        -- Room for improvement: if Tile shape is decoupled from modifiers, this step is unnecessary
-        reApplyModifiersIfNecessary oldTile newTile =
-            case ( oldTile, newTile ) of
-                ( TwoLaneRoad _ OneWay, _ ) ->
-                    Tile.toggleTrafficDirection newTile
-
-                -- signal control can't be restored on a T intersection
-                ( Intersection (Signal _) Crossroads, Intersection _ (T dir) ) ->
-                    Tile.defaultIntersectionControl (T dir)
-                        |> Tile.setIntersectionControl newTile
-
-                -- otherwise intersection shape is compatible (e.g. from T to Crossroads)
-                ( Intersection control _, _ ) ->
-                    Tile.setIntersectionControl newTile control
-
-                _ ->
-                    newTile
-    in
-    Dict.map
-        (\position oldTile ->
-            chooseTile board position
-                |> Maybe.withDefault defaultTile
-                |> reApplyModifiersIfNecessary oldTile
-        )
-        board
+    Dict.map (\cell _ -> chooseTile board cell) board
 
 
-chooseTile : Board -> Cell -> Maybe Tile
+chooseTile : Board -> Cell -> Tile
 chooseTile board origin =
     let
         parallelTiles =
@@ -93,6 +105,70 @@ chooseTile board origin =
             , south = exists (Cell.next Down origin) board
             }
     in
-    parallelTiles
-        |> BitMask.fourBitValue
-        |> Tile.fromId
+    BitMask.fourBitValue parallelTiles
+
+
+potentialConnections : Tile -> List OrthogonalDirection
+potentialConnections tile =
+    case tile of
+        -- TwoLaneRoad (Regular Vertical)
+        9 ->
+            [ Up, Down ]
+
+        -- TwoLaneRoad (Regular Horizontal)
+        6 ->
+            [ Left, Right ]
+
+        -- TwoLaneRoad (Curve TopRight)
+        10 ->
+            [ Left, Down ]
+
+        -- TwoLaneRoad (Curve TopLeft)
+        12 ->
+            [ Right, Down ]
+
+        -- TwoLaneRoad (Curve BottomRight)
+        3 ->
+            [ Left, Up ]
+
+        -- TwoLaneRoad (Curve BottomLeft)
+        5 ->
+            [ Right, Up ]
+
+        -- TwoLaneRoad (Deadend Up)
+        8 ->
+            [ Up ]
+
+        -- TwoLaneRoad (Deadend Right)
+        2 ->
+            [ Right ]
+
+        -- TwoLaneRoad (Deadend Down)
+        1 ->
+            [ Down ]
+
+        -- TwoLaneRoad (Deadend Left)
+        4 ->
+            [ Left ]
+
+        -- Intersection _ (T Up)
+        7 ->
+            Up :: Cell.crossOrthogonalDirection Up
+
+        -- Intersection _ (T Right)
+        13 ->
+            Right :: Cell.crossOrthogonalDirection Right
+
+        -- Intersection _ (T Down)
+        14 ->
+            Down :: Cell.crossOrthogonalDirection Down
+
+        -- Intersection _ (T Left)
+        11 ->
+            Left :: Cell.crossOrthogonalDirection Left
+
+        15 ->
+            Cell.allODs
+
+        _ ->
+            []

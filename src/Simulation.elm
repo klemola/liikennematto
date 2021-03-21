@@ -8,6 +8,7 @@ module Simulation exposing
     , update
     )
 
+import Board
 import BoundingBox2d
 import Browser.Events as Events
 import Car
@@ -23,15 +24,7 @@ import RoadNetwork exposing (RNNodeContext)
 import Round
 import Set exposing (Set)
 import Task
-import Tile
-    exposing
-        ( IntersectionControl(..)
-        , RoadKind(..)
-        , Tile(..)
-        , TrafficDirection(..)
-        )
 import Time
-import TrafficLight
 import World exposing (World)
 
 
@@ -167,32 +160,8 @@ generateEnvironmentAfterDelay seed =
 
 updateEnvironment : World -> World
 updateEnvironment world =
-    -- Room for improvement: consider moving traffic light state from tiles to World
-    -- in order to make Tiles passive
-    let
-        updateTrafficLight tl =
-            if tl.timeRemaining == 0 then
-                TrafficLight.new (TrafficLight.advanceLight tl.kind) tl.facing
-
-            else
-                TrafficLight.advanceTimer tl
-
-        updateTile tile =
-            case tile of
-                Intersection (Signal trafficLights) shape ->
-                    let
-                        next =
-                            trafficLights
-                                |> List.map updateTrafficLight
-                                |> Signal
-                    in
-                    Intersection next shape
-
-                _ ->
-                    tile
-    in
+    -- TODO: reimplement traffic lights
     world
-        |> World.withBoard (Dict.map (\_ tile -> updateTile tile) world.board)
 
 
 attemptGenerateEnvironment : World -> Random.Seed -> SimulationState -> ( World, Random.Seed )
@@ -243,22 +212,18 @@ findLotAnchor world seed newLot =
         ( shuffledBoard, _ ) =
             Random.step (Random.List.shuffle (Dict.toList world.board)) seed
 
-        targetOrientation =
-            newLot.content.entryDirection
-                -- TODO: change, this is stupid
-                |> Tile.toOrientation
-                |> Tile.oppositeOrientation
+        targetTile =
+            if Cell.isVertical newLot.content.entryDirection then
+                Board.twoLaneRoadHorizontal
+
+            else
+                Board.twoLaneRoadVertical
 
         targetDirection =
             Cell.oppositeOrthogonalDirection newLot.content.entryDirection
 
         isCompatible ( cell, tile ) =
-            case tile of
-                TwoLaneRoad (Regular orientation) Both ->
-                    (orientation == targetOrientation) && hasEnoughSpaceAround cell && not (World.hasLotAnchor cell world)
-
-                _ ->
-                    False
+            tile == targetTile && hasEnoughSpaceAround cell && not (World.hasLotAnchor cell world)
 
         lotBoundingBox cell =
             Lot.bottomLeftCorner newLot ( cell, targetDirection )
