@@ -1,5 +1,6 @@
 module Round exposing
     ( Round
+    , RoundResults
     , Rule(..)
     , checkCollisionRules
     , checkIntersectionRules

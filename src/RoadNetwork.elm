@@ -5,6 +5,7 @@ module RoadNetwork exposing
     , RoadNetwork
     , findNodeByLotId
     , findNodeByNodeId
+    , findNodeByPosition
     , fromBoardAndLots
     , getOutgoingConnections
     , getRandomNode
@@ -572,6 +573,21 @@ findNodeByLotId roadNetwork lotId =
 findNodeByNodeId : RoadNetwork -> NodeId -> Maybe RNNodeContext
 findNodeByNodeId roadNetwork nodeId =
     Graph.get nodeId roadNetwork
+
+
+findNodeByPosition : RoadNetwork -> LMPoint2d -> Maybe RNNodeContext
+findNodeByPosition roadNetwork position =
+    Graph.nodes roadNetwork
+        |> List.filterMap
+            (\{ id, label } ->
+                if label.position == position then
+                    Just id
+
+                else
+                    Nothing
+            )
+        |> List.head
+        |> Maybe.andThen (\matchId -> Graph.get matchId roadNetwork)
 
 
 getRandomNode : RoadNetwork -> Random.Seed -> Maybe RNNodeContext

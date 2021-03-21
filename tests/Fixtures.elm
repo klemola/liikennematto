@@ -9,7 +9,9 @@ import Direction2d
 import Geometry
 import Lot exposing (Anchor, Lot)
 import Random
+import RoadNetwork
 import Round exposing (Round)
+import Set
 import Tile
     exposing
         ( IntersectionControl(..)
@@ -19,7 +21,6 @@ import Tile
         , Tile(..)
         , TrafficDirection(..)
         )
-import TrafficLight
 import World exposing (World)
 
 
@@ -31,11 +32,13 @@ seed =
 carOne : Car
 carOne =
     Car.new Car.SedanA
+        |> Car.build 1
 
 
 carTwo : Car
 carTwo =
     Car.new Car.SedanB
+        |> Car.build 2
 
 
 fakeRandomDirections : List Cell.OrthogonalDirection
@@ -52,7 +55,7 @@ respawnSetup =
     let
         world =
             World.new
-                |> World.withTileAt ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> World.buildRoadAt ( 1, 1 )
 
         car =
             carOne
@@ -60,7 +63,7 @@ respawnSetup =
         otherCars =
             []
     in
-    Round.new world seed car otherCars
+    Round world car otherCars seed Set.empty
 
 
 connectedRoadsSetup : Round
@@ -68,8 +71,8 @@ connectedRoadsSetup =
     let
         world =
             World.new
-                |> World.withTileAt ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> World.withTileAt ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> World.buildRoadAt ( 1, 1 )
+                |> World.buildRoadAt ( 2, 1 )
 
         car =
             spawn carOne ( 0, 720 ) Right
@@ -77,7 +80,7 @@ connectedRoadsSetup =
         otherCars =
             []
     in
-    Round.new world seed car otherCars
+    Round world car otherCars seed Set.empty
 
 
 disconnectedRoadsSetup : Round
@@ -85,8 +88,8 @@ disconnectedRoadsSetup =
     let
         world =
             World.new
-                |> World.withTileAt ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> World.withTileAt ( 2, 1 ) (TwoLaneRoad (Regular Vertical) Both)
+                |> World.buildRoadAt ( 1, 1 )
+                |> World.buildRoadAt ( 2, 1 )
 
         car =
             spawn carOne ( 0, 720 ) Right
@@ -94,7 +97,7 @@ disconnectedRoadsSetup =
         otherCars =
             []
     in
-    Round.new world seed car otherCars
+    Round world car otherCars seed Set.empty
 
 
 curveSetup : Round
@@ -102,9 +105,9 @@ curveSetup =
     let
         world =
             World.new
-                |> World.withTileAt ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> World.withTileAt ( 2, 1 ) (TwoLaneRoad (Curve TopRight) Both)
-                |> World.withTileAt ( 2, 2 ) (TwoLaneRoad (Regular Vertical) Both)
+                |> World.buildRoadAt ( 1, 1 )
+                |> World.buildRoadAt ( 2, 1 )
+                |> World.buildRoadAt ( 2, 2 )
 
         car =
             spawn carOne ( 80, 720 ) Right
@@ -112,34 +115,98 @@ curveSetup =
         otherCars =
             []
     in
-    Round.new world seed car otherCars
+    Round world car otherCars seed Set.empty
 
 
-collisionSetup : Round
-collisionSetup =
+collisionSetupPathsIntersect : Round
+collisionSetupPathsIntersect =
     let
         world =
-            World.new
-                |> World.withTileAt ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> World.withTileAt ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+            worldWithIntersection
+
+        carDestination =
+            RoadNetwork.findNodeByPosition world.roadNetwork upIntersectionExitNodePosition
 
         car =
-            spawn carOne ( 0, 720 ) Right
+            spawn carOne ( 107, 674 ) Right
+
+        carWithRoute =
+            case carDestination of
+                Just nodeCtx ->
+                    Car.buildRoute car nodeCtx
+
+                Nothing ->
+                    Debug.todo "invalid test fixture"
+
+        otherCarDestination =
+            RoadNetwork.findNodeByPosition world.roadNetwork leftIntersectionExitNodePosition
+
+        otherCar =
+            spawn carTwo ( 150, 691 ) Left
+
+        otherCarWithRoute =
+            case otherCarDestination of
+                Just nodeCtx ->
+                    Car.buildRoute otherCar nodeCtx
+
+                Nothing ->
+                    Debug.todo "invalid test fixture"
 
         otherCars =
-            [ spawn carTwo ( 80, 720 ) Right
+            [ otherCarWithRoute
             ]
     in
-    Round.new world seed car otherCars
+    Round world carWithRoute otherCars seed Set.empty
 
 
-noCollisionSetup : Round
-noCollisionSetup =
+collisionSetupNearCollision : Round
+collisionSetupNearCollision =
+    let
+        world =
+            worldWithIntersection
+
+        carDestination =
+            RoadNetwork.findNodeByPosition world.roadNetwork upIntersectionExitNodePosition
+
+        car =
+            spawn carOne ( 115, 670 ) Right
+
+        carWithRoute =
+            case carDestination of
+                Just nodeCtx ->
+                    Car.buildRoute car nodeCtx
+
+                Nothing ->
+                    Debug.todo "invalid test fixture"
+
+        otherCarDestination =
+            RoadNetwork.findNodeByPosition world.roadNetwork leftIntersectionExitNodePosition
+
+        otherCar =
+            spawn carTwo ( 130, 691 ) Left
+
+        otherCarWithRoute =
+            case otherCarDestination of
+                Just nodeCtx ->
+                    Car.buildRoute otherCar nodeCtx
+
+                Nothing ->
+                    Debug.todo "invalid test fixture"
+
+        otherCars =
+            [ otherCarWithRoute
+            ]
+    in
+    Round world carWithRoute otherCars seed Set.empty
+
+
+noCollisionSetupDifferentLanes : Round
+noCollisionSetupDifferentLanes =
     let
         world =
             World.new
-                |> World.withTileAt ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> World.withTileAt ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
+                |> World.buildRoadAt ( 1, 1 )
+                |> World.buildRoadAt ( 2, 1 )
 
         car =
             spawn carOne ( 0, 720 ) Right
@@ -148,7 +215,23 @@ noCollisionSetup =
             [ spawn carTwo ( 80, 720 ) Left
             ]
     in
-    Round.new world seed car otherCars
+    Round world car otherCars seed Set.empty
+
+
+noCollisionSetupIntersection : Round
+noCollisionSetupIntersection =
+    let
+        world =
+            worldWithIntersection
+
+        car =
+            spawn carOne ( 80, 666 ) Right
+
+        otherCars =
+            [ spawn carTwo ( 133, 690 ) Up
+            ]
+    in
+    Round world car otherCars seed Set.empty
 
 
 redTrafficLightsSetup : Round
@@ -156,8 +239,8 @@ redTrafficLightsSetup =
     let
         world =
             World.new
-                |> World.withTileAt ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> World.withTileAt ( 2, 1 ) (Intersection (Signal TrafficLight.default) Crossroads)
+                |> World.buildRoadAt ( 1, 1 )
+                |> World.buildRoadAt ( 2, 1 )
 
         car =
             spawn carOne ( 0, 720 ) Right
@@ -165,7 +248,7 @@ redTrafficLightsSetup =
         otherCars =
             []
     in
-    Round.new world seed car otherCars
+    Round world car otherCars seed Set.empty
 
 
 greenTrafficLightsSetup : Round
@@ -173,8 +256,8 @@ greenTrafficLightsSetup =
     let
         world =
             World.new
-                |> World.withTileAt ( 1, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> World.withTileAt ( 1, 2 ) (Intersection (Signal TrafficLight.default) Crossroads)
+                |> World.buildRoadAt ( 1, 1 )
+                |> World.buildRoadAt ( 1, 2 )
 
         car =
             spawn carOne ( 0, 720 ) Down
@@ -182,7 +265,7 @@ greenTrafficLightsSetup =
         otherCars =
             []
     in
-    Round.new world seed car otherCars
+    Round world car otherCars seed Set.empty
 
 
 yieldSetup : Bool -> Round
@@ -190,10 +273,10 @@ yieldSetup hasPriorityTraffic =
     let
         world =
             World.new
-                |> World.withTileAt ( 1, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> World.withTileAt ( 2, 1 ) (TwoLaneRoad (Regular Vertical) Both)
-                |> World.withTileAt ( 2, 2 ) (Intersection (Yield Horizontal) (T Left))
-                |> World.withTileAt ( 2, 3 ) (TwoLaneRoad (Regular Vertical) Both)
+                |> World.buildRoadAt ( 1, 2 )
+                |> World.buildRoadAt ( 2, 1 )
+                |> World.buildRoadAt ( 2, 2 )
+                |> World.buildRoadAt ( 2, 3 )
 
         car =
             spawn carOne ( 0, 640 ) Right
@@ -206,7 +289,7 @@ yieldSetup hasPriorityTraffic =
             else
                 []
     in
-    Round.new world seed car otherCars
+    Round world car otherCars seed Set.empty
 
 
 yieldWithPriorityTrafficSetup : Round
@@ -224,11 +307,11 @@ stopSetup =
     let
         world =
             World.new
-                |> World.withTileAt ( 1, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> World.withTileAt ( 2, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> World.withTileAt ( 3, 1 ) (TwoLaneRoad (Regular Vertical) Both)
-                |> World.withTileAt ( 3, 2 ) (Intersection (Stop Horizontal) (T Left))
-                |> World.withTileAt ( 3, 3 ) (TwoLaneRoad (Regular Vertical) Both)
+                |> World.buildRoadAt ( 1, 2 )
+                |> World.buildRoadAt ( 2, 2 )
+                |> World.buildRoadAt ( 3, 1 )
+                |> World.buildRoadAt ( 3, 2 )
+                |> World.buildRoadAt ( 3, 3 )
 
         car =
             spawn carOne ( 0, 640 ) Right
@@ -237,7 +320,7 @@ stopSetup =
         otherCars =
             []
     in
-    Round.new world seed car otherCars
+    Round world car otherCars seed Set.empty
 
 
 yieldAfterStopSetup : Round
@@ -245,10 +328,10 @@ yieldAfterStopSetup =
     let
         world =
             World.new
-                |> World.withTileAt ( 1, 2 ) (TwoLaneRoad (Regular Horizontal) Both)
-                |> World.withTileAt ( 2, 1 ) (TwoLaneRoad (Regular Vertical) Both)
-                |> World.withTileAt ( 2, 2 ) (Intersection (Stop Horizontal) (T Left))
-                |> World.withTileAt ( 2, 3 ) (TwoLaneRoad (Regular Vertical) Both)
+                |> World.buildRoadAt ( 1, 2 )
+                |> World.buildRoadAt ( 2, 1 )
+                |> World.buildRoadAt ( 2, 2 )
+                |> World.buildRoadAt ( 2, 3 )
 
         car =
             spawn carOne ( 0, 640 ) Right
@@ -258,7 +341,7 @@ yieldAfterStopSetup =
             [ spawn carTwo ( 80, 720 ) Down
             ]
     in
-    Round.new world seed car otherCars
+    Round world car otherCars seed Set.empty
 
 
 spawn : Car -> ( Float, Float ) -> OrthogonalDirection -> Car
@@ -342,48 +425,68 @@ curveTile =
 lowComplexityWorld : World
 lowComplexityWorld =
     World.new
-        |> World.withTileAt ( 1, 1 ) (TwoLaneRoad (Deadend Left) Both)
-        |> World.withTileAt ( 2, 1 ) (TwoLaneRoad (Regular Horizontal) Both)
-        |> World.withTileAt ( 3, 1 ) (TwoLaneRoad (Deadend Right) Both)
+        |> World.buildRoadAt ( 1, 1 )
+        |> World.buildRoadAt ( 2, 1 )
+        |> World.buildRoadAt ( 3, 1 )
 
 
 highComplexityWorld : World
 highComplexityWorld =
     World.new
-        |> World.withTileAt ( 1, 1 ) (TwoLaneRoad (Curve TopLeft) Both)
-        |> World.withTileAt ( 2, 1 ) (TwoLaneRoad (Deadend Right) Both)
-        |> World.withTileAt ( 1, 2 ) (TwoLaneRoad (Deadend Down) Both)
+        |> World.buildRoadAt ( 1, 1 )
+        |> World.buildRoadAt ( 2, 1 )
+        |> World.buildRoadAt ( 1, 2 )
 
 
 worldThatHasAVerticalRoadAtLeftSide : World
 worldThatHasAVerticalRoadAtLeftSide =
     World.new
-        |> World.withTileAt ( 1, 1 ) (TwoLaneRoad (Deadend Up) Both)
-        |> World.withTileAt ( 1, 2 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> World.withTileAt ( 1, 3 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> World.withTileAt ( 1, 4 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> World.withTileAt ( 1, 5 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> World.withTileAt ( 1, 6 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> World.withTileAt ( 1, 7 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> World.withTileAt ( 1, 8 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> World.withTileAt ( 1, 9 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> World.withTileAt ( 1, 10 ) (TwoLaneRoad (Deadend Down) Both)
+        |> World.buildRoadAt ( 1, 1 )
+        |> World.buildRoadAt ( 1, 2 )
+        |> World.buildRoadAt ( 1, 3 )
+        |> World.buildRoadAt ( 1, 4 )
+        |> World.buildRoadAt ( 1, 5 )
+        |> World.buildRoadAt ( 1, 6 )
+        |> World.buildRoadAt ( 1, 7 )
+        |> World.buildRoadAt ( 1, 8 )
+        |> World.buildRoadAt ( 1, 9 )
+        |> World.buildRoadAt ( 1, 10 )
 
 
 worldThatHasParallelRoads : World
 worldThatHasParallelRoads =
     worldThatHasAVerticalRoadAtLeftSide
         -- create second road
-        |> World.withTileAt ( 3, 1 ) (TwoLaneRoad (Deadend Up) Both)
-        |> World.withTileAt ( 3, 2 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> World.withTileAt ( 3, 3 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> World.withTileAt ( 3, 4 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> World.withTileAt ( 3, 5 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> World.withTileAt ( 3, 6 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> World.withTileAt ( 3, 7 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> World.withTileAt ( 3, 8 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> World.withTileAt ( 3, 9 ) (TwoLaneRoad (Regular Vertical) Both)
-        |> World.withTileAt ( 3, 10 ) (TwoLaneRoad (Deadend Down) Both)
+        |> World.buildRoadAt ( 3, 1 )
+        |> World.buildRoadAt ( 3, 2 )
+        |> World.buildRoadAt ( 3, 3 )
+        |> World.buildRoadAt ( 3, 4 )
+        |> World.buildRoadAt ( 3, 5 )
+        |> World.buildRoadAt ( 3, 6 )
+        |> World.buildRoadAt ( 3, 7 )
+        |> World.buildRoadAt ( 3, 8 )
+        |> World.buildRoadAt ( 3, 9 )
+        |> World.buildRoadAt ( 3, 10 )
+
+
+worldWithIntersection : World
+worldWithIntersection =
+    World.new
+        |> World.buildRoadAt ( 2, 1 )
+        |> World.buildRoadAt ( 1, 2 )
+        |> World.buildRoadAt ( 2, 2 )
+        |> World.buildRoadAt ( 3, 2 )
+        |> World.buildRoadAt ( 2, 3 )
+
+
+upIntersectionExitNodePosition : Geometry.LMPoint2d
+upIntersectionExitNodePosition =
+    Geometry.pointFromPosition { x = 134, y = 720 }
+
+
+leftIntersectionExitNodePosition : Geometry.LMPoint2d
+leftIntersectionExitNodePosition =
+    Geometry.pointFromPosition { x = 80, y = 694 }
 
 
 
