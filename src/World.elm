@@ -19,7 +19,7 @@ module World exposing
     , withTileAt
     )
 
-import Board exposing (Board)
+import Board exposing (Board, Tile)
 import Car exposing (Car, CarKind(..))
 import Cell exposing (Cell, Corner(..), OrthogonalDirection(..))
 import Config exposing (acceleration, maxVelocity)
@@ -30,15 +30,6 @@ import Geometry exposing (LMBoundingBox2d)
 import Lot exposing (BuildingKind(..), Lot)
 import Quantity
 import RoadNetwork exposing (RNNodeContext, RoadNetwork)
-import Tile
-    exposing
-        ( IntersectionControl(..)
-        , IntersectionShape(..)
-        , Orientation(..)
-        , RoadKind(..)
-        , Tile(..)
-        , TrafficDirection(..)
-        )
 
 
 type alias World =
@@ -273,13 +264,10 @@ isEmptyArea testAreaBB world =
 hasValidAnchorCell : Board -> Lot -> Bool
 hasValidAnchorCell board lot =
     case Dict.get (Lot.anchorCell lot) board of
-        Just (TwoLaneRoad (Regular Vertical) _) ->
-            True
+        Just tile ->
+            tile == Board.twoLaneRoadHorizontal || tile == Board.twoLaneRoadVertical
 
-        Just (TwoLaneRoad (Regular Horizontal) _) ->
-            True
-
-        _ ->
+        Nothing ->
             False
 
 
@@ -395,11 +383,11 @@ resident lot =
 
 initialBoard : Board
 initialBoard =
-    Dict.fromList
-        [ ( ( 2, 5 ), TwoLaneRoad (Deadend Left) Both )
-        , ( ( 3, 5 ), TwoLaneRoad (Regular Horizontal) Both )
-        , ( ( 4, 5 ), TwoLaneRoad (Regular Horizontal) Both )
-        , ( ( 5, 3 ), TwoLaneRoad (Deadend Up) Both )
-        , ( ( 5, 4 ), TwoLaneRoad (Regular Vertical) Both )
-        , ( ( 5, 5 ), TwoLaneRoad (Curve BottomRight) Both )
-        ]
+    Dict.empty
+        |> Dict.insert ( 2, 5 ) Board.defaultTile
+        |> Dict.insert ( 3, 5 ) Board.defaultTile
+        |> Dict.insert ( 4, 5 ) Board.defaultTile
+        |> Dict.insert ( 5, 3 ) Board.defaultTile
+        |> Dict.insert ( 5, 4 ) Board.defaultTile
+        |> Dict.insert ( 5, 5 ) Board.defaultTile
+        |> Board.applyMask

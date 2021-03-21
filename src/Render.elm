@@ -1,7 +1,7 @@
 module Render exposing (view)
 
 import Angle
-import Board exposing (Board)
+import Board exposing (Board, Tile)
 import Car exposing (Car, Status(..))
 import Cell exposing (OrthogonalDirection(..))
 import Circle2d
@@ -28,13 +28,6 @@ import Html exposing (Html)
 import Lot exposing (Lot)
 import Maybe.Extra as Maybe
 import RoadNetwork exposing (ConnectionKind(..), RoadNetwork)
-import Tile
-    exposing
-        ( IntersectionControl(..)
-        , IntersectionShape(..)
-        , Tile(..)
-        , TrafficDirection(..)
-        )
 import Triangle2d
 import World exposing (World)
 
@@ -96,23 +89,10 @@ renderTile tile =
     let
         renderedSize =
             Graphics.renderedSizeFromUnits ( 1, 1 ) tileSize
-
-        addRoadMarkings roadKind trafficDirection road =
-            case trafficDirection of
-                Both ->
-                    road
-
-                OneWay ->
-                    Layout.stack [ Graphics.texture renderedSize (Graphics.oneWayMarker roadKind), road ]
     in
-    case tile of
-        TwoLaneRoad kind trafficDirection ->
-            Graphics.roadAsset kind
-                |> Graphics.texture renderedSize
-                |> addRoadMarkings kind trafficDirection
-
-        Intersection _ shape ->
-            Graphics.texture renderedSize (Graphics.intersectionAsset shape)
+    tile
+        |> Graphics.tileAsset
+        |> Graphics.texture renderedSize
 
 
 renderCars : List Car -> Bool -> Collage msg

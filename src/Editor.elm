@@ -1,5 +1,6 @@
 module Editor exposing (Model, Msg, initialModel, overlay, toolbar, update)
 
+import Board
 import Cell exposing (Cell)
 import Config
     exposing
@@ -11,7 +12,6 @@ import CustomEvent
 import Element exposing (Color, Element)
 import Element.Border as Border
 import Element.Events as Events
-import Tile exposing (Tile(..))
 import UI exposing (ControlButtonSize)
 import World exposing (World)
 
@@ -75,16 +75,16 @@ update world msg model =
                     )
 
                 ( IntersectionDesigner, Just tile ) ->
+                    -- TODO
                     ( model
                     , world
-                        |> World.withTileAt cell (Tile.toggleIntersectionControl tile)
                     , Cmd.none
                     )
 
                 ( TrafficDirectionDesigner, Just tile ) ->
+                    -- TODO
                     ( model
                     , world
-                        |> World.withTileAt cell (Tile.toggleTrafficDirection tile)
                     , Cmd.none
                     )
 
@@ -218,16 +218,24 @@ tileHighlight { world, selectedTool, cell } =
 
         IntersectionDesigner ->
             case World.tileAt cell world of
-                Just (Intersection _ _) ->
-                    colors.target
+                Just tile ->
+                    if Board.isIntersection tile then
+                        colors.target
+
+                    else
+                        colors.notAllowed
 
                 _ ->
                     colors.notAllowed
 
         TrafficDirectionDesigner ->
             case World.tileAt cell world of
-                Just (TwoLaneRoad _ _) ->
-                    colors.target
+                Just tile ->
+                    if tile == Board.twoLaneRoadHorizontal || tile == Board.twoLaneRoadVertical then
+                        colors.target
+
+                    else
+                        colors.notAllowed
 
                 _ ->
                     colors.notAllowed

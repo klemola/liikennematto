@@ -1,6 +1,6 @@
 module Fixtures exposing (..)
 
-import Board exposing (Board)
+import Board exposing (Board, Tile)
 import Car exposing (Car)
 import Cell exposing (Corner(..), OrthogonalDirection(..))
 import Config exposing (tileSize)
@@ -12,15 +12,6 @@ import Random
 import RoadNetwork
 import Round exposing (Round)
 import Set
-import Tile
-    exposing
-        ( IntersectionControl(..)
-        , IntersectionShape(..)
-        , Orientation(..)
-        , RoadKind(..)
-        , Tile(..)
-        , TrafficDirection(..)
-        )
 import World exposing (World)
 
 
@@ -169,7 +160,8 @@ collisionSetupNearCollision =
             RoadNetwork.findNodeByPosition world.roadNetwork upIntersectionExitNodePosition
 
         car =
-            spawn carOne ( 115, 670 ) Right
+            -- TODO: check clearance and use precise direction instead
+            spawn carOne ( 120, 680 ) Right
 
         carWithRoute =
             case carDestination of
@@ -361,61 +353,50 @@ spawn car ( x, y ) direction =
 
 boardThatResemblesAIntersection : Board
 boardThatResemblesAIntersection =
-    Dict.fromList
-        [ ( ( 1, 1 ), TwoLaneRoad (Deadend Left) Both )
-        , ( ( 2, 1 ), TwoLaneRoad (Regular Horizontal) Both )
-        , ( ( 3, 1 ), TwoLaneRoad (Deadend Right) Both )
-        , ( ( 2, 2 ), TwoLaneRoad (Regular Horizontal) Both )
-        ]
+    Dict.empty
+        |> Dict.insert ( 1, 1 ) Board.defaultTile
+        |> Dict.insert ( 2, 1 ) Board.defaultTile
+        |> Dict.insert ( 3, 1 ) Board.defaultTile
+        |> Dict.insert ( 2, 2 ) Board.defaultTile
+        |> Board.applyMask
 
 
 boardThatHasModifiersOnTiles : Board
 boardThatHasModifiersOnTiles =
     -- A roundabout with two exits
-    Dict.fromList
-        [ ( ( 1, 1 ), TwoLaneRoad (Curve TopLeft) OneWay )
-        , ( ( 2, 1 ), TwoLaneRoad (Regular Horizontal) Both )
-        , ( ( 3, 1 ), TwoLaneRoad (Curve TopRight) OneWay )
-        , ( ( 1, 2 ), TwoLaneRoad (Regular Vertical) OneWay )
-
+    Dict.empty
+        |> Dict.insert ( 1, 1 ) Board.defaultTile
+        |> Dict.insert ( 2, 1 ) Board.defaultTile
+        |> Dict.insert ( 3, 1 ) Board.defaultTile
+        |> Dict.insert ( 1, 2 ) Board.defaultTile
         -- (2, 2) is empty
-        , ( ( 3, 2 ), Intersection (Stop Horizontal) (T Right) )
-        , ( ( 4, 2 ), TwoLaneRoad (Deadend Right) Both )
-        , ( ( 5, 2 ), TwoLaneRoad (Deadend Right) OneWay )
-        , ( ( 1, 3 ), TwoLaneRoad (Curve BottomLeft) OneWay )
-        , ( ( 2, 3 ), Intersection (Yield Vertical) (T Down) )
-        , ( ( 3, 3 ), TwoLaneRoad (Curve BottomRight) OneWay )
-        , ( ( 2, 4 ), TwoLaneRoad (Deadend Down) Both )
-        ]
-
-
-modifierTileA : Tile
-modifierTileA =
-    TwoLaneRoad (Curve TopLeft) OneWay
-
-
-modifierTileB : Tile
-modifierTileB =
-    Intersection (Stop Horizontal) (T Right)
+        |> Dict.insert ( 3, 2 ) Board.defaultTile
+        |> Dict.insert ( 4, 2 ) Board.defaultTile
+        |> Dict.insert ( 5, 2 ) Board.defaultTile
+        |> Dict.insert ( 1, 3 ) Board.defaultTile
+        |> Dict.insert ( 2, 3 ) Board.defaultTile
+        |> Dict.insert ( 3, 3 ) Board.defaultTile
+        |> Dict.insert ( 2, 4 ) Board.defaultTile
+        |> Board.applyMask
 
 
 intersectionTile : Tile
 intersectionTile =
-    Intersection (Yield Vertical) (T Down)
+    14
 
 
 boardThatResemblesACurve : Board
 boardThatResemblesACurve =
-    Dict.fromList
-        [ ( ( 1, 1 ), TwoLaneRoad (Deadend Left) Both )
-        , ( ( 2, 1 ), TwoLaneRoad (Deadend Right) Both )
-        , ( ( 1, 2 ), TwoLaneRoad (Regular Horizontal) Both )
-        ]
+    Dict.empty
+        |> Dict.insert ( 1, 1 ) Board.defaultTile
+        |> Dict.insert ( 2, 1 ) Board.defaultTile
+        |> Dict.insert ( 1, 2 ) Board.defaultTile
+        |> Board.applyMask
 
 
 curveTile : Tile
 curveTile =
-    TwoLaneRoad (Curve TopLeft) Both
+    12
 
 
 

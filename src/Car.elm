@@ -36,7 +36,6 @@ import Point2d
 import Quantity
 import RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Speed exposing (Speed)
-import Tile exposing (Tile(..))
 
 
 type alias Car =

@@ -14,7 +14,7 @@ module RoadNetwork exposing
     )
 
 import Angle
-import Board exposing (Board)
+import Board exposing (Board, Tile)
 import BoundingBox2d
 import Cell exposing (Cell, OrthogonalDirection(..))
 import Config exposing (innerLaneOffset, outerLaneOffset, tileSize)
@@ -29,7 +29,6 @@ import Maybe.Extra as Maybe
 import Point2d
 import Random
 import Random.Extra
-import Tile exposing (Orientation(..), RoadKind(..), Tile(..))
 
 
 type alias RoadNetwork =
@@ -73,15 +72,14 @@ fromBoardAndLots : Board -> Dict Int Lot -> RoadNetwork
 fromBoardAndLots board lots =
     let
         tilePriority ( _, tile ) =
-            case tile of
-                TwoLaneRoad (Deadend _) _ ->
-                    0
+            if Board.isDeadend tile then
+                0
 
-                Intersection _ _ ->
-                    1
+            else if Board.isIntersection tile then
+                1
 
-                _ ->
-                    2
+            else
+                2
 
         nodes =
             createConnections
@@ -151,24 +149,26 @@ createConnections { nodes, board, remainingTiles, lots } =
 toConnections : Board -> Cell -> Tile -> Dict Int Lot -> List Connection
 toConnections board cell tile lots =
     case tile of
-        TwoLaneRoad (Regular orientation) _ ->
-            let
-                trafficDirection =
-                    if orientation == Vertical then
-                        Cell.up
+        6 ->
+            lotConnections cell Cell.right lots
 
-                    else
-                        Cell.right
-            in
-            lotConnections cell trafficDirection lots
+        9 ->
+            lotConnections cell Cell.up lots
 
-        TwoLaneRoad (Deadend dir) _ ->
-            dir
-                |> Cell.orthogonalDirectionToLmDirection
-                |> deadendConnections cell
+        8 ->
+            deadendConnections cell Cell.up
+
+        2 ->
+            deadendConnections cell Cell.right
+
+        1 ->
+            deadendConnections cell Cell.down
+
+        4 ->
+            deadendConnections cell Cell.left
 
         _ ->
-            Tile.potentialConnections tile
+            Board.potentialConnections tile
                 |> List.concatMap (connectionsByTileEntryDirection board cell tile)
 
 
@@ -340,15 +340,7 @@ hasStopgapInbetween tileA tileB =
 
 isCurveOrIntersection : Tile -> Bool
 isCurveOrIntersection tile =
-    case tile of
-        TwoLaneRoad (Curve _) _ ->
-            True
-
-        Intersection _ _ ->
-            True
-
-        _ ->
-            False
+    Board.isCurve tile || Board.isIntersection tile
 
 
 
