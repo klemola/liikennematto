@@ -45,7 +45,7 @@ respawnSetup : Round
 respawnSetup =
     let
         world =
-            World.new
+            World.empty
                 |> World.buildRoadAt ( 1, 1 )
 
         car =
@@ -61,7 +61,7 @@ connectedRoadsSetup : Round
 connectedRoadsSetup =
     let
         world =
-            World.new
+            World.empty
                 |> World.buildRoadAt ( 1, 1 )
                 |> World.buildRoadAt ( 2, 1 )
 
@@ -78,7 +78,7 @@ disconnectedRoadsSetup : Round
 disconnectedRoadsSetup =
     let
         world =
-            World.new
+            World.empty
                 |> World.buildRoadAt ( 1, 1 )
                 |> World.buildRoadAt ( 2, 1 )
 
@@ -95,7 +95,7 @@ curveSetup : Round
 curveSetup =
     let
         world =
-            World.new
+            World.empty
                 |> World.buildRoadAt ( 1, 1 )
                 |> World.buildRoadAt ( 2, 1 )
                 |> World.buildRoadAt ( 2, 2 )
@@ -196,7 +196,7 @@ noCollisionSetupDifferentLanes : Round
 noCollisionSetupDifferentLanes =
     let
         world =
-            World.new
+            World.empty
                 |> World.buildRoadAt ( 1, 1 )
                 |> World.buildRoadAt ( 2, 1 )
 
@@ -230,7 +230,7 @@ redTrafficLightsSetup : Round
 redTrafficLightsSetup =
     let
         world =
-            World.new
+            World.empty
                 |> World.buildRoadAt ( 1, 1 )
                 |> World.buildRoadAt ( 2, 1 )
 
@@ -247,7 +247,7 @@ greenTrafficLightsSetup : Round
 greenTrafficLightsSetup =
     let
         world =
-            World.new
+            World.empty
                 |> World.buildRoadAt ( 1, 1 )
                 |> World.buildRoadAt ( 1, 2 )
 
@@ -264,7 +264,7 @@ yieldSetup : Bool -> Round
 yieldSetup hasPriorityTraffic =
     let
         world =
-            World.new
+            World.empty
                 |> World.buildRoadAt ( 1, 2 )
                 |> World.buildRoadAt ( 2, 1 )
                 |> World.buildRoadAt ( 2, 2 )
@@ -298,7 +298,7 @@ stopSetup : Round
 stopSetup =
     let
         world =
-            World.new
+            World.empty
                 |> World.buildRoadAt ( 1, 2 )
                 |> World.buildRoadAt ( 2, 2 )
                 |> World.buildRoadAt ( 3, 1 )
@@ -319,7 +319,7 @@ yieldAfterStopSetup : Round
 yieldAfterStopSetup =
     let
         world =
-            World.new
+            World.empty
                 |> World.buildRoadAt ( 1, 2 )
                 |> World.buildRoadAt ( 2, 1 )
                 |> World.buildRoadAt ( 2, 2 )
@@ -405,7 +405,7 @@ curveTile =
 
 lowComplexityWorld : World
 lowComplexityWorld =
-    World.new
+    World.empty
         |> World.buildRoadAt ( 1, 1 )
         |> World.buildRoadAt ( 2, 1 )
         |> World.buildRoadAt ( 3, 1 )
@@ -413,7 +413,7 @@ lowComplexityWorld =
 
 highComplexityWorld : World
 highComplexityWorld =
-    World.new
+    World.empty
         |> World.buildRoadAt ( 1, 1 )
         |> World.buildRoadAt ( 2, 1 )
         |> World.buildRoadAt ( 1, 2 )
@@ -421,7 +421,7 @@ highComplexityWorld =
 
 worldThatHasAVerticalRoadAtLeftSide : World
 worldThatHasAVerticalRoadAtLeftSide =
-    World.new
+    World.empty
         |> World.buildRoadAt ( 1, 1 )
         |> World.buildRoadAt ( 1, 2 )
         |> World.buildRoadAt ( 1, 3 )
@@ -452,7 +452,7 @@ worldThatHasParallelRoads =
 
 worldWithIntersection : World
 worldWithIntersection =
-    World.new
+    World.empty
         |> World.buildRoadAt ( 2, 1 )
         |> World.buildRoadAt ( 1, 2 )
         |> World.buildRoadAt ( 2, 2 )

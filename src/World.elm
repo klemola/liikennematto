@@ -1,22 +1,21 @@
 module World exposing
     ( Cars
     , Lots
+    , TrafficLights
     , World
     , addLot
     , buildRoadAt
     , canBuildRoadAt
+    , default
+    , empty
     , hasLot
     , hasLotAnchor
     , isEmptyArea
-    , new
-    , newWithInitialBoard
     , removeRoadAt
     , reset
     , setCar
     , spawnCar
     , tileAt
-    , withBoard
-    , withTileAt
     )
 
 import Board exposing (Board, Tile)
@@ -30,11 +29,13 @@ import Geometry exposing (LMBoundingBox2d)
 import Lot exposing (BuildingKind(..), Lot)
 import Quantity
 import RoadNetwork exposing (RNNodeContext, RoadNetwork)
+import TrafficLight exposing (TrafficLight)
 
 
 type alias World =
     { board : Board
     , roadNetwork : RoadNetwork
+    , trafficLights : TrafficLights
     , cars : Cars
     , lots : Lots
     }
@@ -52,24 +53,14 @@ type alias Lots =
     Dict Id Lot
 
 
-new : World
-new =
-    { board = Dict.empty
-    , roadNetwork = RoadNetwork.new
-    , cars = Dict.empty
-    , lots = Dict.empty
-    }
-
-
-newWithInitialBoard : World
-newWithInitialBoard =
-    new
-        |> withBoard initialBoard
-        |> withRoadConnections
+type alias TrafficLights =
+    Dict Id TrafficLight
 
 
 
+--
 -- Internals
+--
 
 
 nextId : Dict Id a -> Id
@@ -81,30 +72,45 @@ nextId dict =
 
 
 
--- Modifications
+--
+-- Presets
+--
 
 
-withBoard : Board -> World -> World
-withBoard board world =
-    { world | board = board }
-
-
-withRoadConnections : World -> World
-withRoadConnections world =
-    { world | roadNetwork = RoadNetwork.fromBoardAndLots world.board world.lots }
-
-
-withTileAt : Cell -> Tile -> World -> World
-withTileAt cell tile world =
-    { world
-        | board = Dict.insert cell tile world.board
-        , cars =
-            carsAfterBoardChange
-                { cell = cell
-                , nextLots = world.lots
-                , world = world
-                }
+empty : World
+empty =
+    { board = Dict.empty
+    , roadNetwork = RoadNetwork.new
+    , trafficLights = Dict.empty
+    , cars = Dict.empty
+    , lots = Dict.empty
     }
+
+
+default : World
+default =
+    let
+        testTrafficLightId =
+            nextId empty.trafficLights
+
+        testTrafficLight =
+            TrafficLight.new
+                |> TrafficLight.withPosition (Geometry.pointFromPosition { x = 80, y = 80 })
+                |> TrafficLight.build testTrafficLightId
+    in
+    { empty
+        | board = initialBoard
+        , roadNetwork = RoadNetwork.fromBoardAndLots initialBoard empty.lots
+        , trafficLights =
+            empty.trafficLights
+                |> Dict.insert testTrafficLightId testTrafficLight
+    }
+
+
+
+--
+-- Modifications
+--
 
 
 addLot : Lot -> World -> World
@@ -196,15 +202,17 @@ removeRoadAt cell world =
 reset : World -> World
 reset world =
     { world
-        | cars = new.cars
-        , lots = new.lots
-        , board = new.board
-        , roadNetwork = new.roadNetwork
+        | cars = empty.cars
+        , lots = empty.lots
+        , board = empty.board
+        , roadNetwork = empty.roadNetwork
     }
 
 
 
+--
 -- Queries
+--
 
 
 tileAt : Cell -> World -> Maybe Tile
@@ -272,7 +280,9 @@ hasValidAnchorCell board lot =
 
 
 
+--
 -- Utility
+--
 
 
 worldAfterBoardChange : { cell : Cell, nextBoard : Board, world : World } -> World
@@ -356,7 +366,9 @@ moveCarToHome world car =
 
 
 
+--
 -- Data
+--
 
 
 resident : Lot -> Maybe CarKind

@@ -1,68 +1,118 @@
 module TrafficLight exposing
-    ( TrafficLight
-    , TrafficLightKind(..)
-    , TrafficLights
-    , advanceLight
-    , advanceTimer
-    , default
+    ( NewTrafficLight
+    , TrafficLight
+    , TrafficLightColor(..)
+    , advance
+    , build
     , new
+    , withColor
+    , withPosition
     )
 
 import Cell exposing (OrthogonalDirection(..))
+import Direction2d
+import Duration exposing (Duration)
+import Geometry exposing (LMDirection2d, LMPoint2d)
+import Point2d
+import Quantity
 
 
-type TrafficLightKind
+type TrafficLightColor
     = Red
     | Yellow
     | Green
 
 
 type alias TrafficLight =
-    { kind : TrafficLightKind
-    , facing : OrthogonalDirection
-    , timeRemaining : Int
+    { id : Int
+    , color : TrafficLightColor
+    , position : LMPoint2d
+    , facing : LMDirection2d
+    , timeRemaining : Duration
     }
 
 
-type alias TrafficLights =
-    List TrafficLight
+type alias NewTrafficLight =
+    { color : TrafficLightColor
+    , position : LMPoint2d
+    , facing : LMDirection2d
+    , timeRemaining : Duration
+    }
 
 
-new : TrafficLightKind -> OrthogonalDirection -> TrafficLight
-new kind facing =
-    case kind of
+greenDuration : Duration
+greenDuration =
+    Duration.seconds 7
+
+
+yellowDuration : Duration
+yellowDuration =
+    Duration.seconds 1
+
+
+redDuration : Duration
+redDuration =
+    Duration.seconds 8
+
+
+new : NewTrafficLight
+new =
+    { color = Green
+    , position = Point2d.origin
+    , facing = Direction2d.x
+    , timeRemaining = greenDuration
+    }
+
+
+withColor : TrafficLightColor -> NewTrafficLight -> NewTrafficLight
+withColor trafficLightColor newTrafficLight =
+    case trafficLightColor of
         Green ->
-            TrafficLight Green facing 7
+            { newTrafficLight | color = Green, timeRemaining = greenDuration }
 
         Yellow ->
-            TrafficLight Yellow facing 1
+            { newTrafficLight | color = Yellow, timeRemaining = yellowDuration }
 
         Red ->
-            TrafficLight Red facing 8
+            { newTrafficLight | color = Red, timeRemaining = redDuration }
 
 
-default : List TrafficLight
-default =
-    [ new Green Up
-    , new Green Down
-    , new Red Left
-    , new Red Right
-    ]
+withPosition : LMPoint2d -> NewTrafficLight -> NewTrafficLight
+withPosition position newTrafficLight =
+    { newTrafficLight | position = position }
 
 
-advanceTimer : TrafficLight -> TrafficLight
-advanceTimer tl =
-    { tl | timeRemaining = tl.timeRemaining - 1 }
+build : Int -> NewTrafficLight -> TrafficLight
+build id newTrafficLight =
+    { id = id
+    , color = newTrafficLight.color
+    , position = newTrafficLight.position
+    , facing = newTrafficLight.facing
+    , timeRemaining = newTrafficLight.timeRemaining
+    }
 
 
-advanceLight : TrafficLightKind -> TrafficLightKind
-advanceLight tlKind =
-    case tlKind of
-        Green ->
-            Yellow
+advance : TrafficLight -> TrafficLight
+advance trafficLight =
+    let
+        timeRemainingAfterTick =
+            trafficLight.timeRemaining
+                |> Quantity.minus (Duration.seconds 1)
+    in
+    if timeRemainingAfterTick == Duration.seconds 0 then
+        let
+            ( nextColor, nextTimeRemaining ) =
+                case trafficLight.color of
+                    Green ->
+                        ( Yellow, yellowDuration )
 
-        Yellow ->
-            Red
+                    Yellow ->
+                        ( Red, redDuration )
 
-        Red ->
-            Green
+                    Red ->
+                        ( Green, greenDuration )
+        in
+        { trafficLight | color = nextColor, timeRemaining = nextTimeRemaining }
+
+    else
+        { trafficLight | timeRemaining = timeRemainingAfterTick }
