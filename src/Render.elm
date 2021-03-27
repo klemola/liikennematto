@@ -18,7 +18,14 @@ import Collage
 import Collage.Layout as Layout
 import Collage.Render exposing (svg)
 import Color
-import Config exposing (boardSize, carFieldOfView, carLength, carWidth, tileSize)
+import Config
+    exposing
+        ( boardSize
+        , carFieldOfView
+        , carLength
+        , carWidth
+        , tileSize
+        )
 import Dict
 import Direction2d
 import Geometry exposing (toLMUnits)
@@ -28,6 +35,7 @@ import Html exposing (Html)
 import Lot exposing (Lot)
 import Maybe.Extra as Maybe
 import RoadNetwork exposing (ConnectionKind(..), RoadNetwork)
+import TrafficLight exposing (TrafficLight, TrafficLightColor(..))
 import Triangle2d
 import World exposing (World)
 
@@ -40,13 +48,14 @@ type alias DebugLayers =
 
 
 view : World -> DebugLayers -> Html msg
-view { board, cars, lots, roadNetwork } { showRoadNetwork, showCarDebugVisuals } =
+view { board, cars, lots, roadNetwork, trafficLights } { showRoadNetwork, showCarDebugVisuals } =
     let
         base =
             renderBoard board
                 |> Layout.at Layout.bottomLeft
-                    (renderLots (Dict.values lots))
-                |> Layout.at Layout.bottomLeft (renderCars (Dict.values cars) showCarDebugVisuals)
+                    (renderLots lots)
+                |> Layout.at Layout.bottomLeft (renderCars cars showCarDebugVisuals)
+                |> Layout.at Layout.bottomLeft (renderTrafficLights trafficLights)
 
         withConditionalLayers =
             if showRoadNetwork then
@@ -95,18 +104,23 @@ renderTile tile =
         |> Graphics.texture renderedSize
 
 
-renderCars : List Car -> Bool -> Collage msg
+renderCars : World.Cars -> Bool -> Collage msg
 renderCars cars showCarDebugVisuals =
     cars
-        |> List.map
-            (\car ->
-                if showCarDebugVisuals then
-                    renderCar car
-                        |> renderWithDebug car renderCarDebug
+        |> Dict.foldl
+            (\_ car acc ->
+                let
+                    renderedCar =
+                        if showCarDebugVisuals then
+                            renderCar car
+                                |> renderWithDebug car renderCarDebug
 
-                else
-                    renderCar car
+                        else
+                            renderCar car
+                in
+                renderedCar :: acc
             )
+            []
         |> Collage.group
 
 
@@ -117,9 +131,10 @@ renderCar car =
         |> Collage.shift (Geometry.pointToPositionAsTuple car.position)
 
 
-renderLots : List Lot -> Collage msg
+renderLots : World.Lots -> Collage msg
 renderLots lots =
-    List.map renderLot lots
+    lots
+        |> Dict.foldl (\_ lot acc -> renderLot lot :: acc) []
         |> Collage.group
 
 
@@ -248,8 +263,45 @@ renderRoadNetwork roadNetwork =
         ]
 
 
+renderTrafficLights : World.TrafficLights -> Collage msg
+renderTrafficLights trafficLights =
+    trafficLights
+        |> Dict.foldl (\_ tl acc -> renderTrafficLight tl :: acc) []
+        |> Collage.group
 
+
+renderTrafficLight : TrafficLight -> Collage msg
+renderTrafficLight trafficLight =
+    let
+        markerSize =
+            tileSize * 0.1
+
+        borderSize =
+            markerSize * 0.16
+
+        border =
+            solid borderSize <| uniform Color.grey
+
+        color =
+            case trafficLight.color of
+                Green ->
+                    Color.darkGreen
+
+                Yellow ->
+                    Color.darkYellow
+
+                Red ->
+                    Color.darkRed
+    in
+    Collage.circle markerSize
+        |> Collage.styled ( uniform color, border )
+        |> Collage.shift (Geometry.pointToPositionAsTuple trafficLight.position)
+
+
+
+--
 -- Debug
+--
 
 
 renderWithDebug : a -> (a -> Collage msg) -> Collage msg -> Collage msg

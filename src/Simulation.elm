@@ -25,6 +25,7 @@ import Round
 import Set exposing (Set)
 import Task
 import Time
+import TrafficLight
 import World exposing (World)
 
 
@@ -160,8 +161,12 @@ generateEnvironmentAfterDelay seed =
 
 updateEnvironment : World -> World
 updateEnvironment world =
-    -- TODO: reimplement traffic lights
-    world
+    let
+        nextTrafficLights =
+            world.trafficLights
+                |> Dict.map (\_ trafficLight -> TrafficLight.advance trafficLight)
+    in
+    { world | trafficLights = nextTrafficLights }
 
 
 attemptGenerateEnvironment : World -> Random.Seed -> SimulationState -> ( World, Random.Seed )
