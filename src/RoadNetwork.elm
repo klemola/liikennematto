@@ -148,28 +148,19 @@ createConnections { nodes, board, remainingTiles, lots } =
 
 toConnections : Board -> Cell -> Tile -> Dict Int Lot -> List Connection
 toConnections board cell tile lots =
-    case tile of
-        6 ->
-            lotConnections cell Cell.right lots
+    if tile == Board.twoLaneRoadHorizontal then
+        lotConnections cell Cell.right lots
 
-        9 ->
-            lotConnections cell Cell.up lots
+    else if tile == Board.twoLaneRoadVertical then
+        lotConnections cell Cell.up lots
 
-        8 ->
-            deadendConnections cell Cell.up
+    else if Board.isDeadend tile then
+        Board.potentialConnections tile
+            |> List.concatMap (Cell.orthogonalDirectionToLmDirection >> deadendConnections cell)
 
-        2 ->
-            deadendConnections cell Cell.right
-
-        1 ->
-            deadendConnections cell Cell.down
-
-        4 ->
-            deadendConnections cell Cell.left
-
-        _ ->
-            Board.potentialConnections tile
-                |> List.concatMap (connectionsByTileEntryDirection board cell tile)
+    else
+        Board.potentialConnections tile
+            |> List.concatMap (connectionsByTileEntryDirection board cell tile)
 
 
 lotConnections : Cell -> LMDirection2d -> Dict Int Lot -> List Connection
