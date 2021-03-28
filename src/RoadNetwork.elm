@@ -24,7 +24,7 @@ import Direction2d
 import Geometry exposing (LMBoundingBox2d, LMDirection2d, LMPoint2d)
 import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
 import Graph.DOT
-import Lot exposing (Lot)
+import Lot exposing (Lot, Lots)
 import Maybe.Extra as Maybe
 import Point2d
 import Random
@@ -40,10 +40,11 @@ type alias RNNodeContext =
 
 
 type alias Connection =
-    { position : LMPoint2d
+    { kind : ConnectionKind
+    , position : LMPoint2d
     , direction : LMDirection2d
     , cell : Cell
-    , kind : ConnectionKind
+    , tile : Tile
 
     -- Room for improvement: support more than one lot per (anchor) cell
     , lotId : Maybe Int
@@ -68,7 +69,7 @@ new =
     Graph.empty
 
 
-fromBoardAndLots : Board -> Dict Int Lot -> RoadNetwork
+fromBoardAndLots : Board -> Lots -> RoadNetwork
 fromBoardAndLots board lots =
     let
         tilePriority ( _, tile ) =
@@ -146,25 +147,25 @@ createConnections { nodes, board, remainingTiles, lots } =
                 }
 
 
-toConnections : Board -> Cell -> Tile -> Dict Int Lot -> List Connection
+toConnections : Board -> Cell -> Tile -> Lots -> List Connection
 toConnections board cell tile lots =
     if tile == Board.twoLaneRoadHorizontal then
-        lotConnections cell Cell.right lots
+        lotConnections cell tile Cell.right lots
 
     else if tile == Board.twoLaneRoadVertical then
-        lotConnections cell Cell.up lots
+        lotConnections cell tile Cell.up lots
 
     else if Board.isDeadend tile then
         Board.potentialConnections tile
-            |> List.concatMap (Cell.orthogonalDirectionToLmDirection >> deadendConnections cell)
+            |> List.concatMap (Cell.orthogonalDirectionToLmDirection >> deadendConnections cell tile)
 
     else
         Board.potentialConnections tile
             |> List.concatMap (connectionsByTileEntryDirection board cell tile)
 
 
-lotConnections : Cell -> LMDirection2d -> Dict Int Lot -> List Connection
-lotConnections cell trafficDirection lots =
+lotConnections : Cell -> Tile -> LMDirection2d -> Lots -> List Connection
+lotConnections cell tile trafficDirection lots =
     case Dict.find (\_ lot -> Lot.anchorCell lot == cell) lots of
         Just ( id, lot ) ->
             let
@@ -182,10 +183,11 @@ lotConnections cell trafficDirection lots =
                     else
                         ( posB, Direction2d.reverse trafficDirection )
             in
-            [ { position = position
+            [ { kind = LotEntry
+              , position = position
               , direction = direction
               , cell = cell
-              , kind = LotEntry
+              , tile = tile
               , lotId = Just id
               }
             ]
@@ -194,25 +196,27 @@ lotConnections cell trafficDirection lots =
             []
 
 
-deadendConnections : Cell -> LMDirection2d -> List Connection
-deadendConnections cell trafficDirection =
+deadendConnections : Cell -> Tile -> LMDirection2d -> List Connection
+deadendConnections cell tile trafficDirection =
     let
         ( entryPosition, exitPosition ) =
             laneCenterPositionsByDirection cell trafficDirection
 
         entryConnection =
-            { position = entryPosition
+            { kind = DeadendEntry
+            , position = entryPosition
             , direction = trafficDirection
             , cell = cell
-            , kind = DeadendEntry
+            , tile = tile
             , lotId = Nothing
             }
 
         exitConnection =
-            { position = exitPosition
+            { kind = DeadendExit
+            , position = exitPosition
             , direction = Direction2d.reverse trafficDirection
             , cell = cell
-            , kind = DeadendExit
+            , tile = tile
             , lotId = Nothing
             }
     in
@@ -264,61 +268,69 @@ connectionsByTileEntryDirection board cell tile direction =
     in
     case direction of
         Up ->
-            [ { position = shift outerLaneOffset tileSize
+            [ { kind = startConnectionKind
+              , position = shift outerLaneOffset tileSize
               , direction = Cell.up
               , cell = cell
-              , kind = startConnectionKind
+              , tile = tile
               , lotId = Nothing
               }
-            , { position = shift innerLaneOffset tileSize
+            , { kind = endConnectionKind
+              , position = shift innerLaneOffset tileSize
               , direction = Cell.down
               , cell = cell
-              , kind = endConnectionKind
+              , tile = tile
               , lotId = Nothing
               }
             ]
 
         Right ->
-            [ { position = shift tileSize innerLaneOffset
+            [ { kind = startConnectionKind
+              , position = shift tileSize innerLaneOffset
               , direction = Cell.right
               , cell = cell
-              , kind = startConnectionKind
+              , tile = tile
               , lotId = Nothing
               }
-            , { position = shift tileSize outerLaneOffset
+            , { kind = endConnectionKind
+              , position = shift tileSize outerLaneOffset
               , direction = Cell.left
               , cell = cell
-              , kind = endConnectionKind
+              , tile = tile
               , lotId = Nothing
               }
             ]
 
         Down ->
-            [ { position = shift innerLaneOffset 0
+            [ { kind = startConnectionKind
+              , position = shift innerLaneOffset 0
               , direction = Cell.down
               , cell = cell
-              , kind = startConnectionKind
+              , tile = tile
               , lotId = Nothing
               }
-            , { position = shift outerLaneOffset 0
+            , { kind = endConnectionKind
+              , position = shift outerLaneOffset 0
               , direction = Cell.up
               , cell = cell
-              , kind = endConnectionKind
+              , tile = tile
               , lotId = Nothing
               }
             ]
 
         Left ->
-            [ { position = shift 0 outerLaneOffset
+            [ { kind = startConnectionKind
+              , position = shift 0 outerLaneOffset
               , direction = Cell.left
               , cell = cell
-              , kind = startConnectionKind
+              , tile = tile
               , lotId = Nothing
               }
-            , { position = shift 0 innerLaneOffset
+            , { kind = endConnectionKind
+              , position = shift 0 innerLaneOffset
               , direction = Cell.right
               , cell = cell
-              , kind = endConnectionKind
+              , tile = tile
               , lotId = Nothing
               }
             ]
