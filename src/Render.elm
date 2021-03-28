@@ -2,7 +2,7 @@ module Render exposing (view)
 
 import Angle
 import Board exposing (Board, Tile)
-import Car exposing (Car, Status(..))
+import Car exposing (Car, Cars, Status(..))
 import Cell exposing (OrthogonalDirection(..))
 import Circle2d
 import Collage
@@ -32,10 +32,10 @@ import Geometry exposing (toLMUnits)
 import Graph
 import Graphics
 import Html exposing (Html)
-import Lot exposing (Lot)
+import Lot exposing (Lot, Lots)
 import Maybe.Extra as Maybe
 import RoadNetwork exposing (ConnectionKind(..), RoadNetwork)
-import TrafficLight exposing (TrafficLight, TrafficLightColor(..))
+import TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
 import Triangle2d
 import World exposing (World)
 
@@ -104,7 +104,7 @@ renderTile tile =
         |> Graphics.texture renderedSize
 
 
-renderCars : World.Cars -> Bool -> Collage msg
+renderCars : Cars -> Bool -> Collage msg
 renderCars cars showCarDebugVisuals =
     cars
         |> Dict.foldl
@@ -131,7 +131,7 @@ renderCar car =
         |> Collage.shift (Geometry.pointToPositionAsTuple car.position)
 
 
-renderLots : World.Lots -> Collage msg
+renderLots : Lots -> Collage msg
 renderLots lots =
     lots
         |> Dict.foldl (\_ lot acc -> renderLot lot :: acc) []
@@ -263,7 +263,7 @@ renderRoadNetwork roadNetwork =
         ]
 
 
-renderTrafficLights : World.TrafficLights -> Collage msg
+renderTrafficLights : TrafficLights -> Collage msg
 renderTrafficLights trafficLights =
     trafficLights
         |> Dict.foldl (\_ tl acc -> renderTrafficLight tl :: acc) []
