@@ -1,6 +1,7 @@
 module Car exposing
     ( Car
     , CarKind(..)
+    , Cars
     , Status(..)
     , beginLeaveLot
     , boundingBox
@@ -29,8 +30,10 @@ module Car exposing
 import Acceleration exposing (Acceleration)
 import Angle exposing (Angle)
 import Config exposing (acceleration, carWidth, maxVelocity)
+import Dict exposing (Dict)
 import Direction2d
 import Duration
+import Entity exposing (Id)
 import Geometry exposing (LMBoundingBox2d, LMPoint2d, LocalPath)
 import Point2d
 import Quantity
@@ -39,7 +42,7 @@ import Speed exposing (Speed)
 
 
 type alias Car =
-    { id : Int
+    { id : Id
     , position : LMPoint2d
     , rotation : Angle
     , velocity : Speed
@@ -63,6 +66,10 @@ type alias NewCar =
     , route : List RNNodeContext
     , localPath : LocalPath
     }
+
+
+type alias Cars =
+    Dict Id Car
 
 
 type CarKind

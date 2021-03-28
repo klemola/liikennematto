@@ -2,6 +2,7 @@ module TrafficLight exposing
     ( NewTrafficLight
     , TrafficLight
     , TrafficLightColor(..)
+    , TrafficLights
     , advance
     , build
     , new
@@ -10,8 +11,10 @@ module TrafficLight exposing
     )
 
 import Cell exposing (OrthogonalDirection(..))
+import Dict exposing (Dict)
 import Direction2d
 import Duration exposing (Duration)
+import Entity exposing (Id)
 import Geometry exposing (LMDirection2d, LMPoint2d)
 import Point2d
 import Quantity
@@ -24,7 +27,7 @@ type TrafficLightColor
 
 
 type alias TrafficLight =
-    { id : Int
+    { id : Id
     , color : TrafficLightColor
     , position : LMPoint2d
     , facing : LMDirection2d
@@ -38,6 +41,10 @@ type alias NewTrafficLight =
     , facing : LMDirection2d
     , timeRemaining : Duration
     }
+
+
+type alias TrafficLights =
+    Dict Id TrafficLight
 
 
 greenDuration : Duration

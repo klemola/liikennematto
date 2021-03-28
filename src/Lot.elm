@@ -3,6 +3,7 @@ module Lot exposing
     , Building
     , BuildingKind(..)
     , Lot
+    , Lots
     , NewLot
     , all
     , anchorCell
@@ -16,6 +17,8 @@ module Lot exposing
 import BoundingBox2d
 import Cell exposing (Cell, OrthogonalDirection(..))
 import Config exposing (tileSize)
+import Dict exposing (Dict)
+import Entity exposing (Id)
 import Geometry exposing (LMBoundingBox2d, LMPoint2d)
 
 
@@ -33,6 +36,10 @@ type alias NewLot =
     , width : Float
     , height : Float
     }
+
+
+type alias Lots =
+    Dict Id Lot
 
 
 type alias Anchor =

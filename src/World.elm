@@ -1,8 +1,5 @@
 module World exposing
-    ( Cars
-    , Lots
-    , TrafficLights
-    , World
+    ( World
     , addLot
     , buildRoadAt
     , canBuildRoadAt
@@ -19,17 +16,18 @@ module World exposing
     )
 
 import Board exposing (Board, Tile)
-import Car exposing (Car, CarKind(..))
+import Car exposing (Car, CarKind(..), Cars)
 import Cell exposing (Cell, Corner(..), OrthogonalDirection(..))
 import Config exposing (acceleration, maxVelocity)
-import Dict exposing (Dict)
+import Dict
 import Dict.Extra as Dict
 import Direction2d
+import Entity exposing (Id)
 import Geometry exposing (LMBoundingBox2d)
-import Lot exposing (BuildingKind(..), Lot)
+import Lot exposing (BuildingKind(..), Lot, Lots)
 import Quantity
 import RoadNetwork exposing (RNNodeContext, RoadNetwork)
-import TrafficLight exposing (TrafficLight)
+import TrafficLight exposing (TrafficLights)
 
 
 type alias World =
@@ -39,36 +37,6 @@ type alias World =
     , cars : Cars
     , lots : Lots
     }
-
-
-type alias Id =
-    Int
-
-
-type alias Cars =
-    Dict Id Car
-
-
-type alias Lots =
-    Dict Id Lot
-
-
-type alias TrafficLights =
-    Dict Id TrafficLight
-
-
-
---
--- Internals
---
-
-
-nextId : Dict Id a -> Id
-nextId dict =
-    Dict.keys dict
-        |> List.maximum
-        |> Maybe.map ((+) 1)
-        |> Maybe.withDefault 1
 
 
 
@@ -91,7 +59,7 @@ default : World
 default =
     let
         testTrafficLightId =
-            nextId empty.trafficLights
+            Entity.nextId empty.trafficLights
 
         testTrafficLight =
             TrafficLight.new
@@ -117,7 +85,7 @@ addLot : Lot -> World -> World
 addLot lot world =
     let
         nextLotId =
-            nextId world.lots
+            Entity.nextId world.lots
 
         nextLots =
             Dict.insert nextLotId lot world.lots
@@ -133,7 +101,7 @@ addLotResident : Int -> World -> World
 addLotResident lotId world =
     let
         carId =
-            nextId world.cars
+            Entity.nextId world.cars
 
         createCar kind =
             Car.new kind
@@ -155,7 +123,7 @@ spawnCar : World -> RNNodeContext -> World
 spawnCar world nodeCtx =
     let
         id =
-            nextId world.cars
+            Entity.nextId world.cars
 
         car =
             Car.new Car.TestCar
