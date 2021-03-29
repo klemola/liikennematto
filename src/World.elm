@@ -58,20 +58,14 @@ empty =
 default : World
 default =
     let
-        testTrafficLightId =
-            Entity.nextId empty.trafficLights
-
-        testTrafficLight =
-            TrafficLight.new
-                |> TrafficLight.withPosition (Geometry.pointFromPosition { x = 80, y = 80 })
-                |> TrafficLight.build testTrafficLightId
+        ( roadNetwork, trafficLights ) =
+            RoadNetwork.fromBoardAndLots initialBoard empty.lots
+                |> RoadNetwork.setupTrafficLights empty.trafficLights
     in
     { empty
         | board = initialBoard
-        , roadNetwork = RoadNetwork.fromBoardAndLots initialBoard empty.lots
-        , trafficLights =
-            empty.trafficLights
-                |> Dict.insert testTrafficLightId testTrafficLight
+        , roadNetwork = roadNetwork
+        , trafficLights = trafficLights
     }
 
 
@@ -270,14 +264,16 @@ worldAfterBoardChange { cell, nextBoard, world } =
                 , world = world
                 }
 
-        roadNetwork =
+        ( roadNetwork, nextTrafficLights ) =
             RoadNetwork.fromBoardAndLots nextBoard world.lots
+                |> RoadNetwork.setupTrafficLights world.trafficLights
     in
     { world
         | board = nextBoard
         , roadNetwork = roadNetwork
         , cars = nextCars
         , lots = nextLots
+        , trafficLights = nextTrafficLights
     }
 
 
