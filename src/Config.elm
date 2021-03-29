@@ -67,6 +67,11 @@ nodeSize =
     4
 
 
+trafficLightRadius : Float
+trafficLightRadius =
+    5
+
+
 
 --
 -- Unit constants

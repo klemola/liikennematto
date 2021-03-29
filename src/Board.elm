@@ -2,6 +2,7 @@ module Board exposing
     ( Board
     , Tile
     , applyMask
+    , crossIntersection
     , defaultTile
     , inBounds
     , isCurve
@@ -57,7 +58,12 @@ isDeadend tile =
 
 intersectionTiles : Set Tile
 intersectionTiles =
-    Set.fromList [ 7, 11, 13, 14, 15 ]
+    Set.fromList [ 7, 11, 13, 14, crossIntersection ]
+
+
+crossIntersection : Tile
+crossIntersection =
+    15
 
 
 isIntersection : Tile -> Bool

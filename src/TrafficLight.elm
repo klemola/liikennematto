@@ -7,6 +7,7 @@ module TrafficLight exposing
     , build
     , new
     , withColor
+    , withFacing
     , withPosition
     )
 
@@ -87,6 +88,11 @@ withColor trafficLightColor newTrafficLight =
 withPosition : LMPoint2d -> NewTrafficLight -> NewTrafficLight
 withPosition position newTrafficLight =
     { newTrafficLight | position = position }
+
+
+withFacing : LMDirection2d -> NewTrafficLight -> NewTrafficLight
+withFacing direction newTrafficLight =
+    { newTrafficLight | facing = direction }
 
 
 build : Int -> NewTrafficLight -> TrafficLight

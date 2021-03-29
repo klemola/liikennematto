@@ -25,6 +25,7 @@ import Config
         , carLength
         , carWidth
         , tileSize
+        , trafficLightRadius
         )
 import Dict
 import Direction2d
@@ -273,11 +274,8 @@ renderTrafficLights trafficLights =
 renderTrafficLight : TrafficLight -> Collage msg
 renderTrafficLight trafficLight =
     let
-        markerSize =
-            tileSize * 0.1
-
         borderSize =
-            markerSize * 0.16
+            1
 
         border =
             solid borderSize <| uniform Color.grey
@@ -293,7 +291,7 @@ renderTrafficLight trafficLight =
                 Red ->
                     Color.darkRed
     in
-    Collage.circle markerSize
+    Collage.circle trafficLightRadius
         |> Collage.styled ( uniform color, border )
         |> Collage.shift (Geometry.pointToPositionAsTuple trafficLight.position)
 

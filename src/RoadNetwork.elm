@@ -10,17 +10,19 @@ module RoadNetwork exposing
     , getOutgoingConnections
     , getRandomNode
     , new
+    , setupTrafficLights
     , toDotString
     )
 
 import Angle
-import Board exposing (Board, Tile)
+import Board exposing (Board, Tile, crossIntersection)
 import BoundingBox2d
 import Cell exposing (Cell, OrthogonalDirection(..))
 import Config exposing (innerLaneOffset, outerLaneOffset, tileSize)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction2d
+import Entity exposing (Id)
 import Geometry exposing (LMBoundingBox2d, LMDirection2d, LMPoint2d)
 import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
 import Graph.DOT
@@ -29,6 +31,7 @@ import Maybe.Extra as Maybe
 import Point2d
 import Random
 import Random.Extra
+import TrafficLight exposing (TrafficLight, TrafficLights)
 
 
 type alias RoadNetwork =
@@ -47,6 +50,7 @@ type alias Connection =
     , tile : Tile
 
     -- Room for improvement: support more than one lot per (anchor) cell
+    , trafficControl : TrafficControl
     , lotId : Maybe Int
     }
 
@@ -58,6 +62,11 @@ type ConnectionKind
     | DeadendExit
     | LotEntry
     | Stopgap
+
+
+type TrafficControl
+    = Signal Id
+    | None
 
 
 type alias Lane =
@@ -97,6 +106,69 @@ fromBoardAndLots board lots =
             createLanes nodes
     in
     Graph.fromNodesAndEdges nodes edges
+
+
+
+--
+-- Traffic lights
+--
+
+
+setupTrafficLights : TrafficLights -> RoadNetwork -> ( RoadNetwork, TrafficLights )
+setupTrafficLights currentTrafficLights roadNetwork =
+    roadNetwork
+        |> Graph.fold (toTrafficLights currentTrafficLights) ( roadNetwork, Dict.empty )
+
+
+toTrafficLights : TrafficLights -> RNNodeContext -> ( RoadNetwork, TrafficLights ) -> ( RoadNetwork, TrafficLights )
+toTrafficLights currentTrafficLights nodeCtx ( roadNetwork, nextTrafficLights ) =
+    -- keeps existing traffic lights if possible, may create new ones
+    let
+        connection =
+            nodeCtx.node.label
+    in
+    if connection.kind == LaneEnd && connection.tile == crossIntersection then
+        let
+            trafficLight =
+                currentTrafficLights
+                    |> Dict.find (\_ existingTrafficLight -> existingTrafficLight.position == connection.position)
+                    |> Maybe.map Tuple.second
+                    |> Maybe.withDefault (createTrafficLight connection nextTrafficLights)
+        in
+        ( roadNetwork
+            |> Graph.insert (linkTrafficLightToNode trafficLight.id nodeCtx)
+        , nextTrafficLights
+            |> Dict.insert trafficLight.id trafficLight
+        )
+
+    else
+        ( roadNetwork
+            |> Graph.update nodeCtx.node.id (Maybe.map removeTrafficLightLinkFromNode)
+        , nextTrafficLights
+        )
+
+
+createTrafficLight : Connection -> TrafficLights -> TrafficLight
+createTrafficLight connection nextTrafficLights =
+    let
+        nextId =
+            Entity.nextId nextTrafficLights
+
+        facing =
+            Direction2d.reverse connection.direction
+
+        color =
+            if connection.direction == Direction2d.positiveY || connection.direction == Direction2d.negativeY then
+                TrafficLight.Green
+
+            else
+                TrafficLight.Red
+    in
+    TrafficLight.new
+        |> TrafficLight.withPosition connection.position
+        |> TrafficLight.withFacing facing
+        |> TrafficLight.withColor color
+        |> TrafficLight.build nextId
 
 
 
@@ -188,6 +260,7 @@ lotConnections cell tile trafficDirection lots =
               , direction = direction
               , cell = cell
               , tile = tile
+              , trafficControl = None
               , lotId = Just id
               }
             ]
@@ -208,6 +281,7 @@ deadendConnections cell tile trafficDirection =
             , direction = trafficDirection
             , cell = cell
             , tile = tile
+            , trafficControl = None
             , lotId = Nothing
             }
 
@@ -217,6 +291,7 @@ deadendConnections cell tile trafficDirection =
             , direction = Direction2d.reverse trafficDirection
             , cell = cell
             , tile = tile
+            , trafficControl = None
             , lotId = Nothing
             }
     in
@@ -273,6 +348,7 @@ connectionsByTileEntryDirection board cell tile direction =
               , direction = Cell.up
               , cell = cell
               , tile = tile
+              , trafficControl = None
               , lotId = Nothing
               }
             , { kind = endConnectionKind
@@ -280,6 +356,7 @@ connectionsByTileEntryDirection board cell tile direction =
               , direction = Cell.down
               , cell = cell
               , tile = tile
+              , trafficControl = None
               , lotId = Nothing
               }
             ]
@@ -290,6 +367,7 @@ connectionsByTileEntryDirection board cell tile direction =
               , direction = Cell.right
               , cell = cell
               , tile = tile
+              , trafficControl = None
               , lotId = Nothing
               }
             , { kind = endConnectionKind
@@ -297,6 +375,7 @@ connectionsByTileEntryDirection board cell tile direction =
               , direction = Cell.left
               , cell = cell
               , tile = tile
+              , trafficControl = None
               , lotId = Nothing
               }
             ]
@@ -307,6 +386,7 @@ connectionsByTileEntryDirection board cell tile direction =
               , direction = Cell.down
               , cell = cell
               , tile = tile
+              , trafficControl = None
               , lotId = Nothing
               }
             , { kind = endConnectionKind
@@ -314,6 +394,7 @@ connectionsByTileEntryDirection board cell tile direction =
               , direction = Cell.up
               , cell = cell
               , tile = tile
+              , trafficControl = None
               , lotId = Nothing
               }
             ]
@@ -324,6 +405,7 @@ connectionsByTileEntryDirection board cell tile direction =
               , direction = Cell.left
               , cell = cell
               , tile = tile
+              , trafficControl = None
               , lotId = Nothing
               }
             , { kind = endConnectionKind
@@ -331,6 +413,7 @@ connectionsByTileEntryDirection board cell tile direction =
               , direction = Cell.right
               , cell = cell
               , tile = tile
+              , trafficControl = None
               , lotId = Nothing
               }
             ]
@@ -545,6 +628,34 @@ closestToOriginOrdering current other =
     in
     Point2d.distanceFrom origin target
         |> Geometry.toFloat
+
+
+linkTrafficLightToNode : Id -> RNNodeContext -> RNNodeContext
+linkTrafficLightToNode trafficLightId nodeCtx =
+    setTrafficControl (Signal trafficLightId) nodeCtx
+
+
+removeTrafficLightLinkFromNode : RNNodeContext -> RNNodeContext
+removeTrafficLightLinkFromNode nodeCtx =
+    setTrafficControl None nodeCtx
+
+
+setTrafficControl : TrafficControl -> RNNodeContext -> RNNodeContext
+setTrafficControl trafficControl nodeCtx =
+    let
+        node =
+            nodeCtx.node
+
+        label =
+            nodeCtx.node.label
+
+        nextLabel =
+            { label | trafficControl = trafficControl }
+
+        nextNode =
+            { node | label = nextLabel }
+    in
+    { nodeCtx | node = nextNode }
 
 
 
