@@ -24,12 +24,14 @@ carOne : Car
 carOne =
     Car.new Car.SedanA
         |> Car.build 1
+        |> Car.startMoving
 
 
 carTwo : Car
 carTwo =
     Car.new Car.SedanB
         |> Car.build 2
+        |> Car.startMoving
 
 
 fakeRandomDirections : List Cell.OrthogonalDirection
@@ -124,7 +126,7 @@ collisionSetupPathsIntersect =
         carWithRoute =
             case carDestination of
                 Just nodeCtx ->
-                    Car.buildRoute car nodeCtx
+                    Car.createRoute nodeCtx car
 
                 Nothing ->
                     Debug.todo "invalid test fixture"
@@ -138,7 +140,7 @@ collisionSetupPathsIntersect =
         otherCarWithRoute =
             case otherCarDestination of
                 Just nodeCtx ->
-                    Car.buildRoute otherCar nodeCtx
+                    Car.createRoute nodeCtx otherCar
 
                 Nothing ->
                     Debug.todo "invalid test fixture"
@@ -166,7 +168,7 @@ collisionSetupNearCollision =
         carWithRoute =
             case carDestination of
                 Just nodeCtx ->
-                    Car.buildRoute car nodeCtx
+                    Car.createRoute nodeCtx car
 
                 Nothing ->
                     Debug.todo "invalid test fixture"
@@ -180,7 +182,7 @@ collisionSetupNearCollision =
         otherCarWithRoute =
             case otherCarDestination of
                 Just nodeCtx ->
-                    Car.buildRoute otherCar nodeCtx
+                    Car.createRoute nodeCtx otherCar
 
                 Nothing ->
                     Debug.todo "invalid test fixture"

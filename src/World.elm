@@ -125,11 +125,10 @@ spawnCar world nodeCtx =
                 |> Car.withRotation (Direction2d.toAngle nodeCtx.node.label.direction)
                 |> Car.withVelocity maxVelocity
                 |> Car.build id
-
-        withRoute =
-            Car.buildRoute car nodeCtx
+                |> Car.createRoute nodeCtx
+                |> Car.startMoving
     in
-    { world | cars = Dict.insert id withRoute world.cars }
+    { world | cars = Dict.insert id car world.cars }
 
 
 setCar : Id -> Car -> World -> World
@@ -305,15 +304,13 @@ moveCarToHome world car =
             car.homeLotId
                 |> Maybe.andThen (\lotId -> Dict.get lotId world.lots)
 
-        nextCarBase =
+        homeNode =
             car.homeLotId
                 |> Maybe.andThen (RoadNetwork.findNodeByLotId world.roadNetwork)
-                |> Maybe.map (Car.buildRoute car)
-                |> Maybe.withDefault car
     in
-    case home of
-        Just lot ->
-            { nextCarBase
+    case ( home, homeNode ) of
+        ( Just lot, Just nodeCtx ) ->
+            { car
                 | position = Lot.parkingSpot lot
                 , rotation =
                     lot.content.entryDirection
@@ -324,8 +321,9 @@ moveCarToHome world car =
                 , velocity = Quantity.zero
                 , acceleration = acceleration.speedUp
             }
+                |> Car.createRoute nodeCtx
 
-        Nothing ->
+        _ ->
             Car.markAsConfused car
 
 

@@ -148,7 +148,7 @@ updateCar round =
                 applyCarAction Car.move round
 
         ParkedAtLot ->
-            applyCarAction Car.beginLeaveLot round
+            applyCarAction Car.startMoving round
 
         _ ->
             round
@@ -186,7 +186,7 @@ chooseRandomRoute round nodeCtx =
         nextCar =
             connection
                 |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
-                |> Maybe.map (Car.buildRoute activeCar)
+                |> Maybe.map (\nextNodeCtx -> Car.createRoute nextNodeCtx activeCar)
                 |> Maybe.withDefault activeCar
     in
     { round | activeCar = nextCar, seed = nextSeed }
