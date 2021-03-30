@@ -3,11 +3,10 @@ module Car exposing
     , CarKind(..)
     , Cars
     , Status(..)
-    , beginLeaveLot
     , boundingBox
     , break
     , build
-    , buildRoute
+    , createRoute
     , giveWay
     , isAtTheEndOfLocalPath
     , isConfused
@@ -205,6 +204,7 @@ move car =
                     , rotation =
                         car.position
                             |> Geometry.angleToTarget next
+                    , status = Moving
                 }
 
         _ ->
@@ -213,17 +213,29 @@ move car =
 
 waitForTrafficLights : Car -> Car
 waitForTrafficLights car =
-    { car | status = WaitingForTrafficLights }
+    { car
+        | status = WaitingForTrafficLights
+        , acceleration = Quantity.zero
+        , velocity = Quantity.zero
+    }
 
 
 yield : Car -> Car
 yield car =
-    { car | status = Yielding }
+    { car
+        | status = Yielding
+        , acceleration = Quantity.zero
+        , velocity = Quantity.zero
+    }
 
 
 stopAtIntersection : Car -> Car
 stopAtIntersection car =
-    { car | status = StoppedAtIntersection }
+    { car
+        | status = StoppedAtIntersection
+        , acceleration = Quantity.zero
+        , velocity = Quantity.zero
+    }
 
 
 giveWay : Car -> Car
@@ -249,27 +261,17 @@ markAsConfused car =
     { car
         | status = Confused
         , velocity = Quantity.zero
+        , acceleration = Quantity.zero
         , route = []
         , localPath = []
     }
 
 
-beginLeaveLot : Car -> Car
-beginLeaveLot car =
-    case car.route of
-        target :: _ ->
-            buildRoute car target
-
-        _ ->
-            car
-
-
-buildRoute : Car -> RNNodeContext -> Car
-buildRoute car nodeCtx =
+createRoute : RNNodeContext -> Car -> Car
+createRoute nodeCtx car =
     { car
         | route = [ nodeCtx ]
         , localPath = localPathToTarget car nodeCtx
-        , status = Moving
     }
 
 

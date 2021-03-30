@@ -52,15 +52,6 @@ suite =
                         )
                         Moving
                 )
-            , test "can make the car turn"
-                (\_ ->
-                    Expect.equal
-                        (curveSetup
-                            |> Round.play
-                            |> getStatus
-                        )
-                        Moving
-                )
             , test "can stop the car at traffic lights"
                 (\_ ->
                     Expect.equal
