@@ -3,6 +3,7 @@ module RoadNetwork exposing
     , ConnectionKind(..)
     , RNNodeContext
     , RoadNetwork
+    , TrafficControl(..)
     , findNodeByLotId
     , findNodeByNodeId
     , findNodeByPosition

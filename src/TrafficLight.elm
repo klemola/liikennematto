@@ -6,6 +6,7 @@ module TrafficLight exposing
     , advance
     , build
     , new
+    , shouldStopTraffic
     , withColor
     , withFacing
     , withPosition
@@ -103,6 +104,11 @@ build id newTrafficLight =
     , facing = newTrafficLight.facing
     , timeRemaining = newTrafficLight.timeRemaining
     }
+
+
+shouldStopTraffic : TrafficLight -> Bool
+shouldStopTraffic trafficLight =
+    trafficLight.color == Red || trafficLight.color == Yellow
 
 
 advance : TrafficLight -> TrafficLight

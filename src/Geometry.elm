@@ -3,6 +3,7 @@ module Geometry exposing
     , LMCircle2d
     , LMCubicSpline2d
     , LMDirection2d
+    , LMEntityDistance
     , LMEntityPositionUnitless
     , LMPoint2d
     , LMTriangle2d
@@ -20,6 +21,7 @@ module Geometry exposing
     , linearLocalPathToTarget
     , noBoundingBoxOverlap
     , pathsCouldCollide
+    , pixelsToLength
     , pixelsToMetersRatio
     , pointFromPosition
     , pointToPosition
@@ -28,6 +30,8 @@ module Geometry exposing
     , speedToString
     , toFloat
     , toLMUnits
+    , trafficLightReactionDistance
+    , trafficLightsStopMargin
     , translateBoundingBoxIn
     , translatePointBy
     , translatePointIn
@@ -41,7 +45,7 @@ import Circle2d exposing (Circle2d)
 import Config exposing (tileSize)
 import CubicSpline2d exposing (CubicSpline2d)
 import Direction2d exposing (Direction2d)
-import Length
+import Length exposing (Length)
 import LineSegment2d
 import Maybe.Extra
 import Pixels exposing (Pixels)
@@ -63,6 +67,10 @@ type alias LMEntityUnits =
 
 type alias LMPoint2d =
     Point2d LMEntityUnits LMEntityCoordinates
+
+
+type alias LMEntityDistance =
+    Quantity Float LMEntityUnits
 
 
 type alias LMDirection2d =
@@ -107,6 +115,16 @@ splineSegmentsAmount =
     16
 
 
+trafficLightReactionDistance : LMEntityDistance
+trafficLightReactionDistance =
+    toLMUnits tileSize
+
+
+trafficLightsStopMargin : LMEntityDistance
+trafficLightsStopMargin =
+    toLMUnits 20
+
+
 
 -- Conversion
 
@@ -130,6 +148,11 @@ speedToString speed =
                 |> String.fromFloat
     in
     "Speed: " ++ speedValue ++ " m/s"
+
+
+pixelsToLength : Quantity Float Pixels -> Length
+pixelsToLength pixels =
+    Quantity.at_ pixelsToMetersRatio pixels
 
 
 accelerationToString : Acceleration -> String
