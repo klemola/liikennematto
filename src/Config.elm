@@ -100,7 +100,7 @@ acceleration :
     }
 acceleration =
     { speedUp = Acceleration.metersPerSecondSquared 5
-    , breakingSlow = Acceleration.metersPerSecondSquared -20
+    , breakingSlow = Acceleration.metersPerSecondSquared -10
     , breakingFast = Acceleration.metersPerSecondSquared -40
     }
 

@@ -9,7 +9,6 @@ module World exposing
     , hasLotAnchor
     , isEmptyArea
     , removeRoadAt
-    , reset
     , setCar
     , spawnCar
     , tileAt
@@ -83,10 +82,15 @@ addLot lot world =
 
         nextLots =
             Dict.insert nextLotId lot world.lots
+
+        ( roadNetwork, nextTrafficLights ) =
+            RoadNetwork.fromBoardAndLots world.board nextLots
+                |> RoadNetwork.setupTrafficLights world.trafficLights
     in
     { world
         | lots = nextLots
-        , roadNetwork = RoadNetwork.fromBoardAndLots world.board nextLots
+        , roadNetwork = roadNetwork
+        , trafficLights = nextTrafficLights
     }
         |> addLotResident nextLotId
 
@@ -158,16 +162,6 @@ removeRoadAt cell world =
                 |> Board.applyMask
         , world = world
         }
-
-
-reset : World -> World
-reset world =
-    { world
-        | cars = empty.cars
-        , lots = empty.lots
-        , board = empty.board
-        , roadNetwork = empty.roadNetwork
-    }
 
 
 

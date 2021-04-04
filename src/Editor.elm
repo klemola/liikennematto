@@ -69,8 +69,7 @@ update world msg model =
 
                 ( Dynamite, _ ) ->
                     ( SmartConstruction
-                    , world
-                        |> World.reset
+                    , World.empty
                     , Cmd.none
                     )
 

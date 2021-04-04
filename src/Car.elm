@@ -9,9 +9,9 @@ module Car exposing
     , createRoute
     , giveWay
     , isAtTheEndOfLocalPath
+    , isBreaking
     , isConfused
     , isStoppedOrWaiting
-    , isStopping
     , markAsConfused
     , move
     , new
@@ -33,9 +33,17 @@ import Dict exposing (Dict)
 import Direction2d
 import Duration
 import Entity exposing (Id)
-import Geometry exposing (LMBoundingBox2d, LMPoint2d, LocalPath)
+import Geometry
+    exposing
+        ( LMBoundingBox2d
+        , LMEntityDistance
+        , LMPoint2d
+        , LocalPath
+        , trafficLightsStopMargin
+        )
+import Length exposing (Length)
 import Point2d
-import Quantity
+import Quantity exposing (Quantity(..))
 import RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Speed exposing (Speed)
 
@@ -87,11 +95,6 @@ type Status
     | Yielding
     | ParkedAtLot
     | Confused
-
-
-stoppedOrWaiting : List Status
-stoppedOrWaiting =
-    [ WaitingForTrafficLights, StoppedAtIntersection, Yielding ]
 
 
 new : CarKind -> NewCar
@@ -150,7 +153,7 @@ isConfused car =
 
 isStoppedOrWaiting : Car -> Bool
 isStoppedOrWaiting car =
-    List.member car.status stoppedOrWaiting
+    car.velocity == Quantity.zero
 
 
 isAtTheEndOfLocalPath : Car -> Bool
@@ -158,9 +161,9 @@ isAtTheEndOfLocalPath car =
     List.isEmpty car.localPath
 
 
-isStopping : Car -> Bool
-isStopping car =
-    car.acceleration |> Quantity.lessThanOrEqualTo acceleration.breakingSlow
+isBreaking : Car -> Bool
+isBreaking car =
+    car.acceleration |> Quantity.lessThan Quantity.zero
 
 
 boundingBox : Car -> LMBoundingBox2d
@@ -204,19 +207,24 @@ move car =
                     , rotation =
                         car.position
                             |> Geometry.angleToTarget next
-                    , status = Moving
                 }
 
         _ ->
             car
 
 
-waitForTrafficLights : Car -> Car
-waitForTrafficLights car =
+waitForTrafficLights : LMEntityDistance -> Car -> Car
+waitForTrafficLights distanceFromTrafficLight car =
+    let
+        targetDistance =
+            distanceFromTrafficLight
+                |> Quantity.minus trafficLightsStopMargin
+                |> Quantity.max Quantity.zero
+                |> Geometry.pixelsToLength
+    in
     { car
         | status = WaitingForTrafficLights
-        , acceleration = Quantity.zero
-        , velocity = Quantity.zero
+        , acceleration = accelerateToZeroOverDistance car.velocity targetDistance
     }
 
 
@@ -313,6 +321,17 @@ isWithinRoundingErrorOf target value =
     round value == target || floor value == target
 
 
+accelerateToZeroOverDistance : Speed -> Length -> Acceleration
+accelerateToZeroOverDistance (Quantity speed) (Quantity distanceToTarget) =
+    Quantity (-speed * speed / (2 * distanceToTarget))
+
+
+
+--
+-- Debug helpers
+--
+
+
 statusDescription : Car -> String
 statusDescription car =
     case car.status of
@@ -320,7 +339,7 @@ statusDescription car =
             "Moving" ++ " " ++ routeDescription car.route
 
         WaitingForTrafficLights ->
-            "Stopped @ traffic lights"
+            "Waiting for traffic lights"
 
         StoppedAtIntersection ->
             "Stopped"

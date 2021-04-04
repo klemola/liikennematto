@@ -10,14 +10,17 @@ module Round exposing
 import Car exposing (Car, Status(..))
 import Circle2d
 import Config exposing (carFieldOfView, carLength, carRotationTolerance, tileSize)
+import Dict
 import Direction2d
-import Geometry exposing (LMTriangle2d, toLMUnits)
+import Geometry exposing (LMEntityDistance, LMTriangle2d, toLMUnits, trafficLightReactionDistance)
 import Maybe.Extra
+import Point2d
 import Quantity
 import Random
 import Random.List
-import RoadNetwork
+import RoadNetwork exposing (TrafficControl(..))
 import Set exposing (Set)
+import TrafficLight exposing (TrafficLight)
 import Triangle2d
 import World exposing (World)
 
@@ -41,7 +44,7 @@ type alias RoundResults =
 type Rule
     = AvoidCollision Int
     | PreventCollision Int
-    | WaitForTrafficLights
+    | WaitForTrafficLights LMEntityDistance
     | YieldAtIntersection
     | StopAtIntersection
 
@@ -73,7 +76,8 @@ checkRules round =
             applyRule round rule
 
         Nothing ->
-            if Car.isStopping round.activeCar then
+            -- cancel the effects of previously applied rules
+            if Car.isStoppedOrWaiting round.activeCar || Car.isBreaking round.activeCar then
                 applyCarAction Car.startMoving round
 
             else
@@ -111,8 +115,12 @@ applyRule round rule =
                 , carsWithPriority = updatePriority otherCarId
             }
 
-        WaitForTrafficLights ->
-            applyCarAction Car.waitForTrafficLights round
+        WaitForTrafficLights distanceFromTrafficLight ->
+            if activeCar.status == WaitingForTrafficLights || Car.isStoppedOrWaiting activeCar then
+                round
+
+            else
+                applyCarAction (Car.waitForTrafficLights distanceFromTrafficLight) round
 
         YieldAtIntersection ->
             applyCarAction Car.yield round
@@ -132,23 +140,21 @@ applyCarAction action round =
 
 updateCar : Round -> Round
 updateCar round =
-    let
-        { activeCar } =
-            round
-    in
-    case activeCar.status of
+    case round.activeCar.status of
         Moving ->
-            if Car.isAtTheEndOfLocalPath activeCar then
+            if Car.isAtTheEndOfLocalPath round.activeCar then
                 round
                     |> removeActiveCarPriority
                     |> chooseNextConnection
-                    |> applyCarAction Car.move
 
             else
                 applyCarAction Car.move round
 
         ParkedAtLot ->
             applyCarAction Car.startMoving round
+
+        WaitingForTrafficLights ->
+            applyCarAction Car.move round
 
         _ ->
             round
@@ -250,13 +256,11 @@ checkPathCollision activeCar otherCars =
 pathsCouldCollideWith : LMTriangle2d -> Car -> Car -> Bool
 pathsCouldCollideWith fieldOfViewTriangle activeCar otherCar =
     let
-        checkRequired =
-            Triangle2d.contains otherCar.position fieldOfViewTriangle
-
         headingRoughlyInTheSameDirection =
             Quantity.equalWithin carRotationTolerance activeCar.rotation otherCar.rotation
     in
-    checkRequired
+    not (Car.isStoppedOrWaiting otherCar)
+        && Triangle2d.contains otherCar.position fieldOfViewTriangle
         && not headingRoughlyInTheSameDirection
         && Geometry.pathsCouldCollide activeCar.localPath otherCar.localPath
 
@@ -276,5 +280,43 @@ collisionWith carsToCheck collisionPredicate =
 
 
 checkIntersectionRules : Round -> Maybe Rule
-checkIntersectionRules { otherCars, activeCar, world } =
-    Nothing
+checkIntersectionRules round =
+    Maybe.Extra.orListLazy
+        [ \() -> checkTrafficLights round
+        ]
+
+
+checkTrafficLights : Round -> Maybe Rule
+checkTrafficLights round =
+    getTrafficLightFromRoute round.activeCar round.world
+        |> Maybe.andThen
+            (\trafficLight ->
+                let
+                    distanceFromTrafficLight =
+                        Point2d.distanceFrom round.activeCar.position trafficLight.position
+
+                    carShouldReact =
+                        distanceFromTrafficLight
+                            |> Quantity.lessThanOrEqualTo trafficLightReactionDistance
+                in
+                if TrafficLight.shouldStopTraffic trafficLight && carShouldReact then
+                    Just (WaitForTrafficLights distanceFromTrafficLight)
+
+                else
+                    Nothing
+            )
+
+
+getTrafficLightFromRoute : Car -> World -> Maybe TrafficLight
+getTrafficLightFromRoute car world =
+    car.route
+        |> List.head
+        |> Maybe.andThen
+            (\{ node } ->
+                case node.label.trafficControl of
+                    Signal id ->
+                        Dict.get id world.trafficLights
+
+                    None ->
+                        Nothing
+            )
