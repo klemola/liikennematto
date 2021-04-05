@@ -24,7 +24,6 @@ module Geometry exposing
     , pixelsToLength
     , pixelsToMetersRatio
     , pointFromPosition
-    , pointToPosition
     , pointToPositionAsTuple
     , pointToString
     , speedToString

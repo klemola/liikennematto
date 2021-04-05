@@ -29,7 +29,6 @@ import Car exposing (Car)
 import Cell exposing (Corner(..), OrthogonalDirection(..))
 import Config exposing (tileSize)
 import Dict
-import Direction2d
 import Geometry
 import Lot exposing (Anchor, Lot)
 import Random
@@ -58,11 +57,6 @@ carTwo =
         |> Car.withVelocity Config.maxVelocity
         |> Car.build 2
         |> Car.startMoving
-
-
-fakeRandomDirections : List Cell.OrthogonalDirection
-fakeRandomDirections =
-    [ Right, Left, Right, Down ]
 
 
 
@@ -387,25 +381,6 @@ boardThatResemblesAIntersection =
         |> Dict.insert ( 2, 1 ) Board.defaultTile
         |> Dict.insert ( 3, 1 ) Board.defaultTile
         |> Dict.insert ( 2, 2 ) Board.defaultTile
-        |> Board.applyMask
-
-
-boardThatHasModifiersOnTiles : Board
-boardThatHasModifiersOnTiles =
-    -- A roundabout with two exits
-    Dict.empty
-        |> Dict.insert ( 1, 1 ) Board.defaultTile
-        |> Dict.insert ( 2, 1 ) Board.defaultTile
-        |> Dict.insert ( 3, 1 ) Board.defaultTile
-        |> Dict.insert ( 1, 2 ) Board.defaultTile
-        -- (2, 2) is empty
-        |> Dict.insert ( 3, 2 ) Board.defaultTile
-        |> Dict.insert ( 4, 2 ) Board.defaultTile
-        |> Dict.insert ( 5, 2 ) Board.defaultTile
-        |> Dict.insert ( 1, 3 ) Board.defaultTile
-        |> Dict.insert ( 2, 3 ) Board.defaultTile
-        |> Dict.insert ( 3, 3 ) Board.defaultTile
-        |> Dict.insert ( 2, 4 ) Board.defaultTile
         |> Board.applyMask
 
 
