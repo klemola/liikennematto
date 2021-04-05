@@ -117,12 +117,12 @@ splineSegmentsAmount =
 
 trafficLightReactionDistance : LMEntityDistance
 trafficLightReactionDistance =
-    toLMUnits tileSize
+    toLMUnits (tileSize * 1.25)
 
 
 trafficLightsStopMargin : LMEntityDistance
 trafficLightsStopMargin =
-    toLMUnits 20
+    toLMUnits 24
 
 
 
