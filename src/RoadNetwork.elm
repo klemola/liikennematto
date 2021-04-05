@@ -159,7 +159,7 @@ createTrafficLight connection nextTrafficLights =
             Direction2d.reverse connection.direction
 
         color =
-            if connection.direction == Direction2d.positiveY || connection.direction == Direction2d.negativeY then
+            if connection.direction == Direction2d.positiveX || connection.direction == Direction2d.negativeX then
                 TrafficLight.Green
 
             else
