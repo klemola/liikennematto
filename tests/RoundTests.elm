@@ -1,8 +1,11 @@
 module RoundTests exposing (suite)
 
+import Acceleration exposing (Acceleration)
 import Car exposing (Status(..))
+import Config
 import Expect
 import Fixtures exposing (..)
+import Geometry exposing (toLMUnits)
 import Round
     exposing
         ( RoundResults
@@ -34,7 +37,7 @@ suite =
             , test "allow movement if there's no need to yield at sign"
                 (\_ -> Expect.equal (checkIntersectionRules yieldWithoutPriorityTrafficSetup) Nothing)
             , test "disallow movement if traffic lights are not green"
-                (\_ -> Expect.equal (checkIntersectionRules redTrafficLightsSetup) (Just WaitForTrafficLights))
+                (\_ -> Expect.equal (checkIntersectionRules redTrafficLightsSetup) (Just (WaitForTrafficLights (toLMUnits 66))))
             , test "disallow movement if the car has to yield at sign"
                 (\_ -> Expect.equal (checkIntersectionRules yieldWithPriorityTrafficSetup) (Just YieldAtIntersection))
             , test "disallow movement if the car is at a stop sign"
@@ -48,16 +51,16 @@ suite =
                     Expect.equal
                         (collisionSetupNearCollision
                             |> Round.play
-                            |> getStatus
+                            |> getCarAcceleration
                         )
-                        Moving
+                        Config.acceleration.breakingFast
                 )
             , test "can stop the car at traffic lights"
                 (\_ ->
                     Expect.equal
                         (redTrafficLightsSetup
                             |> Round.play
-                            |> getStatus
+                            |> getCarStatus
                         )
                         WaitingForTrafficLights
                 )
@@ -66,7 +69,7 @@ suite =
                     Expect.equal
                         (yieldWithPriorityTrafficSetup
                             |> Round.play
-                            |> getStatus
+                            |> getCarStatus
                         )
                         Yielding
                 )
@@ -75,7 +78,7 @@ suite =
                     Expect.equal
                         (stopSetup
                             |> Round.play
-                            |> getStatus
+                            |> getCarStatus
                         )
                         StoppedAtIntersection
                 )
@@ -83,6 +86,11 @@ suite =
         ]
 
 
-getStatus : RoundResults -> Car.Status
-getStatus { car } =
+getCarStatus : RoundResults -> Car.Status
+getCarStatus { car } =
     car.status
+
+
+getCarAcceleration : RoundResults -> Acceleration
+getCarAcceleration { car } =
+    car.acceleration

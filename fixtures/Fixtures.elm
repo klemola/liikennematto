@@ -1,5 +1,29 @@
-module Fixtures exposing (..)
+module Fixtures exposing
+    ( boardThatResemblesACurve
+    , boardThatResemblesAIntersection
+    , collisionSetupNearCollision
+    , collisionSetupPathsIntersect
+    , connectedRoadsSetup
+    , createTwoByTwoLot
+    , curveTile
+    , greenTrafficLightsSetup
+    , highComplexityWorld
+    , intersectionTile
+    , lowComplexityWorld
+    , noCollisionSetupDifferentLanes
+    , noCollisionSetupIntersection
+    , oneByOneLot
+    , redTrafficLightsSetup
+    , stopSetup
+    , twoByTwoLot
+    , worldThatHasAVerticalRoadAtLeftSide
+    , worldThatHasParallelRoads
+    , yieldAfterStopSetup
+    , yieldWithPriorityTrafficSetup
+    , yieldWithoutPriorityTrafficSetup
+    )
 
+import Angle exposing (Angle)
 import Board exposing (Board, Tile)
 import Car exposing (Car)
 import Cell exposing (Corner(..), OrthogonalDirection(..))
@@ -23,6 +47,7 @@ seed =
 carOne : Car
 carOne =
     Car.new Car.SedanA
+        |> Car.withVelocity Config.maxVelocity
         |> Car.build 1
         |> Car.startMoving
 
@@ -30,6 +55,7 @@ carOne =
 carTwo : Car
 carTwo =
     Car.new Car.SedanB
+        |> Car.withVelocity Config.maxVelocity
         |> Car.build 2
         |> Car.startMoving
 
@@ -43,22 +69,6 @@ fakeRandomDirections =
 -- Setups for testing Rules and Round behavior
 
 
-respawnSetup : Round
-respawnSetup =
-    let
-        world =
-            World.empty
-                |> World.buildRoadAt ( 1, 1 )
-
-        car =
-            carOne
-
-        otherCars =
-            []
-    in
-    Round world car otherCars seed Set.empty
-
-
 connectedRoadsSetup : Round
 connectedRoadsSetup =
     let
@@ -68,47 +78,16 @@ connectedRoadsSetup =
                 |> World.buildRoadAt ( 2, 1 )
 
         car =
-            spawn carOne ( 0, 720 ) Right
+            spawn carOne ( 0, 720 ) (Angle.degrees 0)
 
         otherCars =
             []
+
+        worldWithCars =
+            world
+                |> World.setCar car.id car
     in
-    Round world car otherCars seed Set.empty
-
-
-disconnectedRoadsSetup : Round
-disconnectedRoadsSetup =
-    let
-        world =
-            World.empty
-                |> World.buildRoadAt ( 1, 1 )
-                |> World.buildRoadAt ( 2, 1 )
-
-        car =
-            spawn carOne ( 0, 720 ) Right
-
-        otherCars =
-            []
-    in
-    Round world car otherCars seed Set.empty
-
-
-curveSetup : Round
-curveSetup =
-    let
-        world =
-            World.empty
-                |> World.buildRoadAt ( 1, 1 )
-                |> World.buildRoadAt ( 2, 1 )
-                |> World.buildRoadAt ( 2, 2 )
-
-        car =
-            spawn carOne ( 80, 720 ) Right
-
-        otherCars =
-            []
-    in
-    Round world car otherCars seed Set.empty
+    Round worldWithCars car otherCars seed Set.empty
 
 
 collisionSetupPathsIntersect : Round
@@ -121,7 +100,7 @@ collisionSetupPathsIntersect =
             RoadNetwork.findNodeByPosition world.roadNetwork upIntersectionExitNodePosition
 
         car =
-            spawn carOne ( 107, 674 ) Right
+            spawn carOne ( 107, 674 ) (Angle.degrees 45)
 
         carWithRoute =
             case carDestination of
@@ -135,7 +114,7 @@ collisionSetupPathsIntersect =
             RoadNetwork.findNodeByPosition world.roadNetwork leftIntersectionExitNodePosition
 
         otherCar =
-            spawn carTwo ( 150, 691 ) Left
+            spawn carTwo ( 150, 691 ) (Angle.degrees 180)
 
         otherCarWithRoute =
             case otherCarDestination of
@@ -148,8 +127,13 @@ collisionSetupPathsIntersect =
         otherCars =
             [ otherCarWithRoute
             ]
+
+        worldWithCars =
+            world
+                |> World.setCar carWithRoute.id carWithRoute
+                |> World.setCar otherCarWithRoute.id otherCarWithRoute
     in
-    Round world carWithRoute otherCars seed Set.empty
+    Round worldWithCars carWithRoute otherCars seed Set.empty
 
 
 collisionSetupNearCollision : Round
@@ -162,8 +146,7 @@ collisionSetupNearCollision =
             RoadNetwork.findNodeByPosition world.roadNetwork upIntersectionExitNodePosition
 
         car =
-            -- TODO: check clearance and use precise direction instead
-            spawn carOne ( 120, 680 ) Right
+            spawn carOne ( 110, 670 ) (Angle.degrees 45)
 
         carWithRoute =
             case carDestination of
@@ -177,7 +160,7 @@ collisionSetupNearCollision =
             RoadNetwork.findNodeByPosition world.roadNetwork leftIntersectionExitNodePosition
 
         otherCar =
-            spawn carTwo ( 130, 691 ) Left
+            spawn carTwo ( 130, 691 ) (Angle.degrees 180)
 
         otherCarWithRoute =
             case otherCarDestination of
@@ -190,8 +173,13 @@ collisionSetupNearCollision =
         otherCars =
             [ otherCarWithRoute
             ]
+
+        worldWithCars =
+            world
+                |> World.setCar carWithRoute.id carWithRoute
+                |> World.setCar otherCarWithRoute.id otherCarWithRoute
     in
-    Round world carWithRoute otherCars seed Set.empty
+    Round worldWithCars carWithRoute otherCars seed Set.empty
 
 
 noCollisionSetupDifferentLanes : Round
@@ -203,13 +191,21 @@ noCollisionSetupDifferentLanes =
                 |> World.buildRoadAt ( 2, 1 )
 
         car =
-            spawn carOne ( 0, 720 ) Right
+            spawn carOne ( 0, 720 ) (Angle.degrees 0)
+
+        otherCar =
+            spawn carTwo ( 80, 720 ) (Angle.degrees 180)
 
         otherCars =
-            [ spawn carTwo ( 80, 720 ) Left
+            [ otherCar
             ]
+
+        worldWithCars =
+            world
+                |> World.setCar car.id car
+                |> World.setCar otherCar.id otherCar
     in
-    Round world car otherCars seed Set.empty
+    Round worldWithCars car otherCars seed Set.empty
 
 
 noCollisionSetupIntersection : Round
@@ -219,47 +215,59 @@ noCollisionSetupIntersection =
             worldWithIntersection
 
         car =
-            spawn carOne ( 80, 666 ) Right
+            spawn carOne ( 80, 666 ) (Angle.degrees 0)
+
+        otherCar =
+            spawn carTwo ( 133, 690 ) (Angle.degrees 90)
 
         otherCars =
-            [ spawn carTwo ( 133, 690 ) Up
+            [ otherCar
             ]
+
+        worldWithCars =
+            world
+                |> World.setCar car.id car
+                |> World.setCar otherCar.id otherCar
     in
-    Round world car otherCars seed Set.empty
+    Round worldWithCars car otherCars seed Set.empty
 
 
 redTrafficLightsSetup : Round
 redTrafficLightsSetup =
     let
         world =
-            World.empty
-                |> World.buildRoadAt ( 1, 1 )
-                |> World.buildRoadAt ( 2, 1 )
+            worldWithIntersection
 
         car =
-            spawn carOne ( 0, 720 ) Right
+            spawn carOne ( 0, 720 ) (Angle.degrees 0)
 
         otherCars =
             []
+
+        worldWithCars =
+            world
+                |> World.setCar car.id car
     in
-    Round world car otherCars seed Set.empty
+    Round worldWithCars car otherCars seed Set.empty
 
 
 greenTrafficLightsSetup : Round
 greenTrafficLightsSetup =
     let
         world =
-            World.empty
-                |> World.buildRoadAt ( 1, 1 )
-                |> World.buildRoadAt ( 1, 2 )
+            worldWithIntersection
 
         car =
-            spawn carOne ( 0, 720 ) Down
+            spawn carOne ( 0, 720 ) (Angle.degrees 270)
 
         otherCars =
             []
+
+        worldWithCars =
+            world
+                |> World.setCar car.id car
     in
-    Round world car otherCars seed Set.empty
+    Round worldWithCars car otherCars seed Set.empty
 
 
 yieldSetup : Bool -> Round
@@ -273,11 +281,11 @@ yieldSetup hasPriorityTraffic =
                 |> World.buildRoadAt ( 2, 3 )
 
         car =
-            spawn carOne ( 0, 640 ) Right
+            spawn carOne ( 0, 640 ) (Angle.degrees 0)
 
         otherCars =
             if hasPriorityTraffic then
-                [ spawn carTwo ( 80, 720 ) Down
+                [ spawn carTwo ( 80, 720 ) (Angle.degrees 270)
                 ]
 
             else
@@ -308,7 +316,7 @@ stopSetup =
                 |> World.buildRoadAt ( 3, 3 )
 
         car =
-            spawn carOne ( 0, 640 ) Right
+            spawn carOne ( 0, 640 ) (Angle.degrees 0)
                 |> Car.move
 
         otherCars =
@@ -328,24 +336,21 @@ yieldAfterStopSetup =
                 |> World.buildRoadAt ( 2, 3 )
 
         car =
-            spawn carOne ( 0, 640 ) Right
+            spawn carOne ( 0, 640 ) (Angle.degrees 0)
                 |> Car.stopAtIntersection
 
         otherCars =
-            [ spawn carTwo ( 80, 720 ) Down
+            [ spawn carTwo ( 80, 720 ) (Angle.degrees 270)
             ]
     in
     Round world car otherCars seed Set.empty
 
 
-spawn : Car -> ( Float, Float ) -> OrthogonalDirection -> Car
-spawn car ( x, y ) direction =
+spawn : Car -> ( Float, Float ) -> Angle -> Car
+spawn car ( x, y ) rotation =
     { car
         | position = Geometry.pointFromPosition (Geometry.LMEntityPositionUnitless x y)
-        , rotation =
-            direction
-                |> Cell.orthogonalDirectionToLmDirection
-                |> Direction2d.toAngle
+        , rotation = rotation
     }
 
 
@@ -455,11 +460,11 @@ worldThatHasParallelRoads =
 worldWithIntersection : World
 worldWithIntersection =
     World.empty
-        |> World.buildRoadAt ( 2, 1 )
         |> World.buildRoadAt ( 1, 2 )
+        |> World.buildRoadAt ( 2, 1 )
         |> World.buildRoadAt ( 2, 2 )
-        |> World.buildRoadAt ( 3, 2 )
         |> World.buildRoadAt ( 2, 3 )
+        |> World.buildRoadAt ( 3, 2 )
 
 
 upIntersectionExitNodePosition : Geometry.LMPoint2d
