@@ -10,7 +10,6 @@ module Cell exposing
     , corners
     , crossOrthogonalDirection
     , down
-    , isHorizontal
     , isVertical
     , left
     , next
@@ -103,11 +102,6 @@ crossOrthogonalDirection fromDir =
 isVertical : OrthogonalDirection -> Bool
 isVertical direction =
     List.member direction verticalODs
-
-
-isHorizontal : OrthogonalDirection -> Bool
-isHorizontal direction =
-    List.member direction horizontalODs
 
 
 
