@@ -37,7 +37,7 @@ suite =
             , test "allow movement if there's no need to yield at sign"
                 (\_ -> Expect.equal (checkIntersectionRules yieldWithoutPriorityTrafficSetup) Nothing)
             , test "disallow movement if traffic lights are not green"
-                (\_ -> Expect.equal (checkIntersectionRules redTrafficLightsSetup) (Just (WaitForTrafficLights (toLMUnits 66))))
+                (\_ -> Expect.equal (checkIntersectionRules redTrafficLightsSetup) (Just (WaitForTrafficLights (toLMUnits 40))))
             , test "disallow movement if the car has to yield at sign"
                 (\_ -> Expect.equal (checkIntersectionRules yieldWithPriorityTrafficSetup) (Just YieldAtIntersection))
             , test "disallow movement if the car is at a stop sign"

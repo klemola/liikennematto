@@ -9,7 +9,7 @@ main : Html msg
 main =
     let
         fixture =
-            Fixtures.collisionSetupPathsIntersect
+            Fixtures.redTrafficLightsSetup
 
         _ =
             Debug.log "cars" fixture.world.cars
