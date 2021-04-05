@@ -238,17 +238,28 @@ redTrafficLightsSetup =
         world =
             worldWithIntersection
 
+        carDestination =
+            RoadNetwork.findNodeByPosition world.roadNetwork downIntersectionEntryNodePosition
+
         car =
-            spawn carOne ( 0, 720 ) (Angle.degrees 0)
+            spawn carOne ( 134, 600 ) (Angle.degrees 90)
+
+        carWithRoute =
+            case carDestination of
+                Just nodeCtx ->
+                    Car.createRoute nodeCtx car
+
+                Nothing ->
+                    Debug.todo "invalid test fixture"
 
         otherCars =
             []
 
         worldWithCars =
             world
-                |> World.setCar car.id car
+                |> World.setCar carWithRoute.id carWithRoute
     in
-    Round worldWithCars car otherCars seed Set.empty
+    Round worldWithCars carWithRoute otherCars seed Set.empty
 
 
 greenTrafficLightsSetup : Round
@@ -257,17 +268,28 @@ greenTrafficLightsSetup =
         world =
             worldWithIntersection
 
+        carDestination =
+            RoadNetwork.findNodeByPosition world.roadNetwork leftIntersectionEntryNodePosition
+
         car =
-            spawn carOne ( 0, 720 ) (Angle.degrees 270)
+            spawn carOne ( 47, 665 ) (Angle.degrees 0)
+
+        carWithRoute =
+            case carDestination of
+                Just nodeCtx ->
+                    Car.createRoute nodeCtx car
+
+                Nothing ->
+                    Debug.todo "invalid test fixture"
 
         otherCars =
             []
 
         worldWithCars =
             world
-                |> World.setCar car.id car
+                |> World.setCar carWithRoute.id carWithRoute
     in
-    Round worldWithCars car otherCars seed Set.empty
+    Round worldWithCars carWithRoute otherCars seed Set.empty
 
 
 yieldSetup : Bool -> Round
@@ -475,6 +497,16 @@ upIntersectionExitNodePosition =
 leftIntersectionExitNodePosition : Geometry.LMPoint2d
 leftIntersectionExitNodePosition =
     Geometry.pointFromPosition { x = 80, y = 694 }
+
+
+leftIntersectionEntryNodePosition : Geometry.LMPoint2d
+leftIntersectionEntryNodePosition =
+    Geometry.pointFromPosition { x = 80, y = 666 }
+
+
+downIntersectionEntryNodePosition : Geometry.LMPoint2d
+downIntersectionEntryNodePosition =
+    Geometry.pointFromPosition { x = 134, y = 640 }
 
 
 
