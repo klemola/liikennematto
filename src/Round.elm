@@ -7,13 +7,15 @@ module Round exposing
     , play
     )
 
+import Angle exposing (Angle)
 import Car exposing (Car, Status(..))
 import Circle2d
-import Config exposing (carFieldOfView, carLength, carProximityCutoff, carRotationTolerance, trafficLightReactionDistance)
+import Config exposing (tileSizeInMeters)
 import Dict
 import Direction2d
 import Geometry exposing (LMTriangle2d)
 import Length exposing (Length)
+import LocalPath
 import Maybe.Extra
 import Point2d
 import Quantity
@@ -48,6 +50,21 @@ type Rule
     | WaitForTrafficLights Length
     | YieldAtIntersection
     | StopAtIntersection
+
+
+carRotationTolerance : Angle
+carRotationTolerance =
+    Angle.degrees 5
+
+
+carProximityCutoff : Length
+carProximityCutoff =
+    tileSizeInMeters
+
+
+trafficLightReactionDistance : Length
+trafficLightReactionDistance =
+    Length.meters 50
 
 
 play : Round -> RoundResults
@@ -222,7 +239,7 @@ checkNearCollision : Car -> List Car -> Maybe Rule
 checkNearCollision activeCar otherCars =
     let
         halfCarLength =
-            carLength |> Quantity.divideBy 2
+            Car.length |> Quantity.divideBy 2
 
         carDirection =
             Direction2d.fromAngle activeCar.rotation
@@ -247,7 +264,7 @@ checkPathCollision activeCar otherCars =
             Direction2d.fromAngle activeCar.rotation
 
         carSightTriangle =
-            Geometry.fieldOfViewTriangle activeCar.position carDirection carFieldOfView carProximityCutoff
+            Geometry.fieldOfViewTriangle activeCar.position carDirection Car.fieldOfView carProximityCutoff
     in
     collisionWith otherCars (pathsCouldCollideWith carSightTriangle activeCar)
         |> Maybe.map AvoidCollision
@@ -262,7 +279,7 @@ pathsCouldCollideWith fieldOfViewTriangle activeCar otherCar =
     not (Car.isStoppedOrWaiting otherCar)
         && Triangle2d.contains otherCar.position fieldOfViewTriangle
         && not headingRoughlyInTheSameDirection
-        && Geometry.pathsCouldCollide activeCar.localPath otherCar.localPath
+        && LocalPath.pathsCouldCollide activeCar.localPath otherCar.localPath
 
 
 collisionWith : List Car -> (Car -> Bool) -> Maybe Int

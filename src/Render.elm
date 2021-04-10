@@ -21,14 +21,9 @@ import Color
 import Config
     exposing
         ( boardSize
-        , carFieldOfView
-        , carLength
-        , carWidth
-        , nodeSize
         , pixelsToMetersRatio
         , tileSize
         , tileSizeInMeters
-        , trafficLightRadius
         )
 import Dict
 import Direction2d
@@ -39,9 +34,9 @@ import Html exposing (Html)
 import Length exposing (Length)
 import Lot exposing (Lot, Lots)
 import Maybe.Extra as Maybe
-import Pixels
+import Pixels exposing (Pixels)
 import Point2d
-import Quantity
+import Quantity exposing (Quantity)
 import RoadNetwork exposing (ConnectionKind(..), RoadNetwork)
 import TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
 import Triangle2d
@@ -54,6 +49,24 @@ type alias DebugLayers =
     { showRoadNetwork : Bool
     , showCarDebugVisuals : Bool
     }
+
+
+nodeSize : Quantity Float Pixels
+nodeSize =
+    Pixels.float 4
+
+
+trafficLightRadius : Quantity Float Pixels
+trafficLightRadius =
+    Pixels.float 5
+
+
+carWidthPixels =
+    toPixelsValue Car.width
+
+
+carLengthPixels =
+    toPixelsValue Car.length
 
 
 view : World -> DebugLayers -> Html msg
@@ -325,10 +338,10 @@ renderCarCollisionDetection car =
 
         forwardShiftedCarPosition =
             car.position
-                |> Point2d.translateIn carDirection (carLength |> Quantity.divideBy 2)
+                |> Point2d.translateIn carDirection (Car.length |> Quantity.divideBy 2)
     in
     Collage.circle
-        (Circle2d.atPoint forwardShiftedCarPosition (carLength |> Quantity.divideBy 2)
+        (Circle2d.atPoint forwardShiftedCarPosition (Car.length |> Quantity.divideBy 2)
             |> Circle2d.radius
             |> toPixelsValue
         )
@@ -344,7 +357,7 @@ renderCarFieldOfView car =
             Direction2d.fromAngle car.rotation
 
         triangle =
-            Geometry.fieldOfViewTriangle car.position carDirection carFieldOfView tileSizeInMeters
+            Geometry.fieldOfViewTriangle car.position carDirection Car.fieldOfView tileSizeInMeters
 
         ( p1, p2, p3 ) =
             Triangle2d.vertices triangle
@@ -376,11 +389,3 @@ toPixelsTuple point =
     point
         |> Point2d.at pixelsToMetersRatio
         |> Point2d.toTuple Pixels.inPixels
-
-
-carWidthPixels =
-    toPixelsValue carWidth
-
-
-carLengthPixels =
-    toPixelsValue carLength

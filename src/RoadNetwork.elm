@@ -19,7 +19,7 @@ import Angle
 import Board exposing (Board, Tile, crossIntersection)
 import BoundingBox2d
 import Cell exposing (Cell, OrthogonalDirection(..))
-import Config exposing (innerLaneOffset, outerLaneOffset, tileSizeInMeters)
+import Config exposing (pixelsToMeters, tileSizeInMeters)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction2d
@@ -75,6 +75,16 @@ type TrafficControl
 
 type alias Lane =
     ()
+
+
+innerLaneOffset : Length
+innerLaneOffset =
+    pixelsToMeters 26
+
+
+outerLaneOffset : Length
+outerLaneOffset =
+    pixelsToMeters 54
 
 
 new : RoadNetwork
