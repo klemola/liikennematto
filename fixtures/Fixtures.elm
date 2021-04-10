@@ -4,6 +4,7 @@ module Fixtures exposing
     , collisionSetupNearCollision
     , collisionSetupPathsIntersect
     , connectedRoadsSetup
+    , createBoundingBox
     , createTwoByTwoLot
     , curveTile
     , greenTrafficLightsSetup
@@ -27,10 +28,13 @@ import Angle exposing (Angle)
 import Board exposing (Board, Tile)
 import Car exposing (Car)
 import Cell exposing (Corner(..), OrthogonalDirection(..))
-import Config exposing (tileSize)
+import Config exposing (pixelsToMetersRatio, tileSizeInMeters)
 import Dict
 import Geometry
 import Lot exposing (Anchor, Lot)
+import Pixels
+import Point2d
+import Quantity
 import Random
 import RoadNetwork
 import Round exposing (Round)
@@ -365,7 +369,7 @@ yieldAfterStopSetup =
 spawn : Car -> ( Float, Float ) -> Angle -> Car
 spawn car ( x, y ) rotation =
     { car
-        | position = Geometry.pointFromPosition (Geometry.LMEntityPositionUnitless x y)
+        | position = toLMPoint2d x y
         , rotation = rotation
     }
 
@@ -466,22 +470,22 @@ worldWithIntersection =
 
 upIntersectionExitNodePosition : Geometry.LMPoint2d
 upIntersectionExitNodePosition =
-    Geometry.pointFromPosition { x = 134, y = 720 }
+    toLMPoint2d 134 720
 
 
 leftIntersectionExitNodePosition : Geometry.LMPoint2d
 leftIntersectionExitNodePosition =
-    Geometry.pointFromPosition { x = 80, y = 694 }
+    toLMPoint2d 80 694
 
 
 leftIntersectionEntryNodePosition : Geometry.LMPoint2d
 leftIntersectionEntryNodePosition =
-    Geometry.pointFromPosition { x = 80, y = 666 }
+    toLMPoint2d 80 666
 
 
 downIntersectionEntryNodePosition : Geometry.LMPoint2d
 downIntersectionEntryNodePosition =
-    Geometry.pointFromPosition { x = 134, y = 640 }
+    toLMPoint2d 134 640
 
 
 
@@ -494,18 +498,26 @@ oneByOneNewLot =
         { kind = Lot.ResidentialA
         , entryDirection = Down
         }
-    , width = tileSize
-    , height = tileSize
+    , width = tileSizeInMeters
+    , height = tileSizeInMeters
     }
 
 
 oneByOneLot : Lot
 oneByOneLot =
+    let
+        anchor =
+            ( ( 1, 2 ), Up )
+    in
     { content = oneByOneNewLot.content
     , width = oneByOneNewLot.width
     , height = oneByOneNewLot.height
-    , position = Geometry.pointFromPosition (Geometry.LMEntityPositionUnitless 0 (tileSize * 9))
-    , anchor = ( ( 1, 2 ), Up )
+    , position =
+        Point2d.xy
+            Quantity.zero
+            (tileSizeInMeters |> Quantity.multiplyBy 9)
+    , entryDetails = Lot.entryDetails anchor oneByOneNewLot
+    , anchor = anchor
     }
 
 
@@ -515,8 +527,8 @@ twoByTwoNewLot =
         { kind = Lot.ResidentialE
         , entryDirection = Down
         }
-    , width = tileSize * 2
-    , height = tileSize * 2
+    , width = tileSizeInMeters |> Quantity.multiplyBy 2
+    , height = tileSizeInMeters |> Quantity.multiplyBy 2
     }
 
 
@@ -530,6 +542,9 @@ createTwoByTwoLot ( anchorCell, anchorDir ) =
     let
         content =
             twoByTwoNewLot.content
+
+        anchor =
+            ( anchorCell, anchorDir )
     in
     { content = { content | entryDirection = Cell.oppositeOrthogonalDirection anchorDir }
     , width = twoByTwoNewLot.width
@@ -538,5 +553,24 @@ createTwoByTwoLot ( anchorCell, anchorDir ) =
         anchorCell
             |> Cell.next anchorDir
             |> Cell.bottomLeftCorner
-    , anchor = ( anchorCell, anchorDir )
+    , entryDetails = Lot.entryDetails anchor twoByTwoNewLot
+    , anchor = anchor
     }
+
+
+
+--
+
+
+toLMPoint2d pixelsX pixelsY =
+    Point2d.xy
+        (Pixels.float pixelsX |> Quantity.at_ pixelsToMetersRatio)
+        (Pixels.float pixelsY |> Quantity.at_ pixelsToMetersRatio)
+
+
+createBoundingBox : ( Float, Float ) -> Float -> Float -> Geometry.LMBoundingBox2d
+createBoundingBox ( x, y ) width height =
+    Geometry.boundingBoxWithDimensions
+        (Pixels.float width |> Quantity.at_ pixelsToMetersRatio)
+        (Pixels.float height |> Quantity.at_ pixelsToMetersRatio)
+        (toLMPoint2d x y)

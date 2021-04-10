@@ -9,10 +9,11 @@ module Round exposing
 
 import Car exposing (Car, Status(..))
 import Circle2d
-import Config exposing (carFieldOfView, carLength, carRotationTolerance, tileSize)
+import Config exposing (carFieldOfView, carLength, carProximityCutoff, carRotationTolerance, trafficLightReactionDistance)
 import Dict
 import Direction2d
-import Geometry exposing (LMEntityDistance, LMTriangle2d, toLMUnits, trafficLightReactionDistance)
+import Geometry exposing (LMTriangle2d)
+import Length exposing (Length)
 import Maybe.Extra
 import Point2d
 import Quantity
@@ -44,7 +45,7 @@ type alias RoundResults =
 type Rule
     = AvoidCollision Int
     | PreventCollision Int
-    | WaitForTrafficLights LMEntityDistance
+    | WaitForTrafficLights Length
     | YieldAtIntersection
     | StopAtIntersection
 
@@ -204,10 +205,6 @@ chooseRandomRoute round nodeCtx =
 --
 
 
-carProximityCutoff =
-    toLMUnits tileSize
-
-
 checkCollisionRules : Round -> Maybe Rule
 checkCollisionRules { otherCars, activeCar, carsWithPriority } =
     Maybe.Extra.orListLazy
@@ -224,16 +221,19 @@ checkCollisionRules { otherCars, activeCar, carsWithPriority } =
 checkNearCollision : Car -> List Car -> Maybe Rule
 checkNearCollision activeCar otherCars =
     let
+        halfCarLength =
+            carLength |> Quantity.divideBy 2
+
         carDirection =
             Direction2d.fromAngle activeCar.rotation
 
         forwardShiftedCarPosition =
             activeCar.position
-                |> Geometry.translatePointIn carDirection (toLMUnits <| carLength / 2)
+                |> Geometry.translatePointIn carDirection halfCarLength
 
         -- A circle that covers the front half of the car, and the area right before the car
         checkArea =
-            Geometry.circleAt forwardShiftedCarPosition (carLength / 2)
+            Geometry.circleAt forwardShiftedCarPosition halfCarLength
     in
     collisionWith otherCars
         (\otherCar -> Circle2d.intersectsBoundingBox (Car.boundingBox otherCar) checkArea)

@@ -16,7 +16,7 @@ module Board exposing
 import BitMask
 import BoundingBox2d
 import Cell exposing (Cell, OrthogonalDirection(..))
-import Config exposing (boardSizeScaled)
+import Config exposing (boardSizeScaledInMeters)
 import Dict exposing (Dict)
 import Geometry exposing (LMBoundingBox2d)
 import Point2d
@@ -83,7 +83,7 @@ isCurve tile =
 
 boundingBox : LMBoundingBox2d
 boundingBox =
-    Geometry.boundingBoxWithDimensions boardSizeScaled boardSizeScaled Point2d.origin
+    Geometry.boundingBoxWithDimensions boardSizeScaledInMeters boardSizeScaledInMeters Point2d.origin
 
 
 inBounds : LMBoundingBox2d -> Bool

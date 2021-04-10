@@ -3,8 +3,7 @@ module WorldTests exposing (suite)
 import Cell exposing (OrthogonalDirection(..))
 import Dict
 import Expect
-import Fixtures
-import Geometry
+import Fixtures exposing (createBoundingBox)
 import Test exposing (Test, describe, test)
 import World
 
@@ -55,7 +54,3 @@ suite =
                 )
             ]
         ]
-
-
-createBoundingBox ( x, y ) width height =
-    Geometry.boundingBoxWithDimensions width height (Geometry.pointFromPosition { x = x, y = y })

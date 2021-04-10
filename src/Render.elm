@@ -24,20 +24,28 @@ import Config
         , carFieldOfView
         , carLength
         , carWidth
+        , nodeSize
+        , pixelsToMetersRatio
         , tileSize
+        , tileSizeInMeters
         , trafficLightRadius
         )
 import Dict
 import Direction2d
-import Geometry exposing (toLMUnits)
+import Geometry exposing (LMPoint2d)
 import Graph
 import Graphics
 import Html exposing (Html)
+import Length exposing (Length)
 import Lot exposing (Lot, Lots)
 import Maybe.Extra as Maybe
+import Pixels
+import Point2d
+import Quantity
 import RoadNetwork exposing (ConnectionKind(..), RoadNetwork)
 import TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
 import Triangle2d
+import Vector2d
 import World exposing (World)
 
 
@@ -82,7 +90,7 @@ renderBoard : Board -> Collage msg
 renderBoard board =
     let
         emptyTile =
-            square tileSize
+            square (Pixels.inPixels tileSize)
                 |> Collage.styled ( uniform renderColors.terrain, Collage.invisible )
 
         drawTile x y =
@@ -98,7 +106,7 @@ renderTile : Tile -> Collage msg
 renderTile tile =
     let
         renderedSize =
-            Graphics.renderedSizeFromUnits ( 1, 1 ) tileSize
+            Graphics.renderedSizeFromUnits ( 1, 1 ) (Pixels.inPixels tileSize)
     in
     tile
         |> Graphics.tileAsset
@@ -127,9 +135,9 @@ renderCars cars showCarDebugVisuals =
 
 renderCar : Car -> Collage msg
 renderCar car =
-    Graphics.texture ( carLength, carWidth ) (Graphics.carAsset car)
+    Graphics.texture ( carLengthPixels, carWidthPixels ) (Graphics.carAsset car)
         |> Collage.rotate (Angle.inRadians car.rotation)
-        |> Collage.shift (Geometry.pointToPositionAsTuple car.position)
+        |> Collage.shift (toPixelsTuple car.position)
 
 
 renderLots : Lots -> Collage msg
@@ -142,13 +150,20 @@ renderLots lots =
 renderLot : Lot -> Collage msg
 renderLot lot =
     let
+        displacement =
+            Vector2d.xy
+                (lot.width |> Quantity.divideBy 2)
+                (lot.height |> Quantity.divideBy 2)
+
         lotCenterPoint =
             lot.position
-                |> Geometry.translatePointBy (lot.width / 2) (lot.height / 2)
-                |> Geometry.pointToPositionAsTuple
+                |> Geometry.translatePointBy displacement
+                |> toPixelsTuple
 
         building =
-            Graphics.texture ( lot.width, lot.height ) (Graphics.buildingAsset lot.content.kind)
+            Graphics.texture
+                ( toPixelsValue lot.width, toPixelsValue lot.height )
+                (Graphics.buildingAsset lot.content.kind)
 
         mask =
             sidewalkMask lot
@@ -162,37 +177,11 @@ sidewalkMask : Lot -> Collage msg
 sidewalkMask lot =
     -- sidewalk mask hides terrain between sidewalk and the lot
     -- Room for improvement: use special road tiles when connected to a lot
-    let
-        maskSize =
-            tileSize / 6
-
-        maskOverlap =
-            tileSize / 16
-
-        ( maskWidth, maskHeight ) =
-            if Cell.isVertical <| Tuple.second lot.anchor then
-                ( tileSize / 2, maskSize )
-
-            else
-                ( maskSize, tileSize / 2 )
-
-        entryPointPosition =
-            case lot.content.entryDirection of
-                Up ->
-                    ( lot.width - tileSize / 2, lot.height + maskOverlap )
-
-                Right ->
-                    ( lot.width + maskOverlap, lot.height - tileSize / 2 )
-
-                Down ->
-                    ( tileSize / 2, -maskOverlap )
-
-                Left ->
-                    ( -maskOverlap, tileSize / 2 )
-    in
-    Collage.rectangle maskWidth maskHeight
+    Collage.rectangle
+        (toPixelsValue lot.entryDetails.width)
+        (toPixelsValue lot.entryDetails.height)
         |> Collage.styled ( uniform renderColors.sidewalk, invisible )
-        |> Collage.shift entryPointPosition
+        |> Collage.shift (toPixelsTuple lot.entryDetails.entryPoint)
 
 
 renderRoadNetwork : RoadNetwork -> Collage msg
@@ -223,9 +212,9 @@ renderRoadNetwork roadNetwork =
                 |> Graph.nodes
                 |> List.map
                     (\node ->
-                        Collage.circle Config.nodeSize
+                        Collage.circle (Pixels.inPixels nodeSize)
                             |> Collage.styled ( uniform (nodeColor node.label.kind), invisible )
-                            |> Collage.shift (Geometry.pointToPositionAsTuple node.label.position)
+                            |> Collage.shift (toPixelsTuple node.label.position)
                     )
                 |> Collage.group
 
@@ -245,10 +234,10 @@ renderRoadNetwork roadNetwork =
                             (\fromNodeCtx toNodeCtx ->
                                 let
                                     from =
-                                        Geometry.pointToPositionAsTuple fromNodeCtx.node.label.position
+                                        toPixelsTuple fromNodeCtx.node.label.position
 
                                     to =
-                                        Geometry.pointToPositionAsTuple toNodeCtx.node.label.position
+                                        toPixelsTuple toNodeCtx.node.label.position
                                 in
                                 Collage.segment from to
                                     |> traced (solid thin (uniform Color.orange))
@@ -291,9 +280,9 @@ renderTrafficLight trafficLight =
                 Red ->
                     Color.darkRed
     in
-    Collage.circle trafficLightRadius
+    Collage.circle (Pixels.inPixels trafficLightRadius)
         |> Collage.styled ( uniform color, border )
-        |> Collage.shift (Geometry.pointToPositionAsTuple trafficLight.position)
+        |> Collage.shift (toPixelsTuple trafficLight.position)
 
 
 
@@ -322,7 +311,7 @@ renderCarDebug car =
 renderCarPath : Car -> Collage msg
 renderCarPath car =
     car.localPath
-        |> List.map Geometry.pointToPositionAsTuple
+        |> List.map toPixelsTuple
         |> Collage.path
         |> traced (solid thin (uniform Color.red))
 
@@ -336,15 +325,15 @@ renderCarCollisionDetection car =
 
         forwardShiftedCarPosition =
             car.position
-                |> Geometry.translatePointIn carDirection (toLMUnits <| carLength / 2)
+                |> Geometry.translatePointIn carDirection (carLength |> Quantity.divideBy 2)
     in
     Collage.circle
-        (Geometry.circleAt forwardShiftedCarPosition (carLength / 2)
+        (Geometry.circleAt forwardShiftedCarPosition (carLength |> Quantity.divideBy 2)
             |> Circle2d.radius
-            |> Geometry.toFloat
+            |> toPixelsValue
         )
         |> Collage.styled ( uniform Color.blue, invisible )
-        |> Collage.shift (Geometry.pointToPositionAsTuple forwardShiftedCarPosition)
+        |> Collage.shift (toPixelsTuple forwardShiftedCarPosition)
         |> Collage.opacity 0.5
 
 
@@ -355,15 +344,43 @@ renderCarFieldOfView car =
             Direction2d.fromAngle car.rotation
 
         triangle =
-            Geometry.fieldOfViewTriangle car.position carDirection carFieldOfView (Geometry.toLMUnits tileSize)
+            Geometry.fieldOfViewTriangle car.position carDirection carFieldOfView tileSizeInMeters
 
         ( p1, p2, p3 ) =
             Triangle2d.vertices triangle
     in
     Collage.polygon
-        [ Geometry.pointToPositionAsTuple p1
-        , Geometry.pointToPositionAsTuple p2
-        , Geometry.pointToPositionAsTuple p3
+        [ toPixelsTuple p1
+        , toPixelsTuple p2
+        , toPixelsTuple p3
         ]
         |> Collage.styled ( uniform Color.purple, invisible )
         |> Collage.opacity 0.3
+
+
+
+--
+-- Conversion
+--
+
+
+toPixelsValue : Length -> Float
+toPixelsValue length =
+    length
+        |> Quantity.at pixelsToMetersRatio
+        |> Pixels.inPixels
+
+
+toPixelsTuple : LMPoint2d -> ( Float, Float )
+toPixelsTuple point =
+    point
+        |> Point2d.at pixelsToMetersRatio
+        |> Point2d.toTuple Pixels.inPixels
+
+
+carWidthPixels =
+    toPixelsValue carWidth
+
+
+carLengthPixels =
+    toPixelsValue carLength

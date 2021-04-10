@@ -3,8 +3,6 @@ module Geometry exposing
     , LMCircle2d
     , LMCubicSpline2d
     , LMDirection2d
-    , LMEntityDistance
-    , LMEntityPositionUnitless
     , LMPoint2d
     , LMTriangle2d
     , LocalPath
@@ -21,16 +19,8 @@ module Geometry exposing
     , linearLocalPathToTarget
     , noBoundingBoxOverlap
     , pathsCouldCollide
-    , pixelsToLength
-    , pixelsToMetersRatio
-    , pointFromPosition
-    , pointToPositionAsTuple
     , pointToString
     , speedToString
-    , toFloat
-    , toLMUnits
-    , trafficLightReactionDistance
-    , trafficLightsStopMargin
     , translateBoundingBoxIn
     , translatePointBy
     , translatePointIn
@@ -41,35 +31,32 @@ import Acceleration exposing (Acceleration)
 import Angle exposing (Angle)
 import BoundingBox2d exposing (BoundingBox2d)
 import Circle2d exposing (Circle2d)
-import Config exposing (tileSize)
+import Config
+    exposing
+        ( lotExitOffset
+        , overlapThreshold
+        , pixelsToMetersRatio
+        , uTurnDistance
+        )
 import CubicSpline2d exposing (CubicSpline2d)
 import Direction2d exposing (Direction2d)
-import Length exposing (Length)
+import Length exposing (Length, Meters)
 import LineSegment2d
 import Maybe.Extra
-import Pixels exposing (Pixels)
 import Point2d exposing (Point2d)
 import Polyline2d exposing (Polyline2d)
-import Quantity exposing (Quantity, Rate)
+import Quantity
 import Speed exposing (Speed)
 import Triangle2d exposing (Triangle2d)
-import Vector2d
+import Vector2d exposing (Vector2d)
 
 
 type alias LMEntityCoordinates =
     ()
 
 
-type alias LMEntityUnits =
-    Pixels
-
-
 type alias LMPoint2d =
-    Point2d LMEntityUnits LMEntityCoordinates
-
-
-type alias LMEntityDistance =
-    Quantity Float LMEntityUnits
+    Point2d Meters LMEntityCoordinates
 
 
 type alias LMDirection2d =
@@ -77,65 +64,27 @@ type alias LMDirection2d =
 
 
 type alias LMBoundingBox2d =
-    BoundingBox2d LMEntityUnits LMEntityCoordinates
+    BoundingBox2d Meters LMEntityCoordinates
 
 
 type alias LMPolyline2d =
-    Polyline2d LMEntityUnits LMEntityCoordinates
+    Polyline2d Meters LMEntityCoordinates
 
 
 type alias LMTriangle2d =
-    Triangle2d LMEntityUnits LMEntityCoordinates
+    Triangle2d Meters LMEntityCoordinates
 
 
 type alias LMCircle2d =
-    Circle2d LMEntityUnits LMEntityCoordinates
+    Circle2d Meters LMEntityCoordinates
 
 
 type alias LMCubicSpline2d =
-    CubicSpline2d LMEntityUnits LMEntityCoordinates
-
-
-type alias LMEntityPositionUnitless =
-    { x : Float, y : Float }
-
-
-
--- Constants
-
-
-pixelsToMetersRatio : Quantity Float (Rate Pixels.Pixels Length.Meters)
-pixelsToMetersRatio =
-    Pixels.pixels 5 |> Quantity.per (Length.meters 1)
-
-
-splineSegmentsAmount : Int
-splineSegmentsAmount =
-    16
-
-
-trafficLightReactionDistance : LMEntityDistance
-trafficLightReactionDistance =
-    toLMUnits (tileSize * 1.25)
-
-
-trafficLightsStopMargin : LMEntityDistance
-trafficLightsStopMargin =
-    toLMUnits 24
+    CubicSpline2d Meters LMEntityCoordinates
 
 
 
 -- Conversion
-
-
-toFloat : Quantity Float LMEntityUnits -> Float
-toFloat =
-    Pixels.toFloat
-
-
-toLMUnits : Float -> Quantity Float LMEntityUnits
-toLMUnits val =
-    Pixels.pixels val
 
 
 speedToString : Speed -> String
@@ -147,11 +96,6 @@ speedToString speed =
                 |> String.fromFloat
     in
     "Speed: " ++ speedValue ++ " m/s"
-
-
-pixelsToLength : Quantity Float Pixels -> Length
-pixelsToLength pixels =
-    Quantity.at_ pixelsToMetersRatio pixels
 
 
 accelerationToString : Acceleration -> String
@@ -169,7 +113,9 @@ pointToString : LMPoint2d -> String
 pointToString point =
     let
         { x, y } =
-            pointToPosition point
+            point
+                |> Point2d.at pixelsToMetersRatio
+                |> Point2d.toPixels
 
         format n =
             n
@@ -190,34 +136,19 @@ pointToString point =
 -- Points
 
 
-translatePointBy : Float -> Float -> LMPoint2d -> LMPoint2d
-translatePointBy x y =
-    Point2d.translateBy (Vector2d.pixels x y)
-
-
-translatePointIn : LMDirection2d -> Quantity Float LMEntityUnits -> LMPoint2d -> LMPoint2d
+translatePointIn : LMDirection2d -> Length -> LMPoint2d -> LMPoint2d
 translatePointIn direction amount =
     Point2d.translateIn direction amount
 
 
-pointToPosition : LMPoint2d -> LMEntityPositionUnitless
-pointToPosition =
-    Point2d.toPixels
-
-
-pointToPositionAsTuple : LMPoint2d -> ( Float, Float )
-pointToPositionAsTuple =
-    Point2d.toTuple Pixels.inPixels
-
-
-pointFromPosition : LMEntityPositionUnitless -> LMPoint2d
-pointFromPosition { x, y } =
-    Point2d.pixels x y
+translatePointBy : Vector2d Meters LMEntityCoordinates -> LMPoint2d -> LMPoint2d
+translatePointBy displacement point =
+    Point2d.translateBy displacement point
 
 
 isPointAt : LMPoint2d -> LMPoint2d -> Bool
 isPointAt target origin =
-    Point2d.equalWithin (Pixels.pixels 1) origin target
+    Point2d.equalWithin overlapThreshold origin target
 
 
 
@@ -242,28 +173,28 @@ angleFromDirection direction target origin =
 -- Bounding boxes
 
 
-translateBoundingBoxIn : LMDirection2d -> Float -> LMBoundingBox2d -> LMBoundingBox2d
+translateBoundingBoxIn : LMDirection2d -> Length -> LMBoundingBox2d -> LMBoundingBox2d
 translateBoundingBoxIn direction amount =
-    BoundingBox2d.translateIn direction (Pixels.pixels amount)
+    BoundingBox2d.translateIn direction amount
 
 
-boundingBoxWithDimensions : Float -> Float -> LMPoint2d -> LMBoundingBox2d
+boundingBoxWithDimensions : Length -> Length -> LMPoint2d -> LMBoundingBox2d
 boundingBoxWithDimensions width height origin =
     let
         otherCorner =
             origin
-                |> translatePointIn Direction2d.positiveX (toLMUnits width)
-                |> translatePointIn Direction2d.positiveY (toLMUnits height)
+                |> translatePointIn Direction2d.positiveX width
+                |> translatePointIn Direction2d.positiveY height
     in
     BoundingBox2d.from origin otherCorner
 
 
 noBoundingBoxOverlap : LMBoundingBox2d -> LMBoundingBox2d -> Bool
 noBoundingBoxOverlap bb1 bb2 =
-    not <| BoundingBox2d.overlappingByAtLeast (Pixels.pixels 1) bb1 bb2
+    not <| BoundingBox2d.overlappingByAtLeast overlapThreshold bb1 bb2
 
 
-boundingBoxFromCircle : LMPoint2d -> Float -> LMBoundingBox2d
+boundingBoxFromCircle : LMPoint2d -> Length -> LMBoundingBox2d
 boundingBoxFromCircle position radius =
     circleAt position radius
         |> Circle2d.boundingBox
@@ -273,16 +204,16 @@ boundingBoxFromCircle position radius =
 -- Circles
 
 
-circleAt : LMPoint2d -> Float -> LMCircle2d
+circleAt : LMPoint2d -> Length -> LMCircle2d
 circleAt position radius =
-    Circle2d.atPoint position (Pixels.pixels radius)
+    Circle2d.atPoint position radius
 
 
 
 -- Triangles and field of view
 
 
-fieldOfViewTriangle : LMPoint2d -> LMDirection2d -> Angle -> Quantity Float LMEntityUnits -> LMTriangle2d
+fieldOfViewTriangle : LMPoint2d -> LMDirection2d -> Angle -> Length -> LMTriangle2d
 fieldOfViewTriangle origin direction fov distance =
     let
         leftVertexDirection =
@@ -313,6 +244,11 @@ type alias LocalPath =
     List LMPoint2d
 
 
+splineSegmentsAmount : Int
+splineSegmentsAmount =
+    16
+
+
 linearLocalPathToTarget : LMPoint2d -> LMPoint2d -> LocalPath
 linearLocalPathToTarget origin target =
     [ 0, 0.25, 0.5, 0.75, 1 ]
@@ -328,7 +264,7 @@ leaveLotSpline origin target direction =
 
         targetCp =
             target
-                |> translatePointIn direction (toLMUnits <| tileSize / 2)
+                |> translatePointIn direction lotExitOffset
 
         midpoint =
             Point2d.midpoint origin targetCp
@@ -348,14 +284,11 @@ leaveLotSpline origin target direction =
 uTurnSpline : LMPoint2d -> LMPoint2d -> LMDirection2d -> LocalPath
 uTurnSpline origin target direction =
     let
-        turnDistance =
-            toLMUnits (tileSize / 4)
-
         handleCp1 =
-            Point2d.translateIn direction turnDistance origin
+            Point2d.translateIn direction uTurnDistance origin
 
         handleCp2 =
-            Point2d.translateIn direction turnDistance target
+            Point2d.translateIn direction uTurnDistance target
     in
     CubicSpline2d.fromControlPoints origin handleCp1 handleCp2 target
         |> cubicSplineToLocalPath

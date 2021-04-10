@@ -4,7 +4,8 @@ import Board
 import Cell exposing (Cell)
 import Config
     exposing
-        ( colors
+        ( boardSizeScaled
+        , colors
         , tileSize
         , whitespace
         )
@@ -12,6 +13,8 @@ import CustomEvent
 import Element exposing (Color, Element)
 import Element.Border as Border
 import Element.Events as Events
+import Pixels
+import Quantity
 import UI exposing (ControlButtonSize)
 import World exposing (World)
 
@@ -122,7 +125,7 @@ overlay : World -> Model -> Element Msg
 overlay world model =
     let
         size =
-            Element.px (Config.boardSize * floor tileSize)
+            Element.px (boardSizeScaled |> Pixels.inPixels)
 
         rg =
             List.range 1 Config.boardSize
@@ -154,7 +157,7 @@ overlay world model =
                     colors.transparent
     in
     Element.el
-        [ Element.mouseOver [ Border.innerGlow highlight tileSize ]
+        [ Element.mouseOver [ Border.innerGlow highlight (Pixels.inPixels tileSize) ]
         , Element.width size
         , Element.height size
         ]
@@ -169,12 +172,21 @@ tileOverlay :
 tileOverlay { glowColor, cell } =
     let
         tileSizePx =
-            Element.px (floor tileSize)
+            Element.px
+                (tileSize
+                    |> Quantity.floor
+                    |> Pixels.inPixels
+                )
     in
     Element.el
         [ Element.width tileSizePx
         , Element.height tileSizePx
-        , Element.mouseOver [ Border.innerGlow glowColor <| tileSize / 4 ]
+        , Element.mouseOver
+            [ tileSize
+                |> Quantity.divideBy 4
+                |> Pixels.toFloat
+                |> Border.innerGlow glowColor
+            ]
         , Events.onClick (SelectTile cell)
         , Element.htmlAttribute (CustomEvent.onRightClick <| SecondaryAction cell)
         ]

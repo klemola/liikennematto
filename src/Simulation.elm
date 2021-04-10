@@ -231,7 +231,7 @@ findLotAnchor world seed newLot =
             tile == targetTile && hasEnoughSpaceAround cell && not (World.hasLotAnchor cell world)
 
         lotBoundingBox cell =
-            Lot.bottomLeftCorner newLot ( cell, targetDirection )
+            Lot.bottomLeftCorner ( cell, targetDirection ) newLot
                 |> Geometry.boundingBoxWithDimensions newLot.width newLot.height
 
         hasEnoughSpaceAround cell =
