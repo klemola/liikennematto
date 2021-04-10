@@ -13,8 +13,8 @@ import Circle2d
 import Config exposing (tileSizeInMeters)
 import Dict
 import Direction2d
-import Geometry exposing (LMTriangle2d)
-import Length exposing (Length)
+import Geometry exposing (LMEntityCoordinates)
+import Length exposing (Length, Meters)
 import LocalPath
 import Maybe.Extra
 import Point2d
@@ -24,7 +24,7 @@ import Random.List
 import RoadNetwork exposing (TrafficControl(..))
 import Set exposing (Set)
 import TrafficLight exposing (TrafficLight)
-import Triangle2d
+import Triangle2d exposing (Triangle2d)
 import World exposing (World)
 
 
@@ -270,7 +270,7 @@ checkPathCollision activeCar otherCars =
         |> Maybe.map AvoidCollision
 
 
-pathsCouldCollideWith : LMTriangle2d -> Car -> Car -> Bool
+pathsCouldCollideWith : Triangle2d Meters LMEntityCoordinates -> Car -> Car -> Bool
 pathsCouldCollideWith fieldOfViewTriangle activeCar otherCar =
     let
         headingRoughlyInTheSameDirection =
