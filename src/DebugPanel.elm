@@ -1,15 +1,19 @@
 module DebugPanel exposing (Model, Msg, initialModel, update, view)
 
+import Acceleration exposing (Acceleration)
 import Car exposing (Car)
-import Config exposing (borderRadius, borderSize, colors, uiDimensions, whitespace)
+import Config exposing (borderRadius, borderSize, colors, pixelsToMetersRatio, uiDimensions, whitespace)
 import Dict
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
-import Geometry
+import Geometry exposing (LMPoint2d)
 import Graphics
+import Point2d
+import Quantity
 import RoadNetwork
+import Speed exposing (Speed)
 import UI exposing (ControlButtonSize(..))
 import World exposing (World)
 
@@ -181,9 +185,54 @@ carStateView fontSize car =
         ]
         [ showCarKind
         , Element.column [ Element.spacing whitespace.tight ]
-            [ Element.text (Geometry.pointToString car.position)
-            , Element.text (Geometry.speedToString car.velocity)
-            , Element.text (Geometry.accelerationToString car.acceleration)
+            [ Element.text (pointToString car.position)
+            , Element.text (speedToString car.velocity)
+            , Element.text (accelerationToString car.acceleration)
             , Element.text (Car.statusDescription car)
             ]
+        ]
+
+
+speedToString : Speed -> String
+speedToString speed =
+    let
+        speedValue =
+            speed
+                |> Quantity.unwrap
+                |> String.fromFloat
+    in
+    "Speed: " ++ speedValue ++ " m/s"
+
+
+accelerationToString : Acceleration -> String
+accelerationToString acceleration =
+    let
+        accelerationValue =
+            acceleration
+                |> Quantity.unwrap
+                |> String.fromFloat
+    in
+    "Acceleration: " ++ accelerationValue ++ " m/s²"
+
+
+pointToString : LMPoint2d -> String
+pointToString point =
+    let
+        { x, y } =
+            point
+                |> Point2d.at pixelsToMetersRatio
+                |> Point2d.toPixels
+
+        format n =
+            n
+                |> truncate
+                |> String.fromInt
+                |> String.padLeft 2 ' '
+    in
+    String.join
+        " "
+        [ "x:"
+        , format x
+        , "y:"
+        , format y
         ]
