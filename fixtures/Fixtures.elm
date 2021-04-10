@@ -50,7 +50,7 @@ seed =
 carOne : Car
 carOne =
     Car.new Car.SedanA
-        |> Car.withVelocity Config.maxVelocity
+        |> Car.withVelocity Car.maxVelocity
         |> Car.build 1
         |> Car.startMoving
 
@@ -58,7 +58,7 @@ carOne =
 carTwo : Car
 carTwo =
     Car.new Car.SedanB
-        |> Car.withVelocity Config.maxVelocity
+        |> Car.withVelocity Car.maxVelocity
         |> Car.build 2
         |> Car.startMoving
 

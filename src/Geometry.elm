@@ -1,45 +1,31 @@
 module Geometry exposing
     ( LMBoundingBox2d
-    , LMCircle2d
-    , LMCubicSpline2d
     , LMDirection2d
+    , LMEntityCoordinates
     , LMPoint2d
     , LMTriangle2d
-    , LocalPath
     , accelerationToString
     , angleFromDirection
     , angleToTarget
     , boundingBoxFromCircle
     , boundingBoxWithDimensions
-    , curveSpline
     , fieldOfViewTriangle
-    , leaveLotSpline
-    , linearLocalPathToTarget
     , noBoundingBoxOverlap
-    , pathsCouldCollide
     , pointToString
     , speedToString
-    , uTurnSpline
     )
 
 import Acceleration exposing (Acceleration)
 import Angle exposing (Angle)
 import BoundingBox2d exposing (BoundingBox2d)
-import Circle2d exposing (Circle2d)
+import Circle2d
 import Config
     exposing
-        ( lotExitOffset
-        , overlapThreshold
-        , pixelsToMetersRatio
-        , uTurnDistance
+        ( pixelsToMetersRatio
         )
-import CubicSpline2d exposing (CubicSpline2d)
 import Direction2d exposing (Direction2d)
 import Length exposing (Length, Meters)
-import LineSegment2d
-import Maybe.Extra
 import Point2d exposing (Point2d)
-import Polyline2d exposing (Polyline2d)
 import Quantity
 import Speed exposing (Speed)
 import Triangle2d exposing (Triangle2d)
@@ -61,20 +47,8 @@ type alias LMBoundingBox2d =
     BoundingBox2d Meters LMEntityCoordinates
 
 
-type alias LMPolyline2d =
-    Polyline2d Meters LMEntityCoordinates
-
-
 type alias LMTriangle2d =
     Triangle2d Meters LMEntityCoordinates
-
-
-type alias LMCircle2d =
-    Circle2d Meters LMEntityCoordinates
-
-
-type alias LMCubicSpline2d =
-    CubicSpline2d Meters LMEntityCoordinates
 
 
 
@@ -161,7 +135,7 @@ boundingBoxWithDimensions width height origin =
 
 noBoundingBoxOverlap : LMBoundingBox2d -> LMBoundingBox2d -> Bool
 noBoundingBoxOverlap bb1 bb2 =
-    not <| BoundingBox2d.overlappingByAtLeast overlapThreshold bb1 bb2
+    not <| BoundingBox2d.overlappingByAtLeast (Length.meters 0.1) bb1 bb2
 
 
 boundingBoxFromCircle : LMPoint2d -> Length -> LMBoundingBox2d
@@ -192,132 +166,3 @@ fieldOfViewTriangle origin direction fov distance =
             origin |> Point2d.translateIn rightVertexDirection distance
     in
     Triangle2d.fromVertices ( origin, farLeftVertex, farRightVertex )
-
-
-
--- Local path is a list of points, often constructed from a spline. Practically same as a Polyline2d.
-
-
-type alias LocalPath =
-    List LMPoint2d
-
-
-splineSegmentsAmount : Int
-splineSegmentsAmount =
-    16
-
-
-linearLocalPathToTarget : LMPoint2d -> LMPoint2d -> LocalPath
-linearLocalPathToTarget origin target =
-    [ 0, 0.25, 0.5, 0.75, 1 ]
-        |> List.map (\step -> Point2d.interpolateFrom origin target step)
-
-
-leaveLotSpline : LMPoint2d -> LMPoint2d -> LMDirection2d -> LocalPath
-leaveLotSpline origin target direction =
-    let
-        handleDistance =
-            Point2d.distanceFrom origin target |> Quantity.half
-
-        targetCp =
-            target |> Point2d.translateIn direction lotExitOffset
-
-        midpoint =
-            Point2d.midpoint origin targetCp
-
-        handleCp1 =
-            midpoint
-                |> Point2d.midpoint origin
-                |> Point2d.translateIn (Direction2d.rotateClockwise direction) handleDistance
-
-        handleCp2 =
-            midpoint |> Point2d.translateIn (Direction2d.rotateCounterclockwise direction) handleDistance
-    in
-    CubicSpline2d.fromControlPoints origin handleCp1 handleCp2 targetCp
-        |> cubicSplineToLocalPath
-
-
-uTurnSpline : LMPoint2d -> LMPoint2d -> LMDirection2d -> LocalPath
-uTurnSpline origin target direction =
-    let
-        handleCp1 =
-            Point2d.translateIn direction uTurnDistance origin
-
-        handleCp2 =
-            Point2d.translateIn direction uTurnDistance target
-    in
-    CubicSpline2d.fromControlPoints origin handleCp1 handleCp2 target
-        |> cubicSplineToLocalPath
-
-
-curveSpline : LMPoint2d -> LMPoint2d -> LMDirection2d -> LocalPath
-curveSpline origin target direction =
-    let
-        distanceToTarget =
-            Point2d.distanceFrom origin target
-
-        cosine =
-            origin
-                |> angleFromDirection direction target
-                |> Angle.cos
-
-        distanceToCorner =
-            Quantity.multiplyBy cosine distanceToTarget
-
-        corner =
-            Point2d.translateIn direction distanceToCorner origin
-
-        handleCp1 =
-            Point2d.midpoint origin corner
-
-        handleCp2 =
-            Point2d.midpoint corner target
-    in
-    CubicSpline2d.fromControlPoints origin handleCp1 handleCp2 target
-        |> cubicSplineToLocalPath
-
-
-cubicSplineToLocalPath : LMCubicSpline2d -> LocalPath
-cubicSplineToLocalPath spline =
-    spline
-        |> CubicSpline2d.segments splineSegmentsAmount
-        |> Polyline2d.vertices
-
-
-pathsCouldCollide : LocalPath -> LocalPath -> Bool
-pathsCouldCollide path1 path2 =
-    let
-        -- Room for improvement: Lower the segments amount here to optimize
-        path1AsPolyline =
-            Polyline2d.fromVertices path1
-
-        path2AsPolyline =
-            Polyline2d.fromVertices path2
-    in
-    pathsOverlap path1AsPolyline path2AsPolyline
-        && pathsIntersect path1AsPolyline path2AsPolyline
-
-
-pathsOverlap : LMPolyline2d -> LMPolyline2d -> Bool
-pathsOverlap path1 path2 =
-    Maybe.map2 BoundingBox2d.intersects
-        (Polyline2d.boundingBox path1)
-        (Polyline2d.boundingBox path2)
-        |> Maybe.withDefault False
-
-
-pathsIntersect : LMPolyline2d -> LMPolyline2d -> Bool
-pathsIntersect path1 path2 =
-    let
-        path1Segments =
-            Polyline2d.segments path1
-
-        path2Segments =
-            Polyline2d.segments path2
-    in
-    path1Segments
-        |> List.any
-            (\segment ->
-                path2Segments
-                    |> List.any (LineSegment2d.intersectionPoint segment >> Maybe.Extra.isJust)
-            )

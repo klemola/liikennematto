@@ -12,7 +12,6 @@ module Lot exposing
     , entryDetails
     , fromNewLot
     , inBounds
-    , parkingSpot
     )
 
 import BoundingBox2d

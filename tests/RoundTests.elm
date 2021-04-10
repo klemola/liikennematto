@@ -2,7 +2,6 @@ module RoundTests exposing (suite)
 
 import Acceleration exposing (Acceleration)
 import Car exposing (Status(..))
-import Config
 import Expect
 import Fixtures exposing (..)
 import Length
@@ -53,7 +52,7 @@ suite =
                             |> Round.play
                             |> getCarAcceleration
                         )
-                        Config.acceleration.breakingFast
+                        Car.acceleration.breakingFast
                 )
             , test "can stop the car at traffic lights"
                 (\_ ->

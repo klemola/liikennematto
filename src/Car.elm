@@ -3,22 +3,27 @@ module Car exposing
     , CarKind(..)
     , Cars
     , Status(..)
+    , acceleration
     , boundingBox
     , break
     , build
     , createRoute
+    , fieldOfView
     , giveWay
     , isAtTheEndOfLocalPath
     , isBreaking
     , isConfused
     , isStoppedOrWaiting
+    , length
     , markAsConfused
+    , maxVelocity
     , move
     , new
     , startMoving
     , statusDescription
     , stopAtIntersection
     , waitForTrafficLights
+    , width
     , withHome
     , withPosition
     , withRotation
@@ -30,11 +35,7 @@ import Acceleration exposing (Acceleration)
 import Angle exposing (Angle)
 import Config
     exposing
-        ( acceleration
-        , carCollisionCircleRadius
-        , maxVelocity
-        , overlapThreshold
-        , trafficLightsStopMargin
+        ( pixelsToMeters
         )
 import Dict exposing (Dict)
 import Direction2d
@@ -44,9 +45,9 @@ import Geometry
     exposing
         ( LMBoundingBox2d
         , LMPoint2d
-        , LocalPath
         )
 import Length exposing (Length)
+import LocalPath exposing (LocalPath)
 import Point2d
 import Quantity exposing (Quantity(..))
 import RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
@@ -100,6 +101,48 @@ type Status
     | Yielding
     | ParkedAtLot
     | Confused
+
+
+maxVelocity : Speed
+maxVelocity =
+    Speed.metersPerSecond 11.1
+
+
+length : Length
+length =
+    pixelsToMeters 24
+
+
+width : Length
+width =
+    pixelsToMeters 12
+
+
+fieldOfView : Angle
+fieldOfView =
+    Angle.degrees 45
+
+
+trafficLightsStopMargin : Length
+trafficLightsStopMargin =
+    Length.meters 5
+
+
+acceleration :
+    { speedUp : Acceleration
+    , breakingSlow : Acceleration
+    , breakingFast : Acceleration
+    }
+acceleration =
+    { speedUp = Acceleration.metersPerSecondSquared 5
+    , breakingSlow = Acceleration.metersPerSecondSquared -10
+    , breakingFast = Acceleration.metersPerSecondSquared -40
+    }
+
+
+collisionCircleRadius : Length
+collisionCircleRadius =
+    width |> Quantity.divideBy 1.5
 
 
 new : CarKind -> NewCar
@@ -174,14 +217,14 @@ isBreaking car =
 boundingBox : Car -> LMBoundingBox2d
 boundingBox car =
     -- Room for improvement: use a more realistic bounding box
-    Geometry.boundingBoxFromCircle car.position carCollisionCircleRadius
+    Geometry.boundingBoxFromCircle car.position collisionCircleRadius
 
 
 move : Car -> Car
 move car =
     case car.localPath of
         next :: others ->
-            if Point2d.equalWithin overlapThreshold car.position next then
+            if Point2d.equalWithin (Length.meters 0.1) car.position next then
                 { car
                     | position = next
                     , localPath = others
@@ -300,19 +343,19 @@ localPathToTarget car { node } =
                 |> Angle.inDegrees
     in
     if node.label.kind == LotEntry && car.status == ParkedAtLot then
-        Geometry.leaveLotSpline origin target carDirection
+        LocalPath.leaveLotSpline origin target carDirection
 
     else if node.label.kind == LotEntry then
-        Geometry.linearLocalPathToTarget origin target
+        LocalPath.linearLocalPathToTarget origin target
 
     else if abs angleDegreesToTarget < 10 then
-        Geometry.linearLocalPathToTarget origin target
+        LocalPath.linearLocalPathToTarget origin target
 
     else if abs angleDegreesToTarget |> isWithinRoundingErrorOf 90 then
-        Geometry.uTurnSpline origin target carDirection
+        LocalPath.uTurnSpline origin target carDirection
 
     else
-        Geometry.curveSpline origin target carDirection
+        LocalPath.curveSpline origin target carDirection
 
 
 isWithinRoundingErrorOf : Int -> Float -> Bool

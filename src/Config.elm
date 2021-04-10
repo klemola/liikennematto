@@ -1,44 +1,24 @@
 module Config exposing
-    ( acceleration
-    , boardSize
+    ( boardSize
     , boardSizeScaled
     , boardSizeScaledInMeters
     , borderRadius
     , borderSize
-    , carCollisionCircleRadius
-    , carFieldOfView
-    , carLength
-    , carProximityCutoff
-    , carRotationTolerance
-    , carWidth
     , colors
     , dequeueFrequency
     , environmentUpdateFrequency
-    , innerLaneOffset
-    , lotExitOffset
-    , maxVelocity
-    , nodeSize
-    , outerLaneOffset
-    , overlapThreshold
     , pixelsToMeters
     , pixelsToMetersRatio
     , tileSize
     , tileSizeInMeters
-    , trafficLightRadius
-    , trafficLightReactionDistance
-    , trafficLightsStopMargin
-    , uTurnDistance
     , uiDimensions
     , whitespace
     )
 
-import Acceleration exposing (Acceleration)
-import Angle exposing (Angle)
 import Element exposing (rgb255, rgba255)
 import Length exposing (Length)
 import Pixels exposing (Pixels)
 import Quantity exposing (Quantity, Rate)
-import Speed exposing (Speed)
 
 
 
@@ -79,6 +59,10 @@ pixelsToMeters pixels =
         |> Quantity.at_ pixelsToMetersRatio
 
 
+
+-- Room for improvement: move tile and board size constants to the Board module, merge Cell into it as well
+
+
 tileSize : Quantity Float Pixels
 tileSize =
     Pixels.float 80
@@ -89,16 +73,6 @@ boardSizeScaled =
     tileSize
         |> Quantity.floor
         |> Quantity.multiplyBy boardSize
-
-
-nodeSize : Quantity Float Pixels
-nodeSize =
-    Pixels.float 4
-
-
-trafficLightRadius : Quantity Float Pixels
-trafficLightRadius =
-    Pixels.float 5
 
 
 tileSizeInMeters : Length
@@ -112,89 +86,6 @@ boardSizeScaledInMeters =
     boardSizeScaled
         |> Quantity.toFloatQuantity
         |> Quantity.at_ pixelsToMetersRatio
-
-
-carLength : Length
-carLength =
-    pixelsToMeters 24
-
-
-carWidth : Length
-carWidth =
-    pixelsToMeters 12
-
-
-innerLaneOffset : Length
-innerLaneOffset =
-    pixelsToMeters 26
-
-
-outerLaneOffset : Length
-outerLaneOffset =
-    pixelsToMeters 54
-
-
-maxVelocity : Speed
-maxVelocity =
-    Speed.metersPerSecond 11.1
-
-
-carRotationTolerance : Angle
-carRotationTolerance =
-    Angle.degrees 5
-
-
-carFieldOfView : Angle
-carFieldOfView =
-    Angle.degrees 45
-
-
-acceleration :
-    { speedUp : Acceleration
-    , breakingSlow : Acceleration
-    , breakingFast : Acceleration
-    }
-acceleration =
-    { speedUp = Acceleration.metersPerSecondSquared 5
-    , breakingSlow = Acceleration.metersPerSecondSquared -10
-    , breakingFast = Acceleration.metersPerSecondSquared -40
-    }
-
-
-overlapThreshold : Length
-overlapThreshold =
-    Length.meters 0.1
-
-
-carProximityCutoff : Length
-carProximityCutoff =
-    tileSizeInMeters
-
-
-carCollisionCircleRadius : Length
-carCollisionCircleRadius =
-    carWidth
-        |> Quantity.divideBy 1.5
-
-
-uTurnDistance : Length
-uTurnDistance =
-    Length.meters 4
-
-
-lotExitOffset : Length
-lotExitOffset =
-    Length.meters 8
-
-
-trafficLightReactionDistance : Length
-trafficLightReactionDistance =
-    Length.meters 50
-
-
-trafficLightsStopMargin : Length
-trafficLightsStopMargin =
-    Length.meters 5
 
 
 
