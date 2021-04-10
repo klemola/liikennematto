@@ -150,8 +150,7 @@ bottomLeftCorner ( aCell, aDir ) { width, height } =
                 (tileSizeInMeters |> Quantity.minus height)
 
         adjustedForVerticalEntry =
-            origin
-                |> Geometry.translatePointBy displacement
+            origin |> Point2d.translateBy displacement
     in
     case aDir of
         Down ->
@@ -226,8 +225,7 @@ parkingSpot anchor newLot =
         displacement =
             Vector2d.xy shiftX shiftY
     in
-    origin
-        |> Geometry.translatePointBy displacement
+    origin |> Point2d.translateBy displacement
 
 
 entryCell : Anchor -> Cell

@@ -157,7 +157,7 @@ renderLot lot =
 
         lotCenterPoint =
             lot.position
-                |> Geometry.translatePointBy displacement
+                |> Point2d.translateBy displacement
                 |> toPixelsTuple
 
         building =
@@ -325,10 +325,10 @@ renderCarCollisionDetection car =
 
         forwardShiftedCarPosition =
             car.position
-                |> Geometry.translatePointIn carDirection (carLength |> Quantity.divideBy 2)
+                |> Point2d.translateIn carDirection (carLength |> Quantity.divideBy 2)
     in
     Collage.circle
-        (Geometry.circleAt forwardShiftedCarPosition (carLength |> Quantity.divideBy 2)
+        (Circle2d.atPoint forwardShiftedCarPosition (carLength |> Quantity.divideBy 2)
             |> Circle2d.radius
             |> toPixelsValue
         )

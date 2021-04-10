@@ -33,6 +33,7 @@ import Config
         ( acceleration
         , carCollisionCircleRadius
         , maxVelocity
+        , overlapThreshold
         , trafficLightsStopMargin
         )
 import Dict exposing (Dict)
@@ -180,10 +181,7 @@ move : Car -> Car
 move car =
     case car.localPath of
         next :: others ->
-            if
-                car.position
-                    |> Geometry.isPointAt next
-            then
+            if Point2d.equalWithin overlapThreshold car.position next then
                 { car
                     | position = next
                     , localPath = others

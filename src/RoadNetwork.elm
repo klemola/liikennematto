@@ -316,9 +316,13 @@ laneCenterPositionsByDirection cell trafficDirection =
             Cell.center cell
     in
     ( tileCenterPosition
-        |> Geometry.translatePointIn (Direction2d.rotateClockwise trafficDirection) connectionOffsetFromTileCenter
+        |> Point2d.translateIn
+            (Direction2d.rotateClockwise trafficDirection)
+            connectionOffsetFromTileCenter
     , tileCenterPosition
-        |> Geometry.translatePointIn (Direction2d.rotateCounterclockwise trafficDirection) connectionOffsetFromTileCenter
+        |> Point2d.translateIn
+            (Direction2d.rotateCounterclockwise trafficDirection)
+            connectionOffsetFromTileCenter
     )
 
 
@@ -341,8 +345,7 @@ connectionsByTileEntryDirection board cell tile direction =
                 ( LaneStart, LaneEnd )
 
         shift x y =
-            origin
-                |> Geometry.translatePointBy (Vector2d.xy x y)
+            origin |> Point2d.translateBy (Vector2d.xy x y)
     in
     case direction of
         Up ->
@@ -547,7 +550,7 @@ connectionLookupAreaToLeft node range =
         leftDir =
             Direction2d.rotateCounterclockwise (getDirection node)
     in
-    Geometry.translateBoundingBoxIn leftDir range bb
+    BoundingBox2d.translateIn leftDir range bb
 
 
 connectionLookupAreaToRight : Node Connection -> Length -> LMBoundingBox2d
@@ -564,8 +567,8 @@ connectionLookupAreaToRight node range =
 
         otherCorner =
             origin
-                |> Geometry.translatePointIn nodeDirection tileSizeInMeters
-                |> Geometry.translatePointIn nodeDirectionRotatedRight range
+                |> Point2d.translateIn nodeDirection tileSizeInMeters
+                |> Point2d.translateIn nodeDirectionRotatedRight range
     in
     BoundingBox2d.from origin otherCorner
 
