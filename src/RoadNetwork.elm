@@ -19,7 +19,7 @@ import Angle
 import Board exposing (Board, Tile, crossIntersection)
 import BoundingBox2d
 import Cell exposing (Cell, OrthogonalDirection(..))
-import Config exposing (innerLaneOffset, outerLaneOffset, tileSize)
+import Config exposing (innerLaneOffset, outerLaneOffset, tileSizeInMeters)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction2d
@@ -27,12 +27,15 @@ import Entity exposing (Id)
 import Geometry exposing (LMBoundingBox2d, LMDirection2d, LMPoint2d)
 import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
 import Graph.DOT
+import Length exposing (Length)
 import Lot exposing (Lot, Lots)
 import Maybe.Extra as Maybe
 import Point2d
+import Quantity
 import Random
 import Random.Extra
 import TrafficLight exposing (TrafficLight, TrafficLights)
+import Vector2d
 
 
 type alias RoadNetwork =
@@ -201,7 +204,7 @@ createConnections { nodes, board, remainingTiles, lots } =
                 maybeCreateNode nodeSpec currentNodes =
                     let
                         key =
-                            Geometry.pointToPositionAsTuple nodeSpec.position
+                            Point2d.toTuple Length.inMeters nodeSpec.position
                     in
                     if Dict.member key currentNodes then
                         currentNodes
@@ -304,11 +307,10 @@ deadendConnections cell tile trafficDirection =
 laneCenterPositionsByDirection : Cell -> LMDirection2d -> ( LMPoint2d, LMPoint2d )
 laneCenterPositionsByDirection cell trafficDirection =
     let
-        halfTile =
-            tileSize / 2
-
         connectionOffsetFromTileCenter =
-            Geometry.toLMUnits <| halfTile - innerLaneOffset
+            tileSizeInMeters
+                |> Quantity.divideBy 2
+                |> Quantity.minus innerLaneOffset
 
         tileCenterPosition =
             Cell.center cell
@@ -340,12 +342,12 @@ connectionsByTileEntryDirection board cell tile direction =
 
         shift x y =
             origin
-                |> Geometry.translatePointBy x y
+                |> Geometry.translatePointBy (Vector2d.xy x y)
     in
     case direction of
         Up ->
             [ { kind = startConnectionKind
-              , position = shift outerLaneOffset tileSize
+              , position = shift outerLaneOffset tileSizeInMeters
               , direction = Cell.up
               , cell = cell
               , tile = tile
@@ -353,7 +355,7 @@ connectionsByTileEntryDirection board cell tile direction =
               , lotId = Nothing
               }
             , { kind = endConnectionKind
-              , position = shift innerLaneOffset tileSize
+              , position = shift innerLaneOffset tileSizeInMeters
               , direction = Cell.down
               , cell = cell
               , tile = tile
@@ -364,7 +366,7 @@ connectionsByTileEntryDirection board cell tile direction =
 
         Right ->
             [ { kind = startConnectionKind
-              , position = shift tileSize innerLaneOffset
+              , position = shift tileSizeInMeters innerLaneOffset
               , direction = Cell.right
               , cell = cell
               , tile = tile
@@ -372,7 +374,7 @@ connectionsByTileEntryDirection board cell tile direction =
               , lotId = Nothing
               }
             , { kind = endConnectionKind
-              , position = shift tileSize outerLaneOffset
+              , position = shift tileSizeInMeters outerLaneOffset
               , direction = Cell.left
               , cell = cell
               , tile = tile
@@ -383,7 +385,7 @@ connectionsByTileEntryDirection board cell tile direction =
 
         Down ->
             [ { kind = startConnectionKind
-              , position = shift innerLaneOffset 0
+              , position = shift innerLaneOffset Quantity.zero
               , direction = Cell.down
               , cell = cell
               , tile = tile
@@ -391,7 +393,7 @@ connectionsByTileEntryDirection board cell tile direction =
               , lotId = Nothing
               }
             , { kind = endConnectionKind
-              , position = shift outerLaneOffset 0
+              , position = shift outerLaneOffset Quantity.zero
               , direction = Cell.up
               , cell = cell
               , tile = tile
@@ -402,7 +404,7 @@ connectionsByTileEntryDirection board cell tile direction =
 
         Left ->
             [ { kind = startConnectionKind
-              , position = shift 0 outerLaneOffset
+              , position = shift Quantity.zero outerLaneOffset
               , direction = Cell.left
               , cell = cell
               , tile = tile
@@ -410,7 +412,7 @@ connectionsByTileEntryDirection board cell tile direction =
               , lotId = Nothing
               }
             , { kind = endConnectionKind
-              , position = shift 0 innerLaneOffset
+              , position = shift Quantity.zero innerLaneOffset
               , direction = Cell.right
               , cell = cell
               , tile = tile
@@ -516,13 +518,13 @@ connectsWithinCell current other =
             ( getDirection current, getDirection other )
 
         range =
-            tileSize / 2
+            tileSizeInMeters |> Quantity.divideBy 2
 
         target =
             getPosition other
 
         leftLookupArea =
-            connectionLookupAreaToLeft current (range + innerLaneOffset)
+            connectionLookupAreaToLeft current (range |> Quantity.plus innerLaneOffset)
 
         rightLookupArea =
             connectionLookupAreaToRight current range
@@ -536,7 +538,7 @@ connectsWithinCell current other =
     canContinueLeft || canContinueRight
 
 
-connectionLookupAreaToLeft : Node Connection -> Float -> LMBoundingBox2d
+connectionLookupAreaToLeft : Node Connection -> Length -> LMBoundingBox2d
 connectionLookupAreaToLeft node range =
     let
         bb =
@@ -548,7 +550,7 @@ connectionLookupAreaToLeft node range =
     Geometry.translateBoundingBoxIn leftDir range bb
 
 
-connectionLookupAreaToRight : Node Connection -> Float -> LMBoundingBox2d
+connectionLookupAreaToRight : Node Connection -> Length -> LMBoundingBox2d
 connectionLookupAreaToRight node range =
     let
         origin =
@@ -562,8 +564,8 @@ connectionLookupAreaToRight node range =
 
         otherCorner =
             origin
-                |> Geometry.translatePointIn nodeDirection (Geometry.toLMUnits tileSize)
-                |> Geometry.translatePointIn nodeDirectionRotatedRight (Geometry.toLMUnits range)
+                |> Geometry.translatePointIn nodeDirection tileSizeInMeters
+                |> Geometry.translatePointIn nodeDirectionRotatedRight range
     in
     BoundingBox2d.from origin otherCorner
 
@@ -628,7 +630,7 @@ closestToOriginOrdering current other =
             getPosition other
     in
     Point2d.distanceFrom origin target
-        |> Geometry.toFloat
+        |> Length.inMeters
 
 
 linkTrafficLightToNode : Id -> RNNodeContext -> RNNodeContext

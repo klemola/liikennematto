@@ -18,6 +18,7 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Html exposing (Html)
+import Pixels
 import Render
 import Simulation exposing (Msg(..))
 import Task
@@ -198,7 +199,7 @@ render model =
             }
 
         renderedSize =
-            floor boardSizeScaled
+            boardSizeScaled |> Pixels.inPixels
 
         ( viewportWidth, viewportHeight ) =
             ( min model.screen.width renderedSize, min model.screen.height renderedSize )
@@ -250,7 +251,7 @@ controls : Model -> Element Msg
 controls model =
     let
         width =
-            min model.screen.width (floor boardSizeScaled)
+            min model.screen.width (boardSizeScaled |> Pixels.inPixels)
 
         controlButtonSize =
             if min model.screen.width model.screen.height < uiDimensions.smallControlsBreakpoint then

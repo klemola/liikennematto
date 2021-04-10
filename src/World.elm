@@ -305,7 +305,7 @@ moveCarToHome world car =
     case ( home, homeNode ) of
         ( Just lot, Just nodeCtx ) ->
             { car
-                | position = Lot.parkingSpot lot
+                | position = lot.entryDetails.parkingSpot
                 , rotation =
                     lot.content.entryDirection
                         |> Cell.orthogonalDirectionToLmDirection

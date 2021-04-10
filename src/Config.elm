@@ -1,8 +1,43 @@
-module Config exposing (..)
+module Config exposing
+    ( acceleration
+    , boardSize
+    , boardSizeScaled
+    , boardSizeScaledInMeters
+    , borderRadius
+    , borderSize
+    , carCollisionCircleRadius
+    , carFieldOfView
+    , carLength
+    , carProximityCutoff
+    , carRotationTolerance
+    , carWidth
+    , colors
+    , dequeueFrequency
+    , environmentUpdateFrequency
+    , innerLaneOffset
+    , lotExitOffset
+    , maxVelocity
+    , nodeSize
+    , outerLaneOffset
+    , overlapThreshold
+    , pixelsToMeters
+    , pixelsToMetersRatio
+    , tileSize
+    , tileSizeInMeters
+    , trafficLightRadius
+    , trafficLightReactionDistance
+    , trafficLightsStopMargin
+    , uTurnDistance
+    , uiDimensions
+    , whitespace
+    )
 
 import Acceleration exposing (Acceleration)
 import Angle exposing (Angle)
 import Element exposing (rgb255, rgba255)
+import Length exposing (Length)
+import Pixels exposing (Pixels)
+import Quantity exposing (Quantity, Rate)
 import Speed exposing (Speed)
 
 
@@ -27,55 +62,76 @@ boardSize =
     10
 
 
-tileSize : Float
-tileSize =
-    80
-
-
-boardSizeScaled : Float
-boardSizeScaled =
-    toFloat boardSize * tileSize
-
-
-laneWidth : Float
-laneWidth =
-    42
-
-
-innerLaneOffset : Float
-innerLaneOffset =
-    26
-
-
-outerLaneOffset : Float
-outerLaneOffset =
-    54
-
-
-carLength : Float
-carLength =
-    24
-
-
-carWidth : Float
-carWidth =
-    12
-
-
-nodeSize : Float
-nodeSize =
-    4
-
-
-trafficLightRadius : Float
-trafficLightRadius =
-    5
-
-
 
 --
 -- Unit constants
 --
+
+
+pixelsToMetersRatio : Quantity Float (Rate Pixels.Pixels Length.Meters)
+pixelsToMetersRatio =
+    Pixels.pixels 5 |> Quantity.per (Length.meters 1)
+
+
+pixelsToMeters : Float -> Length
+pixelsToMeters pixels =
+    Pixels.float pixels
+        |> Quantity.at_ pixelsToMetersRatio
+
+
+tileSize : Quantity Float Pixels
+tileSize =
+    Pixels.float 80
+
+
+boardSizeScaled : Quantity Int Pixels
+boardSizeScaled =
+    tileSize
+        |> Quantity.floor
+        |> Quantity.multiplyBy boardSize
+
+
+nodeSize : Quantity Float Pixels
+nodeSize =
+    Pixels.float 4
+
+
+trafficLightRadius : Quantity Float Pixels
+trafficLightRadius =
+    Pixels.float 5
+
+
+tileSizeInMeters : Length
+tileSizeInMeters =
+    tileSize
+        |> Quantity.at_ pixelsToMetersRatio
+
+
+boardSizeScaledInMeters : Length
+boardSizeScaledInMeters =
+    boardSizeScaled
+        |> Quantity.toFloatQuantity
+        |> Quantity.at_ pixelsToMetersRatio
+
+
+carLength : Length
+carLength =
+    pixelsToMeters 24
+
+
+carWidth : Length
+carWidth =
+    pixelsToMeters 12
+
+
+innerLaneOffset : Length
+innerLaneOffset =
+    pixelsToMeters 26
+
+
+outerLaneOffset : Length
+outerLaneOffset =
+    pixelsToMeters 54
 
 
 maxVelocity : Speed
@@ -103,6 +159,42 @@ acceleration =
     , breakingSlow = Acceleration.metersPerSecondSquared -10
     , breakingFast = Acceleration.metersPerSecondSquared -40
     }
+
+
+overlapThreshold : Length
+overlapThreshold =
+    Length.meters 0.1
+
+
+carProximityCutoff : Length
+carProximityCutoff =
+    tileSizeInMeters
+
+
+carCollisionCircleRadius : Length
+carCollisionCircleRadius =
+    carWidth
+        |> Quantity.divideBy 1.5
+
+
+uTurnDistance : Length
+uTurnDistance =
+    Length.meters 4
+
+
+lotExitOffset : Length
+lotExitOffset =
+    Length.meters 8
+
+
+trafficLightReactionDistance : Length
+trafficLightReactionDistance =
+    Length.meters 50
+
+
+trafficLightsStopMargin : Length
+trafficLightsStopMargin =
+    Length.meters 5
 
 
 

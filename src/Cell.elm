@@ -19,10 +19,12 @@ module Cell exposing
     , up
     )
 
-import Config exposing (boardSize, tileSize)
+import Config exposing (boardSize, tileSizeInMeters)
 import Direction2d
 import Geometry exposing (LMBoundingBox2d, LMDirection2d, LMPoint2d)
 import Point2d
+import Quantity
+import Vector2d
 
 
 type alias Cell =
@@ -207,19 +209,24 @@ bottomLeftCorner ( cellX, cellY ) =
         Point2d.origin
 
     else
-        Geometry.pointFromPosition
-            { x = x * tileSize
-            , y = y * tileSize
-            }
+        Point2d.xy
+            (tileSizeInMeters |> Quantity.multiplyBy x)
+            (tileSizeInMeters |> Quantity.multiplyBy y)
 
 
 center : Cell -> LMPoint2d
 center cell =
+    let
+        displacement =
+            Vector2d.xy
+                (tileSizeInMeters |> Quantity.divideBy 2)
+                (tileSizeInMeters |> Quantity.divideBy 2)
+    in
     bottomLeftCorner cell
-        |> Geometry.translatePointBy (tileSize / 2) (tileSize / 2)
+        |> Geometry.translatePointBy displacement
 
 
 boundingBox : Cell -> LMBoundingBox2d
 boundingBox cell =
     bottomLeftCorner cell
-        |> Geometry.boundingBoxWithDimensions tileSize tileSize
+        |> Geometry.boundingBoxWithDimensions tileSizeInMeters tileSizeInMeters

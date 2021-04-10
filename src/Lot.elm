@@ -9,6 +9,7 @@ module Lot exposing
     , anchorCell
     , bottomLeftCorner
     , boundingBox
+    , entryDetails
     , fromNewLot
     , inBounds
     , parkingSpot
@@ -16,25 +17,30 @@ module Lot exposing
 
 import BoundingBox2d
 import Cell exposing (Cell, OrthogonalDirection(..))
-import Config exposing (tileSize)
+import Config exposing (tileSizeInMeters)
 import Dict exposing (Dict)
 import Entity exposing (Id)
 import Geometry exposing (LMBoundingBox2d, LMPoint2d)
+import Length exposing (Length)
+import Point2d
+import Quantity
+import Vector2d
 
 
 type alias Lot =
     { content : Building
-    , width : Float
-    , height : Float
+    , width : Length
+    , height : Length
     , position : LMPoint2d
+    , entryDetails : EntryDetails
     , anchor : Anchor
     }
 
 
 type alias NewLot =
     { content : Building
-    , width : Float
-    , height : Float
+    , width : Length
+    , height : Length
     }
 
 
@@ -53,6 +59,14 @@ type alias Building =
     }
 
 
+type alias EntryDetails =
+    { width : Length
+    , height : Length
+    , entryPoint : LMPoint2d
+    , parkingSpot : LMPoint2d
+    }
+
+
 type BuildingKind
     = ResidentialA
     | ResidentialB
@@ -64,16 +78,43 @@ type BuildingKind
     | TwoByThreeTest
 
 
+halfTile : Length
+halfTile =
+    tileSizeInMeters |> Quantity.divideBy 2
+
+
+drivewaySize : Length
+drivewaySize =
+    tileSizeInMeters |> Quantity.divideBy 6
+
+
+drivewayOverlap : Length
+drivewayOverlap =
+    tileSizeInMeters |> Quantity.divideBy 16
+
+
 all : List NewLot
 all =
-    [ { content = Building ResidentialA Down, width = tileSize, height = tileSize }
-    , { content = Building ResidentialB Right, width = tileSize, height = tileSize }
-    , { content = Building ResidentialC Left, width = tileSize, height = tileSize }
-    , { content = Building ResidentialD Up, width = tileSize, height = tileSize }
-    , { content = Building ResidentialE Down, width = 2 * tileSize, height = 2 * tileSize }
-    , { content = Building TwoByOneTest Left, width = 2 * tileSize, height = tileSize }
-    , { content = Building ThreeByThreeTest Right, width = 3 * tileSize, height = 3 * tileSize }
-    , { content = Building TwoByThreeTest Up, width = 2 * tileSize, height = 3 * tileSize }
+    [ { content = Building ResidentialA Down, width = tileSizeInMeters, height = tileSizeInMeters }
+    , { content = Building ResidentialB Right, width = tileSizeInMeters, height = tileSizeInMeters }
+    , { content = Building ResidentialC Left, width = tileSizeInMeters, height = tileSizeInMeters }
+    , { content = Building ResidentialD Up, width = tileSizeInMeters, height = tileSizeInMeters }
+    , { content = Building ResidentialE Down
+      , width = tileSizeInMeters |> Quantity.multiplyBy 2
+      , height = tileSizeInMeters |> Quantity.multiplyBy 2
+      }
+    , { content = Building TwoByOneTest Left
+      , width = tileSizeInMeters |> Quantity.multiplyBy 2
+      , height = tileSizeInMeters
+      }
+    , { content = Building ThreeByThreeTest Right
+      , width = tileSizeInMeters |> Quantity.multiplyBy 3
+      , height = tileSizeInMeters |> Quantity.multiplyBy 3
+      }
+    , { content = Building TwoByThreeTest Up
+      , width = tileSizeInMeters |> Quantity.multiplyBy 2
+      , height = tileSizeInMeters |> Quantity.multiplyBy 3
+      }
     ]
 
 
@@ -84,27 +125,33 @@ fromNewLot ( newLot, aCell ) =
             ( aCell, Cell.oppositeOrthogonalDirection newLot.content.entryDirection )
 
         position =
-            bottomLeftCorner newLot anchor
+            bottomLeftCorner anchor newLot
     in
     { content = newLot.content
     , width = newLot.width
     , height = newLot.height
     , position = position
+    , entryDetails = entryDetails anchor newLot
     , anchor = anchor
     }
 
 
-bottomLeftCorner : NewLot -> Anchor -> LMPoint2d
-bottomLeftCorner { width, height } ( aCell, aDir ) =
+bottomLeftCorner : Anchor -> NewLot -> LMPoint2d
+bottomLeftCorner ( aCell, aDir ) { width, height } =
     let
         origin =
             aCell
                 |> Cell.next aDir
                 |> Cell.bottomLeftCorner
 
+        displacement =
+            Vector2d.xy
+                (tileSizeInMeters |> Quantity.minus width)
+                (tileSizeInMeters |> Quantity.minus height)
+
         adjustedForVerticalEntry =
             origin
-                |> Geometry.translatePointBy (tileSize - width) (tileSize - height)
+                |> Geometry.translatePointBy displacement
     in
     case aDir of
         Down ->
@@ -117,35 +164,77 @@ bottomLeftCorner { width, height } ( aCell, aDir ) =
             origin
 
 
-parkingSpot : Lot -> LMPoint2d
-parkingSpot lot =
+entryDetails : Anchor -> NewLot -> EntryDetails
+entryDetails anchor newLot =
     let
-        origin =
-            Cell.bottomLeftCorner (entryCell lot)
+        ( width, height ) =
+            if Cell.isVertical <| Tuple.second anchor then
+                ( halfTile, drivewaySize )
 
-        ( shiftX, shiftY ) =
-            case lot.content.entryDirection of
+            else
+                ( drivewaySize, halfTile )
+
+        entrypoint =
+            case newLot.content.entryDirection of
                 Up ->
-                    ( tileSize / 2, tileSize )
+                    Point2d.xy
+                        (newLot.width |> Quantity.minus halfTile)
+                        (newLot.height |> Quantity.plus drivewayOverlap)
 
                 Right ->
-                    ( tileSize, tileSize / 2 )
+                    Point2d.xy
+                        (newLot.width |> Quantity.plus drivewayOverlap)
+                        (newLot.height |> Quantity.minus halfTile)
 
                 Down ->
-                    ( tileSize / 2, 0 )
+                    Point2d.xy
+                        halfTile
+                        (Quantity.negate drivewayOverlap)
 
                 Left ->
-                    ( 0, tileSize / 2 )
+                    Point2d.xy
+                        (Quantity.negate drivewayOverlap)
+                        halfTile
+    in
+    { width = width
+    , height = height
+    , entryPoint = entrypoint
+    , parkingSpot = parkingSpot anchor newLot
+    }
+
+
+parkingSpot : Anchor -> NewLot -> LMPoint2d
+parkingSpot anchor newLot =
+    let
+        origin =
+            Cell.bottomLeftCorner (entryCell anchor)
+
+        ( shiftX, shiftY ) =
+            case newLot.content.entryDirection of
+                Up ->
+                    ( halfTile, tileSizeInMeters )
+
+                Right ->
+                    ( tileSizeInMeters, halfTile )
+
+                Down ->
+                    ( halfTile, Quantity.zero )
+
+                Left ->
+                    ( Quantity.zero, halfTile )
+
+        displacement =
+            Vector2d.xy shiftX shiftY
     in
     origin
-        |> Geometry.translatePointBy shiftX shiftY
+        |> Geometry.translatePointBy displacement
 
 
-entryCell : Lot -> Cell
-entryCell lot =
+entryCell : Anchor -> Cell
+entryCell anchor =
     let
         ( aCell, aDir ) =
-            lot.anchor
+            anchor
     in
     Cell.next aDir aCell
 

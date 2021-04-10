@@ -28,7 +28,13 @@ module Car exposing
 
 import Acceleration exposing (Acceleration)
 import Angle exposing (Angle)
-import Config exposing (acceleration, carWidth, maxVelocity)
+import Config
+    exposing
+        ( acceleration
+        , carCollisionCircleRadius
+        , maxVelocity
+        , trafficLightsStopMargin
+        )
 import Dict exposing (Dict)
 import Direction2d
 import Duration
@@ -36,10 +42,8 @@ import Entity exposing (Id)
 import Geometry
     exposing
         ( LMBoundingBox2d
-        , LMEntityDistance
         , LMPoint2d
         , LocalPath
-        , trafficLightsStopMargin
         )
 import Length exposing (Length)
 import Point2d
@@ -169,7 +173,7 @@ isBreaking car =
 boundingBox : Car -> LMBoundingBox2d
 boundingBox car =
     -- Room for improvement: use a more realistic bounding box
-    Geometry.boundingBoxFromCircle car.position (carWidth / 1.5)
+    Geometry.boundingBoxFromCircle car.position carCollisionCircleRadius
 
 
 move : Car -> Car
@@ -192,14 +196,12 @@ move car =
 
                     nextVelocity =
                         car.velocity
-                            |> Quantity.plus (Quantity.for (Duration.milliseconds 16) car.acceleration)
+                            |> Quantity.plus (car.acceleration |> Quantity.for (Duration.milliseconds 16))
                             |> Quantity.clamp Quantity.zero maxVelocity
 
                     nextPosition =
                         car.position
-                            |> Point2d.at_ Geometry.pixelsToMetersRatio
-                            |> Point2d.translateIn carDirection (Quantity.for (Duration.milliseconds 16) nextVelocity)
-                            |> Point2d.at Geometry.pixelsToMetersRatio
+                            |> Point2d.translateIn carDirection (nextVelocity |> Quantity.for (Duration.milliseconds 16))
                 in
                 { car
                     | position = nextPosition
@@ -213,14 +215,13 @@ move car =
             car
 
 
-waitForTrafficLights : LMEntityDistance -> Car -> Car
+waitForTrafficLights : Length -> Car -> Car
 waitForTrafficLights distanceFromTrafficLight car =
     let
         targetDistance =
             distanceFromTrafficLight
                 |> Quantity.minus trafficLightsStopMargin
                 |> Quantity.max Quantity.zero
-                |> Geometry.pixelsToLength
     in
     { car
         | status = WaitingForTrafficLights
