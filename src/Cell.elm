@@ -223,7 +223,7 @@ center cell =
                 (tileSizeInMeters |> Quantity.divideBy 2)
     in
     bottomLeftCorner cell
-        |> Geometry.translatePointBy displacement
+        |> Point2d.translateBy displacement
 
 
 boundingBox : Cell -> LMBoundingBox2d

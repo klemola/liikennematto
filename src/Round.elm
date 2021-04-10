@@ -229,11 +229,11 @@ checkNearCollision activeCar otherCars =
 
         forwardShiftedCarPosition =
             activeCar.position
-                |> Geometry.translatePointIn carDirection halfCarLength
+                |> Point2d.translateIn carDirection halfCarLength
 
         -- A circle that covers the front half of the car, and the area right before the car
         checkArea =
-            Geometry.circleAt forwardShiftedCarPosition halfCarLength
+            Circle2d.atPoint forwardShiftedCarPosition halfCarLength
     in
     collisionWith otherCars
         (\otherCar -> Circle2d.intersectsBoundingBox (Car.boundingBox otherCar) checkArea)

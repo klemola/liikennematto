@@ -11,19 +11,14 @@ module Geometry exposing
     , angleToTarget
     , boundingBoxFromCircle
     , boundingBoxWithDimensions
-    , circleAt
     , curveSpline
     , fieldOfViewTriangle
-    , isPointAt
     , leaveLotSpline
     , linearLocalPathToTarget
     , noBoundingBoxOverlap
     , pathsCouldCollide
     , pointToString
     , speedToString
-    , translateBoundingBoxIn
-    , translatePointBy
-    , translatePointIn
     , uTurnSpline
     )
 
@@ -48,7 +43,6 @@ import Polyline2d exposing (Polyline2d)
 import Quantity
 import Speed exposing (Speed)
 import Triangle2d exposing (Triangle2d)
-import Vector2d exposing (Vector2d)
 
 
 type alias LMEntityCoordinates =
@@ -133,25 +127,6 @@ pointToString point =
 
 
 
--- Points
-
-
-translatePointIn : LMDirection2d -> Length -> LMPoint2d -> LMPoint2d
-translatePointIn direction amount =
-    Point2d.translateIn direction amount
-
-
-translatePointBy : Vector2d Meters LMEntityCoordinates -> LMPoint2d -> LMPoint2d
-translatePointBy displacement point =
-    Point2d.translateBy displacement point
-
-
-isPointAt : LMPoint2d -> LMPoint2d -> Bool
-isPointAt target origin =
-    Point2d.equalWithin overlapThreshold origin target
-
-
-
 -- Angles
 
 
@@ -173,18 +148,13 @@ angleFromDirection direction target origin =
 -- Bounding boxes
 
 
-translateBoundingBoxIn : LMDirection2d -> Length -> LMBoundingBox2d -> LMBoundingBox2d
-translateBoundingBoxIn direction amount =
-    BoundingBox2d.translateIn direction amount
-
-
 boundingBoxWithDimensions : Length -> Length -> LMPoint2d -> LMBoundingBox2d
 boundingBoxWithDimensions width height origin =
     let
         otherCorner =
             origin
-                |> translatePointIn Direction2d.positiveX width
-                |> translatePointIn Direction2d.positiveY height
+                |> Point2d.translateIn Direction2d.positiveX width
+                |> Point2d.translateIn Direction2d.positiveY height
     in
     BoundingBox2d.from origin otherCorner
 
@@ -196,17 +166,7 @@ noBoundingBoxOverlap bb1 bb2 =
 
 boundingBoxFromCircle : LMPoint2d -> Length -> LMBoundingBox2d
 boundingBoxFromCircle position radius =
-    circleAt position radius
-        |> Circle2d.boundingBox
-
-
-
--- Circles
-
-
-circleAt : LMPoint2d -> Length -> LMCircle2d
-circleAt position radius =
-    Circle2d.atPoint position radius
+    Circle2d.atPoint position radius |> Circle2d.boundingBox
 
 
 
@@ -226,12 +186,10 @@ fieldOfViewTriangle origin direction fov distance =
             Direction2d.rotateBy rightVertexAngle direction
 
         farLeftVertex =
-            origin
-                |> translatePointIn leftVertexDirection distance
+            origin |> Point2d.translateIn leftVertexDirection distance
 
         farRightVertex =
-            origin
-                |> translatePointIn rightVertexDirection distance
+            origin |> Point2d.translateIn rightVertexDirection distance
     in
     Triangle2d.fromVertices ( origin, farLeftVertex, farRightVertex )
 
@@ -259,12 +217,10 @@ leaveLotSpline : LMPoint2d -> LMPoint2d -> LMDirection2d -> LocalPath
 leaveLotSpline origin target direction =
     let
         handleDistance =
-            Point2d.distanceFrom origin target
-                |> Quantity.half
+            Point2d.distanceFrom origin target |> Quantity.half
 
         targetCp =
-            target
-                |> translatePointIn direction lotExitOffset
+            target |> Point2d.translateIn direction lotExitOffset
 
         midpoint =
             Point2d.midpoint origin targetCp
@@ -275,7 +231,7 @@ leaveLotSpline origin target direction =
                 |> Point2d.translateIn (Direction2d.rotateClockwise direction) handleDistance
 
         handleCp2 =
-            Point2d.translateIn (Direction2d.rotateCounterclockwise direction) handleDistance midpoint
+            midpoint |> Point2d.translateIn (Direction2d.rotateCounterclockwise direction) handleDistance
     in
     CubicSpline2d.fromControlPoints origin handleCp1 handleCp2 targetCp
         |> cubicSplineToLocalPath
