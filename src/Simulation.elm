@@ -22,7 +22,6 @@ import Random
 import Random.List
 import RoadNetwork exposing (RNNodeContext)
 import Round
-import Set exposing (Set)
 import Task
 import Time
 import TrafficLight
@@ -32,7 +31,6 @@ import World exposing (World)
 type alias Model =
     { seed : Random.Seed
     , simulation : SimulationState
-    , carsWithPriority : Set Int
     , carSpawnQueue : Int
     }
 
@@ -59,7 +57,6 @@ init =
     in
     ( { seed = seed
       , simulation = Running
-      , carsWithPriority = Set.empty
       , carSpawnQueue = 0
       }
     , generateEnvironmentAfterDelay seed
@@ -250,11 +247,10 @@ findLotAnchor world seed newLot =
 
 
 updateTraffic : World -> Model -> ( World, Random.Seed )
-updateTraffic world { seed, carsWithPriority } =
+updateTraffic world { seed } =
     updateTrafficHelper
         { updateQueue = Dict.keys world.cars
         , seed = seed
-        , carsWithPriority = carsWithPriority
         , world = world
         }
 
@@ -262,11 +258,10 @@ updateTraffic world { seed, carsWithPriority } =
 updateTrafficHelper :
     { updateQueue : List Int
     , seed : Random.Seed
-    , carsWithPriority : Set Int
     , world : World
     }
     -> ( World, Random.Seed )
-updateTrafficHelper { updateQueue, seed, carsWithPriority, world } =
+updateTrafficHelper { updateQueue, seed, world } =
     case updateQueue of
         activeCarId :: queue ->
             let
@@ -274,7 +269,6 @@ updateTrafficHelper { updateQueue, seed, carsWithPriority, world } =
                     updateTrafficHelper
                         { updateQueue = queue
                         , seed = roundResults.seed
-                        , carsWithPriority = roundResults.carsWithPriority
                         , world =
                             world
                                 |> World.setCar activeCarId roundResults.car
@@ -294,7 +288,6 @@ updateTrafficHelper { updateQueue, seed, carsWithPriority, world } =
                             , activeCar = activeCar
                             , otherCars = otherCars
                             , seed = seed
-                            , carsWithPriority = carsWithPriority
                             }
                     in
                     Round.play round

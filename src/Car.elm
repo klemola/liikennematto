@@ -3,19 +3,19 @@ module Car exposing
     , CarKind(..)
     , Cars
     , Status(..)
-    , acceleration
     , boundingBox
     , break
     , build
     , createRoute
+    , defaultAcceleration
     , fieldOfView
-    , giveWay
     , isAtTheEndOfLocalPath
     , isBreaking
     , isConfused
     , isStoppedOrWaiting
     , length
     , markAsConfused
+    , maxDeceleration
     , maxVelocity
     , move
     , new
@@ -128,16 +128,19 @@ trafficLightsStopMargin =
     Length.meters 5
 
 
-acceleration :
-    { speedUp : Acceleration
-    , breakingSlow : Acceleration
-    , breakingFast : Acceleration
-    }
-acceleration =
-    { speedUp = Acceleration.metersPerSecondSquared 5
-    , breakingSlow = Acceleration.metersPerSecondSquared -10
-    , breakingFast = Acceleration.metersPerSecondSquared -40
-    }
+collisionMargin : Length
+collisionMargin =
+    length |> Quantity.multiplyBy 1.5
+
+
+defaultAcceleration : Acceleration
+defaultAcceleration =
+    Acceleration.metersPerSecondSquared 5
+
+
+maxDeceleration : Acceleration
+maxDeceleration =
+    Acceleration.metersPerSecondSquared -20
 
 
 collisionCircleRadius : Length
@@ -150,7 +153,7 @@ new kind =
     { position = Point2d.origin
     , rotation = Angle.degrees 0
     , velocity = Quantity.zero
-    , acceleration = acceleration.speedUp
+    , acceleration = defaultAcceleration
     , kind = kind
     , status = Confused
     , homeLotId = Nothing
@@ -288,21 +291,25 @@ stopAtIntersection car =
     }
 
 
-giveWay : Car -> Car
-giveWay car =
-    { car | acceleration = acceleration.breakingSlow }
+break : Length -> Car -> Car
+break distanceToCollision car =
+    let
+        targetDistance =
+            distanceToCollision
+                |> Quantity.minus collisionMargin
+                |> Quantity.max Quantity.zero
 
-
-break : Car -> Car
-break car =
-    { car | acceleration = acceleration.breakingFast }
+        nextAcceleration =
+            Quantity.max maxDeceleration (accelerateToZeroOverDistance car.velocity targetDistance)
+    in
+    { car | acceleration = nextAcceleration }
 
 
 startMoving : Car -> Car
 startMoving car =
     { car
         | status = Moving
-        , acceleration = acceleration.speedUp
+        , acceleration = defaultAcceleration
     }
 
 

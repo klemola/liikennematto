@@ -24,9 +24,9 @@ suite =
             , test "allow movement if there will be no collision (intersection)"
                 (\_ -> Expect.equal (checkCollisionRules noCollisionSetupIntersection) Nothing)
             , test "disallow movement if it will cause a collision (paths intersect)"
-                (\_ -> Expect.equal (checkCollisionRules collisionSetupPathsIntersect) (Just (AvoidCollision 2)))
+                (\_ -> Expect.equal (checkCollisionRules collisionSetupPathsIntersect) (Just (AvoidCollision (Length.meters 9.247702417357507))))
             , test "disallow movement if it will cause a collision (near collision)"
-                (\_ -> Expect.equal (checkCollisionRules collisionSetupNearCollision) (Just (PreventCollision 2)))
+                (\_ -> Expect.equal (checkCollisionRules collisionSetupNearCollision) (Just (AvoidCollision (Length.meters 5.799999999999992))))
             ]
         , describe "Intersection rules"
             [ test "allow movement if the car is not facing a intersection"
@@ -52,7 +52,7 @@ suite =
                             |> Round.play
                             |> getCarAcceleration
                         )
-                        Car.acceleration.breakingFast
+                        Car.maxDeceleration
                 )
             , test "can stop the car at traffic lights"
                 (\_ ->

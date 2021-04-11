@@ -13,7 +13,7 @@ import Circle2d
 import Config exposing (tileSizeInMeters)
 import Dict
 import Direction2d
-import Geometry exposing (LMEntityCoordinates)
+import Geometry exposing (LMEntityCoordinates, LMPoint2d)
 import Length exposing (Length, Meters)
 import LocalPath
 import Maybe.Extra
@@ -22,7 +22,6 @@ import Quantity
 import Random
 import Random.List
 import RoadNetwork exposing (TrafficControl(..))
-import Set exposing (Set)
 import TrafficLight exposing (TrafficLight)
 import Triangle2d exposing (Triangle2d)
 import World exposing (World)
@@ -33,20 +32,17 @@ type alias Round =
     , activeCar : Car
     , otherCars : List Car
     , seed : Random.Seed
-    , carsWithPriority : Set Int
     }
 
 
 type alias RoundResults =
     { car : Car
     , seed : Random.Seed
-    , carsWithPriority : Set Int
     }
 
 
 type Rule
-    = AvoidCollision Int
-    | PreventCollision Int
+    = AvoidCollision Length
     | WaitForTrafficLights Length
     | YieldAtIntersection
     | StopAtIntersection
@@ -83,7 +79,6 @@ toResults : Round -> RoundResults
 toResults round =
     { car = round.activeCar
     , seed = round.seed
-    , carsWithPriority = round.carsWithPriority
     }
 
 
@@ -113,25 +108,12 @@ ruleToApply round =
 applyRule : Round -> Rule -> Round
 applyRule round rule =
     let
-        { activeCar, carsWithPriority } =
+        { activeCar } =
             round
-
-        updatePriority carId =
-            carsWithPriority
-                |> Set.insert carId
     in
     case rule of
-        AvoidCollision otherCarId ->
-            { round
-                | activeCar = Car.giveWay activeCar
-                , carsWithPriority = updatePriority otherCarId
-            }
-
-        PreventCollision otherCarId ->
-            { round
-                | activeCar = Car.break activeCar
-                , carsWithPriority = updatePriority otherCarId
-            }
+        AvoidCollision distanceToCollision ->
+            applyCarAction (Car.break distanceToCollision) round
 
         WaitForTrafficLights distanceFromTrafficLight ->
             if activeCar.status == WaitingForTrafficLights || Car.isStoppedOrWaiting activeCar then
@@ -161,9 +143,7 @@ updateCar round =
     case round.activeCar.status of
         Moving ->
             if Car.isAtTheEndOfLocalPath round.activeCar then
-                round
-                    |> removeActiveCarPriority
-                    |> chooseNextConnection
+                chooseNextConnection round
 
             else
                 applyCarAction Car.move round
@@ -176,11 +156,6 @@ updateCar round =
 
         _ ->
             round
-
-
-removeActiveCarPriority : Round -> Round
-removeActiveCarPriority round =
-    { round | carsWithPriority = Set.remove round.activeCar.id round.carsWithPriority }
 
 
 chooseNextConnection : Round -> Round
@@ -223,15 +198,10 @@ chooseRandomRoute round nodeCtx =
 
 
 checkCollisionRules : Round -> Maybe Rule
-checkCollisionRules { otherCars, activeCar, carsWithPriority } =
+checkCollisionRules { otherCars, activeCar } =
     Maybe.Extra.orListLazy
         [ \() -> checkNearCollision activeCar otherCars
-        , \() ->
-            if Set.member activeCar.id carsWithPriority then
-                Nothing
-
-            else
-                checkPathCollision activeCar otherCars
+        , \() -> checkPathCollision activeCar otherCars
         ]
 
 
@@ -254,7 +224,7 @@ checkNearCollision activeCar otherCars =
     in
     collisionWith otherCars
         (\otherCar -> Circle2d.intersectsBoundingBox (Car.boundingBox otherCar) checkArea)
-        |> Maybe.map PreventCollision
+        |> Maybe.map (Point2d.distanceFrom activeCar.position >> AvoidCollision)
 
 
 checkPathCollision : Car -> List Car -> Maybe Rule
@@ -267,7 +237,7 @@ checkPathCollision activeCar otherCars =
             Geometry.fieldOfViewTriangle activeCar.position carDirection Car.fieldOfView carProximityCutoff
     in
     collisionWith otherCars (pathsCouldCollideWith carSightTriangle activeCar)
-        |> Maybe.map AvoidCollision
+        |> Maybe.map (Point2d.distanceFrom activeCar.position >> AvoidCollision)
 
 
 pathsCouldCollideWith : Triangle2d Meters LMEntityCoordinates -> Car -> Car -> Bool
@@ -277,17 +247,17 @@ pathsCouldCollideWith fieldOfViewTriangle activeCar otherCar =
             Quantity.equalWithin carRotationTolerance activeCar.rotation otherCar.rotation
     in
     not (Car.isStoppedOrWaiting otherCar)
-        && Triangle2d.contains otherCar.position fieldOfViewTriangle
         && not headingRoughlyInTheSameDirection
+        && Triangle2d.contains otherCar.position fieldOfViewTriangle
         && LocalPath.pathsCouldCollide activeCar.localPath otherCar.localPath
 
 
-collisionWith : List Car -> (Car -> Bool) -> Maybe Int
+collisionWith : List Car -> (Car -> Bool) -> Maybe LMPoint2d
 collisionWith carsToCheck collisionPredicate =
     case carsToCheck of
         next :: others ->
             if collisionPredicate next then
-                Just next.id
+                Just next.position
 
             else
                 collisionWith others collisionPredicate
