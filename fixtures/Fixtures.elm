@@ -38,7 +38,6 @@ import Quantity
 import Random
 import RoadNetwork
 import Round exposing (Round)
-import Set
 import World exposing (World)
 
 
@@ -85,7 +84,7 @@ connectedRoadsSetup =
             world
                 |> World.setCar car.id car
     in
-    Round worldWithCars car otherCars seed Set.empty
+    Round worldWithCars car otherCars seed
 
 
 collisionSetupPathsIntersect : Round
@@ -131,7 +130,7 @@ collisionSetupPathsIntersect =
                 |> World.setCar carWithRoute.id carWithRoute
                 |> World.setCar otherCarWithRoute.id otherCarWithRoute
     in
-    Round worldWithCars carWithRoute otherCars seed Set.empty
+    Round worldWithCars carWithRoute otherCars seed
 
 
 collisionSetupNearCollision : Round
@@ -177,7 +176,7 @@ collisionSetupNearCollision =
                 |> World.setCar carWithRoute.id carWithRoute
                 |> World.setCar otherCarWithRoute.id otherCarWithRoute
     in
-    Round worldWithCars carWithRoute otherCars seed Set.empty
+    Round worldWithCars carWithRoute otherCars seed
 
 
 noCollisionSetupDifferentLanes : Round
@@ -203,7 +202,7 @@ noCollisionSetupDifferentLanes =
                 |> World.setCar car.id car
                 |> World.setCar otherCar.id otherCar
     in
-    Round worldWithCars car otherCars seed Set.empty
+    Round worldWithCars car otherCars seed
 
 
 noCollisionSetupIntersection : Round
@@ -227,7 +226,7 @@ noCollisionSetupIntersection =
                 |> World.setCar car.id car
                 |> World.setCar otherCar.id otherCar
     in
-    Round worldWithCars car otherCars seed Set.empty
+    Round worldWithCars car otherCars seed
 
 
 redTrafficLightsSetup : Round
@@ -257,7 +256,7 @@ redTrafficLightsSetup =
             world
                 |> World.setCar carWithRoute.id carWithRoute
     in
-    Round worldWithCars carWithRoute otherCars seed Set.empty
+    Round worldWithCars carWithRoute otherCars seed
 
 
 greenTrafficLightsSetup : Round
@@ -287,7 +286,7 @@ greenTrafficLightsSetup =
             world
                 |> World.setCar carWithRoute.id carWithRoute
     in
-    Round worldWithCars carWithRoute otherCars seed Set.empty
+    Round worldWithCars carWithRoute otherCars seed
 
 
 yieldSetup : Bool -> Round
@@ -311,7 +310,7 @@ yieldSetup hasPriorityTraffic =
             else
                 []
     in
-    Round world car otherCars seed Set.empty
+    Round world car otherCars seed
 
 
 yieldWithPriorityTrafficSetup : Round
@@ -342,7 +341,7 @@ stopSetup =
         otherCars =
             []
     in
-    Round world car otherCars seed Set.empty
+    Round world car otherCars seed
 
 
 yieldAfterStopSetup : Round
@@ -363,7 +362,7 @@ yieldAfterStopSetup =
             [ spawn carTwo ( 80, 720 ) (Angle.degrees 270)
             ]
     in
-    Round world car otherCars seed Set.empty
+    Round world car otherCars seed
 
 
 spawn : Car -> ( Float, Float ) -> Angle -> Car

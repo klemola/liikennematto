@@ -312,7 +312,7 @@ moveCarToHome world car =
                         |> Direction2d.toAngle
                 , status = Car.ParkedAtLot
                 , velocity = Quantity.zero
-                , acceleration = Car.acceleration.speedUp
+                , acceleration = Car.defaultAcceleration
             }
                 |> Car.createRoute nodeCtx
 
