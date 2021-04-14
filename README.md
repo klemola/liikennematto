@@ -40,7 +40,7 @@ Tiles cannot be placed everywhere. In order to avoid awkward road layouts, the e
 
 [Live demo (stable)](http://apps.butsku.com/liikennematto/)
 
-[Preview version (often in sync with the master branch)](http://apps.butsku.com/liikennematto/next.html)
+[Preview version (often in sync with the master branch)](http://apps.butsku.com/liikennematto/next/)
 
 Read more about the project from [Liikennematto dev blog #1: prototyping traffic simulation with Elm](https://matiasklemola.com/liikennematto-dev-blog-one)
 
