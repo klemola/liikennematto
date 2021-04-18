@@ -353,11 +353,8 @@ renderCarCollisionDetection car =
 renderCarFieldOfView : Car -> Collage msg
 renderCarFieldOfView car =
     let
-        carDirection =
-            Direction2d.fromAngle car.rotation
-
         triangle =
-            Geometry.fieldOfViewTriangle car.position carDirection Car.fieldOfView tileSizeInMeters
+            Car.rightSideOfFieldOfView tileSizeInMeters car
 
         ( p1, p2, p3 ) =
             Triangle2d.vertices triangle
