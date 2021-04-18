@@ -19,6 +19,7 @@ module Car exposing
     , maxVelocity
     , move
     , new
+    , rightSideOfFieldOfView
     , startMoving
     , statusDescription
     , stopAtIntersection
@@ -44,14 +45,16 @@ import Entity exposing (Id)
 import Geometry
     exposing
         ( LMBoundingBox2d
+        , LMEntityCoordinates
         , LMPoint2d
         )
-import Length exposing (Length)
+import Length exposing (Length, Meters)
 import LocalPath exposing (LocalPath)
 import Point2d
 import Quantity exposing (Quantity(..))
 import RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Speed exposing (Speed)
+import Triangle2d exposing (Triangle2d)
 
 
 type alias Car =
@@ -120,7 +123,7 @@ width =
 
 fieldOfView : Angle
 fieldOfView =
-    Angle.degrees 45
+    Angle.degrees 70
 
 
 trafficLightsStopMargin : Length
@@ -373,6 +376,32 @@ isWithinRoundingErrorOf target value =
 accelerateToZeroOverDistance : Speed -> Length -> Acceleration
 accelerateToZeroOverDistance (Quantity speed) (Quantity distanceToTarget) =
     Quantity (-speed * speed / (2 * distanceToTarget))
+
+
+rightSideOfFieldOfView : Length -> Car -> Triangle2d Meters LMEntityCoordinates
+rightSideOfFieldOfView distance car =
+    -- Room for improvement: for realism, the field of view should change by velocity
+    let
+        direction =
+            Direction2d.fromAngle car.rotation
+
+        limitFront =
+            car.position |> Point2d.translateIn direction distance
+
+        angle =
+            Quantity.half fieldOfView
+                |> Quantity.negate
+
+        distanceRight =
+            distance |> Quantity.divideBy (Angle.cos angle)
+
+        limitRight =
+            car.position
+                |> Point2d.translateIn
+                    (Direction2d.rotateBy angle direction)
+                    distanceRight
+    in
+    Triangle2d.fromVertices ( car.position, limitFront, limitRight )
 
 
 

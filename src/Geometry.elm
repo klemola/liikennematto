@@ -7,7 +7,6 @@ module Geometry exposing
     , angleToTarget
     , boundingBoxFromCircle
     , boundingBoxWithDimensions
-    , fieldOfViewTriangle
     , noBoundingBoxOverlap
     )
 
@@ -17,8 +16,6 @@ import Circle2d
 import Direction2d exposing (Direction2d)
 import Length exposing (Length, Meters)
 import Point2d exposing (Point2d)
-import Quantity
-import Triangle2d exposing (Triangle2d)
 
 
 type alias LMEntityCoordinates =
@@ -70,24 +67,3 @@ noBoundingBoxOverlap bb1 bb2 =
 boundingBoxFromCircle : LMPoint2d -> Length -> LMBoundingBox2d
 boundingBoxFromCircle position radius =
     Circle2d.atPoint position radius |> Circle2d.boundingBox
-
-
-fieldOfViewTriangle : LMPoint2d -> LMDirection2d -> Angle -> Length -> Triangle2d Meters LMEntityCoordinates
-fieldOfViewTriangle origin direction fov distance =
-    let
-        leftVertexDirection =
-            Direction2d.rotateBy fov direction
-
-        rightVertexAngle =
-            Quantity.minus fov (Angle.degrees 360)
-
-        rightVertexDirection =
-            Direction2d.rotateBy rightVertexAngle direction
-
-        farLeftVertex =
-            origin |> Point2d.translateIn leftVertexDirection distance
-
-        farRightVertex =
-            origin |> Point2d.translateIn rightVertexDirection distance
-    in
-    Triangle2d.fromVertices ( origin, farLeftVertex, farRightVertex )

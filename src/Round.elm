@@ -230,11 +230,8 @@ checkNearCollision activeCar otherCars =
 checkPathCollision : Car -> List Car -> Maybe Rule
 checkPathCollision activeCar otherCars =
     let
-        carDirection =
-            Direction2d.fromAngle activeCar.rotation
-
         carSightTriangle =
-            Geometry.fieldOfViewTriangle activeCar.position carDirection Car.fieldOfView carProximityCutoff
+            Car.rightSideOfFieldOfView carProximityCutoff activeCar
     in
     collisionWith otherCars (pathsCouldCollideWith carSightTriangle activeCar)
         |> Maybe.map (Point2d.distanceFrom activeCar.position >> AvoidCollision)
