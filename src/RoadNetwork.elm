@@ -319,7 +319,7 @@ laneCenterPositionsByDirection cell trafficDirection =
     let
         connectionOffsetFromTileCenter =
             tileSizeInMeters
-                |> Quantity.divideBy 2
+                |> Quantity.half
                 |> Quantity.minus innerLaneOffset
 
         tileCenterPosition =
@@ -531,7 +531,7 @@ connectsWithinCell current other =
             ( getDirection current, getDirection other )
 
         range =
-            tileSizeInMeters |> Quantity.divideBy 2
+            Quantity.half tileSizeInMeters
 
         target =
             getPosition other

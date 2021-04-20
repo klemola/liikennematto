@@ -8,7 +8,6 @@ module Car exposing
     , build
     , createRoute
     , defaultAcceleration
-    , fieldOfView
     , isAtTheEndOfLocalPath
     , isBreaking
     , isConfused
@@ -34,14 +33,12 @@ module Car exposing
 
 import Acceleration exposing (Acceleration)
 import Angle exposing (Angle)
-import Config
-    exposing
-        ( pixelsToMeters
-        )
+import BoundingBox2d
 import Dict exposing (Dict)
 import Direction2d
 import Duration
 import Entity exposing (Id)
+import Frame2d
 import Geometry
     exposing
         ( LMBoundingBox2d
@@ -51,6 +48,7 @@ import Geometry
 import Length exposing (Length, Meters)
 import LocalPath exposing (LocalPath)
 import Point2d
+import Polygon2d exposing (Polygon2d)
 import Quantity exposing (Quantity(..))
 import RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Speed exposing (Speed)
@@ -63,6 +61,7 @@ type alias Car =
     , rotation : Angle
     , velocity : Speed
     , acceleration : Acceleration
+    , shape : Polygon2d Meters LMEntityCoordinates
     , kind : CarKind
     , status : Status
     , homeLotId : Maybe Int
@@ -76,6 +75,7 @@ type alias NewCar =
     , rotation : Angle
     , velocity : Speed
     , acceleration : Acceleration
+    , shape : Polygon2d Meters LMEntityCoordinates
     , kind : CarKind
     , status : Status
     , homeLotId : Maybe Int
@@ -106,6 +106,12 @@ type Status
     | Confused
 
 
+
+--
+-- Constants
+--
+
+
 maxVelocity : Speed
 maxVelocity =
     Speed.metersPerSecond 11.1
@@ -113,12 +119,45 @@ maxVelocity =
 
 length : Length
 length =
-    pixelsToMeters 24
+    Length.meters 4.6
 
 
 width : Length
 width =
-    pixelsToMeters 12
+    Length.meters 2.3
+
+
+shape : Polygon2d Meters LMEntityCoordinates
+shape =
+    -- the shape of a car with centroid of origin
+    let
+        halfLength =
+            Quantity.half length
+
+        halfWidth =
+            Quantity.half width
+
+        p1 =
+            Point2d.xy
+                (Quantity.negate halfLength)
+                (Quantity.negate halfWidth)
+
+        p2 =
+            Point2d.xy
+                halfLength
+                (Quantity.negate halfWidth)
+
+        p3 =
+            Point2d.xy
+                halfLength
+                halfWidth
+
+        p4 =
+            Point2d.xy
+                (Quantity.negate halfLength)
+                halfWidth
+    in
+    Polygon2d.singleLoop [ p1, p2, p3, p4 ]
 
 
 fieldOfView : Angle
@@ -146,9 +185,10 @@ maxDeceleration =
     Acceleration.metersPerSecondSquared -20
 
 
-collisionCircleRadius : Length
-collisionCircleRadius =
-    width |> Quantity.divideBy 1.5
+
+--
+-- Builder
+--
 
 
 new : CarKind -> NewCar
@@ -157,6 +197,7 @@ new kind =
     , rotation = Angle.degrees 0
     , velocity = Quantity.zero
     , acceleration = defaultAcceleration
+    , shape = shape
     , kind = kind
     , status = Confused
     , homeLotId = Nothing
@@ -172,12 +213,18 @@ withHome lotId car =
 
 withPosition : LMPoint2d -> NewCar -> NewCar
 withPosition position car =
-    { car | position = position }
+    { car
+        | position = position
+        , shape = adjustedShape position car.rotation
+    }
 
 
 withRotation : Angle -> NewCar -> NewCar
 withRotation rotation car =
-    { car | rotation = rotation }
+    { car
+        | rotation = rotation
+        , shape = adjustedShape car.position rotation
+    }
 
 
 withVelocity : Speed -> NewCar -> NewCar
@@ -192,12 +239,19 @@ build id newCar =
     , rotation = newCar.rotation
     , velocity = newCar.velocity
     , acceleration = newCar.acceleration
+    , shape = newCar.shape
     , kind = newCar.kind
     , status = newCar.status
     , homeLotId = newCar.homeLotId
     , route = newCar.route
     , localPath = newCar.localPath
     }
+
+
+
+--
+-- Queries
+--
 
 
 isConfused : Car -> Bool
@@ -222,8 +276,14 @@ isBreaking car =
 
 boundingBox : Car -> LMBoundingBox2d
 boundingBox car =
-    -- Room for improvement: use a more realistic bounding box
-    Geometry.boundingBoxFromCircle car.position collisionCircleRadius
+    Polygon2d.boundingBox car.shape
+        |> Maybe.withDefault (BoundingBox2d.singleton car.position)
+
+
+
+--
+-- Modification
+--
 
 
 move : Car -> Car
@@ -233,6 +293,7 @@ move car =
             if Point2d.equalWithin (Length.meters 0.1) car.position next then
                 { car
                     | position = next
+                    , shape = adjustedShape next car.rotation
                     , localPath = others
                 }
 
@@ -249,13 +310,15 @@ move car =
                     nextPosition =
                         car.position
                             |> Point2d.translateIn carDirection (nextVelocity |> Quantity.for (Duration.milliseconds 16))
+
+                    nextRotation =
+                        car.position |> Geometry.angleToTarget next
                 in
                 { car
                     | position = nextPosition
                     , velocity = nextVelocity
-                    , rotation =
-                        car.position
-                            |> Geometry.angleToTarget next
+                    , rotation = nextRotation
+                    , shape = adjustedShape nextPosition nextRotation
                 }
 
         _ ->
@@ -335,6 +398,12 @@ createRoute nodeCtx car =
     }
 
 
+
+--
+-- Logic helpers
+--
+
+
 localPathToTarget : Car -> RNNodeContext -> LocalPath
 localPathToTarget car { node } =
     let
@@ -389,8 +458,7 @@ rightSideOfFieldOfView distance car =
             car.position |> Point2d.translateIn direction distance
 
         angle =
-            Quantity.half fieldOfView
-                |> Quantity.negate
+            Quantity.half fieldOfView |> Quantity.negate
 
         distanceRight =
             distance |> Quantity.divideBy (Angle.cos angle)
@@ -402,6 +470,15 @@ rightSideOfFieldOfView distance car =
                     distanceRight
     in
     Triangle2d.fromVertices ( car.position, limitFront, limitRight )
+
+
+adjustedShape : LMPoint2d -> Angle -> Polygon2d Meters LMEntityCoordinates
+adjustedShape nextPosition nextRotation =
+    let
+        carFrame =
+            Frame2d.atPoint nextPosition |> Frame2d.rotateBy nextRotation
+    in
+    shape |> Polygon2d.placeIn carFrame
 
 
 

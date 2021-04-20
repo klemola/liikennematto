@@ -219,8 +219,8 @@ center cell =
     let
         displacement =
             Vector2d.xy
-                (tileSizeInMeters |> Quantity.divideBy 2)
-                (tileSizeInMeters |> Quantity.divideBy 2)
+                (Quantity.half tileSizeInMeters)
+                (Quantity.half tileSizeInMeters)
     in
     bottomLeftCorner cell
         |> Point2d.translateBy displacement

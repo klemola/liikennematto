@@ -79,7 +79,7 @@ type BuildingKind
 
 halfTile : Length
 halfTile =
-    tileSizeInMeters |> Quantity.divideBy 2
+    Quantity.half tileSizeInMeters
 
 
 drivewaySize : Length
