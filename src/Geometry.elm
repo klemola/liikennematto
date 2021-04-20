@@ -5,14 +5,12 @@ module Geometry exposing
     , LMPoint2d
     , angleFromDirection
     , angleToTarget
-    , boundingBoxFromCircle
     , boundingBoxWithDimensions
     , noBoundingBoxOverlap
     )
 
 import Angle exposing (Angle)
 import BoundingBox2d exposing (BoundingBox2d)
-import Circle2d
 import Direction2d exposing (Direction2d)
 import Length exposing (Length, Meters)
 import Point2d exposing (Point2d)
@@ -62,8 +60,3 @@ boundingBoxWithDimensions width height origin =
 noBoundingBoxOverlap : LMBoundingBox2d -> LMBoundingBox2d -> Bool
 noBoundingBoxOverlap bb1 bb2 =
     not <| BoundingBox2d.overlappingByAtLeast (Length.meters 0.1) bb1 bb2
-
-
-boundingBoxFromCircle : LMPoint2d -> Length -> LMBoundingBox2d
-boundingBoxFromCircle position radius =
-    Circle2d.atPoint position radius |> Circle2d.boundingBox

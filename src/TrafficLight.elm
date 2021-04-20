@@ -51,17 +51,17 @@ type alias TrafficLights =
 
 greenDuration : Duration
 greenDuration =
-    Duration.seconds 7
+    Duration.seconds 12
 
 
 yellowDuration : Duration
 yellowDuration =
-    Duration.seconds 1
+    Duration.seconds 4
 
 
 redDuration : Duration
 redDuration =
-    Duration.seconds 8
+    Duration.seconds 16
 
 
 new : NewTrafficLight

@@ -4,7 +4,6 @@ import Angle
 import Board exposing (Board, Tile)
 import Car exposing (Car, Cars, Status(..))
 import Cell exposing (OrthogonalDirection(..))
-import Circle2d
 import Collage
     exposing
         ( Collage
@@ -26,7 +25,6 @@ import Config
         , tileSizeInMeters
         )
 import Dict
-import Direction2d
 import Geometry exposing (LMPoint2d)
 import Graph
 import Graphics
@@ -36,6 +34,7 @@ import Lot exposing (Lot, Lots)
 import Maybe.Extra as Maybe
 import Pixels exposing (Pixels)
 import Point2d
+import Polygon2d
 import Quantity exposing (Quantity)
 import RoadNetwork exposing (ConnectionKind(..), RoadNetwork)
 import TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
@@ -165,8 +164,8 @@ renderLot lot =
     let
         displacement =
             Vector2d.xy
-                (lot.width |> Quantity.divideBy 2)
-                (lot.height |> Quantity.divideBy 2)
+                (Quantity.half lot.width)
+                (Quantity.half lot.height)
 
         lotCenterPoint =
             lot.position
@@ -333,20 +332,12 @@ renderCarCollisionDetection : Car -> Collage msg
 renderCarCollisionDetection car =
     -- Room for improvement: move collision check area logic to a shared module, so that duplicate code here can be removed
     let
-        carDirection =
-            Direction2d.fromAngle car.rotation
-
-        forwardShiftedCarPosition =
-            car.position
-                |> Point2d.translateIn carDirection (Car.length |> Quantity.divideBy 2)
+        carShape =
+            Polygon2d.outerLoop car.shape |> List.map toPixelsTuple
     in
-    Collage.circle
-        (Circle2d.atPoint forwardShiftedCarPosition (Car.length |> Quantity.divideBy 2)
-            |> Circle2d.radius
-            |> toPixelsValue
-        )
-        |> Collage.styled ( uniform Color.blue, invisible )
-        |> Collage.shift (toPixelsTuple forwardShiftedCarPosition)
+    carShape
+        |> Collage.polygon
+        |> Collage.styled ( uniform Color.red, invisible )
         |> Collage.opacity 0.5
 
 
