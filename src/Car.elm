@@ -49,7 +49,7 @@ import Length exposing (Length, Meters)
 import LocalPath exposing (LocalPath)
 import Point2d
 import Polygon2d exposing (Polygon2d)
-import Quantity exposing (Quantity(..))
+import Quantity exposing (Quantity(..), Rate)
 import RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Speed exposing (Speed)
 import Triangle2d exposing (Triangle2d)
@@ -160,9 +160,14 @@ shape =
     Polygon2d.singleLoop [ p1, p2, p3, p4 ]
 
 
-fieldOfView : Angle
-fieldOfView =
-    Angle.degrees 70
+maxFieldOfView : Angle
+maxFieldOfView =
+    Angle.degrees 100
+
+
+speedToFieldOfViewReduction : Quantity Float (Rate Speed.MetersPerSecond Angle.Radians)
+speedToFieldOfViewReduction =
+    Speed.metersPerSecond 2.5 |> Quantity.per (Angle.degrees 10)
 
 
 trafficLightsStopMargin : Length
@@ -449,13 +454,18 @@ accelerateToZeroOverDistance (Quantity speed) (Quantity distanceToTarget) =
 
 rightSideOfFieldOfView : Length -> Car -> Triangle2d Meters LMEntityCoordinates
 rightSideOfFieldOfView distance car =
-    -- Room for improvement: for realism, the field of view should change by velocity
     let
         direction =
             Direction2d.fromAngle car.rotation
 
         limitFront =
             car.position |> Point2d.translateIn direction distance
+
+        fieldOfViewReduction =
+            car.velocity |> Quantity.at_ speedToFieldOfViewReduction
+
+        fieldOfView =
+            maxFieldOfView |> Quantity.minus fieldOfViewReduction
 
         angle =
             Quantity.half fieldOfView |> Quantity.negate
@@ -469,7 +479,7 @@ rightSideOfFieldOfView distance car =
                     (Direction2d.rotateBy angle direction)
                     distanceRight
     in
-    Triangle2d.fromVertices ( car.position, limitFront, limitRight )
+    Triangle2d.from car.position limitFront limitRight
 
 
 adjustedShape : LMPoint2d -> Angle -> Polygon2d Meters LMEntityCoordinates
