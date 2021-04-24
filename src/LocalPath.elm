@@ -1,15 +1,12 @@
 module LocalPath exposing (..)
 
 import Angle
-import BoundingBox2d
 import CubicSpline2d exposing (CubicSpline2d)
 import Direction2d
 import Geometry exposing (LMDirection2d, LMEntityCoordinates, LMPoint2d)
 import Length exposing (Length)
-import LineSegment2d
-import Maybe.Extra
 import Point2d
-import Polyline2d exposing (Polyline2d)
+import Polyline2d
 import Quantity
 
 
@@ -111,42 +108,3 @@ cubicSplineToLocalPath spline =
     spline
         |> CubicSpline2d.segments splineSegmentsAmount
         |> Polyline2d.vertices
-
-
-pathsCouldCollide : LocalPath -> LocalPath -> Bool
-pathsCouldCollide path1 path2 =
-    let
-        -- Room for improvement: Lower the segments amount here to optimize
-        path1AsPolyline =
-            Polyline2d.fromVertices path1
-
-        path2AsPolyline =
-            Polyline2d.fromVertices path2
-    in
-    pathsOverlap path1AsPolyline path2AsPolyline
-        && pathsIntersect path1AsPolyline path2AsPolyline
-
-
-pathsOverlap : Polyline2d Length.Meters LMEntityCoordinates -> Polyline2d Length.Meters LMEntityCoordinates -> Bool
-pathsOverlap path1 path2 =
-    Maybe.map2 BoundingBox2d.intersects
-        (Polyline2d.boundingBox path1)
-        (Polyline2d.boundingBox path2)
-        |> Maybe.withDefault False
-
-
-pathsIntersect : Polyline2d Length.Meters LMEntityCoordinates -> Polyline2d Length.Meters LMEntityCoordinates -> Bool
-pathsIntersect path1 path2 =
-    let
-        path1Segments =
-            Polyline2d.segments path1
-
-        path2Segments =
-            Polyline2d.segments path2
-    in
-    path1Segments
-        |> List.any
-            (\segment ->
-                path2Segments
-                    |> List.any (LineSegment2d.intersectionPoint segment >> Maybe.Extra.isJust)
-            )
