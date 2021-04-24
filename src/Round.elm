@@ -2,8 +2,9 @@ module Round exposing
     ( Round
     , RoundResults
     , Rule(..)
-    , checkCollisionRules
-    , checkIntersectionRules
+    , checkForwardCollision
+    , checkPathCollision
+    , checkTrafficLights
     , play
     )
 
@@ -12,10 +13,9 @@ import Car exposing (Car, Status(..))
 import Config exposing (tileSizeInMeters)
 import Dict
 import Direction2d
-import Geometry exposing (LMEntityCoordinates, LMPoint2d)
+import Geometry exposing (LMDirection2d, LMEntityCoordinates, LMPoint2d)
 import Length exposing (Length, Meters)
 import LineSegment2d exposing (LineSegment2d)
-import LocalPath
 import Maybe.Extra
 import Point2d
 import Polygon2d
@@ -123,8 +123,9 @@ checkRules round =
 ruleToApply : Round -> Maybe Rule
 ruleToApply round =
     Maybe.Extra.orListLazy
-        [ \() -> checkCollisionRules round
-        , \() -> checkIntersectionRules round
+        [ \() -> checkForwardCollision round
+        , \() -> checkTrafficLights round
+        , \() -> checkPathCollision round
         ]
 
 
@@ -220,44 +221,24 @@ chooseRandomRoute round nodeCtx =
 --
 
 
-checkCollisionRules : Round -> Maybe Rule
-checkCollisionRules { otherCars, activeCar } =
-    Maybe.Extra.orListLazy
-        [ \() -> checkForwardCollision activeCar otherCars
-        , \() -> checkPathCollision activeCar otherCars
-        ]
-
-
-checkForwardCollision : Car -> List Car -> Maybe Rule
-checkForwardCollision activeCar otherCars =
+checkForwardCollision : Round -> Maybe Rule
+checkForwardCollision { activeCar, otherCars } =
     let
-        carDirection =
-            Direction2d.fromAngle activeCar.rotation
-
         ray =
-            LineSegment2d.from
-                activeCar.position
-                (activeCar.position |> Point2d.translateIn carDirection maxCarCollisionTestDistance)
+            Direction2d.fromAngle activeCar.rotation |> toRay activeCar.position maxCarCollisionTestDistance
     in
     collisionWith activeCar otherCars (forwardCollisionWith ray activeCar)
         |> Maybe.map AvoidCollision
 
 
-checkPathCollision : Car -> List Car -> Maybe Rule
-checkPathCollision activeCar otherCars =
+checkPathCollision : Round -> Maybe Rule
+checkPathCollision { activeCar, otherCars } =
     let
         carSightTriangle =
             Car.rightSideOfFieldOfView carProximityCutoff activeCar
     in
-    collisionWith activeCar otherCars (pathsCouldCollideWith carSightTriangle activeCar)
+    collisionWith activeCar otherCars (pathCollisionWith carSightTriangle activeCar)
         |> Maybe.map AvoidCollision
-
-
-checkIntersectionRules : Round -> Maybe Rule
-checkIntersectionRules round =
-    Maybe.Extra.orListLazy
-        [ \() -> checkTrafficLights round
-        ]
 
 
 checkTrafficLights : Round -> Maybe Rule
@@ -287,7 +268,7 @@ checkTrafficLights round =
 --
 
 
-forwardCollisionWith : LineSegment2d Meters LMEntityCoordinates -> Car -> Car -> Bool
+forwardCollisionWith : LineSegment2d Meters LMEntityCoordinates -> Car -> Car -> Maybe LMPoint2d
 forwardCollisionWith ray activeCar otherCar =
     let
         dangerouslyClose =
@@ -299,55 +280,65 @@ forwardCollisionWith ray activeCar otherCar =
                 || (otherCar.velocity |> Quantity.lessThan activeCar.velocity)
 
         intersects edge =
-            LineSegment2d.intersectionPoint edge ray |> Maybe.Extra.isJust
+            LineSegment2d.intersectionPoint edge ray
     in
     if
         headingRoughlyInTheSameDirection activeCar otherCar
             && not dangerouslyClose
             && not couldCatchUpWithOther
     then
-        False
+        Nothing
 
     else
-        Polygon2d.edges otherCar.shape |> List.any intersects
+        Polygon2d.edges otherCar.shape
+            |> List.filterMap intersects
+            |> List.sortWith
+                (\pt1 pt2 ->
+                    Quantity.compare
+                        (Point2d.distanceFrom activeCar.position pt1)
+                        (Point2d.distanceFrom activeCar.position pt2)
+                )
+            |> List.head
 
 
-pathsCouldCollideWith : Triangle2d Meters LMEntityCoordinates -> Car -> Car -> Bool
-pathsCouldCollideWith fieldOfViewTriangle activeCar otherCar =
-    not (Car.isStoppedOrWaiting otherCar)
-        && not (headingRoughlyInTheSameDirection activeCar otherCar)
-        && Triangle2d.contains otherCar.position fieldOfViewTriangle
-        && LocalPath.pathsCouldCollide activeCar.localPath otherCar.localPath
+pathCollisionWith : Triangle2d Meters LMEntityCoordinates -> Car -> Car -> Maybe LMPoint2d
+pathCollisionWith fieldOfViewTriangle activeCar otherCar =
+    if
+        -- TODO: fix the car velocity precision (currently might not reach zero due to floating point accuracy)
+        not (Car.isStoppedOrWaiting otherCar)
+            && not (headingRoughlyInTheSameDirection activeCar otherCar)
+            && Triangle2d.contains otherCar.position fieldOfViewTriangle
+    then
+        directionsIntersectAt activeCar otherCar
+
+    else
+        Nothing
 
 
-collisionWith : Car -> List Car -> (Car -> Bool) -> Maybe Length
-collisionWith activeCar carsToCheck collisionPredicate =
-    let
-        matches =
-            collisionWithHelper carsToCheck collisionPredicate []
-    in
-    matches
-        |> List.map (Point2d.distanceFrom activeCar.position)
+collisionWith : Car -> List Car -> (Car -> Maybe LMPoint2d) -> Maybe Length
+collisionWith activeCar carsToCheck collisionTest =
+    carsToCheck
+        |> List.filterMap (collisionTest >> Maybe.map (Point2d.distanceFrom activeCar.position))
         |> Quantity.minimum
-
-
-collisionWithHelper : List Car -> (Car -> Bool) -> List LMPoint2d -> List LMPoint2d
-collisionWithHelper carsToCheck collisionPredicate matches =
-    case carsToCheck of
-        next :: others ->
-            if collisionPredicate next then
-                next.position :: matches
-
-            else
-                collisionWithHelper others collisionPredicate matches
-
-        [] ->
-            matches
 
 
 headingRoughlyInTheSameDirection : Car -> Car -> Bool
 headingRoughlyInTheSameDirection car otherCar =
     Quantity.equalWithin carRotationTolerance car.rotation otherCar.rotation
+
+
+directionsIntersectAt : Car -> Car -> Maybe LMPoint2d
+directionsIntersectAt car otherCar =
+    LineSegment2d.intersectionPoint
+        (Direction2d.fromAngle car.rotation |> toRay car.position carProximityCutoff)
+        (Direction2d.fromAngle otherCar.rotation |> toRay otherCar.position carProximityCutoff)
+
+
+toRay : LMPoint2d -> Length -> LMDirection2d -> LineSegment2d Meters LMEntityCoordinates
+toRay origin direction distance =
+    LineSegment2d.from
+        origin
+        (origin |> Point2d.translateIn distance direction)
 
 
 getTrafficLightFromRoute : Car -> World -> Maybe TrafficLight

@@ -5,14 +5,26 @@ import Car exposing (Status(..))
 import Expect
 import Fixtures exposing (..)
 import Length
+import Maybe.Extra
 import Round
     exposing
         ( RoundResults
         , Rule(..)
-        , checkCollisionRules
-        , checkIntersectionRules
         )
 import Test exposing (..)
+
+
+checkCollisionRules round =
+    Maybe.Extra.orListLazy
+        [ \() -> Round.checkForwardCollision round
+        , \() -> Round.checkPathCollision round
+        ]
+
+
+checkIntersectionRules round =
+    Maybe.Extra.orListLazy
+        [ \() -> Round.checkTrafficLights round
+        ]
 
 
 suite : Test
@@ -24,19 +36,19 @@ suite =
             , test "allow movement if there will be no collision (intersection)"
                 (\_ -> Expect.equal (checkCollisionRules noCollisionSetupIntersection) Nothing)
             , test "disallow movement if it will cause a collision (paths intersect)"
-                (\_ -> Expect.equal (checkCollisionRules collisionSetupPathsIntersect) (Just (AvoidCollision (Length.meters 9.247702417357507))))
+                (\_ -> Expect.equal (Round.checkPathCollision collisionSetupPathsIntersect) (Just (AvoidCollision (Length.meters 4.8083261120684915))))
             , test "disallow movement if it will cause a collision (near collision)"
-                (\_ -> Expect.equal (checkCollisionRules collisionSetupNearCollision) (Just (AvoidCollision (Length.meters 5.799999999999992))))
+                (\_ -> Expect.equal (Round.checkForwardCollision collisionSetupNearCollision) (Just (AvoidCollision (Length.meters 4.313351365237916))))
             ]
         , describe "Intersection rules"
             [ test "allow movement if the car is not facing a intersection"
                 (\_ -> Expect.equal (checkIntersectionRules connectedRoadsSetup) Nothing)
             , test "allow movement if traffic lights are green"
-                (\_ -> Expect.equal (checkIntersectionRules greenTrafficLightsSetup) Nothing)
+                (\_ -> Expect.equal (Round.checkTrafficLights greenTrafficLightsSetup) Nothing)
             , test "allow movement if there's no need to yield at sign"
-                (\_ -> Expect.equal (checkIntersectionRules yieldWithoutPriorityTrafficSetup) Nothing)
+                (\_ -> Expect.equal (Round.checkTrafficLights yieldWithoutPriorityTrafficSetup) Nothing)
             , test "disallow movement if traffic lights are not green"
-                (\_ -> Expect.equal (checkIntersectionRules redTrafficLightsSetup) (Just (WaitForTrafficLights (Length.meters 8))))
+                (\_ -> Expect.equal (Round.checkTrafficLights redTrafficLightsSetup) (Just (WaitForTrafficLights (Length.meters 8))))
             , test "disallow movement if the car has to yield at sign"
                 (\_ -> Expect.equal (checkIntersectionRules yieldWithPriorityTrafficSetup) (Just YieldAtIntersection))
             , test "disallow movement if the car is at a stop sign"
