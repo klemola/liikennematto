@@ -19,6 +19,7 @@ module Car exposing
     , move
     , new
     , rightSideOfFieldOfView
+    , secondsTo
     , startMoving
     , statusDescription
     , stopAtIntersection
@@ -285,6 +286,15 @@ boundingBox car =
         |> Maybe.withDefault (BoundingBox2d.singleton car.position)
 
 
+secondsTo : LMPoint2d -> Car -> Quantity Float Duration.Seconds
+secondsTo target car =
+    let
+        distanceToTarget =
+            Point2d.distanceFrom car.position target
+    in
+    distanceToTarget |> Quantity.at_ car.velocity
+
+
 
 --
 -- Modification
@@ -340,7 +350,12 @@ waitForTrafficLights distanceFromTrafficLight car =
     in
     { car
         | status = WaitingForTrafficLights
-        , acceleration = accelerateToZeroOverDistance car.velocity targetDistance
+        , acceleration =
+            if targetDistance |> Quantity.lessThanOrEqualTo trafficLightsStopMargin then
+                maxDeceleration
+
+            else
+                accelerateToZeroOverDistance car.velocity targetDistance
     }
 
 

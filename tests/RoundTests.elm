@@ -36,7 +36,7 @@ suite =
             , test "allow movement if there will be no collision (intersection)"
                 (\_ -> Expect.equal (checkCollisionRules noCollisionSetupIntersection) Nothing)
             , test "disallow movement if it will cause a collision (paths intersect)"
-                (\_ -> Expect.equal (Round.checkPathCollision collisionSetupPathsIntersect) (Just (AvoidCollision (Length.meters 4.8083261120684915))))
+                (\_ -> Expect.equal (Round.checkPathCollision collisionSetupPathsIntersect) (Just (AvoidCollision (Length.meters 9.19999999999999))))
             , test "disallow movement if it will cause a collision (near collision)"
                 (\_ -> Expect.equal (Round.checkForwardCollision collisionSetupNearCollision) (Just (AvoidCollision (Length.meters 4.313351365237916))))
             ]

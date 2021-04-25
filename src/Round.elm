@@ -310,6 +310,7 @@ pathCollisionWith fieldOfViewTriangle activeCar otherCar =
             && Triangle2d.contains otherCar.position fieldOfViewTriangle
     then
         directionsIntersectAt activeCar otherCar
+            |> Maybe.andThen (intersectionPointWithSpeedTakenIntoAccount activeCar otherCar)
 
     else
         Nothing
@@ -332,6 +333,19 @@ directionsIntersectAt car otherCar =
     LineSegment2d.intersectionPoint
         (Direction2d.fromAngle car.rotation |> toRay car.position carProximityCutoff)
         (Direction2d.fromAngle otherCar.rotation |> toRay otherCar.position carProximityCutoff)
+
+
+intersectionPointWithSpeedTakenIntoAccount : Car -> Car -> LMPoint2d -> Maybe LMPoint2d
+intersectionPointWithSpeedTakenIntoAccount car otherCar intersectionPoint =
+    if
+        car
+            |> Car.secondsTo intersectionPoint
+            |> Quantity.greaterThan (otherCar |> Car.secondsTo intersectionPoint)
+    then
+        Just intersectionPoint
+
+    else
+        Nothing
 
 
 toRay : LMPoint2d -> Length -> LMDirection2d -> LineSegment2d Meters LMEntityCoordinates
