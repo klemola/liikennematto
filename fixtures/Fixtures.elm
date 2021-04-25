@@ -81,7 +81,7 @@ collisionSetupPathsIntersect =
             RoadNetwork.findNodeByPosition world.roadNetwork upIntersectionExitNodePosition
 
         car =
-            buildCar CarA1 ( 107, 674 ) (Angle.degrees 45)
+            buildCar CarA1 ( 102, 668 ) (Angle.degrees 30)
 
         carWithRoute =
             case carDestination of
@@ -95,7 +95,7 @@ collisionSetupPathsIntersect =
             RoadNetwork.findNodeByPosition world.roadNetwork leftIntersectionExitNodePosition
 
         otherCar =
-            buildCar CarB2 ( 150, 691 ) (Angle.degrees 180)
+            buildCar CarB2 ( 160, 691 ) (Angle.degrees 180)
 
         otherCarWithRoute =
             case otherCarDestination of
