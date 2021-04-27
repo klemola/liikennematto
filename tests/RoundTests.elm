@@ -3,13 +3,26 @@ module RoundTests exposing (suite)
 import Acceleration exposing (Acceleration)
 import Car exposing (Status(..))
 import Expect
-import Fixtures exposing (..)
 import Length
 import Maybe.Extra
 import Round
     exposing
         ( RoundResults
         , Rule(..)
+        )
+import Rounds
+    exposing
+        ( collisionSetupNearCollision
+        , collisionSetupPathsIntersect
+        , connectedRoadsSetup
+        , greenTrafficLightsSetup
+        , noCollisionSetupDifferentLanes
+        , noCollisionSetupIntersection
+        , redTrafficLightsSetup
+        , stopSetup
+        , yieldAfterStopSetup
+        , yieldWithPriorityTrafficSetup
+        , yieldWithoutPriorityTrafficSetup
         )
 import Test exposing (..)
 

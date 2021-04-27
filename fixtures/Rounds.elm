@@ -1,44 +1,26 @@
-module Fixtures exposing
-    ( boardThatResemblesACurve
-    , boardThatResemblesAIntersection
-    , collisionSetupNearCollision
+module Rounds exposing
+    ( collisionSetupNearCollision
     , collisionSetupPathsIntersect
     , connectedRoadsSetup
-    , createBoundingBox
-    , createTwoByTwoLot
-    , curveTile
     , greenTrafficLightsSetup
-    , highComplexityWorld
-    , intersectionTile
-    , lowComplexityWorld
     , noCollisionSetupDifferentLanes
     , noCollisionSetupIntersection
-    , oneByOneLot
     , redTrafficLightsSetup
     , stopSetup
-    , twoByTwoLot
-    , worldThatHasAVerticalRoadAtLeftSide
-    , worldThatHasParallelRoads
     , yieldAfterStopSetup
     , yieldWithPriorityTrafficSetup
     , yieldWithoutPriorityTrafficSetup
     )
 
 import Angle exposing (Angle)
-import Board exposing (Board, Tile)
 import Car exposing (Car)
-import Cell exposing (Corner(..), OrthogonalDirection(..))
-import Config exposing (pixelsToMetersRatio, tileSizeInMeters)
-import Dict
 import Geometry
-import Lot exposing (Anchor, Lot)
-import Pixels
-import Point2d
-import Quantity
 import Random
 import RoadNetwork
 import Round exposing (Round)
-import World exposing (World)
+import Utility exposing (toLMPoint2d)
+import World
+import Worlds exposing (worldWithIntersection)
 
 
 seed : Random.Seed
@@ -46,8 +28,24 @@ seed =
     Random.initialSeed 42
 
 
+upIntersectionExitNodePosition : Geometry.LMPoint2d
+upIntersectionExitNodePosition =
+    toLMPoint2d 134 720
 
--- Setups for testing Rules and Round behavior
+
+leftIntersectionExitNodePosition : Geometry.LMPoint2d
+leftIntersectionExitNodePosition =
+    toLMPoint2d 80 694
+
+
+leftIntersectionEntryNodePosition : Geometry.LMPoint2d
+leftIntersectionEntryNodePosition =
+    toLMPoint2d 80 666
+
+
+downIntersectionEntryNodePosition : Geometry.LMPoint2d
+downIntersectionEntryNodePosition =
+    toLMPoint2d 134 640
 
 
 connectedRoadsSetup : Round
@@ -349,6 +347,12 @@ yieldAfterStopSetup =
     Round world car otherCars seed
 
 
+
+--
+-- Utility
+--
+
+
 type TestCar
     = CarA1
     | CarB2
@@ -371,205 +375,3 @@ buildCar option ( x, y ) rotation =
         |> Car.withVelocity Car.maxVelocity
         |> Car.build id
         |> Car.startMoving
-
-
-
--- Boards
-
-
-boardThatResemblesAIntersection : Board
-boardThatResemblesAIntersection =
-    Dict.empty
-        |> Dict.insert ( 1, 1 ) Board.defaultTile
-        |> Dict.insert ( 2, 1 ) Board.defaultTile
-        |> Dict.insert ( 3, 1 ) Board.defaultTile
-        |> Dict.insert ( 2, 2 ) Board.defaultTile
-        |> Board.applyMask
-
-
-intersectionTile : Tile
-intersectionTile =
-    14
-
-
-boardThatResemblesACurve : Board
-boardThatResemblesACurve =
-    Dict.empty
-        |> Dict.insert ( 1, 1 ) Board.defaultTile
-        |> Dict.insert ( 2, 1 ) Board.defaultTile
-        |> Dict.insert ( 1, 2 ) Board.defaultTile
-        |> Board.applyMask
-
-
-curveTile : Tile
-curveTile =
-    12
-
-
-
--- Worlds
-
-
-lowComplexityWorld : World
-lowComplexityWorld =
-    World.empty
-        |> World.buildRoadAt ( 1, 1 )
-        |> World.buildRoadAt ( 2, 1 )
-        |> World.buildRoadAt ( 3, 1 )
-
-
-highComplexityWorld : World
-highComplexityWorld =
-    World.empty
-        |> World.buildRoadAt ( 1, 1 )
-        |> World.buildRoadAt ( 2, 1 )
-        |> World.buildRoadAt ( 1, 2 )
-
-
-worldThatHasAVerticalRoadAtLeftSide : World
-worldThatHasAVerticalRoadAtLeftSide =
-    World.empty
-        |> World.buildRoadAt ( 1, 1 )
-        |> World.buildRoadAt ( 1, 2 )
-        |> World.buildRoadAt ( 1, 3 )
-        |> World.buildRoadAt ( 1, 4 )
-        |> World.buildRoadAt ( 1, 5 )
-        |> World.buildRoadAt ( 1, 6 )
-        |> World.buildRoadAt ( 1, 7 )
-        |> World.buildRoadAt ( 1, 8 )
-        |> World.buildRoadAt ( 1, 9 )
-        |> World.buildRoadAt ( 1, 10 )
-
-
-worldThatHasParallelRoads : World
-worldThatHasParallelRoads =
-    worldThatHasAVerticalRoadAtLeftSide
-        -- create second road
-        |> World.buildRoadAt ( 3, 1 )
-        |> World.buildRoadAt ( 3, 2 )
-        |> World.buildRoadAt ( 3, 3 )
-        |> World.buildRoadAt ( 3, 4 )
-        |> World.buildRoadAt ( 3, 5 )
-        |> World.buildRoadAt ( 3, 6 )
-        |> World.buildRoadAt ( 3, 7 )
-        |> World.buildRoadAt ( 3, 8 )
-        |> World.buildRoadAt ( 3, 9 )
-        |> World.buildRoadAt ( 3, 10 )
-
-
-worldWithIntersection : World
-worldWithIntersection =
-    World.empty
-        |> World.buildRoadAt ( 1, 2 )
-        |> World.buildRoadAt ( 2, 1 )
-        |> World.buildRoadAt ( 2, 2 )
-        |> World.buildRoadAt ( 2, 3 )
-        |> World.buildRoadAt ( 3, 2 )
-
-
-upIntersectionExitNodePosition : Geometry.LMPoint2d
-upIntersectionExitNodePosition =
-    toLMPoint2d 134 720
-
-
-leftIntersectionExitNodePosition : Geometry.LMPoint2d
-leftIntersectionExitNodePosition =
-    toLMPoint2d 80 694
-
-
-leftIntersectionEntryNodePosition : Geometry.LMPoint2d
-leftIntersectionEntryNodePosition =
-    toLMPoint2d 80 666
-
-
-downIntersectionEntryNodePosition : Geometry.LMPoint2d
-downIntersectionEntryNodePosition =
-    toLMPoint2d 134 640
-
-
-
--- Lots
-
-
-oneByOneNewLot : Lot.NewLot
-oneByOneNewLot =
-    { content =
-        { kind = Lot.ResidentialA
-        , entryDirection = Down
-        }
-    , width = tileSizeInMeters
-    , height = tileSizeInMeters
-    }
-
-
-oneByOneLot : Lot
-oneByOneLot =
-    let
-        anchor =
-            ( ( 1, 2 ), Up )
-    in
-    { content = oneByOneNewLot.content
-    , width = oneByOneNewLot.width
-    , height = oneByOneNewLot.height
-    , position =
-        Point2d.xy
-            Quantity.zero
-            (tileSizeInMeters |> Quantity.multiplyBy 9)
-    , entryDetails = Lot.entryDetails anchor oneByOneNewLot
-    , anchor = anchor
-    }
-
-
-twoByTwoNewLot : Lot.NewLot
-twoByTwoNewLot =
-    { content =
-        { kind = Lot.ResidentialE
-        , entryDirection = Down
-        }
-    , width = tileSizeInMeters |> Quantity.multiplyBy 2
-    , height = tileSizeInMeters |> Quantity.multiplyBy 2
-    }
-
-
-twoByTwoLot : Lot
-twoByTwoLot =
-    createTwoByTwoLot ( ( 1, 3 ), Up )
-
-
-createTwoByTwoLot : Anchor -> Lot
-createTwoByTwoLot ( anchorCell, anchorDir ) =
-    let
-        content =
-            twoByTwoNewLot.content
-
-        anchor =
-            ( anchorCell, anchorDir )
-    in
-    { content = { content | entryDirection = Cell.oppositeOrthogonalDirection anchorDir }
-    , width = twoByTwoNewLot.width
-    , height = twoByTwoNewLot.height
-    , position =
-        anchorCell
-            |> Cell.next anchorDir
-            |> Cell.bottomLeftCorner
-    , entryDetails = Lot.entryDetails anchor twoByTwoNewLot
-    , anchor = anchor
-    }
-
-
-
---
-
-
-toLMPoint2d pixelsX pixelsY =
-    Point2d.xy
-        (Pixels.float pixelsX |> Quantity.at_ pixelsToMetersRatio)
-        (Pixels.float pixelsY |> Quantity.at_ pixelsToMetersRatio)
-
-
-createBoundingBox : ( Float, Float ) -> Float -> Float -> Geometry.LMBoundingBox2d
-createBoundingBox ( x, y ) width height =
-    Geometry.boundingBoxWithDimensions
-        (Pixels.float width |> Quantity.at_ pixelsToMetersRatio)
-        (Pixels.float height |> Quantity.at_ pixelsToMetersRatio)
-        (toLMPoint2d x y)

@@ -1,15 +1,15 @@
 module RenderFixture exposing (main)
 
-import Fixtures
 import Html exposing (Html)
 import Render
+import Rounds
 
 
 main : Html msg
 main =
     let
         fixture =
-            Fixtures.collisionSetupPathsIntersect
+            Rounds.noCollisionSetupDifferentLanes
 
         _ =
             Debug.log "cars" fixture.world.cars
