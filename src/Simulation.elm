@@ -9,9 +9,7 @@ module Simulation exposing
     )
 
 import Board
-import BoundingBox2d
 import Browser.Events as Events
-import Car
 import Cell exposing (Cell)
 import Config
 import Dict
@@ -20,7 +18,6 @@ import Lot exposing (NewLot)
 import Process
 import Random
 import Random.List
-import RoadNetwork exposing (RNNodeContext)
 import Round
 import Task
 import Time
@@ -121,10 +118,13 @@ update world msg model =
 
         CheckQueues _ ->
             let
-                ( nextCarSpawnQueue, nextWorld ) =
+                ( nextWorld, nextCarSpawnQueue, nextSeed ) =
                     dequeueCarSpawn model.carSpawnQueue model.seed world
             in
-            ( { model | carSpawnQueue = nextCarSpawnQueue }
+            ( { model
+                | carSpawnQueue = nextCarSpawnQueue
+                , seed = nextSeed
+              }
             , nextWorld
             , Cmd.none
             )
@@ -307,40 +307,23 @@ updateTrafficHelper { updateQueue, seed, world } =
 --
 
 
-dequeueCarSpawn : Int -> Random.Seed -> World -> ( Int, World )
+dequeueCarSpawn : Int -> Random.Seed -> World -> ( World, Int, Random.Seed )
 dequeueCarSpawn queue seed world =
     let
         canSpawnCar =
             queue > 0
     in
     if canSpawnCar then
-        RoadNetwork.getRandomNode world.roadNetwork seed
-            |> Maybe.andThen (validateSpawnConditions world)
-            |> Maybe.map (World.spawnCar world)
-            |> Maybe.map (Tuple.pair <| queue - 1)
-            |> Maybe.withDefault ( queue, world )
+        let
+            ( nextWorld, nextSeed, newCarId ) =
+                World.spawnCar seed world
+        in
+        case newCarId of
+            Just _ ->
+                ( nextWorld, queue - 1, nextSeed )
+
+            Nothing ->
+                ( nextWorld, queue, nextSeed )
 
     else
-        ( queue, world )
-
-
-validateSpawnConditions : World -> RNNodeContext -> Maybe RNNodeContext
-validateSpawnConditions world nodeCtx =
-    let
-        notAtSpawnPosition car =
-            Car.boundingBox car
-                |> BoundingBox2d.contains nodeCtx.node.label.position
-                |> not
-
-        reasonableAmountOfTraffic =
-            Dict.size world.board > Dict.size world.cars
-
-        spawnPositionHasEnoughSpace =
-            Dict.values world.cars
-                |> List.all notAtSpawnPosition
-    in
-    if reasonableAmountOfTraffic && spawnPositionHasEnoughSpace then
-        Just nodeCtx
-
-    else
-        Nothing
+        ( world, queue, seed )

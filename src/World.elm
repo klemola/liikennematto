@@ -15,6 +15,7 @@ module World exposing
     )
 
 import Board exposing (Board, Tile)
+import BoundingBox2d
 import Car exposing (Car, CarKind(..), Cars)
 import Cell exposing (Cell, Corner(..), OrthogonalDirection(..))
 import Dict
@@ -24,6 +25,7 @@ import Entity exposing (Id)
 import Geometry exposing (LMBoundingBox2d)
 import Lot exposing (BuildingKind(..), Lot, Lots)
 import Quantity
+import Random
 import RoadNetwork exposing (RNNodeContext, RoadNetwork)
 import TrafficLight exposing (TrafficLights)
 
@@ -116,22 +118,35 @@ addLotResident lotId world =
         |> Maybe.withDefault world
 
 
-spawnCar : World -> RNNodeContext -> World
-spawnCar world nodeCtx =
+spawnCar : Random.Seed -> World -> ( World, Random.Seed, Maybe Entity.Id )
+spawnCar seed world =
     let
-        id =
-            Entity.nextId world.cars
-
-        car =
-            Car.new Car.TestCar
-                |> Car.withPosition nodeCtx.node.label.position
-                |> Car.withRotation (Direction2d.toAngle nodeCtx.node.label.direction)
-                |> Car.withVelocity Car.maxVelocity
-                |> Car.build id
-                |> Car.createRoute nodeCtx
-                |> Car.startMoving
+        ( maybeRandomNodeCtx, nextSeed ) =
+            RoadNetwork.getRandomNode world.roadNetwork seed
     in
-    { world | cars = Dict.insert id car world.cars }
+    maybeRandomNodeCtx
+        |> Maybe.andThen (validateSpawnConditions world)
+        |> Maybe.map
+            (\nodeCtx ->
+                let
+                    id =
+                        Entity.nextId world.cars
+
+                    car =
+                        Car.new Car.TestCar
+                            |> Car.withPosition nodeCtx.node.label.position
+                            |> Car.withRotation (Direction2d.toAngle nodeCtx.node.label.direction)
+                            |> Car.withVelocity Car.maxVelocity
+                            |> Car.build id
+                            |> Car.createRoute nodeCtx
+                            |> Car.startMoving
+                in
+                ( { world | cars = Dict.insert id car world.cars }
+                , nextSeed
+                , Just id
+                )
+            )
+        |> Maybe.withDefault ( world, nextSeed, Nothing )
 
 
 setCar : Id -> Car -> World -> World
@@ -318,6 +333,28 @@ moveCarToHome world car =
 
         _ ->
             Car.markAsConfused car
+
+
+validateSpawnConditions : World -> RNNodeContext -> Maybe RNNodeContext
+validateSpawnConditions world nodeCtx =
+    let
+        notAtSpawnPosition car =
+            Car.boundingBox car
+                |> BoundingBox2d.contains nodeCtx.node.label.position
+                |> not
+
+        reasonableAmountOfTraffic =
+            Dict.size world.board > Dict.size world.cars
+
+        spawnPositionHasEnoughSpace =
+            Dict.values world.cars
+                |> List.all notAtSpawnPosition
+    in
+    if reasonableAmountOfTraffic && spawnPositionHasEnoughSpace then
+        Just nodeCtx
+
+    else
+        Nothing
 
 
 

@@ -8,10 +8,7 @@ import Rounds
 main : Html msg
 main =
     let
-        fixture =
-            Rounds.noCollisionSetupDifferentLanes
-
-        _ =
-            Debug.log "cars" fixture.world.cars
+        world =
+            (Rounds.largeWorldSetup 50).world
     in
-    Render.view fixture.world { showRoadNetwork = False, showCarDebugVisuals = True }
+    Render.view world { showRoadNetwork = False, showCarDebugVisuals = True }
