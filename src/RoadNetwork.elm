@@ -712,17 +712,16 @@ findNodeByPosition roadNetwork position =
         |> Maybe.andThen (\matchId -> Graph.get matchId roadNetwork)
 
 
-getRandomNode : RoadNetwork -> Random.Seed -> Maybe RNNodeContext
+getRandomNode : RoadNetwork -> Random.Seed -> ( Maybe RNNodeContext, Random.Seed )
 getRandomNode roadNetwork seed =
     let
-        randomNodeIdGenerator =
+        randomNodeGenerator =
             roadNetwork
                 |> Graph.nodeIds
                 |> Random.Extra.sample
+                |> Random.map (Maybe.andThen (findNodeByNodeId roadNetwork))
     in
-    Random.step randomNodeIdGenerator seed
-        |> Tuple.first
-        |> Maybe.andThen (findNodeByNodeId roadNetwork)
+    Random.step randomNodeGenerator seed
 
 
 getOutgoingConnections : RNNodeContext -> List NodeId

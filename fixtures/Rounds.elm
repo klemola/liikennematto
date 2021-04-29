@@ -3,6 +3,7 @@ module Rounds exposing
     , collisionSetupPathsIntersect
     , connectedRoadsSetup
     , greenTrafficLightsSetup
+    , largeWorldSetup
     , noCollisionSetupDifferentLanes
     , noCollisionSetupIntersection
     , redTrafficLightsSetup
@@ -14,13 +15,14 @@ module Rounds exposing
 
 import Angle exposing (Angle)
 import Car exposing (Car)
+import Dict
 import Geometry
 import Random
 import RoadNetwork
 import Round exposing (Round)
 import Utility exposing (toLMPoint2d)
-import World
-import Worlds exposing (worldWithIntersection)
+import World exposing (World)
+import Worlds exposing (largeWorld, worldWithIntersection)
 
 
 seed : Random.Seed
@@ -347,6 +349,23 @@ yieldAfterStopSetup =
     Round world car otherCars seed
 
 
+largeWorldSetup : Int -> Round
+largeWorldSetup carsAmount =
+    let
+        world =
+            largeWorld
+
+        worldWithCars =
+            spawnCars carsAmount world (Random.initialSeed 224)
+    in
+    case Dict.values worldWithCars.cars of
+        x :: xs ->
+            Round worldWithCars x xs seed
+
+        [] ->
+            Debug.todo "no cars"
+
+
 
 --
 -- Utility
@@ -375,3 +394,16 @@ buildCar option ( x, y ) rotation =
         |> Car.withVelocity Car.maxVelocity
         |> Car.build id
         |> Car.startMoving
+
+
+spawnCars : Int -> World -> Random.Seed -> World
+spawnCars n world aSeed =
+    if n == 0 then
+        world
+
+    else
+        let
+            ( nextWorld, nextSeed, _ ) =
+                World.spawnCar aSeed world
+        in
+        spawnCars (n - 1) nextWorld nextSeed
