@@ -10,12 +10,15 @@ module Simulation exposing
 
 import Board
 import Browser.Events as Events
+import Car exposing (Car)
 import Cell exposing (Cell)
 import Config
 import Dict
-import Geometry
+import Geometry exposing (LMEntityCoordinates)
+import Length
 import Lot exposing (NewLot)
 import Process
+import QuadTree exposing (QuadTree)
 import Random
 import Random.List
 import Round
@@ -248,57 +251,61 @@ findLotAnchor world seed newLot =
 
 updateTraffic : World -> Model -> ( World, Random.Seed )
 updateTraffic world { seed } =
+    let
+        cars =
+            Dict.values world.cars
+
+        carPositionLookup =
+            QuadTree.init Board.boundingBox 4 |> QuadTree.insertList cars
+    in
     updateTrafficHelper
-        { updateQueue = Dict.keys world.cars
+        { updateQueue = cars
+        , carPositionLookup = carPositionLookup
         , seed = seed
         , world = world
         }
 
 
 updateTrafficHelper :
-    { updateQueue : List Int
+    { updateQueue : List Car
+    , carPositionLookup : QuadTree Length.Meters LMEntityCoordinates Car
     , seed : Random.Seed
     , world : World
     }
     -> ( World, Random.Seed )
-updateTrafficHelper { updateQueue, seed, world } =
+updateTrafficHelper { updateQueue, carPositionLookup, seed, world } =
     case updateQueue of
-        activeCarId :: queue ->
+        [] ->
+            ( world, seed )
+
+        activeCar :: queue ->
             let
                 nextRound roundResults =
                     updateTrafficHelper
                         { updateQueue = queue
                         , seed = roundResults.seed
-                        , world =
-                            world
-                                |> World.setCar activeCarId roundResults.car
+                        , carPositionLookup =
+                            carPositionLookup
+                                |> QuadTree.update
+                                    (\_ -> roundResults.car)
+                                    activeCar
+                        , world = world |> World.setCar activeCar.id roundResults.car
                         }
 
-                -- Room for improvement: only query cars that are nearby
                 otherCars =
-                    world.cars
-                        |> Dict.filter (\k _ -> k /= activeCarId)
-                        |> Dict.values
+                    carPositionLookup
+                        |> QuadTree.neighborsWithin Config.tileSizeInMeters activeCar.boundingBox
+                        |> List.filter (\car -> car.id /= activeCar.id)
+
+                round =
+                    { world = world
+                    , activeCar = activeCar
+                    , otherCars = otherCars
+                    , seed = seed
+                    }
             in
-            case Dict.get activeCarId world.cars of
-                Just activeCar ->
-                    let
-                        round =
-                            { world = world
-                            , activeCar = activeCar
-                            , otherCars = otherCars
-                            , seed = seed
-                            }
-                    in
-                    Round.play round
-                        |> nextRound
-
-                -- this should never happen, but the typesystem doesn't know that
-                Nothing ->
-                    ( world, seed )
-
-        [] ->
-            ( world, seed )
+            Round.play round
+                |> nextRound
 
 
 
