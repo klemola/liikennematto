@@ -53,24 +53,11 @@ suite =
 chooseOtherCarsWithQuadtree : Round -> Round
 chooseOtherCarsWithQuadtree round =
     let
-        carBB =
-            Car.boundingBox round.activeCar
-
-        otherCarBBs =
-            round.otherCars
-                |> List.map
-                    (\car ->
-                        { id = car.id
-                        , position = car.position
-                        , boundingBox = Car.boundingBox car
-                        }
-                    )
-
         matchesSet =
             -- QuadTree -> choose neighbor cars -> Set of ids
-            QuadTree.init Board.boundingBox 2
-                |> QuadTree.insertList otherCarBBs
-                |> QuadTree.neighborsWithin Config.tileSizeInMeters carBB
+            QuadTree.init Board.boundingBox 4
+                |> QuadTree.insertList round.otherCars
+                |> QuadTree.neighborsWithin Config.tileSizeInMeters round.activeCar.boundingBox
                 |> List.foldl (\bounded acc -> Set.insert bounded.id acc) Set.empty
     in
     { round | otherCars = List.filter (\car -> Set.member car.id matchesSet) round.otherCars }

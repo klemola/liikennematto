@@ -339,7 +339,7 @@ validateSpawnConditions : World -> RNNodeContext -> Maybe RNNodeContext
 validateSpawnConditions world nodeCtx =
     let
         notAtSpawnPosition car =
-            Car.boundingBox car
+            car.boundingBox
                 |> BoundingBox2d.contains nodeCtx.node.label.position
                 |> not
 
