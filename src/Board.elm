@@ -2,6 +2,7 @@ module Board exposing
     ( Board
     , Tile
     , applyMask
+    , boundingBox
     , crossIntersection
     , defaultTile
     , inBounds
