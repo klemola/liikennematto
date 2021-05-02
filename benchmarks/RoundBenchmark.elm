@@ -53,14 +53,12 @@ suite =
 chooseOtherCarsWithQuadtree : Round -> Round
 chooseOtherCarsWithQuadtree round =
     let
-        matchesSet =
-            -- QuadTree -> choose neighbor cars -> Set of ids
+        nearbyCars =
             QuadTree.init Board.boundingBox 4
                 |> QuadTree.insertList round.otherCars
                 |> QuadTree.neighborsWithin Config.tileSizeInMeters round.activeCar.boundingBox
-                |> List.foldl (\bounded acc -> Set.insert bounded.id acc) Set.empty
     in
-    { round | otherCars = List.filter (\car -> Set.member car.id matchesSet) round.otherCars }
+    { round | otherCars = nearbyCars }
 
 
 main : BenchmarkProgram
