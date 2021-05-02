@@ -3,7 +3,6 @@ module Car exposing
     , CarKind(..)
     , Cars
     , Status(..)
-    , boundingBox
     , break
     , build
     , createRoute
@@ -63,6 +62,7 @@ type alias Car =
     , velocity : Speed
     , acceleration : Acceleration
     , shape : Polygon2d Meters LMEntityCoordinates
+    , boundingBox : LMBoundingBox2d
     , kind : CarKind
     , status : Status
     , homeLotId : Maybe Int
@@ -76,7 +76,6 @@ type alias NewCar =
     , rotation : Angle
     , velocity : Speed
     , acceleration : Acceleration
-    , shape : Polygon2d Meters LMEntityCoordinates
     , kind : CarKind
     , status : Status
     , homeLotId : Maybe Int
@@ -203,7 +202,6 @@ new kind =
     , rotation = Angle.degrees 0
     , velocity = Quantity.zero
     , acceleration = defaultAcceleration
-    , shape = shape
     , kind = kind
     , status = Confused
     , homeLotId = Nothing
@@ -219,18 +217,12 @@ withHome lotId car =
 
 withPosition : LMPoint2d -> NewCar -> NewCar
 withPosition position car =
-    { car
-        | position = position
-        , shape = adjustedShape position car.rotation
-    }
+    { car | position = position }
 
 
 withRotation : Angle -> NewCar -> NewCar
 withRotation rotation car =
-    { car
-        | rotation = rotation
-        , shape = adjustedShape car.position rotation
-    }
+    { car | rotation = rotation }
 
 
 withVelocity : Speed -> NewCar -> NewCar
@@ -240,12 +232,21 @@ withVelocity velocity car =
 
 build : Int -> NewCar -> Car
 build id newCar =
+    let
+        nextShape =
+            adjustedShape newCar.position newCar.rotation
+
+        boundingBox =
+            Polygon2d.boundingBox nextShape
+                |> Maybe.withDefault (BoundingBox2d.singleton newCar.position)
+    in
     { id = id
     , position = newCar.position
     , rotation = newCar.rotation
     , velocity = newCar.velocity
     , acceleration = newCar.acceleration
-    , shape = newCar.shape
+    , shape = nextShape
+    , boundingBox = boundingBox
     , kind = newCar.kind
     , status = newCar.status
     , homeLotId = newCar.homeLotId
@@ -280,12 +281,6 @@ isBreaking car =
     car.acceleration |> Quantity.lessThan Quantity.zero
 
 
-boundingBox : Car -> LMBoundingBox2d
-boundingBox car =
-    Polygon2d.boundingBox car.shape
-        |> Maybe.withDefault (BoundingBox2d.singleton car.position)
-
-
 secondsTo : LMPoint2d -> Car -> Quantity Float Duration.Seconds
 secondsTo target car =
     let
@@ -305,36 +300,55 @@ move : Car -> Car
 move car =
     case car.localPath of
         next :: others ->
-            if Point2d.equalWithin (Length.meters 0.1) car.position next then
-                { car
-                    | position = next
-                    , shape = adjustedShape next car.rotation
-                    , localPath = others
-                }
+            let
+                atLocalPathPoint =
+                    Point2d.equalWithin (Length.meters 0.1) car.position next
 
-            else
-                let
-                    carDirection =
-                        Direction2d.fromAngle car.rotation
+                carDirection =
+                    Direction2d.fromAngle car.rotation
 
-                    nextVelocity =
-                        car.velocity
-                            |> Quantity.plus (car.acceleration |> Quantity.for (Duration.milliseconds 16))
-                            |> Quantity.clamp Quantity.zero maxVelocity
+                nextLocalPath =
+                    if atLocalPathPoint then
+                        others
 
-                    nextPosition =
+                    else
+                        car.localPath
+
+                nextPosition =
+                    if atLocalPathPoint then
+                        next
+
+                    else
                         car.position
                             |> Point2d.translateIn carDirection (nextVelocity |> Quantity.for (Duration.milliseconds 16))
 
-                    nextRotation =
+                nextVelocity =
+                    car.velocity
+                        |> Quantity.plus (car.acceleration |> Quantity.for (Duration.milliseconds 16))
+                        |> Quantity.clamp Quantity.zero maxVelocity
+
+                nextRotation =
+                    if atLocalPathPoint then
+                        car.rotation
+
+                    else
                         car.position |> Geometry.angleToTarget next
-                in
-                { car
-                    | position = nextPosition
-                    , velocity = nextVelocity
-                    , rotation = nextRotation
-                    , shape = adjustedShape nextPosition nextRotation
-                }
+
+                nextShape =
+                    adjustedShape nextPosition nextRotation
+
+                nextBoundingBox =
+                    Polygon2d.boundingBox shape
+                        |> Maybe.withDefault (BoundingBox2d.singleton nextPosition)
+            in
+            { car
+                | position = nextPosition
+                , velocity = nextVelocity
+                , rotation = nextRotation
+                , shape = nextShape
+                , boundingBox = nextBoundingBox
+                , localPath = nextLocalPath
+            }
 
         _ ->
             car
