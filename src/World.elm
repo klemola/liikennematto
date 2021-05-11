@@ -93,11 +93,11 @@ addLot lot world =
         , roadNetwork = roadNetwork
         , trafficLights = nextTrafficLights
     }
-        |> addLotResident nextLotId
+        |> addLotResident nextLotId lot
 
 
-addLotResident : Int -> World -> World
-addLotResident lotId world =
+addLotResident : Int -> Lot -> World -> World
+addLotResident lotId lot world =
     let
         carId =
             Entity.nextId world.cars
@@ -105,8 +105,14 @@ addLotResident lotId world =
         createCar kind =
             Car.new kind
                 |> Car.withHome lotId
-                |> Car.build carId
-                |> moveCarToHome world
+                |> Car.withPosition lot.entryDetails.parkingSpot
+                |> Car.withRotation
+                    (lot.content.entryDirection
+                        |> Cell.orthogonalDirectionToLmDirection
+                        |> Direction2d.rotateClockwise
+                        |> Direction2d.toAngle
+                    )
+                |> Car.build carId (RoadNetwork.findNodeByLotId world.roadNetwork lotId)
 
         addToWorld car =
             { world | cars = Dict.insert carId car world.cars }
@@ -137,8 +143,7 @@ spawnCar seed world =
                             |> Car.withPosition nodeCtx.node.label.position
                             |> Car.withRotation (Direction2d.toAngle nodeCtx.node.label.direction)
                             |> Car.withVelocity Car.maxVelocity
-                            |> Car.build id
-                            |> Car.createRoute nodeCtx
+                            |> Car.build id (Just nodeCtx)
                             |> Car.startMoving
                 in
                 ( { world | cars = Dict.insert id car world.cars }
@@ -328,6 +333,8 @@ moveCarToHome world car =
                 , status = Car.ParkedAtLot
                 , velocity = Quantity.zero
                 , acceleration = Car.defaultAcceleration
+                , route = []
+                , localPath = []
             }
                 |> Car.createRoute nodeCtx
 

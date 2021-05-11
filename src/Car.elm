@@ -79,8 +79,6 @@ type alias NewCar =
     , kind : CarKind
     , status : Status
     , homeLotId : Maybe Int
-    , route : List RNNodeContext
-    , localPath : LocalPath
     }
 
 
@@ -204,14 +202,15 @@ new kind =
     , kind = kind
     , status = Confused
     , homeLotId = Nothing
-    , route = []
-    , localPath = []
     }
 
 
 withHome : Int -> NewCar -> NewCar
 withHome lotId car =
-    { car | homeLotId = Just lotId }
+    { car
+        | homeLotId = Just lotId
+        , status = ParkedAtLot
+    }
 
 
 withPosition : LMPoint2d -> NewCar -> NewCar
@@ -229,8 +228,8 @@ withVelocity velocity car =
     { car | velocity = velocity }
 
 
-build : Int -> NewCar -> Car
-build id newCar =
+build : Int -> Maybe RNNodeContext -> NewCar -> Car
+build id initialTarget newCar =
     let
         nextShape =
             adjustedShape newCar.position newCar.rotation
@@ -238,6 +237,21 @@ build id newCar =
         boundingBox =
             Polygon2d.boundingBox nextShape
                 |> Maybe.withDefault (BoundingBox2d.singleton newCar.position)
+
+        ( route, localPath ) =
+            case initialTarget of
+                Just target ->
+                    ( [ target ]
+                    , LocalPath.toNode
+                        { origin = newCar.position
+                        , direction = Direction2d.fromAngle newCar.rotation
+                        , useOffsetSpline = newCar.status == ParkedAtLot
+                        }
+                        target
+                    )
+
+                Nothing ->
+                    ( [], [] )
     in
     { id = id
     , position = newCar.position
@@ -249,8 +263,8 @@ build id newCar =
     , kind = newCar.kind
     , status = newCar.status
     , homeLotId = newCar.homeLotId
-    , route = newCar.route
-    , localPath = newCar.localPath
+    , route = route
+    , localPath = localPath
     }
 
 
@@ -427,7 +441,13 @@ createRoute : RNNodeContext -> Car -> Car
 createRoute nodeCtx car =
     { car
         | route = [ nodeCtx ]
-        , localPath = localPathToTarget car nodeCtx
+        , localPath =
+            LocalPath.toNode
+                { origin = car.position
+                , direction = Direction2d.fromAngle car.rotation
+                , useOffsetSpline = car.status == ParkedAtLot
+                }
+                nodeCtx
     }
 
 
@@ -435,44 +455,6 @@ createRoute nodeCtx car =
 --
 -- Logic helpers
 --
-
-
-localPathToTarget : Car -> RNNodeContext -> LocalPath
-localPathToTarget car { node } =
-    let
-        carDirection =
-            Direction2d.fromAngle car.rotation
-
-        origin =
-            car.position
-
-        target =
-            node.label.position
-
-        angleDegreesToTarget =
-            origin
-                |> Geometry.angleFromDirection carDirection target
-                |> Angle.inDegrees
-    in
-    if node.label.kind == LotEntry && car.status == ParkedAtLot then
-        LocalPath.leaveLotSpline origin target carDirection
-
-    else if node.label.kind == LotEntry then
-        LocalPath.linearLocalPathToTarget origin target
-
-    else if abs angleDegreesToTarget < 10 then
-        LocalPath.linearLocalPathToTarget origin target
-
-    else if abs angleDegreesToTarget |> isWithinRoundingErrorOf 90 then
-        LocalPath.uTurnSpline origin target carDirection
-
-    else
-        LocalPath.curveSpline origin target carDirection
-
-
-isWithinRoundingErrorOf : Int -> Float -> Bool
-isWithinRoundingErrorOf target value =
-    round value == target || floor value == target
 
 
 accelerateToZeroOverDistance : Speed -> Length -> Acceleration
