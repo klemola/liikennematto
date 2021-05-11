@@ -8,6 +8,7 @@ import Length exposing (Length)
 import Point2d
 import Polyline2d
 import Quantity
+import RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 
 
 
@@ -39,8 +40,47 @@ linearLocalPathToTarget origin target =
         |> List.map (\step -> Point2d.interpolateFrom origin target step)
 
 
-leaveLotSpline : LMPoint2d -> LMPoint2d -> LMDirection2d -> LocalPath
-leaveLotSpline origin target direction =
+type alias PathParameters =
+    { origin : LMPoint2d
+    , direction : LMDirection2d
+    , useOffsetSpline : Bool
+    }
+
+
+toNode : PathParameters -> RNNodeContext -> LocalPath
+toNode { direction, origin, useOffsetSpline } { node } =
+    let
+        target =
+            node.label.position
+
+        angleDegreesToTarget =
+            origin
+                |> Geometry.angleFromDirection direction target
+                |> Angle.inDegrees
+    in
+    if node.label.kind == LotEntry && useOffsetSpline then
+        offsetSpline origin target direction
+
+    else if node.label.kind == LotEntry then
+        linearLocalPathToTarget origin target
+
+    else if abs angleDegreesToTarget < 10 then
+        linearLocalPathToTarget origin target
+
+    else if abs angleDegreesToTarget |> isWithinRoundingErrorOf 90 then
+        uTurnSpline origin target direction
+
+    else
+        curveSpline origin target direction
+
+
+isWithinRoundingErrorOf : Int -> Float -> Bool
+isWithinRoundingErrorOf target value =
+    round value == target || floor value == target
+
+
+offsetSpline : LMPoint2d -> LMPoint2d -> LMDirection2d -> LocalPath
+offsetSpline origin target direction =
     let
         handleDistance =
             Point2d.distanceFrom origin target |> Quantity.half
