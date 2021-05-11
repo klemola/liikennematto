@@ -127,9 +127,8 @@ width =
     Length.meters 2.3
 
 
-shape : Polygon2d Meters LMEntityCoordinates
-shape =
-    -- the shape of a car with centroid of origin
+shapeAtOrigin : Polygon2d Meters LMEntityCoordinates
+shapeAtOrigin =
     let
         halfLength =
             Quantity.half length
@@ -338,7 +337,7 @@ move car =
                     adjustedShape nextPosition nextRotation
 
                 nextBoundingBox =
-                    Polygon2d.boundingBox shape
+                    Polygon2d.boundingBox nextShape
                         |> Maybe.withDefault (BoundingBox2d.singleton nextPosition)
             in
             { car
@@ -517,7 +516,7 @@ adjustedShape nextPosition nextRotation =
         carFrame =
             Frame2d.atPoint nextPosition |> Frame2d.rotateBy nextRotation
     in
-    shape |> Polygon2d.placeIn carFrame
+    shapeAtOrigin |> Polygon2d.placeIn carFrame
 
 
 
