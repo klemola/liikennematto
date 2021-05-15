@@ -392,7 +392,7 @@ buildCar option ( x, y ) rotation =
         |> Car.withPosition (toLMPoint2d x y)
         |> Car.withRotation rotation
         |> Car.withVelocity Car.maxVelocity
-        |> Car.build id
+        |> Car.build id Nothing
         |> Car.startMoving
 
 
