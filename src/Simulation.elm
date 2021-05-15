@@ -32,6 +32,7 @@ type alias Model =
     { seed : Random.Seed
     , simulation : SimulationState
     , carSpawnQueue : Int
+    , carPositionLookup : QuadTree Length.Meters LMEntityCoordinates Car
     }
 
 
@@ -58,9 +59,15 @@ init =
     ( { seed = seed
       , simulation = Running
       , carSpawnQueue = 0
+      , carPositionLookup = QuadTree.init Board.boundingBox quadTreeLeafElementsAmount
       }
     , generateEnvironmentAfterDelay seed
     )
+
+
+quadTreeLeafElementsAmount : Int
+quadTreeLeafElementsAmount =
+    4
 
 
 maxCarSpawnQueueSize : Int
@@ -95,10 +102,24 @@ update world msg model =
 
         UpdateTraffic _ ->
             let
+                cars =
+                    Dict.values world.cars
+
+                carPositionLookup =
+                    QuadTree.init Board.boundingBox quadTreeLeafElementsAmount |> QuadTree.insertList cars
+
                 ( nextWorld, nextSeed ) =
-                    updateTraffic world model
+                    updateTraffic
+                        { updateQueue = cars
+                        , carPositionLookup = carPositionLookup
+                        , seed = model.seed
+                        , world = world
+                        }
             in
-            ( { model | seed = nextSeed }
+            ( { model
+                | seed = nextSeed
+                , carPositionLookup = carPositionLookup
+              }
             , nextWorld
             , Cmd.none
             )
@@ -249,31 +270,14 @@ findLotAnchor world seed newLot =
 --
 
 
-updateTraffic : World -> Model -> ( World, Random.Seed )
-updateTraffic world { seed } =
-    let
-        cars =
-            Dict.values world.cars
-
-        carPositionLookup =
-            QuadTree.init Board.boundingBox 4 |> QuadTree.insertList cars
-    in
-    updateTrafficHelper
-        { updateQueue = cars
-        , carPositionLookup = carPositionLookup
-        , seed = seed
-        , world = world
-        }
-
-
-updateTrafficHelper :
+updateTraffic :
     { updateQueue : List Car
     , carPositionLookup : QuadTree Length.Meters LMEntityCoordinates Car
     , seed : Random.Seed
     , world : World
     }
     -> ( World, Random.Seed )
-updateTrafficHelper { updateQueue, carPositionLookup, seed, world } =
+updateTraffic { updateQueue, carPositionLookup, seed, world } =
     case updateQueue of
         [] ->
             ( world, seed )
@@ -281,14 +285,10 @@ updateTrafficHelper { updateQueue, carPositionLookup, seed, world } =
         activeCar :: queue ->
             let
                 nextRound roundResults =
-                    updateTrafficHelper
+                    updateTraffic
                         { updateQueue = queue
                         , seed = roundResults.seed
-                        , carPositionLookup =
-                            carPositionLookup
-                                |> QuadTree.update
-                                    (\_ -> roundResults.car)
-                                    activeCar
+                        , carPositionLookup = carPositionLookup
                         , world = world |> World.setCar activeCar.id roundResults.car
                         }
 
