@@ -19,9 +19,11 @@ module Car exposing
     , new
     , rightSideOfFieldOfView
     , secondsTo
+    , slowDown
     , startMoving
     , statusDescription
     , stopAtIntersection
+    , viewDistance
     , waitForTrafficLights
     , width
     , withHome
@@ -157,6 +159,11 @@ shapeAtOrigin =
     Polygon2d.singleLoop [ p1, p2, p3, p4 ]
 
 
+viewDistance : Length
+viewDistance =
+    Length.meters 20
+
+
 maxFieldOfView : Angle
 maxFieldOfView =
     Angle.degrees 100
@@ -167,8 +174,8 @@ speedToFieldOfViewReduction =
     Speed.metersPerSecond 2.5 |> Quantity.per (Angle.degrees 10)
 
 
-trafficLightsStopMargin : Length
-trafficLightsStopMargin =
+trafficControlStopDistance : Length
+trafficControlStopDistance =
     Length.meters 5
 
 
@@ -372,13 +379,13 @@ waitForTrafficLights distanceFromTrafficLight car =
     let
         targetDistance =
             distanceFromTrafficLight
-                |> Quantity.minus trafficLightsStopMargin
+                |> Quantity.minus trafficControlStopDistance
                 |> Quantity.max Quantity.zero
     in
     { car
         | status = WaitingForTrafficLights
         , acceleration =
-            if targetDistance |> Quantity.lessThanOrEqualTo trafficLightsStopMargin then
+            if targetDistance |> Quantity.lessThanOrEqualTo trafficControlStopDistance then
                 maxDeceleration
 
             else
@@ -386,12 +393,17 @@ waitForTrafficLights distanceFromTrafficLight car =
     }
 
 
-yield : Car -> Car
-yield car =
+yield : Length -> Car -> Car
+yield distanceToSign car =
+    let
+        targetDistance =
+            distanceToSign
+                |> Quantity.minus trafficControlStopDistance
+                |> Quantity.max Quantity.zero
+    in
     { car
         | status = Yielding
-        , acceleration = Quantity.zero
-        , velocity = Quantity.zero
+        , acceleration = accelerateToZeroOverDistance car.velocity targetDistance
     }
 
 
@@ -405,10 +417,10 @@ stopAtIntersection car =
 
 
 break : Length -> Car -> Car
-break distanceToCollision car =
+break breakDistance car =
     let
         targetDistance =
-            distanceToCollision
+            breakDistance
                 |> Quantity.minus collisionMargin
                 |> Quantity.max Quantity.zero
 
@@ -416,6 +428,15 @@ break distanceToCollision car =
             Quantity.max maxDeceleration (accelerateToZeroOverDistance car.velocity targetDistance)
     in
     { car | acceleration = nextAcceleration }
+
+
+slowDown : Speed -> Car -> Car
+slowDown targetVelocity car =
+    if car.velocity |> Quantity.greaterThan targetVelocity then
+        { car | acceleration = Acceleration.metersPerSecondSquared -5 }
+
+    else
+        { car | acceleration = defaultAcceleration }
 
 
 startMoving : Car -> Car
@@ -462,14 +483,14 @@ accelerateToZeroOverDistance (Quantity speed) (Quantity distanceToTarget) =
     Quantity (-speed * speed / (2 * distanceToTarget))
 
 
-rightSideOfFieldOfView : Length -> Car -> Triangle2d Meters LMEntityCoordinates
-rightSideOfFieldOfView distance car =
+rightSideOfFieldOfView : Car -> Triangle2d Meters LMEntityCoordinates
+rightSideOfFieldOfView car =
     let
         direction =
             Direction2d.fromAngle car.rotation
 
         limitFront =
-            car.position |> Point2d.translateIn direction distance
+            car.position |> Point2d.translateIn direction viewDistance
 
         fieldOfViewReduction =
             car.velocity |> Quantity.at_ speedToFieldOfViewReduction
@@ -481,7 +502,7 @@ rightSideOfFieldOfView distance car =
             Quantity.half fieldOfView |> Quantity.negate
 
         distanceRight =
-            distance |> Quantity.divideBy (Angle.cos angle)
+            viewDistance |> Quantity.divideBy (Angle.cos angle)
 
         limitRight =
             car.position
