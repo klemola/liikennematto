@@ -22,7 +22,6 @@ import Config
         ( boardSize
         , pixelsToMetersRatio
         , tileSize
-        , tileSizeInMeters
         )
 import Dict
 import Geometry exposing (LMPoint2d)
@@ -373,7 +372,7 @@ renderCarFieldOfView : Car -> Collage msg
 renderCarFieldOfView car =
     let
         triangle =
-            Car.rightSideOfFieldOfView tileSizeInMeters car
+            Car.rightSideOfFieldOfView car
 
         ( p1, p2, p3 ) =
             Triangle2d.vertices triangle

@@ -45,8 +45,9 @@ type alias RoundResults =
 type Rule
     = AvoidCollision Length
     | WaitForTrafficLights Length
-    | YieldAtIntersection
-    | StopAtIntersection
+    | YieldAtIntersection Length
+    | StopAtIntersection Length
+    | SlowDownAtTrafficControl
 
 
 
@@ -58,11 +59,6 @@ type Rule
 carRotationTolerance : Angle
 carRotationTolerance =
     Angle.degrees 10
-
-
-carProximityCutoff : Length
-carProximityCutoff =
-    tileSizeInMeters
 
 
 dangerousCarCollisionTestDistance : Length
@@ -78,6 +74,16 @@ maxCarCollisionTestDistance =
 trafficLightReactionDistance : Length
 trafficLightReactionDistance =
     Length.meters 50
+
+
+yieldSlowDownDistance : Length
+yieldSlowDownDistance =
+    Length.meters 40
+
+
+yieldReactionDistance : Length
+yieldReactionDistance =
+    Length.meters 10
 
 
 
@@ -146,15 +152,18 @@ applyRule round rule =
             else
                 applyCarAction (Car.waitForTrafficLights distanceFromTrafficLight) round
 
-        YieldAtIntersection ->
-            applyCarAction Car.yield round
+        YieldAtIntersection distanceFromSign ->
+            applyCarAction (Car.yield distanceFromSign) round
 
-        StopAtIntersection ->
+        StopAtIntersection _ ->
             if Car.isStoppedOrWaiting activeCar then
                 round
 
             else
                 applyCarAction Car.stopAtIntersection round
+
+        SlowDownAtTrafficControl ->
+            applyCarAction (Car.slowDown (Car.maxVelocity |> Quantity.half)) round
 
 
 applyCarAction : (Car -> Car) -> Round -> Round
@@ -235,7 +244,7 @@ checkPathCollision : Round -> Maybe Rule
 checkPathCollision { activeCar, otherCars } =
     let
         carSightTriangle =
-            Car.rightSideOfFieldOfView carProximityCutoff activeCar
+            Car.rightSideOfFieldOfView activeCar
     in
     collisionWith activeCar otherCars (pathCollisionWith carSightTriangle activeCar)
         |> Maybe.map AvoidCollision
@@ -245,15 +254,14 @@ checkTrafficControl : Round -> Maybe Rule
 checkTrafficControl round =
     round.activeCar.route
         |> List.head
-        |> Maybe.map (.node >> .label >> .trafficControl)
         |> Maybe.andThen
-            (\trafficControl ->
-                case trafficControl of
+            (\{ node } ->
+                case node.label.trafficControl of
                     Signal id ->
                         Dict.get id round.world.trafficLights |> Maybe.andThen (checkTrafficLights round)
 
                     Yield ->
-                        checkYield round
+                        checkYield round node.label.position
 
                     None ->
                         Nothing
@@ -276,9 +284,21 @@ checkTrafficLights round trafficLight =
         Nothing
 
 
-checkYield : Round -> Maybe Rule
-checkYield round =
-    Nothing
+checkYield : Round -> LMPoint2d -> Maybe Rule
+checkYield round signPosition =
+    let
+        distanceFromYield =
+            Point2d.distanceFrom round.activeCar.position signPosition
+    in
+    if distanceFromYield |> Quantity.lessThanOrEqualTo yieldReactionDistance then
+        -- TODO: check traffic
+        Just (YieldAtIntersection distanceFromYield)
+
+    else if distanceFromYield |> Quantity.lessThanOrEqualTo yieldSlowDownDistance then
+        Just SlowDownAtTrafficControl
+
+    else
+        Nothing
 
 
 
@@ -350,8 +370,8 @@ headingRoughlyInTheSameDirection car otherCar =
 directionsIntersectAt : Car -> Car -> Maybe LMPoint2d
 directionsIntersectAt car otherCar =
     LineSegment2d.intersectionPoint
-        (Direction2d.fromAngle car.rotation |> toRay car.position carProximityCutoff)
-        (Direction2d.fromAngle otherCar.rotation |> toRay otherCar.position carProximityCutoff)
+        (Direction2d.fromAngle car.rotation |> toRay car.position Car.viewDistance)
+        (Direction2d.fromAngle otherCar.rotation |> toRay otherCar.position Car.viewDistance)
 
 
 intersectionPointWithSpeedTakenIntoAccount : Car -> Car -> LMPoint2d -> Maybe LMPoint2d
