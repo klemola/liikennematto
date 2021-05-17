@@ -11,12 +11,12 @@ module RoadNetwork exposing
     , getOutgoingConnections
     , getRandomNode
     , new
-    , setupTrafficLights
+    , setupTrafficControl
     , toDotString
     )
 
 import Angle
-import Board exposing (Board, Tile, crossIntersection)
+import Board exposing (Board, Tile)
 import BoundingBox2d
 import Cell exposing (Cell, OrthogonalDirection(..))
 import Config exposing (pixelsToMeters, tileSizeInMeters)
@@ -27,6 +27,7 @@ import Entity exposing (Id)
 import Geometry exposing (LMBoundingBox2d, LMDirection2d, LMPoint2d)
 import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
 import Graph.DOT
+import IntDict
 import Length exposing (Length)
 import Lot exposing (Lot, Lots)
 import Maybe.Extra as Maybe
@@ -70,6 +71,7 @@ type ConnectionKind
 
 type TrafficControl
     = Signal Id
+    | Yield
     | None
 
 
@@ -124,42 +126,58 @@ fromBoardAndLots board lots =
 
 
 --
--- Traffic lights
+-- Traffic control
 --
 
 
-setupTrafficLights : TrafficLights -> RoadNetwork -> ( RoadNetwork, TrafficLights )
-setupTrafficLights currentTrafficLights roadNetwork =
-    roadNetwork
-        |> Graph.fold (toTrafficLights currentTrafficLights) ( roadNetwork, Dict.empty )
+setupTrafficControl : TrafficLights -> RoadNetwork -> ( RoadNetwork, TrafficLights )
+setupTrafficControl currentTrafficLights roadNetwork =
+    Graph.fold
+        (updateNodeTrafficControl currentTrafficLights)
+        ( roadNetwork, Dict.empty )
+        roadNetwork
 
 
-toTrafficLights : TrafficLights -> RNNodeContext -> ( RoadNetwork, TrafficLights ) -> ( RoadNetwork, TrafficLights )
-toTrafficLights currentTrafficLights nodeCtx ( roadNetwork, nextTrafficLights ) =
-    -- keeps existing traffic lights if possible, may create new ones
+updateNodeTrafficControl : TrafficLights -> RNNodeContext -> ( RoadNetwork, TrafficLights ) -> ( RoadNetwork, TrafficLights )
+updateNodeTrafficControl currentTrafficLights nodeCtx ( roadNetwork, nextTrafficLights ) =
     let
         connection =
             nodeCtx.node.label
     in
-    if connection.kind == LaneEnd && connection.tile == crossIntersection then
-        let
-            trafficLight =
-                currentTrafficLights
-                    |> Dict.find (\_ existingTrafficLight -> existingTrafficLight.position == connection.position)
-                    |> Maybe.map Tuple.second
-                    |> Maybe.withDefault (createTrafficLight connection nextTrafficLights)
-        in
-        ( roadNetwork
-            |> Graph.insert (linkTrafficLightToNode trafficLight.id nodeCtx)
-        , nextTrafficLights
-            |> Dict.insert trafficLight.id trafficLight
-        )
+    case IntDict.size nodeCtx.outgoing of
+        -- Four-way intersection (or crossroads)
+        3 ->
+            let
+                trafficLight =
+                    currentTrafficLights
+                        |> Dict.find (\_ existingTrafficLight -> existingTrafficLight.position == connection.position)
+                        |> Maybe.map Tuple.second
+                        |> Maybe.withDefault (createTrafficLight connection nextTrafficLights)
+            in
+            ( Graph.insert (linkTrafficLightToNode trafficLight.id nodeCtx) roadNetwork
+            , Dict.insert trafficLight.id trafficLight nextTrafficLights
+            )
 
-    else
-        ( roadNetwork
-            |> Graph.update nodeCtx.node.id (Maybe.map removeTrafficLightLinkFromNode)
-        , nextTrafficLights
-        )
+        -- Three-way intersection (or T-intersection)
+        2 ->
+            let
+                nextNodeCtx =
+                    if nodeCtx |> isOnPriorityRoad roadNetwork then
+                        nodeCtx |> setTrafficControl None
+
+                    else
+                        -- orphan road node
+                        nodeCtx |> setTrafficControl Yield
+            in
+            ( Graph.insert nextNodeCtx roadNetwork
+            , nextTrafficLights
+            )
+
+        -- Not an intersection (assuming max four ways)
+        _ ->
+            ( Graph.insert (nodeCtx |> setTrafficControl None) roadNetwork
+            , nextTrafficLights
+            )
 
 
 createTrafficLight : Connection -> TrafficLights -> TrafficLight
@@ -610,37 +628,55 @@ endsEdgeInsideCell node =
 
 
 hasSameDirection : Node Connection -> Node Connection -> Bool
-hasSameDirection current other =
-    getDirection current == getDirection other
+hasSameDirection nodeA nodeB =
+    getDirection nodeA == getDirection nodeB
 
 
 isFacing : Node Connection -> Node Connection -> Bool
-isFacing current other =
+isFacing nodeA nodeB =
     let
         origin =
-            getPosition current
+            getPosition nodeA
 
         target =
-            getPosition other
+            getPosition nodeB
 
         direction =
-            getDirection current
+            getDirection nodeA
 
         angleToTarget =
-            origin
-                |> Geometry.angleFromDirection direction target
+            origin |> Geometry.angleFromDirection direction target
     in
     Angle.inDegrees angleToTarget == 0
 
 
+isOnPriorityRoad : RoadNetwork -> RNNodeContext -> Bool
+isOnPriorityRoad roadNetwork nodeCtx =
+    let
+        otherNodeCtxs =
+            getOutgoingConnections nodeCtx
+                |> List.filterMap (\nodeId -> Graph.get nodeId roadNetwork)
+    in
+    List.any (.node >> isParallel nodeCtx.node) otherNodeCtxs
+
+
+isParallel : Node Connection -> Node Connection -> Bool
+isParallel nodeA nodeB =
+    Direction2d.from
+        (getPosition nodeA)
+        (getPosition nodeB)
+        |> Maybe.map (\dir -> Direction2d.xComponent dir == 0 || Direction2d.yComponent dir == 0)
+        |> Maybe.withDefault False
+
+
 closestToOriginOrdering : Node Connection -> Node Connection -> Float
-closestToOriginOrdering current other =
+closestToOriginOrdering nodeA nodeB =
     let
         origin =
-            getPosition current
+            getPosition nodeA
 
         target =
-            getPosition other
+            getPosition nodeB
     in
     Point2d.distanceFrom origin target
         |> Length.inMeters
@@ -649,11 +685,6 @@ closestToOriginOrdering current other =
 linkTrafficLightToNode : Id -> RNNodeContext -> RNNodeContext
 linkTrafficLightToNode trafficLightId nodeCtx =
     setTrafficControl (Signal trafficLightId) nodeCtx
-
-
-removeTrafficLightLinkFromNode : RNNodeContext -> RNNodeContext
-removeTrafficLightLinkFromNode nodeCtx =
-    setTrafficControl None nodeCtx
 
 
 setTrafficControl : TrafficControl -> RNNodeContext -> RNNodeContext
