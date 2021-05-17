@@ -36,7 +36,7 @@ import Pixels exposing (Pixels)
 import Point2d
 import Polygon2d
 import Quantity exposing (Quantity)
-import RoadNetwork exposing (ConnectionKind(..), RoadNetwork)
+import RoadNetwork exposing (ConnectionKind(..), RoadNetwork, TrafficControl(..))
 import TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
 import Triangle2d
 import Vector2d
@@ -55,9 +55,14 @@ nodeSize =
     Pixels.float 4
 
 
+signSize : Quantity Float Pixels
+signSize =
+    Pixels.float 10
+
+
 trafficLightRadius : Quantity Float Pixels
 trafficLightRadius =
-    Pixels.float 5
+    signSize |> Quantity.divideBy 2
 
 
 carWidthPixels =
@@ -77,6 +82,7 @@ view { board, cars, lots, roadNetwork, trafficLights } { showRoadNetwork, showCa
                     (renderLots lots)
                 |> Layout.at Layout.bottomLeft (renderCars cars showCarDebugVisuals)
                 |> Layout.at Layout.bottomLeft (renderTrafficLights trafficLights)
+                |> Layout.at Layout.bottomLeft (renderTrafficSigns roadNetwork)
 
         withConditionalLayers =
             if showRoadNetwork then
@@ -196,6 +202,66 @@ sidewalkMask lot =
         |> Collage.shift (toPixelsTuple lot.entryDetails.entryPoint)
 
 
+renderTrafficLights : TrafficLights -> Collage msg
+renderTrafficLights trafficLights =
+    trafficLights
+        |> Dict.foldl (\_ tl acc -> renderTrafficLight tl :: acc) []
+        |> Collage.group
+
+
+renderTrafficLight : TrafficLight -> Collage msg
+renderTrafficLight trafficLight =
+    let
+        borderSize =
+            1
+
+        border =
+            solid borderSize <| uniform Color.grey
+
+        color =
+            case trafficLight.color of
+                Green ->
+                    Color.darkGreen
+
+                Yellow ->
+                    Color.darkYellow
+
+                Red ->
+                    Color.darkRed
+    in
+    Collage.circle (Pixels.inPixels trafficLightRadius)
+        |> Collage.styled ( uniform color, border )
+        |> Collage.shift (toPixelsTuple trafficLight.position)
+
+
+renderTrafficSigns : RoadNetwork -> Collage msg
+renderTrafficSigns roadNetwork =
+    let
+        size =
+            Pixels.inPixels signSize
+    in
+    roadNetwork
+        |> Graph.nodes
+        |> List.filterMap
+            (\node ->
+                case node.label.trafficControl of
+                    Yield ->
+                        Graphics.texture ( size, size ) "yield_sign.png"
+                            |> Collage.shift (toPixelsTuple node.label.position)
+                            |> Just
+
+                    _ ->
+                        Nothing
+            )
+        |> Collage.group
+
+
+
+--
+-- Debug
+--
+
+
 renderRoadNetwork : RoadNetwork -> Collage msg
 renderRoadNetwork roadNetwork =
     let
@@ -263,44 +329,6 @@ renderRoadNetwork roadNetwork =
         [ nodes
         , edges
         ]
-
-
-renderTrafficLights : TrafficLights -> Collage msg
-renderTrafficLights trafficLights =
-    trafficLights
-        |> Dict.foldl (\_ tl acc -> renderTrafficLight tl :: acc) []
-        |> Collage.group
-
-
-renderTrafficLight : TrafficLight -> Collage msg
-renderTrafficLight trafficLight =
-    let
-        borderSize =
-            1
-
-        border =
-            solid borderSize <| uniform Color.grey
-
-        color =
-            case trafficLight.color of
-                Green ->
-                    Color.darkGreen
-
-                Yellow ->
-                    Color.darkYellow
-
-                Red ->
-                    Color.darkRed
-    in
-    Collage.circle (Pixels.inPixels trafficLightRadius)
-        |> Collage.styled ( uniform color, border )
-        |> Collage.shift (toPixelsTuple trafficLight.position)
-
-
-
---
--- Debug
---
 
 
 renderWithDebug : a -> (a -> Collage msg) -> Collage msg -> Collage msg

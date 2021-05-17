@@ -60,7 +60,7 @@ default =
     let
         ( roadNetwork, trafficLights ) =
             RoadNetwork.fromBoardAndLots initialBoard empty.lots
-                |> RoadNetwork.setupTrafficLights empty.trafficLights
+                |> RoadNetwork.setupTrafficControl empty.trafficLights
     in
     { empty
         | board = initialBoard
@@ -86,7 +86,7 @@ addLot lot world =
 
         ( roadNetwork, nextTrafficLights ) =
             RoadNetwork.fromBoardAndLots world.board nextLots
-                |> RoadNetwork.setupTrafficLights world.trafficLights
+                |> RoadNetwork.setupTrafficControl world.trafficLights
     in
     { world
         | lots = nextLots
@@ -278,7 +278,7 @@ worldAfterBoardChange { cell, nextBoard, world } =
 
         ( roadNetwork, nextTrafficLights ) =
             RoadNetwork.fromBoardAndLots nextBoard world.lots
-                |> RoadNetwork.setupTrafficLights world.trafficLights
+                |> RoadNetwork.setupTrafficControl world.trafficLights
     in
     { world
         | board = nextBoard

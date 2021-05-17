@@ -124,7 +124,7 @@ ruleToApply : Round -> Maybe Rule
 ruleToApply round =
     Maybe.Extra.orListLazy
         [ \() -> checkForwardCollision round
-        , \() -> checkTrafficLights round
+        , \() -> checkTrafficControl round
         , \() -> checkPathCollision round
         ]
 
@@ -241,25 +241,44 @@ checkPathCollision { activeCar, otherCars } =
         |> Maybe.map AvoidCollision
 
 
-checkTrafficLights : Round -> Maybe Rule
-checkTrafficLights round =
-    getTrafficLightFromRoute round.activeCar round.world
+checkTrafficControl : Round -> Maybe Rule
+checkTrafficControl round =
+    round.activeCar.route
+        |> List.head
+        |> Maybe.map (.node >> .label >> .trafficControl)
         |> Maybe.andThen
-            (\trafficLight ->
-                let
-                    distanceFromTrafficLight =
-                        Point2d.distanceFrom round.activeCar.position trafficLight.position
+            (\trafficControl ->
+                case trafficControl of
+                    Signal id ->
+                        Dict.get id round.world.trafficLights |> Maybe.andThen (checkTrafficLights round)
 
-                    carShouldReact =
-                        distanceFromTrafficLight
-                            |> Quantity.lessThanOrEqualTo trafficLightReactionDistance
-                in
-                if TrafficLight.shouldStopTraffic trafficLight && carShouldReact then
-                    Just (WaitForTrafficLights distanceFromTrafficLight)
+                    Yield ->
+                        checkYield round
 
-                else
-                    Nothing
+                    None ->
+                        Nothing
             )
+
+
+checkTrafficLights : Round -> TrafficLight -> Maybe Rule
+checkTrafficLights round trafficLight =
+    let
+        distanceFromTrafficLight =
+            Point2d.distanceFrom round.activeCar.position trafficLight.position
+
+        carShouldReact =
+            distanceFromTrafficLight |> Quantity.lessThanOrEqualTo trafficLightReactionDistance
+    in
+    if TrafficLight.shouldStopTraffic trafficLight && carShouldReact then
+        Just (WaitForTrafficLights distanceFromTrafficLight)
+
+    else
+        Nothing
+
+
+checkYield : Round -> Maybe Rule
+checkYield round =
+    Nothing
 
 
 
@@ -353,18 +372,3 @@ toRay origin direction distance =
     LineSegment2d.from
         origin
         (origin |> Point2d.translateIn distance direction)
-
-
-getTrafficLightFromRoute : Car -> World -> Maybe TrafficLight
-getTrafficLightFromRoute car world =
-    car.route
-        |> List.head
-        |> Maybe.andThen
-            (\{ node } ->
-                case node.label.trafficControl of
-                    Signal id ->
-                        Dict.get id world.trafficLights
-
-                    None ->
-                        Nothing
-            )
