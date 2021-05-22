@@ -169,17 +169,17 @@ viewDistance =
 
 maxFieldOfView : Angle
 maxFieldOfView =
-    Angle.degrees 110
+    Angle.degrees 120
 
 
 speedToFieldOfViewReduction : Quantity Float (Rate Speed.MetersPerSecond Angle.Radians)
 speedToFieldOfViewReduction =
-    Speed.metersPerSecond 2.5 |> Quantity.per (Angle.degrees 10)
+    Speed.metersPerSecond 2 |> Quantity.per (Angle.degrees 10)
 
 
 trafficControlStopDistance : Length
 trafficControlStopDistance =
-    Length.meters 5
+    Length.meters 3
 
 
 collisionMargin : Length
@@ -403,10 +403,13 @@ yield distanceToSign car =
             distanceToSign
                 |> Quantity.minus trafficControlStopDistance
                 |> Quantity.max Quantity.zero
+
+        nextAcceleration =
+            Quantity.max maxDeceleration (accelerateToZeroOverDistance car.velocity targetDistance)
     in
     { car
         | status = Yielding
-        , acceleration = accelerateToZeroOverDistance car.velocity targetDistance
+        , acceleration = nextAcceleration
     }
 
 

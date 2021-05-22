@@ -83,7 +83,7 @@ yieldSlowDownDistance =
 
 yieldReactionDistance : Length
 yieldReactionDistance =
-    Length.meters 10
+    Length.meters 5
 
 
 
