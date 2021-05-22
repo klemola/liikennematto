@@ -7,10 +7,12 @@ module Car exposing
     , build
     , createRoute
     , defaultAcceleration
+    , fieldOfView
     , isAtTheEndOfLocalPath
     , isBreaking
     , isConfused
     , isStoppedOrWaiting
+    , leftSideFieldOfView
     , length
     , markAsConfused
     , maxDeceleration
@@ -35,6 +37,7 @@ module Car exposing
 
 import Acceleration exposing (Acceleration)
 import Angle exposing (Angle)
+import Axis2d
 import BoundingBox2d
 import Dict exposing (Dict)
 import Direction2d
@@ -166,7 +169,7 @@ viewDistance =
 
 maxFieldOfView : Angle
 maxFieldOfView =
-    Angle.degrees 100
+    Angle.degrees 110
 
 
 speedToFieldOfViewReduction : Quantity Float (Rate Speed.MetersPerSecond Angle.Radians)
@@ -432,11 +435,14 @@ break breakDistance car =
 
 slowDown : Speed -> Car -> Car
 slowDown targetVelocity car =
-    if car.velocity |> Quantity.greaterThan targetVelocity then
-        { car | acceleration = Acceleration.metersPerSecondSquared -5 }
+    { car
+        | acceleration =
+            if car.velocity |> Quantity.greaterThan targetVelocity then
+                Acceleration.metersPerSecondSquared -5
 
-    else
-        { car | acceleration = defaultAcceleration }
+            else
+                defaultAcceleration
+    }
 
 
 startMoving : Car -> Car
@@ -483,6 +489,34 @@ accelerateToZeroOverDistance (Quantity speed) (Quantity distanceToTarget) =
     Quantity (-speed * speed / (2 * distanceToTarget))
 
 
+fieldOfView : Car -> Triangle2d Meters LMEntityCoordinates
+fieldOfView car =
+    let
+        ( p1, _, p3 ) =
+            Triangle2d.vertices (rightSideOfFieldOfView car)
+
+        axis =
+            Axis2d.through
+                car.position
+                (Direction2d.fromAngle car.rotation)
+    in
+    Triangle2d.fromVertices ( p1, p3 |> Point2d.mirrorAcross axis, p3 )
+
+
+leftSideFieldOfView : Car -> Triangle2d Meters LMEntityCoordinates
+leftSideFieldOfView car =
+    let
+        ( p1, p2, p3 ) =
+            Triangle2d.vertices (rightSideOfFieldOfView car)
+
+        axis =
+            Axis2d.through
+                car.position
+                (Direction2d.fromAngle car.rotation)
+    in
+    Triangle2d.fromVertices ( p1, p2, p3 |> Point2d.mirrorAcross axis )
+
+
 rightSideOfFieldOfView : Car -> Triangle2d Meters LMEntityCoordinates
 rightSideOfFieldOfView car =
     let
@@ -495,11 +529,11 @@ rightSideOfFieldOfView car =
         fieldOfViewReduction =
             car.velocity |> Quantity.at_ speedToFieldOfViewReduction
 
-        fieldOfView =
+        currentFOV =
             maxFieldOfView |> Quantity.minus fieldOfViewReduction
 
         angle =
-            Quantity.half fieldOfView |> Quantity.negate
+            Quantity.half currentFOV |> Quantity.negate
 
         distanceRight =
             viewDistance |> Quantity.divideBy (Angle.cos angle)
