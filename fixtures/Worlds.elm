@@ -4,7 +4,8 @@ module Worlds exposing
     , lowComplexityWorld
     , worldThatHasAVerticalRoadAtLeftSide
     , worldThatHasParallelRoads
-    , worldWithIntersection
+    , worldWithFourWayIntersection
+    , worldWithThreeWayIntersection
     )
 
 import World exposing (World)
@@ -57,14 +58,26 @@ worldThatHasParallelRoads =
         |> World.buildRoadAt ( 3, 10 )
 
 
-worldWithIntersection : World
-worldWithIntersection =
+worldWithFourWayIntersection : World
+worldWithFourWayIntersection =
     World.empty
         |> World.buildRoadAt ( 1, 2 )
         |> World.buildRoadAt ( 2, 1 )
         |> World.buildRoadAt ( 2, 2 )
         |> World.buildRoadAt ( 2, 3 )
         |> World.buildRoadAt ( 3, 2 )
+
+
+worldWithThreeWayIntersection : World
+worldWithThreeWayIntersection =
+    World.empty
+        |> World.buildRoadAt ( 1, 3 )
+        |> World.buildRoadAt ( 2, 3 )
+        |> World.buildRoadAt ( 3, 1 )
+        |> World.buildRoadAt ( 3, 2 )
+        |> World.buildRoadAt ( 3, 3 )
+        |> World.buildRoadAt ( 3, 4 )
+        |> World.buildRoadAt ( 3, 5 )
 
 
 largeWorld : World

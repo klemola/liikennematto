@@ -9,7 +9,8 @@ module Rounds exposing
     , redTrafficLightsSetup
     , stopSetup
     , yieldAfterStopSetup
-    , yieldWithPriorityTrafficSetup
+    , yieldWithPriorityTrafficSetup1
+    , yieldWithPriorityTrafficSetup2
     , yieldWithoutPriorityTrafficSetup
     )
 
@@ -17,37 +18,19 @@ import Angle exposing (Angle)
 import Car exposing (Car)
 import Dict
 import Geometry
+import Quantity
 import Random
 import RoadNetwork
 import Round exposing (Round)
+import Speed exposing (Speed)
 import Utility exposing (toLMPoint2d)
 import World exposing (World)
-import Worlds exposing (largeWorld, worldWithIntersection)
+import Worlds exposing (largeWorld, worldWithFourWayIntersection, worldWithThreeWayIntersection)
 
 
 seed : Random.Seed
 seed =
     Random.initialSeed 42
-
-
-upIntersectionExitNodePosition : Geometry.LMPoint2d
-upIntersectionExitNodePosition =
-    toLMPoint2d 134 720
-
-
-leftIntersectionExitNodePosition : Geometry.LMPoint2d
-leftIntersectionExitNodePosition =
-    toLMPoint2d 80 694
-
-
-leftIntersectionEntryNodePosition : Geometry.LMPoint2d
-leftIntersectionEntryNodePosition =
-    toLMPoint2d 80 666
-
-
-downIntersectionEntryNodePosition : Geometry.LMPoint2d
-downIntersectionEntryNodePosition =
-    toLMPoint2d 134 640
 
 
 connectedRoadsSetup : Round
@@ -59,7 +42,7 @@ connectedRoadsSetup =
                 |> World.buildRoadAt ( 2, 1 )
 
         car =
-            buildCar CarA1 ( 0, 720 ) (Angle.degrees 0)
+            buildCar CarA1 ( 0, 720 ) (Angle.degrees 0) Car.maxVelocity
 
         otherCars =
             []
@@ -75,13 +58,13 @@ collisionSetupPathsIntersect : Round
 collisionSetupPathsIntersect =
     let
         world =
-            worldWithIntersection
+            worldWithFourWayIntersection
 
         carDestination =
-            RoadNetwork.findNodeByPosition world.roadNetwork upIntersectionExitNodePosition
+            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 134 720)
 
         car =
-            buildCar CarA1 ( 102, 668 ) (Angle.degrees 30)
+            buildCar CarA1 ( 102, 668 ) (Angle.degrees 30) Car.maxVelocity
 
         carWithRoute =
             case carDestination of
@@ -92,10 +75,10 @@ collisionSetupPathsIntersect =
                     Debug.todo "invalid test fixture"
 
         otherCarDestination =
-            RoadNetwork.findNodeByPosition world.roadNetwork leftIntersectionExitNodePosition
+            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 80 694)
 
         otherCar =
-            buildCar CarB2 ( 160, 691 ) (Angle.degrees 180)
+            buildCar CarB2 ( 160, 691 ) (Angle.degrees 180) Car.maxVelocity
 
         otherCarWithRoute =
             case otherCarDestination of
@@ -121,13 +104,13 @@ collisionSetupNearCollision : Round
 collisionSetupNearCollision =
     let
         world =
-            worldWithIntersection
+            worldWithFourWayIntersection
 
         carDestination =
-            RoadNetwork.findNodeByPosition world.roadNetwork upIntersectionExitNodePosition
+            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 134 720)
 
         car =
-            buildCar CarA1 ( 110, 670 ) (Angle.degrees 45)
+            buildCar CarA1 ( 110, 670 ) (Angle.degrees 45) Car.maxVelocity
 
         carWithRoute =
             case carDestination of
@@ -138,10 +121,10 @@ collisionSetupNearCollision =
                     Debug.todo "invalid test fixture"
 
         otherCarDestination =
-            RoadNetwork.findNodeByPosition world.roadNetwork leftIntersectionExitNodePosition
+            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 80 694)
 
         otherCar =
-            buildCar CarB2 ( 130, 691 ) (Angle.degrees 180)
+            buildCar CarB2 ( 130, 691 ) (Angle.degrees 180) Car.maxVelocity
 
         otherCarWithRoute =
             case otherCarDestination of
@@ -172,10 +155,10 @@ noCollisionSetupDifferentLanes =
                 |> World.buildRoadAt ( 2, 1 )
 
         car =
-            buildCar CarA1 ( 60, 745 ) (Angle.degrees 0)
+            buildCar CarA1 ( 60, 745 ) (Angle.degrees 0) Car.maxVelocity
 
         otherCar =
-            buildCar CarB2 ( 100, 774 ) (Angle.degrees 180)
+            buildCar CarB2 ( 100, 774 ) (Angle.degrees 180) Car.maxVelocity
 
         otherCars =
             [ otherCar
@@ -193,13 +176,13 @@ noCollisionSetupIntersection : Round
 noCollisionSetupIntersection =
     let
         world =
-            worldWithIntersection
+            worldWithFourWayIntersection
 
         car =
-            buildCar CarA1 ( 80, 666 ) (Angle.degrees 0)
+            buildCar CarA1 ( 80, 666 ) (Angle.degrees 0) Car.maxVelocity
 
         otherCar =
-            buildCar CarB2 ( 133, 690 ) (Angle.degrees 90)
+            buildCar CarB2 ( 133, 690 ) (Angle.degrees 90) Car.maxVelocity
 
         otherCars =
             [ otherCar
@@ -217,13 +200,13 @@ redTrafficLightsSetup : Round
 redTrafficLightsSetup =
     let
         world =
-            worldWithIntersection
+            worldWithFourWayIntersection
 
         carDestination =
-            RoadNetwork.findNodeByPosition world.roadNetwork downIntersectionEntryNodePosition
+            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 134 640)
 
         car =
-            buildCar CarA1 ( 134, 600 ) (Angle.degrees 90)
+            buildCar CarA1 ( 134, 600 ) (Angle.degrees 90) Car.maxVelocity
 
         carWithRoute =
             case carDestination of
@@ -247,13 +230,13 @@ greenTrafficLightsSetup : Round
 greenTrafficLightsSetup =
     let
         world =
-            worldWithIntersection
+            worldWithFourWayIntersection
 
         carDestination =
-            RoadNetwork.findNodeByPosition world.roadNetwork leftIntersectionEntryNodePosition
+            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 80 666)
 
         car =
-            buildCar CarA1 ( 47, 665 ) (Angle.degrees 0)
+            buildCar CarA1 ( 47, 665 ) (Angle.degrees 0) Car.maxVelocity
 
         carWithRoute =
             case carDestination of
@@ -273,38 +256,88 @@ greenTrafficLightsSetup =
     Round worldWithCars carWithRoute otherCars seed
 
 
-yieldSetup : Bool -> Round
-yieldSetup hasPriorityTraffic =
+yieldWithPriorityTrafficSetup1 : Round
+yieldWithPriorityTrafficSetup1 =
     let
         world =
-            World.empty
-                |> World.buildRoadAt ( 1, 2 )
-                |> World.buildRoadAt ( 2, 1 )
-                |> World.buildRoadAt ( 2, 2 )
-                |> World.buildRoadAt ( 2, 3 )
+            worldWithThreeWayIntersection
+
+        carDestination =
+            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 160 586)
 
         car =
-            buildCar CarA1 ( 0, 640 ) (Angle.degrees 0)
+            buildCar CarA1 ( 140, 586 ) (Angle.degrees 0) Quantity.zero
+
+        carWithRoute =
+            case carDestination of
+                Just nodeCtx ->
+                    Car.createRoute nodeCtx car
+
+                Nothing ->
+                    Debug.todo "invalid test fixture"
+
+        otherCar =
+            buildCar CarB2 ( 213, 542 ) (Angle.degrees 90) Car.maxVelocity
 
         otherCars =
-            if hasPriorityTraffic then
-                [ buildCar CarB2 ( 80, 720 ) (Angle.degrees 270)
-                ]
+            [ otherCar ]
 
-            else
-                []
+        worldWithCars =
+            world
+                |> World.setCar carWithRoute.id carWithRoute
+                |> World.setCar otherCar.id otherCar
     in
-    Round world car otherCars seed
+    Round worldWithCars carWithRoute otherCars seed
 
 
-yieldWithPriorityTrafficSetup : Round
-yieldWithPriorityTrafficSetup =
-    yieldSetup True
+yieldWithPriorityTrafficSetup2 : Round
+yieldWithPriorityTrafficSetup2 =
+    let
+        world =
+            worldWithThreeWayIntersection
+
+        carDestination =
+            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 160 586)
+
+        car =
+            buildCar CarA1 ( 140, 586 ) (Angle.degrees 0) Quantity.zero
+
+        carWithRoute =
+            case carDestination of
+                Just nodeCtx ->
+                    Car.createRoute nodeCtx car
+
+                Nothing ->
+                    Debug.todo "invalid test fixture"
+
+        otherCar =
+            buildCar CarB2 ( 186, 642 ) (Angle.degrees 270) Car.maxVelocity
+
+        otherCars =
+            [ otherCar ]
+
+        worldWithCars =
+            world
+                |> World.setCar carWithRoute.id carWithRoute
+                |> World.setCar otherCar.id otherCar
+    in
+    Round worldWithCars carWithRoute otherCars seed
 
 
 yieldWithoutPriorityTrafficSetup : Round
 yieldWithoutPriorityTrafficSetup =
-    yieldSetup False
+    let
+        world =
+            worldWithThreeWayIntersection
+
+        car =
+            buildCar CarA1 ( 140, 585 ) (Angle.degrees 0) Quantity.zero
+
+        worldWithCars =
+            world
+                |> World.setCar car.id car
+    in
+    Round worldWithCars car [] seed
 
 
 stopSetup : Round
@@ -319,7 +352,7 @@ stopSetup =
                 |> World.buildRoadAt ( 3, 3 )
 
         car =
-            buildCar CarA1 ( 0, 640 ) (Angle.degrees 0)
+            buildCar CarA1 ( 0, 640 ) (Angle.degrees 0) Car.maxVelocity
                 |> Car.move
 
         otherCars =
@@ -339,11 +372,11 @@ yieldAfterStopSetup =
                 |> World.buildRoadAt ( 2, 3 )
 
         car =
-            buildCar CarA1 ( 0, 640 ) (Angle.degrees 0)
+            buildCar CarA1 ( 0, 640 ) (Angle.degrees 0) Car.maxVelocity
                 |> Car.stopAtIntersection
 
         otherCars =
-            [ buildCar CarB2 ( 80, 720 ) (Angle.degrees 270)
+            [ buildCar CarB2 ( 80, 720 ) (Angle.degrees 270) Car.maxVelocity
             ]
     in
     Round world car otherCars seed
@@ -377,8 +410,8 @@ type TestCar
     | CarB2
 
 
-buildCar : TestCar -> ( Float, Float ) -> Angle -> Car
-buildCar option ( x, y ) rotation =
+buildCar : TestCar -> ( Float, Float ) -> Angle -> Speed -> Car
+buildCar option ( x, y ) rotation velocity =
     let
         ( kind, id ) =
             case option of
@@ -391,7 +424,7 @@ buildCar option ( x, y ) rotation =
     Car.new kind
         |> Car.withPosition (toLMPoint2d x y)
         |> Car.withRotation rotation
-        |> Car.withVelocity Car.maxVelocity
+        |> Car.withVelocity velocity
         |> Car.build id Nothing
         |> Car.startMoving
 
