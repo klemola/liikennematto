@@ -372,7 +372,7 @@ renderCarFieldOfView : Car -> Collage msg
 renderCarFieldOfView car =
     let
         triangle =
-            Car.rightSideOfFieldOfView car
+            Car.fieldOfView car
 
         ( p1, p2, p3 ) =
             Triangle2d.vertices triangle

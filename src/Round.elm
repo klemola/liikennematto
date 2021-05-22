@@ -4,7 +4,7 @@ module Round exposing
     , Rule(..)
     , checkForwardCollision
     , checkPathCollision
-    , checkTrafficLights
+    , checkTrafficControl
     , play
     )
 
@@ -78,7 +78,7 @@ trafficLightReactionDistance =
 
 yieldSlowDownDistance : Length
 yieldSlowDownDistance =
-    Length.meters 40
+    Length.meters 30
 
 
 yieldReactionDistance : Length
@@ -236,17 +236,17 @@ checkForwardCollision { activeCar, otherCars } =
         ray =
             Direction2d.fromAngle activeCar.rotation |> toRay activeCar.position maxCarCollisionTestDistance
     in
-    collisionWith activeCar otherCars (forwardCollisionWith ray activeCar)
+    distanceToClosestCollisionPoint activeCar otherCars (forwardCollisionWith ray activeCar)
         |> Maybe.map AvoidCollision
 
 
 checkPathCollision : Round -> Maybe Rule
 checkPathCollision { activeCar, otherCars } =
     let
-        carSightTriangle =
+        checkArea =
             Car.rightSideOfFieldOfView activeCar
     in
-    collisionWith activeCar otherCars (pathCollisionWith carSightTriangle activeCar)
+    distanceToClosestCollisionPoint activeCar otherCars (pathCollisionWith checkArea activeCar)
         |> Maybe.map AvoidCollision
 
 
@@ -285,16 +285,19 @@ checkTrafficLights round trafficLight =
 
 
 checkYield : Round -> LMPoint2d -> Maybe Rule
-checkYield round signPosition =
+checkYield { activeCar, otherCars } signPosition =
     let
-        distanceFromYield =
-            Point2d.distanceFrom round.activeCar.position signPosition
-    in
-    if distanceFromYield |> Quantity.lessThanOrEqualTo yieldReactionDistance then
-        -- TODO: check traffic
-        Just (YieldAtIntersection distanceFromYield)
+        checkArea =
+            Car.fieldOfView activeCar
 
-    else if distanceFromYield |> Quantity.lessThanOrEqualTo yieldSlowDownDistance then
+        distanceFromYieldSign =
+            Point2d.distanceFrom activeCar.position signPosition
+    in
+    if distanceFromYieldSign |> Quantity.lessThanOrEqualTo yieldReactionDistance then
+        distanceToClosestCollisionPoint activeCar otherCars (pathsIntersectAt checkArea activeCar)
+            |> Maybe.map (\_ -> YieldAtIntersection distanceFromYieldSign)
+
+    else if distanceFromYieldSign |> Quantity.lessThanOrEqualTo yieldSlowDownDistance then
         Just SlowDownAtTrafficControl
 
     else
@@ -346,32 +349,17 @@ pathCollisionWith fieldOfViewTriangle activeCar otherCar =
         -- TODO: fix the car velocity precision (currently might not reach zero due to floating point accuracy)
         not (Car.isStoppedOrWaiting otherCar)
             && not (headingRoughlyInTheSameDirection activeCar otherCar)
-            && Triangle2d.contains otherCar.position fieldOfViewTriangle
     then
-        directionsIntersectAt activeCar otherCar
+        pathsIntersectAt fieldOfViewTriangle activeCar otherCar
             |> Maybe.andThen (intersectionPointWithSpeedTakenIntoAccount activeCar otherCar)
 
     else
         Nothing
 
 
-collisionWith : Car -> List Car -> (Car -> Maybe LMPoint2d) -> Maybe Length
-collisionWith activeCar carsToCheck collisionTest =
-    carsToCheck
-        |> List.filterMap (collisionTest >> Maybe.map (Point2d.distanceFrom activeCar.position))
-        |> Quantity.minimum
-
-
 headingRoughlyInTheSameDirection : Car -> Car -> Bool
 headingRoughlyInTheSameDirection car otherCar =
     Quantity.equalWithin carRotationTolerance car.rotation otherCar.rotation
-
-
-directionsIntersectAt : Car -> Car -> Maybe LMPoint2d
-directionsIntersectAt car otherCar =
-    LineSegment2d.intersectionPoint
-        (Direction2d.fromAngle car.rotation |> toRay car.position Car.viewDistance)
-        (Direction2d.fromAngle otherCar.rotation |> toRay otherCar.position Car.viewDistance)
 
 
 intersectionPointWithSpeedTakenIntoAccount : Car -> Car -> LMPoint2d -> Maybe LMPoint2d
@@ -382,6 +370,24 @@ intersectionPointWithSpeedTakenIntoAccount car otherCar intersectionPoint =
             |> Quantity.greaterThan (otherCar |> Car.secondsTo intersectionPoint)
     then
         Just intersectionPoint
+
+    else
+        Nothing
+
+
+distanceToClosestCollisionPoint : Car -> List Car -> (Car -> Maybe LMPoint2d) -> Maybe Length
+distanceToClosestCollisionPoint activeCar carsToCheck predicate =
+    carsToCheck
+        |> List.filterMap (predicate >> Maybe.map (Point2d.distanceFrom activeCar.position))
+        |> Quantity.minimum
+
+
+pathsIntersectAt : Triangle2d Meters LMEntityCoordinates -> Car -> Car -> Maybe LMPoint2d
+pathsIntersectAt checkArea car otherCar =
+    if Triangle2d.contains otherCar.position checkArea then
+        LineSegment2d.intersectionPoint
+            (Direction2d.fromAngle car.rotation |> toRay car.position Car.viewDistance)
+            (Direction2d.fromAngle otherCar.rotation |> toRay otherCar.position Car.viewDistance)
 
     else
         Nothing
