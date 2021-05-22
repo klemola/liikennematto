@@ -56,8 +56,8 @@ type Rule
 --
 
 
-carRotationTolerance : Angle
-carRotationTolerance =
+carOrientationTolerance : Angle
+carOrientationTolerance =
     Angle.degrees 10
 
 
@@ -234,7 +234,7 @@ checkForwardCollision : Round -> Maybe Rule
 checkForwardCollision { activeCar, otherCars } =
     let
         ray =
-            Direction2d.fromAngle activeCar.rotation |> toRay activeCar.position maxCarCollisionTestDistance
+            Direction2d.fromAngle activeCar.orientation |> toRay activeCar.position maxCarCollisionTestDistance
     in
     distanceToClosestCollisionPoint activeCar otherCars (forwardCollisionWith ray activeCar)
         |> Maybe.map AvoidCollision
@@ -359,7 +359,7 @@ pathCollisionWith fieldOfViewTriangle activeCar otherCar =
 
 headingRoughlyInTheSameDirection : Car -> Car -> Bool
 headingRoughlyInTheSameDirection car otherCar =
-    Quantity.equalWithin carRotationTolerance car.rotation otherCar.rotation
+    Quantity.equalWithin carOrientationTolerance car.orientation otherCar.orientation
 
 
 intersectionPointWithSpeedTakenIntoAccount : Car -> Car -> LMPoint2d -> Maybe LMPoint2d
@@ -386,8 +386,8 @@ pathsIntersectAt : Triangle2d Meters LMEntityCoordinates -> Car -> Car -> Maybe 
 pathsIntersectAt checkArea car otherCar =
     if Triangle2d.contains otherCar.position checkArea then
         LineSegment2d.intersectionPoint
-            (Direction2d.fromAngle car.rotation |> toRay car.position Car.viewDistance)
-            (Direction2d.fromAngle otherCar.rotation |> toRay otherCar.position Car.viewDistance)
+            (Direction2d.fromAngle car.orientation |> toRay car.position Car.viewDistance)
+            (Direction2d.fromAngle otherCar.orientation |> toRay otherCar.position Car.viewDistance)
 
     else
         Nothing

@@ -153,7 +153,7 @@ renderCars cars showCarDebugVisuals =
 renderCar : Car -> Collage msg
 renderCar car =
     Graphics.texture ( carLengthPixels, carWidthPixels ) (Graphics.carAsset car)
-        |> Collage.rotate (Angle.inRadians car.rotation)
+        |> Collage.rotate (Angle.inRadians car.orientation)
         |> Collage.shift (toPixelsTuple car.position)
 
 

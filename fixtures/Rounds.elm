@@ -17,7 +17,6 @@ module Rounds exposing
 import Angle exposing (Angle)
 import Car exposing (Car)
 import Dict
-import Geometry
 import Quantity
 import Random
 import RoadNetwork
@@ -411,7 +410,7 @@ type TestCar
 
 
 buildCar : TestCar -> ( Float, Float ) -> Angle -> Speed -> Car
-buildCar option ( x, y ) rotation velocity =
+buildCar option ( x, y ) orientation velocity =
     let
         ( kind, id ) =
             case option of
@@ -423,7 +422,7 @@ buildCar option ( x, y ) rotation velocity =
     in
     Car.new kind
         |> Car.withPosition (toLMPoint2d x y)
-        |> Car.withRotation rotation
+        |> Car.withOrientation orientation
         |> Car.withVelocity velocity
         |> Car.build id Nothing
         |> Car.startMoving

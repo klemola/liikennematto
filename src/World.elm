@@ -106,7 +106,7 @@ addLotResident lotId lot world =
             Car.new kind
                 |> Car.withHome lotId
                 |> Car.withPosition lot.entryDetails.parkingSpot
-                |> Car.withRotation
+                |> Car.withOrientation
                     (lot.content.entryDirection
                         |> Cell.orthogonalDirectionToLmDirection
                         |> Direction2d.rotateClockwise
@@ -141,7 +141,7 @@ spawnCar seed world =
                     car =
                         Car.new Car.TestCar
                             |> Car.withPosition nodeCtx.node.label.position
-                            |> Car.withRotation (Direction2d.toAngle nodeCtx.node.label.direction)
+                            |> Car.withOrientation (Direction2d.toAngle nodeCtx.node.label.direction)
                             |> Car.withVelocity Car.maxVelocity
                             |> Car.build id (Just nodeCtx)
                             |> Car.startMoving
@@ -325,7 +325,7 @@ moveCarToHome world car =
         ( Just lot, Just nodeCtx ) ->
             { car
                 | position = lot.entryDetails.parkingSpot
-                , rotation =
+                , orientation =
                     lot.content.entryDirection
                         |> Cell.orthogonalDirectionToLmDirection
                         |> Direction2d.rotateClockwise

@@ -29,8 +29,8 @@ module Car exposing
     , waitForTrafficLights
     , width
     , withHome
+    , withOrientation
     , withPosition
-    , withRotation
     , withVelocity
     , yield
     )
@@ -63,7 +63,7 @@ import Triangle2d exposing (Triangle2d)
 type alias Car =
     { id : Id
     , position : LMPoint2d
-    , rotation : Angle
+    , orientation : Angle
     , velocity : Speed
     , acceleration : Acceleration
     , shape : Polygon2d Meters LMEntityCoordinates
@@ -78,7 +78,7 @@ type alias Car =
 
 type alias NewCar =
     { position : LMPoint2d
-    , rotation : Angle
+    , orientation : Angle
     , velocity : Speed
     , acceleration : Acceleration
     , kind : CarKind
@@ -206,7 +206,7 @@ maxDeceleration =
 new : CarKind -> NewCar
 new kind =
     { position = Point2d.origin
-    , rotation = Angle.degrees 0
+    , orientation = Angle.degrees 0
     , velocity = Quantity.zero
     , acceleration = defaultAcceleration
     , kind = kind
@@ -228,9 +228,9 @@ withPosition position car =
     { car | position = position }
 
 
-withRotation : Angle -> NewCar -> NewCar
-withRotation rotation car =
-    { car | rotation = rotation }
+withOrientation : Angle -> NewCar -> NewCar
+withOrientation orientation car =
+    { car | orientation = orientation }
 
 
 withVelocity : Speed -> NewCar -> NewCar
@@ -242,7 +242,7 @@ build : Int -> Maybe RNNodeContext -> NewCar -> Car
 build id initialTarget newCar =
     let
         nextShape =
-            adjustedShape newCar.position newCar.rotation
+            adjustedShape newCar.position newCar.orientation
 
         boundingBox =
             Polygon2d.boundingBox nextShape
@@ -254,7 +254,7 @@ build id initialTarget newCar =
                     ( [ target ]
                     , LocalPath.toNode
                         { origin = newCar.position
-                        , direction = Direction2d.fromAngle newCar.rotation
+                        , direction = Direction2d.fromAngle newCar.orientation
                         , useOffsetSpline = newCar.status == ParkedAtLot
                         }
                         target
@@ -265,7 +265,7 @@ build id initialTarget newCar =
     in
     { id = id
     , position = newCar.position
-    , rotation = newCar.rotation
+    , orientation = newCar.orientation
     , velocity = newCar.velocity
     , acceleration = newCar.acceleration
     , shape = nextShape
@@ -328,7 +328,7 @@ move car =
                     Point2d.equalWithin (Length.meters 0.1) car.position next
 
                 carDirection =
-                    Direction2d.fromAngle car.rotation
+                    Direction2d.fromAngle car.orientation
 
                 nextLocalPath =
                     if atLocalPathPoint then
@@ -350,15 +350,15 @@ move car =
                         |> Quantity.plus (car.acceleration |> Quantity.for (Duration.milliseconds 16))
                         |> Quantity.clamp Quantity.zero maxVelocity
 
-                nextRotation =
+                nextOrientation =
                     if atLocalPathPoint then
-                        car.rotation
+                        car.orientation
 
                     else
                         car.position |> Geometry.angleToTarget next
 
                 nextShape =
-                    adjustedShape nextPosition nextRotation
+                    adjustedShape nextPosition nextOrientation
 
                 nextBoundingBox =
                     Polygon2d.boundingBox nextShape
@@ -367,7 +367,7 @@ move car =
             { car
                 | position = nextPosition
                 , velocity = nextVelocity
-                , rotation = nextRotation
+                , orientation = nextOrientation
                 , shape = nextShape
                 , boundingBox = nextBoundingBox
                 , localPath = nextLocalPath
@@ -474,7 +474,7 @@ createRoute nodeCtx car =
         , localPath =
             LocalPath.toNode
                 { origin = car.position
-                , direction = Direction2d.fromAngle car.rotation
+                , direction = Direction2d.fromAngle car.orientation
                 , useOffsetSpline = car.status == ParkedAtLot
                 }
                 nodeCtx
@@ -501,7 +501,7 @@ fieldOfView car =
         axis =
             Axis2d.through
                 car.position
-                (Direction2d.fromAngle car.rotation)
+                (Direction2d.fromAngle car.orientation)
     in
     Triangle2d.fromVertices ( p1, p3 |> Point2d.mirrorAcross axis, p3 )
 
@@ -515,7 +515,7 @@ leftSideFieldOfView car =
         axis =
             Axis2d.through
                 car.position
-                (Direction2d.fromAngle car.rotation)
+                (Direction2d.fromAngle car.orientation)
     in
     Triangle2d.fromVertices ( p1, p2, p3 |> Point2d.mirrorAcross axis )
 
@@ -524,7 +524,7 @@ rightSideOfFieldOfView : Car -> Triangle2d Meters LMEntityCoordinates
 rightSideOfFieldOfView car =
     let
         direction =
-            Direction2d.fromAngle car.rotation
+            Direction2d.fromAngle car.orientation
 
         limitFront =
             car.position |> Point2d.translateIn direction viewDistance
@@ -551,10 +551,10 @@ rightSideOfFieldOfView car =
 
 
 adjustedShape : LMPoint2d -> Angle -> Polygon2d Meters LMEntityCoordinates
-adjustedShape nextPosition nextRotation =
+adjustedShape nextPosition nextOrientation =
     let
         carFrame =
-            Frame2d.atPoint nextPosition |> Frame2d.rotateBy nextRotation
+            Frame2d.atPoint nextPosition |> Frame2d.rotateBy nextOrientation
     in
     shapeAtOrigin |> Polygon2d.placeIn carFrame
 
