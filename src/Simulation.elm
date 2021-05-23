@@ -17,6 +17,7 @@ import Dict
 import Geometry exposing (LMEntityCoordinates)
 import Length
 import Lot exposing (NewLot)
+import Point2d
 import Process
 import QuadTree exposing (QuadTree)
 import Random
@@ -292,48 +293,46 @@ updateTraffic { updateQueue, carPositionLookup, seed, world, delta } =
                         |> QuadTree.neighborsWithin Config.tileSizeInMeters activeCar.boundingBox
                         |> List.filter (\car -> car.id /= activeCar.id)
 
+                -- 1. Path checks (route, local path)
+                ( carAfterPathCheck, seedAfterPathCheck ) =
+                    checkPath world seed activeCar
+
+                -- 2. "Round" checks (collision, traffic control)
                 round =
                     { world = world
-                    , activeCar = activeCar
                     , otherCars = otherCars
-                    , seed = seed
+                    , activeCar = carAfterPathCheck
+                    , seed = seedAfterPathCheck
                     }
 
                 roundResults =
                     Round.play round
 
-                ( nextCar, nextSeed ) =
-                    updateCar roundResults.car roundResults.seed world delta
+                -- 3. Car update (velocity, position, bounding box...)
+                nextCar =
+                    updateCar delta roundResults.car
             in
             updateTraffic
                 { updateQueue = queue
-                , seed = nextSeed
+                , seed = roundResults.seed
                 , carPositionLookup = carPositionLookup
                 , world = world |> World.setCar nextCar.id nextCar
                 , delta = delta
                 }
 
 
-updateCar : Car -> Random.Seed -> World -> Float -> ( Car, Random.Seed )
-updateCar car seed world delta =
-    case car.status of
-        Moving ->
-            if Car.isAtTheEndOfLocalPath car then
-                car
-                    |> chooseNextConnection seed world
-                    |> Tuple.mapFirst (Car.move delta)
+checkPath : World -> Random.Seed -> Car -> ( Car, Random.Seed )
+checkPath world seed car =
+    case car.localPath of
+        next :: others ->
+            if Point2d.equalWithin (Length.meters 0.2) car.position next then
+                ( { car | localPath = others }, seed )
 
             else
-                ( Car.move delta car, seed )
+                ( car, seed )
 
-        ParkedAtLot ->
-            ( Car.startMoving car, seed )
-
-        WaitingForTrafficLights ->
-            ( Car.move delta car, seed )
-
-        _ ->
-            ( car, seed )
+        [] ->
+            chooseNextConnection seed world car
 
 
 chooseNextConnection : Random.Seed -> World -> Car -> ( Car, Random.Seed )
@@ -359,6 +358,17 @@ chooseNextConnection seed world car =
 
         _ ->
             ( Car.markAsConfused car, seed )
+
+
+updateCar : Float -> Car -> Car
+updateCar delta car =
+    case car.status of
+        -- TODO: trigger car movement from "ParkedAtLot" state separately, and possibly randomly
+        ParkedAtLot ->
+            Car.startMoving car
+
+        _ ->
+            Car.move delta car
 
 
 

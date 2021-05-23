@@ -8,7 +8,6 @@ module Car exposing
     , createRoute
     , defaultAcceleration
     , fieldOfView
-    , isAtTheEndOfLocalPath
     , isBreaking
     , isConfused
     , isStoppedOrWaiting
@@ -294,11 +293,6 @@ isStoppedOrWaiting car =
     car.velocity == Quantity.zero
 
 
-isAtTheEndOfLocalPath : Car -> Bool
-isAtTheEndOfLocalPath car =
-    List.isEmpty car.localPath
-
-
 isBreaking : Car -> Bool
 isBreaking car =
     car.acceleration |> Quantity.lessThan Quantity.zero
@@ -321,59 +315,40 @@ secondsTo target car =
 
 move : Float -> Car -> Car
 move delta car =
-    case car.localPath of
-        next :: others ->
-            let
-                atLocalPathPoint =
-                    Point2d.equalWithin (Length.meters 0.1) car.position next
+    let
+        nextOrientation =
+            case car.localPath of
+                next :: _ ->
+                    car.position |> Geometry.angleToTarget next
 
-                nextLocalPath =
-                    if atLocalPathPoint then
-                        others
+                _ ->
+                    car.orientation
 
-                    else
-                        car.localPath
+        nextVelocity =
+            car.velocity
+                |> Quantity.plus (car.acceleration |> Quantity.for (Duration.milliseconds delta))
+                |> Quantity.clamp Quantity.zero maxVelocity
 
-                nextOrientation =
-                    if atLocalPathPoint then
-                        car.orientation
+        nextPosition =
+            car.position
+                |> Point2d.translateIn
+                    (Direction2d.fromAngle nextOrientation)
+                    (nextVelocity |> Quantity.for (Duration.milliseconds delta))
 
-                    else
-                        car.position |> Geometry.angleToTarget next
+        nextShape =
+            adjustedShape nextPosition nextOrientation
 
-                nextVelocity =
-                    car.velocity
-                        |> Quantity.plus (car.acceleration |> Quantity.for (Duration.milliseconds delta))
-                        |> Quantity.clamp Quantity.zero maxVelocity
-
-                nextPosition =
-                    if atLocalPathPoint then
-                        next
-
-                    else
-                        car.position
-                            |> Point2d.translateIn
-                                (Direction2d.fromAngle nextOrientation)
-                                (nextVelocity |> Quantity.for (Duration.milliseconds delta))
-
-                nextShape =
-                    adjustedShape nextPosition nextOrientation
-
-                nextBoundingBox =
-                    Polygon2d.boundingBox nextShape
-                        |> Maybe.withDefault (BoundingBox2d.singleton nextPosition)
-            in
-            { car
-                | position = nextPosition
-                , velocity = nextVelocity
-                , orientation = nextOrientation
-                , shape = nextShape
-                , boundingBox = nextBoundingBox
-                , localPath = nextLocalPath
-            }
-
-        _ ->
-            car
+        nextBoundingBox =
+            Polygon2d.boundingBox nextShape
+                |> Maybe.withDefault (BoundingBox2d.singleton nextPosition)
+    in
+    { car
+        | position = nextPosition
+        , velocity = nextVelocity
+        , orientation = nextOrientation
+        , shape = nextShape
+        , boundingBox = nextBoundingBox
+    }
 
 
 waitForTrafficLights : Length -> Car -> Car
