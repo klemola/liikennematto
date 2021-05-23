@@ -21,7 +21,6 @@ import Point2d
 import Polygon2d
 import Quantity
 import Random
-import Random.List
 import RoadNetwork exposing (TrafficControl(..))
 import TrafficLight exposing (TrafficLight)
 import Triangle2d exposing (Triangle2d)
@@ -100,7 +99,6 @@ play round =
     else
         round
             |> checkRules
-            |> updateCar
             |> toResults
 
 
@@ -169,59 +167,6 @@ applyRule round rule =
 applyCarAction : (Car -> Car) -> Round -> Round
 applyCarAction action round =
     { round | activeCar = action round.activeCar }
-
-
-updateCar : Round -> Round
-updateCar round =
-    case round.activeCar.status of
-        Moving ->
-            if Car.isAtTheEndOfLocalPath round.activeCar then
-                chooseNextConnection round
-
-            else
-                applyCarAction Car.move round
-
-        ParkedAtLot ->
-            applyCarAction Car.startMoving round
-
-        WaitingForTrafficLights ->
-            applyCarAction Car.move round
-
-        _ ->
-            round
-
-
-chooseNextConnection : Round -> Round
-chooseNextConnection round =
-    case round.activeCar.route of
-        nodeCtx :: _ ->
-            chooseRandomRoute round nodeCtx
-
-        _ ->
-            applyCarAction Car.markAsConfused round
-
-
-chooseRandomRoute : Round -> RoadNetwork.RNNodeContext -> Round
-chooseRandomRoute round nodeCtx =
-    let
-        { activeCar, world, seed } =
-            round
-
-        randomConnectionGenerator =
-            RoadNetwork.getOutgoingConnections nodeCtx
-                |> Random.List.choose
-                |> Random.map Tuple.first
-
-        ( connection, nextSeed ) =
-            Random.step randomConnectionGenerator seed
-
-        nextCar =
-            connection
-                |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
-                |> Maybe.map (\nextNodeCtx -> Car.createRoute nextNodeCtx activeCar)
-                |> Maybe.withDefault activeCar
-    in
-    { round | activeCar = nextCar, seed = nextSeed }
 
 
 

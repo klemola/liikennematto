@@ -319,16 +319,13 @@ secondsTo target car =
 --
 
 
-move : Car -> Car
-move car =
+move : Float -> Car -> Car
+move delta car =
     case car.localPath of
         next :: others ->
             let
                 atLocalPathPoint =
                     Point2d.equalWithin (Length.meters 0.1) car.position next
-
-                carDirection =
-                    Direction2d.fromAngle car.orientation
 
                 nextLocalPath =
                     if atLocalPathPoint then
@@ -337,25 +334,27 @@ move car =
                     else
                         car.localPath
 
-                nextPosition =
-                    if atLocalPathPoint then
-                        next
-
-                    else
-                        car.position
-                            |> Point2d.translateIn carDirection (nextVelocity |> Quantity.for (Duration.milliseconds 16))
-
-                nextVelocity =
-                    car.velocity
-                        |> Quantity.plus (car.acceleration |> Quantity.for (Duration.milliseconds 16))
-                        |> Quantity.clamp Quantity.zero maxVelocity
-
                 nextOrientation =
                     if atLocalPathPoint then
                         car.orientation
 
                     else
                         car.position |> Geometry.angleToTarget next
+
+                nextVelocity =
+                    car.velocity
+                        |> Quantity.plus (car.acceleration |> Quantity.for (Duration.milliseconds delta))
+                        |> Quantity.clamp Quantity.zero maxVelocity
+
+                nextPosition =
+                    if atLocalPathPoint then
+                        next
+
+                    else
+                        car.position
+                            |> Point2d.translateIn
+                                (Direction2d.fromAngle nextOrientation)
+                                (nextVelocity |> Quantity.for (Duration.milliseconds delta))
 
                 nextShape =
                     adjustedShape nextPosition nextOrientation
