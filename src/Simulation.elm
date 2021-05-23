@@ -10,7 +10,7 @@ module Simulation exposing
 
 import Board
 import Browser.Events as Events
-import Car exposing (Car)
+import Car exposing (Car, Status(..))
 import Cell exposing (Cell)
 import Config
 import Dict
@@ -21,6 +21,7 @@ import Process
 import QuadTree exposing (QuadTree)
 import Random
 import Random.List
+import RoadNetwork
 import Round
 import Task
 import Time
@@ -43,7 +44,7 @@ type SimulationState
 
 type Msg
     = SetSimulation SimulationState
-    | UpdateTraffic Time.Posix
+    | UpdateTraffic Float
     | UpdateEnvironment Time.Posix
     | GenerateEnvironment ()
     | CheckQueues Time.Posix
@@ -84,7 +85,7 @@ subscriptions { simulation } =
         Sub.batch
             [ Time.every Config.environmentUpdateFrequency UpdateEnvironment
             , Time.every Config.dequeueFrequency CheckQueues
-            , Events.onAnimationFrame UpdateTraffic
+            , Events.onAnimationFrameDelta UpdateTraffic
             ]
 
 
@@ -100,7 +101,7 @@ update world msg model =
         SetSimulation simulation ->
             ( { model | simulation = simulation }, world, Cmd.none )
 
-        UpdateTraffic _ ->
+        UpdateTraffic rafDelta ->
             let
                 cars =
                     Dict.values world.cars
@@ -114,6 +115,7 @@ update world msg model =
                         , carPositionLookup = carPositionLookup
                         , seed = model.seed
                         , world = world
+                        , delta = rafDelta
                         }
             in
             ( { model
@@ -275,23 +277,16 @@ updateTraffic :
     , carPositionLookup : QuadTree Length.Meters LMEntityCoordinates Car
     , seed : Random.Seed
     , world : World
+    , delta : Float
     }
     -> ( World, Random.Seed )
-updateTraffic { updateQueue, carPositionLookup, seed, world } =
+updateTraffic { updateQueue, carPositionLookup, seed, world, delta } =
     case updateQueue of
         [] ->
             ( world, seed )
 
         activeCar :: queue ->
             let
-                nextRound roundResults =
-                    updateTraffic
-                        { updateQueue = queue
-                        , seed = roundResults.seed
-                        , carPositionLookup = carPositionLookup
-                        , world = world |> World.setCar activeCar.id roundResults.car
-                        }
-
                 otherCars =
                     carPositionLookup
                         |> QuadTree.neighborsWithin Config.tileSizeInMeters activeCar.boundingBox
@@ -303,9 +298,67 @@ updateTraffic { updateQueue, carPositionLookup, seed, world } =
                     , otherCars = otherCars
                     , seed = seed
                     }
+
+                roundResults =
+                    Round.play round
+
+                ( nextCar, nextSeed ) =
+                    updateCar roundResults.car roundResults.seed world delta
             in
-            Round.play round
-                |> nextRound
+            updateTraffic
+                { updateQueue = queue
+                , seed = nextSeed
+                , carPositionLookup = carPositionLookup
+                , world = world |> World.setCar nextCar.id nextCar
+                , delta = delta
+                }
+
+
+updateCar : Car -> Random.Seed -> World -> Float -> ( Car, Random.Seed )
+updateCar car seed world delta =
+    case car.status of
+        Moving ->
+            if Car.isAtTheEndOfLocalPath car then
+                car
+                    |> chooseNextConnection seed world
+                    |> Tuple.mapFirst (Car.move delta)
+
+            else
+                ( Car.move delta car, seed )
+
+        ParkedAtLot ->
+            ( Car.startMoving car, seed )
+
+        WaitingForTrafficLights ->
+            ( Car.move delta car, seed )
+
+        _ ->
+            ( car, seed )
+
+
+chooseNextConnection : Random.Seed -> World -> Car -> ( Car, Random.Seed )
+chooseNextConnection seed world car =
+    case car.route of
+        nodeCtx :: _ ->
+            let
+                randomConnectionGenerator =
+                    RoadNetwork.getOutgoingConnections nodeCtx
+                        |> Random.List.choose
+                        |> Random.map Tuple.first
+
+                ( connection, nextSeed ) =
+                    Random.step randomConnectionGenerator seed
+
+                nextCar =
+                    connection
+                        |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
+                        |> Maybe.map (\nextNodeCtx -> Car.createRoute nextNodeCtx car)
+                        |> Maybe.withDefault car
+            in
+            ( nextCar, nextSeed )
+
+        _ ->
+            ( Car.markAsConfused car, seed )
 
 
 
