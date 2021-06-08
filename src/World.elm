@@ -27,6 +27,7 @@ import Lot exposing (BuildingKind(..), Lot, Lots)
 import Quantity
 import Random
 import RoadNetwork exposing (RNNodeContext, RoadNetwork)
+import Steering
 import TrafficLight exposing (TrafficLights)
 
 
@@ -142,7 +143,7 @@ spawnCar seed world =
                         Car.new Car.TestCar
                             |> Car.withPosition nodeCtx.node.label.position
                             |> Car.withOrientation (Direction2d.toAngle nodeCtx.node.label.direction)
-                            |> Car.withVelocity Car.maxVelocity
+                            |> Car.withVelocity Steering.maxVelocity
                             |> Car.build id (Just nodeCtx)
                             |> Car.startMoving
                 in
@@ -332,7 +333,7 @@ moveCarToHome world car =
                         |> Direction2d.toAngle
                 , status = Car.ParkedAtLot
                 , velocity = Quantity.zero
-                , acceleration = Car.defaultAcceleration
+                , acceleration = Steering.maxAcceleration
                 , route = []
                 , localPath = []
             }

@@ -1,6 +1,7 @@
 module LocalPath exposing (..)
 
 import Angle
+import Axis2d exposing (direction)
 import CubicSpline2d exposing (CubicSpline2d)
 import Direction2d
 import Geometry exposing (LMDirection2d, LMEntityCoordinates, LMPoint2d)
@@ -21,23 +22,17 @@ type alias LocalPath =
 
 splineSegmentsAmount : Int
 splineSegmentsAmount =
-    16
+    8
 
 
 lotExitOffset : Length
 lotExitOffset =
-    Length.meters 8
+    Length.meters 10
 
 
 uTurnDistance : Length
 uTurnDistance =
     Length.meters 4
-
-
-linearLocalPathToTarget : LMPoint2d -> LMPoint2d -> LocalPath
-linearLocalPathToTarget origin target =
-    [ 0, 0.25, 0.5, 0.75, 1 ]
-        |> List.map (\step -> Point2d.interpolateFrom origin target step)
 
 
 type alias PathParameters =
@@ -56,19 +51,16 @@ toNode { direction, origin, useOffsetSpline } { node } =
         angleDegreesToTarget =
             origin
                 |> Geometry.angleFromDirection direction target
-                |> Angle.inDegrees
+                |> Quantity.abs
     in
     if node.label.kind == LotEntry && useOffsetSpline then
         offsetSpline origin target direction
 
-    else if node.label.kind == LotEntry then
-        linearLocalPathToTarget origin target
-
-    else if abs angleDegreesToTarget < 10 then
-        linearLocalPathToTarget origin target
-
-    else if abs angleDegreesToTarget |> isWithinRoundingErrorOf 90 then
+    else if node.label.kind == DeadendExit then
         uTurnSpline origin target direction
+
+    else if angleDegreesToTarget |> Quantity.lessThan (Angle.radians 0.1) then
+        [ origin, target ]
 
     else
         curveSpline origin target direction
@@ -82,22 +74,23 @@ isWithinRoundingErrorOf target value =
 offsetSpline : LMPoint2d -> LMPoint2d -> LMDirection2d -> LocalPath
 offsetSpline origin target direction =
     let
-        handleDistance =
-            Point2d.distanceFrom origin target |> Quantity.half
-
         targetCp =
             target |> Point2d.translateIn direction lotExitOffset
 
-        midpoint =
-            Point2d.midpoint origin targetCp
+        distanceToTarget =
+            Point2d.distanceFrom origin targetCp
 
         handleCp1 =
-            midpoint
-                |> Point2d.midpoint origin
-                |> Point2d.translateIn (Direction2d.rotateClockwise direction) handleDistance
+            origin
+                |> Point2d.translateIn
+                    direction
+                    (distanceToTarget |> Quantity.multiplyBy 0.25)
 
         handleCp2 =
-            midpoint |> Point2d.translateIn (Direction2d.rotateCounterclockwise direction) handleDistance
+            targetCp
+                |> Point2d.translateIn
+                    (Direction2d.reverse direction)
+                    (distanceToTarget |> Quantity.half)
     in
     CubicSpline2d.fromControlPoints origin handleCp1 handleCp2 targetCp
         |> cubicSplineToLocalPath
@@ -148,3 +141,6 @@ cubicSplineToLocalPath spline =
     spline
         |> CubicSpline2d.segments splineSegmentsAmount
         |> Polyline2d.vertices
+        -- Skip the first vertex
+        |> List.tail
+        |> Maybe.withDefault []

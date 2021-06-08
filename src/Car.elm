@@ -6,7 +6,6 @@ module Car exposing
     , break
     , build
     , createRoute
-    , defaultAcceleration
     , fieldOfView
     , isBreaking
     , isConfused
@@ -14,8 +13,6 @@ module Car exposing
     , leftSideFieldOfView
     , length
     , markAsConfused
-    , maxDeceleration
-    , maxVelocity
     , move
     , new
     , rightSideOfFieldOfView
@@ -36,6 +33,7 @@ module Car exposing
 
 import Acceleration exposing (Acceleration)
 import Angle exposing (Angle)
+import AngularSpeed exposing (AngularSpeed)
 import Axis2d
 import BoundingBox2d
 import Dict exposing (Dict)
@@ -56,6 +54,7 @@ import Polygon2d exposing (Polygon2d)
 import Quantity exposing (Quantity(..), Rate)
 import RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Speed exposing (Speed)
+import Steering exposing (maxAcceleration, maxDeceleration, maxVelocity)
 import Triangle2d exposing (Triangle2d)
 
 
@@ -64,6 +63,7 @@ type alias Car =
     , position : LMPoint2d
     , orientation : Angle
     , velocity : Speed
+    , rotation : AngularSpeed
     , acceleration : Acceleration
     , shape : Polygon2d Meters LMEntityCoordinates
     , boundingBox : LMBoundingBox2d
@@ -79,6 +79,7 @@ type alias NewCar =
     { position : LMPoint2d
     , orientation : Angle
     , velocity : Speed
+    , rotation : AngularSpeed
     , acceleration : Acceleration
     , kind : CarKind
     , status : Status
@@ -112,11 +113,6 @@ type Status
 --
 -- Constants
 --
-
-
-maxVelocity : Speed
-maxVelocity =
-    Speed.metersPerSecond 11.1
 
 
 length : Length
@@ -186,16 +182,6 @@ collisionMargin =
     length |> Quantity.multiplyBy 1.5
 
 
-defaultAcceleration : Acceleration
-defaultAcceleration =
-    Acceleration.metersPerSecondSquared 5
-
-
-maxDeceleration : Acceleration
-maxDeceleration =
-    Acceleration.metersPerSecondSquared -20
-
-
 
 --
 -- Builder
@@ -205,9 +191,10 @@ maxDeceleration =
 new : CarKind -> NewCar
 new kind =
     { position = Point2d.origin
-    , orientation = Angle.degrees 0
+    , orientation = Quantity.zero
     , velocity = Quantity.zero
-    , acceleration = defaultAcceleration
+    , rotation = Quantity.zero
+    , acceleration = maxAcceleration
     , kind = kind
     , status = Confused
     , homeLotId = Nothing
@@ -266,6 +253,7 @@ build id initialTarget newCar =
     , position = newCar.position
     , orientation = newCar.orientation
     , velocity = newCar.velocity
+    , rotation = newCar.rotation
     , acceleration = newCar.acceleration
     , shape = nextShape
     , boundingBox = boundingBox
@@ -316,24 +304,42 @@ secondsTo target car =
 move : Float -> Car -> Car
 move delta car =
     let
-        nextOrientation =
-            case car.localPath of
-                next :: _ ->
-                    car.position |> Geometry.angleToTarget next
+        deltaDuration =
+            Duration.milliseconds delta
 
-                _ ->
-                    car.orientation
+        -- TODO: update steering instead
+        linearSteering =
+            car.acceleration
 
-        nextVelocity =
-            car.velocity
-                |> Quantity.plus (car.acceleration |> Quantity.for (Duration.milliseconds delta))
-                |> Quantity.clamp Quantity.zero maxVelocity
+        steering =
+            Steering.followPath
+                { currentRotation = car.rotation
+                , currentOrientation = car.orientation
+                , currentPosition = car.position
+                , path = car.localPath
+                }
 
         nextPosition =
             car.position
                 |> Point2d.translateIn
-                    (Direction2d.fromAngle nextOrientation)
-                    (nextVelocity |> Quantity.for (Duration.milliseconds delta))
+                    (Direction2d.fromAngle car.orientation)
+                    (car.velocity |> Quantity.for deltaDuration)
+
+        nextOrientation =
+            car.orientation |> Quantity.plus (car.rotation |> Quantity.for deltaDuration)
+
+        nextVelocity =
+            car.velocity
+                |> Quantity.plus (linearSteering |> Quantity.for deltaDuration)
+                |> Quantity.clamp Quantity.zero maxVelocity
+
+        nextRotation =
+            case steering.angular of
+                Just angularAcceleration ->
+                    car.rotation |> Quantity.plus (angularAcceleration |> Quantity.for deltaDuration)
+
+                Nothing ->
+                    Quantity.zero
 
         nextShape =
             adjustedShape nextPosition nextOrientation
@@ -344,8 +350,9 @@ move delta car =
     in
     { car
         | position = nextPosition
-        , velocity = nextVelocity
         , orientation = nextOrientation
+        , velocity = nextVelocity
+        , rotation = nextRotation
         , shape = nextShape
         , boundingBox = nextBoundingBox
     }
@@ -418,7 +425,7 @@ slowDown targetVelocity car =
                 Acceleration.metersPerSecondSquared -5
 
             else
-                defaultAcceleration
+                maxAcceleration
     }
 
 
@@ -426,7 +433,7 @@ startMoving : Car -> Car
 startMoving car =
     { car
         | status = Moving
-        , acceleration = defaultAcceleration
+        , acceleration = maxAcceleration
     }
 
 
@@ -464,6 +471,10 @@ createRoute nodeCtx car =
 accelerateToZeroOverDistance : Speed -> Length -> Acceleration
 accelerateToZeroOverDistance (Quantity speed) (Quantity distanceToTarget) =
     Quantity (-speed * speed / (2 * distanceToTarget))
+
+
+
+-- TODO: max velocity will not achieve the rotation in time. Lower car velocity as the angle of the turn increases
 
 
 fieldOfView : Car -> Triangle2d Meters LMEntityCoordinates
