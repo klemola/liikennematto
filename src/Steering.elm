@@ -118,9 +118,7 @@ align { currentRotation, currentOrientation, targetOrientation } =
                     maxRotation
 
                 else
-                    maxRotation
-                        |> Quantity.times rotationSize
-                        |> Quantity.over_ slowRadius
+                    maxRotation |> Quantity.multiplyBy (Quantity.ratio rotationSize slowRadius)
 
             targetRotationWithDirection : AngularSpeed
             targetRotationWithDirection =
@@ -133,21 +131,12 @@ align { currentRotation, currentOrientation, targetOrientation } =
                 targetRotationWithDirection
                     |> Quantity.minus currentRotation
                     |> Quantity.per timeToTarget
-
-            angularAcceleration =
-                Quantity.abs result
-
-            resultWithMaxLimit =
-                if angularAcceleration |> Quantity.greaterThan maxAngularAcceleration then
-                    result
-                        |> Quantity.times maxAngularAcceleration
-                        |> Quantity.over angularAcceleration
-
-                else
-                    result
+                    |> Quantity.clamp
+                        (Quantity.negate maxAngularAcceleration)
+                        maxAngularAcceleration
         in
         { linear = Nothing
-        , angular = Just resultWithMaxLimit
+        , angular = Just result
         }
 
 
