@@ -4,7 +4,6 @@ module Geometry exposing
     , LMEntityCoordinates
     , LMPoint2d
     , angleFromDirection
-    , angleToTarget
     , boundingBoxWithDimensions
     , noBoundingBoxOverlap
     )
@@ -30,13 +29,6 @@ type alias LMDirection2d =
 
 type alias LMBoundingBox2d =
     BoundingBox2d Meters LMEntityCoordinates
-
-
-angleToTarget : LMPoint2d -> LMPoint2d -> Angle
-angleToTarget target origin =
-    Direction2d.from origin target
-        |> Maybe.map Direction2d.toAngle
-        |> Maybe.withDefault (Angle.degrees 0)
 
 
 angleFromDirection : LMDirection2d -> LMPoint2d -> LMPoint2d -> Angle

@@ -22,6 +22,7 @@ import Polygon2d
 import Quantity
 import Random
 import RoadNetwork exposing (TrafficControl(..))
+import Steering
 import TrafficLight exposing (TrafficLight)
 import Triangle2d exposing (Triangle2d)
 import World exposing (World)
@@ -161,7 +162,7 @@ applyRule round rule =
                 applyCarAction Car.stopAtIntersection round
 
         SlowDownAtTrafficControl ->
-            applyCarAction (Car.slowDown (Car.maxVelocity |> Quantity.half)) round
+            applyCarAction (Car.slowDown (Steering.maxVelocity |> Quantity.half)) round
 
 
 applyCarAction : (Car -> Car) -> Round -> Round

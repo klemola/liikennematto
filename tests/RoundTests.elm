@@ -26,6 +26,7 @@ import Rounds
         , yieldWithPriorityTrafficSetup2
         , yieldWithoutPriorityTrafficSetup
         )
+import Steering
 import Test exposing (..)
 
 
@@ -75,7 +76,7 @@ suite =
                             |> Round.play
                             |> getCarAcceleration
                         )
-                        Car.maxDeceleration
+                        Steering.maxDeceleration
                 )
             , test "can stop the car at traffic lights"
                 (\_ ->

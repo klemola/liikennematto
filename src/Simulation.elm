@@ -325,7 +325,7 @@ checkPath : World -> Random.Seed -> Car -> ( Car, Random.Seed )
 checkPath world seed car =
     case car.localPath of
         next :: others ->
-            if Point2d.equalWithin (Length.meters 0.2) car.position next then
+            if Point2d.equalWithin (Length.meters 1) car.position next then
                 ( { car | localPath = others }, seed )
 
             else

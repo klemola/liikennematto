@@ -22,6 +22,7 @@ import Random
 import RoadNetwork
 import Round exposing (Round)
 import Speed exposing (Speed)
+import Steering
 import Utility exposing (toLMPoint2d)
 import World exposing (World)
 import Worlds exposing (largeWorld, worldWithFourWayIntersection, worldWithThreeWayIntersection)
@@ -46,7 +47,7 @@ connectedRoadsSetup =
                 |> World.buildRoadAt ( 2, 1 )
 
         car =
-            buildCar CarA1 ( 0, 720 ) (Angle.degrees 0) Car.maxVelocity
+            buildCar CarA1 ( 0, 720 ) (Angle.degrees 0) Steering.maxVelocity
 
         otherCars =
             []
@@ -68,7 +69,7 @@ collisionSetupPathsIntersect =
             RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 134 720)
 
         car =
-            buildCar CarA1 ( 102, 668 ) (Angle.degrees 30) Car.maxVelocity
+            buildCar CarA1 ( 102, 668 ) (Angle.degrees 30) Steering.maxVelocity
 
         carWithRoute =
             case carDestination of
@@ -82,7 +83,7 @@ collisionSetupPathsIntersect =
             RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 80 694)
 
         otherCar =
-            buildCar CarB2 ( 160, 691 ) (Angle.degrees 180) Car.maxVelocity
+            buildCar CarB2 ( 160, 691 ) (Angle.degrees 180) Steering.maxVelocity
 
         otherCarWithRoute =
             case otherCarDestination of
@@ -114,7 +115,7 @@ collisionSetupNearCollision =
             RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 134 720)
 
         car =
-            buildCar CarA1 ( 110, 670 ) (Angle.degrees 45) Car.maxVelocity
+            buildCar CarA1 ( 110, 670 ) (Angle.degrees 45) Steering.maxVelocity
 
         carWithRoute =
             case carDestination of
@@ -128,7 +129,7 @@ collisionSetupNearCollision =
             RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 80 694)
 
         otherCar =
-            buildCar CarB2 ( 130, 691 ) (Angle.degrees 180) Car.maxVelocity
+            buildCar CarB2 ( 130, 691 ) (Angle.degrees 180) Steering.maxVelocity
 
         otherCarWithRoute =
             case otherCarDestination of
@@ -159,10 +160,10 @@ noCollisionSetupDifferentLanes =
                 |> World.buildRoadAt ( 2, 1 )
 
         car =
-            buildCar CarA1 ( 60, 745 ) (Angle.degrees 0) Car.maxVelocity
+            buildCar CarA1 ( 60, 745 ) (Angle.degrees 0) Steering.maxVelocity
 
         otherCar =
-            buildCar CarB2 ( 100, 774 ) (Angle.degrees 180) Car.maxVelocity
+            buildCar CarB2 ( 100, 774 ) (Angle.degrees 180) Steering.maxVelocity
 
         otherCars =
             [ otherCar
@@ -183,10 +184,10 @@ noCollisionSetupIntersection =
             worldWithFourWayIntersection
 
         car =
-            buildCar CarA1 ( 80, 666 ) (Angle.degrees 0) Car.maxVelocity
+            buildCar CarA1 ( 80, 666 ) (Angle.degrees 0) Steering.maxVelocity
 
         otherCar =
-            buildCar CarB2 ( 133, 690 ) (Angle.degrees 90) Car.maxVelocity
+            buildCar CarB2 ( 133, 690 ) (Angle.degrees 90) Steering.maxVelocity
 
         otherCars =
             [ otherCar
@@ -210,7 +211,7 @@ redTrafficLightsSetup =
             RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 134 640)
 
         car =
-            buildCar CarA1 ( 134, 600 ) (Angle.degrees 90) Car.maxVelocity
+            buildCar CarA1 ( 134, 600 ) (Angle.degrees 90) Steering.maxVelocity
 
         carWithRoute =
             case carDestination of
@@ -240,7 +241,7 @@ greenTrafficLightsSetup =
             RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 80 666)
 
         car =
-            buildCar CarA1 ( 47, 665 ) (Angle.degrees 0) Car.maxVelocity
+            buildCar CarA1 ( 47, 665 ) (Angle.degrees 0) Steering.maxVelocity
 
         carWithRoute =
             case carDestination of
@@ -281,7 +282,7 @@ yieldWithPriorityTrafficSetup1 =
                     Debug.todo "invalid test fixture"
 
         otherCar =
-            buildCar CarB2 ( 213, 542 ) (Angle.degrees 90) Car.maxVelocity
+            buildCar CarB2 ( 213, 542 ) (Angle.degrees 90) Steering.maxVelocity
 
         otherCars =
             [ otherCar ]
@@ -315,7 +316,7 @@ yieldWithPriorityTrafficSetup2 =
                     Debug.todo "invalid test fixture"
 
         otherCar =
-            buildCar CarB2 ( 186, 642 ) (Angle.degrees 270) Car.maxVelocity
+            buildCar CarB2 ( 186, 642 ) (Angle.degrees 270) Steering.maxVelocity
 
         otherCars =
             [ otherCar ]
@@ -356,7 +357,7 @@ stopSetup =
                 |> World.buildRoadAt ( 3, 3 )
 
         car =
-            buildCar CarA1 ( 0, 640 ) (Angle.degrees 0) Car.maxVelocity
+            buildCar CarA1 ( 0, 640 ) (Angle.degrees 0) Steering.maxVelocity
                 |> Car.move delta
 
         otherCars =
@@ -376,11 +377,11 @@ yieldAfterStopSetup =
                 |> World.buildRoadAt ( 2, 3 )
 
         car =
-            buildCar CarA1 ( 0, 640 ) (Angle.degrees 0) Car.maxVelocity
+            buildCar CarA1 ( 0, 640 ) (Angle.degrees 0) Steering.maxVelocity
                 |> Car.stopAtIntersection
 
         otherCars =
-            [ buildCar CarB2 ( 80, 720 ) (Angle.degrees 270) Car.maxVelocity
+            [ buildCar CarB2 ( 80, 720 ) (Angle.degrees 270) Steering.maxVelocity
             ]
     in
     Round world car otherCars seed
