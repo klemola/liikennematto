@@ -15,16 +15,19 @@ import Cell exposing (Cell)
 import Config
 import Dict
 import Direction2d
+import Duration
 import Geometry exposing (LMEntityCoordinates)
 import Length
 import Lot exposing (NewLot)
 import Point2d
 import Process
 import QuadTree exposing (QuadTree)
+import Quantity
 import Random
 import Random.List
 import RoadNetwork
 import Round
+import Steering
 import Task
 import Time
 import TrafficLight
@@ -386,7 +389,53 @@ updateCar delta car =
             Car.startMoving car
 
         _ ->
-            Car.move delta car
+            let
+                deltaDuration =
+                    Duration.milliseconds delta
+
+                steering =
+                    -- TODO: implement proper path following steering to use for movement
+                    Steering.noSteering
+
+                nextPosition =
+                    car.position
+                        |> Point2d.translateIn
+                            (Direction2d.fromAngle car.orientation)
+                            (car.velocity |> Quantity.for deltaDuration)
+
+                nextOrientation =
+                    case car.localPath of
+                        next :: _ ->
+                            Steering.angleToTarget car.position next
+                                |> Maybe.withDefault car.orientation
+
+                        _ ->
+                            car.orientation
+
+                nextVelocity =
+                    car.velocity
+                        |> Quantity.plus (car.acceleration |> Quantity.for deltaDuration)
+                        |> Quantity.clamp Quantity.zero Steering.maxVelocity
+
+                nextRotation =
+                    case steering.angular of
+                        Just angularAcceleration ->
+                            car.rotation |> Quantity.plus (angularAcceleration |> Quantity.for deltaDuration)
+
+                        Nothing ->
+                            Quantity.zero
+
+                ( nextShape, nextBoundingBox ) =
+                    Car.adjustedShape nextPosition nextOrientation
+            in
+            { car
+                | position = nextPosition
+                , orientation = nextOrientation
+                , velocity = nextVelocity
+                , rotation = nextRotation
+                , shape = nextShape
+                , boundingBox = nextBoundingBox
+            }
 
 
 

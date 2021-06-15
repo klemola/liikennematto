@@ -3,6 +3,7 @@ module Car exposing
     , CarKind(..)
     , Cars
     , Status(..)
+    , adjustedShape
     , break
     , build
     , createRoute
@@ -13,7 +14,6 @@ module Car exposing
     , leftSideFieldOfView
     , length
     , markAsConfused
-    , move
     , new
     , rightSideOfFieldOfView
     , secondsTo
@@ -54,7 +54,7 @@ import Polygon2d exposing (Polygon2d)
 import Quantity exposing (Quantity(..), Rate)
 import RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Speed exposing (Speed)
-import Steering exposing (maxAcceleration, maxDeceleration, maxVelocity)
+import Steering exposing (maxAcceleration, maxDeceleration)
 import Triangle2d exposing (Triangle2d)
 
 
@@ -227,12 +227,8 @@ withVelocity velocity car =
 build : Int -> Maybe RNNodeContext -> NewCar -> Car
 build id initialTarget newCar =
     let
-        nextShape =
+        ( shape, boundingBox ) =
             adjustedShape newCar.position newCar.orientation
-
-        boundingBox =
-            Polygon2d.boundingBox nextShape
-                |> Maybe.withDefault (BoundingBox2d.singleton newCar.position)
 
         ( route, localPath ) =
             case initialTarget of
@@ -255,7 +251,7 @@ build id initialTarget newCar =
     , velocity = newCar.velocity
     , rotation = newCar.rotation
     , acceleration = newCar.acceleration
-    , shape = nextShape
+    , shape = shape
     , boundingBox = boundingBox
     , kind = newCar.kind
     , status = newCar.status
@@ -299,62 +295,6 @@ secondsTo target car =
 --
 -- Modification
 --
-
-
-move : Float -> Car -> Car
-move delta car =
-    let
-        deltaDuration =
-            Duration.milliseconds delta
-
-        steering =
-            -- TODO: implement proper path following steering to use for movement
-            Steering.noSteering
-
-        nextPosition =
-            car.position
-                |> Point2d.translateIn
-                    (Direction2d.fromAngle car.orientation)
-                    (car.velocity |> Quantity.for deltaDuration)
-
-        nextOrientation =
-            -- car.orientation |> Quantity.plus (car.rotation |> Quantity.for deltaDuration)
-            case car.localPath of
-                next :: _ ->
-                    Steering.angleToTarget car.position next
-                        |> Maybe.withDefault car.orientation
-
-                _ ->
-                    car.orientation
-
-        nextVelocity =
-            car.velocity
-                |> Quantity.plus (car.acceleration |> Quantity.for deltaDuration)
-                |> Quantity.clamp Quantity.zero maxVelocity
-
-        nextRotation =
-            case steering.angular of
-                Just angularAcceleration ->
-                    car.rotation |> Quantity.plus (angularAcceleration |> Quantity.for deltaDuration)
-
-                Nothing ->
-                    Quantity.zero
-
-        nextShape =
-            adjustedShape nextPosition nextOrientation
-
-        nextBoundingBox =
-            Polygon2d.boundingBox nextShape
-                |> Maybe.withDefault (BoundingBox2d.singleton nextPosition)
-    in
-    { car
-        | position = nextPosition
-        , orientation = nextOrientation
-        , velocity = nextVelocity
-        , rotation = nextRotation
-        , shape = nextShape
-        , boundingBox = nextBoundingBox
-    }
 
 
 waitForTrafficLights : Length -> Car -> Car
@@ -472,10 +412,6 @@ accelerateToZeroOverDistance (Quantity speed) (Quantity distanceToTarget) =
     Quantity (-speed * speed / (2 * distanceToTarget))
 
 
-
--- TODO: max velocity will not achieve the rotation in time. Lower car velocity as the angle of the turn increases
-
-
 fieldOfView : Car -> Triangle2d Meters LMEntityCoordinates
 fieldOfView car =
     let
@@ -534,13 +470,19 @@ rightSideOfFieldOfView car =
     Triangle2d.from car.position limitFront limitRight
 
 
-adjustedShape : LMPoint2d -> Angle -> Polygon2d Meters LMEntityCoordinates
+adjustedShape : LMPoint2d -> Angle -> ( Polygon2d Meters LMEntityCoordinates, LMBoundingBox2d )
 adjustedShape nextPosition nextOrientation =
     let
         carFrame =
             Frame2d.atPoint nextPosition |> Frame2d.rotateBy nextOrientation
+
+        nextShape =
+            shapeAtOrigin |> Polygon2d.placeIn carFrame
     in
-    shapeAtOrigin |> Polygon2d.placeIn carFrame
+    ( nextShape
+    , Polygon2d.boundingBox nextShape
+        |> Maybe.withDefault (BoundingBox2d.singleton nextPosition)
+    )
 
 
 
