@@ -22,7 +22,7 @@ type alias LocalPath =
 
 splineSegmentsAmount : Int
 splineSegmentsAmount =
-    8
+    16
 
 
 lotExitOffset : Length
@@ -141,6 +141,5 @@ cubicSplineToLocalPath spline =
     spline
         |> CubicSpline2d.segments splineSegmentsAmount
         |> Polyline2d.vertices
-        -- Skip the first vertex
         |> List.tail
         |> Maybe.withDefault []

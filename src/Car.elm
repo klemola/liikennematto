@@ -307,17 +307,9 @@ move delta car =
         deltaDuration =
             Duration.milliseconds delta
 
-        -- TODO: update steering instead
-        linearSteering =
-            car.acceleration
-
         steering =
-            Steering.followPath
-                { currentRotation = car.rotation
-                , currentOrientation = car.orientation
-                , currentPosition = car.position
-                , path = car.localPath
-                }
+            -- TODO: implement proper path following steering to use for movement
+            Steering.noSteering
 
         nextPosition =
             car.position
@@ -326,11 +318,18 @@ move delta car =
                     (car.velocity |> Quantity.for deltaDuration)
 
         nextOrientation =
-            car.orientation |> Quantity.plus (car.rotation |> Quantity.for deltaDuration)
+            -- car.orientation |> Quantity.plus (car.rotation |> Quantity.for deltaDuration)
+            case car.localPath of
+                next :: _ ->
+                    Steering.angleToTarget car.position next
+                        |> Maybe.withDefault car.orientation
+
+                _ ->
+                    car.orientation
 
         nextVelocity =
             car.velocity
-                |> Quantity.plus (linearSteering |> Quantity.for deltaDuration)
+                |> Quantity.plus (car.acceleration |> Quantity.for deltaDuration)
                 |> Quantity.clamp Quantity.zero maxVelocity
 
         nextRotation =
