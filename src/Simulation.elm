@@ -14,6 +14,7 @@ import Car exposing (Car, Status(..))
 import Cell exposing (Cell)
 import Config
 import Dict
+import Direction2d
 import Geometry exposing (LMEntityCoordinates)
 import Length
 import Lot exposing (NewLot)
@@ -325,7 +326,7 @@ checkPath : World -> Random.Seed -> Car -> ( Car, Random.Seed )
 checkPath world seed car =
     case car.localPath of
         next :: others ->
-            if Point2d.equalWithin (Length.meters 1) car.position next then
+            if Point2d.equalWithin (Length.meters 0.5) car.position next then
                 ( { car | localPath = others }, seed )
 
             else
@@ -351,7 +352,24 @@ chooseNextConnection seed world car =
                 nextCar =
                     connection
                         |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
-                        |> Maybe.map (\nextNodeCtx -> Car.createRoute nextNodeCtx car)
+                        |> Maybe.map
+                            (\nextNodeCtx ->
+                                -- This is a temporary hack to make sure that tight turns can be completed
+                                let
+                                    nodeKind =
+                                        nodeCtx.node.label.kind
+                                in
+                                (if nodeKind == RoadNetwork.DeadendExit || nodeKind == RoadNetwork.LaneStart then
+                                    { car
+                                        | orientation = Direction2d.toAngle nodeCtx.node.label.direction
+                                        , position = nodeCtx.node.label.position
+                                    }
+
+                                 else
+                                    car
+                                )
+                                    |> Car.createRoute nextNodeCtx
+                            )
                         |> Maybe.withDefault car
             in
             ( nextCar, nextSeed )

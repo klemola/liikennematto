@@ -1,10 +1,11 @@
 module Steering exposing
     ( Steering
     , align
-    , followPath
+    , angleToTarget
     , maxAcceleration
     , maxDeceleration
     , maxVelocity
+    , noSteering
     )
 
 import Acceleration exposing (Acceleration)
@@ -14,15 +15,13 @@ import AngularSpeed exposing (AngularSpeed)
 import Direction2d
 import Duration
 import Geometry exposing (LMPoint2d)
-import LocalPath exposing (LocalPath)
 import Quantity
 import Speed exposing (Speed)
 
 
 maxVelocity : Speed
 maxVelocity =
-    -- TODO change this back to 11.1
-    Speed.metersPerSecond 3
+    Speed.metersPerSecond 11.1
 
 
 maxAcceleration : Acceleration
@@ -53,32 +52,32 @@ type alias Steering =
 
 noSteering : Steering
 noSteering =
-    { linear = Nothing, angular = Nothing }
+    { linear = Nothing
+    , angular = Nothing
+    }
 
 
-followPath :
+seekAndFaceTarget :
     { currentRotation : AngularSpeed
     , currentOrientation : Angle
-    , currentPosition : LMPoint2d
-    , path : LocalPath
+    , targetOrientation : Angle
     }
     -> Steering
-followPath { currentRotation, currentOrientation, currentPosition, path } =
+seekAndFaceTarget alignProps =
     let
-        targetOrientation =
-            List.head path
-                |> Maybe.andThen (angleToTarget currentPosition)
-    in
-    case targetOrientation of
-        Just orientation ->
-            align
-                { currentRotation = currentRotation
-                , currentOrientation = currentOrientation
-                , targetOrientation = orientation
-                }
+        alignSteering =
+            align alignProps
 
-        Nothing ->
-            noSteering
+        accelerationForRotation angularSteering =
+            let
+                rawAngular =
+                    AngularAcceleration.inRadiansPerSecondSquared angularSteering
+            in
+            Acceleration.metersPerSecondSquared (0 - rawAngular * 2)
+    in
+    { linear = alignSteering.angular |> Maybe.map accelerationForRotation
+    , angular = alignSteering.angular
+    }
 
 
 align :

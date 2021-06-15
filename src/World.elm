@@ -143,7 +143,6 @@ spawnCar seed world =
                         Car.new Car.TestCar
                             |> Car.withPosition nodeCtx.node.label.position
                             |> Car.withOrientation (Direction2d.toAngle nodeCtx.node.label.direction)
-                            |> Car.withVelocity Steering.maxVelocity
                             |> Car.build id (Just nodeCtx)
                             |> Car.startMoving
                 in
