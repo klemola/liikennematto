@@ -33,11 +33,6 @@ seed =
     Random.initialSeed 42
 
 
-delta : Float
-delta =
-    16
-
-
 connectedRoadsSetup : Round
 connectedRoadsSetup =
     let
@@ -358,7 +353,6 @@ stopSetup =
 
         car =
             buildCar CarA1 ( 0, 640 ) (Angle.degrees 0) Steering.maxVelocity
-                |> Car.move delta
 
         otherCars =
             []
