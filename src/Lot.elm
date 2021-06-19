@@ -172,7 +172,7 @@ entryDetails anchor newLot =
             else
                 ( drivewaySize, halfTile )
 
-        entrypoint =
+        entryPoint =
             case newLot.content.entryDirection of
                 Up ->
                     Point2d.xy
@@ -196,7 +196,7 @@ entryDetails anchor newLot =
     in
     { width = width
     , height = height
-    , entryPoint = entrypoint
+    , entryPoint = entryPoint
     , parkingSpot = parkingSpot anchor newLot
     }
 
