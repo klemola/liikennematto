@@ -2,7 +2,6 @@ module Graphics exposing
     ( buildingAsset
     , carAsset
     , grid
-    , renderedSizeFromUnits
     , texture
     , tileAsset
     )
@@ -36,11 +35,6 @@ grid size getCollage =
 texture : ( Float, Float ) -> String -> Collage msg
 texture size asset =
     image size ("assets/" ++ asset)
-
-
-renderedSizeFromUnits : ( Int, Int ) -> Float -> ( Float, Float )
-renderedSizeFromUnits ( x, y ) multiplier =
-    ( toFloat x * multiplier, toFloat y * multiplier )
 
 
 tileAsset : Tile -> String

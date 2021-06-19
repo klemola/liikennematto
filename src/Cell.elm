@@ -16,6 +16,7 @@ module Cell exposing
     , oppositeOrthogonalDirection
     , orthogonalDirectionToLmDirection
     , right
+    , toString
     , up
     )
 
@@ -230,3 +231,8 @@ boundingBox : Cell -> LMBoundingBox2d
 boundingBox cell =
     bottomLeftCorner cell
         |> Geometry.boundingBoxWithDimensions tileSizeInMeters tileSizeInMeters
+
+
+toString : Cell -> String
+toString ( x, y ) =
+    "Cell (" ++ String.fromInt x ++ "," ++ String.fromInt y
