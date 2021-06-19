@@ -21,8 +21,7 @@
             "evelios/elm-geometry-quadtree": "1.0.0",
             "ianmackenzie/elm-geometry": "3.9.0",
             "ianmackenzie/elm-units": "2.7.0",
-            "mdgriffith/elm-ui": "1.1.7",
-            "timjs/elm-collage": "2.0.2"
+            "mdgriffith/elm-ui": "1.1.7"
         },
         "indirect": {
             "BrianHicks/elm-trend": "2.1.3",
