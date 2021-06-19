@@ -7,7 +7,6 @@ import Config
     exposing
         ( boardSizeScaled
         , borderRadius
-        , borderSize
         , colors
         , uiDimensions
         , whitespace
@@ -204,47 +203,34 @@ render model =
         ( viewportWidth, viewportHeight ) =
             ( min model.screen.width renderedSize, min model.screen.height renderedSize )
 
-        ( overflowStrategy, showBorders ) =
+        overflowStrategy =
             if renderedSize > model.screen.width || renderedSize > model.screen.height then
-                ( Element.scrollbars, False )
+                Element.scrollbars
 
             else
-                ( Element.clip, True )
-
-        maybeBorder =
-            if showBorders then
-                [ Border.solid
-                , Border.width borderSize.heavy
-                , Border.rounded borderRadius.heavy
-                , Border.color
-                    (case model.simulation.simulation of
-                        Simulation.Paused ->
-                            colors.selected
-
-                        _ ->
-                            colors.heavyBorder
-                    )
-                ]
-
-            else
-                []
+                Element.clip
     in
     Render.view model.world debugLayers
         |> Element.html
+        -- render + overlay
         |> Element.el
-            ([ Element.width (Element.px viewportWidth)
-             , Element.height (Element.px viewportHeight)
-             , Element.inFront
+            [ Element.width (Element.px renderedSize)
+            , Element.height (Element.px renderedSize)
+            , Element.inFront
                 (Editor.overlay model.world model.editor
                     |> Element.map EditorMsg
                 )
-             , Element.centerX
-             , Element.centerY
-             , Background.color colors.terrain
-             , overflowStrategy
-             ]
-                |> List.append maybeBorder
-            )
+            , Background.color colors.terrain
+            ]
+        -- overflow wrapper
+        |> Element.el
+            [ Element.width (Element.px viewportWidth)
+            , Element.height (Element.px viewportHeight)
+            , Element.centerX
+            , Element.centerY
+            , Border.rounded borderRadius.heavy
+            , overflowStrategy
+            ]
 
 
 controls : Model -> Element Msg

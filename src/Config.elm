@@ -118,7 +118,7 @@ uiDimensions =
 
 
 colors =
-    { mainBackground = rgb255 68 115 120
+    { mainBackground = rgb255 88 135 140
     , menuBackground = rgb255 159 192 198
     , buttonBackground = rgb255 228 228 235
     , listItemBackground = rgb255 109 151 156

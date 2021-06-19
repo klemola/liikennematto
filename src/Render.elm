@@ -68,6 +68,11 @@ boardSizeScaledPixels =
     boardSizeScaled |> Pixels.inPixels |> toFloat
 
 
+boardSizeScaledStr : String
+boardSizeScaledStr =
+    String.fromFloat boardSizeScaledPixels
+
+
 tileSizePixels : Float
 tileSizePixels =
     tileSize |> Pixels.inPixels
@@ -75,7 +80,11 @@ tileSizePixels =
 
 view : World -> DebugLayers -> Html msg
 view { board, cars, lots, roadNetwork, trafficLights } debugLayers =
-    Svg.svg [ Attributes.width "800", Attributes.height "800" ]
+    Svg.svg
+        [ Attributes.width boardSizeScaledStr
+        , Attributes.height boardSizeScaledStr
+        , Attributes.viewBox <| "0 0 " ++ boardSizeScaledStr ++ " " ++ boardSizeScaledStr
+        ]
         ([ Svg.Lazy.lazy renderBoard board
          , Svg.Lazy.lazy renderLots lots
          , renderCars cars
