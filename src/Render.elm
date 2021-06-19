@@ -13,7 +13,7 @@ import Config
         )
 import Dict
 import Geometry exposing (LMPoint2d)
-import Graph
+import Graph exposing (Node)
 import Graphics
 import Html exposing (Html)
 import Length exposing (Length)
@@ -34,7 +34,6 @@ import World exposing (World)
 
 
 type alias DebugLayers =
-    -- Room for improvement: separate debug views from regular views
     { showRoadNetwork : Bool
     , showCarDebugVisuals : Bool
     }
@@ -55,18 +54,22 @@ trafficLightRadius =
     signSize |> Quantity.divideBy 2
 
 
+carWidthPixels : Float
 carWidthPixels =
     toPixelsValue Car.width
 
 
+carLengthPixels : Float
 carLengthPixels =
     toPixelsValue Car.length
 
 
+boardSizeScaledPixels : Float
 boardSizeScaledPixels =
     boardSizeScaled |> Pixels.inPixels |> toFloat
 
 
+tileSizePixels : Float
 tileSizePixels =
     tileSize |> Pixels.inPixels
 
@@ -84,6 +87,7 @@ view { board, cars, lots, roadNetwork, trafficLights } debugLayers =
         )
 
 
+renderColors : { road : Color.Color, terrain : Color.Color, sidewalk : Color.Color, sidewalkEdge : Color.Color }
 renderColors =
     { road = Color.rgb255 52 65 67
     , terrain = Color.rgb255 33 191 154
@@ -107,8 +111,8 @@ renderTile cell tile =
         asset =
             "assets/" ++ Graphics.tileAsset tile
 
-        ( x, y ) =
-            Cell.bottomLeftCorner cell |> toPixelsTuple
+        { x, y } =
+            Cell.bottomLeftCorner cell |> pointToPixels
     in
     Svg.image
         [ Attributes.xlinkHref asset
@@ -137,8 +141,8 @@ renderCar car =
         asset =
             "assets/" ++ Graphics.carAsset car
 
-        ( x, y ) =
-            toPixelsTuple car.position
+        { x, y } =
+            pointToPixels car.position
 
         renderX =
             x - (carLengthPixels / 2)
@@ -176,8 +180,8 @@ renderLots lots =
 renderLot : Lot -> Svg msg
 renderLot lot =
     let
-        ( x, y ) =
-            toPixelsTuple lot.position
+        { x, y } =
+            pointToPixels lot.position
 
         asset =
             "assets/" ++ Graphics.buildingAsset lot.content.kind
@@ -209,11 +213,11 @@ sidewalkMask lot =
     -- sidewalk mask hides terrain between sidewalk and the lot
     -- Room for improvement: use special road tiles when connected to a lot
     let
-        ( lotX, lotY ) =
-            toPixelsTuple lot.position
+        lotPosition =
+            pointToPixels lot.position
 
-        ( x, y ) =
-            toPixelsTuple lot.entryDetails.entryPoint
+        { x, y } =
+            pointToPixels lot.entryDetails.entryPoint
 
         width =
             toPixelsValue lot.entryDetails.width
@@ -225,8 +229,8 @@ sidewalkMask lot =
         [ Attributes.width <| String.fromFloat width
         , Attributes.height <| String.fromFloat height
         , Attributes.fill <| Color.toCssString <| renderColors.sidewalk
-        , Attributes.x <| String.fromFloat <| x + lotX - (width / 2)
-        , Attributes.y <| String.fromFloat <| boardSizeScaledPixels - lotY - y - (height / 2)
+        , Attributes.x <| String.fromFloat <| x + lotPosition.x - (width / 2)
+        , Attributes.y <| String.fromFloat <| boardSizeScaledPixels - lotPosition.y - y - (height / 2)
         ]
         []
 
@@ -241,8 +245,8 @@ renderTrafficLights trafficLights =
 renderTrafficLight : TrafficLight -> Svg msg
 renderTrafficLight trafficLight =
     let
-        ( x, y ) =
-            toPixelsTuple trafficLight.position
+        { x, y } =
+            pointToPixels trafficLight.position
 
         radius =
             Pixels.inPixels trafficLightRadius
@@ -271,39 +275,43 @@ renderTrafficLight trafficLight =
 
 renderTrafficSigns : RoadNetwork -> Svg msg
 renderTrafficSigns roadNetwork =
-    let
-        size =
-            Pixels.inPixels signSize
-    in
     roadNetwork
         |> Graph.nodes
         |> List.filterMap
             (\node ->
                 case node.label.trafficControl of
                     Yield ->
-                        let
-                            ( x, y ) =
-                                toPixelsTuple node.label.position
-
-                            asset =
-                                "assets/yield_sign.png"
-                        in
                         Just
                             ( "Yield-" ++ String.fromInt node.id
-                            , Svg.image
-                                [ Attributes.xlinkHref asset
-                                , Attributes.x <| String.fromFloat (x - size / 2)
-                                , Attributes.y <| String.fromFloat <| boardSizeScaledPixels - y - (size / 2)
-                                , Attributes.width <| String.fromFloat size
-                                , Attributes.height <| String.fromFloat size
-                                ]
-                                []
+                            , renderYieldSign node
                             )
 
                     _ ->
                         Nothing
             )
         |> Svg.Keyed.node "g" []
+
+
+renderYieldSign : Node RoadNetwork.Connection -> Svg msg
+renderYieldSign node =
+    let
+        size =
+            Pixels.inPixels signSize
+
+        { x, y } =
+            pointToPixels node.label.position
+
+        asset =
+            "assets/yield_sign.png"
+    in
+    Svg.image
+        [ Attributes.xlinkHref asset
+        , Attributes.x <| String.fromFloat (x - size / 2)
+        , Attributes.y <| String.fromFloat <| boardSizeScaledPixels - y - (size / 2)
+        , Attributes.width <| String.fromFloat size
+        , Attributes.height <| String.fromFloat size
+        ]
+        []
 
 
 
@@ -314,113 +322,195 @@ renderTrafficSigns roadNetwork =
 
 renderDebugLayers : DebugLayers -> Cars -> RoadNetwork -> List (Svg msg)
 renderDebugLayers { showRoadNetwork, showCarDebugVisuals } cars roadNetwork =
-    -- let
-    --     roadNetworkDebug =
-    --         if showRoadNetwork then
-    --             renderRoadNetwork roadNetwork |> Collage.Render.svgBox ( boardSizeScaledPixels, boardSizeScaledPixels )
-    --         else
-    --             Html.div [] []
-    -- in
-    []
+    let
+        carsLayer =
+            if showCarDebugVisuals then
+                Just (renderCarsDebug cars)
+
+            else
+                Nothing
+
+        roadNetworkLayer =
+            if showRoadNetwork then
+                Just (renderRoadNetwork roadNetwork)
+
+            else
+                Nothing
+    in
+    Maybe.values
+        [ carsLayer
+        , roadNetworkLayer
+        ]
+
+
+renderRoadNetwork : RoadNetwork -> Svg msg
+renderRoadNetwork roadNetwork =
+    let
+        nodeColor kind =
+            case kind of
+                LaneStart ->
+                    Color.white
+
+                LaneEnd ->
+                    Color.lightBlue
+
+                DeadendEntry ->
+                    Color.lightPurple
+
+                DeadendExit ->
+                    Color.darkGray
+
+                LotEntry ->
+                    Color.lightGreen
+
+                Stopgap ->
+                    Color.lightYellow
+
+        nodes =
+            roadNetwork
+                |> Graph.fold
+                    (\nodeCtx acc ->
+                        let
+                            radius =
+                                Pixels.inPixels nodeSize
+
+                            { position, kind } =
+                                nodeCtx.node.label
+
+                            { x, y } =
+                                pointToPixels position
+                        in
+                        ( "Node-" ++ String.fromInt nodeCtx.node.id
+                        , Svg.circle
+                            [ Attributes.r <| String.fromFloat radius
+                            , Attributes.cx <| String.fromFloat x
+                            , Attributes.cy <| String.fromFloat (boardSizeScaledPixels - y)
+                            , Attributes.fill <| Color.toCssString <| nodeColor kind
+                            ]
+                            []
+                        )
+                            :: acc
+                    )
+                    []
+                |> Svg.Keyed.node "g" []
+
+        edges =
+            roadNetwork
+                |> Graph.edges
+                |> List.filterMap
+                    (\edge ->
+                        let
+                            fromNode =
+                                Graph.get edge.from roadNetwork
+
+                            toNode =
+                                Graph.get edge.to roadNetwork
+                        in
+                        Maybe.map2
+                            (\fromNodeCtx toNodeCtx ->
+                                let
+                                    from =
+                                        pointToPixels fromNodeCtx.node.label.position
+
+                                    to =
+                                        pointToPixels toNodeCtx.node.label.position
+
+                                    fromStr =
+                                        String.fromFloat from.x ++ " " ++ String.fromFloat (boardSizeScaledPixels - from.y)
+
+                                    toStr =
+                                        String.fromFloat to.x ++ " " ++ String.fromFloat (boardSizeScaledPixels - to.y)
+                                in
+                                ( "Edge-" ++ String.fromInt fromNodeCtx.node.id ++ String.fromInt toNodeCtx.node.id
+                                , Svg.path
+                                    [ Attributes.stroke <| Color.toCssString Color.orange
+                                    , Attributes.strokeWidth <| "2"
+                                    , Attributes.d <| "M " ++ fromStr ++ " L " ++ toStr
+                                    ]
+                                    []
+                                )
+                            )
+                            fromNode
+                            toNode
+                    )
+                |> Svg.Keyed.node "g" []
+    in
+    Svg.g []
+        [ edges
+        , nodes
+        ]
+
+
+renderCarsDebug : Cars -> Svg msg
+renderCarsDebug cars =
+    cars
+        |> Dict.foldl
+            (\_ car acc ->
+                ( "CarDebug-" ++ String.fromInt car.id, renderCarDebug car ) :: acc
+            )
+            []
+        |> Svg.Keyed.node "g" []
+
+
+renderCarDebug : Car -> Svg msg
+renderCarDebug car =
+    Svg.g []
+        [ renderCarFieldOfView car
+        , renderCarCollisionDetection car
+        , renderCarPath car
+        ]
+
+
+renderCarPath : Car -> Svg msg
+renderCarPath car =
+    let
+        points =
+            toPointsString car.localPath
+    in
+    Svg.polyline
+        [ Attributes.stroke <| Color.toCssString Color.red
+        , Attributes.strokeWidth <| "2"
+        , Attributes.points <| points
+        , Attributes.fill "none"
+        ]
+        []
+
+
+renderCarCollisionDetection : Car -> Svg msg
+renderCarCollisionDetection car =
+    let
+        points =
+            Polygon2d.outerLoop car.shape |> toPointsString
+    in
+    Svg.polygon
+        [ Attributes.points points
+        , Attributes.fill <| Color.toCssString Color.red
+        , Attributes.opacity "0.5"
+        ]
+        []
+
+
+renderCarFieldOfView : Car -> Svg msg
+renderCarFieldOfView car =
+    let
+        triangle =
+            Car.fieldOfView car
+
+        ( p1, p2, p3 ) =
+            Triangle2d.vertices triangle
+
+        points =
+            toPointsString [ p1, p2, p3 ]
+    in
+    Svg.polygon
+        [ Attributes.points points
+        , Attributes.fill <| Color.toCssString Color.purple
+        , Attributes.opacity "0.3"
+        ]
+        []
 
 
 
--- renderRoadNetwork : RoadNetwork -> Collage msg
--- renderRoadNetwork roadNetwork =
---     let
---         nodeColor kind =
---             case kind of
---                 LaneStart ->
---                     Color.white
---                 LaneEnd ->
---                     Color.lightBlue
---                 DeadendEntry ->
---                     Color.lightPurple
---                 DeadendExit ->
---                     Color.darkGray
---                 LotEntry ->
---                     Color.lightGreen
---                 Stopgap ->
---                     Color.lightYellow
---         nodes =
---             roadNetwork
---                 |> Graph.nodes
---                 |> List.map
---                     (\node ->
---                         Collage.circle (Pixels.inPixels nodeSize)
---                             |> Collage.styled ( uniform (nodeColor node.label.kind), invisible )
---                             |> Collage.shift (toPixelsTuple node.label.position)
---                     )
---                 |> Collage.group
---         edges =
---             roadNetwork
---                 |> Graph.edges
---                 |> List.filterMap
---                     (\edge ->
---                         let
---                             fromNode =
---                                 Graph.get edge.from roadNetwork
---                             toNode =
---                                 Graph.get edge.to roadNetwork
---                         in
---                         Maybe.map2
---                             (\fromNodeCtx toNodeCtx ->
---                                 let
---                                     from =
---                                         toPixelsTuple fromNodeCtx.node.label.position
---                                     to =
---                                         toPixelsTuple toNodeCtx.node.label.position
---                                 in
---                                 Collage.segment from to
---                                     |> traced (solid thin (uniform Color.orange))
---                             )
---                             fromNode
---                             toNode
---                     )
---                 |> Collage.group
---     in
---     Collage.group
---         [ nodes
---         , edges
---         ]
--- renderCarDebug : Car -> Svg msg
--- renderCarDebug car =
---     Svg.g []
---         [ renderCarFieldOfView car
---         , renderCarCollisionDetection car
---         , renderCarPath car
---         ]
--- renderCarPath : Car -> Collage msg
--- renderCarPath car =
---     car.localPath
---         |> List.map toPixelsTuple
---         |> Collage.path
---         |> traced (solid thin (uniform Color.red))
--- renderCarCollisionDetection : Car -> Collage msg
--- renderCarCollisionDetection car =
---     let
---         carShape =
---             Polygon2d.outerLoop car.shape |> List.map toPixelsTuple
---     in
---     carShape
---         |> Collage.polygon
---         |> Collage.styled ( uniform Color.red, invisible )
---         |> Collage.opacity 0.5
--- renderCarFieldOfView : Car -> Collage msg
--- renderCarFieldOfView car =
---     let
---         triangle =
---             Car.fieldOfView car
---         ( p1, p2, p3 ) =
---             Triangle2d.vertices triangle
---     in
---     Collage.polygon
---         [ toPixelsTuple p1
---         , toPixelsTuple p2
---         , toPixelsTuple p3
---         ]
---         |> Collage.styled ( uniform Color.purple, invisible )
---         |> Collage.opacity 0.3
 --
 -- Conversion
 --
@@ -433,8 +523,25 @@ toPixelsValue length =
         |> Pixels.inPixels
 
 
-toPixelsTuple : LMPoint2d -> ( Float, Float )
-toPixelsTuple point =
+pointToPixels : LMPoint2d -> { x : Float, y : Float }
+pointToPixels point =
     point
         |> Point2d.at pixelsToMetersRatio
-        |> Point2d.toTuple Pixels.inPixels
+        |> Point2d.toPixels
+
+
+toPointsString : List LMPoint2d -> String
+toPointsString points =
+    List.foldl
+        (\point acc ->
+            let
+                { x, y } =
+                    pointToPixels point
+
+                pointStr =
+                    String.fromFloat x ++ "," ++ String.fromFloat (boardSizeScaledPixels - y) ++ " "
+            in
+            pointStr ++ acc
+        )
+        ""
+        points
