@@ -9,7 +9,6 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Geometry exposing (LMPoint2d)
-import Graphics
 import Point2d
 import Quantity
 import RoadNetwork
@@ -77,9 +76,7 @@ view model world =
             [ Element.spacing whitespace.tight
             , Element.width Element.fill
             ]
-            (Dict.values world.cars
-                |> List.map (carStateView uiDimensions.text)
-            )
+            (Dict.values world.cars |> List.map carStateView)
         ]
 
 
@@ -161,15 +158,8 @@ dotStringView dotString =
             Element.none
 
 
-carStateView : Int -> Car -> Element msg
-carStateView fontSize car =
-    let
-        showCarKind =
-            Element.image [ Element.width (Element.px fontSize) ]
-                { description = ""
-                , src = "assets/" ++ Graphics.carAsset car
-                }
-    in
+carStateView : Car -> Element msg
+carStateView car =
     Element.row
         [ Element.width Element.fill
         , Element.padding whitespace.tight
@@ -183,7 +173,7 @@ carStateView fontSize car =
         , Border.width borderSize.light
         , Border.color colors.listItemBackground
         ]
-        [ showCarKind
+        [ Element.text ("# " ++ String.fromInt car.id)
         , Element.column [ Element.spacing whitespace.tight ]
             [ Element.text (pointToString car.position)
             , Element.text (speedToString car.velocity)
