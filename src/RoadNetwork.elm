@@ -1,15 +1,18 @@
 module RoadNetwork exposing
     ( Connection
     , ConnectionKind(..)
+    , RNLookupTree
     , RNNodeContext
     , RoadNetwork
     , TrafficControl(..)
     , findNodeByLotId
     , findNodeByNodeId
     , findNodeByPosition
+    , findNodeReplacement
     , fromBoardAndLots
     , getOutgoingConnections
     , getRandomNode
+    , lookupTree
     , new
     , setupTrafficControl
     , toDotString
@@ -24,7 +27,7 @@ import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction2d
 import Entity exposing (Id)
-import Geometry exposing (LMBoundingBox2d, LMDirection2d, LMPoint2d)
+import Geometry exposing (LMBoundingBox2d, LMDirection2d, LMEntityCoordinates, LMPoint2d)
 import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
 import Graph.DOT
 import IntDict
@@ -32,6 +35,7 @@ import Length exposing (Length)
 import Lot exposing (Lot, Lots)
 import Maybe.Extra as Maybe
 import Point2d
+import QuadTree
 import Quantity
 import Random
 import Random.Extra
@@ -45,6 +49,14 @@ type alias RoadNetwork =
 
 type alias RNNodeContext =
     NodeContext Connection Lane
+
+
+type alias LookupTreeEntry =
+    { id : Int, position : LMPoint2d, boundingBox : LMBoundingBox2d }
+
+
+type alias RNLookupTree =
+    QuadTree.QuadTree Length.Meters LMEntityCoordinates LookupTreeEntry
 
 
 type alias Connection =
@@ -122,6 +134,23 @@ fromBoardAndLots board lots =
             createLanes nodes
     in
     Graph.fromNodesAndEdges nodes edges
+
+
+lookupTree : RoadNetwork -> RNLookupTree
+lookupTree roadNetwork =
+    QuadTree.init Board.boundingBox 4
+        |> QuadTree.insertList
+            (Graph.fold
+                (\nodeCtx acc ->
+                    { id = nodeCtx.node.id
+                    , position = nodeCtx.node.label.position
+                    , boundingBox = BoundingBox2d.singleton nodeCtx.node.label.position
+                    }
+                        :: acc
+                )
+                []
+                roadNetwork
+            )
 
 
 
@@ -758,6 +787,30 @@ getRandomNode roadNetwork seed =
 getOutgoingConnections : RNNodeContext -> List NodeId
 getOutgoingConnections nodeCtx =
     Graph.alongOutgoingEdges nodeCtx
+
+
+findNodeReplacement : RNLookupTree -> RNNodeContext -> Maybe Int
+findNodeReplacement nodeLookup target =
+    -- Tries to find a node in the lookup tree that could replace the reference node.
+    -- Useful in maintaning route after the road network has been updated.
+    let
+        targetPosition =
+            target.node.label.position
+
+        positionMatches =
+            nodeLookup
+                |> QuadTree.findIntersecting
+                    { id = target.node.id
+                    , position = targetPosition
+                    , boundingBox = BoundingBox2d.singleton targetPosition
+                    }
+    in
+    case positionMatches of
+        match :: _ ->
+            Just match.id
+
+        [] ->
+            Nothing
 
 
 

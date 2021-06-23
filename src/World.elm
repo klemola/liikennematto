@@ -17,17 +17,15 @@ module World exposing
 import Board exposing (Board, Tile)
 import BoundingBox2d
 import Car exposing (Car, CarKind(..), Cars)
-import Cell exposing (Cell, Corner(..), OrthogonalDirection(..))
+import Cell exposing (Cell)
 import Dict
 import Dict.Extra as Dict
 import Direction2d
 import Entity exposing (Id)
 import Geometry exposing (LMBoundingBox2d)
 import Lot exposing (BuildingKind(..), Lot, Lots)
-import Quantity
 import Random
-import RoadNetwork exposing (RNNodeContext, RoadNetwork)
-import Steering
+import RoadNetwork exposing (RNLookupTree, RNNodeContext, RoadNetwork)
 import TrafficLight exposing (TrafficLights)
 
 
@@ -269,20 +267,21 @@ worldAfterBoardChange { cell, nextBoard, world } =
                 )
                 world.lots
 
+        ( nextRoadNetwork, nextTrafficLights ) =
+            RoadNetwork.fromBoardAndLots nextBoard nextLots
+                |> RoadNetwork.setupTrafficControl world.trafficLights
+
         nextCars =
             carsAfterBoardChange
                 { cell = cell
+                , currentCars = world.cars
                 , nextLots = nextLots
-                , world = world
+                , nextRoadNetwork = nextRoadNetwork
                 }
-
-        ( roadNetwork, nextTrafficLights ) =
-            RoadNetwork.fromBoardAndLots nextBoard world.lots
-                |> RoadNetwork.setupTrafficControl world.trafficLights
     in
     { world
         | board = nextBoard
-        , roadNetwork = roadNetwork
+        , roadNetwork = nextRoadNetwork
         , cars = nextCars
         , lots = nextLots
         , trafficLights = nextTrafficLights
@@ -291,13 +290,17 @@ worldAfterBoardChange { cell, nextBoard, world } =
 
 carsAfterBoardChange :
     { cell : Cell
+    , currentCars : Cars
     , nextLots : Lots
-    , world : World
+    , nextRoadNetwork : RoadNetwork
     }
     -> Cars
-carsAfterBoardChange { nextLots, world } =
-    world.cars
-        -- Room for improvement: implement general orphan entity handling
+carsAfterBoardChange { nextLots, currentCars, nextRoadNetwork } =
+    let
+        connectionLookup =
+            RoadNetwork.lookupTree nextRoadNetwork
+    in
+    currentCars
         |> Dict.filter
             (\_ car ->
                 case car.homeLotId of
@@ -305,40 +308,22 @@ carsAfterBoardChange { nextLots, world } =
                         Dict.member lotId nextLots
 
                     Nothing ->
-                        False
+                        car.kind == TestCar
             )
-        |> Dict.map (\_ car -> moveCarToHome world car)
+        |> Dict.map (\_ car -> updateRoute nextRoadNetwork connectionLookup car)
 
 
-moveCarToHome : World -> Car -> Car
-moveCarToHome world car =
-    let
-        home =
-            car.homeLotId
-                |> Maybe.andThen (\lotId -> Dict.get lotId world.lots)
+updateRoute : RoadNetwork -> RNLookupTree -> Car -> Car
+updateRoute roadNetwork connectionLookup car =
+    case
+        List.head car.route
+            |> Maybe.andThen (RoadNetwork.findNodeReplacement connectionLookup)
+            |> Maybe.andThen (RoadNetwork.findNodeByNodeId roadNetwork)
+    of
+        Just nodeCtxResult ->
+            Car.createRoute nodeCtxResult car
 
-        homeNode =
-            car.homeLotId
-                |> Maybe.andThen (RoadNetwork.findNodeByLotId world.roadNetwork)
-    in
-    case ( home, homeNode ) of
-        ( Just lot, Just nodeCtx ) ->
-            { car
-                | position = lot.entryDetails.parkingSpot
-                , orientation =
-                    lot.content.entryDirection
-                        |> Cell.orthogonalDirectionToLmDirection
-                        |> Direction2d.rotateClockwise
-                        |> Direction2d.toAngle
-                , status = Car.ParkedAtLot
-                , velocity = Quantity.zero
-                , acceleration = Steering.maxAcceleration
-                , route = []
-                , localPath = []
-            }
-                |> Car.createRoute nodeCtx
-
-        _ ->
+        Nothing ->
             Car.markAsConfused car
 
 
