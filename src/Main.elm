@@ -19,7 +19,7 @@ import Element.Border as Border
 import Html exposing (Html)
 import Pixels
 import Render
-import Simulation exposing (Msg(..))
+import Simulation
 import Task
 import UI exposing (ControlButtonSize(..))
 import World exposing (World)
@@ -236,19 +236,24 @@ render model =
 controls : Model -> Element Msg
 controls model =
     let
-        width =
-            min model.screen.width (boardSizeScaled |> Pixels.inPixels)
-
         controlButtonSize =
             if min model.screen.width model.screen.height < uiDimensions.smallControlsBreakpoint then
                 CBSmall
 
             else
                 CBLarge
+
+        spacer =
+            Element.el
+                [ Element.width (Element.px whitespace.tight)
+                , Element.height (Element.px uiDimensions.controlButtonS)
+                , Background.color colors.mainBackground
+                , Border.rounded borderRadius.heavy
+                ]
+                Element.none
     in
     Element.row
-        [ Element.width (Element.px width)
-        , Element.padding whitespace.tight
+        [ Element.padding whitespace.tight
         , Element.spacing whitespace.regular
         , Element.alignBottom
         , Element.centerX
@@ -264,9 +269,9 @@ controls model =
         ]
         [ Editor.toolbar model.editor controlButtonSize
             |> Element.map EditorMsg
+        , spacer
         , Element.row
-            [ Element.alignRight
-            , Element.spacing whitespace.tight
+            [ Element.spacing whitespace.tight
             ]
             [ UI.controlButton
                 { label = Element.text "🐛"

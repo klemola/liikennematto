@@ -1,6 +1,12 @@
-module Editor exposing (Model, Msg, initialModel, overlay, toolbar, update)
+module Editor exposing
+    ( Model
+    , Msg
+    , initialModel
+    , overlay
+    , toolbar
+    , update
+    )
 
-import Board
 import Cell exposing (Cell)
 import Config
     exposing
@@ -21,8 +27,6 @@ import World exposing (World)
 
 type Tool
     = SmartConstruction
-    | IntersectionDesigner
-    | TrafficDirectionDesigner
     | Bulldozer
     | Dynamite
     | None
@@ -73,20 +77,6 @@ update world msg model =
                 ( Dynamite, _ ) ->
                     ( SmartConstruction
                     , World.empty
-                    , Cmd.none
-                    )
-
-                ( IntersectionDesigner, Just tile ) ->
-                    -- TODO
-                    ( model
-                    , world
-                    , Cmd.none
-                    )
-
-                ( TrafficDirectionDesigner, Just tile ) ->
-                    -- TODO
-                    ( model
-                    , world
                     , Cmd.none
                     )
 
@@ -227,30 +217,6 @@ tileHighlight { world, selectedTool, cell } =
             else
                 colors.notAllowed
 
-        IntersectionDesigner ->
-            case World.tileAt cell world of
-                Just tile ->
-                    if Board.isIntersection tile then
-                        colors.target
-
-                    else
-                        colors.notAllowed
-
-                _ ->
-                    colors.notAllowed
-
-        TrafficDirectionDesigner ->
-            case World.tileAt cell world of
-                Just tile ->
-                    if tile == Board.twoLaneRoadHorizontal || tile == Board.twoLaneRoadVertical then
-                        colors.target
-
-                    else
-                        colors.notAllowed
-
-                _ ->
-                    colors.notAllowed
-
 
 toolbar : Model -> ControlButtonSize -> Element Msg
 toolbar model controlButtonSize =
@@ -259,8 +225,6 @@ toolbar model controlButtonSize =
         , Element.alignLeft
         ]
         [ toolbarButton model SmartConstruction controlButtonSize
-        , toolbarButton model IntersectionDesigner controlButtonSize
-        , toolbarButton model TrafficDirectionDesigner controlButtonSize
         , toolbarButton model Bulldozer controlButtonSize
         , toolbarButton model Dynamite controlButtonSize
         ]
@@ -273,12 +237,6 @@ toolbarButton selectedTool tool controlButtonSize =
             case tool of
                 SmartConstruction ->
                     "smart_construction.png"
-
-                IntersectionDesigner ->
-                    "intersection_designer.png"
-
-                TrafficDirectionDesigner ->
-                    "traffic_direction_designer.png"
 
                 Bulldozer ->
                     "bulldozer.png"
