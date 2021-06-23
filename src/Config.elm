@@ -5,8 +5,6 @@ module Config exposing
     , borderRadius
     , borderSize
     , colors
-    , dequeueFrequency
-    , environmentUpdateFrequency
     , pixelsToMeters
     , pixelsToMetersRatio
     , tileSize
@@ -27,16 +25,6 @@ import Quantity exposing (Quantity, Rate)
 --
 
 
-environmentUpdateFrequency : Float
-environmentUpdateFrequency =
-    1000
-
-
-dequeueFrequency : Float
-dequeueFrequency =
-    500
-
-
 boardSize : Int
 boardSize =
     10
@@ -44,7 +32,7 @@ boardSize =
 
 
 --
--- Unit constants
+-- Pixels x meters conversion
 --
 
 

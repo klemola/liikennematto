@@ -105,12 +105,7 @@ addLotResident lotId lot world =
             Car.new kind
                 |> Car.withHome lotId
                 |> Car.withPosition lot.entryDetails.parkingSpot
-                |> Car.withOrientation
-                    (lot.content.entryDirection
-                        |> Cell.orthogonalDirectionToLmDirection
-                        |> Direction2d.rotateClockwise
-                        |> Direction2d.toAngle
-                    )
+                |> Car.withOrientation (Lot.parkingSpotOrientation lot)
                 |> Car.build carId (RoadNetwork.findNodeByLotId world.roadNetwork lotId)
 
         addToWorld car =
