@@ -7,8 +7,6 @@ module Rounds exposing
     , noCollisionSetupDifferentLanes
     , noCollisionSetupIntersection
     , redTrafficLightsSetup
-    , stopSetup
-    , yieldAfterStopSetup
     , yieldWithPriorityTrafficSetup1
     , yieldWithPriorityTrafficSetup2
     , yieldWithoutPriorityTrafficSetup
@@ -338,47 +336,6 @@ yieldWithoutPriorityTrafficSetup =
                 |> World.setCar car.id car
     in
     Round worldWithCars car [] seed
-
-
-stopSetup : Round
-stopSetup =
-    let
-        world =
-            World.empty
-                |> World.buildRoadAt ( 1, 2 )
-                |> World.buildRoadAt ( 2, 2 )
-                |> World.buildRoadAt ( 3, 1 )
-                |> World.buildRoadAt ( 3, 2 )
-                |> World.buildRoadAt ( 3, 3 )
-
-        car =
-            buildCar CarA1 ( 0, 640 ) (Angle.degrees 0) Steering.maxVelocity
-
-        otherCars =
-            []
-    in
-    Round world car otherCars seed
-
-
-yieldAfterStopSetup : Round
-yieldAfterStopSetup =
-    let
-        world =
-            World.empty
-                |> World.buildRoadAt ( 1, 2 )
-                |> World.buildRoadAt ( 2, 1 )
-                |> World.buildRoadAt ( 2, 2 )
-                |> World.buildRoadAt ( 2, 3 )
-
-        car =
-            buildCar CarA1 ( 0, 640 ) (Angle.degrees 0) Steering.maxVelocity
-                |> Car.stopAtIntersection
-
-        otherCars =
-            [ buildCar CarB2 ( 80, 720 ) (Angle.degrees 270) Steering.maxVelocity
-            ]
-    in
-    Round world car otherCars seed
 
 
 largeWorldSetup : Int -> Round

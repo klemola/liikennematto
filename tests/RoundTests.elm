@@ -20,8 +20,6 @@ import Rounds
         , noCollisionSetupDifferentLanes
         , noCollisionSetupIntersection
         , redTrafficLightsSetup
-        , stopSetup
-        , yieldAfterStopSetup
         , yieldWithPriorityTrafficSetup1
         , yieldWithPriorityTrafficSetup2
         , yieldWithoutPriorityTrafficSetup
@@ -63,10 +61,6 @@ suite =
                 (\_ -> Expect.equal (checkTrafficControl yieldWithPriorityTrafficSetup1) (Just (YieldAtIntersection (Length.meters 4))))
             , test "disallow movement if the car has to yield at sign - 2"
                 (\_ -> Expect.equal (checkTrafficControl yieldWithPriorityTrafficSetup2) (Just (YieldAtIntersection (Length.meters 4))))
-            , test "disallow movement if the car is at a stop sign"
-                (\_ -> Expect.equal (checkTrafficControl stopSetup) (Just (StopAtIntersection (Length.meters 0))))
-            , test "disallow movement if the car is at a stop sign - additional yield rules"
-                (\_ -> Expect.equal (checkTrafficControl yieldAfterStopSetup) (Just (YieldAtIntersection (Length.meters 0))))
             ]
         , describe "Playing the round"
             [ test "can prevent car movement"
@@ -95,15 +89,6 @@ suite =
                             |> getCarStatus
                         )
                         Yielding
-                )
-            , test "can make the car stop (at sign)"
-                (\_ ->
-                    Expect.equal
-                        (stopSetup
-                            |> Round.play
-                            |> getCarStatus
-                        )
-                        StoppedAtIntersection
                 )
             ]
         ]
