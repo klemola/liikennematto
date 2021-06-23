@@ -389,15 +389,28 @@ markAsConfused car =
 
 createRoute : RNNodeContext -> Car -> Car
 createRoute nodeCtx car =
+    let
+        newPathRequired =
+            case car.route of
+                target :: _ ->
+                    target.node.label.position /= nodeCtx.node.label.position
+
+                _ ->
+                    True
+    in
     { car
         | route = [ nodeCtx ]
         , localPath =
-            LocalPath.toNode
-                { origin = car.position
-                , direction = Direction2d.fromAngle car.orientation
-                , useOffsetSpline = car.status == ParkedAtLot
-                }
-                nodeCtx
+            if newPathRequired then
+                LocalPath.toNode
+                    { origin = car.position
+                    , direction = Direction2d.fromAngle car.orientation
+                    , useOffsetSpline = car.status == ParkedAtLot
+                    }
+                    nodeCtx
+
+            else
+                car.localPath
     }
 
 
