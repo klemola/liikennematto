@@ -12,12 +12,15 @@ module Lot exposing
     , entryDetails
     , fromNewLot
     , inBounds
+    , parkingSpotOrientation
     )
 
+import Angle exposing (Angle)
 import BoundingBox2d
 import Cell exposing (Cell, OrthogonalDirection(..))
 import Config exposing (tileSizeInMeters)
 import Dict exposing (Dict)
+import Direction2d
 import Entity exposing (Id)
 import Geometry exposing (LMBoundingBox2d, LMPoint2d)
 import Length exposing (Length)
@@ -225,6 +228,14 @@ parkingSpot anchor newLot =
             Vector2d.xy shiftX shiftY
     in
     origin |> Point2d.translateBy displacement
+
+
+parkingSpotOrientation : Lot -> Angle
+parkingSpotOrientation lot =
+    lot.content.entryDirection
+        |> Cell.orthogonalDirectionToLmDirection
+        |> Direction2d.rotateClockwise
+        |> Direction2d.toAngle
 
 
 entryCell : Anchor -> Cell

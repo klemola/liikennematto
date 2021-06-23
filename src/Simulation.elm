@@ -14,8 +14,10 @@ import Car exposing (Car, Status(..))
 import Cell exposing (Cell)
 import Config
 import Dict
+import Dict.Extra as Dict
 import Direction2d
 import Duration
+import Entity
 import Geometry exposing (LMEntityCoordinates)
 import Length
 import Lot exposing (NewLot)
@@ -53,6 +55,7 @@ type Msg
     | UpdateEnvironment Time.Posix
     | GenerateEnvironment ()
     | CheckQueues Time.Posix
+    | FixTrafficProblems Time.Posix
     | SpawnTestCar
 
 
@@ -69,6 +72,21 @@ init =
       }
     , generateEnvironmentAfterDelay seed
     )
+
+
+environmentUpdateFrequency : Float
+environmentUpdateFrequency =
+    1000
+
+
+dequeueFrequency : Float
+dequeueFrequency =
+    500
+
+
+trafficProblemsCheckFrequency : Float
+trafficProblemsCheckFrequency =
+    1000
 
 
 quadTreeLeafElementsAmount : Int
@@ -88,9 +106,10 @@ subscriptions { simulation } =
 
     else
         Sub.batch
-            [ Time.every Config.environmentUpdateFrequency UpdateEnvironment
-            , Time.every Config.dequeueFrequency CheckQueues
-            , Events.onAnimationFrameDelta UpdateTraffic
+            [ Events.onAnimationFrameDelta UpdateTraffic
+            , Time.every environmentUpdateFrequency UpdateEnvironment
+            , Time.every dequeueFrequency CheckQueues
+            , Time.every trafficProblemsCheckFrequency FixTrafficProblems
             ]
 
 
@@ -157,6 +176,12 @@ update world msg model =
                 , seed = nextSeed
               }
             , nextWorld
+            , Cmd.none
+            )
+
+        FixTrafficProblems _ ->
+            ( model
+            , fixConfusedCars world
             , Cmd.none
             )
 
@@ -436,6 +461,45 @@ updateCar delta car =
                 , shape = nextShape
                 , boundingBox = nextBoundingBox
             }
+
+
+fixConfusedCars : World -> World
+fixConfusedCars world =
+    let
+        fixConfused _ car =
+            if car.status == Confused && car.velocity == Quantity.zero then
+                car.homeLotId |> Maybe.map (moveCarToHome world car)
+
+            else
+                Just car
+    in
+    { world | cars = world.cars |> Dict.filterMap fixConfused }
+
+
+moveCarToHome : World -> Car -> Entity.Id -> Car
+moveCarToHome world car lotId =
+    let
+        home =
+            Dict.get lotId world.lots
+
+        homeNode =
+            RoadNetwork.findNodeByLotId world.roadNetwork lotId
+    in
+    case ( home, homeNode ) of
+        ( Just lot, Just nodeCtx ) ->
+            { car
+                | position = lot.entryDetails.parkingSpot
+                , orientation = Lot.parkingSpotOrientation lot
+                , status = Car.ParkedAtLot
+                , velocity = Quantity.zero
+                , acceleration = Steering.maxAcceleration
+                , route = []
+                , localPath = []
+            }
+                |> Car.createRoute nodeCtx
+
+        _ ->
+            Car.markAsConfused car
 
 
 

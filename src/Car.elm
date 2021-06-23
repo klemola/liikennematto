@@ -380,10 +380,8 @@ markAsConfused : Car -> Car
 markAsConfused car =
     { car
         | status = Confused
-        , velocity = Quantity.zero
-        , acceleration = Quantity.zero
+        , acceleration = maxDeceleration
         , route = []
-        , localPath = []
     }
 
 
