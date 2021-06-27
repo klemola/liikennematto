@@ -289,6 +289,19 @@ findLotAnchor world seed newLot =
 
         hasEnoughSpaceAround cell =
             World.isEmptyArea (lotBoundingBox cell) world
+                && isNotAtTheEndOfARoad cell
+
+        isNotAtTheEndOfARoad cell =
+            Cell.allODs
+                |> List.all
+                    (\od ->
+                        case World.tileAt (Cell.next od cell) world of
+                            Just neighbor ->
+                                neighbor == Board.twoLaneRoadHorizontal || neighbor == Board.twoLaneRoadVertical
+
+                            Nothing ->
+                                True
+                    )
     in
     shuffledBoard
         |> List.filter isCompatible
