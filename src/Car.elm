@@ -174,7 +174,7 @@ speedToFieldOfViewReduction =
 
 trafficControlStopDistance : Length
 trafficControlStopDistance =
-    Length.meters 3
+    Length.meters 4
 
 
 collisionMargin : Length
