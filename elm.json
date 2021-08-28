@@ -19,8 +19,8 @@
             "elm-community/random-extra": "3.1.0",
             "elm-explorations/benchmark": "1.0.2",
             "evelios/elm-geometry-quadtree": "1.0.0",
-            "ianmackenzie/elm-geometry": "3.9.0",
-            "ianmackenzie/elm-units": "2.7.0",
+            "ianmackenzie/elm-geometry": "3.9.1",
+            "ianmackenzie/elm-units": "2.9.0",
             "mdgriffith/elm-ui": "1.1.7"
         },
         "indirect": {
