@@ -480,7 +480,7 @@ fixConfusedCars : World -> World
 fixConfusedCars world =
     let
         fixConfused _ car =
-            if car.status == Confused && car.velocity == Quantity.zero then
+            if car.status == Confused && Car.isStoppedOrWaiting car then
                 car.homeLotId |> Maybe.map (moveCarToHome world car)
 
             else

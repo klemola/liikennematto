@@ -5,6 +5,7 @@ import Car exposing (Status(..))
 import Expect
 import Length
 import Maybe.Extra
+import Quantity
 import Round
     exposing
         ( RoundResults
@@ -74,12 +75,13 @@ suite =
                 )
             , test "can stop the car at traffic lights"
                 (\_ ->
-                    Expect.equal
+                    Expect.true
+                        "Expected deceleration"
                         (redTrafficLightsSetup
                             |> Round.play
-                            |> getCarStatus
+                            |> getCarAcceleration
+                            |> Quantity.lessThanZero
                         )
-                        WaitingForTrafficLights
                 )
             , test "can make the car yield"
                 (\_ ->

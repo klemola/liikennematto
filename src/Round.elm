@@ -145,7 +145,7 @@ applyRule round rule =
             applyCarAction (Car.break distanceToCollision) round
 
         WaitForTrafficLights distanceFromTrafficLight ->
-            if activeCar.status == WaitingForTrafficLights || Car.isStoppedOrWaiting activeCar then
+            if Car.isStoppedOrWaiting activeCar then
                 round
 
             else

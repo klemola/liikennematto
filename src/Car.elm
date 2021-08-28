@@ -102,7 +102,6 @@ type CarKind
 
 type Status
     = Moving
-    | WaitingForTrafficLights
     | StoppedAtIntersection
     | Yielding
     | ParkedAtLot
@@ -274,7 +273,7 @@ isConfused car =
 
 isStoppedOrWaiting : Car -> Bool
 isStoppedOrWaiting car =
-    car.velocity == Quantity.zero
+    car.velocity |> Quantity.lessThan (Speed.metersPerSecond 0.01)
 
 
 isBreaking : Car -> Bool
@@ -304,16 +303,11 @@ waitForTrafficLights distanceFromTrafficLight car =
             distanceFromTrafficLight
                 |> Quantity.minus trafficControlStopDistance
                 |> Quantity.max Quantity.zero
-    in
-    { car
-        | status = WaitingForTrafficLights
-        , acceleration =
-            if targetDistance |> Quantity.lessThanOrEqualTo trafficControlStopDistance then
-                maxDeceleration
 
-            else
-                accelerateToZeroOverDistance car.velocity targetDistance
-    }
+        nextAcceleration =
+            accelerateToZeroOverDistance car.velocity targetDistance |> Quantity.clamp maxDeceleration Quantity.zero
+    in
+    { car | acceleration = nextAcceleration }
 
 
 yield : Length -> Car -> Car
@@ -507,9 +501,6 @@ statusDescription car =
     case car.status of
         Moving ->
             "Moving" ++ " " ++ routeDescription car.route
-
-        WaitingForTrafficLights ->
-            "Waiting for traffic lights"
 
         StoppedAtIntersection ->
             "Stopped"
