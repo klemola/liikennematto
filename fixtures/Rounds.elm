@@ -7,6 +7,7 @@ module Rounds exposing
     , noCollisionSetupDifferentLanes
     , noCollisionSetupIntersection
     , redTrafficLightsSetup
+    , yieldSlowDownSetup
     , yieldWithPriorityTrafficSetup1
     , yieldWithPriorityTrafficSetup2
     , yieldWithoutPriorityTrafficSetup
@@ -336,6 +337,36 @@ yieldWithoutPriorityTrafficSetup =
                 |> World.setCar car.id car
     in
     Round worldWithCars car [] seed
+
+
+yieldSlowDownSetup : Round
+yieldSlowDownSetup =
+    let
+        world =
+            worldWithThreeWayIntersection
+
+        carDestination =
+            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 160 586)
+
+        car =
+            buildCar CarA1 ( 120, 586 ) (Angle.degrees 0) Quantity.zero
+
+        carWithRoute =
+            case carDestination of
+                Just nodeCtx ->
+                    Car.createRoute nodeCtx car
+
+                Nothing ->
+                    Debug.todo "invalid test fixture"
+
+        otherCars =
+            []
+
+        worldWithCars =
+            world
+                |> World.setCar carWithRoute.id carWithRoute
+    in
+    Round worldWithCars carWithRoute otherCars seed
 
 
 largeWorldSetup : Int -> Round

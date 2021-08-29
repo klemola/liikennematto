@@ -20,15 +20,13 @@ module Car exposing
     , slowDown
     , startMoving
     , statusDescription
-    , stopAtIntersection
+    , stopAtTrafficControl
     , viewDistance
-    , waitForTrafficLights
     , width
     , withHome
     , withOrientation
     , withPosition
     , withVelocity
-    , yield
     )
 
 import Acceleration exposing (Acceleration)
@@ -102,8 +100,6 @@ type CarKind
 
 type Status
     = Moving
-    | StoppedAtIntersection
-    | Yielding
     | ParkedAtLot
     | Confused
 
@@ -284,10 +280,10 @@ isBreaking car =
 secondsTo : LMPoint2d -> Car -> Quantity Float Duration.Seconds
 secondsTo target car =
     let
-        distanceToTarget =
+        distanceFromTarget =
             Point2d.distanceFrom car.position target
     in
-    distanceToTarget |> Quantity.at_ car.velocity
+    distanceFromTarget |> Quantity.at_ car.velocity
 
 
 
@@ -296,44 +292,21 @@ secondsTo target car =
 --
 
 
-waitForTrafficLights : Length -> Car -> Car
-waitForTrafficLights distanceFromTrafficLight car =
+stopAtTrafficControl : Length -> Car -> Car
+stopAtTrafficControl distanceFromTrafficControl car =
     let
-        targetDistance =
-            distanceFromTrafficLight
-                |> Quantity.minus trafficControlStopDistance
-                |> Quantity.max Quantity.zero
-
         nextAcceleration =
-            accelerateToZeroOverDistance car.velocity targetDistance |> Quantity.clamp maxDeceleration Quantity.zero
+            if car.velocity == Quantity.zero then
+                maxDeceleration
+
+            else
+                distanceFromTrafficControl
+                    |> Quantity.minus trafficControlStopDistance
+                    |> Quantity.max Quantity.zero
+                    |> accelerateToZeroOverDistance car.velocity
+                    |> Quantity.clamp maxDeceleration Quantity.zero
     in
     { car | acceleration = nextAcceleration }
-
-
-yield : Length -> Car -> Car
-yield distanceToSign car =
-    let
-        targetDistance =
-            distanceToSign
-                |> Quantity.minus trafficControlStopDistance
-                |> Quantity.max Quantity.zero
-
-        nextAcceleration =
-            Quantity.max maxDeceleration (accelerateToZeroOverDistance car.velocity targetDistance)
-    in
-    { car
-        | status = Yielding
-        , acceleration = nextAcceleration
-    }
-
-
-stopAtIntersection : Car -> Car
-stopAtIntersection car =
-    { car
-        | status = StoppedAtIntersection
-        , acceleration = Quantity.zero
-        , velocity = Quantity.zero
-    }
 
 
 break : Length -> Car -> Car
@@ -413,8 +386,12 @@ createRoute nodeCtx car =
 
 
 accelerateToZeroOverDistance : Speed -> Length -> Acceleration
-accelerateToZeroOverDistance (Quantity speed) (Quantity distanceToTarget) =
-    Quantity (-speed * speed / (2 * distanceToTarget))
+accelerateToZeroOverDistance (Quantity speed) (Quantity distanceFromTarget) =
+    if distanceFromTarget == 0 then
+        maxDeceleration
+
+    else
+        Quantity (-speed * speed / (2 * distanceFromTarget))
 
 
 fieldOfView : Car -> Triangle2d Meters LMEntityCoordinates
@@ -501,12 +478,6 @@ statusDescription car =
     case car.status of
         Moving ->
             "Moving" ++ " " ++ routeDescription car.route
-
-        StoppedAtIntersection ->
-            "Stopped"
-
-        Yielding ->
-            "Yielding"
 
         ParkedAtLot ->
             "Parked @ lot"

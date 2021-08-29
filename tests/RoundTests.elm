@@ -21,6 +21,7 @@ import Rounds
         , noCollisionSetupDifferentLanes
         , noCollisionSetupIntersection
         , redTrafficLightsSetup
+        , yieldSlowDownSetup
         , yieldWithPriorityTrafficSetup1
         , yieldWithPriorityTrafficSetup2
         , yieldWithoutPriorityTrafficSetup
@@ -57,11 +58,13 @@ suite =
             , test "allow movement if there's no need to yield at sign"
                 (\_ -> Expect.equal (checkTrafficControl yieldWithoutPriorityTrafficSetup) Nothing)
             , test "disallow movement if traffic lights are not green"
-                (\_ -> Expect.equal (checkTrafficControl redTrafficLightsSetup) (Just (WaitForTrafficLights (Length.meters 8))))
+                (\_ -> Expect.equal (checkTrafficControl redTrafficLightsSetup) (Just (StopAtTrafficControl (Length.meters 8))))
             , test "disallow movement if the car has to yield at sign - 1"
-                (\_ -> Expect.equal (checkTrafficControl yieldWithPriorityTrafficSetup1) (Just (YieldAtIntersection (Length.meters 4))))
+                (\_ -> Expect.equal (checkTrafficControl yieldWithPriorityTrafficSetup1) (Just (StopAtTrafficControl (Length.meters 4))))
             , test "disallow movement if the car has to yield at sign - 2"
-                (\_ -> Expect.equal (checkTrafficControl yieldWithPriorityTrafficSetup2) (Just (YieldAtIntersection (Length.meters 4))))
+                (\_ -> Expect.equal (checkTrafficControl yieldWithPriorityTrafficSetup2) (Just (StopAtTrafficControl (Length.meters 4))))
+            , test "slow down before a yield sign"
+                (\_ -> Expect.equal (checkTrafficControl yieldSlowDownSetup) (Just SlowDownAtTrafficControl))
             ]
         , describe "Playing the round"
             [ test "can prevent car movement"
@@ -85,20 +88,16 @@ suite =
                 )
             , test "can make the car yield"
                 (\_ ->
-                    Expect.equal
+                    Expect.true
+                        "Expected deceleration"
                         (yieldWithPriorityTrafficSetup1
                             |> Round.play
-                            |> getCarStatus
+                            |> getCarAcceleration
+                            |> Quantity.lessThanZero
                         )
-                        Yielding
                 )
             ]
         ]
-
-
-getCarStatus : RoundResults -> Car.Status
-getCarStatus { car } =
-    car.status
 
 
 getCarAcceleration : RoundResults -> Acceleration

@@ -44,9 +44,7 @@ type alias RoundResults =
 
 type Rule
     = AvoidCollision Length
-    | WaitForTrafficLights Length
-    | YieldAtIntersection Length
-    | StopAtIntersection Length
+    | StopAtTrafficControl Length
     | SlowDownAtTrafficControl
 
 
@@ -136,30 +134,12 @@ ruleToApply round =
 
 applyRule : Round -> Rule -> Round
 applyRule round rule =
-    let
-        { activeCar } =
-            round
-    in
     case rule of
         AvoidCollision distanceToCollision ->
             applyCarAction (Car.break distanceToCollision) round
 
-        WaitForTrafficLights distanceFromTrafficLight ->
-            if Car.isStoppedOrWaiting activeCar then
-                round
-
-            else
-                applyCarAction (Car.waitForTrafficLights distanceFromTrafficLight) round
-
-        YieldAtIntersection distanceFromSign ->
-            applyCarAction (Car.yield distanceFromSign) round
-
-        StopAtIntersection _ ->
-            if Car.isStoppedOrWaiting activeCar then
-                round
-
-            else
-                applyCarAction Car.stopAtIntersection round
+        StopAtTrafficControl distanceFromTrafficControl ->
+            applyCarAction (Car.stopAtTrafficControl distanceFromTrafficControl) round
 
         SlowDownAtTrafficControl ->
             applyCarAction (Car.slowDown (Steering.maxVelocity |> Quantity.half)) round
@@ -224,7 +204,7 @@ checkTrafficLights round trafficLight =
             distanceFromTrafficLight |> Quantity.lessThanOrEqualTo trafficLightReactionDistance
     in
     if TrafficLight.shouldStopTraffic trafficLight && carShouldReact then
-        Just (WaitForTrafficLights distanceFromTrafficLight)
+        Just (StopAtTrafficControl distanceFromTrafficLight)
 
     else
         Nothing
@@ -241,7 +221,7 @@ checkYield { activeCar, otherCars } signPosition =
     in
     if distanceFromYieldSign |> Quantity.lessThanOrEqualTo yieldReactionDistance then
         distanceToClosestCollisionPoint activeCar otherCars (pathsIntersectAt checkArea activeCar)
-            |> Maybe.map (\_ -> YieldAtIntersection distanceFromYieldSign)
+            |> Maybe.map (\_ -> StopAtTrafficControl distanceFromYieldSign)
 
     else if distanceFromYieldSign |> Quantity.lessThanOrEqualTo yieldSlowDownDistance then
         Just SlowDownAtTrafficControl
