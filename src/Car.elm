@@ -154,7 +154,7 @@ shapeAtOrigin =
 
 viewDistance : Length
 viewDistance =
-    Length.meters 20
+    Length.meters 24
 
 
 maxFieldOfView : Angle
@@ -428,6 +428,12 @@ rightSideOfFieldOfView car =
         direction =
             Direction2d.fromAngle car.orientation
 
+        viewOffset =
+            length |> Quantity.multiplyBy 0.25
+
+        origin =
+            car.position |> Point2d.translateIn direction viewOffset
+
         limitFront =
             car.position |> Point2d.translateIn direction viewDistance
 
@@ -449,7 +455,7 @@ rightSideOfFieldOfView car =
                     (Direction2d.rotateBy angle direction)
                     distanceRight
     in
-    Triangle2d.from car.position limitFront limitRight
+    Triangle2d.from origin limitFront limitRight
 
 
 adjustedShape : LMPoint2d -> Angle -> ( Polygon2d Meters LMEntityCoordinates, LMBoundingBox2d )
