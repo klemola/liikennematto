@@ -132,11 +132,16 @@ spawnCar seed world =
                     id =
                         Entity.nextId world.cars
 
+                    nextNode =
+                        RoadNetwork.getOutgoingConnections nodeCtx
+                            |> List.head
+                            |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
+
                     car =
                         Car.new Car.TestCar
                             |> Car.withPosition nodeCtx.node.label.position
                             |> Car.withOrientation (Direction2d.toAngle nodeCtx.node.label.direction)
-                            |> Car.build id (Just nodeCtx)
+                            |> Car.build id nextNode
                             |> Car.startMoving
                 in
                 ( { world | cars = Dict.insert id car world.cars }
