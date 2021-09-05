@@ -4,6 +4,7 @@ module Car exposing
     , Cars
     , Status(..)
     , adjustedShape
+    , applyCollisionEffects
     , break
     , build
     , createRoute
@@ -332,6 +333,15 @@ slowDown targetVelocity car =
 
             else
                 maxAcceleration
+    }
+
+
+applyCollisionEffects : Car -> Car
+applyCollisionEffects car =
+    -- Bounce the car back on impact
+    { car
+        | acceleration = Quantity.zero
+        , velocity = Speed.metersPerSecond -10
     }
 
 

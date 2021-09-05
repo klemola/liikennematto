@@ -9,6 +9,6 @@ main : Html msg
 main =
     let
         world =
-            Rounds.yieldWithPriorityTrafficSetup2.world
+            Rounds.collisionSetupCollided.world
     in
     Render.view world { showRoadNetwork = False, showCarDebugVisuals = True }

@@ -14,7 +14,8 @@ import Round
         )
 import Rounds
     exposing
-        ( collisionSetupNearCollision
+        ( collisionSetupCollided
+        , collisionSetupNearCollision
         , collisionSetupPathsIntersect
         , connectedRoadsSetup
         , greenTrafficLightsSetup
@@ -49,6 +50,8 @@ suite =
                 (\_ -> Expect.equal (Round.checkPathCollision collisionSetupPathsIntersect) (Just (AvoidCollision (Length.meters 9.199999999999989))))
             , test "disallow movement if it will cause a collision (near collision)"
                 (\_ -> Expect.equal (Round.checkForwardCollision collisionSetupNearCollision) (Just (AvoidCollision (Length.meters 4.313351365237916))))
+            , test "recover when a collision occurs"
+                (\_ -> Expect.equal (Round.checkForwardCollision collisionSetupCollided) (Just ReactToCollision))
             ]
         , describe "Intersection rules"
             [ test "allow movement if the car is not facing a intersection"

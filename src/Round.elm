@@ -44,6 +44,7 @@ type alias RoundResults =
 
 type Rule
     = AvoidCollision Length
+    | ReactToCollision
     | StopAtTrafficControl Length
     | SlowDownAtTrafficControl
 
@@ -54,19 +55,16 @@ type Rule
 --
 
 
-carOrientationTolerance : Angle
-carOrientationTolerance =
-    Angle.degrees 10
-
-
-dangerousCarCollisionTestDistance : Length
-dangerousCarCollisionTestDistance =
-    Length.meters 6
-
-
 maxCarCollisionTestDistance : Length
 maxCarCollisionTestDistance =
     tileSizeInMeters
+
+
+carFrontBumperDistance : Length
+carFrontBumperDistance =
+    Car.length
+        |> Quantity.half
+        |> Quantity.plus (Length.meters 0.1)
 
 
 trafficLightReactionDistance : Length
@@ -138,6 +136,9 @@ applyRule round rule =
         AvoidCollision distanceToCollision ->
             applyCarAction (Car.break distanceToCollision) round
 
+        ReactToCollision ->
+            applyCarAction Car.applyCollisionEffects round
+
         StopAtTrafficControl distanceFromTrafficControl ->
             applyCarAction (Car.stopAtTrafficControl distanceFromTrafficControl) round
 
@@ -160,10 +161,17 @@ checkForwardCollision : Round -> Maybe Rule
 checkForwardCollision { activeCar, otherCars } =
     let
         ray =
-            Direction2d.fromAngle activeCar.orientation |> toRay activeCar.position maxCarCollisionTestDistance
+            toRay activeCar maxCarCollisionTestDistance
     in
     distanceToClosestCollisionPoint activeCar otherCars (forwardCollisionWith ray activeCar)
-        |> Maybe.map AvoidCollision
+        |> Maybe.map
+            (\collisionDistance ->
+                if collisionDistance |> Quantity.lessThanOrEqualTo carFrontBumperDistance then
+                    ReactToCollision
+
+                else
+                    AvoidCollision collisionDistance
+            )
 
 
 checkPathCollision : Round -> Maybe Rule
@@ -239,27 +247,22 @@ checkYield { activeCar, otherCars } signPosition =
 forwardCollisionWith : LineSegment2d Meters LMEntityCoordinates -> Car -> Car -> Maybe LMPoint2d
 forwardCollisionWith ray activeCar otherCar =
     let
-        dangerouslyClose =
-            Point2d.distanceFrom activeCar.position otherCar.position
-                |> Quantity.lessThan dangerousCarCollisionTestDistance
+        maxOrientationDifference =
+            Angle.degrees 5
 
-        couldCatchUpWithOther =
-            Car.isStoppedOrWaiting otherCar
-                || (otherCar.velocity |> Quantity.lessThan activeCar.velocity)
+        headingRoughlyInTheSameDirection =
+            Quantity.equalWithin maxOrientationDifference activeCar.orientation otherCar.orientation
 
-        intersects edge =
-            LineSegment2d.intersectionPoint edge ray
+        canCatchUp =
+            otherCar.velocity |> Quantity.lessThan activeCar.velocity
     in
-    if
-        headingRoughlyInTheSameDirection activeCar otherCar
-            && not dangerouslyClose
-            && not couldCatchUpWithOther
-    then
+    -- Avoid stuttering movement when the car is behind another and aligned
+    if headingRoughlyInTheSameDirection && not canCatchUp then
         Nothing
 
     else
         Polygon2d.edges otherCar.shape
-            |> List.filterMap intersects
+            |> List.filterMap (LineSegment2d.intersectionPoint ray)
             |> List.sortWith
                 (\pt1 pt2 ->
                     Quantity.compare
@@ -271,21 +274,20 @@ forwardCollisionWith ray activeCar otherCar =
 
 pathCollisionWith : Triangle2d Meters LMEntityCoordinates -> Car -> Car -> Maybe LMPoint2d
 pathCollisionWith fieldOfViewTriangle activeCar otherCar =
-    if
-        -- TODO: fix the car velocity precision (currently might not reach zero due to floating point accuracy)
-        not (Car.isStoppedOrWaiting otherCar)
-            && not (headingRoughlyInTheSameDirection activeCar otherCar)
-    then
-        pathsIntersectAt fieldOfViewTriangle activeCar otherCar
-            |> Maybe.andThen (intersectionPointWithSpeedTakenIntoAccount activeCar otherCar)
+    let
+        maxOrientationDifference =
+            Angle.degrees 10
 
-    else
+        headingRoughlyInTheSameDirection =
+            Quantity.equalWithin maxOrientationDifference activeCar.orientation otherCar.orientation
+    in
+    -- Avoid false positives for cars that are roughly aligned & optimize by ignoring stationary cars
+    if Car.isStoppedOrWaiting otherCar || headingRoughlyInTheSameDirection then
         Nothing
 
-
-headingRoughlyInTheSameDirection : Car -> Car -> Bool
-headingRoughlyInTheSameDirection car otherCar =
-    Quantity.equalWithin carOrientationTolerance car.orientation otherCar.orientation
+    else
+        pathsIntersectAt fieldOfViewTriangle activeCar otherCar
+            |> Maybe.andThen (intersectionPointWithSpeedTakenIntoAccount activeCar otherCar)
 
 
 intersectionPointWithSpeedTakenIntoAccount : Car -> Car -> LMPoint2d -> Maybe LMPoint2d
@@ -312,15 +314,22 @@ pathsIntersectAt : Triangle2d Meters LMEntityCoordinates -> Car -> Car -> Maybe 
 pathsIntersectAt checkArea car otherCar =
     if Triangle2d.contains otherCar.position checkArea then
         LineSegment2d.intersectionPoint
-            (Direction2d.fromAngle car.orientation |> toRay car.position Car.viewDistance)
-            (Direction2d.fromAngle otherCar.orientation |> toRay otherCar.position Car.viewDistance)
+            (toRay car Car.viewDistance)
+            (toRay otherCar Car.viewDistance)
 
     else
         Nothing
 
 
-toRay : LMPoint2d -> Length -> LMDirection2d -> LineSegment2d Meters LMEntityCoordinates
-toRay origin direction distance =
+toRay : Car -> Length -> LineSegment2d Meters LMEntityCoordinates
+toRay car distance =
+    let
+        origin =
+            car.position
+
+        direction =
+            Direction2d.fromAngle car.orientation
+    in
     LineSegment2d.from
         origin
-        (origin |> Point2d.translateIn distance direction)
+        (origin |> Point2d.translateIn direction distance)

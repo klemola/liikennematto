@@ -1,5 +1,6 @@
 module Rounds exposing
-    ( collisionSetupNearCollision
+    ( collisionSetupCollided
+    , collisionSetupNearCollision
     , collisionSetupPathsIntersect
     , connectedRoadsSetup
     , greenTrafficLightsSetup
@@ -110,6 +111,52 @@ collisionSetupNearCollision =
 
         car =
             buildCar CarA1 ( 110, 670 ) (Angle.degrees 45) Steering.maxVelocity
+
+        carWithRoute =
+            case carDestination of
+                Just nodeCtx ->
+                    Car.createRoute nodeCtx car
+
+                Nothing ->
+                    Debug.todo "invalid test fixture"
+
+        otherCarDestination =
+            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 80 694)
+
+        otherCar =
+            buildCar CarB2 ( 130, 691 ) (Angle.degrees 180) Steering.maxVelocity
+
+        otherCarWithRoute =
+            case otherCarDestination of
+                Just nodeCtx ->
+                    Car.createRoute nodeCtx otherCar
+
+                Nothing ->
+                    Debug.todo "invalid test fixture"
+
+        otherCars =
+            [ otherCarWithRoute
+            ]
+
+        worldWithCars =
+            world
+                |> World.setCar carWithRoute.id carWithRoute
+                |> World.setCar otherCarWithRoute.id otherCarWithRoute
+    in
+    Round worldWithCars carWithRoute otherCars seed
+
+
+collisionSetupCollided : Round
+collisionSetupCollided =
+    let
+        world =
+            worldWithFourWayIntersection
+
+        carDestination =
+            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 134 720)
+
+        car =
+            buildCar CarA1 ( 134, 674 ) (Angle.degrees 90) Steering.maxVelocity
 
         carWithRoute =
             case carDestination of
