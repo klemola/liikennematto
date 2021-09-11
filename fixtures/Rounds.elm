@@ -17,6 +17,7 @@ module Rounds exposing
 import Angle exposing (Angle)
 import Car exposing (Car)
 import Dict
+import Geometry exposing (LMPoint2d)
 import Quantity
 import Random
 import RoadNetwork
@@ -60,44 +61,24 @@ collisionSetupPathsIntersect =
         world =
             worldWithFourWayIntersection
 
-        carDestination =
-            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 134 720)
-
         car =
             buildCar CarA1 ( 102, 668 ) (Angle.degrees 30) Steering.maxVelocity
-
-        carWithRoute =
-            case carDestination of
-                Just nodeCtx ->
-                    Car.createRoute nodeCtx car
-
-                Nothing ->
-                    Debug.todo "invalid test fixture"
-
-        otherCarDestination =
-            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 80 694)
+                |> routeCarByDestination world (toLMPoint2d 134 720)
 
         otherCar =
             buildCar CarB2 ( 160, 691 ) (Angle.degrees 180) Steering.maxVelocity
-
-        otherCarWithRoute =
-            case otherCarDestination of
-                Just nodeCtx ->
-                    Car.createRoute nodeCtx otherCar
-
-                Nothing ->
-                    Debug.todo "invalid test fixture"
+                |> routeCarByDestination world (toLMPoint2d 80 694)
 
         otherCars =
-            [ otherCarWithRoute
+            [ otherCar
             ]
 
         worldWithCars =
             world
-                |> World.setCar carWithRoute.id carWithRoute
-                |> World.setCar otherCarWithRoute.id otherCarWithRoute
+                |> World.setCar car.id car
+                |> World.setCar otherCar.id otherCar
     in
-    Round worldWithCars carWithRoute otherCars seed
+    Round worldWithCars car otherCars seed
 
 
 collisionSetupNearCollision : Round
@@ -106,44 +87,24 @@ collisionSetupNearCollision =
         world =
             worldWithFourWayIntersection
 
-        carDestination =
-            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 134 720)
-
         car =
             buildCar CarA1 ( 110, 670 ) (Angle.degrees 45) Steering.maxVelocity
-
-        carWithRoute =
-            case carDestination of
-                Just nodeCtx ->
-                    Car.createRoute nodeCtx car
-
-                Nothing ->
-                    Debug.todo "invalid test fixture"
-
-        otherCarDestination =
-            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 80 694)
+                |> routeCarByDestination world (toLMPoint2d 134 720)
 
         otherCar =
             buildCar CarB2 ( 130, 691 ) (Angle.degrees 180) Steering.maxVelocity
-
-        otherCarWithRoute =
-            case otherCarDestination of
-                Just nodeCtx ->
-                    Car.createRoute nodeCtx otherCar
-
-                Nothing ->
-                    Debug.todo "invalid test fixture"
+                |> routeCarByDestination world (toLMPoint2d 80 694)
 
         otherCars =
-            [ otherCarWithRoute
+            [ otherCar
             ]
 
         worldWithCars =
             world
-                |> World.setCar carWithRoute.id carWithRoute
-                |> World.setCar otherCarWithRoute.id otherCarWithRoute
+                |> World.setCar car.id car
+                |> World.setCar otherCar.id otherCar
     in
-    Round worldWithCars carWithRoute otherCars seed
+    Round worldWithCars car otherCars seed
 
 
 collisionSetupCollided : Round
@@ -152,44 +113,24 @@ collisionSetupCollided =
         world =
             worldWithFourWayIntersection
 
-        carDestination =
-            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 134 720)
-
         car =
             buildCar CarA1 ( 134, 674 ) (Angle.degrees 90) Steering.maxVelocity
-
-        carWithRoute =
-            case carDestination of
-                Just nodeCtx ->
-                    Car.createRoute nodeCtx car
-
-                Nothing ->
-                    Debug.todo "invalid test fixture"
-
-        otherCarDestination =
-            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 80 694)
+                |> routeCarByDestination world (toLMPoint2d 134 720)
 
         otherCar =
             buildCar CarB2 ( 130, 691 ) (Angle.degrees 180) Steering.maxVelocity
-
-        otherCarWithRoute =
-            case otherCarDestination of
-                Just nodeCtx ->
-                    Car.createRoute nodeCtx otherCar
-
-                Nothing ->
-                    Debug.todo "invalid test fixture"
+                |> routeCarByDestination world (toLMPoint2d 80 694)
 
         otherCars =
-            [ otherCarWithRoute
+            [ otherCar
             ]
 
         worldWithCars =
             world
-                |> World.setCar carWithRoute.id carWithRoute
-                |> World.setCar otherCarWithRoute.id otherCarWithRoute
+                |> World.setCar car.id car
+                |> World.setCar otherCar.id otherCar
     in
-    Round worldWithCars carWithRoute otherCars seed
+    Round worldWithCars car otherCars seed
 
 
 noCollisionSetupDifferentLanes : Round
@@ -248,28 +189,18 @@ redTrafficLightsSetup =
         world =
             worldWithFourWayIntersection
 
-        carDestination =
-            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 134 640)
-
         car =
             buildCar CarA1 ( 134, 600 ) (Angle.degrees 90) Steering.maxVelocity
-
-        carWithRoute =
-            case carDestination of
-                Just nodeCtx ->
-                    Car.createRoute nodeCtx car
-
-                Nothing ->
-                    Debug.todo "invalid test fixture"
+                |> routeCarByDestination world (toLMPoint2d 134 640)
 
         otherCars =
             []
 
         worldWithCars =
             world
-                |> World.setCar carWithRoute.id carWithRoute
+                |> World.setCar car.id car
     in
-    Round worldWithCars carWithRoute otherCars seed
+    Round worldWithCars car otherCars seed
 
 
 greenTrafficLightsSetup : Round
@@ -278,28 +209,18 @@ greenTrafficLightsSetup =
         world =
             worldWithFourWayIntersection
 
-        carDestination =
-            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 80 666)
-
         car =
             buildCar CarA1 ( 47, 665 ) (Angle.degrees 0) Steering.maxVelocity
-
-        carWithRoute =
-            case carDestination of
-                Just nodeCtx ->
-                    Car.createRoute nodeCtx car
-
-                Nothing ->
-                    Debug.todo "invalid test fixture"
+                |> routeCarByDestination world (toLMPoint2d 80 666)
 
         otherCars =
             []
 
         worldWithCars =
             world
-                |> World.setCar carWithRoute.id carWithRoute
+                |> World.setCar car.id car
     in
-    Round worldWithCars carWithRoute otherCars seed
+    Round worldWithCars car otherCars seed
 
 
 yieldWithPriorityTrafficSetup1 : Round
@@ -308,19 +229,9 @@ yieldWithPriorityTrafficSetup1 =
         world =
             worldWithThreeWayIntersection
 
-        carDestination =
-            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 160 586)
-
         car =
             buildCar CarA1 ( 140, 586 ) (Angle.degrees 0) Quantity.zero
-
-        carWithRoute =
-            case carDestination of
-                Just nodeCtx ->
-                    Car.createRoute nodeCtx car
-
-                Nothing ->
-                    Debug.todo "invalid test fixture"
+                |> routeCarByDestination world (toLMPoint2d 160 586)
 
         otherCar =
             buildCar CarB2 ( 213, 542 ) (Angle.degrees 90) Steering.maxVelocity
@@ -330,10 +241,10 @@ yieldWithPriorityTrafficSetup1 =
 
         worldWithCars =
             world
-                |> World.setCar carWithRoute.id carWithRoute
+                |> World.setCar car.id car
                 |> World.setCar otherCar.id otherCar
     in
-    Round worldWithCars carWithRoute otherCars seed
+    Round worldWithCars car otherCars seed
 
 
 yieldWithPriorityTrafficSetup2 : Round
@@ -342,19 +253,9 @@ yieldWithPriorityTrafficSetup2 =
         world =
             worldWithThreeWayIntersection
 
-        carDestination =
-            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 160 586)
-
         car =
             buildCar CarA1 ( 140, 586 ) (Angle.degrees 0) Quantity.zero
-
-        carWithRoute =
-            case carDestination of
-                Just nodeCtx ->
-                    Car.createRoute nodeCtx car
-
-                Nothing ->
-                    Debug.todo "invalid test fixture"
+                |> routeCarByDestination world (toLMPoint2d 160 586)
 
         otherCar =
             buildCar CarB2 ( 186, 642 ) (Angle.degrees 270) Steering.maxVelocity
@@ -364,10 +265,10 @@ yieldWithPriorityTrafficSetup2 =
 
         worldWithCars =
             world
-                |> World.setCar carWithRoute.id carWithRoute
+                |> World.setCar car.id car
                 |> World.setCar otherCar.id otherCar
     in
-    Round worldWithCars carWithRoute otherCars seed
+    Round worldWithCars car otherCars seed
 
 
 yieldWithoutPriorityTrafficSetup : Round
@@ -392,28 +293,18 @@ yieldSlowDownSetup =
         world =
             worldWithThreeWayIntersection
 
-        carDestination =
-            RoadNetwork.findNodeByPosition world.roadNetwork (toLMPoint2d 160 586)
-
         car =
             buildCar CarA1 ( 120, 586 ) (Angle.degrees 0) Quantity.zero
-
-        carWithRoute =
-            case carDestination of
-                Just nodeCtx ->
-                    Car.createRoute nodeCtx car
-
-                Nothing ->
-                    Debug.todo "invalid test fixture"
+                |> routeCarByDestination world (toLMPoint2d 160 586)
 
         otherCars =
             []
 
         worldWithCars =
             world
-                |> World.setCar carWithRoute.id carWithRoute
+                |> World.setCar car.id car
     in
-    Round worldWithCars carWithRoute otherCars seed
+    Round worldWithCars car otherCars seed
 
 
 largeWorldSetup : Int -> Round
@@ -430,7 +321,8 @@ largeWorldSetup carsAmount =
             Round worldWithCars x xs seed
 
         [] ->
-            Debug.todo "no cars"
+            -- Dummy value, should never get here
+            connectedRoadsSetup
 
 
 
@@ -461,6 +353,20 @@ buildCar option ( x, y ) orientation velocity =
         |> Car.withVelocity velocity
         |> Car.build id Nothing
         |> Car.startMoving
+
+
+routeCarByDestination : World -> LMPoint2d -> Car -> Car
+routeCarByDestination world position car =
+    let
+        destination =
+            RoadNetwork.findNodeByPosition world.roadNetwork position
+    in
+    case destination of
+        Just nodeCtx ->
+            Car.createRoute nodeCtx car
+
+        Nothing ->
+            car
 
 
 spawnCars : Int -> World -> Random.Seed -> World
