@@ -1,7 +1,6 @@
 module RoundTests exposing (suite)
 
 import Acceleration exposing (Acceleration)
-import Car exposing (Status(..))
 import Expect
 import Length
 import Maybe.Extra

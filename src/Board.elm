@@ -3,7 +3,6 @@ module Board exposing
     , Tile
     , applyMask
     , boundingBox
-    , crossIntersection
     , defaultTile
     , inBounds
     , isCurve

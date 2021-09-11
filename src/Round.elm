@@ -8,12 +8,12 @@ module Round exposing
     , play
     )
 
-import Angle exposing (Angle)
-import Car exposing (Car, Status(..))
+import Angle
+import Car exposing (Car)
 import Config exposing (tileSizeInMeters)
 import Dict
 import Direction2d
-import Geometry exposing (LMDirection2d, LMEntityCoordinates, LMPoint2d)
+import Geometry exposing (LMEntityCoordinates, LMPoint2d)
 import Length exposing (Length, Meters)
 import LineSegment2d exposing (LineSegment2d)
 import Maybe.Extra

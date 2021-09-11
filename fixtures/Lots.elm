@@ -4,7 +4,7 @@ module Lots exposing
     , twoByTwoLot
     )
 
-import Cell exposing (Corner(..), OrthogonalDirection(..))
+import Cell exposing (OrthogonalDirection(..))
 import Config exposing (tileSizeInMeters)
 import Lot exposing (Anchor, Lot)
 import Point2d

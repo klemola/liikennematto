@@ -12,7 +12,6 @@ module Car exposing
     , isBreaking
     , isConfused
     , isStoppedOrWaiting
-    , leftSideFieldOfView
     , length
     , markAsConfused
     , new
@@ -51,7 +50,7 @@ import LocalPath exposing (LocalPath)
 import Point2d
 import Polygon2d exposing (Polygon2d)
 import Quantity exposing (Quantity(..), Rate)
-import RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
+import RoadNetwork exposing (RNNodeContext)
 import Speed exposing (Speed)
 import Steering exposing (maxAcceleration, maxDeceleration)
 import Triangle2d exposing (Triangle2d)
@@ -416,20 +415,6 @@ fieldOfView car =
                 (Direction2d.fromAngle car.orientation)
     in
     Triangle2d.fromVertices ( p1, p3 |> Point2d.mirrorAcross axis, p3 )
-
-
-leftSideFieldOfView : Car -> Triangle2d Meters LMEntityCoordinates
-leftSideFieldOfView car =
-    let
-        ( p1, p2, p3 ) =
-            Triangle2d.vertices (rightSideOfFieldOfView car)
-
-        axis =
-            Axis2d.through
-                car.position
-                (Direction2d.fromAngle car.orientation)
-    in
-    Triangle2d.fromVertices ( p1, p2, p3 |> Point2d.mirrorAcross axis )
 
 
 rightSideOfFieldOfView : Car -> Triangle2d Meters LMEntityCoordinates

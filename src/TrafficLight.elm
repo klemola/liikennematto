@@ -12,7 +12,6 @@ module TrafficLight exposing
     , withPosition
     )
 
-import Cell exposing (OrthogonalDirection(..))
 import Dict exposing (Dict)
 import Direction2d
 import Duration exposing (Duration)

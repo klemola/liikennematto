@@ -2,8 +2,8 @@ module Render exposing (view)
 
 import Angle
 import Board exposing (Board, Tile)
-import Car exposing (Car, CarKind(..), Cars, Status(..))
-import Cell exposing (Cell, OrthogonalDirection(..))
+import Car exposing (Car, CarKind(..), Cars)
+import Cell exposing (Cell)
 import Color
 import Config
     exposing
