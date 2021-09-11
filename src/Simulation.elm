@@ -21,6 +21,7 @@ import Entity
 import Geometry exposing (LMEntityCoordinates)
 import Length
 import Lot exposing (NewLot)
+import Maybe.Extra
 import Point2d
 import Process
 import QuadTree exposing (QuadTree)
@@ -55,7 +56,7 @@ type Msg
     | UpdateEnvironment Time.Posix
     | GenerateEnvironment ()
     | CheckQueues Time.Posix
-    | FixTrafficProblems Time.Posix
+    | CheckCarStatus Time.Posix
     | SpawnTestCar
 
 
@@ -84,8 +85,8 @@ dequeueFrequency =
     500
 
 
-trafficProblemsCheckFrequency : Float
-trafficProblemsCheckFrequency =
+carStatusCheckFrequency : Float
+carStatusCheckFrequency =
     1000
 
 
@@ -109,7 +110,7 @@ subscriptions { simulation } =
             [ Events.onAnimationFrameDelta UpdateTraffic
             , Time.every environmentUpdateFrequency UpdateEnvironment
             , Time.every dequeueFrequency CheckQueues
-            , Time.every trafficProblemsCheckFrequency FixTrafficProblems
+            , Time.every carStatusCheckFrequency CheckCarStatus
             ]
 
 
@@ -179,9 +180,13 @@ update world msg model =
             , Cmd.none
             )
 
-        FixTrafficProblems _ ->
-            ( model
-            , fixConfusedCars world
+        CheckCarStatus _ ->
+            let
+                ( nextWorld, nextSeed ) =
+                    checkCarStatus model.seed world
+            in
+            ( { model | seed = nextSeed }
+            , nextWorld
             , Cmd.none
             )
 
@@ -374,7 +379,12 @@ checkPath world seed car =
                 ( car, seed )
 
         [] ->
-            chooseNextConnection seed world car
+            case car.status of
+                Moving ->
+                    chooseNextConnection seed world car
+
+                _ ->
+                    ( car, seed )
 
 
 chooseNextConnection : Random.Seed -> World -> Car -> ( Car, Random.Seed )
@@ -421,72 +431,91 @@ chooseNextConnection seed world car =
 
 updateCar : Float -> Car -> Car
 updateCar delta car =
-    case car.status of
-        -- TODO: trigger car movement from "ParkedAtLot" state separately, and possibly randomly
-        ParkedAtLot ->
-            Car.startMoving car
-
-        _ ->
-            let
-                deltaDuration =
-                    Duration.milliseconds delta
-
-                steering =
-                    -- TODO: implement proper path following steering to use for movement
-                    Steering.noSteering
-
-                nextPosition =
-                    car.position
-                        |> Point2d.translateIn
-                            (Direction2d.fromAngle car.orientation)
-                            (car.velocity |> Quantity.for deltaDuration)
-
-                nextOrientation =
-                    case car.localPath of
-                        next :: _ ->
-                            Steering.angleToTarget car.position next
-                                |> Maybe.withDefault car.orientation
-
-                        _ ->
-                            car.orientation
-
-                nextVelocity =
-                    car.velocity
-                        |> Quantity.plus (car.acceleration |> Quantity.for deltaDuration)
-                        |> Quantity.clamp Quantity.zero Steering.maxVelocity
-
-                nextRotation =
-                    case steering.angular of
-                        Just angularAcceleration ->
-                            car.rotation |> Quantity.plus (angularAcceleration |> Quantity.for deltaDuration)
-
-                        Nothing ->
-                            Quantity.zero
-
-                ( nextShape, nextBoundingBox ) =
-                    Car.adjustedShape nextPosition nextOrientation
-            in
-            { car
-                | position = nextPosition
-                , orientation = nextOrientation
-                , velocity = nextVelocity
-                , rotation = nextRotation
-                , shape = nextShape
-                , boundingBox = nextBoundingBox
-            }
-
-
-fixConfusedCars : World -> World
-fixConfusedCars world =
     let
-        fixConfused _ car =
-            if car.status == Confused && Car.isStoppedOrWaiting car then
-                car.homeLotId |> Maybe.map (moveCarToHome world car)
+        deltaDuration =
+            Duration.milliseconds delta
 
-            else
-                Just car
+        steering =
+            -- TODO: implement proper path following steering to use for movement
+            Steering.noSteering
+
+        nextPosition =
+            car.position
+                |> Point2d.translateIn
+                    (Direction2d.fromAngle car.orientation)
+                    (car.velocity |> Quantity.for deltaDuration)
+
+        nextOrientation =
+            case car.localPath of
+                next :: _ ->
+                    Steering.angleToTarget car.position next
+                        |> Maybe.withDefault car.orientation
+
+                _ ->
+                    car.orientation
+
+        nextVelocity =
+            car.velocity
+                |> Quantity.plus (car.acceleration |> Quantity.for deltaDuration)
+                |> Quantity.clamp Quantity.zero Steering.maxVelocity
+
+        nextRotation =
+            case steering.angular of
+                Just angularAcceleration ->
+                    car.rotation |> Quantity.plus (angularAcceleration |> Quantity.for deltaDuration)
+
+                Nothing ->
+                    Quantity.zero
+
+        ( nextShape, nextBoundingBox ) =
+            Car.adjustedShape nextPosition nextOrientation
     in
-    { world | cars = world.cars |> Dict.filterMap fixConfused }
+    { car
+        | position = nextPosition
+        , orientation = nextOrientation
+        , velocity = nextVelocity
+        , rotation = nextRotation
+        , shape = nextShape
+        , boundingBox = nextBoundingBox
+    }
+
+
+checkCarStatus : Random.Seed -> World -> ( World, Random.Seed )
+checkCarStatus seed world =
+    let
+        weightedCoinToss =
+            Random.weighted ( 70, True ) [ ( 30, False ) ]
+
+        ( toss, nextSeed ) =
+            Random.step weightedCoinToss seed
+
+        statusCheck _ car =
+            case car.status of
+                Confused ->
+                    if Car.isStoppedOrWaiting car then
+                        car.homeLotId |> Maybe.map (moveCarToHome world car)
+
+                    else
+                        Just car
+
+                ParkedAtLot ->
+                    if toss then
+                        car.homeLotId
+                            |> Maybe.andThen (RoadNetwork.findNodeByLotId world.roadNetwork)
+                            |> Maybe.map
+                                (\nodeCtx ->
+                                    car
+                                        |> Car.createRoute nodeCtx
+                                        |> Car.startMoving
+                                )
+
+                    else
+                        Just car
+
+                Moving ->
+                    Just car
+    in
+    ( { world | cars = world.cars |> Dict.filterMap statusCheck }, nextSeed )
 
 
 moveCarToHome : World -> Car -> Entity.Id -> Car

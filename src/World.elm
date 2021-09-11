@@ -106,7 +106,7 @@ addLotResident lotId lot world =
                 |> Car.withHome lotId
                 |> Car.withPosition lot.entryDetails.parkingSpot
                 |> Car.withOrientation (Lot.parkingSpotOrientation lot)
-                |> Car.build carId (RoadNetwork.findNodeByLotId world.roadNetwork lotId)
+                |> Car.build carId Nothing
 
         addToWorld car =
             { world | cars = Dict.insert carId car world.cars }
@@ -310,7 +310,15 @@ carsAfterBoardChange { nextLots, currentCars, nextRoadNetwork } =
                     Nothing ->
                         car.kind == TestCar
             )
-        |> Dict.map (\_ car -> updateRoute nextRoadNetwork connectionLookup car)
+        |> Dict.map
+            (\_ car ->
+                case car.status of
+                    Car.Moving ->
+                        updateRoute nextRoadNetwork connectionLookup car
+
+                    _ ->
+                        car
+            )
 
 
 updateRoute : RoadNetwork -> RNLookupTree -> Car -> Car

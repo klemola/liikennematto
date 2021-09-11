@@ -9,7 +9,7 @@ module Round exposing
     )
 
 import Angle
-import Car exposing (Car)
+import Car exposing (Car, Status(..))
 import Config exposing (tileSizeInMeters)
 import Dict
 import Direction2d
@@ -115,7 +115,12 @@ checkRules round =
         Nothing ->
             -- cancel the effects of previously applied rules
             if Car.isStoppedOrWaiting round.activeCar || Car.isBreaking round.activeCar then
-                applyCarAction Car.startMoving round
+                case round.activeCar.status of
+                    Moving ->
+                        applyCarAction Car.startMoving round
+
+                    _ ->
+                        round
 
             else
                 round
