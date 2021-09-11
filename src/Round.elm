@@ -69,12 +69,12 @@ carFrontBumperDistance =
 
 trafficLightReactionDistance : Length
 trafficLightReactionDistance =
-    Length.meters 50
+    tileSizeInMeters |> Quantity.twice
 
 
 yieldSlowDownDistance : Length
 yieldSlowDownDistance =
-    Length.meters 30
+    tileSizeInMeters
 
 
 yieldReactionDistance : Length
