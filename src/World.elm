@@ -18,6 +18,7 @@ import Board exposing (Board, Tile)
 import BoundingBox2d
 import Car exposing (Car, CarKind(..), Cars)
 import Cell exposing (Cell)
+import Color
 import Dict
 import Dict.Extra as Dict
 import Direction2d
@@ -367,19 +368,49 @@ resident : Lot -> Maybe CarKind
 resident lot =
     case lot.content.kind of
         ResidentialA ->
-            Just SedanA
+            Just <|
+                Sedan
+                    { body = Color.rgb255 47 149 208
+                    , detail = Color.rgb255 41 141 198
+                    , shade = Color.rgb255 208 147 173
+                    , edge = Color.rgb255 22 98 142
+                    }
 
         ResidentialB ->
-            Just SedanB
+            Just <|
+                Sedan
+                    { body = Color.rgb255 232 106 23
+                    , detail = Color.rgb255 191 100 40
+                    , shade = Color.rgb255 217 163 125
+                    , edge = Color.rgb255 159 73 16
+                    }
 
         ResidentialC ->
-            Just SedanC
+            Just <|
+                Sedan
+                    { body = Color.rgb255 255 204 0
+                    , detail = Color.rgb255 229 186 16
+                    , shade = Color.rgb255 147 208 205
+                    , edge = Color.rgb255 159 128 10
+                    }
 
         ResidentialD ->
-            Just SedanD
+            Just <|
+                Sedan
+                    { body = Color.rgb255 57 194 114
+                    , detail = Color.rgb255 48 182 104
+                    , shade = Color.rgb255 147 208 205
+                    , edge = Color.rgb255 20 119 61
+                    }
 
         ResidentialE ->
-            Just SedanE
+            Just <|
+                Sedan
+                    { body = Color.rgb255 93 91 91
+                    , detail = Color.rgb255 79 76 76
+                    , shade = Color.rgb255 208 184 147
+                    , edge = Color.rgb255 58 53 53
+                    }
 
         _ ->
             Nothing

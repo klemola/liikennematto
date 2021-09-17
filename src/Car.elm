@@ -1,5 +1,6 @@
 module Car exposing
     ( Car
+    , CarColors
     , CarKind(..)
     , Cars
     , Status(..)
@@ -34,6 +35,7 @@ import Angle exposing (Angle)
 import AngularSpeed exposing (AngularSpeed)
 import Axis2d
 import BoundingBox2d
+import Color exposing (Color)
 import Dict exposing (Dict)
 import Direction2d
 import Duration
@@ -89,12 +91,16 @@ type alias Cars =
     Dict Id Car
 
 
+type alias CarColors =
+    { body : Color
+    , detail : Color
+    , shade : Color
+    , edge : Color
+    }
+
+
 type CarKind
-    = SedanA
-    | SedanB
-    | SedanC
-    | SedanD
-    | SedanE
+    = Sedan CarColors
     | TestCar
 
 
