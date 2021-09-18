@@ -22,7 +22,7 @@ type alias LocalPath =
 
 splineSegmentsAmount : Int
 splineSegmentsAmount =
-    16
+    20
 
 
 lotExitOffset : Length
