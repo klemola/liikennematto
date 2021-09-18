@@ -2,7 +2,7 @@ module Main exposing (main)
 
 import Browser
 import Browser.Dom exposing (getViewport)
-import Browser.Events exposing (onResize)
+import Browser.Events as Events
 import Config
     exposing
         ( boardSizeScaled
@@ -40,7 +40,7 @@ subscriptions model =
     Sub.batch
         [ Simulation.subscriptions model.simulation
             |> Sub.map SimulationMsg
-        , onResize ResizeWindow
+        , Events.onResize ResizeWindow
         ]
 
 

@@ -21,7 +21,6 @@ import Entity
 import Geometry exposing (LMEntityCoordinates)
 import Length
 import Lot exposing (NewLot)
-import Maybe.Extra
 import Point2d
 import Process
 import QuadTree exposing (QuadTree)
@@ -58,6 +57,7 @@ type Msg
     | CheckQueues Time.Posix
     | CheckCarStatus Time.Posix
     | SpawnTestCar
+    | VisibilityChanged Events.Visibility
 
 
 init : ( Model, Cmd Msg )
@@ -103,11 +103,12 @@ maxCarSpawnQueueSize =
 subscriptions : Model -> Sub Msg
 subscriptions { simulation } =
     if simulation == Paused then
-        Sub.none
+        Events.onVisibilityChange VisibilityChanged
 
     else
         Sub.batch
-            [ Events.onAnimationFrameDelta UpdateTraffic
+            [ Events.onVisibilityChange VisibilityChanged
+            , Events.onAnimationFrameDelta UpdateTraffic
             , Time.every environmentUpdateFrequency UpdateEnvironment
             , Time.every dequeueFrequency CheckQueues
             , Time.every carStatusCheckFrequency CheckCarStatus
@@ -123,6 +124,20 @@ subscriptions { simulation } =
 update : World -> Msg -> Model -> ( Model, World, Cmd Msg )
 update world msg model =
     case msg of
+        VisibilityChanged newVisibility ->
+            ( { model
+                | simulation =
+                    case newVisibility of
+                        Events.Visible ->
+                            model.simulation
+
+                        Events.Hidden ->
+                            Paused
+              }
+            , world
+            , Cmd.none
+            )
+
         SetSimulation simulation ->
             ( { model | simulation = simulation }, world, Cmd.none )
 
