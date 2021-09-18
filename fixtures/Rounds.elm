@@ -342,10 +342,10 @@ buildCar option ( x, y ) orientation velocity =
         ( kind, id ) =
             case option of
                 CarA1 ->
-                    ( Car.SedanA, 1 )
+                    ( Car.TestCar, 1 )
 
                 CarB2 ->
-                    ( Car.SedanB, 2 )
+                    ( Car.TestCar, 2 )
     in
     Car.new kind
         |> Car.withPosition (toLMPoint2d x y)
