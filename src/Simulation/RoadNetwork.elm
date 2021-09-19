@@ -1,11 +1,5 @@
-module RoadNetwork exposing
-    ( Connection
-    , ConnectionKind(..)
-    , RNLookupTree
-    , RNNodeContext
-    , RoadNetwork
-    , TrafficControl(..)
-    , findNodeByLotId
+module Simulation.RoadNetwork exposing
+    ( findNodeByLotId
     , findNodeByNodeId
     , findNodeByPosition
     , findNodeReplacement
@@ -13,82 +7,55 @@ module RoadNetwork exposing
     , getOutgoingConnections
     , getRandomNode
     , lookupTree
-    , new
     , setupTrafficControl
-    , toDotString
     )
 
 import Angle
-import Board exposing (Board, Tile)
 import BoundingBox2d
-import Cell exposing (Cell, OrthogonalDirection(..))
+import Common
 import Config exposing (pixelsToMeters, tileSizeInMeters)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction2d
-import Entity exposing (Id)
-import Geometry exposing (LMBoundingBox2d, LMDirection2d, LMEntityCoordinates, LMPoint2d)
-import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
-import Graph.DOT
+import Graph exposing (Edge, Node, NodeId)
 import IntDict
 import Length exposing (Length)
-import Lot exposing (Lot, Lots)
 import Maybe.Extra as Maybe
+import Model.Board as Board exposing (Board, Tile)
+import Model.Cell as Cell exposing (Cell, OrthogonalDirection(..))
+import Model.Entity as Entity exposing (Id)
+import Model.Geometry
+    exposing
+        ( LMBoundingBox2d
+        , LMDirection2d
+        , LMEntityCoordinates
+        , LMPoint2d
+        )
+import Model.Lot as Lot exposing (Lot, Lots)
+import Model.RoadNetwork
+    exposing
+        ( Connection
+        , ConnectionKind(..)
+        , Lane
+        , RNNodeContext
+        , RoadNetwork
+        , TrafficControl(..)
+        )
+import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLights)
 import Point2d
 import QuadTree
 import Quantity
 import Random
 import Random.Extra
-import TrafficLight exposing (TrafficLight, TrafficLights)
 import Vector2d
-
-
-type alias RoadNetwork =
-    Graph Connection Lane
-
-
-type alias RNNodeContext =
-    NodeContext Connection Lane
-
-
-type alias LookupTreeEntry =
-    { id : Int, position : LMPoint2d, boundingBox : LMBoundingBox2d }
 
 
 type alias RNLookupTree =
     QuadTree.QuadTree Length.Meters LMEntityCoordinates LookupTreeEntry
 
 
-type alias Connection =
-    { kind : ConnectionKind
-    , position : LMPoint2d
-    , direction : LMDirection2d
-    , cell : Cell
-    , tile : Tile
-
-    -- Room for improvement: support more than one lot per (anchor) cell
-    , trafficControl : TrafficControl
-    , lotId : Maybe Int
-    }
-
-
-type ConnectionKind
-    = LaneStart
-    | LaneEnd
-    | DeadendEntry
-    | DeadendExit
-    | LotEntry
-    | Stopgap
-
-
-type TrafficControl
-    = Signal Id
-    | Yield
-    | None
-
-
-type alias Lane =
-    ()
+type alias LookupTreeEntry =
+    { id : Int, position : LMPoint2d, boundingBox : LMBoundingBox2d }
 
 
 innerLaneOffset : Length
@@ -101,9 +68,21 @@ outerLaneOffset =
     pixelsToMeters 54
 
 
-new : RoadNetwork
-new =
-    Graph.empty
+lookupTree : RoadNetwork -> RNLookupTree
+lookupTree roadNetwork =
+    QuadTree.init Board.boundingBox 4
+        |> QuadTree.insertList
+            (Graph.fold
+                (\nodeCtx acc ->
+                    { id = nodeCtx.node.id
+                    , position = nodeCtx.node.label.position
+                    , boundingBox = BoundingBox2d.singleton nodeCtx.node.label.position
+                    }
+                        :: acc
+                )
+                []
+                roadNetwork
+            )
 
 
 fromBoardAndLots : Board -> Lots -> RoadNetwork
@@ -136,23 +115,6 @@ fromBoardAndLots board lots =
     Graph.fromNodesAndEdges nodes edges
 
 
-lookupTree : RoadNetwork -> RNLookupTree
-lookupTree roadNetwork =
-    QuadTree.init Board.boundingBox 4
-        |> QuadTree.insertList
-            (Graph.fold
-                (\nodeCtx acc ->
-                    { id = nodeCtx.node.id
-                    , position = nodeCtx.node.label.position
-                    , boundingBox = BoundingBox2d.singleton nodeCtx.node.label.position
-                    }
-                        :: acc
-                )
-                []
-                roadNetwork
-            )
-
-
 
 --
 -- Traffic control
@@ -161,6 +123,7 @@ lookupTree roadNetwork =
 
 setupTrafficControl : TrafficLights -> RoadNetwork -> ( RoadNetwork, TrafficLights )
 setupTrafficControl currentTrafficLights roadNetwork =
+    -- Room for improvement: merge this logic with "fromBoardAndLots"
     Graph.fold
         (updateNodeTrafficControl currentTrafficLights)
         ( roadNetwork, Dict.empty )
@@ -674,7 +637,7 @@ isFacing nodeA nodeB =
             getDirection nodeA
 
         angleToTarget =
-            origin |> Geometry.angleFromDirection direction target
+            origin |> Common.angleFromDirection direction target
     in
     Angle.inDegrees angleToTarget == 0
 
@@ -811,41 +774,3 @@ findNodeReplacement nodeLookup target =
 
         [] ->
             Nothing
-
-
-
--- Debug
-
-
-connectionKindToString : ConnectionKind -> String
-connectionKindToString kind =
-    case kind of
-        LaneStart ->
-            "Lane start"
-
-        LaneEnd ->
-            "Lane end"
-
-        DeadendEntry ->
-            "Deadend entry"
-
-        DeadendExit ->
-            "Deadend exit"
-
-        LotEntry ->
-            "Lot entry"
-
-        Stopgap ->
-            "Stopgap"
-
-
-toDotString : RoadNetwork -> String
-toDotString =
-    let
-        nodeFormatter =
-            \connection -> Just (connectionKindToString connection.kind)
-
-        edgeFormatter =
-            \_ -> Nothing
-    in
-    Graph.DOT.output nodeFormatter edgeFormatter

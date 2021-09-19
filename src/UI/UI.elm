@@ -1,12 +1,11 @@
-module UI exposing (ControlButtonSize(..), carSpawnControl, controlButton, icon, projectInfo, simulationControl)
+module UI.UI exposing (carSpawnControl, projectInfo, simulationControl)
 
-import Config exposing (borderRadius, borderSize, colors, uiDimensions, whitespace)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
-import Element.Input as Input
-import Simulation exposing (Msg(..), SimulationState(..))
+import Simulation.Simulation as Simulation exposing (Msg(..), SimulationState(..))
+import UI.Core exposing (ControlButtonSize, borderRadius, colors, controlButton, link, uiDimensions, whitespace)
 
 
 simulationControl : Simulation.Model -> ControlButtonSize -> Element Simulation.Msg
@@ -44,73 +43,6 @@ carSpawnControl { carSpawnQueue } controlButtonSize =
         }
 
 
-type ControlButtonSize
-    = CBSmall
-    | CBLarge
-
-
-controlButton :
-    { label : Element msg
-    , onPress : msg
-    , selected : Bool
-    , disabled : Bool
-    , size : ControlButtonSize
-    }
-    -> Element msg
-controlButton { label, onPress, selected, disabled, size } =
-    let
-        ( buttonSize, fontSize ) =
-            case size of
-                CBSmall ->
-                    ( Element.px (uiDimensions.controlButtonS - (2 * borderSize.light))
-                    , uiDimensions.controlButtonS // 2
-                    )
-
-                CBLarge ->
-                    ( Element.px (uiDimensions.controlButtonL - (2 * borderSize.light))
-                    , uiDimensions.controlButtonL // 2
-                    )
-
-        alpha =
-            if disabled then
-                0.5
-
-            else
-                1
-    in
-    Input.button
-        [ Background.color colors.buttonBackground
-        , Font.size fontSize
-        , Font.center
-        , Element.width buttonSize
-        , Element.height buttonSize
-        , Element.alpha alpha
-        , Border.width borderSize.light
-        , Border.rounded borderRadius.light
-        , Border.solid
-        , Border.color
-            (if selected then
-                colors.selected
-
-             else
-                colors.lightBorder
-            )
-        ]
-        { onPress =
-            if disabled then
-                Nothing
-
-            else
-                Just onPress
-        , label = label
-        }
-
-
-icon : String -> Element msg
-icon filename =
-    Element.image [ Element.width Element.fill ] { description = "", src = "assets/" ++ filename }
-
-
 projectInfo : Element msg
 projectInfo =
     Element.row
@@ -143,13 +75,3 @@ projectInfo =
             , link "https://twitter.com/MatiasKlemola" "Twitter"
             ]
         ]
-
-
-link : String -> String -> Element msg
-link url label =
-    Element.newTabLink
-        [ Font.color colors.link
-        ]
-        { url = url
-        , label = Element.text label
-        }

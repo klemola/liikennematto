@@ -1,4 +1,4 @@
-module TrafficLight exposing
+module Model.TrafficLight exposing
     ( NewTrafficLight
     , TrafficLight
     , TrafficLightColor(..)
@@ -15,8 +15,8 @@ module TrafficLight exposing
 import Dict exposing (Dict)
 import Direction2d
 import Duration exposing (Duration)
-import Entity exposing (Id)
-import Geometry exposing (LMDirection2d, LMPoint2d)
+import Model.Entity exposing (Id)
+import Model.Geometry exposing (LMDirection2d, LMPoint2d)
 import Point2d
 import Quantity
 

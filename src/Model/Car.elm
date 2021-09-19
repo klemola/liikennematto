@@ -1,27 +1,20 @@
-module Car exposing
+module Model.Car exposing
     ( Car
     , CarColors
     , CarKind(..)
     , Cars
     , Status(..)
     , adjustedShape
-    , applyCollisionEffects
-    , break
     , build
-    , createRoute
     , fieldOfView
     , isBreaking
     , isConfused
     , isStoppedOrWaiting
     , length
-    , markAsConfused
     , new
     , rightSideOfFieldOfView
     , secondsTo
-    , slowDown
-    , startMoving
     , statusDescription
-    , stopAtTrafficControl
     , viewDistance
     , width
     , withHome
@@ -39,22 +32,21 @@ import Color exposing (Color)
 import Dict exposing (Dict)
 import Direction2d
 import Duration
-import Entity exposing (Id)
 import Frame2d
-import Geometry
+import Length exposing (Length, Meters)
+import Model.Entity exposing (Id)
+import Model.Geometry
     exposing
         ( LMBoundingBox2d
         , LMEntityCoordinates
         , LMPoint2d
         )
-import Length exposing (Length, Meters)
-import LocalPath exposing (LocalPath)
+import Model.LocalPath exposing (LocalPath)
+import Model.RoadNetwork exposing (RNNodeContext)
 import Point2d
 import Polygon2d exposing (Polygon2d)
 import Quantity exposing (Quantity(..), Rate)
-import RoadNetwork exposing (RNNodeContext)
 import Speed exposing (Speed)
-import Steering exposing (maxAcceleration, maxDeceleration)
 import Triangle2d exposing (Triangle2d)
 
 
@@ -173,16 +165,6 @@ speedToFieldOfViewReduction =
     Speed.metersPerSecond 2 |> Quantity.per (Angle.degrees 10)
 
 
-trafficControlStopDistance : Length
-trafficControlStopDistance =
-    Length.meters 4
-
-
-collisionMargin : Length
-collisionMargin =
-    length |> Quantity.multiplyBy 1.5
-
-
 
 --
 -- Builder
@@ -225,26 +207,11 @@ withVelocity velocity car =
     { car | velocity = velocity }
 
 
-build : Int -> Maybe RNNodeContext -> NewCar -> Car
-build id initialTarget newCar =
+build : Int -> NewCar -> Car
+build id newCar =
     let
         ( shape, boundingBox ) =
             adjustedShape newCar.position newCar.orientation
-
-        ( route, localPath ) =
-            case initialTarget of
-                Just target ->
-                    ( [ target ]
-                    , LocalPath.toNode
-                        { origin = newCar.position
-                        , direction = Direction2d.fromAngle newCar.orientation
-                        , useOffsetSpline = newCar.status == ParkedAtLot
-                        }
-                        target
-                    )
-
-                Nothing ->
-                    ( [], [] )
     in
     { id = id
     , position = newCar.position
@@ -257,8 +224,8 @@ build id initialTarget newCar =
     , kind = newCar.kind
     , status = newCar.status
     , homeLotId = newCar.homeLotId
-    , route = route
-    , localPath = localPath
+    , route = []
+    , localPath = []
     }
 
 
@@ -294,119 +261,8 @@ secondsTo target car =
 
 
 --
--- Modification
---
-
-
-stopAtTrafficControl : Length -> Car -> Car
-stopAtTrafficControl distanceFromTrafficControl car =
-    let
-        nextAcceleration =
-            if car.velocity == Quantity.zero then
-                maxDeceleration
-
-            else
-                distanceFromTrafficControl
-                    |> Quantity.minus trafficControlStopDistance
-                    |> Quantity.max Quantity.zero
-                    |> accelerateToZeroOverDistance car.velocity
-                    |> Quantity.clamp maxDeceleration Quantity.zero
-    in
-    { car | acceleration = nextAcceleration }
-
-
-break : Length -> Car -> Car
-break breakDistance car =
-    let
-        targetDistance =
-            breakDistance
-                |> Quantity.minus collisionMargin
-                |> Quantity.max Quantity.zero
-
-        nextAcceleration =
-            Quantity.max maxDeceleration (accelerateToZeroOverDistance car.velocity targetDistance)
-    in
-    { car | acceleration = nextAcceleration }
-
-
-slowDown : Speed -> Car -> Car
-slowDown targetVelocity car =
-    { car
-        | acceleration =
-            if car.velocity |> Quantity.greaterThan targetVelocity then
-                Acceleration.metersPerSecondSquared -5
-
-            else
-                maxAcceleration
-    }
-
-
-applyCollisionEffects : Car -> Car
-applyCollisionEffects car =
-    -- Bounce the car back on impact
-    { car
-        | acceleration = Quantity.zero
-        , velocity = Speed.metersPerSecond -10
-    }
-
-
-startMoving : Car -> Car
-startMoving car =
-    { car
-        | status = Moving
-        , acceleration = maxAcceleration
-    }
-
-
-markAsConfused : Car -> Car
-markAsConfused car =
-    { car
-        | status = Confused
-        , acceleration = maxDeceleration
-        , route = []
-    }
-
-
-createRoute : RNNodeContext -> Car -> Car
-createRoute nodeCtx car =
-    let
-        newPathRequired =
-            case car.route of
-                target :: _ ->
-                    target.node.label.position /= nodeCtx.node.label.position
-
-                _ ->
-                    True
-    in
-    { car
-        | route = [ nodeCtx ]
-        , localPath =
-            if newPathRequired then
-                LocalPath.toNode
-                    { origin = car.position
-                    , direction = Direction2d.fromAngle car.orientation
-                    , useOffsetSpline = car.status == ParkedAtLot
-                    }
-                    nodeCtx
-
-            else
-                car.localPath
-    }
-
-
-
---
 -- Logic helpers
 --
-
-
-accelerateToZeroOverDistance : Speed -> Length -> Acceleration
-accelerateToZeroOverDistance (Quantity speed) (Quantity distanceFromTarget) =
-    if distanceFromTarget == 0 then
-        maxDeceleration
-
-    else
-        Quantity (-speed * speed / (2 * distanceFromTarget))
 
 
 fieldOfView : Car -> Triangle2d Meters LMEntityCoordinates

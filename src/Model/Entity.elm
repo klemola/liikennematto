@@ -1,4 +1,4 @@
-module Entity exposing (Id, nextId)
+module Model.Entity exposing (Id, nextId)
 
 import Dict exposing (Dict)
 

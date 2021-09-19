@@ -1,11 +1,18 @@
-module Steering exposing
+module Simulation.Steering exposing
     ( Steering
     , align
     , angleToTarget
+    , applyCollisionEffects
+    , break
+    , markAsConfused
     , maxAcceleration
     , maxDeceleration
     , maxVelocity
     , noSteering
+    , seekAndFaceTarget
+    , slowDown
+    , startMoving
+    , stopAtTrafficControl
     )
 
 import Acceleration exposing (Acceleration)
@@ -14,8 +21,10 @@ import AngularAcceleration exposing (AngularAcceleration)
 import AngularSpeed exposing (AngularSpeed)
 import Direction2d
 import Duration
-import Geometry exposing (LMPoint2d)
-import Quantity
+import Length exposing (Length)
+import Model.Car as Car exposing (Car, Status(..))
+import Model.Geometry exposing (LMPoint2d)
+import Quantity exposing (Quantity(..))
 import Speed exposing (Speed)
 
 
@@ -42,6 +51,16 @@ maxAngularAcceleration =
 maxRotation : AngularSpeed
 maxRotation =
     AngularSpeed.radiansPerSecond 1
+
+
+trafficControlStopDistance : Length
+trafficControlStopDistance =
+    Length.meters 4
+
+
+collisionMargin : Length
+collisionMargin =
+    Car.length |> Quantity.multiplyBy 1.5
 
 
 type alias Steering =
@@ -149,3 +168,87 @@ angleToTarget : LMPoint2d -> LMPoint2d -> Maybe Angle
 angleToTarget origin target =
     Direction2d.from origin target
         |> Maybe.map Direction2d.toAngle
+
+
+accelerateToZeroOverDistance : Speed -> Length -> Acceleration
+accelerateToZeroOverDistance (Quantity speed) (Quantity distanceFromTarget) =
+    if distanceFromTarget == 0 then
+        maxDeceleration
+
+    else
+        Quantity (-speed * speed / (2 * distanceFromTarget))
+
+
+
+--
+-- Imported from Car.elm
+--
+
+
+stopAtTrafficControl : Length -> Car -> Car
+stopAtTrafficControl distanceFromTrafficControl car =
+    let
+        nextAcceleration =
+            if car.velocity == Quantity.zero then
+                maxDeceleration
+
+            else
+                distanceFromTrafficControl
+                    |> Quantity.minus trafficControlStopDistance
+                    |> Quantity.max Quantity.zero
+                    |> accelerateToZeroOverDistance car.velocity
+                    |> Quantity.clamp maxDeceleration Quantity.zero
+    in
+    { car | acceleration = nextAcceleration }
+
+
+break : Length -> Car -> Car
+break breakDistance car =
+    let
+        targetDistance =
+            breakDistance
+                |> Quantity.minus collisionMargin
+                |> Quantity.max Quantity.zero
+
+        nextAcceleration =
+            Quantity.max maxDeceleration (accelerateToZeroOverDistance car.velocity targetDistance)
+    in
+    { car | acceleration = nextAcceleration }
+
+
+slowDown : Speed -> Car -> Car
+slowDown targetVelocity car =
+    { car
+        | acceleration =
+            if car.velocity |> Quantity.greaterThan targetVelocity then
+                Acceleration.metersPerSecondSquared -5
+
+            else
+                maxAcceleration
+    }
+
+
+applyCollisionEffects : Car -> Car
+applyCollisionEffects car =
+    -- Bounce the car back on impact
+    { car
+        | acceleration = Quantity.zero
+        , velocity = Speed.metersPerSecond -10
+    }
+
+
+startMoving : Car -> Car
+startMoving car =
+    { car
+        | status = Moving
+        , acceleration = maxAcceleration
+    }
+
+
+markAsConfused : Car -> Car
+markAsConfused car =
+    { car
+        | status = Confused
+        , route = []
+        , acceleration = maxDeceleration
+    }

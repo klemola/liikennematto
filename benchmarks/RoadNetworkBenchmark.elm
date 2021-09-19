@@ -2,7 +2,7 @@ module RoadNetworkBenchmark exposing (main, suite)
 
 import Benchmark exposing (..)
 import Benchmark.Runner exposing (BenchmarkProgram, program)
-import RoadNetwork
+import Simulation.RoadNetwork as RoadNetwork
 import Worlds
 
 

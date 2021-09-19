@@ -1,34 +1,11 @@
-module Geometry exposing
-    ( LMBoundingBox2d
-    , LMDirection2d
-    , LMEntityCoordinates
-    , LMPoint2d
-    , angleFromDirection
-    , boundingBoxWithDimensions
-    , noBoundingBoxOverlap
-    )
+module Common exposing (..)
 
 import Angle exposing (Angle)
-import BoundingBox2d exposing (BoundingBox2d)
-import Direction2d exposing (Direction2d)
-import Length exposing (Length, Meters)
-import Point2d exposing (Point2d)
-
-
-type alias LMEntityCoordinates =
-    ()
-
-
-type alias LMPoint2d =
-    Point2d Meters LMEntityCoordinates
-
-
-type alias LMDirection2d =
-    Direction2d LMEntityCoordinates
-
-
-type alias LMBoundingBox2d =
-    BoundingBox2d Meters LMEntityCoordinates
+import BoundingBox2d
+import Direction2d
+import Length exposing (Length)
+import Model.Geometry exposing (LMBoundingBox2d, LMDirection2d, LMPoint2d)
+import Point2d
 
 
 angleFromDirection : LMDirection2d -> LMPoint2d -> LMPoint2d -> Angle

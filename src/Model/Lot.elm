@@ -1,11 +1,10 @@
-module Lot exposing
+module Model.Lot exposing
     ( Anchor
     , Building
     , BuildingKind(..)
     , Lot
     , Lots
     , NewLot
-    , all
     , anchorCell
     , bottomLeftCorner
     , boundingBox
@@ -17,13 +16,14 @@ module Lot exposing
 
 import Angle exposing (Angle)
 import BoundingBox2d
-import Cell exposing (Cell, OrthogonalDirection(..))
+import Common
 import Config exposing (tileSizeInMeters)
 import Dict exposing (Dict)
 import Direction2d
-import Entity exposing (Id)
-import Geometry exposing (LMBoundingBox2d, LMPoint2d)
 import Length exposing (Length)
+import Model.Cell as Cell exposing (Cell, OrthogonalDirection(..))
+import Model.Entity exposing (Id)
+import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
 import Point2d
 import Quantity
 import Vector2d
@@ -93,31 +93,6 @@ drivewaySize =
 drivewayOverlap : Length
 drivewayOverlap =
     tileSizeInMeters |> Quantity.divideBy 16
-
-
-all : List NewLot
-all =
-    [ { content = Building ResidentialA Down, width = tileSizeInMeters, height = tileSizeInMeters }
-    , { content = Building ResidentialB Right, width = tileSizeInMeters, height = tileSizeInMeters }
-    , { content = Building ResidentialC Left, width = tileSizeInMeters, height = tileSizeInMeters }
-    , { content = Building ResidentialD Up, width = tileSizeInMeters, height = tileSizeInMeters }
-    , { content = Building ResidentialE Down
-      , width = tileSizeInMeters |> Quantity.multiplyBy 2
-      , height = tileSizeInMeters |> Quantity.multiplyBy 2
-      }
-    , { content = Building TwoByOneTest Left
-      , width = tileSizeInMeters |> Quantity.multiplyBy 2
-      , height = tileSizeInMeters
-      }
-    , { content = Building ThreeByThreeTest Right
-      , width = tileSizeInMeters |> Quantity.multiplyBy 3
-      , height = tileSizeInMeters |> Quantity.multiplyBy 3
-      }
-    , { content = Building TwoByThreeTest Up
-      , width = tileSizeInMeters |> Quantity.multiplyBy 2
-      , height = tileSizeInMeters |> Quantity.multiplyBy 3
-      }
-    ]
 
 
 fromNewLot : ( NewLot, Cell ) -> Lot
@@ -255,7 +230,7 @@ anchorCell lot =
 boundingBox : Lot -> LMBoundingBox2d
 boundingBox lot =
     lot.position
-        |> Geometry.boundingBoxWithDimensions lot.width lot.height
+        |> Common.boundingBoxWithDimensions lot.width lot.height
 
 
 inBounds : Cell -> Lot -> Bool

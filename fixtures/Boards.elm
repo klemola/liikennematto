@@ -5,8 +5,8 @@ module Boards exposing
     , intersectionTile
     )
 
-import Board exposing (Board, Tile)
 import Dict
+import Model.Board as Board exposing (Board, Tile)
 
 
 boardThatResemblesAIntersection : Board

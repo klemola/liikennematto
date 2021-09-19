@@ -1,4 +1,4 @@
-module Round exposing
+module Simulation.Round exposing
     ( Round
     , RoundResults
     , Rule(..)
@@ -9,23 +9,23 @@ module Round exposing
     )
 
 import Angle
-import Car exposing (Car, Status(..))
 import Config exposing (tileSizeInMeters)
 import Dict
 import Direction2d
-import Geometry exposing (LMEntityCoordinates, LMPoint2d)
 import Length exposing (Length, Meters)
 import LineSegment2d exposing (LineSegment2d)
 import Maybe.Extra
+import Model.Car as Car exposing (Car, Status(..))
+import Model.Geometry exposing (LMEntityCoordinates, LMPoint2d)
+import Model.RoadNetwork exposing (TrafficControl(..))
+import Model.TrafficLight as TrafficLight exposing (TrafficLight)
+import Model.World exposing (World)
 import Point2d
 import Polygon2d
 import Quantity
 import Random
-import RoadNetwork exposing (TrafficControl(..))
-import Steering
-import TrafficLight exposing (TrafficLight)
+import Simulation.Steering as Steering
 import Triangle2d exposing (Triangle2d)
-import World exposing (World)
 
 
 type alias Round =
@@ -117,7 +117,7 @@ checkRules round =
             if Car.isStoppedOrWaiting round.activeCar || Car.isBreaking round.activeCar then
                 case round.activeCar.status of
                     Moving ->
-                        applyCarAction Car.startMoving round
+                        applyCarAction Steering.startMoving round
 
                     _ ->
                         round
@@ -139,16 +139,16 @@ applyRule : Round -> Rule -> Round
 applyRule round rule =
     case rule of
         AvoidCollision distanceToCollision ->
-            applyCarAction (Car.break distanceToCollision) round
+            applyCarAction (Steering.break distanceToCollision) round
 
         ReactToCollision ->
-            applyCarAction Car.applyCollisionEffects round
+            applyCarAction Steering.applyCollisionEffects round
 
         StopAtTrafficControl distanceFromTrafficControl ->
-            applyCarAction (Car.stopAtTrafficControl distanceFromTrafficControl) round
+            applyCarAction (Steering.stopAtTrafficControl distanceFromTrafficControl) round
 
         SlowDownAtTrafficControl ->
-            applyCarAction (Car.slowDown (Steering.maxVelocity |> Quantity.half)) round
+            applyCarAction (Steering.slowDown (Steering.maxVelocity |> Quantity.half)) round
 
 
 applyCarAction : (Car -> Car) -> Round -> Round

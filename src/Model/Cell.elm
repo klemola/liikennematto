@@ -1,4 +1,4 @@
-module Cell exposing
+module Model.Cell exposing
     ( Cell
     , Corner(..)
     , OrthogonalDirection(..)
@@ -20,9 +20,10 @@ module Cell exposing
     , up
     )
 
+import Common
 import Config exposing (boardSize, tileSizeInMeters)
 import Direction2d
-import Geometry exposing (LMBoundingBox2d, LMDirection2d, LMPoint2d)
+import Model.Geometry exposing (LMBoundingBox2d, LMDirection2d, LMPoint2d)
 import Point2d
 import Quantity
 import Vector2d
@@ -230,7 +231,7 @@ center cell =
 boundingBox : Cell -> LMBoundingBox2d
 boundingBox cell =
     bottomLeftCorner cell
-        |> Geometry.boundingBoxWithDimensions tileSizeInMeters tileSizeInMeters
+        |> Common.boundingBoxWithDimensions tileSizeInMeters tileSizeInMeters
 
 
 toString : Cell -> String

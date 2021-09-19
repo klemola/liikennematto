@@ -5,12 +5,6 @@ import Expect
 import Length
 import Maybe.Extra
 import Quantity
-import Round
-    exposing
-        ( RoundResults
-        , Rule(..)
-        , checkTrafficControl
-        )
 import Rounds
     exposing
         ( collisionSetupCollided
@@ -26,7 +20,13 @@ import Rounds
         , yieldWithPriorityTrafficSetup2
         , yieldWithoutPriorityTrafficSetup
         )
-import Steering
+import Simulation.Round as Round
+    exposing
+        ( RoundResults
+        , Rule(..)
+        , checkTrafficControl
+        )
+import Simulation.Steering as Steering
 import Test exposing (..)
 
 
