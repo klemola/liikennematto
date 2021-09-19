@@ -1,4 +1,4 @@
-module Editor exposing
+module UI.Editor exposing
     ( Model
     , Msg
     , initialModel
@@ -7,22 +7,17 @@ module Editor exposing
     , update
     )
 
-import Cell exposing (Cell)
-import Config
-    exposing
-        ( boardSizeScaled
-        , colors
-        , tileSize
-        , whitespace
-        )
+import Config exposing (boardSizeScaled, tileSize)
 import CustomEvent
 import Element exposing (Color, Element)
 import Element.Border as Border
 import Element.Events as Events
+import Model.Cell exposing (Cell)
+import Model.World as World exposing (World)
 import Pixels
 import Quantity
-import UI exposing (ControlButtonSize)
-import World exposing (World)
+import Simulation.WorldUpdate as WorldUpdate
+import UI.Core exposing (ControlButtonSize, colors, controlButton, icon, whitespace)
 
 
 type Tool
@@ -60,7 +55,7 @@ update world msg model =
                     ( model
                     , if World.canBuildRoadAt cell world then
                         world
-                            |> World.buildRoadAt cell
+                            |> WorldUpdate.buildRoadAt cell
 
                       else
                         world
@@ -70,7 +65,8 @@ update world msg model =
                 ( Bulldozer, Just _ ) ->
                     ( model
                     , world
-                        |> World.removeRoadAt cell
+                        -- TODO: do this in Simulation instead
+                        |> WorldUpdate.removeRoadAt cell
                     , Cmd.none
                     )
 
@@ -88,7 +84,8 @@ update world msg model =
                 SmartConstruction ->
                     ( model
                     , world
-                        |> World.removeRoadAt cell
+                        -- TODO: do this in Simulation instead
+                        |> WorldUpdate.removeRoadAt cell
                     , Cmd.none
                     )
 
@@ -247,8 +244,8 @@ toolbarButton selectedTool tool controlButtonSize =
                 None ->
                     "__none__"
     in
-    UI.controlButton
-        { label = UI.icon asset
+    controlButton
+        { label = icon asset
         , onPress = SelectTool tool
         , selected = selectedTool == tool
         , disabled = False

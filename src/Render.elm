@@ -1,9 +1,6 @@
 module Render exposing (view)
 
 import Angle
-import Board exposing (Board, Tile)
-import Car exposing (Car, CarKind(..), Cars)
-import Cell exposing (Cell)
 import Color
 import Config
     exposing
@@ -12,24 +9,27 @@ import Config
         , tileSize
         )
 import Dict
-import Geometry exposing (LMPoint2d)
 import Graph exposing (Node)
 import Html exposing (Html)
 import Length exposing (Length)
-import Lot exposing (BuildingKind(..), Lot, Lots)
 import Maybe.Extra as Maybe
+import Model.Board exposing (Board, Tile)
+import Model.Car as Car exposing (Car, CarKind(..), Cars)
+import Model.Cell as Cell exposing (Cell)
+import Model.Geometry exposing (LMPoint2d)
+import Model.Lot exposing (BuildingKind(..), Lot, Lots)
+import Model.RoadNetwork exposing (Connection, ConnectionKind(..), RoadNetwork, TrafficControl(..))
+import Model.TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
+import Model.World exposing (World)
 import Pixels exposing (Pixels)
 import Point2d
 import Polygon2d
 import Quantity exposing (Quantity)
-import RoadNetwork exposing (ConnectionKind(..), RoadNetwork, TrafficControl(..))
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Svg.Keyed
 import Svg.Lazy
-import TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
 import Triangle2d
-import World exposing (World)
 
 
 type alias DebugLayers =
@@ -372,7 +372,7 @@ renderTrafficSigns roadNetwork =
         |> Svg.Keyed.node "g" []
 
 
-renderYieldSign : Node RoadNetwork.Connection -> Svg msg
+renderYieldSign : Node Connection -> Svg msg
 renderYieldSign node =
     let
         size =

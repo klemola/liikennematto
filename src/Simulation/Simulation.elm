@@ -1,4 +1,4 @@
-module Simulation exposing
+module Simulation.Simulation exposing
     ( Model
     , Msg(..)
     , SimulationState(..)
@@ -8,32 +8,37 @@ module Simulation exposing
     , update
     )
 
-import Board
 import Browser.Events as Events
-import Car exposing (Car, Status(..))
-import Cell exposing (Cell)
+import Common
 import Config
+import Defaults
 import Dict
 import Dict.Extra as Dict
 import Direction2d
 import Duration
-import Entity
-import Geometry exposing (LMEntityCoordinates)
 import Length
-import Lot exposing (NewLot)
+import Model.Board as Board
+import Model.Car as Car exposing (Car, Status(..))
+import Model.Cell as Cell exposing (Cell)
+import Model.Entity as Entity
+import Model.Geometry exposing (LMEntityCoordinates)
+import Model.Lot as Lot exposing (NewLot)
+import Model.RoadNetwork exposing (ConnectionKind(..))
+import Model.TrafficLight as TrafficLight
+import Model.World as World exposing (World)
 import Point2d
 import Process
 import QuadTree exposing (QuadTree)
 import Quantity
 import Random
 import Random.List
-import RoadNetwork
-import Round
-import Steering
+import Simulation.Pathfinding as Pathfinding
+import Simulation.RoadNetwork exposing (findNodeByLotId, findNodeByNodeId, getOutgoingConnections)
+import Simulation.Round as Round
+import Simulation.Steering as Steering
+import Simulation.WorldUpdate exposing (addLot, setCar, spawnCar)
 import Task
 import Time
-import TrafficLight
-import World exposing (World)
 
 
 type alias Model =
@@ -254,7 +259,7 @@ attemptGenerateEnvironment world seed simulation =
                 |> Dict.values
 
         unusedLots =
-            List.filter (\{ content } -> not (List.member content.kind existingBuildingKinds)) Lot.all
+            List.filter (\{ content } -> not (List.member content.kind existingBuildingKinds)) Defaults.lots
     in
     if simulation == Paused || List.isEmpty unusedLots || not largeEnoughRoadNetwork then
         ( world, seed )
@@ -278,7 +283,7 @@ generateEnvironment world seed unusedLots =
             potentialNewLot
                 |> Maybe.andThen (findLotAnchor world seed)
                 |> Maybe.map Lot.fromNewLot
-                |> Maybe.map (\lot -> World.addLot lot world)
+                |> Maybe.map (\lot -> addLot lot world)
                 |> Maybe.withDefault world
     in
     ( nextWorld, nextSeed )
@@ -305,7 +310,7 @@ findLotAnchor world seed newLot =
 
         lotBoundingBox cell =
             Lot.bottomLeftCorner ( cell, targetDirection ) newLot
-                |> Geometry.boundingBoxWithDimensions newLot.width newLot.height
+                |> Common.boundingBoxWithDimensions newLot.width newLot.height
 
         hasEnoughSpaceAround cell =
             World.isEmptyArea (lotBoundingBox cell) world
@@ -378,7 +383,7 @@ updateTraffic { updateQueue, carPositionLookup, seed, world, delta } =
                 { updateQueue = queue
                 , seed = roundResults.seed
                 , carPositionLookup = carPositionLookup
-                , world = world |> World.setCar nextCar.id nextCar
+                , world = setCar nextCar.id nextCar world
                 , delta = delta
                 }
 
@@ -408,7 +413,7 @@ chooseNextConnection seed world car =
         nodeCtx :: _ ->
             let
                 randomConnectionGenerator =
-                    RoadNetwork.getOutgoingConnections nodeCtx
+                    getOutgoingConnections nodeCtx
                         |> Random.List.choose
                         |> Random.map Tuple.first
 
@@ -417,7 +422,7 @@ chooseNextConnection seed world car =
 
                 nextCar =
                     connection
-                        |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
+                        |> Maybe.andThen (findNodeByNodeId world.roadNetwork)
                         |> Maybe.map
                             (\nextNodeCtx ->
                                 -- This is a temporary hack to make sure that tight turns can be completed
@@ -425,7 +430,7 @@ chooseNextConnection seed world car =
                                     nodeKind =
                                         nodeCtx.node.label.kind
                                 in
-                                (if nodeKind == RoadNetwork.DeadendExit || nodeKind == RoadNetwork.LaneStart then
+                                (if nodeKind == DeadendExit || nodeKind == LaneStart then
                                     { car
                                         | orientation = Direction2d.toAngle nodeCtx.node.label.direction
                                         , position = nodeCtx.node.label.position
@@ -434,14 +439,14 @@ chooseNextConnection seed world car =
                                  else
                                     car
                                 )
-                                    |> Car.createRoute nextNodeCtx
+                                    |> Pathfinding.createRoute nextNodeCtx
                             )
                         |> Maybe.withDefault car
             in
             ( nextCar, nextSeed )
 
         _ ->
-            ( Car.markAsConfused car, seed )
+            ( Steering.markAsConfused car, seed )
 
 
 updateCar : Float -> Car -> Car
@@ -516,12 +521,12 @@ checkCarStatus seed world =
                 ParkedAtLot ->
                     if toss then
                         car.homeLotId
-                            |> Maybe.andThen (RoadNetwork.findNodeByLotId world.roadNetwork)
+                            |> Maybe.andThen (findNodeByLotId world.roadNetwork)
                             |> Maybe.map
                                 (\nodeCtx ->
                                     car
-                                        |> Car.createRoute nodeCtx
-                                        |> Car.startMoving
+                                        |> Pathfinding.createRoute nodeCtx
+                                        |> Steering.startMoving
                                 )
 
                     else
@@ -540,7 +545,7 @@ moveCarToHome world car lotId =
             Dict.get lotId world.lots
 
         homeNode =
-            RoadNetwork.findNodeByLotId world.roadNetwork lotId
+            findNodeByLotId world.roadNetwork lotId
     in
     case ( home, homeNode ) of
         ( Just lot, Just nodeCtx ) ->
@@ -553,10 +558,10 @@ moveCarToHome world car lotId =
                 , route = []
                 , localPath = []
             }
-                |> Car.createRoute nodeCtx
+                |> Pathfinding.createRoute nodeCtx
 
         _ ->
-            Car.markAsConfused car
+            Steering.markAsConfused car
 
 
 
@@ -574,7 +579,7 @@ dequeueCarSpawn queue seed world =
     if canSpawnCar then
         let
             ( nextWorld, nextSeed, newCarId ) =
-                World.spawnCar seed world
+                spawnCar seed world
         in
         case newCarId of
             Just _ ->

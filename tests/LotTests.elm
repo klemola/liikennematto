@@ -1,8 +1,8 @@
 module LotTests exposing (suite)
 
 import Expect
-import Lot
 import Lots exposing (oneByOneLot, twoByTwoLot)
+import Model.Lot as Lot
 import Test exposing (Test, describe, test)
 
 

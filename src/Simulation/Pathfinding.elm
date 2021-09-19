@@ -1,23 +1,24 @@
-module LocalPath exposing (..)
+module Simulation.Pathfinding exposing (createRoute, maybeCreateRoute)
 
 import Angle
-import Axis2d exposing (direction)
+import Common
 import CubicSpline2d exposing (CubicSpline2d)
 import Direction2d
-import Geometry exposing (LMDirection2d, LMEntityCoordinates, LMPoint2d)
 import Length exposing (Length)
+import Model.Car exposing (Car, Status(..))
+import Model.Geometry exposing (LMDirection2d, LMEntityCoordinates, LMPoint2d)
+import Model.LocalPath exposing (LocalPath)
+import Model.RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Point2d
 import Polyline2d
 import Quantity
-import RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 
 
-
--- Local path is a list of points, often constructed from a spline. Practically same as a Polyline2d.
-
-
-type alias LocalPath =
-    List LMPoint2d
+type alias PathParameters =
+    { origin : LMPoint2d
+    , direction : LMDirection2d
+    , useOffsetSpline : Bool
+    }
 
 
 splineSegmentsAmount : Int
@@ -35,10 +36,37 @@ uTurnDistance =
     Length.meters 4
 
 
-type alias PathParameters =
-    { origin : LMPoint2d
-    , direction : LMDirection2d
-    , useOffsetSpline : Bool
+maybeCreateRoute : Maybe RNNodeContext -> Car -> Car
+maybeCreateRoute maybeNodeCtx car =
+    maybeNodeCtx
+        |> Maybe.map (\nodeCtx -> createRoute nodeCtx car)
+        |> Maybe.withDefault car
+
+
+createRoute : RNNodeContext -> Car -> Car
+createRoute nodeCtx car =
+    let
+        newPathRequired =
+            case car.route of
+                target :: _ ->
+                    target.node.label.position /= nodeCtx.node.label.position
+
+                _ ->
+                    True
+    in
+    { car
+        | route = [ nodeCtx ]
+        , localPath =
+            if newPathRequired then
+                toNode
+                    { origin = car.position
+                    , direction = Direction2d.fromAngle car.orientation
+                    , useOffsetSpline = car.status == ParkedAtLot
+                    }
+                    nodeCtx
+
+            else
+                car.localPath
     }
 
 
@@ -50,7 +78,7 @@ toNode { direction, origin, useOffsetSpline } { node } =
 
         angleDegreesToTarget =
             origin
-                |> Geometry.angleFromDirection direction target
+                |> Common.angleFromDirection direction target
                 |> Quantity.abs
     in
     if node.label.kind == LotEntry && useOffsetSpline then
@@ -64,11 +92,6 @@ toNode { direction, origin, useOffsetSpline } { node } =
 
     else
         curveSpline origin target direction
-
-
-isWithinRoundingErrorOf : Int -> Float -> Bool
-isWithinRoundingErrorOf target value =
-    round value == target || floor value == target
 
 
 offsetSpline : LMPoint2d -> LMPoint2d -> LMDirection2d -> LocalPath
@@ -117,7 +140,7 @@ curveSpline origin target direction =
 
         cosine =
             origin
-                |> Geometry.angleFromDirection direction target
+                |> Common.angleFromDirection direction target
                 |> Angle.cos
 
         distanceToCorner =

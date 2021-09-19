@@ -2,12 +2,11 @@ module RoundBenchmark exposing (main, suite)
 
 import Benchmark exposing (..)
 import Benchmark.Runner exposing (BenchmarkProgram, program)
-import Board
-import Car
+import Model.Board as Board
 import Config
 import Dict
 import QuadTree
-import Round exposing (Round)
+import Simulation.Round as Round exposing (Round)
 import Rounds
 import Set
 

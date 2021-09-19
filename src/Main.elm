@@ -3,26 +3,28 @@ module Main exposing (main)
 import Browser
 import Browser.Dom exposing (getViewport)
 import Browser.Events as Events
-import Config
+import Config exposing (boardSizeScaled)
+import Defaults
+import Element exposing (Element)
+import Element.Background as Background
+import Element.Border as Border
+import Html exposing (Html)
+import Model.World exposing (World)
+import Pixels
+import Render
+import Simulation.Simulation as Simulation
+import Task
+import UI.Core
     exposing
-        ( boardSizeScaled
+        ( ControlButtonSize(..)
         , borderRadius
         , colors
         , uiDimensions
         , whitespace
         )
-import DebugPanel
-import Editor
-import Element exposing (Element)
-import Element.Background as Background
-import Element.Border as Border
-import Html exposing (Html)
-import Pixels
-import Render
-import Simulation
-import Task
-import UI exposing (ControlButtonSize(..))
-import World exposing (World)
+import UI.DebugPanel
+import UI.Editor
+import UI.UI
 
 
 main : Program () Model Msg
@@ -46,8 +48,8 @@ subscriptions model =
 
 type alias Model =
     { simulation : Simulation.Model
-    , editor : Editor.Model
-    , debugPanel : Maybe DebugPanel.Model
+    , editor : UI.Editor.Model
+    , debugPanel : Maybe UI.DebugPanel.Model
     , world : World
     , screen : Screen
     }
@@ -67,9 +69,9 @@ init _ =
             Simulation.init
     in
     ( { simulation = initialSimulationModel
-      , editor = Editor.initialModel
+      , editor = UI.Editor.initialModel
       , debugPanel = Nothing
-      , world = World.default
+      , world = Defaults.defaultWorld
       , screen =
             { width = 375
             , height = 667
@@ -88,8 +90,8 @@ type Msg
     = ResizeWindow Int Int
     | ToggleDebugMode
     | SimulationMsg Simulation.Msg
-    | EditorMsg Editor.Msg
-    | DebugPanelMsg DebugPanel.Msg
+    | EditorMsg UI.Editor.Msg
+    | DebugPanelMsg UI.DebugPanel.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -119,7 +121,7 @@ update msg model =
                             Nothing
 
                         Nothing ->
-                            Just DebugPanel.initialModel
+                            Just UI.DebugPanel.initialModel
             in
             ( { model | debugPanel = nextDebugPanel }
             , Cmd.none
@@ -140,7 +142,7 @@ update msg model =
         EditorMsg editorMsg ->
             let
                 ( nextEditor, nextWorld, cmd ) =
-                    Editor.update model.world editorMsg model.editor
+                    UI.Editor.update model.world editorMsg model.editor
             in
             ( { model
                 | editor = nextEditor
@@ -153,7 +155,7 @@ update msg model =
             let
                 ( nextDebugPanel, cmd ) =
                     model.debugPanel
-                        |> Maybe.map (DebugPanel.update debugPanelMsg >> Tuple.mapFirst Just)
+                        |> Maybe.map (UI.DebugPanel.update debugPanelMsg >> Tuple.mapFirst Just)
                         |> Maybe.withDefault ( model.debugPanel, Cmd.none )
             in
             ( { model
@@ -177,7 +179,7 @@ ui model =
         , Element.width Element.fill
         , Element.height Element.fill
         , Element.inFront (controls model)
-        , Element.inFront UI.projectInfo
+        , Element.inFront UI.UI.projectInfo
         , Element.inFront (debugPanel model)
         ]
         (render model)
@@ -217,7 +219,7 @@ render model =
             [ Element.width (Element.px renderedSize)
             , Element.height (Element.px renderedSize)
             , Element.inFront
-                (Editor.overlay model.world model.editor
+                (UI.Editor.overlay model.world model.editor
                     |> Element.map EditorMsg
                 )
             , Background.color colors.terrain
@@ -267,22 +269,22 @@ controls model =
         , Border.solid
         , Border.color colors.heavyBorder
         ]
-        [ Editor.toolbar model.editor controlButtonSize
+        [ UI.Editor.toolbar model.editor controlButtonSize
             |> Element.map EditorMsg
         , spacer
         , Element.row
             [ Element.spacing whitespace.tight
             ]
-            [ UI.controlButton
+            [ UI.Core.controlButton
                 { label = Element.text "🐛"
                 , onPress = ToggleDebugMode
                 , selected = model.debugPanel /= Nothing
                 , disabled = False
                 , size = controlButtonSize
                 }
-            , UI.carSpawnControl model.simulation controlButtonSize
+            , UI.UI.carSpawnControl model.simulation controlButtonSize
                 |> Element.map SimulationMsg
-            , UI.simulationControl model.simulation controlButtonSize
+            , UI.UI.simulationControl model.simulation controlButtonSize
                 |> Element.map SimulationMsg
             ]
         ]
@@ -292,7 +294,7 @@ debugPanel : Model -> Element Msg
 debugPanel model =
     case model.debugPanel of
         Just debugPanelModel ->
-            DebugPanel.view debugPanelModel model.world
+            UI.DebugPanel.view debugPanelModel model.world
                 |> Element.map DebugPanelMsg
 
         Nothing ->

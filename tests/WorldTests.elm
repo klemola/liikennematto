@@ -1,12 +1,12 @@
 module WorldTests exposing (suite)
 
-import Cell exposing (OrthogonalDirection(..))
 import Dict
 import Expect
 import Lots exposing (createTwoByTwoLot)
+import Model.Cell exposing (OrthogonalDirection(..))
+import Model.World as World
 import Test exposing (Test, describe, test)
 import Utility exposing (createBoundingBox)
-import World
 import Worlds
     exposing
         ( highComplexityWorld

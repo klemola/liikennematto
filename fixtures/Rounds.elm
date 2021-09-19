@@ -15,17 +15,19 @@ module Rounds exposing
     )
 
 import Angle exposing (Angle)
-import Car exposing (Car)
 import Dict
-import Geometry exposing (LMPoint2d)
+import Model.Car as Car exposing (Car)
+import Model.Geometry exposing (LMPoint2d)
+import Model.World as World exposing (World)
 import Quantity
 import Random
-import RoadNetwork
-import Round exposing (Round)
+import Simulation.Pathfinding as Pathfinding
+import Simulation.RoadNetwork exposing (findNodeByPosition)
+import Simulation.Round exposing (Round)
+import Simulation.Steering as Steering
+import Simulation.WorldUpdate as WorldUpdate
 import Speed exposing (Speed)
-import Steering
 import Utility exposing (toLMPoint2d)
-import World exposing (World)
 import Worlds exposing (largeWorld, worldWithFourWayIntersection, worldWithThreeWayIntersection)
 
 
@@ -39,8 +41,8 @@ connectedRoadsSetup =
     let
         world =
             World.empty
-                |> World.buildRoadAt ( 1, 1 )
-                |> World.buildRoadAt ( 2, 1 )
+                |> WorldUpdate.buildRoadAt ( 1, 1 )
+                |> WorldUpdate.buildRoadAt ( 2, 1 )
 
         car =
             buildCar CarA1 ( 0, 720 ) (Angle.degrees 0) Steering.maxVelocity
@@ -50,7 +52,7 @@ connectedRoadsSetup =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
+                |> WorldUpdate.setCar car.id car
     in
     Round worldWithCars car otherCars seed
 
@@ -75,8 +77,8 @@ collisionSetupPathsIntersect =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
-                |> World.setCar otherCar.id otherCar
+                |> WorldUpdate.setCar car.id car
+                |> WorldUpdate.setCar otherCar.id otherCar
     in
     Round worldWithCars car otherCars seed
 
@@ -101,8 +103,8 @@ collisionSetupNearCollision =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
-                |> World.setCar otherCar.id otherCar
+                |> WorldUpdate.setCar car.id car
+                |> WorldUpdate.setCar otherCar.id otherCar
     in
     Round worldWithCars car otherCars seed
 
@@ -127,8 +129,8 @@ collisionSetupCollided =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
-                |> World.setCar otherCar.id otherCar
+                |> WorldUpdate.setCar car.id car
+                |> WorldUpdate.setCar otherCar.id otherCar
     in
     Round worldWithCars car otherCars seed
 
@@ -138,8 +140,8 @@ noCollisionSetupDifferentLanes =
     let
         world =
             World.empty
-                |> World.buildRoadAt ( 1, 1 )
-                |> World.buildRoadAt ( 2, 1 )
+                |> WorldUpdate.buildRoadAt ( 1, 1 )
+                |> WorldUpdate.buildRoadAt ( 2, 1 )
 
         car =
             buildCar CarA1 ( 60, 745 ) (Angle.degrees 0) Steering.maxVelocity
@@ -153,8 +155,8 @@ noCollisionSetupDifferentLanes =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
-                |> World.setCar otherCar.id otherCar
+                |> WorldUpdate.setCar car.id car
+                |> WorldUpdate.setCar otherCar.id otherCar
     in
     Round worldWithCars car otherCars seed
 
@@ -177,8 +179,8 @@ noCollisionSetupIntersection =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
-                |> World.setCar otherCar.id otherCar
+                |> WorldUpdate.setCar car.id car
+                |> WorldUpdate.setCar otherCar.id otherCar
     in
     Round worldWithCars car otherCars seed
 
@@ -198,7 +200,7 @@ redTrafficLightsSetup =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
+                |> WorldUpdate.setCar car.id car
     in
     Round worldWithCars car otherCars seed
 
@@ -218,7 +220,7 @@ greenTrafficLightsSetup =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
+                |> WorldUpdate.setCar car.id car
     in
     Round worldWithCars car otherCars seed
 
@@ -241,8 +243,8 @@ yieldWithPriorityTrafficSetup1 =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
-                |> World.setCar otherCar.id otherCar
+                |> WorldUpdate.setCar car.id car
+                |> WorldUpdate.setCar otherCar.id otherCar
     in
     Round worldWithCars car otherCars seed
 
@@ -265,8 +267,8 @@ yieldWithPriorityTrafficSetup2 =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
-                |> World.setCar otherCar.id otherCar
+                |> WorldUpdate.setCar car.id car
+                |> WorldUpdate.setCar otherCar.id otherCar
     in
     Round worldWithCars car otherCars seed
 
@@ -282,7 +284,7 @@ yieldWithoutPriorityTrafficSetup =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
+                |> WorldUpdate.setCar car.id car
     in
     Round worldWithCars car [] seed
 
@@ -302,7 +304,7 @@ yieldSlowDownSetup =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
+                |> WorldUpdate.setCar car.id car
     in
     Round worldWithCars car otherCars seed
 
@@ -351,19 +353,19 @@ buildCar option ( x, y ) orientation velocity =
         |> Car.withPosition (toLMPoint2d x y)
         |> Car.withOrientation orientation
         |> Car.withVelocity velocity
-        |> Car.build id Nothing
-        |> Car.startMoving
+        |> Car.build id
+        |> Steering.startMoving
 
 
 routeCarByDestination : World -> LMPoint2d -> Car -> Car
 routeCarByDestination world position car =
     let
         destination =
-            RoadNetwork.findNodeByPosition world.roadNetwork position
+            findNodeByPosition world.roadNetwork position
     in
     case destination of
         Just nodeCtx ->
-            Car.createRoute nodeCtx car
+            Pathfinding.createRoute nodeCtx car
 
         Nothing ->
             car
@@ -377,6 +379,6 @@ spawnCars n world aSeed =
     else
         let
             ( nextWorld, nextSeed, _ ) =
-                World.spawnCar aSeed world
+                WorldUpdate.spawnCar aSeed world
         in
         spawnCars (n - 1) nextWorld nextSeed

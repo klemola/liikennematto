@@ -1,4 +1,4 @@
-module Board exposing
+module Model.Board exposing
     ( Board
     , Tile
     , applyMask
@@ -13,12 +13,12 @@ module Board exposing
     , twoLaneRoadVertical
     )
 
-import BitMask
 import BoundingBox2d
-import Cell exposing (Cell, OrthogonalDirection(..))
+import Common
 import Config exposing (boardSizeScaledInMeters)
 import Dict exposing (Dict)
-import Geometry exposing (LMBoundingBox2d)
+import Model.Cell as Cell exposing (Cell, OrthogonalDirection(..))
+import Model.Geometry exposing (LMBoundingBox2d)
 import Point2d
 import Set exposing (Set)
 
@@ -29,6 +29,14 @@ type alias Board =
 
 type alias Tile =
     Int
+
+
+type alias ParallelNeighbors =
+    { north : Bool
+    , west : Bool
+    , east : Bool
+    , south : Bool
+    }
 
 
 exists : Cell -> Board -> Bool
@@ -83,7 +91,7 @@ isCurve tile =
 
 boundingBox : LMBoundingBox2d
 boundingBox =
-    Geometry.boundingBoxWithDimensions boardSizeScaledInMeters boardSizeScaledInMeters Point2d.origin
+    Common.boundingBoxWithDimensions boardSizeScaledInMeters boardSizeScaledInMeters Point2d.origin
 
 
 inBounds : LMBoundingBox2d -> Bool
@@ -111,7 +119,31 @@ chooseTile board origin =
             , south = exists (Cell.next Down origin) board
             }
     in
-    BitMask.fourBitValue parallelTiles
+    fourBitBitmask parallelTiles
+
+
+{-| Calculates tile number (ID) based on surrounding tiles
+
+    North = 2^0 = 1
+    West = 2^1 = 2
+    East = 2^2 = 4
+    South = 2^3 = 8
+
+    e.g. tile bordered by tiles in north and east directions 1*1 + 2*0 + 4*1 + 8*0 = 0101 = 5
+
+-}
+fourBitBitmask : ParallelNeighbors -> Int
+fourBitBitmask { north, west, east, south } =
+    1 * boolToBinary north + 2 * boolToBinary west + 4 * boolToBinary east + 8 * boolToBinary south
+
+
+boolToBinary : Bool -> Int
+boolToBinary booleanValue =
+    if booleanValue then
+        1
+
+    else
+        0
 
 
 potentialConnections : Tile -> List OrthogonalDirection

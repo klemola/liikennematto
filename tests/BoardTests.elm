@@ -1,6 +1,5 @@
 module BoardTests exposing (suite)
 
-import Board
 import Boards
     exposing
         ( boardThatResemblesACurve
@@ -10,6 +9,7 @@ import Boards
         )
 import Dict
 import Expect
+import Model.Board as Board
 import Test exposing (Test, describe, test)
 
 

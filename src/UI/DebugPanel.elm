@@ -1,20 +1,30 @@
-module DebugPanel exposing (Model, Msg, initialModel, update, view)
+module UI.DebugPanel exposing (Model, Msg, initialModel, update, view)
 
 import Acceleration exposing (Acceleration)
-import Car exposing (Car)
-import Config exposing (borderRadius, borderSize, colors, pixelsToMetersRatio, uiDimensions, whitespace)
+import Config exposing (pixelsToMetersRatio)
 import Dict
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
-import Geometry exposing (LMPoint2d)
+import Model.Car as Car exposing (Car)
+import Model.Geometry exposing (LMPoint2d)
+import Model.RoadNetwork as RoadNetwork
+import Model.World exposing (World)
 import Point2d
 import Quantity
-import RoadNetwork
 import Speed exposing (Speed)
-import UI exposing (ControlButtonSize(..))
-import World exposing (World)
+import UI.Core
+    exposing
+        ( ControlButtonSize(..)
+        , borderRadius
+        , borderSize
+        , colors
+        , controlButton
+        , icon
+        , uiDimensions
+        , whitespace
+        )
 
 
 type alias Model =
@@ -86,22 +96,22 @@ controls model world =
         [ Element.spacing whitespace.tight
         , Font.size uiDimensions.text
         ]
-        [ UI.controlButton
-            { label = UI.icon "road_network_debug.png"
+        [ controlButton
+            { label = icon "road_network_debug.png"
             , onPress = ToggleShowRoadNetwork
             , selected = model.showRoadNetwork
             , disabled = False
             , size = CBLarge
             }
-        , UI.controlButton
-            { label = UI.icon "car_white_1.png"
+        , controlButton
+            { label = icon "car_white_1.png"
             , onPress = ToggleShowCarDebugVisuals
             , selected = model.showRoadNetwork
             , disabled = False
             , size = CBLarge
             }
-        , UI.controlButton
-            { label = UI.icon "dot_string.png"
+        , controlButton
+            { label = icon "dot_string.png"
             , onPress =
                 RoadNetwork.toDotString world.roadNetwork
                     |> ShowDotString
@@ -133,7 +143,7 @@ dotStringView dotString =
                     ]
                     [ Element.text "DOT string"
                     , Element.el [ Element.alignRight ]
-                        (UI.controlButton
+                        (controlButton
                             { label = Element.text "❌"
                             , onPress = HideDotString
                             , selected = False
