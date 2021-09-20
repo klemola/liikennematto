@@ -1,5 +1,6 @@
 module Model.Liikennematto exposing
-    ( Liikennematto
+    ( CarSpawnQueue
+    , Liikennematto
     , SimulationState(..)
     , Tool(..)
     , new
@@ -22,7 +23,7 @@ type alias Liikennematto =
     , screen : Screen
     , seed : Random.Seed
     , simulation : SimulationState
-    , carSpawnQueue : Int
+    , carSpawnQueue : CarSpawnQueue
     , carPositionLookup : QuadTree Length.Meters LMEntityCoordinates Car
     , tool : Tool
     , showDebugPanel : Bool
@@ -35,6 +36,10 @@ type alias Liikennematto =
 type SimulationState
     = Running
     | Paused
+
+
+type alias CarSpawnQueue =
+    Int
 
 
 type alias Screen =

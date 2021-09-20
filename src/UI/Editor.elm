@@ -92,8 +92,8 @@ update msg model =
 -- Views
 
 
-overlay : Liikennematto -> Element Message
-overlay model =
+overlay : World -> Tool -> Element Message
+overlay world tool =
     let
         size =
             Element.px (boardSizeScaled |> Pixels.inPixels)
@@ -105,8 +105,8 @@ overlay model =
             tileOverlay
                 { glowColor =
                     tileHighlight
-                        { world = model.world
-                        , selectedTool = model.tool
+                        { world = world
+                        , selectedTool = tool
                         , cell = ( x, y )
                         }
                 , cell = ( x, y )
@@ -120,7 +120,7 @@ overlay model =
                 rg
 
         highlight =
-            case model.tool of
+            case tool of
                 Dynamite ->
                     colors.danger
 
@@ -199,8 +199,8 @@ tileHighlight { world, selectedTool, cell } =
                 colors.notAllowed
 
 
-toolbar : Liikennematto -> ControlButtonSize -> Element Message
-toolbar { tool } controlButtonSize =
+toolbar : Tool -> ControlButtonSize -> Element Message
+toolbar tool controlButtonSize =
     Element.row
         [ Element.spacing whitespace.tight
         , Element.alignLeft
