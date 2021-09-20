@@ -5,16 +5,23 @@ module Model.RoadNetwork exposing
     , RNNodeContext
     , RoadNetwork
     , TrafficControl(..)
+    , findNodeByLotId
+    , findNodeByNodeId
+    , findNodeByPosition
+    , getOutgoingConnections
+    , getRandomNode
     , new
     , toDotString
     )
 
-import Graph exposing (Graph, NodeContext)
+import Graph exposing (Graph, NodeContext, NodeId)
 import Graph.DOT
 import Model.Board exposing (Tile)
 import Model.Cell exposing (Cell, OrthogonalDirection(..))
 import Model.Entity exposing (Id)
 import Model.Geometry exposing (LMDirection2d, LMPoint2d)
+import Random
+import Random.Extra
 
 
 type alias RoadNetwork =
@@ -60,6 +67,69 @@ type alias Lane =
 new : RoadNetwork
 new =
     Graph.empty
+
+
+
+--
+-- Queries
+--
+
+
+findNodeByLotId : RoadNetwork -> Int -> Maybe RNNodeContext
+findNodeByLotId roadNetwork lotId =
+    roadNetwork
+        |> Graph.fold
+            (\ctx acc ->
+                if ctx.node.label.lotId == Just lotId then
+                    Just ctx
+
+                else
+                    acc
+            )
+            Nothing
+
+
+findNodeByNodeId : RoadNetwork -> NodeId -> Maybe RNNodeContext
+findNodeByNodeId roadNetwork nodeId =
+    Graph.get nodeId roadNetwork
+
+
+findNodeByPosition : RoadNetwork -> LMPoint2d -> Maybe RNNodeContext
+findNodeByPosition roadNetwork position =
+    Graph.nodes roadNetwork
+        |> List.filterMap
+            (\{ id, label } ->
+                if label.position == position then
+                    Just id
+
+                else
+                    Nothing
+            )
+        |> List.head
+        |> Maybe.andThen (\matchId -> Graph.get matchId roadNetwork)
+
+
+getRandomNode : RoadNetwork -> Random.Seed -> ( Maybe RNNodeContext, Random.Seed )
+getRandomNode roadNetwork seed =
+    let
+        randomNodeGenerator =
+            roadNetwork
+                |> Graph.nodeIds
+                |> Random.Extra.sample
+                |> Random.map (Maybe.andThen (findNodeByNodeId roadNetwork))
+    in
+    Random.step randomNodeGenerator seed
+
+
+getOutgoingConnections : RNNodeContext -> List NodeId
+getOutgoingConnections nodeCtx =
+    Graph.alongOutgoingEdges nodeCtx
+
+
+
+--
+-- Debug
+--
 
 
 connectionKindToString : ConnectionKind -> String

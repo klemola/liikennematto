@@ -1,23 +1,12 @@
-module Simulation.RoadNetwork exposing
-    ( findNodeByLotId
-    , findNodeByNodeId
-    , findNodeByPosition
-    , findNodeReplacement
-    , fromBoardAndLots
-    , getOutgoingConnections
-    , getRandomNode
-    , lookupTree
-    , setupTrafficControl
-    )
+module Simulation.Infrastructure exposing (build)
 
-import Angle
 import BoundingBox2d
 import Common
 import Config exposing (pixelsToMeters, tileSizeInMeters)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction2d
-import Graph exposing (Edge, Node, NodeId)
+import Graph exposing (Edge, Node)
 import IntDict
 import Length exposing (Length)
 import Maybe.Extra as Maybe
@@ -28,11 +17,10 @@ import Model.Geometry
     exposing
         ( LMBoundingBox2d
         , LMDirection2d
-        , LMEntityCoordinates
         , LMPoint2d
         )
 import Model.Lot as Lot exposing (Lot, Lots)
-import Model.RoadNetwork
+import Model.RoadNetwork as RoadNetwork
     exposing
         ( Connection
         , ConnectionKind(..)
@@ -43,19 +31,8 @@ import Model.RoadNetwork
         )
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLights)
 import Point2d
-import QuadTree
 import Quantity
-import Random
-import Random.Extra
 import Vector2d
-
-
-type alias RNLookupTree =
-    QuadTree.QuadTree Length.Meters LMEntityCoordinates LookupTreeEntry
-
-
-type alias LookupTreeEntry =
-    { id : Int, position : LMPoint2d, boundingBox : LMBoundingBox2d }
 
 
 innerLaneOffset : Length
@@ -68,25 +45,8 @@ outerLaneOffset =
     pixelsToMeters 54
 
 
-lookupTree : RoadNetwork -> RNLookupTree
-lookupTree roadNetwork =
-    QuadTree.init Board.boundingBox 4
-        |> QuadTree.insertList
-            (Graph.fold
-                (\nodeCtx acc ->
-                    { id = nodeCtx.node.id
-                    , position = nodeCtx.node.label.position
-                    , boundingBox = BoundingBox2d.singleton nodeCtx.node.label.position
-                    }
-                        :: acc
-                )
-                []
-                roadNetwork
-            )
-
-
-fromBoardAndLots : Board -> Lots -> RoadNetwork
-fromBoardAndLots board lots =
+build : Board -> Lots -> TrafficLights -> ( RoadNetwork, TrafficLights )
+build board lots trafficLights =
     let
         tilePriority ( _, tile ) =
             if Board.isDeadend tile then
@@ -111,88 +71,11 @@ fromBoardAndLots board lots =
 
         edges =
             createLanes nodes
+
+        roadNetwork =
+            Graph.fromNodesAndEdges nodes edges
     in
-    Graph.fromNodesAndEdges nodes edges
-
-
-
---
--- Traffic control
---
-
-
-setupTrafficControl : TrafficLights -> RoadNetwork -> ( RoadNetwork, TrafficLights )
-setupTrafficControl currentTrafficLights roadNetwork =
-    -- Room for improvement: merge this logic with "fromBoardAndLots"
-    Graph.fold
-        (updateNodeTrafficControl currentTrafficLights)
-        ( roadNetwork, Dict.empty )
-        roadNetwork
-
-
-updateNodeTrafficControl : TrafficLights -> RNNodeContext -> ( RoadNetwork, TrafficLights ) -> ( RoadNetwork, TrafficLights )
-updateNodeTrafficControl currentTrafficLights nodeCtx ( roadNetwork, nextTrafficLights ) =
-    let
-        connection =
-            nodeCtx.node.label
-    in
-    case IntDict.size nodeCtx.outgoing of
-        -- Four-way intersection (or crossroads)
-        3 ->
-            let
-                trafficLight =
-                    currentTrafficLights
-                        |> Dict.find (\_ existingTrafficLight -> existingTrafficLight.position == connection.position)
-                        |> Maybe.map Tuple.second
-                        |> Maybe.withDefault (createTrafficLight connection nextTrafficLights)
-            in
-            ( Graph.insert (linkTrafficLightToNode trafficLight.id nodeCtx) roadNetwork
-            , Dict.insert trafficLight.id trafficLight nextTrafficLights
-            )
-
-        -- Three-way intersection (or T-intersection)
-        2 ->
-            let
-                nextNodeCtx =
-                    if nodeCtx |> isOnPriorityRoad roadNetwork then
-                        nodeCtx |> setTrafficControl None
-
-                    else
-                        -- orphan road node
-                        nodeCtx |> setTrafficControl Yield
-            in
-            ( Graph.insert nextNodeCtx roadNetwork
-            , nextTrafficLights
-            )
-
-        -- Not an intersection (assuming max four ways)
-        _ ->
-            ( Graph.insert (nodeCtx |> setTrafficControl None) roadNetwork
-            , nextTrafficLights
-            )
-
-
-createTrafficLight : Connection -> TrafficLights -> TrafficLight
-createTrafficLight connection nextTrafficLights =
-    let
-        nextId =
-            Entity.nextId nextTrafficLights
-
-        facing =
-            Direction2d.reverse connection.direction
-
-        color =
-            if connection.direction == Direction2d.positiveX || connection.direction == Direction2d.negativeX then
-                TrafficLight.Green
-
-            else
-                TrafficLight.Red
-    in
-    TrafficLight.new
-        |> TrafficLight.withPosition connection.position
-        |> TrafficLight.withFacing facing
-        |> TrafficLight.withColor color
-        |> TrafficLight.build nextId
+    roadNetwork |> setupTrafficControl trafficLights
 
 
 
@@ -521,6 +404,42 @@ findLaneEnd nodes current =
         |> Maybe.map (connect current)
 
 
+hasSameDirection : Node Connection -> Node Connection -> Bool
+hasSameDirection nodeA nodeB =
+    connectionDirection nodeA == connectionDirection nodeB
+
+
+isFacing : Node Connection -> Node Connection -> Bool
+isFacing nodeA nodeB =
+    let
+        origin =
+            connectionPosition nodeA
+
+        target =
+            connectionPosition nodeB
+
+        direction =
+            connectionDirection nodeA
+
+        angleToTarget =
+            origin |> Common.angleFromDirection direction target
+    in
+    angleToTarget == Quantity.zero
+
+
+closestToOriginOrdering : Node Connection -> Node Connection -> Float
+closestToOriginOrdering nodeA nodeB =
+    let
+        origin =
+            connectionPosition nodeA
+
+        target =
+            connectionPosition nodeB
+    in
+    Point2d.distanceFrom origin target
+        |> Length.inMeters
+
+
 findLanesInsideCell : List (Node Connection) -> Node Connection -> List (Edge Lane)
 findLanesInsideCell nodes current =
     nodes
@@ -534,17 +453,22 @@ findLanesInsideCell nodes current =
             )
 
 
+endsEdgeInsideCell : Node Connection -> Bool
+endsEdgeInsideCell node =
+    node.label.kind == LaneStart || node.label.kind == Stopgap || node.label.kind == DeadendExit
+
+
 connectsWithinCell : Node Connection -> Node Connection -> Bool
 connectsWithinCell current other =
     let
         ( fromDir, toDir ) =
-            ( getDirection current, getDirection other )
+            ( connectionDirection current, connectionDirection other )
 
         range =
             Quantity.half tileSizeInMeters
 
         target =
-            getPosition other
+            connectionPosition other
 
         leftLookupArea =
             connectionLookupAreaToLeft current (range |> Quantity.plus innerLaneOffset)
@@ -568,7 +492,7 @@ connectionLookupAreaToLeft node range =
             connectionLookupAreaToRight node range
 
         leftDir =
-            Direction2d.rotateCounterclockwise (getDirection node)
+            Direction2d.rotateCounterclockwise (connectionDirection node)
     in
     BoundingBox2d.translateIn leftDir range bb
 
@@ -577,10 +501,10 @@ connectionLookupAreaToRight : Node Connection -> Length -> LMBoundingBox2d
 connectionLookupAreaToRight node range =
     let
         origin =
-            getPosition node
+            connectionPosition node
 
         nodeDirection =
-            getDirection node
+            connectionDirection node
 
         nodeDirectionRotatedRight =
             Direction2d.rotateClockwise nodeDirection
@@ -601,52 +525,66 @@ connectDeadendEntryWithExit entry =
 
 
 
--- Utility
+--
+-- Traffic control
+--
 
 
-getPosition : Node Connection -> LMPoint2d
-getPosition node =
-    node.label.position
+setupTrafficControl : TrafficLights -> RoadNetwork -> ( RoadNetwork, TrafficLights )
+setupTrafficControl currentTrafficLights roadNetwork =
+    Graph.fold
+        (updateNodeTrafficControl currentTrafficLights)
+        ( roadNetwork, Dict.empty )
+        roadNetwork
 
 
-getDirection : Node Connection -> LMDirection2d
-getDirection node =
-    node.label.direction
-
-
-endsEdgeInsideCell : Node Connection -> Bool
-endsEdgeInsideCell node =
-    node.label.kind == LaneStart || node.label.kind == Stopgap || node.label.kind == DeadendExit
-
-
-hasSameDirection : Node Connection -> Node Connection -> Bool
-hasSameDirection nodeA nodeB =
-    getDirection nodeA == getDirection nodeB
-
-
-isFacing : Node Connection -> Node Connection -> Bool
-isFacing nodeA nodeB =
+updateNodeTrafficControl : TrafficLights -> RNNodeContext -> ( RoadNetwork, TrafficLights ) -> ( RoadNetwork, TrafficLights )
+updateNodeTrafficControl currentTrafficLights nodeCtx ( roadNetwork, nextTrafficLights ) =
     let
-        origin =
-            getPosition nodeA
-
-        target =
-            getPosition nodeB
-
-        direction =
-            getDirection nodeA
-
-        angleToTarget =
-            origin |> Common.angleFromDirection direction target
+        connection =
+            nodeCtx.node.label
     in
-    Angle.inDegrees angleToTarget == 0
+    case IntDict.size nodeCtx.outgoing of
+        -- Four-way intersection (or crossroads)
+        3 ->
+            let
+                trafficLight =
+                    currentTrafficLights
+                        |> Dict.find (\_ existingTrafficLight -> existingTrafficLight.position == connection.position)
+                        |> Maybe.map Tuple.second
+                        |> Maybe.withDefault (createTrafficLight connection nextTrafficLights)
+            in
+            ( Graph.insert (linkTrafficLightToNode trafficLight.id nodeCtx) roadNetwork
+            , Dict.insert trafficLight.id trafficLight nextTrafficLights
+            )
+
+        -- Three-way intersection (or T-intersection)
+        2 ->
+            let
+                nextNodeCtx =
+                    if nodeCtx |> isOnPriorityRoad roadNetwork then
+                        nodeCtx |> setTrafficControl None
+
+                    else
+                        -- orphan road node
+                        nodeCtx |> setTrafficControl Yield
+            in
+            ( Graph.insert nextNodeCtx roadNetwork
+            , nextTrafficLights
+            )
+
+        -- Not an intersection (assuming max four ways)
+        _ ->
+            ( Graph.insert (nodeCtx |> setTrafficControl None) roadNetwork
+            , nextTrafficLights
+            )
 
 
 isOnPriorityRoad : RoadNetwork -> RNNodeContext -> Bool
 isOnPriorityRoad roadNetwork nodeCtx =
     let
         otherNodeCtxs =
-            getOutgoingConnections nodeCtx
+            RoadNetwork.getOutgoingConnections nodeCtx
                 |> List.filterMap (\nodeId -> Graph.get nodeId roadNetwork)
     in
     List.any (.node >> isParallel nodeCtx.node) otherNodeCtxs
@@ -655,23 +593,33 @@ isOnPriorityRoad roadNetwork nodeCtx =
 isParallel : Node Connection -> Node Connection -> Bool
 isParallel nodeA nodeB =
     Direction2d.from
-        (getPosition nodeA)
-        (getPosition nodeB)
+        (connectionPosition nodeA)
+        (connectionPosition nodeB)
         |> Maybe.map (\dir -> Direction2d.xComponent dir == 0 || Direction2d.yComponent dir == 0)
         |> Maybe.withDefault False
 
 
-closestToOriginOrdering : Node Connection -> Node Connection -> Float
-closestToOriginOrdering nodeA nodeB =
+createTrafficLight : Connection -> TrafficLights -> TrafficLight
+createTrafficLight connection nextTrafficLights =
     let
-        origin =
-            getPosition nodeA
+        nextId =
+            Entity.nextId nextTrafficLights
 
-        target =
-            getPosition nodeB
+        facing =
+            Direction2d.reverse connection.direction
+
+        color =
+            if connection.direction == Direction2d.positiveX || connection.direction == Direction2d.negativeX then
+                TrafficLight.Green
+
+            else
+                TrafficLight.Red
     in
-    Point2d.distanceFrom origin target
-        |> Length.inMeters
+    TrafficLight.new
+        |> TrafficLight.withPosition connection.position
+        |> TrafficLight.withFacing facing
+        |> TrafficLight.withColor color
+        |> TrafficLight.build nextId
 
 
 linkTrafficLightToNode : Id -> RNNodeContext -> RNNodeContext
@@ -698,79 +646,16 @@ setTrafficControl trafficControl nodeCtx =
 
 
 
--- Queries
+--
+-- Utility
+--
 
 
-findNodeByLotId : RoadNetwork -> Int -> Maybe RNNodeContext
-findNodeByLotId roadNetwork lotId =
-    roadNetwork
-        |> Graph.fold
-            (\ctx acc ->
-                if ctx.node.label.lotId == Just lotId then
-                    Just ctx
-
-                else
-                    acc
-            )
-            Nothing
+connectionPosition : Node Connection -> LMPoint2d
+connectionPosition node =
+    node.label.position
 
 
-findNodeByNodeId : RoadNetwork -> NodeId -> Maybe RNNodeContext
-findNodeByNodeId roadNetwork nodeId =
-    Graph.get nodeId roadNetwork
-
-
-findNodeByPosition : RoadNetwork -> LMPoint2d -> Maybe RNNodeContext
-findNodeByPosition roadNetwork position =
-    Graph.nodes roadNetwork
-        |> List.filterMap
-            (\{ id, label } ->
-                if label.position == position then
-                    Just id
-
-                else
-                    Nothing
-            )
-        |> List.head
-        |> Maybe.andThen (\matchId -> Graph.get matchId roadNetwork)
-
-
-getRandomNode : RoadNetwork -> Random.Seed -> ( Maybe RNNodeContext, Random.Seed )
-getRandomNode roadNetwork seed =
-    let
-        randomNodeGenerator =
-            roadNetwork
-                |> Graph.nodeIds
-                |> Random.Extra.sample
-                |> Random.map (Maybe.andThen (findNodeByNodeId roadNetwork))
-    in
-    Random.step randomNodeGenerator seed
-
-
-getOutgoingConnections : RNNodeContext -> List NodeId
-getOutgoingConnections nodeCtx =
-    Graph.alongOutgoingEdges nodeCtx
-
-
-findNodeReplacement : RNLookupTree -> RNNodeContext -> Maybe Int
-findNodeReplacement nodeLookup target =
-    -- Tries to find a node in the lookup tree that could replace the reference node.
-    -- Useful in maintaning route after the road network has been updated.
-    let
-        targetPosition =
-            target.node.label.position
-
-        positionMatches =
-            nodeLookup
-                |> QuadTree.findIntersecting
-                    { id = target.node.id
-                    , position = targetPosition
-                    , boundingBox = BoundingBox2d.singleton targetPosition
-                    }
-    in
-    case positionMatches of
-        match :: _ ->
-            Just match.id
-
-        [] ->
-            Nothing
+connectionDirection : Node Connection -> LMDirection2d
+connectionDirection node =
+    node.label.direction

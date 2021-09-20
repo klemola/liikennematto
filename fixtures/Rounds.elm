@@ -18,11 +18,11 @@ import Angle exposing (Angle)
 import Dict
 import Model.Car as Car exposing (Car)
 import Model.Geometry exposing (LMPoint2d)
+import Model.RoadNetwork as RoadNetwork
 import Model.World as World exposing (World)
 import Quantity
 import Random
 import Simulation.Pathfinding as Pathfinding
-import Simulation.RoadNetwork exposing (findNodeByPosition)
 import Simulation.Round exposing (Round)
 import Simulation.Steering as Steering
 import Simulation.WorldUpdate as WorldUpdate
@@ -361,7 +361,7 @@ routeCarByDestination : World -> LMPoint2d -> Car -> Car
 routeCarByDestination world position car =
     let
         destination =
-            findNodeByPosition world.roadNetwork position
+            RoadNetwork.findNodeByPosition world.roadNetwork position
     in
     case destination of
         Just nodeCtx ->

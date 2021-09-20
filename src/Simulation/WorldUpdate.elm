@@ -1,22 +1,26 @@
 module Simulation.WorldUpdate exposing (..)
 
--- TODO: rename module
+-- TODO: move things from here to where they are used
 
 import BoundingBox2d
 import Defaults
 import Dict
 import Dict.Extra as Dict
 import Direction2d
+import Graph
+import Length
 import Model.Board as Board exposing (Board)
 import Model.Car as Car exposing (Car, CarKind(..), Cars, Status(..))
 import Model.Cell exposing (Cell)
 import Model.Entity as Entity exposing (Id)
+import Model.Geometry exposing (LMBoundingBox2d, LMEntityCoordinates, LMPoint2d)
 import Model.Lot as Lot exposing (Lot, Lots)
-import Model.RoadNetwork exposing (RNNodeContext, RoadNetwork)
+import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext, RoadNetwork)
 import Model.World exposing (World)
+import QuadTree
 import Random
+import Simulation.Infrastructure as Infrastructure
 import Simulation.Pathfinding as Pathfinding
-import Simulation.RoadNetwork as RoadNetwork
 import Simulation.Steering as Steering
 
 
@@ -36,8 +40,7 @@ addLot lot world =
             Dict.insert nextLotId lot world.lots
 
         ( roadNetwork, nextTrafficLights ) =
-            RoadNetwork.fromBoardAndLots world.board nextLots
-                |> RoadNetwork.setupTrafficControl world.trafficLights
+            Infrastructure.build world.board nextLots world.trafficLights
     in
     { world
         | lots = nextLots
@@ -151,8 +154,7 @@ worldAfterBoardChange { cell, nextBoard, world } =
                 world.lots
 
         ( nextRoadNetwork, nextTrafficLights ) =
-            RoadNetwork.fromBoardAndLots nextBoard nextLots
-                |> RoadNetwork.setupTrafficControl world.trafficLights
+            Infrastructure.build nextBoard nextLots world.trafficLights
 
         nextCars =
             carsAfterBoardChange
@@ -191,7 +193,7 @@ carsAfterBoardChange :
 carsAfterBoardChange { nextLots, currentCars, nextRoadNetwork } =
     let
         connectionLookup =
-            RoadNetwork.lookupTree nextRoadNetwork
+            lookupTree nextRoadNetwork
     in
     currentCars
         |> Dict.filter
@@ -209,7 +211,7 @@ carsAfterBoardChange { nextLots, currentCars, nextRoadNetwork } =
                     Car.Moving ->
                         case
                             List.head car.route
-                                |> Maybe.andThen (RoadNetwork.findNodeReplacement connectionLookup)
+                                |> Maybe.andThen (findNodeReplacement connectionLookup)
                                 |> Maybe.andThen (RoadNetwork.findNodeByNodeId nextRoadNetwork)
                         of
                             Just nodeCtxResult ->
@@ -243,3 +245,59 @@ validateSpawnConditions world nodeCtx =
 
     else
         Nothing
+
+
+
+--
+-- Lookup (temporarily here)
+-- TODO: store the tree in World itself
+--
+
+
+type alias RNLookupTree =
+    QuadTree.QuadTree Length.Meters LMEntityCoordinates LookupTreeEntry
+
+
+type alias LookupTreeEntry =
+    { id : Int, position : LMPoint2d, boundingBox : LMBoundingBox2d }
+
+
+lookupTree : RoadNetwork -> RNLookupTree
+lookupTree roadNetwork =
+    QuadTree.init Board.boundingBox 4
+        |> QuadTree.insertList
+            (Graph.fold
+                (\nodeCtx acc ->
+                    { id = nodeCtx.node.id
+                    , position = nodeCtx.node.label.position
+                    , boundingBox = BoundingBox2d.singleton nodeCtx.node.label.position
+                    }
+                        :: acc
+                )
+                []
+                roadNetwork
+            )
+
+
+findNodeReplacement : RNLookupTree -> RNNodeContext -> Maybe Int
+findNodeReplacement nodeLookup target =
+    -- Tries to find a node in the lookup tree that could replace the reference node.
+    -- Useful in maintaning route after the road network has been updated.
+    let
+        targetPosition =
+            target.node.label.position
+
+        positionMatches =
+            nodeLookup
+                |> QuadTree.findIntersecting
+                    { id = target.node.id
+                    , position = targetPosition
+                    , boundingBox = BoundingBox2d.singleton targetPosition
+                    }
+    in
+    case positionMatches of
+        match :: _ ->
+            Just match.id
+
+        [] ->
+            Nothing
