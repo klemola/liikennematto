@@ -1,12 +1,4 @@
-module Simulation.Simulation exposing
-    ( Model
-    , Msg(..)
-    , SimulationState(..)
-    , init
-    , maxCarSpawnQueueSize
-    , subscriptions
-    , update
-    )
+module Simulation.Simulation exposing (generateEnvironmentAfterDelay, update)
 
 import Browser.Events as Events
 import Common
@@ -17,11 +9,13 @@ import Dict.Extra as Dict
 import Direction2d
 import Duration
 import Length
+import Message exposing (Message(..))
 import Model.Board as Board
 import Model.Car as Car exposing (Car, Status(..))
 import Model.Cell as Cell exposing (Cell)
 import Model.Entity as Entity
 import Model.Geometry exposing (LMEntityCoordinates)
+import Model.Liikennematto exposing (Liikennematto, SimulationState(..))
 import Model.Lot as Lot exposing (NewLot)
 import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..))
 import Model.TrafficLight as TrafficLight
@@ -37,86 +31,6 @@ import Simulation.Round as Round
 import Simulation.Steering as Steering
 import Simulation.WorldUpdate exposing (addLot, setCar, spawnCar)
 import Task
-import Time
-
-
-type alias Model =
-    { seed : Random.Seed
-    , simulation : SimulationState
-    , carSpawnQueue : Int
-    , carPositionLookup : QuadTree Length.Meters LMEntityCoordinates Car
-    }
-
-
-type SimulationState
-    = Running
-    | Paused
-
-
-type Msg
-    = SetSimulation SimulationState
-    | UpdateTraffic Float
-    | UpdateEnvironment Time.Posix
-    | GenerateEnvironment ()
-    | CheckQueues Time.Posix
-    | CheckCarStatus Time.Posix
-    | SpawnTestCar
-    | VisibilityChanged Events.Visibility
-
-
-init : ( Model, Cmd Msg )
-init =
-    let
-        seed =
-            Random.initialSeed 666
-    in
-    ( { seed = seed
-      , simulation = Running
-      , carSpawnQueue = 0
-      , carPositionLookup = QuadTree.init Board.boundingBox quadTreeLeafElementsAmount
-      }
-    , generateEnvironmentAfterDelay seed
-    )
-
-
-environmentUpdateFrequency : Float
-environmentUpdateFrequency =
-    1000
-
-
-dequeueFrequency : Float
-dequeueFrequency =
-    500
-
-
-carStatusCheckFrequency : Float
-carStatusCheckFrequency =
-    1000
-
-
-quadTreeLeafElementsAmount : Int
-quadTreeLeafElementsAmount =
-    4
-
-
-maxCarSpawnQueueSize : Int
-maxCarSpawnQueueSize =
-    5
-
-
-subscriptions : Model -> Sub Msg
-subscriptions { simulation } =
-    if simulation == Paused then
-        Events.onVisibilityChange VisibilityChanged
-
-    else
-        Sub.batch
-            [ Events.onVisibilityChange VisibilityChanged
-            , Events.onAnimationFrameDelta UpdateTraffic
-            , Time.every environmentUpdateFrequency UpdateEnvironment
-            , Time.every dequeueFrequency CheckQueues
-            , Time.every carStatusCheckFrequency CheckCarStatus
-            ]
 
 
 
@@ -125,8 +39,8 @@ subscriptions { simulation } =
 --
 
 
-update : World -> Msg -> Model -> ( Model, World, Cmd Msg )
-update world msg model =
+update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
+update msg model =
     case msg of
         VisibilityChanged newVisibility ->
             ( { model
@@ -138,85 +52,89 @@ update world msg model =
                         Events.Hidden ->
                             Paused
               }
-            , world
             , Cmd.none
             )
 
         SetSimulation simulation ->
-            ( { model | simulation = simulation }, world, Cmd.none )
+            ( { model | simulation = simulation }, Cmd.none )
 
         UpdateTraffic rafDelta ->
             let
                 cars =
-                    Dict.values world.cars
+                    Dict.values model.world.cars
 
                 carPositionLookup =
-                    QuadTree.init Board.boundingBox quadTreeLeafElementsAmount |> QuadTree.insertList cars
+                    QuadTree.init Board.boundingBox Config.quadTreeLeafElementsAmount |> QuadTree.insertList cars
 
                 ( nextWorld, nextSeed ) =
                     updateTraffic
                         { updateQueue = cars
                         , carPositionLookup = carPositionLookup
                         , seed = model.seed
-                        , world = world
+                        , world = model.world
                         , delta = rafDelta
                         }
             in
             ( { model
                 | seed = nextSeed
                 , carPositionLookup = carPositionLookup
+                , world = nextWorld
               }
-            , nextWorld
             , Cmd.none
             )
 
         UpdateEnvironment _ ->
-            ( model
-            , updateEnvironment world
+            ( { model | world = updateEnvironment model.world }
             , Cmd.none
             )
 
         GenerateEnvironment _ ->
             let
                 ( nextWorld, nextSeed ) =
-                    attemptGenerateEnvironment world model.seed model.simulation
+                    attemptGenerateEnvironment model.world model.seed model.simulation
             in
-            ( { model | seed = nextSeed }
-            , nextWorld
+            ( { model
+                | seed = nextSeed
+                , world = nextWorld
+              }
             , generateEnvironmentAfterDelay nextSeed
             )
 
         CheckQueues _ ->
             let
                 ( nextWorld, nextCarSpawnQueue, nextSeed ) =
-                    dequeueCarSpawn model.carSpawnQueue model.seed world
+                    dequeueCarSpawn model.carSpawnQueue model.seed model.world
             in
             ( { model
                 | carSpawnQueue = nextCarSpawnQueue
+                , world = nextWorld
                 , seed = nextSeed
               }
-            , nextWorld
             , Cmd.none
             )
 
         CheckCarStatus _ ->
             let
                 ( nextWorld, nextSeed ) =
-                    checkCarStatus model.seed world
+                    checkCarStatus model.seed model.world
             in
-            ( { model | seed = nextSeed }
-            , nextWorld
+            ( { model
+                | seed = nextSeed
+                , world = nextWorld
+              }
             , Cmd.none
             )
 
         SpawnTestCar ->
             ( { model | carSpawnQueue = model.carSpawnQueue + 1 }
-            , world
             , Cmd.none
             )
 
+        _ ->
+            ( model, Cmd.none )
 
-generateEnvironmentAfterDelay : Random.Seed -> Cmd Msg
+
+generateEnvironmentAfterDelay : Random.Seed -> Cmd Message
 generateEnvironmentAfterDelay seed =
     let
         randomMillis =
