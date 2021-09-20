@@ -23,7 +23,7 @@ import Model.Cell as Cell exposing (Cell)
 import Model.Entity as Entity
 import Model.Geometry exposing (LMEntityCoordinates)
 import Model.Lot as Lot exposing (NewLot)
-import Model.RoadNetwork exposing (ConnectionKind(..))
+import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..))
 import Model.TrafficLight as TrafficLight
 import Model.World as World exposing (World)
 import Point2d
@@ -33,7 +33,6 @@ import Quantity
 import Random
 import Random.List
 import Simulation.Pathfinding as Pathfinding
-import Simulation.RoadNetwork exposing (findNodeByLotId, findNodeByNodeId, getOutgoingConnections)
 import Simulation.Round as Round
 import Simulation.Steering as Steering
 import Simulation.WorldUpdate exposing (addLot, setCar, spawnCar)
@@ -413,7 +412,7 @@ chooseNextConnection seed world car =
         nodeCtx :: _ ->
             let
                 randomConnectionGenerator =
-                    getOutgoingConnections nodeCtx
+                    RoadNetwork.getOutgoingConnections nodeCtx
                         |> Random.List.choose
                         |> Random.map Tuple.first
 
@@ -422,7 +421,7 @@ chooseNextConnection seed world car =
 
                 nextCar =
                     connection
-                        |> Maybe.andThen (findNodeByNodeId world.roadNetwork)
+                        |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
                         |> Maybe.map
                             (\nextNodeCtx ->
                                 -- This is a temporary hack to make sure that tight turns can be completed
@@ -521,7 +520,7 @@ checkCarStatus seed world =
                 ParkedAtLot ->
                     if toss then
                         car.homeLotId
-                            |> Maybe.andThen (findNodeByLotId world.roadNetwork)
+                            |> Maybe.andThen (RoadNetwork.findNodeByLotId world.roadNetwork)
                             |> Maybe.map
                                 (\nodeCtx ->
                                     car
@@ -545,7 +544,7 @@ moveCarToHome world car lotId =
             Dict.get lotId world.lots
 
         homeNode =
-            findNodeByLotId world.roadNetwork lotId
+            RoadNetwork.findNodeByLotId world.roadNetwork lotId
     in
     case ( home, homeNode ) of
         ( Just lot, Just nodeCtx ) ->

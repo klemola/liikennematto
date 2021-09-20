@@ -9,7 +9,7 @@ import Model.Cell exposing (OrthogonalDirection(..))
 import Model.Lot exposing (Building, BuildingKind(..), Lot, NewLot)
 import Model.World as World exposing (World)
 import Quantity
-import Simulation.RoadNetwork as RoadNetwork
+import Simulation.Infrastructure as Infrastructure
 
 
 defaultWorld : World
@@ -19,8 +19,7 @@ defaultWorld =
             World.empty
 
         ( roadNetwork, trafficLights ) =
-            RoadNetwork.fromBoardAndLots initialBoard base.lots
-                |> RoadNetwork.setupTrafficControl base.trafficLights
+            Infrastructure.build initialBoard base.lots base.trafficLights
     in
     { base
         | board = initialBoard
