@@ -106,7 +106,7 @@ render model =
         |> Element.el
             [ Element.width (Element.px renderedSize)
             , Element.height (Element.px renderedSize)
-            , Element.inFront (UI.Editor.overlay model)
+            , Element.inFront (UI.Editor.overlay model.world model.tool)
             , Background.color colors.terrain
             ]
         -- overflow wrapper
