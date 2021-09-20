@@ -1,14 +1,96 @@
-module UI.UI exposing (carSpawnControl, projectInfo, simulationControl)
+module UI.UI exposing (layout, update)
 
+import Config
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
-import Simulation.Simulation as Simulation exposing (Msg(..), SimulationState(..))
-import UI.Core exposing (ControlButtonSize, borderRadius, colors, controlButton, link, uiDimensions, whitespace)
+import Html exposing (Html)
+import Message exposing (Message(..))
+import Model.Liikennematto exposing (Liikennematto, SimulationState(..))
+import UI.Core exposing (ControlButtonSize(..), borderRadius, colors, controlButton, link, uiDimensions, whitespace)
+import UI.DebugPanel as DebugPanel
+import UI.Editor as Editor
 
 
-simulationControl : Simulation.Model -> ControlButtonSize -> Element Simulation.Msg
+update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
+update msg model =
+    let
+        ( modelWithDebugChanges, debugCmd ) =
+            DebugPanel.update msg model
+
+        ( modelWithEditorChanges, editorCmd ) =
+            Editor.update msg modelWithDebugChanges
+    in
+    ( modelWithEditorChanges, Cmd.batch [ debugCmd, editorCmd ] )
+
+
+layout : Liikennematto -> (Liikennematto -> Element Message) -> Html Message
+layout model renderFn =
+    Element.layout
+        [ Background.color colors.mainBackground
+        , Element.width Element.fill
+        , Element.height Element.fill
+        , Element.inFront (controls model)
+        , Element.inFront projectInfo
+        , Element.inFront (debugPanel model)
+        ]
+        (renderFn model)
+
+
+controls : Liikennematto -> Element Message
+controls model =
+    let
+        controlButtonSize =
+            if min model.screen.width model.screen.height < uiDimensions.smallControlsBreakpoint then
+                CBSmall
+
+            else
+                CBLarge
+
+        spacer =
+            Element.el
+                [ Element.width (Element.px whitespace.tight)
+                , Element.height (Element.px uiDimensions.controlButtonS)
+                , Background.color colors.mainBackground
+                , Border.rounded borderRadius.heavy
+                ]
+                Element.none
+    in
+    Element.row
+        [ Element.padding whitespace.tight
+        , Element.spacing whitespace.regular
+        , Element.alignBottom
+        , Element.centerX
+        , Background.color colors.menuBackground
+        , Border.roundEach
+            { topLeft = borderRadius.heavy
+            , topRight = borderRadius.heavy
+            , bottomLeft = 0
+            , bottomRight = 0
+            }
+        , Border.solid
+        , Border.color colors.heavyBorder
+        ]
+        [ Editor.toolbar model controlButtonSize
+        , spacer
+        , Element.row
+            [ Element.spacing whitespace.tight
+            ]
+            [ UI.Core.controlButton
+                { label = Element.text "🐛"
+                , onPress = ToggleDebugMode
+                , selected = model.showDebugPanel
+                , disabled = False
+                , size = controlButtonSize
+                }
+            , carSpawnControl model controlButtonSize
+            , simulationControl model controlButtonSize
+            ]
+        ]
+
+
+simulationControl : Liikennematto -> ControlButtonSize -> Element Message
 simulationControl { simulation } controlButtonSize =
     let
         ( label, selected, msg ) =
@@ -28,19 +110,28 @@ simulationControl { simulation } controlButtonSize =
         }
 
 
-carSpawnControl : Simulation.Model -> ControlButtonSize -> Element Simulation.Msg
+carSpawnControl : Liikennematto -> ControlButtonSize -> Element Message
 carSpawnControl { carSpawnQueue } controlButtonSize =
     let
         disabled =
-            carSpawnQueue >= Simulation.maxCarSpawnQueueSize
+            carSpawnQueue >= Config.maxCarSpawnQueueSize
     in
     controlButton
         { label = Element.text "🚗"
-        , onPress = Simulation.SpawnTestCar
+        , onPress = SpawnTestCar
         , selected = False
         , disabled = disabled
         , size = controlButtonSize
         }
+
+
+debugPanel : Liikennematto -> Element Message
+debugPanel model =
+    if model.showDebugPanel then
+        DebugPanel.view model
+
+    else
+        Element.none
 
 
 projectInfo : Element msg

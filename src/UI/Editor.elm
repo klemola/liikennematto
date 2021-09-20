@@ -1,8 +1,5 @@
 module UI.Editor exposing
-    ( Model
-    , Msg
-    , initialModel
-    , overlay
+    ( overlay
     , toolbar
     , update
     )
@@ -12,7 +9,9 @@ import CustomEvent
 import Element exposing (Color, Element)
 import Element.Border as Border
 import Element.Events as Events
+import Message exposing (Message(..))
 import Model.Cell exposing (Cell)
+import Model.Liikennematto exposing (Liikennematto, Tool(..))
 import Model.World as World exposing (World)
 import Pixels
 import Quantity
@@ -20,96 +19,81 @@ import Simulation.WorldUpdate as WorldUpdate
 import UI.Core exposing (ControlButtonSize, colors, controlButton, icon, whitespace)
 
 
-type Tool
-    = SmartConstruction
-    | Bulldozer
-    | Dynamite
-    | None
-
-
-type alias Model =
-    Tool
-
-
-type Msg
-    = SelectTile Cell
-    | SecondaryAction Cell
-    | SelectTool Tool
-
-
-initialModel : Model
-initialModel =
-    SmartConstruction
-
-
 
 -- Update
 
 
-update : World -> Msg -> Model -> ( Model, World, Cmd Msg )
-update world msg model =
+update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
+update msg model =
     case msg of
         SelectTile cell ->
-            case ( model, World.tileAt cell world ) of
+            case ( model.tool, World.tileAt cell model.world ) of
                 ( SmartConstruction, _ ) ->
-                    ( model
-                    , if World.canBuildRoadAt cell world then
-                        world
-                            |> WorldUpdate.buildRoadAt cell
+                    ( { model
+                        | world =
+                            if World.canBuildRoadAt cell model.world then
+                                model.world |> WorldUpdate.buildRoadAt cell
 
-                      else
-                        world
+                            else
+                                model.world
+                      }
                     , Cmd.none
                     )
 
                 ( Bulldozer, Just _ ) ->
-                    ( model
-                    , world
-                        -- TODO: do this in Simulation instead
-                        |> WorldUpdate.removeRoadAt cell
+                    ( { model
+                        | world =
+                            model.world
+                                -- TODO: do this in Simulation instead
+                                |> WorldUpdate.removeRoadAt cell
+                      }
                     , Cmd.none
                     )
 
                 ( Dynamite, _ ) ->
-                    ( SmartConstruction
-                    , World.empty
+                    ( { model | tool = SmartConstruction, world = World.empty }
                     , Cmd.none
                     )
 
                 _ ->
-                    ( model, world, Cmd.none )
+                    ( model, Cmd.none )
 
         SecondaryAction cell ->
-            case model of
+            case model.tool of
                 SmartConstruction ->
-                    ( model
-                    , world
-                        -- TODO: do this in Simulation instead
-                        |> WorldUpdate.removeRoadAt cell
+                    ( { model
+                        | world =
+                            model.world
+                                -- TODO: do this in Simulation instead
+                                |> WorldUpdate.removeRoadAt cell
+                      }
                     , Cmd.none
                     )
 
                 _ ->
-                    ( model, world, Cmd.none )
+                    ( model, Cmd.none )
 
         SelectTool tool ->
             let
                 nextTool =
-                    if model == tool then
+                    if model.tool == tool then
                         None
 
                     else
                         tool
             in
-            ( nextTool, world, Cmd.none )
+            ( { model | tool = nextTool }, Cmd.none )
+
+        _ ->
+            ( model, Cmd.none )
 
 
 
 -- Views
 
 
-overlay : World -> Model -> Element Msg
-overlay world model =
+overlay : Liikennematto -> Element Message
+overlay model =
     let
         size =
             Element.px (boardSizeScaled |> Pixels.inPixels)
@@ -121,8 +105,8 @@ overlay world model =
             tileOverlay
                 { glowColor =
                     tileHighlight
-                        { world = world
-                        , selectedTool = model
+                        { world = model.world
+                        , selectedTool = model.tool
                         , cell = ( x, y )
                         }
                 , cell = ( x, y )
@@ -136,7 +120,7 @@ overlay world model =
                 rg
 
         highlight =
-            case model of
+            case model.tool of
                 Dynamite ->
                     colors.danger
 
@@ -155,7 +139,7 @@ tileOverlay :
     { glowColor : Color
     , cell : Cell
     }
-    -> Element Msg
+    -> Element Message
 tileOverlay { glowColor, cell } =
     let
         tileSizePx =
@@ -215,19 +199,19 @@ tileHighlight { world, selectedTool, cell } =
                 colors.notAllowed
 
 
-toolbar : Model -> ControlButtonSize -> Element Msg
-toolbar model controlButtonSize =
+toolbar : Liikennematto -> ControlButtonSize -> Element Message
+toolbar { tool } controlButtonSize =
     Element.row
         [ Element.spacing whitespace.tight
         , Element.alignLeft
         ]
-        [ toolbarButton model SmartConstruction controlButtonSize
-        , toolbarButton model Bulldozer controlButtonSize
-        , toolbarButton model Dynamite controlButtonSize
+        [ toolbarButton tool SmartConstruction controlButtonSize
+        , toolbarButton tool Bulldozer controlButtonSize
+        , toolbarButton tool Dynamite controlButtonSize
         ]
 
 
-toolbarButton : Tool -> Tool -> ControlButtonSize -> Element Msg
+toolbarButton : Tool -> Tool -> ControlButtonSize -> Element Message
 toolbarButton selectedTool tool controlButtonSize =
     let
         asset =

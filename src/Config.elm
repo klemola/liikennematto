@@ -2,8 +2,10 @@ module Config exposing
     ( boardSize
     , boardSizeScaled
     , boardSizeScaledInMeters
+    , maxCarSpawnQueueSize
     , pixelsToMeters
     , pixelsToMetersRatio
+    , quadTreeLeafElementsAmount
     , tileSize
     , tileSizeInMeters
     )
@@ -70,3 +72,17 @@ boardSizeScaledInMeters =
     boardSizeScaled
         |> Quantity.toFloatQuantity
         |> Quantity.at_ pixelsToMetersRatio
+
+
+
+-- Simulation
+
+
+quadTreeLeafElementsAmount : Int
+quadTreeLeafElementsAmount =
+    4
+
+
+maxCarSpawnQueueSize : Int
+maxCarSpawnQueueSize =
+    5

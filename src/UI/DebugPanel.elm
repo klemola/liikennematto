@@ -1,4 +1,4 @@
-module UI.DebugPanel exposing (Model, Msg, initialModel, update, view)
+module UI.DebugPanel exposing (update, view)
 
 import Acceleration exposing (Acceleration)
 import Config exposing (pixelsToMetersRatio)
@@ -7,10 +7,11 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Message exposing (Message(..))
 import Model.Car as Car exposing (Car)
 import Model.Geometry exposing (LMPoint2d)
+import Model.Liikennematto exposing (Liikennematto)
 import Model.RoadNetwork as RoadNetwork
-import Model.World exposing (World)
 import Point2d
 import Quantity
 import Speed exposing (Speed)
@@ -27,31 +28,14 @@ import UI.Core
         )
 
 
-type alias Model =
-    { showRoadNetwork : Bool
-    , showCarDebugVisuals : Bool
-    , roadNetworkDotString : Maybe String
-    }
-
-
-type Msg
-    = ToggleShowRoadNetwork
-    | ToggleShowCarDebugVisuals
-    | ShowDotString String
-    | HideDotString
-
-
-initialModel : Model
-initialModel =
-    { showRoadNetwork = False
-    , showCarDebugVisuals = False
-    , roadNetworkDotString = Nothing
-    }
-
-
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
 update msg model =
     case msg of
+        ToggleDebugMode ->
+            ( { model | showDebugPanel = not model.showDebugPanel }
+            , Cmd.none
+            )
+
         ToggleShowRoadNetwork ->
             ( { model | showRoadNetwork = not model.showRoadNetwork }, Cmd.none )
 
@@ -64,9 +48,12 @@ update msg model =
         HideDotString ->
             ( { model | roadNetworkDotString = Nothing }, Cmd.none )
 
+        _ ->
+            ( model, Cmd.none )
 
-view : Model -> World -> Element Msg
-view model world =
+
+view : Liikennematto -> Element Message
+view model =
     Element.column
         [ Element.width (Element.px uiDimensions.panel)
         , Element.height Element.fill
@@ -81,17 +68,17 @@ view model world =
             , Font.color colors.text
             ]
             (Element.text "Debug")
-        , controls model world
+        , controls model
         , Element.column
             [ Element.spacing whitespace.tight
             , Element.width Element.fill
             ]
-            (Dict.values world.cars |> List.map carStateView)
+            (Dict.values model.world.cars |> List.map carStateView)
         ]
 
 
-controls : Model -> World -> Element Msg
-controls model world =
+controls : Liikennematto -> Element Message
+controls model =
     Element.row
         [ Element.spacing whitespace.tight
         , Font.size uiDimensions.text
@@ -113,7 +100,7 @@ controls model world =
         , controlButton
             { label = icon "dot_string.png"
             , onPress =
-                RoadNetwork.toDotString world.roadNetwork
+                RoadNetwork.toDotString model.world.roadNetwork
                     |> ShowDotString
             , selected = False
             , disabled = False
@@ -122,7 +109,7 @@ controls model world =
         ]
 
 
-dotStringView : Maybe String -> Element Msg
+dotStringView : Maybe String -> Element Message
 dotStringView dotString =
     case dotString of
         Just dot ->
