@@ -5,24 +5,21 @@ import Color
 import Config
     exposing
         ( boardSizeScaled
-        , pixelsToMetersRatio
         , tileSize
         )
 import Dict
 import Graph exposing (Node)
 import Html exposing (Html)
-import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Board exposing (Board, Tile)
 import Model.Car as Car exposing (Car, CarKind(..), Cars)
 import Model.Cell as Cell exposing (Cell)
-import Model.Geometry exposing (LMPoint2d)
+import Model.Geometry exposing (LMPoint2d, pointToPixels, toPixelsValue)
 import Model.Lot exposing (BuildingKind(..), Lot, Lots)
 import Model.RoadNetwork exposing (Connection, ConnectionKind(..), RoadNetwork, TrafficControl(..))
 import Model.TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
 import Model.World exposing (World)
 import Pixels exposing (Pixels)
-import Point2d
 import Polygon2d
 import Quantity exposing (Quantity)
 import Svg exposing (Svg)
@@ -588,26 +585,6 @@ renderCarFieldOfView car =
         , Attributes.opacity "0.3"
         ]
         []
-
-
-
---
--- Conversion
---
-
-
-toPixelsValue : Length -> Float
-toPixelsValue length =
-    length
-        |> Quantity.at pixelsToMetersRatio
-        |> Pixels.inPixels
-
-
-pointToPixels : LMPoint2d -> { x : Float, y : Float }
-pointToPixels point =
-    point
-        |> Point2d.at pixelsToMetersRatio
-        |> Point2d.toPixels
 
 
 toPointsString : List LMPoint2d -> String

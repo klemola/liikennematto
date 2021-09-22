@@ -10,11 +10,11 @@ suite : Benchmark
 suite =
     describe "Road network graph performance"
         [ benchmark "small map" <|
-            \_ -> Infrastructure.build Worlds.worldWithFourWayIntersection.board Worlds.worldWithFourWayIntersection.lots Worlds.worldWithFourWayIntersection.trafficLights
+            \_ -> Infrastructure.removeRoadAt ( 1, 2 ) Worlds.worldWithFourWayIntersection
 
         -- this benchmark is, at the moment, really heavy - something like 163 runs per sec. May crash yer browser!
         , benchmark "large map" <|
-            \_ -> Infrastructure.build Worlds.largeWorld.board Worlds.largeWorld.lots Worlds.largeWorld.trafficLights
+            \_ -> Infrastructure.removeRoadAt ( 1, 1 ) Worlds.largeWorld
         ]
 
 

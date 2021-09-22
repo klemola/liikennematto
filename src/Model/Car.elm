@@ -45,7 +45,7 @@ import Model.LocalPath exposing (LocalPath)
 import Model.RoadNetwork exposing (RNNodeContext)
 import Point2d
 import Polygon2d exposing (Polygon2d)
-import Quantity exposing (Quantity(..), Rate)
+import Quantity exposing (Quantity, Rate)
 import Speed exposing (Speed)
 import Triangle2d exposing (Triangle2d)
 

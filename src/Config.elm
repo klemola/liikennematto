@@ -2,17 +2,14 @@ module Config exposing
     ( boardSize
     , boardSizeScaled
     , boardSizeScaledInMeters
-    , maxCarSpawnQueueSize
-    , pixelsToMeters
-    , pixelsToMetersRatio
-    , quadTreeLeafElementsAmount
     , tileSize
     , tileSizeInMeters
     )
 
 import Length exposing (Length)
+import Model.Geometry exposing (pixelsToMetersRatio)
 import Pixels exposing (Pixels)
-import Quantity exposing (Quantity, Rate)
+import Quantity exposing (Quantity)
 
 
 
@@ -24,23 +21,6 @@ import Quantity exposing (Quantity, Rate)
 boardSize : Int
 boardSize =
     10
-
-
-
---
--- Pixels x meters conversion
---
-
-
-pixelsToMetersRatio : Quantity Float (Rate Pixels.Pixels Length.Meters)
-pixelsToMetersRatio =
-    Pixels.pixels 5 |> Quantity.per (Length.meters 1)
-
-
-pixelsToMeters : Float -> Length
-pixelsToMeters pixels =
-    Pixels.float pixels
-        |> Quantity.at_ pixelsToMetersRatio
 
 
 
@@ -72,17 +52,3 @@ boardSizeScaledInMeters =
     boardSizeScaled
         |> Quantity.toFloatQuantity
         |> Quantity.at_ pixelsToMetersRatio
-
-
-
--- Simulation
-
-
-quadTreeLeafElementsAmount : Int
-quadTreeLeafElementsAmount =
-    4
-
-
-maxCarSpawnQueueSize : Int
-maxCarSpawnQueueSize =
-    5

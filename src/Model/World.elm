@@ -5,17 +5,27 @@ module Model.World exposing
     , hasLot
     , hasLotAnchor
     , isEmptyArea
+    , setCar
     , tileAt
     )
 
 import Common
 import Dict
 import Dict.Extra
+import Graph
 import Model.Board as Board exposing (Board, Tile)
-import Model.Car exposing (Cars)
+import Model.Car exposing (Car, Cars)
 import Model.Cell as Cell exposing (Cell)
+import Model.Entity exposing (Id)
 import Model.Geometry exposing (LMBoundingBox2d)
-import Model.Lot as Lot exposing (BuildingKind(..), Lots)
+import Model.Lookup
+    exposing
+        ( CarPositionLookup
+        , RoadNetworkLookup
+        , carPositionLookup
+        , roadNetworkLookup
+        )
+import Model.Lot as Lot exposing (Lots)
 import Model.RoadNetwork as RoadNetwork exposing (RoadNetwork)
 import Model.TrafficLight exposing (TrafficLights)
 
@@ -26,6 +36,8 @@ type alias World =
     , trafficLights : TrafficLights
     , cars : Cars
     , lots : Lots
+    , carPositionLookup : CarPositionLookup
+    , roadNetworkLookup : RoadNetworkLookup
     }
 
 
@@ -36,6 +48,8 @@ empty =
     , trafficLights = Dict.empty
     , cars = Dict.empty
     , lots = Dict.empty
+    , carPositionLookup = carPositionLookup Dict.empty
+    , roadNetworkLookup = roadNetworkLookup Graph.empty
     }
 
 
@@ -91,3 +105,14 @@ isEmptyArea testAreaBB world =
                 |> List.all (Common.noBoundingBoxOverlap testAreaBB)
     in
     inBoardBounds && noCollision ()
+
+
+
+--
+-- Utility
+--
+
+
+setCar : Id -> Car -> World -> World
+setCar id car world =
+    { world | cars = Dict.insert id car world.cars }

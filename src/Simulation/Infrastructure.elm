@@ -1,8 +1,13 @@
-module Simulation.Infrastructure exposing (build)
+module Simulation.Infrastructure exposing
+    ( buildRoadAt
+    , connectLotToRoadNetwork
+    , findNodeReplacement
+    , removeRoadAt
+    )
 
 import BoundingBox2d
 import Common
-import Config exposing (pixelsToMeters, tileSizeInMeters)
+import Config exposing (tileSizeInMeters)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction2d
@@ -10,7 +15,13 @@ import Graph exposing (Edge, Node)
 import IntDict
 import Length exposing (Length)
 import Maybe.Extra as Maybe
-import Model.Board as Board exposing (Board, Tile)
+import Model.Board as Board
+    exposing
+        ( Board
+        , Tile
+        , innerLaneOffset
+        , outerLaneOffset
+        )
 import Model.Cell as Cell exposing (Cell, OrthogonalDirection(..))
 import Model.Entity as Entity exposing (Id)
 import Model.Geometry
@@ -19,6 +30,7 @@ import Model.Geometry
         , LMDirection2d
         , LMPoint2d
         )
+import Model.Lookup exposing (roadNetworkLookup)
 import Model.Lot as Lot exposing (Lot, Lots)
 import Model.RoadNetwork as RoadNetwork
     exposing
@@ -30,23 +42,91 @@ import Model.RoadNetwork as RoadNetwork
         , TrafficControl(..)
         )
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLights)
+import Model.World exposing (World)
 import Point2d
+import QuadTree
 import Quantity
 import Vector2d
 
 
-innerLaneOffset : Length
-innerLaneOffset =
-    pixelsToMeters 26
+
+--
+-- Tilemap
+--
 
 
-outerLaneOffset : Length
-outerLaneOffset =
-    pixelsToMeters 54
+buildRoadAt : Cell -> World -> World
+buildRoadAt cell world =
+    updateTilemap cell (Dict.insert cell Board.defaultTile) world
 
 
-build : Board -> Lots -> TrafficLights -> ( RoadNetwork, TrafficLights )
-build board lots trafficLights =
+removeRoadAt : Cell -> World -> World
+removeRoadAt cell world =
+    updateTilemap cell (Dict.remove cell) world
+
+
+updateTilemap : Cell -> (Board -> Board) -> World -> World
+updateTilemap cell boardChangeFn world =
+    let
+        nextBoard =
+            boardChangeFn world.board
+                |> Board.applyMask
+
+        nextLots =
+            Dict.filter
+                (\_ lot ->
+                    hasValidAnchorCell nextBoard lot && not (Lot.inBounds cell lot)
+                )
+                world.lots
+    in
+    { world
+        | board = nextBoard
+        , lots = nextLots
+    }
+        |> updateRoadNetwork
+
+
+hasValidAnchorCell : Board -> Lot -> Bool
+hasValidAnchorCell board lot =
+    case Dict.get (Lot.anchorCell lot) board of
+        Just tile ->
+            tile == Board.twoLaneRoadHorizontal || tile == Board.twoLaneRoadVertical
+
+        Nothing ->
+            False
+
+
+
+--
+-- Road network
+--
+
+
+connectLotToRoadNetwork : World -> World
+connectLotToRoadNetwork =
+    -- Room for improvement: re-building the whole roadnetwork when a new lot is added is not optimal
+    updateRoadNetwork
+
+
+updateRoadNetwork : World -> World
+updateRoadNetwork world =
+    -- Room for improvement: the road network should be updated with minimal changes instead of being replaced
+    let
+        ( nextRoadNetwork, nextTrafficLights ) =
+            buildRoadNetwork world
+
+        nextRoadNetworkLookup =
+            roadNetworkLookup nextRoadNetwork
+    in
+    { world
+        | roadNetwork = nextRoadNetwork
+        , trafficLights = nextTrafficLights
+        , roadNetworkLookup = nextRoadNetworkLookup
+    }
+
+
+buildRoadNetwork : World -> ( RoadNetwork, TrafficLights )
+buildRoadNetwork { board, lots, trafficLights } =
     let
         tilePriority ( _, tile ) =
             if Board.isDeadend tile then
@@ -76,6 +156,30 @@ build board lots trafficLights =
             Graph.fromNodesAndEdges nodes edges
     in
     roadNetwork |> setupTrafficControl trafficLights
+
+
+findNodeReplacement : World -> RNNodeContext -> Maybe Int
+findNodeReplacement { roadNetworkLookup } target =
+    -- Tries to find a node in the lookup tree that could replace the reference node.
+    -- Useful in maintaning route after the road network has been updated.
+    let
+        targetPosition =
+            target.node.label.position
+
+        positionMatches =
+            roadNetworkLookup
+                |> QuadTree.findIntersecting
+                    { id = target.node.id
+                    , position = targetPosition
+                    , boundingBox = BoundingBox2d.singleton targetPosition
+                    }
+    in
+    case positionMatches of
+        match :: _ ->
+            Just match.id
+
+        [] ->
+            Nothing
 
 
 

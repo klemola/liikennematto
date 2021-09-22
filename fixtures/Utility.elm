@@ -1,8 +1,7 @@
 module Utility exposing (..)
 
 import Common
-import Config exposing (pixelsToMetersRatio)
-import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
+import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d, pixelsToMetersRatio)
 import Pixels
 import Point2d
 import Quantity

@@ -1,7 +1,6 @@
 module UI.DebugPanel exposing (update, view)
 
 import Acceleration exposing (Acceleration)
-import Config exposing (pixelsToMetersRatio)
 import Dict
 import Element exposing (Element)
 import Element.Background as Background
@@ -9,7 +8,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Message exposing (Message(..))
 import Model.Car as Car exposing (Car)
-import Model.Geometry exposing (LMPoint2d)
+import Model.Geometry exposing (LMPoint2d, pixelsToMetersRatio)
 import Model.Liikennematto exposing (Liikennematto)
 import Model.RoadNetwork as RoadNetwork
 import Point2d

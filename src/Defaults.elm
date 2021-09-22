@@ -2,42 +2,10 @@ module Defaults exposing (..)
 
 import Color
 import Config exposing (tileSizeInMeters)
-import Dict
-import Model.Board as Board exposing (Board)
 import Model.Car exposing (CarKind(..))
 import Model.Cell exposing (OrthogonalDirection(..))
 import Model.Lot exposing (Building, BuildingKind(..), Lot, NewLot)
-import Model.World as World exposing (World)
 import Quantity
-import Simulation.Infrastructure as Infrastructure
-
-
-defaultWorld : World
-defaultWorld =
-    let
-        base =
-            World.empty
-
-        ( roadNetwork, trafficLights ) =
-            Infrastructure.build initialBoard base.lots base.trafficLights
-    in
-    { base
-        | board = initialBoard
-        , roadNetwork = roadNetwork
-        , trafficLights = trafficLights
-    }
-
-
-initialBoard : Board
-initialBoard =
-    Dict.empty
-        |> Dict.insert ( 2, 5 ) Board.defaultTile
-        |> Dict.insert ( 3, 5 ) Board.defaultTile
-        |> Dict.insert ( 4, 5 ) Board.defaultTile
-        |> Dict.insert ( 5, 3 ) Board.defaultTile
-        |> Dict.insert ( 5, 4 ) Board.defaultTile
-        |> Dict.insert ( 5, 5 ) Board.defaultTile
-        |> Board.applyMask
 
 
 lots : List NewLot

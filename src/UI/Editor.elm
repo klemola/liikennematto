@@ -10,13 +10,20 @@ import Element exposing (Color, Element)
 import Element.Border as Border
 import Element.Events as Events
 import Message exposing (Message(..))
+import Model.Board as Board
 import Model.Cell exposing (Cell)
 import Model.Liikennematto exposing (Liikennematto, Tool(..))
 import Model.World as World exposing (World)
 import Pixels
 import Quantity
-import Simulation.WorldUpdate as WorldUpdate
-import UI.Core exposing (ControlButtonSize, colors, controlButton, icon, whitespace)
+import UI.Core
+    exposing
+        ( ControlButtonSize
+        , colors
+        , controlButton
+        , icon
+        , whitespace
+        )
 
 
 
@@ -26,53 +33,6 @@ import UI.Core exposing (ControlButtonSize, colors, controlButton, icon, whitesp
 update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
 update msg model =
     case msg of
-        SelectTile cell ->
-            case ( model.tool, World.tileAt cell model.world ) of
-                ( SmartConstruction, _ ) ->
-                    ( { model
-                        | world =
-                            if World.canBuildRoadAt cell model.world then
-                                model.world |> WorldUpdate.buildRoadAt cell
-
-                            else
-                                model.world
-                      }
-                    , Cmd.none
-                    )
-
-                ( Bulldozer, Just _ ) ->
-                    ( { model
-                        | world =
-                            model.world
-                                -- TODO: do this in Simulation instead
-                                |> WorldUpdate.removeRoadAt cell
-                      }
-                    , Cmd.none
-                    )
-
-                ( Dynamite, _ ) ->
-                    ( { model | tool = SmartConstruction, world = World.empty }
-                    , Cmd.none
-                    )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        SecondaryAction cell ->
-            case model.tool of
-                SmartConstruction ->
-                    ( { model
-                        | world =
-                            model.world
-                                -- TODO: do this in Simulation instead
-                                |> WorldUpdate.removeRoadAt cell
-                      }
-                    , Cmd.none
-                    )
-
-                _ ->
-                    ( model, Cmd.none )
-
         SelectTool tool ->
             let
                 nextTool =
@@ -110,6 +70,8 @@ overlay world tool =
                         , cell = ( x, y )
                         }
                 , cell = ( x, y )
+                , world = world
+                , tool = tool
                 }
 
         rows =
@@ -138,9 +100,11 @@ overlay world tool =
 tileOverlay :
     { glowColor : Color
     , cell : Cell
+    , world : World
+    , tool : Tool
     }
     -> Element Message
-tileOverlay { glowColor, cell } =
+tileOverlay { glowColor, cell, world, tool } =
     let
         tileSizePx =
             Element.px
@@ -158,10 +122,44 @@ tileOverlay { glowColor, cell } =
                 |> Pixels.toFloat
                 |> Border.innerGlow glowColor
             ]
-        , Events.onClick (SelectTile cell)
-        , Element.htmlAttribute (CustomEvent.onRightClick <| SecondaryAction cell)
+        , Events.onClick (choosePrimaryAction cell tool world)
+        , Element.htmlAttribute (CustomEvent.onRightClick <| chooseSecondaryAction cell tool)
         ]
         Element.none
+
+
+choosePrimaryAction : Cell -> Tool -> World -> Message
+choosePrimaryAction cell tool world =
+    case ( tool, World.tileAt cell world ) of
+        ( SmartConstruction, _ ) ->
+            let
+                alreadyExists =
+                    Board.exists cell world.board
+            in
+            if not alreadyExists && World.canBuildRoadAt cell world then
+                AddTile cell
+
+            else
+                NoOp
+
+        ( Bulldozer, Just _ ) ->
+            RemoveTile cell
+
+        ( Dynamite, _ ) ->
+            ResetWorld
+
+        _ ->
+            NoOp
+
+
+chooseSecondaryAction : Cell -> Tool -> Message
+chooseSecondaryAction cell tool =
+    case tool of
+        SmartConstruction ->
+            RemoveTile cell
+
+        _ ->
+            NoOp
 
 
 tileHighlight :

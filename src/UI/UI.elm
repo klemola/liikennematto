@@ -1,6 +1,5 @@
 module UI.UI exposing (layout, update)
 
-import Config
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -11,6 +10,11 @@ import Model.Liikennematto exposing (CarSpawnQueue, Liikennematto, SimulationSta
 import UI.Core exposing (ControlButtonSize(..), borderRadius, colors, controlButton, link, uiDimensions, whitespace)
 import UI.DebugPanel as DebugPanel
 import UI.Editor as Editor
+
+
+maxCarSpawnQueueSize : Int
+maxCarSpawnQueueSize =
+    5
 
 
 update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
@@ -114,7 +118,7 @@ carSpawnControl : CarSpawnQueue -> ControlButtonSize -> Element Message
 carSpawnControl carSpawnQueue controlButtonSize =
     let
         disabled =
-            carSpawnQueue >= Config.maxCarSpawnQueueSize
+            carSpawnQueue >= maxCarSpawnQueueSize
     in
     controlButton
         { label = Element.text "🚗"

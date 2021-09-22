@@ -9,7 +9,6 @@ import Time
 type Message
     = ResizeWindow Int Int
     | VisibilityChanged Visibility
-    | ToggleDebugMode
     | SetSimulation SimulationState
     | UpdateTraffic Float
     | UpdateEnvironment Time.Posix
@@ -17,10 +16,13 @@ type Message
     | CheckQueues Time.Posix
     | CheckCarStatus Time.Posix
     | SpawnTestCar
-    | SelectTile Cell
-    | SecondaryAction Cell
+    | AddTile Cell
+    | RemoveTile Cell
+    | ResetWorld
     | SelectTool Tool
+    | ToggleDebugMode
     | ToggleShowRoadNetwork
     | ToggleShowCarDebugVisuals
     | ShowDotString String
     | HideDotString
+    | NoOp
