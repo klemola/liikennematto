@@ -6,16 +6,10 @@ module Model.Liikennematto exposing
     , new
     )
 
-import Config
-import Defaults
 import Element
-import Length
-import Model.Board as Board
-import Model.Car exposing (Car)
-import Model.Geometry exposing (LMEntityCoordinates)
 import Model.World exposing (World)
-import QuadTree exposing (QuadTree)
 import Random
+import Worlds exposing (defaultWorld)
 
 
 type alias Liikennematto =
@@ -24,7 +18,6 @@ type alias Liikennematto =
     , seed : Random.Seed
     , simulation : SimulationState
     , carSpawnQueue : CarSpawnQueue
-    , carPositionLookup : QuadTree Length.Meters LMEntityCoordinates Car
     , tool : Tool
     , showDebugPanel : Bool
     , showRoadNetwork : Bool
@@ -63,11 +56,7 @@ initialSeed =
 
 new : Liikennematto
 new =
-    let
-        carPositionLookup =
-            QuadTree.init Board.boundingBox Config.quadTreeLeafElementsAmount
-    in
-    { world = Defaults.defaultWorld
+    { world = defaultWorld
     , screen =
         { width = 375
         , height = 667
@@ -76,7 +65,6 @@ new =
     , seed = initialSeed
     , simulation = Running
     , carSpawnQueue = 0
-    , carPositionLookup = carPositionLookup
     , tool = SmartConstruction
     , showDebugPanel = False
     , showRoadNetwork = False

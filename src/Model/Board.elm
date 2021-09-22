@@ -4,10 +4,13 @@ module Model.Board exposing
     , applyMask
     , boundingBox
     , defaultTile
+    , exists
     , inBounds
+    , innerLaneOffset
     , isCurve
     , isDeadend
     , isIntersection
+    , outerLaneOffset
     , potentialConnections
     , twoLaneRoadHorizontal
     , twoLaneRoadVertical
@@ -17,8 +20,9 @@ import BoundingBox2d
 import Common
 import Config exposing (boardSizeScaledInMeters)
 import Dict exposing (Dict)
+import Length exposing (Length)
 import Model.Cell as Cell exposing (Cell, OrthogonalDirection(..))
-import Model.Geometry exposing (LMBoundingBox2d)
+import Model.Geometry exposing (LMBoundingBox2d, pixelsToMeters)
 import Point2d
 import Set exposing (Set)
 
@@ -39,9 +43,19 @@ type alias ParallelNeighbors =
     }
 
 
-exists : Cell -> Board -> Bool
-exists cell board =
-    Dict.member cell board
+innerLaneOffset : Length
+innerLaneOffset =
+    pixelsToMeters 26
+
+
+outerLaneOffset : Length
+outerLaneOffset =
+    pixelsToMeters 54
+
+
+defaultTile : Tile
+defaultTile =
+    0
 
 
 twoLaneRoadHorizontal : Tile
@@ -57,11 +71,6 @@ twoLaneRoadVertical =
 deadendTiles : Set Tile
 deadendTiles =
     Set.fromList [ 1, 2, 4, 8 ]
-
-
-isDeadend : Tile -> Bool
-isDeadend tile =
-    Set.member tile deadendTiles
 
 
 intersectionTiles : Set Tile
@@ -84,14 +93,25 @@ curveTiles =
     Set.fromList [ 3, 5, 10, 12 ]
 
 
-isCurve : Tile -> Bool
-isCurve tile =
-    Set.member tile curveTiles
-
-
 boundingBox : LMBoundingBox2d
 boundingBox =
     Common.boundingBoxWithDimensions boardSizeScaledInMeters boardSizeScaledInMeters Point2d.origin
+
+
+
+--
+-- Queries
+--
+
+
+isDeadend : Tile -> Bool
+isDeadend tile =
+    Set.member tile deadendTiles
+
+
+isCurve : Tile -> Bool
+isCurve tile =
+    Set.member tile curveTiles
 
 
 inBounds : LMBoundingBox2d -> Bool
@@ -99,9 +119,9 @@ inBounds testBB =
     BoundingBox2d.isContainedIn boundingBox testBB
 
 
-defaultTile : Tile
-defaultTile =
-    0
+exists : Cell -> Board -> Bool
+exists cell board =
+    Dict.member cell board
 
 
 applyMask : Board -> Board

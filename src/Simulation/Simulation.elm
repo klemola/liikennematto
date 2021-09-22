@@ -1,5 +1,6 @@
-module Simulation.Simulation exposing (generateEnvironmentAfterDelay, update)
+module Simulation.Simulation exposing (generateEnvironmentAfterDelay, spawnCar, update)
 
+import BoundingBox2d
 import Browser.Events as Events
 import Common
 import Config
@@ -11,25 +12,25 @@ import Duration
 import Length
 import Message exposing (Message(..))
 import Model.Board as Board
-import Model.Car as Car exposing (Car, Status(..))
+import Model.Car as Car exposing (Car, Cars, Status(..))
 import Model.Cell as Cell exposing (Cell)
 import Model.Entity as Entity
-import Model.Geometry exposing (LMEntityCoordinates)
-import Model.Liikennematto exposing (Liikennematto, SimulationState(..))
-import Model.Lot as Lot exposing (NewLot)
-import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..))
+import Model.Liikennematto exposing (Liikennematto, SimulationState(..), Tool(..))
+import Model.Lookup exposing (carPositionLookup)
+import Model.Lot as Lot exposing (Lot, NewLot)
+import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Model.TrafficLight as TrafficLight
 import Model.World as World exposing (World)
 import Point2d
 import Process
-import QuadTree exposing (QuadTree)
+import QuadTree
 import Quantity
 import Random
 import Random.List
+import Simulation.Infrastructure as Infrastructure
 import Simulation.Pathfinding as Pathfinding
 import Simulation.Round as Round
 import Simulation.Steering as Steering
-import Simulation.WorldUpdate exposing (addLot, setCar, spawnCar)
 import Task
 
 
@@ -58,18 +59,46 @@ update msg model =
         SetSimulation simulation ->
             ( { model | simulation = simulation }, Cmd.none )
 
+        AddTile cell ->
+            let
+                worldWithTilemapChange =
+                    Infrastructure.buildRoadAt cell model.world
+
+                nextWorld =
+                    { worldWithTilemapChange | cars = rerouteCarsIfNeeded worldWithTilemapChange }
+            in
+            ( { model | world = nextWorld }
+            , Cmd.none
+            )
+
+        RemoveTile cell ->
+            let
+                worldWithTilemapChange =
+                    Infrastructure.removeRoadAt cell model.world
+
+                nextWorld =
+                    { worldWithTilemapChange | cars = rerouteCarsIfNeeded worldWithTilemapChange }
+            in
+            ( { model | world = nextWorld }
+            , Cmd.none
+            )
+
+        ResetWorld ->
+            ( { model
+                | tool = SmartConstruction
+                , world = World.empty
+              }
+            , Cmd.none
+            )
+
         UpdateTraffic rafDelta ->
             let
                 cars =
                     Dict.values model.world.cars
 
-                carPositionLookup =
-                    QuadTree.init Board.boundingBox Config.quadTreeLeafElementsAmount |> QuadTree.insertList cars
-
                 ( nextWorld, nextSeed ) =
                     updateTraffic
                         { updateQueue = cars
-                        , carPositionLookup = carPositionLookup
                         , seed = model.seed
                         , world = model.world
                         , delta = rafDelta
@@ -77,7 +106,6 @@ update msg model =
             in
             ( { model
                 | seed = nextSeed
-                , carPositionLookup = carPositionLookup
                 , world = nextWorld
               }
             , Cmd.none
@@ -251,6 +279,46 @@ findLotAnchor world seed newLot =
         |> Maybe.map (\( cell, _ ) -> ( newLot, cell ))
 
 
+addLot : Lot -> World -> World
+addLot lot world =
+    let
+        nextLotId =
+            Entity.nextId world.lots
+
+        nextLots =
+            Dict.insert nextLotId lot world.lots
+
+        worldWithLots =
+            { world | lots = nextLots }
+    in
+    worldWithLots
+        |> Infrastructure.connectLotToRoadNetwork
+        |> addLotResident nextLotId lot
+
+
+addLotResident : Int -> Lot -> World -> World
+addLotResident lotId lot world =
+    let
+        carId =
+            Entity.nextId world.cars
+
+        createCar kind =
+            Car.new kind
+                |> Car.withHome lotId
+                |> Car.withPosition lot.entryDetails.parkingSpot
+                |> Car.withOrientation (Lot.parkingSpotOrientation lot)
+                |> Car.build carId
+
+        addToWorld car =
+            { world | cars = Dict.insert carId car world.cars }
+    in
+    world.lots
+        |> Dict.get lotId
+        |> Maybe.andThen Defaults.resident
+        |> Maybe.map (createCar >> addToWorld)
+        |> Maybe.withDefault world
+
+
 
 --
 -- Traffic logic (cars)
@@ -259,21 +327,20 @@ findLotAnchor world seed newLot =
 
 updateTraffic :
     { updateQueue : List Car
-    , carPositionLookup : QuadTree Length.Meters LMEntityCoordinates Car
     , seed : Random.Seed
     , world : World
     , delta : Float
     }
     -> ( World, Random.Seed )
-updateTraffic { updateQueue, carPositionLookup, seed, world, delta } =
+updateTraffic { updateQueue, seed, world, delta } =
     case updateQueue of
         [] ->
-            ( world, seed )
+            ( { world | carPositionLookup = carPositionLookup world.cars }, seed )
 
         activeCar :: queue ->
             let
                 otherCars =
-                    carPositionLookup
+                    world.carPositionLookup
                         |> QuadTree.neighborsWithin Config.tileSizeInMeters activeCar.boundingBox
                         |> List.filter (\car -> car.id /= activeCar.id)
 
@@ -299,8 +366,7 @@ updateTraffic { updateQueue, carPositionLookup, seed, world, delta } =
             updateTraffic
                 { updateQueue = queue
                 , seed = roundResults.seed
-                , carPositionLookup = carPositionLookup
-                , world = setCar nextCar.id nextCar world
+                , world = World.setCar nextCar.id nextCar world
                 , delta = delta
                 }
 
@@ -423,52 +489,74 @@ checkCarStatus seed world =
         weightedCoinToss =
             Random.weighted ( 70, True ) [ ( 30, False ) ]
 
+        -- Some status effects are triggered randomly (uniform for all affected cars)
         ( toss, nextSeed ) =
             Random.step weightedCoinToss seed
 
-        statusCheck _ car =
-            case car.status of
-                Confused ->
-                    if Car.isStoppedOrWaiting car then
-                        car.homeLotId |> Maybe.map (moveCarToHome world car)
+        nextCars =
+            Dict.filterMap (\_ car -> statusCheck world toss car) world.cars
 
-                    else
-                        Just car
-
-                ParkedAtLot ->
-                    if toss then
-                        car.homeLotId
-                            |> Maybe.andThen (RoadNetwork.findNodeByLotId world.roadNetwork)
-                            |> Maybe.map
-                                (\nodeCtx ->
-                                    car
-                                        |> Pathfinding.createRoute nodeCtx
-                                        |> Steering.startMoving
-                                )
-
-                    else
-                        Just car
-
-                Moving ->
-                    Just car
+        nextCarPositionLookup =
+            carPositionLookup nextCars
     in
-    ( { world | cars = world.cars |> Dict.filterMap statusCheck }, nextSeed )
+    ( { world
+        | cars = nextCars
+        , carPositionLookup = nextCarPositionLookup
+      }
+    , nextSeed
+    )
 
 
-moveCarToHome : World -> Car -> Entity.Id -> Car
-moveCarToHome world car lotId =
+statusCheck : World -> Bool -> Car -> Maybe Car
+statusCheck world randomCoinToss car =
+    -- Room for improvement: the Maybe Lot / Maybe EntityId combo is
     let
         home =
-            Dict.get lotId world.lots
-
-        homeNode =
-            RoadNetwork.findNodeByLotId world.roadNetwork lotId
+            car.homeLotId |> Maybe.andThen (\lotId -> Dict.get lotId world.lots)
     in
-    case ( home, homeNode ) of
-        ( Just lot, Just nodeCtx ) ->
+    case car.status of
+        Confused ->
+            if Car.isStoppedOrWaiting car then
+                -- if the car has no home it will be removed
+                home |> Maybe.map (moveCarToHome world car)
+
+            else
+                Just car
+
+        ParkedAtLot ->
+            if randomCoinToss then
+                car.homeLotId
+                    |> Maybe.andThen (RoadNetwork.findNodeByLotId world.roadNetwork)
+                    |> Maybe.map
+                        (\nodeCtx ->
+                            car
+                                |> Pathfinding.createRoute nodeCtx
+                                |> Steering.startMoving
+                        )
+
+            else
+                Just car
+
+        Moving ->
+            case home of
+                Just _ ->
+                    Just car
+
+                Nothing ->
+                    Just (Steering.markAsConfused car)
+
+
+moveCarToHome : World -> Car -> Lot -> Car
+moveCarToHome world car home =
+    let
+        homeNode =
+            car.homeLotId |> Maybe.andThen (RoadNetwork.findNodeByLotId world.roadNetwork)
+    in
+    case homeNode of
+        Just nodeCtx ->
             { car
-                | position = lot.entryDetails.parkingSpot
-                , orientation = Lot.parkingSpotOrientation lot
+                | position = home.entryDetails.parkingSpot
+                , orientation = Lot.parkingSpotOrientation home
                 , status = Car.ParkedAtLot
                 , velocity = Quantity.zero
                 , acceleration = Steering.maxAcceleration
@@ -478,6 +566,25 @@ moveCarToHome world car lotId =
                 |> Pathfinding.createRoute nodeCtx
 
         _ ->
+            Steering.markAsConfused car
+
+
+rerouteCarsIfNeeded : World -> Cars
+rerouteCarsIfNeeded world =
+    Dict.map (\_ car -> updateRoute world car) world.cars
+
+
+updateRoute : World -> Car -> Car
+updateRoute world car =
+    case
+        List.head car.route
+            |> Maybe.andThen (Infrastructure.findNodeReplacement world)
+            |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
+    of
+        Just nodeCtxResult ->
+            Pathfinding.createRoute nodeCtxResult car
+
+        Nothing ->
             Steering.markAsConfused car
 
 
@@ -507,3 +614,60 @@ dequeueCarSpawn queue seed world =
 
     else
         ( world, queue, seed )
+
+
+spawnCar : Random.Seed -> World -> ( World, Random.Seed, Maybe Entity.Id )
+spawnCar seed world =
+    let
+        ( maybeRandomNodeCtx, nextSeed ) =
+            RoadNetwork.getRandomNode world.roadNetwork seed
+    in
+    maybeRandomNodeCtx
+        |> Maybe.andThen (validateSpawnConditions world)
+        |> Maybe.map
+            (\nodeCtx ->
+                let
+                    id =
+                        Entity.nextId world.cars
+
+                    nextNode =
+                        RoadNetwork.getOutgoingConnections nodeCtx
+                            |> List.head
+                            |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
+
+                    car =
+                        Car.new Car.TestCar
+                            |> Car.withPosition nodeCtx.node.label.position
+                            |> Car.withOrientation (Direction2d.toAngle nodeCtx.node.label.direction)
+                            |> Car.build id
+                            |> Pathfinding.maybeCreateRoute nextNode
+                            |> Steering.startMoving
+                in
+                ( { world | cars = Dict.insert id car world.cars }
+                , nextSeed
+                , Just id
+                )
+            )
+        |> Maybe.withDefault ( world, nextSeed, Nothing )
+
+
+validateSpawnConditions : World -> RNNodeContext -> Maybe RNNodeContext
+validateSpawnConditions world nodeCtx =
+    let
+        notAtSpawnPosition car =
+            car.boundingBox
+                |> BoundingBox2d.contains nodeCtx.node.label.position
+                |> not
+
+        reasonableAmountOfTraffic =
+            Dict.size world.board > Dict.size world.cars
+
+        spawnPositionHasEnoughSpace =
+            Dict.values world.cars
+                |> List.all notAtSpawnPosition
+    in
+    if reasonableAmountOfTraffic && spawnPositionHasEnoughSpace then
+        Just nodeCtx
+
+    else
+        Nothing
