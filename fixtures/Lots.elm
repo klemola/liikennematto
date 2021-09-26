@@ -4,8 +4,8 @@ module Lots exposing
     , twoByTwoLot
     )
 
-import Model.Board as Board exposing (OrthogonalDirection(..), tileSize)
 import Model.Lot as Lot exposing (Anchor, Lot)
+import Model.Tilemap as Tilemap exposing (OrthogonalDirection(..), tileSize)
 import Point2d
 import Quantity
 
@@ -64,13 +64,13 @@ createTwoByTwoLot ( anchorCell, anchorDir ) =
         anchor =
             ( anchorCell, anchorDir )
     in
-    { content = { content | entryDirection = Board.oppositeOrthogonalDirection anchorDir }
+    { content = { content | entryDirection = Tilemap.oppositeOrthogonalDirection anchorDir }
     , width = twoByTwoNewLot.width
     , height = twoByTwoNewLot.height
     , position =
         anchorCell
-            |> Board.nextOrthogonalCell anchorDir
-            |> Board.cellBottomLeftCorner
+            |> Tilemap.nextOrthogonalCell anchorDir
+            |> Tilemap.cellBottomLeftCorner
     , entryDetails = Lot.entryDetails anchor twoByTwoNewLot
     , anchor = anchor
     }

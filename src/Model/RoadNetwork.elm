@@ -16,9 +16,9 @@ module Model.RoadNetwork exposing
 
 import Graph exposing (Graph, NodeContext, NodeId)
 import Graph.DOT
-import Model.Board exposing (Cell, Tile)
 import Model.Entity exposing (Id)
 import Model.Geometry exposing (LMDirection2d, LMPoint2d)
+import Model.Tilemap exposing (Cell, Tile)
 import Random
 import Random.Extra
 

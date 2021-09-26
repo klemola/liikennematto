@@ -10,7 +10,6 @@ module Model.World exposing
 import Common
 import Dict
 import Graph
-import Model.Board as Board exposing (Board, Cell)
 import Model.Car exposing (Car, Cars)
 import Model.Entity exposing (Id)
 import Model.Geometry exposing (LMBoundingBox2d)
@@ -23,11 +22,12 @@ import Model.Lookup
         )
 import Model.Lot as Lot exposing (Lots)
 import Model.RoadNetwork as RoadNetwork exposing (RoadNetwork)
+import Model.Tilemap as Tilemap exposing (Cell, Tilemap)
 import Model.TrafficLight exposing (TrafficLights)
 
 
 type alias World =
-    { board : Board
+    { tilemap : Tilemap
     , roadNetwork : RoadNetwork
     , trafficLights : TrafficLights
     , cars : Cars
@@ -39,7 +39,7 @@ type alias World =
 
 empty : World
 empty =
-    { board = Board.empty
+    { tilemap = Tilemap.empty
     , roadNetwork = RoadNetwork.empty
     , trafficLights = Dict.empty
     , cars = Dict.empty
@@ -69,23 +69,23 @@ isEmptyArea : LMBoundingBox2d -> World -> Bool
 isEmptyArea testAreaBB world =
     let
         roadBoundingBoxes =
-            world.board
+            world.tilemap
                 |> Dict.keys
-                |> List.map Board.cellBoundingBox
+                |> List.map Tilemap.cellBoundingBox
 
         lotBoundingBoxes =
             world.lots
                 |> Dict.values
                 |> List.map Lot.boundingBox
 
-        inBoardBounds =
-            Board.inBounds testAreaBB
+        inTilemapBounds =
+            Tilemap.inBounds testAreaBB
 
         noCollision _ =
             (roadBoundingBoxes ++ lotBoundingBoxes)
                 |> List.all (Common.noBoundingBoxOverlap testAreaBB)
     in
-    inBoardBounds && noCollision ()
+    inTilemapBounds && noCollision ()
 
 
 

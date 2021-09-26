@@ -15,14 +15,6 @@ import Graph exposing (Edge, Node)
 import IntDict
 import Length exposing (Length)
 import Maybe.Extra as Maybe
-import Model.Board as Board
-    exposing
-        ( Board
-        , Cell
-        , OrthogonalDirection(..)
-        , Tile
-        , tileSize
-        )
 import Model.Entity as Entity exposing (Id)
 import Model.Geometry as Geometry
     exposing
@@ -41,6 +33,14 @@ import Model.RoadNetwork as RoadNetwork
         , RNNodeContext
         , RoadNetwork
         , TrafficControl(..)
+        )
+import Model.Tilemap as Tilemap
+    exposing
+        ( Cell
+        , OrthogonalDirection(..)
+        , Tile
+        , Tilemap
+        , tileSize
         )
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLights)
 import Model.World exposing (World)
@@ -63,48 +63,48 @@ canBuildRoadAt cell world =
             List.length l < 3
 
         hasLowComplexity diagonalDirection =
-            Board.cornerCells diagonalDirection cell
-                |> List.filterMap (\c -> Board.tileAt c world.board)
+            Tilemap.cornerCells diagonalDirection cell
+                |> List.filterMap (\c -> Tilemap.tileAt c world.tilemap)
                 |> withinAllowedComplexity
     in
-    List.all hasLowComplexity Board.diagonalDirections
+    List.all hasLowComplexity Tilemap.diagonalDirections
 
 
 buildRoadAt : Cell -> World -> World
 buildRoadAt cell world =
-    updateTilemap cell (Board.addTile cell) world
+    updateTilemap cell (Tilemap.addTile cell) world
 
 
 removeRoadAt : Cell -> World -> World
 removeRoadAt cell world =
-    updateTilemap cell (Board.removeTile cell) world
+    updateTilemap cell (Tilemap.removeTile cell) world
 
 
-updateTilemap : Cell -> (Board -> Board) -> World -> World
-updateTilemap cell boardChangeFn world =
+updateTilemap : Cell -> (Tilemap -> Tilemap) -> World -> World
+updateTilemap cell tilemapChangeFn world =
     let
-        nextBoard =
-            boardChangeFn world.board
+        nextTilemap =
+            tilemapChangeFn world.tilemap
 
         nextLots =
             Dict.filter
                 (\_ lot ->
-                    hasValidAnchorCell nextBoard lot && not (Lot.inBounds cell lot)
+                    hasValidAnchorCell nextTilemap lot && not (Lot.inBounds cell lot)
                 )
                 world.lots
     in
     { world
-        | board = nextBoard
+        | tilemap = nextTilemap
         , lots = nextLots
     }
         |> updateRoadNetwork
 
 
-hasValidAnchorCell : Board -> Lot -> Bool
-hasValidAnchorCell board lot =
-    case board |> Board.tileAt (Lot.anchorCell lot) of
+hasValidAnchorCell : Tilemap -> Lot -> Bool
+hasValidAnchorCell tilemap lot =
+    case tilemap |> Tilemap.tileAt (Lot.anchorCell lot) of
         Just tile ->
-            tile == Board.horizontalRoad || tile == Board.verticalRoad
+            tile == Tilemap.horizontalRoad || tile == Tilemap.verticalRoad
 
         Nothing ->
             False
@@ -152,13 +152,13 @@ updateRoadNetwork world =
 
 
 buildRoadNetwork : World -> ( RoadNetwork, TrafficLights )
-buildRoadNetwork { board, lots, trafficLights } =
+buildRoadNetwork { tilemap, lots, trafficLights } =
     let
         tilePriority ( _, tile ) =
-            if Board.isDeadend tile then
+            if Tilemap.isDeadend tile then
                 0
 
-            else if Board.isIntersection tile then
+            else if Tilemap.isIntersection tile then
                 1
 
             else
@@ -166,11 +166,11 @@ buildRoadNetwork { board, lots, trafficLights } =
 
         nodes =
             createConnections
-                { board = board
+                { tilemap = tilemap
                 , lots = lots
                 , nodes = Dict.empty
                 , remainingTiles =
-                    Dict.toList board
+                    Dict.toList tilemap
                         |> List.sortBy tilePriority
                 }
                 |> Dict.values
@@ -218,13 +218,13 @@ type alias NodesMemo =
 
 
 createConnections :
-    { board : Board
+    { tilemap : Tilemap
     , lots : Dict Int Lot
     , nodes : NodesMemo
     , remainingTiles : List ( Cell, Tile )
     }
     -> NodesMemo
-createConnections { nodes, board, remainingTiles, lots } =
+createConnections { nodes, tilemap, remainingTiles, lots } =
     case remainingTiles of
         [] ->
             nodes
@@ -232,7 +232,7 @@ createConnections { nodes, board, remainingTiles, lots } =
         ( cell, tile ) :: otherTiles ->
             let
                 connectionsInTile =
-                    toConnections board cell tile lots
+                    toConnections tilemap cell tile lots
 
                 maybeCreateNode nodeSpec currentNodes =
                     let
@@ -247,7 +247,7 @@ createConnections { nodes, board, remainingTiles, lots } =
                             |> Dict.insert key (Node (Dict.size currentNodes) nodeSpec)
             in
             createConnections
-                { board = board
+                { tilemap = tilemap
                 , lots = lots
                 , nodes =
                     connectionsInTile
@@ -256,21 +256,21 @@ createConnections { nodes, board, remainingTiles, lots } =
                 }
 
 
-toConnections : Board -> Cell -> Tile -> Lots -> List Connection
-toConnections board cell tile lots =
-    if tile == Board.horizontalRoad then
+toConnections : Tilemap -> Cell -> Tile -> Lots -> List Connection
+toConnections tilemap cell tile lots =
+    if tile == Tilemap.horizontalRoad then
         lotConnections cell tile Geometry.right lots
 
-    else if tile == Board.verticalRoad then
+    else if tile == Tilemap.verticalRoad then
         lotConnections cell tile Geometry.up lots
 
-    else if Board.isDeadend tile then
-        Board.potentialConnections tile
-            |> List.concatMap (Board.orthogonalDirectionToLmDirection >> deadendConnections cell tile)
+    else if Tilemap.isDeadend tile then
+        Tilemap.potentialConnections tile
+            |> List.concatMap (Tilemap.orthogonalDirectionToLmDirection >> deadendConnections cell tile)
 
     else
-        Board.potentialConnections tile
-            |> List.concatMap (connectionsByTileEntryDirection board cell tile)
+        Tilemap.potentialConnections tile
+            |> List.concatMap (connectionsByTileEntryDirection tilemap cell tile)
 
 
 lotConnections : Cell -> Tile -> LMDirection2d -> Lots -> List Connection
@@ -283,7 +283,7 @@ lotConnections cell tile trafficDirection lots =
 
                 anchorDirection =
                     Tuple.second lot.anchor
-                        |> Board.orthogonalDirectionToLmDirection
+                        |> Tilemap.orthogonalDirectionToLmDirection
 
                 ( position, direction ) =
                     if anchorDirection == Direction2d.rotateClockwise trafficDirection then
@@ -346,7 +346,7 @@ laneCenterPositionsByDirection cell trafficDirection =
                 |> Quantity.minus innerLaneOffset
 
         tileCenterPosition =
-            Board.cellCenterPoint cell
+            Tilemap.cellCenterPoint cell
     in
     ( tileCenterPosition
         |> Point2d.translateIn
@@ -359,15 +359,15 @@ laneCenterPositionsByDirection cell trafficDirection =
     )
 
 
-connectionsByTileEntryDirection : Board -> Cell -> Tile -> OrthogonalDirection -> List Connection
-connectionsByTileEntryDirection board cell tile direction =
+connectionsByTileEntryDirection : Tilemap -> Cell -> Tile -> OrthogonalDirection -> List Connection
+connectionsByTileEntryDirection tilemap cell tile direction =
     let
         origin =
-            Board.cellBottomLeftCorner cell
+            Tilemap.cellBottomLeftCorner cell
 
         isStopgapTile =
-            board
-                |> Board.tileAt (Board.nextOrthogonalCell direction cell)
+            tilemap
+                |> Tilemap.tileAt (Tilemap.nextOrthogonalCell direction cell)
                 |> Maybe.unwrap False (hasStopgapInbetween tile)
 
         ( startConnectionKind, endConnectionKind ) =
@@ -465,7 +465,7 @@ hasStopgapInbetween tileA tileB =
 
 isCurveOrIntersection : Tile -> Bool
 isCurveOrIntersection tile =
-    Board.isCurve tile || Board.isIntersection tile
+    Tilemap.isCurve tile || Tilemap.isIntersection tile
 
 
 

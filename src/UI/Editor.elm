@@ -9,9 +9,9 @@ import Element exposing (Color, Element)
 import Element.Border as Border
 import Element.Events as Events
 import Message exposing (Message(..))
-import Model.Board as Board exposing (Cell, tileSize)
 import Model.Geometry as Geometry
 import Model.Liikennematto exposing (Liikennematto, Tool(..))
+import Model.Tilemap as Tilemap exposing (Cell, tileSize)
 import Model.World as World exposing (World)
 import Simulation.Infrastructure as Infrastructure
 import UI.Core
@@ -64,10 +64,10 @@ overlay : World -> Tool -> Element Message
 overlay world tool =
     let
         size =
-            Element.px (Geometry.toPixelsValue Board.size |> floor)
+            Element.px (Geometry.toPixelsValue Tilemap.size |> floor)
 
         rg =
-            List.range 1 Board.rowsAndColumnsAmount
+            List.range 1 Tilemap.rowsAndColumnsAmount
 
         cell x y =
             tileOverlay
@@ -131,11 +131,11 @@ tileOverlay { glowColor, cell, world, tool } =
 
 choosePrimaryAction : Cell -> Tool -> World -> Message
 choosePrimaryAction cell tool world =
-    case ( tool, Board.tileAt cell world.board ) of
+    case ( tool, Tilemap.tileAt cell world.tilemap ) of
         ( SmartConstruction, _ ) ->
             let
                 alreadyExists =
-                    Board.exists cell world.board
+                    Tilemap.exists cell world.tilemap
             in
             if not alreadyExists && Infrastructure.canBuildRoadAt cell world then
                 AddTile cell

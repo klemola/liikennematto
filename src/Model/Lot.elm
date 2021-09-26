@@ -23,15 +23,15 @@ import Common
 import Dict exposing (Dict)
 import Direction2d
 import Length exposing (Length)
-import Model.Board as Board
+import Model.Car exposing (CarKind(..))
+import Model.Entity exposing (Id)
+import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
+import Model.Tilemap as Tilemap
     exposing
         ( Cell
         , OrthogonalDirection(..)
         , tileSize
         )
-import Model.Car exposing (CarKind(..))
-import Model.Entity exposing (Id)
-import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
 import Point2d
 import Quantity
 import Vector2d
@@ -132,7 +132,7 @@ fromNewLot : ( NewLot, Cell ) -> Lot
 fromNewLot ( newLot, aCell ) =
     let
         anchor =
-            ( aCell, Board.oppositeOrthogonalDirection newLot.content.entryDirection )
+            ( aCell, Tilemap.oppositeOrthogonalDirection newLot.content.entryDirection )
 
         position =
             bottomLeftCorner anchor newLot
@@ -151,8 +151,8 @@ bottomLeftCorner ( aCell, aDir ) { width, height } =
     let
         origin =
             aCell
-                |> Board.nextOrthogonalCell aDir
-                |> Board.cellBottomLeftCorner
+                |> Tilemap.nextOrthogonalCell aDir
+                |> Tilemap.cellBottomLeftCorner
 
         displacement =
             Vector2d.xy
@@ -177,7 +177,7 @@ entryDetails : Anchor -> NewLot -> EntryDetails
 entryDetails anchor newLot =
     let
         ( width, height ) =
-            if Board.isVerticalDirection <| Tuple.second anchor then
+            if Tilemap.isVerticalDirection <| Tuple.second anchor then
                 ( halfTile, drivewaySize )
 
             else
@@ -216,7 +216,7 @@ parkingSpot : Anchor -> NewLot -> LMPoint2d
 parkingSpot anchor newLot =
     let
         origin =
-            Board.cellBottomLeftCorner (entryCell anchor)
+            Tilemap.cellBottomLeftCorner (entryCell anchor)
 
         ( shiftX, shiftY ) =
             case newLot.content.entryDirection of
@@ -241,7 +241,7 @@ parkingSpot anchor newLot =
 parkingSpotOrientation : Lot -> Angle
 parkingSpotOrientation lot =
     lot.content.entryDirection
-        |> Board.orthogonalDirectionToLmDirection
+        |> Tilemap.orthogonalDirectionToLmDirection
         |> Direction2d.rotateClockwise
         |> Direction2d.toAngle
 
@@ -252,7 +252,7 @@ entryCell anchor =
         ( aCell, aDir ) =
             anchor
     in
-    Board.nextOrthogonalCell aDir aCell
+    Tilemap.nextOrthogonalCell aDir aCell
 
 
 anchorCell : Lot -> Cell
@@ -268,7 +268,7 @@ boundingBox lot =
 
 inBounds : Cell -> Lot -> Bool
 inBounds cell lot =
-    BoundingBox2d.isContainedIn (boundingBox lot) (Board.cellBoundingBox cell)
+    BoundingBox2d.isContainedIn (boundingBox lot) (Tilemap.cellBoundingBox cell)
 
 
 resident : Lot -> Maybe CarKind

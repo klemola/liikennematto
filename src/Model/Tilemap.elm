@@ -1,9 +1,9 @@
-module Model.Board exposing
-    ( Board
-    , Cell
+module Model.Tilemap exposing
+    ( Cell
     , DiagonalDirection(..)
     , OrthogonalDirection(..)
     , Tile
+    , Tilemap
     , addTile
     , boundingBox
     , cellBottomLeftCorner
@@ -56,7 +56,7 @@ import Set exposing (Set)
 import Vector2d
 
 
-type alias Board =
+type alias Tilemap =
     Dict Cell Tile
 
 
@@ -104,25 +104,25 @@ boundingBox =
 
 
 --
--- Board construction and modification
+-- Tilemap construction and modification
 --
 
 
-empty : Board
+empty : Tilemap
 empty =
     Dict.empty
 
 
-addTile : Cell -> Board -> Board
-addTile cell board =
-    board
+addTile : Cell -> Tilemap -> Tilemap
+addTile cell tilemap =
+    tilemap
         |> Dict.insert cell defaultTile
         |> applyMask
 
 
-removeTile : Cell -> Board -> Board
-removeTile cell board =
-    board
+removeTile : Cell -> Tilemap -> Tilemap
+removeTile cell tilemap =
+    tilemap
         |> Dict.remove cell
         |> applyMask
 
@@ -141,19 +141,19 @@ type alias ParallelNeighbors =
     }
 
 
-applyMask : Board -> Board
-applyMask board =
-    Dict.map (\cell _ -> chooseTile board cell) board
+applyMask : Tilemap -> Tilemap
+applyMask tilemap =
+    Dict.map (\cell _ -> chooseTile tilemap cell) tilemap
 
 
-chooseTile : Board -> Cell -> Tile
-chooseTile board origin =
+chooseTile : Tilemap -> Cell -> Tile
+chooseTile tilemap origin =
     let
         parallelTiles =
-            { north = exists (nextOrthogonalCell Up origin) board
-            , west = exists (nextOrthogonalCell Left origin) board
-            , east = exists (nextOrthogonalCell Right origin) board
-            , south = exists (nextOrthogonalCell Down origin) board
+            { north = exists (nextOrthogonalCell Up origin) tilemap
+            , west = exists (nextOrthogonalCell Left origin) tilemap
+            , east = exists (nextOrthogonalCell Right origin) tilemap
+            , south = exists (nextOrthogonalCell Down origin) tilemap
             }
     in
     fourBitBitmask parallelTiles
@@ -185,13 +185,13 @@ boolToBinary booleanValue =
 
 
 --
--- Board queries
+-- Tilemap queries
 --
 
 
-tileAt : Cell -> Board -> Maybe Tile
-tileAt cell board =
-    Dict.get cell board
+tileAt : Cell -> Tilemap -> Maybe Tile
+tileAt cell tilemap =
+    Dict.get cell tilemap
 
 
 inBounds : LMBoundingBox2d -> Bool
@@ -199,9 +199,9 @@ inBounds testBB =
     BoundingBox2d.isContainedIn boundingBox testBB
 
 
-exists : Cell -> Board -> Bool
-exists cell board =
-    Dict.member cell board
+exists : Cell -> Tilemap -> Bool
+exists cell tilemap =
+    Dict.member cell tilemap
 
 
 

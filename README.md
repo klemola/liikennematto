@@ -29,7 +29,7 @@ _Liikennematto in action! [Live demo](http://apps.butsku.com/liikennematto/)_
     -   **left click / tap** to place a piece of road
     -   **right click** to remove road from the tile
 -   bulldoze (_remove_) tiles [_for touch devices_]
--   blow up the board (_clear it_) with dynamite
+-   blow up the tilemap (_clear it_) with dynamite
 
 #### Restrictions
 
