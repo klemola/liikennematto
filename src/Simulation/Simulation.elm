@@ -1,23 +1,25 @@
-module Simulation.Simulation exposing (generateEnvironmentAfterDelay, spawnCar, update)
+module Simulation.Simulation exposing
+    ( generateEnvironmentAfterDelay
+    , initCmd
+    , spawnCar
+    , update
+    )
 
 import BoundingBox2d
 import Browser.Events as Events
 import Common
-import Config
-import Defaults
 import Dict
 import Dict.Extra as Dict
 import Direction2d
 import Duration
 import Length
 import Message exposing (Message(..))
-import Model.Board as Board
+import Model.Board as Board exposing (Cell, tileSize)
 import Model.Car as Car exposing (Car, Cars, Status(..))
-import Model.Cell as Cell exposing (Cell)
 import Model.Entity as Entity
 import Model.Liikennematto exposing (Liikennematto, SimulationState(..), Tool(..))
 import Model.Lookup exposing (carPositionLookup)
-import Model.Lot as Lot exposing (Lot, NewLot)
+import Model.Lot as Lot exposing (Lot, NewLot, allLots)
 import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Model.TrafficLight as TrafficLight
 import Model.World as World exposing (World)
@@ -32,6 +34,11 @@ import Simulation.Pathfinding as Pathfinding
 import Simulation.Round as Round
 import Simulation.Steering as Steering
 import Task
+
+
+initCmd : Random.Seed -> Cmd Message
+initCmd seed =
+    generateEnvironmentAfterDelay seed
 
 
 
@@ -204,7 +211,7 @@ attemptGenerateEnvironment world seed simulation =
                 |> Dict.values
 
         unusedLots =
-            List.filter (\{ content } -> not (List.member content.kind existingBuildingKinds)) Defaults.lots
+            List.filter (\{ content } -> not (List.member content.kind existingBuildingKinds)) allLots
     in
     if simulation == Paused || List.isEmpty unusedLots || not largeEnoughRoadNetwork then
         ( world, seed )
@@ -241,14 +248,14 @@ findLotAnchor world seed newLot =
             Random.step (Random.List.shuffle (Dict.toList world.board)) seed
 
         targetTile =
-            if Cell.isVertical newLot.content.entryDirection then
-                Board.twoLaneRoadHorizontal
+            if Board.isVerticalDirection newLot.content.entryDirection then
+                Board.horizontalRoad
 
             else
-                Board.twoLaneRoadVertical
+                Board.verticalRoad
 
         targetDirection =
-            Cell.oppositeOrthogonalDirection newLot.content.entryDirection
+            Board.oppositeOrthogonalDirection newLot.content.entryDirection
 
         isCompatible ( cell, tile ) =
             tile == targetTile && hasEnoughSpaceAround cell && not (World.hasLotAnchor cell world)
@@ -262,12 +269,12 @@ findLotAnchor world seed newLot =
                 && isNotAtTheEndOfARoad cell
 
         isNotAtTheEndOfARoad cell =
-            Cell.allODs
+            Board.orthogonalDirections
                 |> List.all
                     (\od ->
-                        case World.tileAt (Cell.next od cell) world of
+                        case Board.tileAt (Board.nextOrthogonalCell od cell) world.board of
                             Just neighbor ->
-                                neighbor == Board.twoLaneRoadHorizontal || neighbor == Board.twoLaneRoadVertical
+                                neighbor == Board.horizontalRoad || neighbor == Board.verticalRoad
 
                             Nothing ->
                                 True
@@ -314,7 +321,7 @@ addLotResident lotId lot world =
     in
     world.lots
         |> Dict.get lotId
-        |> Maybe.andThen Defaults.resident
+        |> Maybe.andThen Lot.resident
         |> Maybe.map (createCar >> addToWorld)
         |> Maybe.withDefault world
 
@@ -341,7 +348,7 @@ updateTraffic { updateQueue, seed, world, delta } =
             let
                 otherCars =
                     world.carPositionLookup
-                        |> QuadTree.neighborsWithin Config.tileSizeInMeters activeCar.boundingBox
+                        |> QuadTree.neighborsWithin tileSize activeCar.boundingBox
                         |> List.filter (\car -> car.id /= activeCar.id)
 
                 -- 1. Path checks (route, local path)
@@ -430,6 +437,7 @@ chooseNextConnection seed world car =
 
         _ ->
             ( Steering.markAsConfused car, seed )
+                |> Debug.log "confused by next connection"
 
 
 updateCar : Float -> Car -> Car
@@ -483,12 +491,14 @@ updateCar delta car =
     }
 
 
+weightedCoinToss : Random.Generator Bool
+weightedCoinToss =
+    Random.weighted ( 70, True ) [ ( 30, False ) ]
+
+
 checkCarStatus : Random.Seed -> World -> ( World, Random.Seed )
 checkCarStatus seed world =
     let
-        weightedCoinToss =
-            Random.weighted ( 70, True ) [ ( 30, False ) ]
-
         -- Some status effects are triggered randomly (uniform for all affected cars)
         ( toss, nextSeed ) =
             Random.step weightedCoinToss seed
@@ -509,7 +519,7 @@ checkCarStatus seed world =
 
 statusCheck : World -> Bool -> Car -> Maybe Car
 statusCheck world randomCoinToss car =
-    -- Room for improvement: the Maybe Lot / Maybe EntityId combo is
+    -- Room for improvement: the Maybe Lot / Maybe EntityId combo is awkward
     let
         home =
             car.homeLotId |> Maybe.andThen (\lotId -> Dict.get lotId world.lots)
@@ -543,7 +553,11 @@ statusCheck world randomCoinToss car =
                     Just car
 
                 Nothing ->
-                    Just (Steering.markAsConfused car)
+                    if car.kind == Car.TestCar then
+                        Just car
+
+                    else
+                        Just (Steering.markAsConfused car)
 
 
 moveCarToHome : World -> Car -> Lot -> Car

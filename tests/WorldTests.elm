@@ -3,7 +3,7 @@ module WorldTests exposing (suite)
 import Dict
 import Expect
 import Lots exposing (createTwoByTwoLot)
-import Model.Cell exposing (OrthogonalDirection(..))
+import Model.Board exposing (OrthogonalDirection(..))
 import Model.World as World
 import Test exposing (Test, describe, test)
 import Utility exposing (createBoundingBox)

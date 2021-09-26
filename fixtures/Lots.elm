@@ -4,8 +4,7 @@ module Lots exposing
     , twoByTwoLot
     )
 
-import Config exposing (tileSizeInMeters)
-import Model.Cell as Cell exposing (OrthogonalDirection(..))
+import Model.Board as Board exposing (OrthogonalDirection(..), tileSize)
 import Model.Lot as Lot exposing (Anchor, Lot)
 import Point2d
 import Quantity
@@ -17,8 +16,8 @@ oneByOneNewLot =
         { kind = Lot.ResidentialA
         , entryDirection = Down
         }
-    , width = tileSizeInMeters
-    , height = tileSizeInMeters
+    , width = tileSize
+    , height = tileSize
     }
 
 
@@ -34,7 +33,7 @@ oneByOneLot =
     , position =
         Point2d.xy
             Quantity.zero
-            (tileSizeInMeters |> Quantity.multiplyBy 9)
+            (tileSize |> Quantity.multiplyBy 9)
     , entryDetails = Lot.entryDetails anchor oneByOneNewLot
     , anchor = anchor
     }
@@ -46,8 +45,8 @@ twoByTwoNewLot =
         { kind = Lot.ResidentialE
         , entryDirection = Down
         }
-    , width = tileSizeInMeters |> Quantity.multiplyBy 2
-    , height = tileSizeInMeters |> Quantity.multiplyBy 2
+    , width = tileSize |> Quantity.multiplyBy 2
+    , height = tileSize |> Quantity.multiplyBy 2
     }
 
 
@@ -65,13 +64,13 @@ createTwoByTwoLot ( anchorCell, anchorDir ) =
         anchor =
             ( anchorCell, anchorDir )
     in
-    { content = { content | entryDirection = Cell.oppositeOrthogonalDirection anchorDir }
+    { content = { content | entryDirection = Board.oppositeOrthogonalDirection anchorDir }
     , width = twoByTwoNewLot.width
     , height = twoByTwoNewLot.height
     , position =
         anchorCell
-            |> Cell.next anchorDir
-            |> Cell.bottomLeftCorner
+            |> Board.nextOrthogonalCell anchorDir
+            |> Board.cellBottomLeftCorner
     , entryDetails = Lot.entryDetails anchor twoByTwoNewLot
     , anchor = anchor
     }

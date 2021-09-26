@@ -2,13 +2,13 @@ module Main exposing (main)
 
 import Browser
 import Browser.Dom exposing (getViewport)
-import Config exposing (boardSizeScaled)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Message exposing (Message(..))
+import Model.Board as Board
+import Model.Geometry as Geometry
 import Model.Liikennematto as Liikennematto exposing (Liikennematto)
-import Pixels
 import Random
 import Render
 import Simulation.Simulation as Simulation
@@ -26,19 +26,19 @@ main =
             Liikennematto.new
     in
     Browser.document
-        { init = \() -> ( initialModel, initMessages initialModel.seed )
+        { init = \() -> ( initialModel, initCmd initialModel.seed )
         , view = view
         , update = update
         , subscriptions = subscriptions
         }
 
 
-initMessages : Random.Seed -> Cmd Message
-initMessages seed =
+initCmd : Random.Seed -> Cmd Message
+initCmd seed =
     Cmd.batch
         [ -- simulate a screen resize
           Task.perform (\{ viewport } -> ResizeWindow (round viewport.width) (round viewport.height)) getViewport
-        , Simulation.generateEnvironmentAfterDelay seed
+        , Simulation.initCmd seed
         ]
 
 
@@ -88,7 +88,9 @@ render model =
             }
 
         renderedSize =
-            boardSizeScaled |> Pixels.inPixels
+            Board.size
+                |> Geometry.toPixelsValue
+                |> floor
 
         ( viewportWidth, viewportHeight ) =
             ( min model.screen.width renderedSize, min model.screen.height renderedSize )
