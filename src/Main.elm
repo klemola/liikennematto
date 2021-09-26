@@ -6,9 +6,9 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Message exposing (Message(..))
-import Model.Board as Board
 import Model.Geometry as Geometry
 import Model.Liikennematto as Liikennematto exposing (Liikennematto)
+import Model.Tilemap as Tilemap
 import Random
 import Render
 import Simulation.Simulation as Simulation
@@ -88,7 +88,7 @@ render model =
             }
 
         renderedSize =
-            Board.size
+            Tilemap.size
                 |> Geometry.toPixelsValue
                 |> floor
 

@@ -1,6 +1,5 @@
 module Simulation.Simulation exposing
-    ( generateEnvironmentAfterDelay
-    , initCmd
+    ( initCmd
     , spawnCar
     , update
     )
@@ -14,13 +13,13 @@ import Direction2d
 import Duration
 import Length
 import Message exposing (Message(..))
-import Model.Board as Board exposing (Cell, tileSize)
 import Model.Car as Car exposing (Car, Cars, Status(..))
 import Model.Entity as Entity
 import Model.Liikennematto exposing (Liikennematto, SimulationState(..), Tool(..))
 import Model.Lookup exposing (carPositionLookup)
 import Model.Lot as Lot exposing (Lot, NewLot, allLots)
 import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
+import Model.Tilemap as Tilemap exposing (Cell, tileSize)
 import Model.TrafficLight as TrafficLight
 import Model.World as World exposing (World)
 import Point2d
@@ -203,7 +202,7 @@ attemptGenerateEnvironment : World -> Random.Seed -> SimulationState -> ( World,
 attemptGenerateEnvironment world seed simulation =
     let
         largeEnoughRoadNetwork =
-            Dict.size world.board > 4 * max 1 (Dict.size world.lots + 1)
+            Dict.size world.tilemap > 4 * max 1 (Dict.size world.lots + 1)
 
         existingBuildingKinds =
             world.lots
@@ -244,18 +243,18 @@ generateEnvironment world seed unusedLots =
 findLotAnchor : World -> Random.Seed -> NewLot -> Maybe ( NewLot, Cell )
 findLotAnchor world seed newLot =
     let
-        ( shuffledBoard, _ ) =
-            Random.step (Random.List.shuffle (Dict.toList world.board)) seed
+        ( shuffledTilemap, _ ) =
+            Random.step (Random.List.shuffle (Dict.toList world.tilemap)) seed
 
         targetTile =
-            if Board.isVerticalDirection newLot.content.entryDirection then
-                Board.horizontalRoad
+            if Tilemap.isVerticalDirection newLot.content.entryDirection then
+                Tilemap.horizontalRoad
 
             else
-                Board.verticalRoad
+                Tilemap.verticalRoad
 
         targetDirection =
-            Board.oppositeOrthogonalDirection newLot.content.entryDirection
+            Tilemap.oppositeOrthogonalDirection newLot.content.entryDirection
 
         isCompatible ( cell, tile ) =
             tile == targetTile && hasEnoughSpaceAround cell && not (World.hasLotAnchor cell world)
@@ -269,18 +268,18 @@ findLotAnchor world seed newLot =
                 && isNotAtTheEndOfARoad cell
 
         isNotAtTheEndOfARoad cell =
-            Board.orthogonalDirections
+            Tilemap.orthogonalDirections
                 |> List.all
                     (\od ->
-                        case Board.tileAt (Board.nextOrthogonalCell od cell) world.board of
+                        case Tilemap.tileAt (Tilemap.nextOrthogonalCell od cell) world.tilemap of
                             Just neighbor ->
-                                neighbor == Board.horizontalRoad || neighbor == Board.verticalRoad
+                                neighbor == Tilemap.horizontalRoad || neighbor == Tilemap.verticalRoad
 
                             Nothing ->
                                 True
                     )
     in
-    shuffledBoard
+    shuffledTilemap
         |> List.filter isCompatible
         |> List.head
         |> Maybe.map (\( cell, _ ) -> ( newLot, cell ))
@@ -437,7 +436,6 @@ chooseNextConnection seed world car =
 
         _ ->
             ( Steering.markAsConfused car, seed )
-                |> Debug.log "confused by next connection"
 
 
 updateCar : Float -> Car -> Car
@@ -674,7 +672,7 @@ validateSpawnConditions world nodeCtx =
                 |> not
 
         reasonableAmountOfTraffic =
-            Dict.size world.board > Dict.size world.cars
+            Dict.size world.tilemap > Dict.size world.cars
 
         spawnPositionHasEnoughSpace =
             Dict.values world.cars

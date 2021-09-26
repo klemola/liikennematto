@@ -6,13 +6,6 @@ import Dict
 import Graph exposing (Node)
 import Html exposing (Html)
 import Maybe.Extra as Maybe
-import Model.Board as Board
-    exposing
-        ( Board
-        , Cell
-        , Tile
-        , tileSize
-        )
 import Model.Car as Car exposing (Car, CarKind(..), Cars)
 import Model.Geometry exposing (LMPoint2d, pointToPixels, toPixelsValue)
 import Model.Lot exposing (BuildingKind(..), Lot, Lots)
@@ -22,6 +15,13 @@ import Model.RoadNetwork
         , ConnectionKind(..)
         , RoadNetwork
         , TrafficControl(..)
+        )
+import Model.Tilemap as Tilemap
+    exposing
+        ( Cell
+        , Tile
+        , Tilemap
+        , tileSize
         )
 import Model.TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
 import Model.World exposing (World)
@@ -66,14 +66,14 @@ carLengthPixels =
     toPixelsValue Car.length
 
 
-boardSizeScaledPixels : Float
-boardSizeScaledPixels =
-    toPixelsValue Board.size
+tilemapSizeScaledPixels : Float
+tilemapSizeScaledPixels =
+    toPixelsValue Tilemap.size
 
 
-boardSizeScaledStr : String
-boardSizeScaledStr =
-    String.fromFloat boardSizeScaledPixels
+tilemapSizeScaledStr : String
+tilemapSizeScaledStr =
+    String.fromFloat tilemapSizeScaledPixels
 
 
 tileSizePixels : Float
@@ -82,13 +82,13 @@ tileSizePixels =
 
 
 view : World -> DebugLayers -> Html msg
-view { board, cars, lots, roadNetwork, trafficLights } debugLayers =
+view { tilemap, cars, lots, roadNetwork, trafficLights } debugLayers =
     Svg.svg
-        [ Attributes.width boardSizeScaledStr
-        , Attributes.height boardSizeScaledStr
-        , Attributes.viewBox <| "0 0 " ++ boardSizeScaledStr ++ " " ++ boardSizeScaledStr
+        [ Attributes.width tilemapSizeScaledStr
+        , Attributes.height tilemapSizeScaledStr
+        , Attributes.viewBox <| "0 0 " ++ tilemapSizeScaledStr ++ " " ++ tilemapSizeScaledStr
         ]
-        ([ Svg.Lazy.lazy renderBoard board
+        ([ Svg.Lazy.lazy renderTilemap tilemap
          , Svg.Lazy.lazy renderLots lots
          , renderCars cars
          , Svg.Lazy.lazy renderTrafficLights trafficLights
@@ -107,11 +107,11 @@ renderColors =
     }
 
 
-renderBoard : Board -> Svg msg
-renderBoard board =
-    board
+renderTilemap : Tilemap -> Svg msg
+renderTilemap tilemap =
+    tilemap
         |> Dict.foldl
-            (\cell tile acc -> ( Board.cellToString cell, renderTile cell tile ) :: acc)
+            (\cell tile acc -> ( Tilemap.cellToString cell, renderTile cell tile ) :: acc)
             []
         |> Svg.Keyed.node "g" []
 
@@ -123,12 +123,12 @@ renderTile cell tile =
             "assets/" ++ tileAsset tile
 
         { x, y } =
-            Board.cellBottomLeftCorner cell |> pointToPixels
+            Tilemap.cellBottomLeftCorner cell |> pointToPixels
     in
     Svg.image
         [ Attributes.xlinkHref asset
         , Attributes.x (String.fromFloat x)
-        , Attributes.y (String.fromFloat (boardSizeScaledPixels - tileSizePixels - y))
+        , Attributes.y (String.fromFloat (tilemapSizeScaledPixels - tileSizePixels - y))
         , Attributes.width (String.fromFloat tileSizePixels)
         , Attributes.height (String.fromFloat tileSizePixels)
         ]
@@ -156,7 +156,7 @@ renderCar car =
             x - (carLengthPixels / 2)
 
         renderY =
-            boardSizeScaledPixels - carWidthPixels - y
+            tilemapSizeScaledPixels - carWidthPixels - y
 
         rotateVal =
             car.orientation
@@ -166,7 +166,7 @@ renderCar car =
 
         -- rotate about the center of the car
         rotateStr =
-            "rotate(" ++ rotateVal ++ "," ++ String.fromFloat x ++ "," ++ String.fromFloat (boardSizeScaledPixels - y) ++ ")"
+            "rotate(" ++ rotateVal ++ "," ++ String.fromFloat x ++ "," ++ String.fromFloat (tilemapSizeScaledPixels - y) ++ ")"
 
         translateStr =
             "translate(" ++ String.fromFloat renderX ++ " " ++ String.fromFloat renderY ++ ")"
@@ -282,7 +282,7 @@ renderLot lot =
         [ Svg.image
             [ Attributes.xlinkHref asset
             , Attributes.x <| String.fromFloat x
-            , Attributes.y <| String.fromFloat <| boardSizeScaledPixels - height - y
+            , Attributes.y <| String.fromFloat <| tilemapSizeScaledPixels - height - y
             , Attributes.width <| String.fromFloat width
             , Attributes.height <| String.fromFloat height
             ]
@@ -313,7 +313,7 @@ sidewalkMask lot =
         , Attributes.height <| String.fromFloat height
         , Attributes.fill <| Color.toCssString <| renderColors.sidewalk
         , Attributes.x <| String.fromFloat <| x + lotPosition.x - (width / 2)
-        , Attributes.y <| String.fromFloat <| boardSizeScaledPixels - lotPosition.y - y - (height / 2)
+        , Attributes.y <| String.fromFloat <| tilemapSizeScaledPixels - lotPosition.y - y - (height / 2)
         ]
         []
 
@@ -348,7 +348,7 @@ renderTrafficLight trafficLight =
     Svg.circle
         [ Attributes.r <| String.fromFloat radius
         , Attributes.cx <| String.fromFloat x
-        , Attributes.cy <| String.fromFloat (boardSizeScaledPixels - y)
+        , Attributes.cy <| String.fromFloat (tilemapSizeScaledPixels - y)
         , Attributes.fill <| Color.toCssString color
         , Attributes.stroke <| Color.toCssString Color.grey
         , Attributes.strokeWidth <| String.fromInt 1
@@ -390,7 +390,7 @@ renderYieldSign node =
     Svg.image
         [ Attributes.xlinkHref asset
         , Attributes.x <| String.fromFloat (x - size / 2)
-        , Attributes.y <| String.fromFloat <| boardSizeScaledPixels - y - (size / 2)
+        , Attributes.y <| String.fromFloat <| tilemapSizeScaledPixels - y - (size / 2)
         , Attributes.width <| String.fromFloat size
         , Attributes.height <| String.fromFloat size
         ]
@@ -467,7 +467,7 @@ renderRoadNetwork roadNetwork =
                         , Svg.circle
                             [ Attributes.r <| String.fromFloat radius
                             , Attributes.cx <| String.fromFloat x
-                            , Attributes.cy <| String.fromFloat (boardSizeScaledPixels - y)
+                            , Attributes.cy <| String.fromFloat (tilemapSizeScaledPixels - y)
                             , Attributes.fill <| Color.toCssString <| nodeColor kind
                             ]
                             []
@@ -499,10 +499,10 @@ renderRoadNetwork roadNetwork =
                                         pointToPixels toNodeCtx.node.label.position
 
                                     fromStr =
-                                        String.fromFloat from.x ++ " " ++ String.fromFloat (boardSizeScaledPixels - from.y)
+                                        String.fromFloat from.x ++ " " ++ String.fromFloat (tilemapSizeScaledPixels - from.y)
 
                                     toStr =
-                                        String.fromFloat to.x ++ " " ++ String.fromFloat (boardSizeScaledPixels - to.y)
+                                        String.fromFloat to.x ++ " " ++ String.fromFloat (tilemapSizeScaledPixels - to.y)
                                 in
                                 ( "Edge-" ++ String.fromInt fromNodeCtx.node.id ++ String.fromInt toNodeCtx.node.id
                                 , Svg.path
@@ -602,7 +602,7 @@ toPointsString points =
                     pointToPixels point
 
                 pointStr =
-                    String.fromFloat x ++ "," ++ String.fromFloat (boardSizeScaledPixels - y) ++ " "
+                    String.fromFloat x ++ "," ++ String.fromFloat (tilemapSizeScaledPixels - y) ++ " "
             in
             pointStr ++ acc
         )
