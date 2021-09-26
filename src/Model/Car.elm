@@ -40,11 +40,12 @@ import Model.Geometry
         ( LMBoundingBox2d
         , LMEntityCoordinates
         , LMPoint2d
+        , LMPolyline2d
         )
-import Model.LocalPath exposing (LocalPath)
 import Model.RoadNetwork exposing (RNNodeContext)
 import Point2d
 import Polygon2d exposing (Polygon2d)
+import Polyline2d
 import Quantity exposing (Quantity, Rate)
 import Speed exposing (Speed)
 import Triangle2d exposing (Triangle2d)
@@ -63,7 +64,7 @@ type alias Car =
     , status : Status
     , homeLotId : Maybe Int
     , route : List RNNodeContext
-    , localPath : LocalPath
+    , localPath : LMPolyline2d
     }
 
 
@@ -225,7 +226,7 @@ build id newCar =
     , status = newCar.status
     , homeLotId = newCar.homeLotId
     , route = []
-    , localPath = []
+    , localPath = Polyline2d.fromVertices []
     }
 
 

@@ -6,8 +6,7 @@ import CubicSpline2d exposing (CubicSpline2d)
 import Direction2d
 import Length exposing (Length)
 import Model.Car exposing (Car, Status(..))
-import Model.Geometry exposing (LMDirection2d, LMEntityCoordinates, LMPoint2d)
-import Model.LocalPath exposing (LocalPath)
+import Model.Geometry exposing (LMDirection2d, LMEntityCoordinates, LMPoint2d, LMPolyline2d)
 import Model.RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Point2d
 import Polyline2d
@@ -70,7 +69,7 @@ createRoute nodeCtx car =
     }
 
 
-toNode : PathParameters -> RNNodeContext -> LocalPath
+toNode : PathParameters -> RNNodeContext -> LMPolyline2d
 toNode { direction, origin, useOffsetSpline } { node } =
     let
         target =
@@ -88,13 +87,13 @@ toNode { direction, origin, useOffsetSpline } { node } =
         uTurnSpline origin target direction
 
     else if angleDegreesToTarget |> Quantity.lessThan (Angle.radians 0.1) then
-        [ origin, target ]
+        Polyline2d.fromVertices [ origin, target ]
 
     else
         curveSpline origin target direction
 
 
-offsetSpline : LMPoint2d -> LMPoint2d -> LMDirection2d -> LocalPath
+offsetSpline : LMPoint2d -> LMPoint2d -> LMDirection2d -> LMPolyline2d
 offsetSpline origin target direction =
     let
         targetCp =
@@ -119,7 +118,7 @@ offsetSpline origin target direction =
         |> cubicSplineToLocalPath
 
 
-uTurnSpline : LMPoint2d -> LMPoint2d -> LMDirection2d -> LocalPath
+uTurnSpline : LMPoint2d -> LMPoint2d -> LMDirection2d -> LMPolyline2d
 uTurnSpline origin target direction =
     let
         handleCp1 =
@@ -132,7 +131,7 @@ uTurnSpline origin target direction =
         |> cubicSplineToLocalPath
 
 
-curveSpline : LMPoint2d -> LMPoint2d -> LMDirection2d -> LocalPath
+curveSpline : LMPoint2d -> LMPoint2d -> LMDirection2d -> LMPolyline2d
 curveSpline origin target direction =
     let
         distanceToTarget =
@@ -159,10 +158,6 @@ curveSpline origin target direction =
         |> cubicSplineToLocalPath
 
 
-cubicSplineToLocalPath : CubicSpline2d Length.Meters LMEntityCoordinates -> LocalPath
+cubicSplineToLocalPath : CubicSpline2d Length.Meters LMEntityCoordinates -> LMPolyline2d
 cubicSplineToLocalPath spline =
-    spline
-        |> CubicSpline2d.segments splineSegmentsAmount
-        |> Polyline2d.vertices
-        |> List.tail
-        |> Maybe.withDefault []
+    CubicSpline2d.segments splineSegmentsAmount spline

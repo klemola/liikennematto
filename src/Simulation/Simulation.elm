@@ -23,6 +23,7 @@ import Model.Tilemap as Tilemap exposing (Cell, tileSize)
 import Model.TrafficLight as TrafficLight
 import Model.World as World exposing (World)
 import Point2d
+import Polyline2d
 import Process
 import QuadTree
 import Quantity
@@ -379,10 +380,10 @@ updateTraffic { updateQueue, seed, world, delta } =
 
 checkPath : World -> Random.Seed -> Car -> ( Car, Random.Seed )
 checkPath world seed car =
-    case car.localPath of
+    case Polyline2d.vertices car.localPath of
         next :: others ->
             if Point2d.equalWithin (Length.meters 0.5) car.position next then
-                ( { car | localPath = others }, seed )
+                ( { car | localPath = Polyline2d.fromVertices others }, seed )
 
             else
                 ( car, seed )
@@ -455,7 +456,7 @@ updateCar delta car =
                     (car.velocity |> Quantity.for deltaDuration)
 
         nextOrientation =
-            case car.localPath of
+            case Polyline2d.vertices car.localPath of
                 next :: _ ->
                     Steering.angleToTarget car.position next
                         |> Maybe.withDefault car.orientation
@@ -573,7 +574,7 @@ moveCarToHome world car home =
                 , velocity = Quantity.zero
                 , acceleration = Steering.maxAcceleration
                 , route = []
-                , localPath = []
+                , localPath = Polyline2d.fromVertices []
             }
                 |> Pathfinding.createRoute nodeCtx
 
