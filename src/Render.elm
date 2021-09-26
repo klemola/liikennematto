@@ -27,6 +27,7 @@ import Model.TrafficLight exposing (TrafficLight, TrafficLightColor(..), Traffic
 import Model.World exposing (World)
 import Pixels exposing (Pixels)
 import Polygon2d
+import Polyline2d
 import Quantity exposing (Quantity)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
@@ -548,7 +549,7 @@ renderCarPath : Car -> Svg msg
 renderCarPath car =
     let
         points =
-            toPointsString car.localPath
+            toPointsString (Polyline2d.vertices car.localPath)
     in
     Svg.polyline
         [ Attributes.stroke <| Color.toCssString Color.red

@@ -3,6 +3,7 @@ module Model.Geometry exposing
     , LMDirection2d
     , LMEntityCoordinates
     , LMPoint2d
+    , LMPolyline2d
     , down
     , left
     , pixelsToMeters
@@ -18,6 +19,7 @@ import Direction2d exposing (Direction2d)
 import Length exposing (Length)
 import Pixels
 import Point2d exposing (Point2d)
+import Polyline2d exposing (Polyline2d)
 import Quantity exposing (Quantity, Rate)
 
 
@@ -35,6 +37,10 @@ type alias LMDirection2d =
 
 type alias LMBoundingBox2d =
     BoundingBox2d Length.Meters LMEntityCoordinates
+
+
+type alias LMPolyline2d =
+    Polyline2d Length.Meters LMEntityCoordinates
 
 
 
