@@ -2,8 +2,7 @@ module RoundBenchmark exposing (main, suite)
 
 import Benchmark exposing (..)
 import Benchmark.Runner exposing (BenchmarkProgram, program)
-import Model.Board as Board
-import Config
+import Model.Board as Board exposing (tileSize)
 import Dict
 import QuadTree
 import Simulation.Round as Round exposing (Round)
@@ -55,7 +54,7 @@ chooseOtherCarsWithQuadtree round =
         nearbyCars =
             QuadTree.init Board.boundingBox 4
                 |> QuadTree.insertList round.otherCars
-                |> QuadTree.neighborsWithin Config.tileSizeInMeters round.activeCar.boundingBox
+                |> QuadTree.neighborsWithin tileSize round.activeCar.boundingBox
     in
     { round | otherCars = nearbyCars }
 

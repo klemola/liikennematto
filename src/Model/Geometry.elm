@@ -3,10 +3,14 @@ module Model.Geometry exposing
     , LMDirection2d
     , LMEntityCoordinates
     , LMPoint2d
+    , down
+    , left
     , pixelsToMeters
     , pixelsToMetersRatio
     , pointToPixels
+    , right
     , toPixelsValue
+    , up
     )
 
 import BoundingBox2d exposing (BoundingBox2d)
@@ -62,3 +66,29 @@ pointToPixels point =
     point
         |> Point2d.at pixelsToMetersRatio
         |> Point2d.toPixels
+
+
+
+--
+-- Alias
+--
+
+
+up : Direction2d.Direction2d LMEntityCoordinates
+up =
+    Direction2d.positiveY
+
+
+right : Direction2d.Direction2d LMEntityCoordinates
+right =
+    Direction2d.positiveX
+
+
+down : Direction2d.Direction2d LMEntityCoordinates
+down =
+    Direction2d.negativeY
+
+
+left : Direction2d.Direction2d LMEntityCoordinates
+left =
+    Direction2d.negativeX

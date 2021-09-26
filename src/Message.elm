@@ -1,7 +1,7 @@
 module Message exposing (Message(..))
 
 import Browser.Events exposing (Visibility)
-import Model.Cell exposing (Cell)
+import Model.Board exposing (Cell)
 import Model.Liikennematto exposing (SimulationState, Tool)
 import Time
 

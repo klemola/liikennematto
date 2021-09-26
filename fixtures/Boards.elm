@@ -1,38 +1,23 @@
 module Boards exposing
     ( boardThatResemblesACurve
     , boardThatResemblesAIntersection
-    , curveTile
-    , intersectionTile
     )
 
-import Dict
-import Model.Board as Board exposing (Board, Tile)
+import Model.Board as Board exposing (Board)
 
 
 boardThatResemblesAIntersection : Board
 boardThatResemblesAIntersection =
-    Dict.empty
-        |> Dict.insert ( 1, 1 ) Board.defaultTile
-        |> Dict.insert ( 2, 1 ) Board.defaultTile
-        |> Dict.insert ( 3, 1 ) Board.defaultTile
-        |> Dict.insert ( 2, 2 ) Board.defaultTile
-        |> Board.applyMask
-
-
-intersectionTile : Tile
-intersectionTile =
-    14
+    Board.empty
+        |> Board.addTile ( 1, 1 )
+        |> Board.addTile ( 2, 1 )
+        |> Board.addTile ( 3, 1 )
+        |> Board.addTile ( 2, 2 )
 
 
 boardThatResemblesACurve : Board
 boardThatResemblesACurve =
-    Dict.empty
-        |> Dict.insert ( 1, 1 ) Board.defaultTile
-        |> Dict.insert ( 2, 1 ) Board.defaultTile
-        |> Dict.insert ( 1, 2 ) Board.defaultTile
-        |> Board.applyMask
-
-
-curveTile : Tile
-curveTile =
-    12
+    Board.empty
+        |> Board.addTile ( 1, 1 )
+        |> Board.addTile ( 2, 1 )
+        |> Board.addTile ( 1, 2 )

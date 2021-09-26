@@ -4,10 +4,7 @@ import Boards
     exposing
         ( boardThatResemblesACurve
         , boardThatResemblesAIntersection
-        , curveTile
-        , intersectionTile
         )
-import Dict
 import Expect
 import Model.Board as Board
 import Test exposing (Test, describe, test)
@@ -19,19 +16,19 @@ suite =
         [ describe ".applyMask"
             [ test "Creates an intersection with compatible tiles"
                 (\_ ->
-                    Board.applyMask boardThatResemblesAIntersection
-                        |> Dict.get ( 2, 1 )
+                    boardThatResemblesAIntersection
+                        |> Board.tileAt ( 2, 1 )
                         |> (\tile ->
-                                tile == Just intersectionTile
+                                tile == Just Board.intersectionTDown
                            )
                         |> Expect.true "Expected a T-shaped intersection after the mask is applied."
                 )
             , test "Creates a curve with compatible tiles"
                 (\_ ->
-                    Board.applyMask boardThatResemblesACurve
-                        |> Dict.get ( 1, 1 )
+                    boardThatResemblesACurve
+                        |> Board.tileAt ( 1, 1 )
                         |> (\tile ->
-                                tile == Just curveTile
+                                tile == Just Board.curveTopLeft
                            )
                         |> Expect.true "Expected a curve road piece after the mask is applied."
                 )

@@ -9,7 +9,6 @@ module Simulation.Round exposing
     )
 
 import Angle
-import Config exposing (tileSizeInMeters)
 import Dict
 import Direction2d
 import Length exposing (Length, Meters)
@@ -57,7 +56,7 @@ type Rule
 
 maxCarCollisionTestDistance : Length
 maxCarCollisionTestDistance =
-    tileSizeInMeters
+    Length.meters 16
 
 
 carFrontBumperDistance : Length
@@ -69,12 +68,12 @@ carFrontBumperDistance =
 
 trafficLightReactionDistance : Length
 trafficLightReactionDistance =
-    tileSizeInMeters |> Quantity.twice
+    Length.meters 32
 
 
 yieldSlowDownDistance : Length
 yieldSlowDownDistance =
-    tileSizeInMeters
+    Length.meters 16
 
 
 yieldReactionDistance : Length

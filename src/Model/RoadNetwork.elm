@@ -5,19 +5,18 @@ module Model.RoadNetwork exposing
     , RNNodeContext
     , RoadNetwork
     , TrafficControl(..)
+    , empty
     , findNodeByLotId
     , findNodeByNodeId
     , findNodeByPosition
     , getOutgoingConnections
     , getRandomNode
-    , new
     , toDotString
     )
 
 import Graph exposing (Graph, NodeContext, NodeId)
 import Graph.DOT
-import Model.Board exposing (Tile)
-import Model.Cell exposing (Cell)
+import Model.Board exposing (Cell, Tile)
 import Model.Entity exposing (Id)
 import Model.Geometry exposing (LMDirection2d, LMPoint2d)
 import Random
@@ -64,8 +63,8 @@ type alias Lane =
     ()
 
 
-new : RoadNetwork
-new =
+empty : RoadNetwork
+empty =
     Graph.empty
 
 

@@ -1,5 +1,6 @@
 module Simulation.Infrastructure exposing
     ( buildRoadAt
+    , canBuildRoadAt
     , connectLotToRoadNetwork
     , findNodeReplacement
     , removeRoadAt
@@ -7,7 +8,6 @@ module Simulation.Infrastructure exposing
 
 import BoundingBox2d
 import Common
-import Config exposing (tileSizeInMeters)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction2d
@@ -18,17 +18,18 @@ import Maybe.Extra as Maybe
 import Model.Board as Board
     exposing
         ( Board
+        , Cell
+        , OrthogonalDirection(..)
         , Tile
-        , innerLaneOffset
-        , outerLaneOffset
+        , tileSize
         )
-import Model.Cell as Cell exposing (Cell, OrthogonalDirection(..))
 import Model.Entity as Entity exposing (Id)
-import Model.Geometry
+import Model.Geometry as Geometry
     exposing
         ( LMBoundingBox2d
         , LMDirection2d
         , LMPoint2d
+        , pixelsToMeters
         )
 import Model.Lookup exposing (roadNetworkLookup)
 import Model.Lot as Lot exposing (Lot, Lots)
@@ -55,14 +56,28 @@ import Vector2d
 --
 
 
+canBuildRoadAt : Cell -> World -> Bool
+canBuildRoadAt cell world =
+    let
+        withinAllowedComplexity l =
+            List.length l < 3
+
+        hasLowComplexity diagonalDirection =
+            Board.cornerCells diagonalDirection cell
+                |> List.filterMap (\c -> Board.tileAt c world.board)
+                |> withinAllowedComplexity
+    in
+    List.all hasLowComplexity Board.diagonalDirections
+
+
 buildRoadAt : Cell -> World -> World
 buildRoadAt cell world =
-    updateTilemap cell (Dict.insert cell Board.defaultTile) world
+    updateTilemap cell (Board.addTile cell) world
 
 
 removeRoadAt : Cell -> World -> World
 removeRoadAt cell world =
-    updateTilemap cell (Dict.remove cell) world
+    updateTilemap cell (Board.removeTile cell) world
 
 
 updateTilemap : Cell -> (Board -> Board) -> World -> World
@@ -70,7 +85,6 @@ updateTilemap cell boardChangeFn world =
     let
         nextBoard =
             boardChangeFn world.board
-                |> Board.applyMask
 
         nextLots =
             Dict.filter
@@ -88,9 +102,9 @@ updateTilemap cell boardChangeFn world =
 
 hasValidAnchorCell : Board -> Lot -> Bool
 hasValidAnchorCell board lot =
-    case Dict.get (Lot.anchorCell lot) board of
+    case board |> Board.tileAt (Lot.anchorCell lot) of
         Just tile ->
-            tile == Board.twoLaneRoadHorizontal || tile == Board.twoLaneRoadVertical
+            tile == Board.horizontalRoad || tile == Board.verticalRoad
 
         Nothing ->
             False
@@ -100,6 +114,18 @@ hasValidAnchorCell board lot =
 --
 -- Road network
 --
+
+
+innerLaneOffset : Length
+innerLaneOffset =
+    -- the distance from a road tile's edge to the inner lane (from left / bottom side)
+    pixelsToMeters 26
+
+
+outerLaneOffset : Length
+outerLaneOffset =
+    -- the distance from a road tile's edge to the outer lane (from the left / bottom side)
+    pixelsToMeters 54
 
 
 connectLotToRoadNetwork : World -> World
@@ -232,15 +258,15 @@ createConnections { nodes, board, remainingTiles, lots } =
 
 toConnections : Board -> Cell -> Tile -> Lots -> List Connection
 toConnections board cell tile lots =
-    if tile == Board.twoLaneRoadHorizontal then
-        lotConnections cell tile Cell.right lots
+    if tile == Board.horizontalRoad then
+        lotConnections cell tile Geometry.right lots
 
-    else if tile == Board.twoLaneRoadVertical then
-        lotConnections cell tile Cell.up lots
+    else if tile == Board.verticalRoad then
+        lotConnections cell tile Geometry.up lots
 
     else if Board.isDeadend tile then
         Board.potentialConnections tile
-            |> List.concatMap (Cell.orthogonalDirectionToLmDirection >> deadendConnections cell tile)
+            |> List.concatMap (Board.orthogonalDirectionToLmDirection >> deadendConnections cell tile)
 
     else
         Board.potentialConnections tile
@@ -257,7 +283,7 @@ lotConnections cell tile trafficDirection lots =
 
                 anchorDirection =
                     Tuple.second lot.anchor
-                        |> Cell.orthogonalDirectionToLmDirection
+                        |> Board.orthogonalDirectionToLmDirection
 
                 ( position, direction ) =
                     if anchorDirection == Direction2d.rotateClockwise trafficDirection then
@@ -315,12 +341,12 @@ laneCenterPositionsByDirection : Cell -> LMDirection2d -> ( LMPoint2d, LMPoint2d
 laneCenterPositionsByDirection cell trafficDirection =
     let
         connectionOffsetFromTileCenter =
-            tileSizeInMeters
+            tileSize
                 |> Quantity.half
                 |> Quantity.minus innerLaneOffset
 
         tileCenterPosition =
-            Cell.center cell
+            Board.cellCenterPoint cell
     in
     ( tileCenterPosition
         |> Point2d.translateIn
@@ -337,11 +363,11 @@ connectionsByTileEntryDirection : Board -> Cell -> Tile -> OrthogonalDirection -
 connectionsByTileEntryDirection board cell tile direction =
     let
         origin =
-            Cell.bottomLeftCorner cell
+            Board.cellBottomLeftCorner cell
 
         isStopgapTile =
             board
-                |> Dict.get (Cell.next direction cell)
+                |> Board.tileAt (Board.nextOrthogonalCell direction cell)
                 |> Maybe.unwrap False (hasStopgapInbetween tile)
 
         ( startConnectionKind, endConnectionKind ) =
@@ -357,16 +383,16 @@ connectionsByTileEntryDirection board cell tile direction =
     case direction of
         Up ->
             [ { kind = startConnectionKind
-              , position = shift outerLaneOffset tileSizeInMeters
-              , direction = Cell.up
+              , position = shift outerLaneOffset tileSize
+              , direction = Geometry.up
               , cell = cell
               , tile = tile
               , trafficControl = None
               , lotId = Nothing
               }
             , { kind = endConnectionKind
-              , position = shift innerLaneOffset tileSizeInMeters
-              , direction = Cell.down
+              , position = shift innerLaneOffset tileSize
+              , direction = Geometry.down
               , cell = cell
               , tile = tile
               , trafficControl = None
@@ -376,16 +402,16 @@ connectionsByTileEntryDirection board cell tile direction =
 
         Right ->
             [ { kind = startConnectionKind
-              , position = shift tileSizeInMeters innerLaneOffset
-              , direction = Cell.right
+              , position = shift tileSize innerLaneOffset
+              , direction = Geometry.right
               , cell = cell
               , tile = tile
               , trafficControl = None
               , lotId = Nothing
               }
             , { kind = endConnectionKind
-              , position = shift tileSizeInMeters outerLaneOffset
-              , direction = Cell.left
+              , position = shift tileSize outerLaneOffset
+              , direction = Geometry.left
               , cell = cell
               , tile = tile
               , trafficControl = None
@@ -396,7 +422,7 @@ connectionsByTileEntryDirection board cell tile direction =
         Down ->
             [ { kind = startConnectionKind
               , position = shift innerLaneOffset Quantity.zero
-              , direction = Cell.down
+              , direction = Geometry.down
               , cell = cell
               , tile = tile
               , trafficControl = None
@@ -404,7 +430,7 @@ connectionsByTileEntryDirection board cell tile direction =
               }
             , { kind = endConnectionKind
               , position = shift outerLaneOffset Quantity.zero
-              , direction = Cell.up
+              , direction = Geometry.up
               , cell = cell
               , tile = tile
               , trafficControl = None
@@ -415,7 +441,7 @@ connectionsByTileEntryDirection board cell tile direction =
         Left ->
             [ { kind = startConnectionKind
               , position = shift Quantity.zero outerLaneOffset
-              , direction = Cell.left
+              , direction = Geometry.left
               , cell = cell
               , tile = tile
               , trafficControl = None
@@ -423,7 +449,7 @@ connectionsByTileEntryDirection board cell tile direction =
               }
             , { kind = endConnectionKind
               , position = shift Quantity.zero innerLaneOffset
-              , direction = Cell.right
+              , direction = Geometry.right
               , cell = cell
               , tile = tile
               , trafficControl = None
@@ -569,7 +595,7 @@ connectsWithinCell current other =
             ( connectionDirection current, connectionDirection other )
 
         range =
-            Quantity.half tileSizeInMeters
+            Quantity.half tileSize
 
         target =
             connectionPosition other
@@ -615,7 +641,7 @@ connectionLookupAreaToRight node range =
 
         otherCorner =
             origin
-                |> Point2d.translateIn nodeDirection tileSizeInMeters
+                |> Point2d.translateIn nodeDirection tileSize
                 |> Point2d.translateIn nodeDirectionRotatedRight range
     in
     BoundingBox2d.from origin otherCorner

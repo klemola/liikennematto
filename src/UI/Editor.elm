@@ -4,18 +4,16 @@ module UI.Editor exposing
     , update
     )
 
-import Config exposing (boardSizeScaled, tileSize)
 import CustomEvent
 import Element exposing (Color, Element)
 import Element.Border as Border
 import Element.Events as Events
 import Message exposing (Message(..))
-import Model.Board as Board
-import Model.Cell exposing (Cell)
+import Model.Board as Board exposing (Cell, tileSize)
+import Model.Geometry as Geometry
 import Model.Liikennematto exposing (Liikennematto, Tool(..))
 import Model.World as World exposing (World)
-import Pixels
-import Quantity
+import Simulation.Infrastructure as Infrastructure
 import UI.Core
     exposing
         ( ControlButtonSize
@@ -24,6 +22,16 @@ import UI.Core
         , icon
         , whitespace
         )
+
+
+tileSizeInPixelsFloat : Float
+tileSizeInPixelsFloat =
+    Geometry.toPixelsValue tileSize
+
+
+tileSizeInPixelsInt : Int
+tileSizeInPixelsInt =
+    tileSizeInPixelsFloat |> floor
 
 
 
@@ -56,10 +64,10 @@ overlay : World -> Tool -> Element Message
 overlay world tool =
     let
         size =
-            Element.px (boardSizeScaled |> Pixels.inPixels)
+            Element.px (Geometry.toPixelsValue Board.size |> floor)
 
         rg =
-            List.range 1 Config.boardSize
+            List.range 1 Board.rowsAndColumnsAmount
 
         cell x y =
             tileOverlay
@@ -90,7 +98,7 @@ overlay world tool =
                     colors.transparent
     in
     Element.el
-        [ Element.mouseOver [ Border.innerGlow highlight (Pixels.inPixels tileSize) ]
+        [ Element.mouseOver [ Border.innerGlow highlight tileSizeInPixelsFloat ]
         , Element.width size
         , Element.height size
         ]
@@ -107,20 +115,13 @@ tileOverlay :
 tileOverlay { glowColor, cell, world, tool } =
     let
         tileSizePx =
-            Element.px
-                (tileSize
-                    |> Quantity.floor
-                    |> Pixels.inPixels
-                )
+            Element.px tileSizeInPixelsInt
     in
     Element.el
         [ Element.width tileSizePx
         , Element.height tileSizePx
         , Element.mouseOver
-            [ tileSize
-                |> Quantity.divideBy 4
-                |> Pixels.toFloat
-                |> Border.innerGlow glowColor
+            [ Border.innerGlow glowColor (tileSizeInPixelsFloat / 4)
             ]
         , Events.onClick (choosePrimaryAction cell tool world)
         , Element.htmlAttribute (CustomEvent.onRightClick <| chooseSecondaryAction cell tool)
@@ -130,13 +131,13 @@ tileOverlay { glowColor, cell, world, tool } =
 
 choosePrimaryAction : Cell -> Tool -> World -> Message
 choosePrimaryAction cell tool world =
-    case ( tool, World.tileAt cell world ) of
+    case ( tool, Board.tileAt cell world.board ) of
         ( SmartConstruction, _ ) ->
             let
                 alreadyExists =
                     Board.exists cell world.board
             in
-            if not alreadyExists && World.canBuildRoadAt cell world then
+            if not alreadyExists && Infrastructure.canBuildRoadAt cell world then
                 AddTile cell
 
             else
@@ -182,7 +183,7 @@ tileHighlight { world, selectedTool, cell } =
         SmartConstruction ->
             let
                 canBuildHere =
-                    World.canBuildRoadAt cell world
+                    Infrastructure.canBuildRoadAt cell world
 
                 mightDestroyLot =
                     World.hasLot cell world

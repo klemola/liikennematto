@@ -5,6 +5,7 @@ module Model.Lot exposing
     , Lot
     , Lots
     , NewLot
+    , allLots
     , anchorCell
     , bottomLeftCorner
     , boundingBox
@@ -12,16 +13,23 @@ module Model.Lot exposing
     , fromNewLot
     , inBounds
     , parkingSpotOrientation
+    , resident
     )
 
 import Angle exposing (Angle)
 import BoundingBox2d
+import Color
 import Common
-import Config exposing (tileSizeInMeters)
 import Dict exposing (Dict)
 import Direction2d
 import Length exposing (Length)
-import Model.Cell as Cell exposing (Cell, OrthogonalDirection(..))
+import Model.Board as Board
+    exposing
+        ( Cell
+        , OrthogonalDirection(..)
+        , tileSize
+        )
+import Model.Car exposing (CarKind(..))
 import Model.Entity exposing (Id)
 import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
 import Point2d
@@ -82,24 +90,49 @@ type BuildingKind
 
 halfTile : Length
 halfTile =
-    Quantity.half tileSizeInMeters
+    Quantity.half tileSize
 
 
 drivewaySize : Length
 drivewaySize =
-    tileSizeInMeters |> Quantity.divideBy 6
+    tileSize |> Quantity.divideBy 6
 
 
 drivewayOverlap : Length
 drivewayOverlap =
-    tileSizeInMeters |> Quantity.divideBy 16
+    tileSize |> Quantity.divideBy 16
+
+
+allLots : List NewLot
+allLots =
+    [ { content = Building ResidentialA Down, width = tileSize, height = tileSize }
+    , { content = Building ResidentialB Right, width = tileSize, height = tileSize }
+    , { content = Building ResidentialC Left, width = tileSize, height = tileSize }
+    , { content = Building ResidentialD Up, width = tileSize, height = tileSize }
+    , { content = Building ResidentialE Down
+      , width = tileSize |> Quantity.multiplyBy 2
+      , height = tileSize |> Quantity.multiplyBy 2
+      }
+    , { content = Building TwoByOneTest Left
+      , width = tileSize |> Quantity.multiplyBy 2
+      , height = tileSize
+      }
+    , { content = Building ThreeByThreeTest Right
+      , width = tileSize |> Quantity.multiplyBy 3
+      , height = tileSize |> Quantity.multiplyBy 3
+      }
+    , { content = Building TwoByThreeTest Up
+      , width = tileSize |> Quantity.multiplyBy 2
+      , height = tileSize |> Quantity.multiplyBy 3
+      }
+    ]
 
 
 fromNewLot : ( NewLot, Cell ) -> Lot
 fromNewLot ( newLot, aCell ) =
     let
         anchor =
-            ( aCell, Cell.oppositeOrthogonalDirection newLot.content.entryDirection )
+            ( aCell, Board.oppositeOrthogonalDirection newLot.content.entryDirection )
 
         position =
             bottomLeftCorner anchor newLot
@@ -118,13 +151,13 @@ bottomLeftCorner ( aCell, aDir ) { width, height } =
     let
         origin =
             aCell
-                |> Cell.next aDir
-                |> Cell.bottomLeftCorner
+                |> Board.nextOrthogonalCell aDir
+                |> Board.cellBottomLeftCorner
 
         displacement =
             Vector2d.xy
-                (tileSizeInMeters |> Quantity.minus width)
-                (tileSizeInMeters |> Quantity.minus height)
+                (tileSize |> Quantity.minus width)
+                (tileSize |> Quantity.minus height)
 
         adjustedForVerticalEntry =
             origin |> Point2d.translateBy displacement
@@ -144,7 +177,7 @@ entryDetails : Anchor -> NewLot -> EntryDetails
 entryDetails anchor newLot =
     let
         ( width, height ) =
-            if Cell.isVertical <| Tuple.second anchor then
+            if Board.isVerticalDirection <| Tuple.second anchor then
                 ( halfTile, drivewaySize )
 
             else
@@ -183,15 +216,15 @@ parkingSpot : Anchor -> NewLot -> LMPoint2d
 parkingSpot anchor newLot =
     let
         origin =
-            Cell.bottomLeftCorner (entryCell anchor)
+            Board.cellBottomLeftCorner (entryCell anchor)
 
         ( shiftX, shiftY ) =
             case newLot.content.entryDirection of
                 Up ->
-                    ( halfTile, tileSizeInMeters )
+                    ( halfTile, tileSize )
 
                 Right ->
-                    ( tileSizeInMeters, halfTile )
+                    ( tileSize, halfTile )
 
                 Down ->
                     ( halfTile, Quantity.zero )
@@ -208,7 +241,7 @@ parkingSpot anchor newLot =
 parkingSpotOrientation : Lot -> Angle
 parkingSpotOrientation lot =
     lot.content.entryDirection
-        |> Cell.orthogonalDirectionToLmDirection
+        |> Board.orthogonalDirectionToLmDirection
         |> Direction2d.rotateClockwise
         |> Direction2d.toAngle
 
@@ -219,7 +252,7 @@ entryCell anchor =
         ( aCell, aDir ) =
             anchor
     in
-    Cell.next aDir aCell
+    Board.nextOrthogonalCell aDir aCell
 
 
 anchorCell : Lot -> Cell
@@ -235,4 +268,56 @@ boundingBox lot =
 
 inBounds : Cell -> Lot -> Bool
 inBounds cell lot =
-    BoundingBox2d.isContainedIn (boundingBox lot) (Cell.boundingBox cell)
+    BoundingBox2d.isContainedIn (boundingBox lot) (Board.cellBoundingBox cell)
+
+
+resident : Lot -> Maybe CarKind
+resident lot =
+    case lot.content.kind of
+        ResidentialA ->
+            Just <|
+                Sedan
+                    { body = Color.rgb255 47 149 208
+                    , detail = Color.rgb255 41 141 198
+                    , shade = Color.rgb255 208 147 173
+                    , edge = Color.rgb255 22 98 142
+                    }
+
+        ResidentialB ->
+            Just <|
+                Sedan
+                    { body = Color.rgb255 232 106 23
+                    , detail = Color.rgb255 191 100 40
+                    , shade = Color.rgb255 217 163 125
+                    , edge = Color.rgb255 159 73 16
+                    }
+
+        ResidentialC ->
+            Just <|
+                Sedan
+                    { body = Color.rgb255 255 204 0
+                    , detail = Color.rgb255 229 186 16
+                    , shade = Color.rgb255 147 208 205
+                    , edge = Color.rgb255 159 128 10
+                    }
+
+        ResidentialD ->
+            Just <|
+                Sedan
+                    { body = Color.rgb255 57 194 114
+                    , detail = Color.rgb255 48 182 104
+                    , shade = Color.rgb255 147 208 205
+                    , edge = Color.rgb255 20 119 61
+                    }
+
+        ResidentialE ->
+            Just <|
+                Sedan
+                    { body = Color.rgb255 93 91 91
+                    , detail = Color.rgb255 79 76 76
+                    , shade = Color.rgb255 208 184 147
+                    , edge = Color.rgb255 58 53 53
+                    }
+
+        _ ->
+            Nothing

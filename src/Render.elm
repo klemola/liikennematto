@@ -2,21 +2,27 @@ module Render exposing (view)
 
 import Angle
 import Color
-import Config
-    exposing
-        ( boardSizeScaled
-        , tileSize
-        )
 import Dict
 import Graph exposing (Node)
 import Html exposing (Html)
 import Maybe.Extra as Maybe
-import Model.Board exposing (Board, Tile)
+import Model.Board as Board
+    exposing
+        ( Board
+        , Cell
+        , Tile
+        , tileSize
+        )
 import Model.Car as Car exposing (Car, CarKind(..), Cars)
-import Model.Cell as Cell exposing (Cell)
 import Model.Geometry exposing (LMPoint2d, pointToPixels, toPixelsValue)
 import Model.Lot exposing (BuildingKind(..), Lot, Lots)
-import Model.RoadNetwork exposing (Connection, ConnectionKind(..), RoadNetwork, TrafficControl(..))
+import Model.RoadNetwork
+    exposing
+        ( Connection
+        , ConnectionKind(..)
+        , RoadNetwork
+        , TrafficControl(..)
+        )
 import Model.TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
 import Model.World exposing (World)
 import Pixels exposing (Pixels)
@@ -62,7 +68,7 @@ carLengthPixels =
 
 boardSizeScaledPixels : Float
 boardSizeScaledPixels =
-    boardSizeScaled |> Pixels.inPixels |> toFloat
+    toPixelsValue Board.size
 
 
 boardSizeScaledStr : String
@@ -72,7 +78,7 @@ boardSizeScaledStr =
 
 tileSizePixels : Float
 tileSizePixels =
-    tileSize |> Pixels.inPixels
+    toPixelsValue tileSize
 
 
 view : World -> DebugLayers -> Html msg
@@ -105,7 +111,7 @@ renderBoard : Board -> Svg msg
 renderBoard board =
     board
         |> Dict.foldl
-            (\cell tile acc -> ( Cell.toString cell, renderTile cell tile ) :: acc)
+            (\cell tile acc -> ( Board.cellToString cell, renderTile cell tile ) :: acc)
             []
         |> Svg.Keyed.node "g" []
 
@@ -117,7 +123,7 @@ renderTile cell tile =
             "assets/" ++ tileAsset tile
 
         { x, y } =
-            Cell.bottomLeftCorner cell |> pointToPixels
+            Board.cellBottomLeftCorner cell |> pointToPixels
     in
     Svg.image
         [ Attributes.xlinkHref asset

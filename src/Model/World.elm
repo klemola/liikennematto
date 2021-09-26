@@ -1,21 +1,17 @@
 module Model.World exposing
     ( World
-    , canBuildRoadAt
     , empty
     , hasLot
     , hasLotAnchor
     , isEmptyArea
     , setCar
-    , tileAt
     )
 
 import Common
 import Dict
-import Dict.Extra
 import Graph
-import Model.Board as Board exposing (Board, Tile)
+import Model.Board as Board exposing (Board, Cell)
 import Model.Car exposing (Car, Cars)
-import Model.Cell as Cell exposing (Cell)
 import Model.Entity exposing (Id)
 import Model.Geometry exposing (LMBoundingBox2d)
 import Model.Lookup
@@ -43,8 +39,8 @@ type alias World =
 
 empty : World
 empty =
-    { board = Dict.empty
-    , roadNetwork = RoadNetwork.new
+    { board = Board.empty
+    , roadNetwork = RoadNetwork.empty
     , trafficLights = Dict.empty
     , cars = Dict.empty
     , lots = Dict.empty
@@ -53,11 +49,10 @@ empty =
     }
 
 
-tileAt : Cell -> World -> Maybe Tile
-tileAt cell { board } =
-    board
-        |> Dict.Extra.find (\key _ -> key == cell)
-        |> Maybe.map Tuple.second
+
+--
+-- Queries
+--
 
 
 hasLot : Cell -> World -> Bool
@@ -70,27 +65,13 @@ hasLotAnchor cell { lots } =
     List.any (\lot -> Lot.anchorCell lot == cell) (Dict.values lots)
 
 
-canBuildRoadAt : Cell -> World -> Bool
-canBuildRoadAt cell world =
-    let
-        withinAllowedComplexity l =
-            List.length l < 3
-
-        hasLowComplexity corner =
-            Cell.cornerAndNeighbors corner cell
-                |> List.filterMap (\c -> tileAt c world)
-                |> withinAllowedComplexity
-    in
-    List.all hasLowComplexity Cell.corners
-
-
 isEmptyArea : LMBoundingBox2d -> World -> Bool
 isEmptyArea testAreaBB world =
     let
         roadBoundingBoxes =
             world.board
                 |> Dict.keys
-                |> List.map Cell.boundingBox
+                |> List.map Board.cellBoundingBox
 
         lotBoundingBoxes =
             world.lots
