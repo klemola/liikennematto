@@ -1,12 +1,10 @@
 module Lots exposing
-    ( createTwoByTwoLot
-    , oneByOneLot
+    ( oneByOneLot
     , twoByTwoLot
     )
 
-import Model.Lot as Lot exposing (Anchor, Lot)
-import Model.Tilemap as Tilemap exposing (OrthogonalDirection(..), tileSize)
-import Point2d
+import Model.Lot as Lot exposing (Lot)
+import Model.Tilemap exposing (Cell, OrthogonalDirection(..), tileSize)
 import Quantity
 
 
@@ -23,20 +21,7 @@ oneByOneNewLot =
 
 oneByOneLot : Lot
 oneByOneLot =
-    let
-        anchor =
-            ( ( 1, 2 ), Up )
-    in
-    { content = oneByOneNewLot.content
-    , width = oneByOneNewLot.width
-    , height = oneByOneNewLot.height
-    , position =
-        Point2d.xy
-            Quantity.zero
-            (tileSize |> Quantity.multiplyBy 9)
-    , entryDetails = Lot.entryDetails anchor oneByOneNewLot
-    , anchor = anchor
-    }
+    Lot.build oneByOneNewLot ( 1, 2 )
 
 
 twoByTwoNewLot : Lot.NewLot
@@ -50,27 +35,6 @@ twoByTwoNewLot =
     }
 
 
-twoByTwoLot : Lot
-twoByTwoLot =
-    createTwoByTwoLot ( ( 1, 3 ), Up )
-
-
-createTwoByTwoLot : Anchor -> Lot
-createTwoByTwoLot ( anchorCell, anchorDir ) =
-    let
-        content =
-            twoByTwoNewLot.content
-
-        anchor =
-            ( anchorCell, anchorDir )
-    in
-    { content = { content | entryDirection = Tilemap.oppositeOrthogonalDirection anchorDir }
-    , width = twoByTwoNewLot.width
-    , height = twoByTwoNewLot.height
-    , position =
-        anchorCell
-            |> Tilemap.nextOrthogonalCell anchorDir
-            |> Tilemap.cellBottomLeftCorner
-    , entryDetails = Lot.entryDetails anchor twoByTwoNewLot
-    , anchor = anchor
-    }
+twoByTwoLot : Cell -> Lot
+twoByTwoLot anchorCell =
+    Lot.build twoByTwoNewLot anchorCell

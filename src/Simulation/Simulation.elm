@@ -6,7 +6,6 @@ module Simulation.Simulation exposing
 
 import BoundingBox2d
 import Browser.Events as Events
-import Common
 import Dict
 import Dict.Extra as Dict
 import Direction2d
@@ -234,8 +233,8 @@ generateEnvironment world seed unusedLots =
         nextWorld =
             potentialNewLot
                 |> Maybe.andThen (findLotAnchor world seed)
-                |> Maybe.map Lot.fromNewLot
-                |> Maybe.map (\lot -> addLot lot world)
+                |> Maybe.map (\( newLot, anchorCell ) -> Lot.build newLot anchorCell)
+                |> Maybe.map (addLot world)
                 |> Maybe.withDefault world
     in
     ( nextWorld, nextSeed )
@@ -244,9 +243,6 @@ generateEnvironment world seed unusedLots =
 findLotAnchor : World -> Random.Seed -> NewLot -> Maybe ( NewLot, Cell )
 findLotAnchor world seed newLot =
     let
-        ( shuffledTilemap, _ ) =
-            Random.step (Random.List.shuffle (Dict.toList world.tilemap)) seed
-
         targetTile =
             if Tilemap.isVerticalDirection newLot.content.entryDirection then
                 Tilemap.horizontalRoad
@@ -254,25 +250,41 @@ findLotAnchor world seed newLot =
             else
                 Tilemap.verticalRoad
 
-        targetDirection =
+        potentialRoadTiles =
+            world.tilemap
+                |> Dict.toList
+                |> List.filterMap
+                    (\( cell, tile ) ->
+                        if tile == targetTile then
+                            Just cell
+
+                        else
+                            Nothing
+                    )
+
+        ( shuffledTilemap, _ ) =
+            Random.step (Random.List.shuffle potentialRoadTiles) seed
+    in
+    shuffledTilemap
+        |> List.filter (isValidAnchor newLot world)
+        |> List.head
+        |> Maybe.map (\cell -> ( newLot, cell ))
+
+
+isValidAnchor : NewLot -> World -> Cell -> Bool
+isValidAnchor newLot world anchorCell =
+    let
+        anchorDirection =
             Tilemap.oppositeOrthogonalDirection newLot.content.entryDirection
 
-        isCompatible ( cell, tile ) =
-            tile == targetTile && hasEnoughSpaceAround cell && not (World.hasLotAnchor cell world)
+        lotBoundingBox =
+            Lot.newLotBuildArea ( anchorCell, anchorDirection ) newLot
 
-        lotBoundingBox cell =
-            Lot.bottomLeftCorner ( cell, targetDirection ) newLot
-                |> Common.boundingBoxWithDimensions newLot.width newLot.height
-
-        hasEnoughSpaceAround cell =
-            World.isEmptyArea (lotBoundingBox cell) world
-                && isNotAtTheEndOfARoad cell
-
-        isNotAtTheEndOfARoad cell =
+        isNotAtTheEndOfARoad =
             Tilemap.orthogonalDirections
                 |> List.all
                     (\od ->
-                        case Tilemap.tileAt (Tilemap.nextOrthogonalCell od cell) world.tilemap of
+                        case Tilemap.tileAt (Tilemap.nextOrthogonalCell od anchorCell) world.tilemap of
                             Just neighbor ->
                                 neighbor == Tilemap.horizontalRoad || neighbor == Tilemap.verticalRoad
 
@@ -280,14 +292,13 @@ findLotAnchor world seed newLot =
                                 True
                     )
     in
-    shuffledTilemap
-        |> List.filter isCompatible
-        |> List.head
-        |> Maybe.map (\( cell, _ ) -> ( newLot, cell ))
+    World.isEmptyArea lotBoundingBox world
+        && not (World.hasLotAnchor anchorCell world)
+        && isNotAtTheEndOfARoad
 
 
-addLot : Lot -> World -> World
-addLot lot world =
+addLot : World -> Lot -> World
+addLot world lot =
     let
         nextLotId =
             Entity.nextId world.lots

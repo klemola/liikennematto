@@ -102,7 +102,7 @@ updateTilemap cell tilemapChangeFn world =
 
 hasValidAnchorCell : Tilemap -> Lot -> Bool
 hasValidAnchorCell tilemap lot =
-    case tilemap |> Tilemap.tileAt (Lot.anchorCell lot) of
+    case Tilemap.tileAt (Tuple.first lot.anchor) tilemap of
         Just tile ->
             tile == Tilemap.horizontalRoad || tile == Tilemap.verticalRoad
 
@@ -275,7 +275,7 @@ toConnections tilemap cell tile lots =
 
 lotConnections : Cell -> Tile -> LMDirection2d -> Lots -> List Connection
 lotConnections cell tile trafficDirection lots =
-    case Dict.find (\_ lot -> Lot.anchorCell lot == cell) lots of
+    case Dict.find (\_ lot -> Tuple.first lot.anchor == cell) lots of
         Just ( id, lot ) ->
             let
                 ( posA, posB ) =

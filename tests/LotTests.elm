@@ -17,7 +17,7 @@ suite =
                 )
             , test "validates if a cell is in lot's bounds for 2x2 lot"
                 (\_ ->
-                    Lot.inBounds ( 1, 2 ) twoByTwoLot
+                    Lot.inBounds ( 1, 2 ) (twoByTwoLot ( 1, 3 ))
                         |> Expect.true "Expected the cell to be in the lot's bounds"
                 )
             , test
@@ -28,7 +28,7 @@ suite =
                 )
             , test "validates if a cell is *NOT* in lot's bounds for 2x2 lot"
                 (\_ ->
-                    Lot.inBounds ( 2, 3 ) twoByTwoLot
+                    Lot.inBounds ( 2, 3 ) (twoByTwoLot ( 1, 3 ))
                         |> Expect.false "Expected the cell to be out of the lot's bounds"
                 )
             ]

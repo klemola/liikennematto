@@ -2,8 +2,7 @@ module WorldTests exposing (suite)
 
 import Dict
 import Expect
-import Lots exposing (createTwoByTwoLot)
-import Model.Tilemap exposing (OrthogonalDirection(..))
+import Lots
 import Model.World as World
 import Test exposing (Test, describe, test)
 import Utility exposing (createBoundingBox)
@@ -27,7 +26,7 @@ suite =
                 (\_ ->
                     let
                         lot =
-                            createTwoByTwoLot ( ( 1, 8 ), Right )
+                            Lots.twoByTwoLot ( 1, 8 )
 
                         withLot =
                             worldThatHasAVerticalRoadAtLeftSide

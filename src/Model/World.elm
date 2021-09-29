@@ -62,7 +62,7 @@ hasLot cell { lots } =
 
 hasLotAnchor : Cell -> World -> Bool
 hasLotAnchor cell { lots } =
-    List.any (\lot -> Lot.anchorCell lot == cell) (Dict.values lots)
+    List.any (\lot -> Tuple.first lot.anchor == cell) (Dict.values lots)
 
 
 isEmptyArea : LMBoundingBox2d -> World -> Bool
@@ -74,18 +74,16 @@ isEmptyArea testAreaBB world =
                 |> List.map Tilemap.cellBoundingBox
 
         lotBoundingBoxes =
-            world.lots
-                |> Dict.values
-                |> List.map Lot.boundingBox
+            Dict.foldl (\_ lot acc -> lot.boundingBox :: acc) [] world.lots
 
         inTilemapBounds =
             Tilemap.inBounds testAreaBB
 
-        noCollision _ =
+        noCollision =
             (roadBoundingBoxes ++ lotBoundingBoxes)
                 |> List.all (Common.noBoundingBoxOverlap testAreaBB)
     in
-    inTilemapBounds && noCollision ()
+    inTilemapBounds && noCollision
 
 
 

@@ -282,8 +282,8 @@ renderLot lot =
     Svg.g []
         [ Svg.image
             [ Attributes.xlinkHref asset
-            , Attributes.x <| String.fromFloat x
-            , Attributes.y <| String.fromFloat <| tilemapSizeScaledPixels - height - y
+            , Attributes.x <| String.fromFloat (x - width / 2)
+            , Attributes.y <| String.fromFloat <| tilemapSizeScaledPixels - (height / 2) - y
             , Attributes.width <| String.fromFloat width
             , Attributes.height <| String.fromFloat height
             ]
@@ -300,6 +300,12 @@ sidewalkMask lot =
         lotPosition =
             pointToPixels lot.position
 
+        lotBottomLeftX =
+            lotPosition.x - (toPixelsValue lot.width / 2)
+
+        lotBottomLeftY =
+            lotPosition.y - (toPixelsValue lot.height / 2)
+
         { x, y } =
             pointToPixels lot.entryDetails.entryPoint
 
@@ -313,8 +319,8 @@ sidewalkMask lot =
         [ Attributes.width <| String.fromFloat width
         , Attributes.height <| String.fromFloat height
         , Attributes.fill <| Color.toCssString <| renderColors.sidewalk
-        , Attributes.x <| String.fromFloat <| x + lotPosition.x - (width / 2)
-        , Attributes.y <| String.fromFloat <| tilemapSizeScaledPixels - lotPosition.y - y - (height / 2)
+        , Attributes.x <| String.fromFloat <| x + lotBottomLeftX - (width / 2)
+        , Attributes.y <| String.fromFloat <| tilemapSizeScaledPixels - lotBottomLeftY - y - (height / 2)
         ]
         []
 

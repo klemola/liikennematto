@@ -6,12 +6,9 @@ module Model.Lot exposing
     , Lots
     , NewLot
     , allLots
-    , anchorCell
-    , bottomLeftCorner
-    , boundingBox
-    , entryDetails
-    , fromNewLot
+    , build
     , inBounds
+    , newLotBuildArea
     , parkingSpotOrientation
     , resident
     )
@@ -42,6 +39,7 @@ type alias Lot =
     , width : Length
     , height : Length
     , position : LMPoint2d
+    , boundingBox : LMBoundingBox2d
     , entryDetails : EntryDetails
     , anchor : Anchor
     }
@@ -128,30 +126,31 @@ allLots =
     ]
 
 
-fromNewLot : ( NewLot, Cell ) -> Lot
-fromNewLot ( newLot, aCell ) =
+build : NewLot -> Cell -> Lot
+build newLot anchorCell =
     let
         anchor =
-            ( aCell, Tilemap.oppositeOrthogonalDirection newLot.content.entryDirection )
+            ( anchorCell, Tilemap.oppositeOrthogonalDirection newLot.content.entryDirection )
 
-        position =
-            bottomLeftCorner anchor newLot
+        buildAreaBB =
+            newLotBuildArea anchor newLot
     in
     { content = newLot.content
     , width = newLot.width
     , height = newLot.height
-    , position = position
+    , position = BoundingBox2d.centerPoint buildAreaBB
+    , boundingBox = buildAreaBB
     , entryDetails = entryDetails anchor newLot
     , anchor = anchor
     }
 
 
-bottomLeftCorner : Anchor -> NewLot -> LMPoint2d
-bottomLeftCorner ( aCell, aDir ) { width, height } =
+newLotBuildArea : Anchor -> NewLot -> LMBoundingBox2d
+newLotBuildArea ( anchorCell, anchorDirection ) { width, height } =
     let
         origin =
-            aCell
-                |> Tilemap.nextOrthogonalCell aDir
+            anchorCell
+                |> Tilemap.nextOrthogonalCell anchorDirection
                 |> Tilemap.cellBottomLeftCorner
 
         displacement =
@@ -161,16 +160,19 @@ bottomLeftCorner ( aCell, aDir ) { width, height } =
 
         adjustedForVerticalEntry =
             origin |> Point2d.translateBy displacement
+
+        bottomLeftCorner =
+            case anchorDirection of
+                Down ->
+                    adjustedForVerticalEntry
+
+                Left ->
+                    adjustedForVerticalEntry
+
+                _ ->
+                    origin
     in
-    case aDir of
-        Down ->
-            adjustedForVerticalEntry
-
-        Left ->
-            adjustedForVerticalEntry
-
-        _ ->
-            origin
+    Common.boundingBoxWithDimensions width height bottomLeftCorner
 
 
 entryDetails : Anchor -> NewLot -> EntryDetails
@@ -249,26 +251,15 @@ parkingSpotOrientation lot =
 entryCell : Anchor -> Cell
 entryCell anchor =
     let
-        ( aCell, aDir ) =
+        ( anchorCell, anchorDirection ) =
             anchor
     in
-    Tilemap.nextOrthogonalCell aDir aCell
-
-
-anchorCell : Lot -> Cell
-anchorCell lot =
-    Tuple.first lot.anchor
-
-
-boundingBox : Lot -> LMBoundingBox2d
-boundingBox lot =
-    lot.position
-        |> Common.boundingBoxWithDimensions lot.width lot.height
+    Tilemap.nextOrthogonalCell anchorDirection anchorCell
 
 
 inBounds : Cell -> Lot -> Bool
 inBounds cell lot =
-    BoundingBox2d.isContainedIn (boundingBox lot) (Tilemap.cellBoundingBox cell)
+    BoundingBox2d.isContainedIn lot.boundingBox (Tilemap.cellBoundingBox cell)
 
 
 resident : Lot -> Maybe CarKind
