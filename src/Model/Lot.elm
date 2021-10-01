@@ -7,6 +7,7 @@ module Model.Lot exposing
     , NewLot
     , allLots
     , build
+    , createAnchor
     , inBounds
     , newLotBuildArea
     , parkingSpotOrientation
@@ -26,6 +27,7 @@ import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
 import Model.Tilemap as Tilemap
     exposing
         ( Cell
+        , CellCoordinates
         , OrthogonalDirection(..)
         , tileSize
         )
@@ -58,7 +60,10 @@ type alias Lots =
 
 type alias Anchor =
     -- road piece cell and direction from the road to the lot
-    ( Cell, OrthogonalDirection )
+    { anchorCell : Cell
+    , entryCell : Cell
+    , anchorDirection : OrthogonalDirection
+    }
 
 
 type alias Building =
@@ -126,12 +131,9 @@ allLots =
     ]
 
 
-build : NewLot -> Cell -> Lot
-build newLot anchorCell =
+build : NewLot -> Anchor -> Lot
+build newLot anchor =
     let
-        anchor =
-            ( anchorCell, Tilemap.oppositeOrthogonalDirection newLot.content.entryDirection )
-
         buildAreaBB =
             newLotBuildArea anchor newLot
     in
@@ -145,13 +147,34 @@ build newLot anchorCell =
     }
 
 
+createAnchor : NewLot -> CellCoordinates -> Maybe Anchor
+createAnchor newLot cellCoordinates =
+    let
+        anchorDirection =
+            Tilemap.oppositeOrthogonalDirection newLot.content.entryDirection
+
+        maybeAnchorCell =
+            Tilemap.cellFromCoordinates cellCoordinates
+
+        maybeEntryCell =
+            maybeAnchorCell |> Maybe.andThen (Tilemap.nextOrthogonalCell anchorDirection)
+    in
+    Maybe.map2
+        (\anchorCell entryCell ->
+            { anchorCell = anchorCell
+            , anchorDirection = anchorDirection
+            , entryCell = entryCell
+            }
+        )
+        maybeAnchorCell
+        maybeEntryCell
+
+
 newLotBuildArea : Anchor -> NewLot -> LMBoundingBox2d
-newLotBuildArea ( anchorCell, anchorDirection ) { width, height } =
+newLotBuildArea { anchorDirection, entryCell } { width, height } =
     let
         origin =
-            anchorCell
-                |> Tilemap.nextOrthogonalCell anchorDirection
-                |> Tilemap.cellBottomLeftCorner
+            Tilemap.cellBottomLeftCorner entryCell
 
         displacement =
             Vector2d.xy
@@ -179,7 +202,7 @@ entryDetails : Anchor -> NewLot -> EntryDetails
 entryDetails anchor newLot =
     let
         ( width, height ) =
-            if Tilemap.isVerticalDirection <| Tuple.second anchor then
+            if Tilemap.isVerticalDirection anchor.anchorDirection then
                 ( halfTile, drivewaySize )
 
             else
@@ -215,10 +238,10 @@ entryDetails anchor newLot =
 
 
 parkingSpot : Anchor -> NewLot -> LMPoint2d
-parkingSpot anchor newLot =
+parkingSpot { entryCell } newLot =
     let
         origin =
-            Tilemap.cellBottomLeftCorner (entryCell anchor)
+            Tilemap.cellBottomLeftCorner entryCell
 
         ( shiftX, shiftY ) =
             case newLot.content.entryDirection of
@@ -246,15 +269,6 @@ parkingSpotOrientation lot =
         |> Tilemap.orthogonalDirectionToLmDirection
         |> Direction2d.rotateClockwise
         |> Direction2d.toAngle
-
-
-entryCell : Anchor -> Cell
-entryCell anchor =
-    let
-        ( anchorCell, anchorDirection ) =
-            anchor
-    in
-    Tilemap.nextOrthogonalCell anchorDirection anchorCell
 
 
 inBounds : Cell -> Lot -> Bool

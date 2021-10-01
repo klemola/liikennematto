@@ -69,23 +69,28 @@ overlay world tool =
         rg =
             List.range 1 Tilemap.rowsAndColumnsAmount
 
-        cell x y =
-            tileOverlay
-                { glowColor =
-                    tileHighlight
-                        { world = world
-                        , selectedTool = tool
-                        , cell = ( x, y )
+        cellElement x y =
+            case Tilemap.cellFromCoordinates ( x, y ) of
+                Just cell ->
+                    tileOverlay
+                        { glowColor =
+                            tileHighlight
+                                { world = world
+                                , selectedTool = tool
+                                , cell = cell
+                                }
+                        , cell = cell
+                        , world = world
+                        , tool = tool
                         }
-                , cell = ( x, y )
-                , world = world
-                , tool = tool
-                }
+
+                Nothing ->
+                    Element.none
 
         rows =
             List.map
                 (\y ->
-                    Element.row [] (List.map (\x -> cell x y) rg)
+                    Element.row [] (List.map (\x -> cellElement x y) rg)
                 )
                 rg
 

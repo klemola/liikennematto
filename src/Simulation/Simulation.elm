@@ -16,9 +16,9 @@ import Model.Car as Car exposing (Car, Cars, Status(..))
 import Model.Entity as Entity
 import Model.Liikennematto exposing (Liikennematto, SimulationState(..), Tool(..))
 import Model.Lookup exposing (carPositionLookup)
-import Model.Lot as Lot exposing (Lot, NewLot, allLots)
+import Model.Lot as Lot exposing (Anchor, Lot, NewLot, allLots)
 import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
-import Model.Tilemap as Tilemap exposing (Cell, tileSize)
+import Model.Tilemap as Tilemap exposing (tileSize)
 import Model.TrafficLight as TrafficLight
 import Model.World as World exposing (World)
 import Point2d
@@ -232,16 +232,15 @@ generateEnvironment world seed unusedLots =
 
         nextWorld =
             potentialNewLot
-                |> Maybe.andThen (findLotAnchor world seed)
-                |> Maybe.map (\( newLot, anchorCell ) -> Lot.build newLot anchorCell)
+                |> Maybe.andThen (attemptBuildLot world seed)
                 |> Maybe.map (addLot world)
                 |> Maybe.withDefault world
     in
     ( nextWorld, nextSeed )
 
 
-findLotAnchor : World -> Random.Seed -> NewLot -> Maybe ( NewLot, Cell )
-findLotAnchor world seed newLot =
+attemptBuildLot : World -> Random.Seed -> NewLot -> Maybe Lot
+attemptBuildLot world seed newLot =
     let
         targetTile =
             if Tilemap.isVerticalDirection newLot.content.entryDirection then
@@ -250,51 +249,59 @@ findLotAnchor world seed newLot =
             else
                 Tilemap.verticalRoad
 
-        potentialRoadTiles =
+        anchors =
             world.tilemap
                 |> Dict.toList
                 |> List.filterMap
-                    (\( cell, tile ) ->
+                    (\( cellCoordinates, tile ) ->
                         if tile == targetTile then
-                            Just cell
+                            Lot.createAnchor newLot cellCoordinates
+                                |> Maybe.andThen (validateAnchor newLot world)
 
                         else
                             Nothing
                     )
 
-        ( shuffledTilemap, _ ) =
-            Random.step (Random.List.shuffle potentialRoadTiles) seed
+        ( shuffledAnchors, _ ) =
+            Random.step (Random.List.shuffle anchors) seed
     in
-    shuffledTilemap
-        |> List.filter (isValidAnchor newLot world)
+    shuffledAnchors
         |> List.head
-        |> Maybe.map (\cell -> ( newLot, cell ))
+        |> Maybe.map (Lot.build newLot)
 
 
-isValidAnchor : NewLot -> World -> Cell -> Bool
-isValidAnchor newLot world anchorCell =
+validateAnchor : NewLot -> World -> Anchor -> Maybe Anchor
+validateAnchor newLot world anchor =
     let
-        anchorDirection =
-            Tilemap.oppositeOrthogonalDirection newLot.content.entryDirection
-
         lotBoundingBox =
-            Lot.newLotBuildArea ( anchorCell, anchorDirection ) newLot
-
-        isNotAtTheEndOfARoad =
-            Tilemap.orthogonalDirections
-                |> List.all
-                    (\od ->
-                        case Tilemap.tileAt (Tilemap.nextOrthogonalCell od anchorCell) world.tilemap of
-                            Just neighbor ->
-                                neighbor == Tilemap.horizontalRoad || neighbor == Tilemap.verticalRoad
-
-                            Nothing ->
-                                True
-                    )
+            Lot.newLotBuildArea anchor newLot
     in
-    World.isEmptyArea lotBoundingBox world
-        && not (World.hasLotAnchor anchorCell world)
-        && isNotAtTheEndOfARoad
+    if
+        World.isEmptyArea lotBoundingBox world
+            && not (World.hasLotAnchor anchor.anchorCell world)
+            && isNotAtTheEndOfARoad world anchor
+    then
+        Just anchor
+
+    else
+        Nothing
+
+
+isNotAtTheEndOfARoad : World -> Anchor -> Bool
+isNotAtTheEndOfARoad world { anchorCell } =
+    Tilemap.orthogonalDirections
+        |> List.all
+            (\orthogonalDirection ->
+                case
+                    Tilemap.nextOrthogonalCell orthogonalDirection anchorCell
+                        |> Maybe.andThen (\cell -> Tilemap.tileAt cell world.tilemap)
+                of
+                    Just neighbor ->
+                        neighbor == Tilemap.horizontalRoad || neighbor == Tilemap.verticalRoad
+
+                    Nothing ->
+                        True
+            )
 
 
 addLot : World -> Lot -> World

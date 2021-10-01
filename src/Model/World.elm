@@ -62,16 +62,21 @@ hasLot cell { lots } =
 
 hasLotAnchor : Cell -> World -> Bool
 hasLotAnchor cell { lots } =
-    List.any (\lot -> Tuple.first lot.anchor == cell) (Dict.values lots)
+    List.any (\lot -> lot.anchor.anchorCell == cell) (Dict.values lots)
 
 
 isEmptyArea : LMBoundingBox2d -> World -> Bool
 isEmptyArea testAreaBB world =
     let
         roadBoundingBoxes =
+            -- Room for improvement: provide tilemap iteration from the Tilemap module with better guarantees
             world.tilemap
                 |> Dict.keys
-                |> List.map Tilemap.cellBoundingBox
+                |> List.filterMap
+                    (\cellCoordinates ->
+                        Tilemap.cellFromCoordinates cellCoordinates
+                            |> Maybe.map Tilemap.cellBoundingBox
+                    )
 
         lotBoundingBoxes =
             Dict.foldl (\_ lot acc -> lot.boundingBox :: acc) [] world.lots

@@ -10,153 +10,180 @@ module Worlds exposing
     , worldWithThreeWayIntersection
     )
 
-import Model.World as World exposing (World)
-import Simulation.Infrastructure as Infrastructure
+import Model.World exposing (World)
+import Utility exposing (tilemapFromCoordinates, worldFromTilemap)
 
 
 defaultWorld : World
 defaultWorld =
-    World.empty
-        |> Infrastructure.buildRoadAt ( 2, 5 )
-        |> Infrastructure.buildRoadAt ( 3, 5 )
-        |> Infrastructure.buildRoadAt ( 4, 5 )
-        |> Infrastructure.buildRoadAt ( 5, 3 )
-        |> Infrastructure.buildRoadAt ( 5, 4 )
-        |> Infrastructure.buildRoadAt ( 5, 5 )
+    tilemapFromCoordinates
+        [ ( 2, 5 )
+        , ( 3, 5 )
+        , ( 4, 5 )
+        , ( 5, 3 )
+        , ( 5, 4 )
+        , ( 5, 5 )
+        ]
+        |> worldFromTilemap
 
 
 simpleWorld : World
 simpleWorld =
-    World.empty
-        |> Infrastructure.buildRoadAt ( 1, 1 )
-        |> Infrastructure.buildRoadAt ( 2, 1 )
+    tilemapFromCoordinates
+        [ ( 1, 1 )
+        , ( 2, 1 )
+        ]
+        |> worldFromTilemap
 
 
 lowComplexityWorld : World
 lowComplexityWorld =
-    World.empty
-        |> Infrastructure.buildRoadAt ( 1, 1 )
-        |> Infrastructure.buildRoadAt ( 2, 1 )
-        |> Infrastructure.buildRoadAt ( 3, 1 )
+    tilemapFromCoordinates
+        [ ( 1, 1 )
+        , ( 2, 1 )
+        , ( 3, 1 )
+        ]
+        |> worldFromTilemap
 
 
 highComplexityWorld : World
 highComplexityWorld =
-    World.empty
-        |> Infrastructure.buildRoadAt ( 1, 1 )
-        |> Infrastructure.buildRoadAt ( 2, 1 )
-        |> Infrastructure.buildRoadAt ( 1, 2 )
+    tilemapFromCoordinates
+        [ ( 1, 1 )
+        , ( 2, 1 )
+        , ( 1, 2 )
+        ]
+        |> worldFromTilemap
 
 
 worldThatHasAVerticalRoadAtLeftSide : World
 worldThatHasAVerticalRoadAtLeftSide =
-    World.empty
-        |> Infrastructure.buildRoadAt ( 1, 1 )
-        |> Infrastructure.buildRoadAt ( 1, 2 )
-        |> Infrastructure.buildRoadAt ( 1, 3 )
-        |> Infrastructure.buildRoadAt ( 1, 4 )
-        |> Infrastructure.buildRoadAt ( 1, 5 )
-        |> Infrastructure.buildRoadAt ( 1, 6 )
-        |> Infrastructure.buildRoadAt ( 1, 7 )
-        |> Infrastructure.buildRoadAt ( 1, 8 )
-        |> Infrastructure.buildRoadAt ( 1, 9 )
-        |> Infrastructure.buildRoadAt ( 1, 10 )
+    tilemapFromCoordinates
+        [ ( 1, 1 )
+        , ( 1, 2 )
+        , ( 1, 3 )
+        , ( 1, 4 )
+        , ( 1, 5 )
+        , ( 1, 6 )
+        , ( 1, 7 )
+        , ( 1, 8 )
+        , ( 1, 9 )
+        , ( 1, 10 )
+        ]
+        |> worldFromTilemap
 
 
 worldThatHasParallelRoads : World
 worldThatHasParallelRoads =
-    worldThatHasAVerticalRoadAtLeftSide
-        -- create second road
-        |> Infrastructure.buildRoadAt ( 3, 1 )
-        |> Infrastructure.buildRoadAt ( 3, 2 )
-        |> Infrastructure.buildRoadAt ( 3, 3 )
-        |> Infrastructure.buildRoadAt ( 3, 4 )
-        |> Infrastructure.buildRoadAt ( 3, 5 )
-        |> Infrastructure.buildRoadAt ( 3, 6 )
-        |> Infrastructure.buildRoadAt ( 3, 7 )
-        |> Infrastructure.buildRoadAt ( 3, 8 )
-        |> Infrastructure.buildRoadAt ( 3, 9 )
-        |> Infrastructure.buildRoadAt ( 3, 10 )
+    tilemapFromCoordinates
+        [ ( 1, 1 )
+        , ( 1, 2 )
+        , ( 1, 3 )
+        , ( 1, 4 )
+        , ( 1, 5 )
+        , ( 1, 6 )
+        , ( 1, 7 )
+        , ( 1, 8 )
+        , ( 1, 9 )
+        , ( 1, 10 )
+        , ( 3, 1 )
+        , ( 3, 2 )
+        , ( 3, 3 )
+        , ( 3, 4 )
+        , ( 3, 5 )
+        , ( 3, 6 )
+        , ( 3, 7 )
+        , ( 3, 8 )
+        , ( 3, 9 )
+        , ( 3, 10 )
+        ]
+        |> worldFromTilemap
 
 
 worldWithFourWayIntersection : World
 worldWithFourWayIntersection =
-    World.empty
-        |> Infrastructure.buildRoadAt ( 1, 2 )
-        |> Infrastructure.buildRoadAt ( 2, 1 )
-        |> Infrastructure.buildRoadAt ( 2, 2 )
-        |> Infrastructure.buildRoadAt ( 2, 3 )
-        |> Infrastructure.buildRoadAt ( 3, 2 )
+    tilemapFromCoordinates
+        [ ( 1, 2 )
+        , ( 2, 1 )
+        , ( 2, 2 )
+        , ( 2, 3 )
+        , ( 3, 2 )
+        ]
+        |> worldFromTilemap
 
 
 worldWithThreeWayIntersection : World
 worldWithThreeWayIntersection =
-    World.empty
-        |> Infrastructure.buildRoadAt ( 1, 3 )
-        |> Infrastructure.buildRoadAt ( 2, 3 )
-        |> Infrastructure.buildRoadAt ( 3, 1 )
-        |> Infrastructure.buildRoadAt ( 3, 2 )
-        |> Infrastructure.buildRoadAt ( 3, 3 )
-        |> Infrastructure.buildRoadAt ( 3, 4 )
-        |> Infrastructure.buildRoadAt ( 3, 5 )
+    tilemapFromCoordinates
+        [ ( 1, 3 )
+        , ( 2, 3 )
+        , ( 3, 1 )
+        , ( 3, 2 )
+        , ( 3, 3 )
+        , ( 3, 4 )
+        , ( 3, 5 )
+        ]
+        |> worldFromTilemap
 
 
 largeWorld : World
 largeWorld =
-    World.empty
-        |> Infrastructure.buildRoadAt ( 1, 1 )
-        |> Infrastructure.buildRoadAt ( 1, 2 )
-        |> Infrastructure.buildRoadAt ( 1, 3 )
-        |> Infrastructure.buildRoadAt ( 1, 4 )
-        |> Infrastructure.buildRoadAt ( 1, 5 )
-        |> Infrastructure.buildRoadAt ( 1, 10 )
-        |> Infrastructure.buildRoadAt ( 2, 1 )
-        |> Infrastructure.buildRoadAt ( 2, 5 )
-        |> Infrastructure.buildRoadAt ( 2, 10 )
-        |> Infrastructure.buildRoadAt ( 3, 1 )
-        |> Infrastructure.buildRoadAt ( 3, 2 )
-        |> Infrastructure.buildRoadAt ( 3, 3 )
-        |> Infrastructure.buildRoadAt ( 3, 4 )
-        |> Infrastructure.buildRoadAt ( 3, 5 )
-        |> Infrastructure.buildRoadAt ( 3, 6 )
-        |> Infrastructure.buildRoadAt ( 3, 7 )
-        |> Infrastructure.buildRoadAt ( 3, 8 )
-        |> Infrastructure.buildRoadAt ( 3, 9 )
-        |> Infrastructure.buildRoadAt ( 3, 10 )
-        |> Infrastructure.buildRoadAt ( 4, 1 )
-        |> Infrastructure.buildRoadAt ( 4, 5 )
-        |> Infrastructure.buildRoadAt ( 4, 8 )
-        |> Infrastructure.buildRoadAt ( 5, 1 )
-        |> Infrastructure.buildRoadAt ( 5, 5 )
-        |> Infrastructure.buildRoadAt ( 5, 8 )
-        |> Infrastructure.buildRoadAt ( 6, 1 )
-        |> Infrastructure.buildRoadAt ( 6, 2 )
-        |> Infrastructure.buildRoadAt ( 6, 3 )
-        |> Infrastructure.buildRoadAt ( 6, 4 )
-        |> Infrastructure.buildRoadAt ( 6, 5 )
-        |> Infrastructure.buildRoadAt ( 6, 8 )
-        |> Infrastructure.buildRoadAt ( 7, 1 )
-        |> Infrastructure.buildRoadAt ( 7, 5 )
-        |> Infrastructure.buildRoadAt ( 7, 6 )
-        |> Infrastructure.buildRoadAt ( 7, 7 )
-        |> Infrastructure.buildRoadAt ( 7, 8 )
-        |> Infrastructure.buildRoadAt ( 7, 9 )
-        |> Infrastructure.buildRoadAt ( 7, 10 )
-        |> Infrastructure.buildRoadAt ( 8, 1 )
-        |> Infrastructure.buildRoadAt ( 8, 5 )
-        |> Infrastructure.buildRoadAt ( 8, 8 )
-        |> Infrastructure.buildRoadAt ( 8, 10 )
-        |> Infrastructure.buildRoadAt ( 9, 1 )
-        |> Infrastructure.buildRoadAt ( 9, 5 )
-        |> Infrastructure.buildRoadAt ( 9, 8 )
-        |> Infrastructure.buildRoadAt ( 9, 10 )
-        |> Infrastructure.buildRoadAt ( 10, 1 )
-        |> Infrastructure.buildRoadAt ( 10, 2 )
-        |> Infrastructure.buildRoadAt ( 10, 3 )
-        |> Infrastructure.buildRoadAt ( 10, 4 )
-        |> Infrastructure.buildRoadAt ( 10, 5 )
-        |> Infrastructure.buildRoadAt ( 10, 6 )
-        |> Infrastructure.buildRoadAt ( 10, 7 )
-        |> Infrastructure.buildRoadAt ( 10, 8 )
-        |> Infrastructure.buildRoadAt ( 10, 9 )
-        |> Infrastructure.buildRoadAt ( 10, 10 )
+    tilemapFromCoordinates
+        [ ( 1, 1 )
+        , ( 1, 2 )
+        , ( 1, 3 )
+        , ( 1, 4 )
+        , ( 1, 5 )
+        , ( 1, 10 )
+        , ( 2, 1 )
+        , ( 2, 5 )
+        , ( 2, 10 )
+        , ( 3, 1 )
+        , ( 3, 2 )
+        , ( 3, 3 )
+        , ( 3, 4 )
+        , ( 3, 5 )
+        , ( 3, 6 )
+        , ( 3, 7 )
+        , ( 3, 8 )
+        , ( 3, 9 )
+        , ( 3, 10 )
+        , ( 4, 1 )
+        , ( 4, 5 )
+        , ( 4, 8 )
+        , ( 5, 1 )
+        , ( 5, 5 )
+        , ( 5, 8 )
+        , ( 6, 1 )
+        , ( 6, 2 )
+        , ( 6, 3 )
+        , ( 6, 4 )
+        , ( 6, 5 )
+        , ( 6, 8 )
+        , ( 7, 1 )
+        , ( 7, 5 )
+        , ( 7, 6 )
+        , ( 7, 7 )
+        , ( 7, 8 )
+        , ( 7, 9 )
+        , ( 7, 10 )
+        , ( 8, 1 )
+        , ( 8, 5 )
+        , ( 8, 8 )
+        , ( 8, 10 )
+        , ( 9, 1 )
+        , ( 9, 5 )
+        , ( 9, 8 )
+        , ( 9, 10 )
+        , ( 10, 1 )
+        , ( 10, 2 )
+        , ( 10, 3 )
+        , ( 10, 4 )
+        , ( 10, 5 )
+        , ( 10, 6 )
+        , ( 10, 7 )
+        , ( 10, 8 )
+        , ( 10, 9 )
+        , ( 10, 10 )
+        ]
+        |> worldFromTilemap

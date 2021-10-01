@@ -102,7 +102,7 @@ updateTilemap cell tilemapChangeFn world =
 
 hasValidAnchorCell : Tilemap -> Lot -> Bool
 hasValidAnchorCell tilemap lot =
-    case Tilemap.tileAt (Tuple.first lot.anchor) tilemap of
+    case Tilemap.tileAt lot.anchor.anchorCell tilemap of
         Just tile ->
             tile == Tilemap.horizontalRoad || tile == Tilemap.verticalRoad
 
@@ -170,7 +170,13 @@ buildRoadNetwork { tilemap, lots, trafficLights } =
                 , lots = lots
                 , nodes = Dict.empty
                 , remainingTiles =
+                    -- Room for improvement: provide tilemap iteration from the Tilemap module with better guarantees
                     Dict.toList tilemap
+                        |> List.filterMap
+                            (\( cellCoordinates, tile ) ->
+                                Tilemap.cellFromCoordinates cellCoordinates
+                                    |> Maybe.map (\cell -> ( cell, tile ))
+                            )
                         |> List.sortBy tilePriority
                 }
                 |> Dict.values
@@ -275,14 +281,14 @@ toConnections tilemap cell tile lots =
 
 lotConnections : Cell -> Tile -> LMDirection2d -> Lots -> List Connection
 lotConnections cell tile trafficDirection lots =
-    case Dict.find (\_ lot -> Tuple.first lot.anchor == cell) lots of
+    case Dict.find (\_ lot -> lot.anchor.anchorCell == cell) lots of
         Just ( id, lot ) ->
             let
                 ( posA, posB ) =
                     laneCenterPositionsByDirection cell trafficDirection
 
                 anchorDirection =
-                    Tuple.second lot.anchor
+                    lot.anchor.anchorDirection
                         |> Tilemap.orthogonalDirectionToLmDirection
 
                 ( position, direction ) =
@@ -366,8 +372,8 @@ connectionsByTileEntryDirection tilemap cell tile direction =
             Tilemap.cellBottomLeftCorner cell
 
         isStopgapTile =
-            tilemap
-                |> Tilemap.tileAt (Tilemap.nextOrthogonalCell direction cell)
+            Tilemap.nextOrthogonalCell direction cell
+                |> Maybe.andThen (\nextCell -> Tilemap.tileAt nextCell tilemap)
                 |> Maybe.unwrap False (hasStopgapInbetween tile)
 
         ( startConnectionKind, endConnectionKind ) =

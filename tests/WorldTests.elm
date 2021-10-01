@@ -2,8 +2,10 @@ module WorldTests exposing (suite)
 
 import Dict
 import Expect
-import Lots
+import Model.Lot as Lot exposing (Lot)
+import Model.Tilemap exposing (OrthogonalDirection(..), tileSize)
 import Model.World as World
+import Quantity
 import Test exposing (Test, describe, test)
 import Utility exposing (createBoundingBox)
 import Worlds
@@ -11,6 +13,22 @@ import Worlds
         ( worldThatHasAVerticalRoadAtLeftSide
         , worldThatHasParallelRoads
         )
+
+
+twoByTwoLot : Maybe Lot
+twoByTwoLot =
+    let
+        newLot =
+            { content =
+                { kind = Lot.ResidentialE
+                , entryDirection = Down
+                }
+            , width = tileSize |> Quantity.multiplyBy 2
+            , height = tileSize |> Quantity.multiplyBy 2
+            }
+    in
+    Lot.createAnchor newLot ( 1, 8 )
+        |> Maybe.map (Lot.build newLot)
 
 
 suite : Test
@@ -25,12 +43,14 @@ suite =
             , test "correctly determines if an area is empty (existing lot in target area)"
                 (\_ ->
                     let
-                        lot =
-                            Lots.twoByTwoLot ( 1, 8 )
+                        lots =
+                            twoByTwoLot
+                                |> Maybe.map (\lot -> Dict.fromList [ ( 1, lot ) ])
+                                |> Maybe.withDefault Dict.empty
 
                         withLot =
                             worldThatHasAVerticalRoadAtLeftSide
-                                |> (\world -> { world | lots = Dict.fromList [ ( 1, lot ) ] })
+                                |> (\world -> { world | lots = lots })
                     in
                     World.isEmptyArea (createBoundingBox ( 80, 160 ) 160 160) withLot
                         |> Expect.false "Expected the \"world\" *not* to have space."

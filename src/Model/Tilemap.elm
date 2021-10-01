@@ -1,5 +1,6 @@
 module Model.Tilemap exposing
     ( Cell
+    , CellCoordinates
     , DiagonalDirection(..)
     , OrthogonalDirection(..)
     , Tile
@@ -9,6 +10,7 @@ module Model.Tilemap exposing
     , cellBottomLeftCorner
     , cellBoundingBox
     , cellCenterPoint
+    , cellFromCoordinates
     , cellToString
     , cornerCells
     , curveTopLeft
@@ -39,6 +41,7 @@ import BoundingBox2d
 import Common
 import Dict exposing (Dict)
 import Length exposing (Length)
+import Maybe.Extra as Maybe
 import Model.Geometry
     exposing
         ( LMBoundingBox2d
@@ -51,20 +54,24 @@ import Model.Geometry
         , up
         )
 import Point2d
-import Quantity
+import Quantity exposing (negativeInfinity)
 import Set exposing (Set)
 import Vector2d
 
 
 type alias Tilemap =
-    Dict Cell Tile
+    Dict CellCoordinates Tile
 
 
 type alias Tile =
     Int
 
 
-type alias Cell =
+type Cell
+    = Cell CellCoordinates
+
+
+type alias CellCoordinates =
     ( Int, Int )
 
 
@@ -82,14 +89,20 @@ type DiagonalDirection
     | BottomLeft
 
 
-rowsAndColumnsAmount : Int
-rowsAndColumnsAmount =
-    10
+
+--
+-- Tilemap
+--
 
 
 tileSize : Length
 tileSize =
     pixelsToMeters 80
+
+
+rowsAndColumnsAmount : Int
+rowsAndColumnsAmount =
+    10
 
 
 size : Length
@@ -102,29 +115,43 @@ boundingBox =
     Common.boundingBoxWithDimensions size size Point2d.origin
 
 
-
---
--- Tilemap construction and modification
---
-
-
 empty : Tilemap
 empty =
     Dict.empty
 
 
 addTile : Cell -> Tilemap -> Tilemap
-addTile cell tilemap =
+addTile (Cell coordinates) tilemap =
     tilemap
-        |> Dict.insert cell defaultTile
+        |> Dict.insert coordinates defaultTile
         |> applyMask
 
 
 removeTile : Cell -> Tilemap -> Tilemap
-removeTile cell tilemap =
+removeTile (Cell coordinates) tilemap =
     tilemap
-        |> Dict.remove cell
+        |> Dict.remove coordinates
         |> applyMask
+
+
+tileAt : Cell -> Tilemap -> Maybe Tile
+tileAt (Cell coordinates) tilemap =
+    Dict.get coordinates tilemap
+
+
+inBounds : LMBoundingBox2d -> Bool
+inBounds testBB =
+    BoundingBox2d.isContainedIn boundingBox testBB
+
+
+exists : Cell -> Tilemap -> Bool
+exists (Cell coordinates) tilemap =
+    Dict.member coordinates tilemap
+
+
+hasOrthogonalNeighborAt : OrthogonalDirection -> Cell -> Tilemap -> Bool
+hasOrthogonalNeighborAt dir cell tilemap =
+    nextOrthogonalCell dir cell |> Maybe.unwrap False (\neighborCell -> exists neighborCell tilemap)
 
 
 
@@ -143,17 +170,22 @@ type alias ParallelNeighbors =
 
 applyMask : Tilemap -> Tilemap
 applyMask tilemap =
-    Dict.map (\cell _ -> chooseTile tilemap cell) tilemap
+    Dict.map
+        (\cellCoordinates _ ->
+            -- The Cell construction is valid as long as the tilemap itself is valid
+            chooseTile tilemap (Cell cellCoordinates)
+        )
+        tilemap
 
 
 chooseTile : Tilemap -> Cell -> Tile
 chooseTile tilemap origin =
     let
         parallelTiles =
-            { north = exists (nextOrthogonalCell Up origin) tilemap
-            , west = exists (nextOrthogonalCell Left origin) tilemap
-            , east = exists (nextOrthogonalCell Right origin) tilemap
-            , south = exists (nextOrthogonalCell Down origin) tilemap
+            { north = hasOrthogonalNeighborAt Up origin tilemap
+            , west = hasOrthogonalNeighborAt Left origin tilemap
+            , east = hasOrthogonalNeighborAt Right origin tilemap
+            , south = hasOrthogonalNeighborAt Down origin tilemap
             }
     in
     fourBitBitmask parallelTiles
@@ -184,43 +216,44 @@ boolToBinary booleanValue =
 
 
 
---
--- Tilemap queries
---
-
-
-tileAt : Cell -> Tilemap -> Maybe Tile
-tileAt cell tilemap =
-    Dict.get cell tilemap
-
-
-inBounds : LMBoundingBox2d -> Bool
-inBounds testBB =
-    BoundingBox2d.isContainedIn boundingBox testBB
-
-
-exists : Cell -> Tilemap -> Bool
-exists cell tilemap =
-    Dict.member cell tilemap
-
-
-
 -- Cells
 
 
-cellBottomLeftCorner : Cell -> LMPoint2d
-cellBottomLeftCorner ( cellX, cellY ) =
-    let
-        ( x, y ) =
-            ( toFloat (cellX - 1), toFloat (rowsAndColumnsAmount - cellY) )
-    in
-    if x < 0 || y < 0 then
-        Point2d.origin
+cellFromCoordinates : CellCoordinates -> Maybe Cell
+cellFromCoordinates ( x, y ) =
+    if isValidCoordinate x && isValidCoordinate y then
+        Just (Cell ( x, y ))
 
     else
+        Nothing
+
+
+isValidCoordinate : Int -> Bool
+isValidCoordinate coordinate =
+    coordinate > 0 && coordinate <= rowsAndColumnsAmount
+
+
+cellBottomLeftCorner : Cell -> LMPoint2d
+cellBottomLeftCorner (Cell coordinates) =
+    let
+        ( cellX, cellY ) =
+            coordinates
+    in
+    if cellX > 0 && cellY > 0 then
+        let
+            ( xMultiplier, yMultiplier ) =
+                ( toFloat (cellX - 1)
+                , toFloat (rowsAndColumnsAmount - cellY)
+                )
+        in
         Point2d.xy
-            (tileSize |> Quantity.multiplyBy x)
-            (tileSize |> Quantity.multiplyBy y)
+            (tileSize |> Quantity.multiplyBy xMultiplier)
+            (tileSize |> Quantity.multiplyBy yMultiplier)
+
+    else
+        -- When Cells are built from coordinates, the coordinates are required to be positive.
+        -- Invalid input results in a fallback value that is guaranteed to be outside the tilemap.
+        Point2d.xy negativeInfinity negativeInfinity
 
 
 cellCenterPoint : Cell -> LMPoint2d
@@ -242,7 +275,11 @@ cellBoundingBox cell =
 
 
 cellToString : Cell -> String
-cellToString ( x, y ) =
+cellToString (Cell coordinates) =
+    let
+        ( x, y ) =
+            coordinates
+    in
     "Cell (" ++ String.fromInt x ++ "," ++ String.fromInt y
 
 
@@ -266,36 +303,44 @@ diagonalDirections =
     [ TopLeft, TopRight, BottomLeft, BottomRight ]
 
 
-nextOrthogonalCell : OrthogonalDirection -> Cell -> Cell
-nextOrthogonalCell dir ( x, y ) =
+nextOrthogonalCell : OrthogonalDirection -> Cell -> Maybe Cell
+nextOrthogonalCell dir (Cell coordinates) =
+    let
+        ( x, y ) =
+            coordinates
+    in
     case dir of
         Up ->
-            ( x, y - 1 )
+            cellFromCoordinates ( x, y - 1 )
 
         Right ->
-            ( x + 1, y )
+            cellFromCoordinates ( x + 1, y )
 
         Down ->
-            ( x, y + 1 )
+            cellFromCoordinates ( x, y + 1 )
 
         Left ->
-            ( x - 1, y )
+            cellFromCoordinates ( x - 1, y )
 
 
-nextDiagonalCell : DiagonalDirection -> Cell -> Cell
-nextDiagonalCell c ( x, y ) =
-    case c of
+nextDiagonalCell : DiagonalDirection -> Cell -> Maybe Cell
+nextDiagonalCell dir (Cell coordinates) =
+    let
+        ( x, y ) =
+            coordinates
+    in
+    case dir of
         TopLeft ->
-            ( x - 1, y - 1 )
+            cellFromCoordinates ( x - 1, y - 1 )
 
         TopRight ->
-            ( x + 1, y - 1 )
+            cellFromCoordinates ( x + 1, y - 1 )
 
         BottomLeft ->
-            ( x - 1, y + 1 )
+            cellFromCoordinates ( x - 1, y + 1 )
 
         BottomRight ->
-            ( x + 1, y + 1 )
+            cellFromCoordinates ( x + 1, y + 1 )
 
 
 oppositeOrthogonalDirection : OrthogonalDirection -> OrthogonalDirection
@@ -360,28 +405,32 @@ cornerCells : DiagonalDirection -> Cell -> List Cell
 cornerCells c position =
     case c of
         TopLeft ->
-            [ nextOrthogonalCell Left position
-            , nextDiagonalCell TopLeft position
-            , nextOrthogonalCell Up position
-            ]
+            Maybe.values
+                [ nextOrthogonalCell Left position
+                , nextDiagonalCell TopLeft position
+                , nextOrthogonalCell Up position
+                ]
 
         TopRight ->
-            [ nextOrthogonalCell Up position
-            , nextDiagonalCell TopRight position
-            , nextOrthogonalCell Right position
-            ]
+            Maybe.values
+                [ nextOrthogonalCell Up position
+                , nextDiagonalCell TopRight position
+                , nextOrthogonalCell Right position
+                ]
 
         BottomLeft ->
-            [ nextOrthogonalCell Down position
-            , nextDiagonalCell BottomLeft position
-            , nextOrthogonalCell Left position
-            ]
+            Maybe.values
+                [ nextOrthogonalCell Down position
+                , nextDiagonalCell BottomLeft position
+                , nextOrthogonalCell Left position
+                ]
 
         BottomRight ->
-            [ nextOrthogonalCell Right position
-            , nextDiagonalCell BottomRight position
-            , nextOrthogonalCell Down position
-            ]
+            Maybe.values
+                [ nextOrthogonalCell Right position
+                , nextDiagonalCell BottomRight position
+                , nextOrthogonalCell Down position
+                ]
 
 
 

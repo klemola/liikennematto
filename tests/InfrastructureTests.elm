@@ -1,6 +1,7 @@
 module InfrastructureTests exposing (..)
 
 import Expect
+import Model.Tilemap as Tilemap
 import Simulation.Infrastructure as Infrastructure
 import Test exposing (Test, describe, test)
 import Worlds
@@ -17,12 +18,16 @@ suite =
             "Infrastructure.canBuildRoadAt"
             [ test "Allows a low complexity setup"
                 (\_ ->
-                    Infrastructure.canBuildRoadAt ( 2, 2 ) lowComplexityWorld
+                    Tilemap.cellFromCoordinates ( 2, 2 )
+                        |> Maybe.map (\cell -> Infrastructure.canBuildRoadAt cell lowComplexityWorld)
+                        |> Maybe.withDefault False
                         |> Expect.true "Expected valid world."
                 )
             , test "Disallows a complex setup"
                 (\_ ->
-                    Infrastructure.canBuildRoadAt ( 2, 2 ) highComplexityWorld
+                    Tilemap.cellFromCoordinates ( 2, 2 )
+                        |> Maybe.map (\cell -> Infrastructure.canBuildRoadAt cell highComplexityWorld)
+                        |> Maybe.withDefault False
                         |> Expect.false "Expected invalid world."
                 )
             ]

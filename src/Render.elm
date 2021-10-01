@@ -111,8 +111,14 @@ renderColors =
 renderTilemap : Tilemap -> Svg msg
 renderTilemap tilemap =
     tilemap
+        -- Room for improvement: provide tilemap iteration from the Tilemap module with better guarantees
         |> Dict.foldl
-            (\cell tile acc -> ( Tilemap.cellToString cell, renderTile cell tile ) :: acc)
+            (\cellCoordinates tile acc ->
+                Tilemap.cellFromCoordinates cellCoordinates
+                    |> Maybe.map (\cell -> ( Tilemap.cellToString cell, renderTile cell tile ) :: acc)
+                    -- Skip rendering of invalid cells
+                    |> Maybe.withDefault acc
+            )
             []
         |> Svg.Keyed.node "g" []
 
