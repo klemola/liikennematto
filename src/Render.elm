@@ -67,19 +67,24 @@ carLengthPixels =
     toPixelsValue Car.length
 
 
-tilemapSizeScaledPixels : Float
-tilemapSizeScaledPixels =
-    toPixelsValue Tilemap.size
+tilemapSizePixels : Float
+tilemapSizePixels =
+    toPixelsValue Tilemap.mapSize
 
 
 tilemapSizeScaledStr : String
 tilemapSizeScaledStr =
-    String.fromFloat tilemapSizeScaledPixels
+    String.fromFloat tilemapSizePixels
 
 
 tileSizePixels : Float
 tileSizePixels =
     toPixelsValue tileSize
+
+
+nothing : Svg msg
+nothing =
+    Svg.g [] []
 
 
 view : World -> DebugLayers -> Html msg
@@ -111,31 +116,33 @@ renderColors =
 renderTilemap : Tilemap -> Svg msg
 renderTilemap tilemap =
     tilemap
-        -- Room for improvement: provide tilemap iteration from the Tilemap module with better guarantees
-        |> Dict.foldl
-            (\cellCoordinates tile acc ->
-                Tilemap.cellFromCoordinates cellCoordinates
-                    |> Maybe.map (\cell -> ( Tilemap.cellToString cell, renderTile cell tile ) :: acc)
-                    -- Skip rendering of invalid cells
-                    |> Maybe.withDefault acc
+        |> Tilemap.toList
+            (\cell tile ->
+                let
+                    tileElement =
+                        case tileAsset tile of
+                            Just asset ->
+                                renderTile cell asset
+
+                            -- The asset is likely found, as the Tilemap only contains valid tiles, so this branch will not be considered
+                            Nothing ->
+                                nothing
+                in
+                ( Tilemap.cellToString cell, tileElement )
             )
-            []
         |> Svg.Keyed.node "g" []
 
 
-renderTile : Cell -> Tile -> Svg msg
-renderTile cell tile =
+renderTile : Cell -> String -> Svg msg
+renderTile cell asset =
     let
-        asset =
-            "assets/" ++ tileAsset tile
-
         { x, y } =
             Tilemap.cellBottomLeftCorner cell |> pointToPixels
     in
     Svg.image
-        [ Attributes.xlinkHref asset
+        [ Attributes.xlinkHref ("assets/" ++ asset)
         , Attributes.x (String.fromFloat x)
-        , Attributes.y (String.fromFloat (tilemapSizeScaledPixels - tileSizePixels - y))
+        , Attributes.y (String.fromFloat (tilemapSizePixels - tileSizePixels - y))
         , Attributes.width (String.fromFloat tileSizePixels)
         , Attributes.height (String.fromFloat tileSizePixels)
         ]
@@ -163,7 +170,7 @@ renderCar car =
             x - (carLengthPixels / 2)
 
         renderY =
-            tilemapSizeScaledPixels - carWidthPixels - y
+            tilemapSizePixels - carWidthPixels - y
 
         rotateVal =
             car.orientation
@@ -173,7 +180,7 @@ renderCar car =
 
         -- rotate about the center of the car
         rotateStr =
-            "rotate(" ++ rotateVal ++ "," ++ String.fromFloat x ++ "," ++ String.fromFloat (tilemapSizeScaledPixels - y) ++ ")"
+            "rotate(" ++ rotateVal ++ "," ++ String.fromFloat x ++ "," ++ String.fromFloat (tilemapSizePixels - y) ++ ")"
 
         translateStr =
             "translate(" ++ String.fromFloat renderX ++ " " ++ String.fromFloat renderY ++ ")"
@@ -289,7 +296,7 @@ renderLot lot =
         [ Svg.image
             [ Attributes.xlinkHref asset
             , Attributes.x <| String.fromFloat (x - width / 2)
-            , Attributes.y <| String.fromFloat <| tilemapSizeScaledPixels - (height / 2) - y
+            , Attributes.y <| String.fromFloat <| tilemapSizePixels - (height / 2) - y
             , Attributes.width <| String.fromFloat width
             , Attributes.height <| String.fromFloat height
             ]
@@ -326,7 +333,7 @@ sidewalkMask lot =
         , Attributes.height <| String.fromFloat height
         , Attributes.fill <| Color.toCssString <| renderColors.sidewalk
         , Attributes.x <| String.fromFloat <| x + lotBottomLeftX - (width / 2)
-        , Attributes.y <| String.fromFloat <| tilemapSizeScaledPixels - lotBottomLeftY - y - (height / 2)
+        , Attributes.y <| String.fromFloat <| tilemapSizePixels - lotBottomLeftY - y - (height / 2)
         ]
         []
 
@@ -361,7 +368,7 @@ renderTrafficLight trafficLight =
     Svg.circle
         [ Attributes.r <| String.fromFloat radius
         , Attributes.cx <| String.fromFloat x
-        , Attributes.cy <| String.fromFloat (tilemapSizeScaledPixels - y)
+        , Attributes.cy <| String.fromFloat (tilemapSizePixels - y)
         , Attributes.fill <| Color.toCssString color
         , Attributes.stroke <| Color.toCssString Color.grey
         , Attributes.strokeWidth <| String.fromInt 1
@@ -403,7 +410,7 @@ renderYieldSign node =
     Svg.image
         [ Attributes.xlinkHref asset
         , Attributes.x <| String.fromFloat (x - size / 2)
-        , Attributes.y <| String.fromFloat <| tilemapSizeScaledPixels - y - (size / 2)
+        , Attributes.y <| String.fromFloat <| tilemapSizePixels - y - (size / 2)
         , Attributes.width <| String.fromFloat size
         , Attributes.height <| String.fromFloat size
         ]
@@ -480,7 +487,7 @@ renderRoadNetwork roadNetwork =
                         , Svg.circle
                             [ Attributes.r <| String.fromFloat radius
                             , Attributes.cx <| String.fromFloat x
-                            , Attributes.cy <| String.fromFloat (tilemapSizeScaledPixels - y)
+                            , Attributes.cy <| String.fromFloat (tilemapSizePixels - y)
                             , Attributes.fill <| Color.toCssString <| nodeColor kind
                             ]
                             []
@@ -512,10 +519,10 @@ renderRoadNetwork roadNetwork =
                                         pointToPixels toNodeCtx.node.label.position
 
                                     fromStr =
-                                        String.fromFloat from.x ++ " " ++ String.fromFloat (tilemapSizeScaledPixels - from.y)
+                                        String.fromFloat from.x ++ " " ++ String.fromFloat (tilemapSizePixels - from.y)
 
                                     toStr =
-                                        String.fromFloat to.x ++ " " ++ String.fromFloat (tilemapSizeScaledPixels - to.y)
+                                        String.fromFloat to.x ++ " " ++ String.fromFloat (tilemapSizePixels - to.y)
                                 in
                                 ( "Edge-" ++ String.fromInt fromNodeCtx.node.id ++ String.fromInt toNodeCtx.node.id
                                 , Svg.path
@@ -615,7 +622,7 @@ toPointsString points =
                     pointToPixels point
 
                 pointStr =
-                    String.fromFloat x ++ "," ++ String.fromFloat (tilemapSizeScaledPixels - y) ++ " "
+                    String.fromFloat x ++ "," ++ String.fromFloat (tilemapSizePixels - y) ++ " "
             in
             pointStr ++ acc
         )
@@ -629,59 +636,62 @@ toPointsString points =
 --
 
 
-tileAsset : Tile -> String
+tileAsset : Tile -> Maybe String
 tileAsset tile =
     case tile of
         0 ->
-            "road_2_lanes_horizontal.png"
+            -- horizontal road tiles are match by tiles 0 and 6
+            -- Room for improvement: use a special tile for "0"
+            Just "road_2_lanes_horizontal.png"
 
         1 ->
-            "road_2_lanes_deadend_down.png"
+            Just "road_2_lanes_deadend_down.png"
 
         2 ->
-            "road_2_lanes_deadend_right.png"
+            Just "road_2_lanes_deadend_right.png"
 
         3 ->
-            "road_2_lanes_curve_bottom_right.png"
+            Just "road_2_lanes_curve_bottom_right.png"
 
         4 ->
-            "road_2_lanes_deadend_left.png"
+            Just "road_2_lanes_deadend_left.png"
 
         5 ->
-            "road_2_lanes_curve_bottom_left.png"
+            Just "road_2_lanes_curve_bottom_left.png"
 
         6 ->
-            "road_2_lanes_horizontal.png"
+            -- horizontal road tiles are match by tiles 0 and 6
+            Just "road_2_lanes_horizontal.png"
 
         7 ->
-            "intersection_2_lanes_t_up.png"
+            Just "intersection_2_lanes_t_up.png"
 
         8 ->
-            "road_2_lanes_deadend_up.png"
+            Just "road_2_lanes_deadend_up.png"
 
         9 ->
-            "road_2_lanes_vertical.png"
+            Just "road_2_lanes_vertical.png"
 
         10 ->
-            "road_2_lanes_curve_top_right.png"
+            Just "road_2_lanes_curve_top_right.png"
 
         11 ->
-            "intersection_2_lanes_t_left.png"
+            Just "intersection_2_lanes_t_left.png"
 
         12 ->
-            "road_2_lanes_curve_top_left.png"
+            Just "road_2_lanes_curve_top_left.png"
 
         13 ->
-            "intersection_2_lanes_t_right.png"
+            Just "intersection_2_lanes_t_right.png"
 
         14 ->
-            "intersection_2_lanes_t_down.png"
+            Just "intersection_2_lanes_t_down.png"
 
         15 ->
-            "intersection_2_lanes_x.png"
+            Just "intersection_2_lanes_x.png"
 
         _ ->
-            "road_not_found.png"
+            Nothing
 
 
 buildingAsset : BuildingKind -> String

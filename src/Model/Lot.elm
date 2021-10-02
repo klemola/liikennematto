@@ -27,7 +27,6 @@ import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
 import Model.Tilemap as Tilemap
     exposing
         ( Cell
-        , CellCoordinates
         , OrthogonalDirection(..)
         , tileSize
         )
@@ -147,27 +146,20 @@ build newLot anchor =
     }
 
 
-createAnchor : NewLot -> CellCoordinates -> Maybe Anchor
-createAnchor newLot cellCoordinates =
+createAnchor : NewLot -> Cell -> Maybe Anchor
+createAnchor newLot anchorCell =
     let
         anchorDirection =
             Tilemap.oppositeOrthogonalDirection newLot.content.entryDirection
-
-        maybeAnchorCell =
-            Tilemap.cellFromCoordinates cellCoordinates
-
-        maybeEntryCell =
-            maybeAnchorCell |> Maybe.andThen (Tilemap.nextOrthogonalCell anchorDirection)
     in
-    Maybe.map2
-        (\anchorCell entryCell ->
-            { anchorCell = anchorCell
-            , anchorDirection = anchorDirection
-            , entryCell = entryCell
-            }
-        )
-        maybeAnchorCell
-        maybeEntryCell
+    Tilemap.nextOrthogonalCell anchorDirection anchorCell
+        |> Maybe.map
+            (\entryCell ->
+                { anchorCell = anchorCell
+                , anchorDirection = anchorDirection
+                , entryCell = entryCell
+                }
+            )
 
 
 newLotBuildArea : Anchor -> NewLot -> LMBoundingBox2d

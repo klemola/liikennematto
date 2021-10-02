@@ -19,7 +19,8 @@ oneByOneLot =
             , height = tileSize
             }
     in
-    Lot.createAnchor newLot ( 1, 2 )
+    Tilemap.cellFromCoordinates ( 1, 2 )
+        |> Maybe.andThen (Lot.createAnchor newLot)
         |> Maybe.map (Lot.build newLot)
 
 
@@ -35,7 +36,8 @@ twoByTwoLot =
             , height = tileSize |> Quantity.multiplyBy 2
             }
     in
-    Lot.createAnchor newLot ( 1, 3 )
+    Tilemap.cellFromCoordinates ( 1, 3 )
+        |> Maybe.andThen (Lot.createAnchor newLot)
         |> Maybe.map (Lot.build newLot)
 
 

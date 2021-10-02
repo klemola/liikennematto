@@ -26,6 +26,6 @@ boundingBoxWithDimensions width height origin =
     BoundingBox2d.from origin otherCorner
 
 
-noBoundingBoxOverlap : LMBoundingBox2d -> LMBoundingBox2d -> Bool
-noBoundingBoxOverlap bb1 bb2 =
-    not <| BoundingBox2d.overlappingByAtLeast (Length.meters 0.1) bb1 bb2
+boundingBoxOverlaps : LMBoundingBox2d -> LMBoundingBox2d -> Bool
+boundingBoxOverlaps bb1 bb2 =
+    BoundingBox2d.overlappingByAtLeast (Length.meters 0.1) bb1 bb2

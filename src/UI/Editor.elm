@@ -64,7 +64,7 @@ overlay : World -> Tool -> Element Message
 overlay world tool =
     let
         size =
-            Element.px (Geometry.toPixelsValue Tilemap.size |> floor)
+            Element.px (Geometry.toPixelsValue Tilemap.mapSize |> floor)
 
         rg =
             List.range 1 Tilemap.rowsAndColumnsAmount

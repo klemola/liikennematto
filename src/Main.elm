@@ -88,7 +88,7 @@ render model =
             }
 
         renderedSize =
-            Tilemap.size
+            Tilemap.mapSize
                 |> Geometry.toPixelsValue
                 |> floor
 

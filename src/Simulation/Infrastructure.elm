@@ -170,13 +170,8 @@ buildRoadNetwork { tilemap, lots, trafficLights } =
                 , lots = lots
                 , nodes = Dict.empty
                 , remainingTiles =
-                    -- Room for improvement: provide tilemap iteration from the Tilemap module with better guarantees
-                    Dict.toList tilemap
-                        |> List.filterMap
-                            (\( cellCoordinates, tile ) ->
-                                Tilemap.cellFromCoordinates cellCoordinates
-                                    |> Maybe.map (\cell -> ( cell, tile ))
-                            )
+                    tilemap
+                        |> Tilemap.toList Tuple.pair
                         |> List.sortBy tilePriority
                 }
                 |> Dict.values

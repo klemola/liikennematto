@@ -1,9 +1,8 @@
 module Utility exposing (..)
 
 import Common
-import Dict
 import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d, pixelsToMetersRatio)
-import Model.Tilemap as Tilemap exposing (CellCoordinates, Tilemap)
+import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.World as World exposing (World)
 import Pixels
 import Point2d
@@ -26,7 +25,7 @@ createBoundingBox ( x, y ) width height =
         (toLMPoint2d x y)
 
 
-tilemapFromCoordinates : List CellCoordinates -> Tilemap
+tilemapFromCoordinates : List ( Int, Int ) -> Tilemap
 tilemapFromCoordinates cellCoordinates =
     List.foldl
         (\coords acc ->
@@ -43,9 +42,9 @@ tilemapFromCoordinates cellCoordinates =
 
 worldFromTilemap : Tilemap -> World
 worldFromTilemap tilemap =
-    Dict.keys tilemap
+    tilemap
+        |> Tilemap.toList (\cell _ -> cell)
         |> List.head
-        |> Maybe.andThen Tilemap.cellFromCoordinates
         |> Maybe.map
             (\cell ->
                 World.empty

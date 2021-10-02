@@ -1,6 +1,5 @@
 module Model.Tilemap exposing
     ( Cell
-    , CellCoordinates
     , DiagonalDirection(..)
     , OrthogonalDirection(..)
     , Tile
@@ -11,6 +10,7 @@ module Model.Tilemap exposing
     , cellBoundingBox
     , cellCenterPoint
     , cellFromCoordinates
+    , cellFromIndex
     , cellToString
     , cornerCells
     , curveTopLeft
@@ -20,10 +20,12 @@ module Model.Tilemap exposing
     , horizontalRoad
     , inBounds
     , intersectionTDown
+    , intersects
     , isCurve
     , isDeadend
     , isIntersection
     , isVerticalDirection
+    , mapSize
     , nextOrthogonalCell
     , oppositeOrthogonalDirection
     , orthogonalDirectionToLmDirection
@@ -34,12 +36,13 @@ module Model.Tilemap exposing
     , size
     , tileAt
     , tileSize
+    , toList
     , verticalRoad
     )
 
+import Array exposing (Array)
 import BoundingBox2d
 import Common
-import Dict exposing (Dict)
 import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Geometry
@@ -59,8 +62,8 @@ import Set exposing (Set)
 import Vector2d
 
 
-type alias Tilemap =
-    Dict CellCoordinates Tile
+type Tilemap
+    = Tilemap (Array Tile)
 
 
 type alias Tile =
@@ -105,38 +108,64 @@ rowsAndColumnsAmount =
     10
 
 
-size : Length
-size =
+mapSize : Length
+mapSize =
     tileSize |> Quantity.multiplyBy (toFloat rowsAndColumnsAmount)
 
 
 boundingBox : LMBoundingBox2d
 boundingBox =
-    Common.boundingBoxWithDimensions size size Point2d.origin
+    Common.boundingBoxWithDimensions mapSize mapSize Point2d.origin
 
 
 empty : Tilemap
 empty =
-    Dict.empty
+    let
+        arrSize =
+            rowsAndColumnsAmount * rowsAndColumnsAmount
+    in
+    Tilemap (Array.initialize arrSize (always emptyTile))
 
 
 addTile : Cell -> Tilemap -> Tilemap
-addTile (Cell coordinates) tilemap =
-    tilemap
-        |> Dict.insert coordinates defaultTile
-        |> applyMask
+addTile cell (Tilemap tilemap) =
+    let
+        idx =
+            indexFromCell cell
+
+        tiles =
+            tilemap |> Array.set idx horizontalRoad
+    in
+    Tilemap tiles |> applyMask
 
 
 removeTile : Cell -> Tilemap -> Tilemap
-removeTile (Cell coordinates) tilemap =
-    tilemap
-        |> Dict.remove coordinates
-        |> applyMask
+removeTile cell (Tilemap tilemap) =
+    let
+        idx =
+            indexFromCell cell
+
+        tiles =
+            tilemap |> Array.set idx emptyTile
+    in
+    Tilemap tiles |> applyMask
 
 
 tileAt : Cell -> Tilemap -> Maybe Tile
-tileAt (Cell coordinates) tilemap =
-    Dict.get coordinates tilemap
+tileAt cell (Tilemap tilemap) =
+    let
+        idx =
+            indexFromCell cell
+    in
+    Array.get idx tilemap
+        |> Maybe.andThen
+            (\tile ->
+                if tile == emptyTile then
+                    Nothing
+
+                else
+                    Just tile
+            )
 
 
 inBounds : LMBoundingBox2d -> Bool
@@ -144,14 +173,59 @@ inBounds testBB =
     BoundingBox2d.isContainedIn boundingBox testBB
 
 
+intersects : LMBoundingBox2d -> Tilemap -> Bool
+intersects testBB tilemap =
+    toList (\cell _ -> cellBoundingBox cell) tilemap
+        |> List.any (Common.boundingBoxOverlaps testBB)
+
+
 exists : Cell -> Tilemap -> Bool
-exists (Cell coordinates) tilemap =
-    Dict.member coordinates tilemap
+exists cell tilemap =
+    tileAt cell tilemap |> Maybe.isJust
 
 
-hasOrthogonalNeighborAt : OrthogonalDirection -> Cell -> Tilemap -> Bool
-hasOrthogonalNeighborAt dir cell tilemap =
-    nextOrthogonalCell dir cell |> Maybe.unwrap False (\neighborCell -> exists neighborCell tilemap)
+toList : (Cell -> Tile -> a) -> Tilemap -> List a
+toList mapperFn (Tilemap tilemap) =
+    let
+        -- Keep track of the array index, which Array.foldl does not
+        initialAcc =
+            { acc = []
+            , index = 0
+            }
+
+        mappedAcc =
+            -- This is an optimization - Array.indexedMap would require double iteration (cell mapping + Nothing values discarded)
+            Array.foldl
+                (\tile { acc, index } ->
+                    { acc =
+                        if tile == emptyTile then
+                            acc
+
+                        else
+                            cellFromIndex index
+                                |> Maybe.map (\cell -> mapperFn cell tile :: acc)
+                                |> Maybe.withDefault acc
+                    , index = index + 1
+                    }
+                )
+                initialAcc
+                tilemap
+    in
+    mappedAcc.acc
+
+
+size : Tilemap -> Int
+size (Tilemap tilemap) =
+    Array.foldl
+        (\tile count ->
+            if tile /= emptyTile then
+                count + 1
+
+            else
+                count
+        )
+        0
+        tilemap
 
 
 
@@ -170,12 +244,23 @@ type alias ParallelNeighbors =
 
 applyMask : Tilemap -> Tilemap
 applyMask tilemap =
-    Dict.map
-        (\cellCoordinates _ ->
-            -- The Cell construction is valid as long as the tilemap itself is valid
-            chooseTile tilemap (Cell cellCoordinates)
-        )
-        tilemap
+    let
+        (Tilemap arr) =
+            tilemap
+
+        tiles =
+            Array.indexedMap
+                (\idx tile ->
+                    -- The Cell construction is valid as long as the tilemap itself is valid
+                    if tile /= emptyTile then
+                        cellFromIndex idx |> Maybe.unwrap emptyTile (chooseTile tilemap)
+
+                    else
+                        tile
+                )
+                arr
+    in
+    Tilemap tiles
 
 
 chooseTile : Tilemap -> Cell -> Tile
@@ -189,6 +274,11 @@ chooseTile tilemap origin =
             }
     in
     fourBitBitmask parallelTiles
+
+
+hasOrthogonalNeighborAt : OrthogonalDirection -> Cell -> Tilemap -> Bool
+hasOrthogonalNeighborAt dir cell tilemap =
+    nextOrthogonalCell dir cell |> Maybe.unwrap False (\neighborCell -> exists neighborCell tilemap)
 
 
 {-| Calculates tile number (ID) based on surrounding tiles
@@ -217,6 +307,30 @@ boolToBinary booleanValue =
 
 
 -- Cells
+
+
+cellFromIndex : Int -> Maybe Cell
+cellFromIndex idx =
+    let
+        xyZeroIndexed =
+            { x = remainderBy rowsAndColumnsAmount idx
+            , y = idx // rowsAndColumnsAmount
+            }
+    in
+    -- Cells are 1-indexed - map the coordinates to match
+    cellFromCoordinates ( xyZeroIndexed.x + 1, xyZeroIndexed.y + 1 )
+
+
+indexFromCell : Cell -> Int
+indexFromCell (Cell ( x, y )) =
+    let
+        xyZeroIndexed =
+            { x = x - 1
+            , y = y - 1
+            }
+    in
+    -- Arrays are 0-indexed - map the coordinates to match
+    xyZeroIndexed.x + (xyZeroIndexed.y * rowsAndColumnsAmount)
 
 
 cellFromCoordinates : CellCoordinates -> Maybe Cell
@@ -439,9 +553,9 @@ cornerCells c position =
 --
 
 
-defaultTile : Tile
-defaultTile =
-    0
+emptyTile : Tile
+emptyTile =
+    -1
 
 
 horizontalRoad : Tile

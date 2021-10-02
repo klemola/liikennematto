@@ -3,7 +3,7 @@ module WorldTests exposing (suite)
 import Dict
 import Expect
 import Model.Lot as Lot exposing (Lot)
-import Model.Tilemap exposing (OrthogonalDirection(..), tileSize)
+import Model.Tilemap as Tilemap exposing (OrthogonalDirection(..), tileSize)
 import Model.World as World
 import Quantity
 import Test exposing (Test, describe, test)
@@ -27,7 +27,8 @@ twoByTwoLot =
             , height = tileSize |> Quantity.multiplyBy 2
             }
     in
-    Lot.createAnchor newLot ( 1, 8 )
+    Tilemap.cellFromCoordinates ( 1, 8 )
+        |> Maybe.andThen (Lot.createAnchor newLot)
         |> Maybe.map (Lot.build newLot)
 
 

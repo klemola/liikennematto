@@ -68,27 +68,14 @@ hasLotAnchor cell { lots } =
 isEmptyArea : LMBoundingBox2d -> World -> Bool
 isEmptyArea testAreaBB world =
     let
-        roadBoundingBoxes =
-            -- Room for improvement: provide tilemap iteration from the Tilemap module with better guarantees
-            world.tilemap
-                |> Dict.keys
-                |> List.filterMap
-                    (\cellCoordinates ->
-                        Tilemap.cellFromCoordinates cellCoordinates
-                            |> Maybe.map Tilemap.cellBoundingBox
-                    )
+        tilemapOverlap =
+            Tilemap.intersects testAreaBB world.tilemap
 
-        lotBoundingBoxes =
+        lotOverlap =
             Dict.foldl (\_ lot acc -> lot.boundingBox :: acc) [] world.lots
-
-        inTilemapBounds =
-            Tilemap.inBounds testAreaBB
-
-        noCollision =
-            (roadBoundingBoxes ++ lotBoundingBoxes)
-                |> List.all (Common.noBoundingBoxOverlap testAreaBB)
+                |> List.any (Common.boundingBoxOverlaps testAreaBB)
     in
-    inTilemapBounds && noCollision
+    Tilemap.inBounds testAreaBB && not lotOverlap && not tilemapOverlap
 
 
 

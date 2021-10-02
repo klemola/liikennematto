@@ -11,6 +11,7 @@ import Dict.Extra as Dict
 import Direction2d
 import Duration
 import Length
+import Maybe.Extra as Maybe
 import Message exposing (Message(..))
 import Model.Car as Car exposing (Car, Cars, Status(..))
 import Model.Entity as Entity
@@ -202,7 +203,7 @@ attemptGenerateEnvironment : World -> Random.Seed -> SimulationState -> ( World,
 attemptGenerateEnvironment world seed simulation =
     let
         largeEnoughRoadNetwork =
-            Dict.size world.tilemap > 4 * max 1 (Dict.size world.lots + 1)
+            Tilemap.size world.tilemap > 4 * max 1 (Dict.size world.lots + 1)
 
         existingBuildingKinds =
             world.lots
@@ -251,16 +252,16 @@ attemptBuildLot world seed newLot =
 
         anchors =
             world.tilemap
-                |> Dict.toList
-                |> List.filterMap
-                    (\( cellCoordinates, tile ) ->
+                |> Tilemap.toList
+                    (\cell tile ->
                         if tile == targetTile then
-                            Lot.createAnchor newLot cellCoordinates
+                            Lot.createAnchor newLot cell
                                 |> Maybe.andThen (validateAnchor newLot world)
 
                         else
                             Nothing
                     )
+                |> Maybe.values
 
         ( shuffledAnchors, _ ) =
             Random.step (Random.List.shuffle anchors) seed
@@ -691,7 +692,7 @@ validateSpawnConditions world nodeCtx =
                 |> not
 
         reasonableAmountOfTraffic =
-            Dict.size world.tilemap > Dict.size world.cars
+            Tilemap.size world.tilemap > Dict.size world.cars
 
         spawnPositionHasEnoughSpace =
             Dict.values world.cars
