@@ -24,8 +24,8 @@ import Quantity
 import Random
 import Simulation.Pathfinding as Pathfinding
 import Simulation.Round exposing (Round)
-import Simulation.Simulation as Simulation
 import Simulation.Steering as Steering
+import Simulation.Traffic as Traffic
 import Speed exposing (Speed)
 import Utility exposing (toLMPoint2d)
 import Worlds exposing (largeWorld, simpleWorld, worldWithFourWayIntersection, worldWithThreeWayIntersection)
@@ -375,6 +375,6 @@ spawnCars n world aSeed =
     else
         let
             ( nextWorld, nextSeed, _ ) =
-                Simulation.spawnCar aSeed world
+                Traffic.spawnCar aSeed world
         in
         spawnCars (n - 1) nextWorld nextSeed

@@ -10,7 +10,6 @@ module Model.Tilemap exposing
     , cellBoundingBox
     , cellCenterPoint
     , cellFromCoordinates
-    , cellFromIndex
     , cellToString
     , cornerCells
     , curveTopLeft

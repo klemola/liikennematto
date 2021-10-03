@@ -2,12 +2,13 @@ module Main exposing (main)
 
 import Browser
 import Browser.Dom exposing (getViewport)
+import Browser.Events as Events
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Message exposing (Message(..))
 import Model.Geometry as Geometry
-import Model.Liikennematto as Liikennematto exposing (Liikennematto)
+import Model.Liikennematto as Liikennematto exposing (Liikennematto, SimulationState(..))
 import Model.Tilemap as Tilemap
 import Random
 import Render
@@ -45,6 +46,19 @@ initCmd seed =
 update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
 update msg model =
     case msg of
+        VisibilityChanged newVisibility ->
+            ( { model
+                | simulation =
+                    case newVisibility of
+                        Events.Visible ->
+                            model.simulation
+
+                        Events.Hidden ->
+                            Paused
+              }
+            , Cmd.none
+            )
+
         ResizeWindow width height ->
             ( { model
                 | screen =
