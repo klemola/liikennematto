@@ -40,6 +40,7 @@ import Model.Tilemap as Tilemap
         , OrthogonalDirection(..)
         , Tile
         , Tilemap
+        , TilemapChange
         , tileSize
         )
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLights)
@@ -70,22 +71,31 @@ canBuildRoadAt cell world =
     List.all hasLowComplexity Tilemap.diagonalDirections
 
 
-buildRoadAt : Cell -> World -> World
+buildRoadAt : Cell -> World -> ( World, TilemapChange )
 buildRoadAt cell world =
-    updateTilemap cell (Tilemap.addTile cell) world
-
-
-removeRoadAt : Cell -> World -> World
-removeRoadAt cell world =
-    updateTilemap cell (Tilemap.removeTile cell) world
-
-
-updateTilemap : Cell -> (Tilemap -> Tilemap) -> World -> World
-updateTilemap cell tilemapChangeFn world =
     let
-        nextTilemap =
-            tilemapChangeFn world.tilemap
+        tilemapChange =
+            Tilemap.addTile cell world.tilemap
+    in
+    ( worldAfterTilemapChange cell tilemapChange.nextTilemap world
+    , tilemapChange
+    )
 
+
+removeRoadAt : Cell -> World -> ( World, TilemapChange )
+removeRoadAt cell world =
+    let
+        tilemapChange =
+            Tilemap.removeTile cell world.tilemap
+    in
+    ( worldAfterTilemapChange cell tilemapChange.nextTilemap world
+    , tilemapChange
+    )
+
+
+worldAfterTilemapChange : Cell -> Tilemap -> World -> World
+worldAfterTilemapChange cell nextTilemap world =
+    let
         nextLots =
             Dict.filter
                 (\_ lot ->

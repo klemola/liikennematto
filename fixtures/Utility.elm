@@ -31,7 +31,7 @@ tilemapFromCoordinates cellCoordinates =
         (\coords acc ->
             case Tilemap.cellFromCoordinates coords of
                 Just cell ->
-                    Tilemap.addTile cell acc
+                    Tilemap.addTile cell acc |> .nextTilemap
 
                 Nothing ->
                     acc
@@ -50,5 +50,6 @@ worldFromTilemap tilemap =
                 World.empty
                     |> (\world -> { world | tilemap = tilemap })
                     |> Infrastructure.buildRoadAt cell
+                    |> Tuple.first
             )
         |> Maybe.withDefault World.empty

@@ -4,6 +4,7 @@ module Model.Tilemap exposing
     , OrthogonalDirection(..)
     , Tile
     , Tilemap
+    , TilemapChange
     , addTile
     , boundingBox
     , cellBottomLeftCorner
@@ -77,6 +78,12 @@ type alias CellCoordinates =
     ( Int, Int )
 
 
+type alias TilemapChange =
+    { nextTilemap : Tilemap
+    , changedCells : List Cell
+    }
+
+
 type OrthogonalDirection
     = Up
     | Right
@@ -126,13 +133,13 @@ empty =
     Tilemap (Array.initialize arrSize (always emptyTile))
 
 
-addTile : Cell -> Tilemap -> Tilemap
+addTile : Cell -> Tilemap -> TilemapChange
 addTile cell tilemap =
     -- Use a placeholder tile that will changed by the mask
     applyMask ( cell, horizontalRoad ) tilemap
 
 
-removeTile : Cell -> Tilemap -> Tilemap
+removeTile : Cell -> Tilemap -> TilemapChange
 removeTile cell tilemap =
     applyMask ( cell, emptyTile ) tilemap
 
@@ -228,7 +235,7 @@ type alias OrthogonalNeighbors =
     }
 
 
-applyMask : ( Cell, Tile ) -> Tilemap -> Tilemap
+applyMask : ( Cell, Tile ) -> Tilemap -> TilemapChange
 applyMask changes tilemap =
     let
         ( changedCell, _ ) =
@@ -244,9 +251,12 @@ applyMask changes tilemap =
                     , nextOrthogonalTile Right changedCell tilemap
                     , nextOrthogonalTile Down changedCell tilemap
                     ]
+
+        acc =
+            TilemapChange tilemap []
     in
     List.foldl
-        (\( cellToCheck, currentTile ) nextTilemap ->
+        (\( cellToCheck, currentTile ) { nextTilemap, changedCells } ->
             let
                 nextTile =
                     if currentTile /= emptyTile then
@@ -254,10 +264,23 @@ applyMask changes tilemap =
 
                     else
                         emptyTile
+
+                -- The origin or "center" tile was removed by player action
+                originWasRemoved =
+                    cellToCheck == changedCell && nextTile == emptyTile
+
+                nextChangedCells =
+                    if currentTile /= nextTile || originWasRemoved then
+                        cellToCheck :: changedCells
+
+                    else
+                        changedCells
             in
-            nextTilemap |> replaceTile cellToCheck nextTile
+            { nextTilemap = nextTilemap |> replaceTile cellToCheck nextTile
+            , changedCells = nextChangedCells
+            }
         )
-        tilemap
+        acc
         potentiallyChangedCells
 
 
