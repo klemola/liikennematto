@@ -36,8 +36,11 @@ update msg model =
 
         AddTile cell ->
             let
-                worldWithTilemapChange =
+                ( worldWithTilemapChange, tilemapChange ) =
                     Infrastructure.buildRoadAt cell model.world
+
+                _ =
+                    Debug.log "add tile -> changed cells" tilemapChange.changedCells
 
                 nextWorld =
                     { worldWithTilemapChange | cars = Traffic.rerouteCarsIfNeeded worldWithTilemapChange }
@@ -48,8 +51,11 @@ update msg model =
 
         RemoveTile cell ->
             let
-                worldWithTilemapChange =
+                ( worldWithTilemapChange, tilemapChange ) =
                     Infrastructure.removeRoadAt cell model.world
+
+                _ =
+                    Debug.log "remove tile -> changed cells" tilemapChange.changedCells
 
                 nextWorld =
                     { worldWithTilemapChange | cars = Traffic.rerouteCarsIfNeeded worldWithTilemapChange }
