@@ -136,7 +136,7 @@ tileOverlay { glowColor, cell, world, tool } =
 
 choosePrimaryAction : Cell -> Tool -> World -> Message
 choosePrimaryAction cell tool world =
-    case ( tool, Tilemap.tileAt cell world.tilemap ) of
+    case ( tool, Tilemap.tileAt world.tilemap cell ) of
         ( SmartConstruction, _ ) ->
             let
                 alreadyExists =

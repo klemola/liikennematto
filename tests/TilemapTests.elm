@@ -32,7 +32,7 @@ suite =
             [ test "Creates an intersection with compatible tiles"
                 (\_ ->
                     Tilemap.cellFromCoordinates ( 2, 1 )
-                        |> Maybe.map (\cell -> Tilemap.tileAt cell tilemapThatResemblesAIntersection)
+                        |> Maybe.map (Tilemap.tileAt tilemapThatResemblesAIntersection)
                         |> Maybe.map
                             (\tile ->
                                 tile == Just Tilemap.intersectionTDown
@@ -43,7 +43,7 @@ suite =
             , test "Creates a curve with compatible tiles"
                 (\_ ->
                     Tilemap.cellFromCoordinates ( 1, 1 )
-                        |> Maybe.map (\cell -> Tilemap.tileAt cell tilemapThatResemblesACurve)
+                        |> Maybe.map (Tilemap.tileAt tilemapThatResemblesACurve)
                         |> Maybe.map
                             (\tile ->
                                 tile == Just Tilemap.curveTopLeft

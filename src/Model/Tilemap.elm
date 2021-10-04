@@ -127,36 +127,23 @@ empty =
 
 
 addTile : Cell -> Tilemap -> Tilemap
-addTile cell (Tilemap tilemap) =
-    let
-        idx =
-            indexFromCell cell
-
-        tiles =
-            tilemap |> Array.set idx horizontalRoad
-    in
-    Tilemap tiles |> applyMask
+addTile cell tilemap =
+    -- Use a placeholder tile that will changed by the mask
+    applyMask ( cell, horizontalRoad ) tilemap
 
 
 removeTile : Cell -> Tilemap -> Tilemap
-removeTile cell (Tilemap tilemap) =
-    let
-        idx =
-            indexFromCell cell
-
-        tiles =
-            tilemap |> Array.set idx emptyTile
-    in
-    Tilemap tiles |> applyMask
+removeTile cell tilemap =
+    applyMask ( cell, emptyTile ) tilemap
 
 
-tileAt : Cell -> Tilemap -> Maybe Tile
-tileAt cell (Tilemap tilemap) =
+tileAt : Tilemap -> Cell -> Maybe Tile
+tileAt (Tilemap tilemapContents) cell =
     let
         idx =
             indexFromCell cell
     in
-    Array.get idx tilemap
+    Array.get idx tilemapContents
         |> Maybe.andThen
             (\tile ->
                 if tile == emptyTile then
@@ -180,11 +167,11 @@ intersects testBB tilemap =
 
 exists : Cell -> Tilemap -> Bool
 exists cell tilemap =
-    tileAt cell tilemap |> Maybe.isJust
+    tileAt tilemap cell |> Maybe.isJust
 
 
 toList : (Cell -> Tile -> a) -> Tilemap -> List a
-toList mapperFn (Tilemap tilemap) =
+toList mapperFn (Tilemap tilemapContents) =
     let
         -- Keep track of the array index, which Array.foldl does not
         initialAcc =
@@ -208,13 +195,13 @@ toList mapperFn (Tilemap tilemap) =
                     }
                 )
                 initialAcc
-                tilemap
+                tilemapContents
     in
     mappedAcc.acc
 
 
 size : Tilemap -> Int
-size (Tilemap tilemap) =
+size (Tilemap tilemapContents) =
     Array.foldl
         (\tile count ->
             if tile /= emptyTile then
@@ -224,7 +211,7 @@ size (Tilemap tilemap) =
                 count
         )
         0
-        tilemap
+        tilemapContents
 
 
 
@@ -233,46 +220,72 @@ size (Tilemap tilemap) =
 --
 
 
-type alias ParallelNeighbors =
-    { north : Bool
-    , west : Bool
-    , east : Bool
-    , south : Bool
+type alias OrthogonalNeighbors =
+    { up : Bool
+    , left : Bool
+    , right : Bool
+    , down : Bool
     }
 
 
-applyMask : Tilemap -> Tilemap
-applyMask tilemap =
+applyMask : ( Cell, Tile ) -> Tilemap -> Tilemap
+applyMask changes tilemap =
     let
-        (Tilemap arr) =
-            tilemap
+        ( changedCell, _ ) =
+            changes
 
-        tiles =
-            Array.indexedMap
-                (\idx tile ->
-                    -- The Cell construction is valid as long as the tilemap itself is valid
-                    if tile /= emptyTile then
-                        cellFromIndex idx |> Maybe.unwrap emptyTile (chooseTile tilemap)
+        potentiallyChangedCells =
+            -- the changes are not applied to the tilemap (yet), so use them directly
+            changes
+                -- check the neighbors based on the existing tilemap
+                :: Maybe.values
+                    [ nextOrthogonalTile Up changedCell tilemap
+                    , nextOrthogonalTile Left changedCell tilemap
+                    , nextOrthogonalTile Right changedCell tilemap
+                    , nextOrthogonalTile Down changedCell tilemap
+                    ]
+    in
+    List.foldl
+        (\( cellToCheck, currentTile ) nextTilemap ->
+            let
+                nextTile =
+                    if currentTile /= emptyTile then
+                        chooseTile nextTilemap cellToCheck
 
                     else
-                        tile
-                )
-                arr
+                        emptyTile
+            in
+            nextTilemap |> replaceTile cellToCheck nextTile
+        )
+        tilemap
+        potentiallyChangedCells
+
+
+nextOrthogonalTile : OrthogonalDirection -> Cell -> Tilemap -> Maybe ( Cell, Tile )
+nextOrthogonalTile dir cell tilemap =
+    let
+        maybeCell =
+            nextOrthogonalCell dir cell
+
+        maybeTile =
+            maybeCell |> Maybe.andThen (tileAt tilemap)
     in
-    Tilemap tiles
+    Maybe.map2 Tuple.pair
+        maybeCell
+        maybeTile
 
 
 chooseTile : Tilemap -> Cell -> Tile
 chooseTile tilemap origin =
     let
-        parallelTiles =
-            { north = hasOrthogonalNeighborAt Up origin tilemap
-            , west = hasOrthogonalNeighborAt Left origin tilemap
-            , east = hasOrthogonalNeighborAt Right origin tilemap
-            , south = hasOrthogonalNeighborAt Down origin tilemap
+        orthogonalNeighbors =
+            { up = hasOrthogonalNeighborAt Up origin tilemap
+            , left = hasOrthogonalNeighborAt Left origin tilemap
+            , right = hasOrthogonalNeighborAt Right origin tilemap
+            , down = hasOrthogonalNeighborAt Down origin tilemap
             }
     in
-    fourBitBitmask parallelTiles
+    fourBitBitmask orthogonalNeighbors
 
 
 hasOrthogonalNeighborAt : OrthogonalDirection -> Cell -> Tilemap -> Bool
@@ -280,19 +293,31 @@ hasOrthogonalNeighborAt dir cell tilemap =
     nextOrthogonalCell dir cell |> Maybe.unwrap False (\neighborCell -> exists neighborCell tilemap)
 
 
+replaceTile : Cell -> Tile -> Tilemap -> Tilemap
+replaceTile cell tile (Tilemap tilemapContents) =
+    let
+        idx =
+            indexFromCell cell
+
+        tiles =
+            tilemapContents |> Array.set idx tile
+    in
+    Tilemap tiles
+
+
 {-| Calculates tile number (ID) based on surrounding tiles
 
-    North = 2^0 = 1
-    West = 2^1 = 2
-    East = 2^2 = 4
-    South = 2^3 = 8
+    Up = 2^0 = 1
+    Left = 2^1 = 2
+    Right = 2^2 = 4
+    Down = 2^3 = 8
 
-    e.g. tile bordered by tiles in north and east directions 1*1 + 2*0 + 4*1 + 8*0 = 0101 = 5
+    e.g. tile bordered by tiles in Up and Right directions 1*1 + 2*0 + 4*1 + 8*0 = 0101 = 5
 
 -}
-fourBitBitmask : ParallelNeighbors -> Int
-fourBitBitmask { north, west, east, south } =
-    1 * boolToBinary north + 2 * boolToBinary west + 4 * boolToBinary east + 8 * boolToBinary south
+fourBitBitmask : OrthogonalNeighbors -> Int
+fourBitBitmask { up, left, right, down } =
+    1 * boolToBinary up + 2 * boolToBinary left + 4 * boolToBinary right + 8 * boolToBinary down
 
 
 boolToBinary : Bool -> Int

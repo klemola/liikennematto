@@ -64,7 +64,7 @@ canBuildRoadAt cell world =
 
         hasLowComplexity diagonalDirection =
             Tilemap.cornerCells diagonalDirection cell
-                |> List.filterMap (\c -> Tilemap.tileAt c world.tilemap)
+                |> List.filterMap (Tilemap.tileAt world.tilemap)
                 |> withinAllowedComplexity
     in
     List.all hasLowComplexity Tilemap.diagonalDirections
@@ -102,7 +102,7 @@ updateTilemap cell tilemapChangeFn world =
 
 hasValidAnchorCell : Tilemap -> Lot -> Bool
 hasValidAnchorCell tilemap lot =
-    case Tilemap.tileAt lot.anchor.anchorCell tilemap of
+    case Tilemap.tileAt tilemap lot.anchor.anchorCell of
         Just tile ->
             tile == Tilemap.horizontalRoad || tile == Tilemap.verticalRoad
 
@@ -368,7 +368,7 @@ connectionsByTileEntryDirection tilemap cell tile direction =
 
         isStopgapTile =
             Tilemap.nextOrthogonalCell direction cell
-                |> Maybe.andThen (\nextCell -> Tilemap.tileAt nextCell tilemap)
+                |> Maybe.andThen (Tilemap.tileAt tilemap)
                 |> Maybe.unwrap False (hasStopgapInbetween tile)
 
         ( startConnectionKind, endConnectionKind ) =

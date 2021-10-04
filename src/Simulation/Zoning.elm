@@ -95,7 +95,7 @@ isNotAtTheEndOfARoad world { anchorCell } =
             (\orthogonalDirection ->
                 case
                     Tilemap.nextOrthogonalCell orthogonalDirection anchorCell
-                        |> Maybe.andThen (\cell -> Tilemap.tileAt cell world.tilemap)
+                        |> Maybe.andThen (Tilemap.tileAt world.tilemap)
                 of
                     Just neighbor ->
                         neighbor == Tilemap.horizontalRoad || neighbor == Tilemap.verticalRoad
