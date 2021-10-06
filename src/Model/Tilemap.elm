@@ -80,8 +80,18 @@ type alias CellCoordinates =
 
 type alias TilemapChange =
     { nextTilemap : Tilemap
-    , changedCells : List Cell
+    , changedCells : ChangedCells
     }
+
+
+type alias ChangedCells =
+    List ( Cell, TileChange )
+
+
+type TileChange
+    = Add
+    | Remove
+    | Change
 
 
 type OrthogonalDirection
@@ -135,13 +145,12 @@ empty =
 
 addTile : Cell -> Tilemap -> TilemapChange
 addTile cell tilemap =
-    -- Use a placeholder tile that will changed by the mask
-    applyMask ( cell, horizontalRoad ) tilemap
+    applyMask cell Add tilemap
 
 
 removeTile : Cell -> Tilemap -> TilemapChange
 removeTile cell tilemap =
-    applyMask ( cell, emptyTile ) tilemap
+    applyMask cell Remove tilemap
 
 
 tileAt : Tilemap -> Cell -> Maybe Tile
@@ -227,30 +236,20 @@ size (Tilemap tilemapContents) =
 --
 
 
-type alias OrthogonalNeighbors =
-    { up : Bool
-    , left : Bool
-    , right : Bool
-    , down : Bool
-    }
-
-
-applyMask : ( Cell, Tile ) -> Tilemap -> TilemapChange
-applyMask changes tilemap =
+applyMask : Cell -> TileChange -> Tilemap -> TilemapChange
+applyMask origin tileChange tilemap =
     let
-        ( changedCell, _ ) =
-            changes
+        originTile =
+            tileAt tilemap origin |> Maybe.withDefault emptyTile
 
         potentiallyChangedCells =
-            -- the changes are not applied to the tilemap (yet), so use them directly
-            changes
-                -- check the neighbors based on the existing tilemap
-                :: Maybe.values
-                    [ nextOrthogonalTile Up changedCell tilemap
-                    , nextOrthogonalTile Left changedCell tilemap
-                    , nextOrthogonalTile Right changedCell tilemap
-                    , nextOrthogonalTile Down changedCell tilemap
-                    ]
+            Maybe.values
+                [ Just ( origin, originTile )
+                , nextOrthogonalTile Up origin tilemap
+                , nextOrthogonalTile Left origin tilemap
+                , nextOrthogonalTile Right origin tilemap
+                , nextOrthogonalTile Down origin tilemap
+                ]
 
         acc =
             TilemapChange tilemap []
@@ -259,29 +258,52 @@ applyMask changes tilemap =
         (\( cellToCheck, currentTile ) { nextTilemap, changedCells } ->
             let
                 nextTile =
-                    if currentTile /= emptyTile then
-                        chooseTile nextTilemap cellToCheck
-
-                    else
+                    if cellToCheck == origin && tileChange == Remove then
                         emptyTile
 
-                -- The origin or "center" tile was removed by player action
-                originWasRemoved =
-                    cellToCheck == changedCell && nextTile == emptyTile
-
-                nextChangedCells =
-                    if currentTile /= nextTile || originWasRemoved then
-                        cellToCheck :: changedCells
-
                     else
-                        changedCells
+                        chooseTile nextTilemap cellToCheck
+
+                cellChange =
+                    CellChange cellToCheck currentTile nextTile
             in
             { nextTilemap = nextTilemap |> replaceTile cellToCheck nextTile
-            , changedCells = nextChangedCells
+            , changedCells = updateChangedCells cellChange changedCells
             }
         )
         acc
         potentiallyChangedCells
+
+
+type alias CellChange =
+    { cell : Cell
+    , currentTile : Tile
+    , nextTile : Tile
+    }
+
+
+updateChangedCells : CellChange -> ChangedCells -> ChangedCells
+updateChangedCells { cell, currentTile, nextTile } changedCells =
+    let
+        tileChange =
+            if currentTile == emptyTile && nextTile /= emptyTile then
+                Just Add
+
+            else if currentTile /= emptyTile && nextTile == emptyTile then
+                Just Remove
+
+            else if currentTile /= nextTile then
+                Just Change
+
+            else
+                Nothing
+    in
+    case tileChange of
+        Just change ->
+            ( cell, change ) :: changedCells
+
+        Nothing ->
+            changedCells
 
 
 nextOrthogonalTile : OrthogonalDirection -> Cell -> Tilemap -> Maybe ( Cell, Tile )
@@ -326,6 +348,14 @@ replaceTile cell tile (Tilemap tilemapContents) =
             tilemapContents |> Array.set idx tile
     in
     Tilemap tiles
+
+
+type alias OrthogonalNeighbors =
+    { up : Bool
+    , left : Bool
+    , right : Bool
+    , down : Bool
+    }
 
 
 {-| Calculates tile number (ID) based on surrounding tiles
