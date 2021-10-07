@@ -7,6 +7,8 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Message exposing (Message(..))
+import Model.ActiveAnimations as Animations
+import Model.Animation as Animation
 import Model.Geometry as Geometry
 import Model.Liikennematto as Liikennematto exposing (Liikennematto, SimulationState(..))
 import Model.Tilemap as Tilemap
@@ -45,6 +47,15 @@ initCmd seed =
 
 update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
 update msg model =
+    updateBase msg model
+        |> withUpdate updateAnimations msg
+        |> withUpdate Simulation.update msg
+        |> withUpdate UI.update msg
+
+
+updateBase : Message -> Liikennematto -> ( Liikennematto, Cmd msg )
+updateBase msg model =
+    -- Messages that don't comfortably fall into any other category; miscellanous
     case msg of
         VisibilityChanged newVisibility ->
             ( { model
@@ -76,14 +87,46 @@ update msg model =
             )
 
         _ ->
-            let
-                ( modelWithSimulationChanges, simulationCmd ) =
-                    Simulation.update msg model
+            ( model, Cmd.none )
 
-                ( modelWithUIChanges, uiCmd ) =
-                    UI.update msg modelWithSimulationChanges
+
+updateAnimations : Message -> Liikennematto -> ( Liikennematto, Cmd msg )
+updateAnimations msg model =
+    case msg of
+        AnimationFrameReceived delta ->
+            ( { model | animations = model.animations |> Animations.update delta }
+            , Cmd.none
+            )
+
+        TilemapChanged tilemapChange ->
+            let
+                animations =
+                    Animation.fromTilemapChange tilemapChange
+
+                nextAnimations =
+                    model.animations
+                        |> Animations.cancel Animation.isTileUpdate
+                        |> Animations.add animations
             in
-            ( modelWithUIChanges, Cmd.batch [ simulationCmd, uiCmd ] )
+            ( { model | animations = nextAnimations }
+            , Cmd.none
+            )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+withUpdate :
+    (Message -> Liikennematto -> ( Liikennematto, Cmd Message ))
+    -> Message
+    -> ( Liikennematto, Cmd Message )
+    -> ( Liikennematto, Cmd Message )
+withUpdate updateFn msg ( model, cmds ) =
+    let
+        ( nextModel, cmd ) =
+            updateFn msg model
+    in
+    ( nextModel, Cmd.batch [ cmds, cmd ] )
 
 
 view : Liikennematto -> Browser.Document Message
