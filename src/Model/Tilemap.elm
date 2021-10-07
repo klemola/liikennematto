@@ -3,6 +3,7 @@ module Model.Tilemap exposing
     , DiagonalDirection(..)
     , OrthogonalDirection(..)
     , Tile
+    , TileChange(..)
     , Tilemap
     , TilemapChange
     , addTile

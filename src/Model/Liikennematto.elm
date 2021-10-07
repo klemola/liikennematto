@@ -7,6 +7,7 @@ module Model.Liikennematto exposing
     )
 
 import Element
+import Model.ActiveAnimations as Animations exposing (ActiveAnimations)
 import Model.World exposing (World)
 import Random
 import Worlds exposing (defaultWorld)
@@ -17,8 +18,9 @@ type alias Liikennematto =
     , screen : Screen
     , seed : Random.Seed
     , simulation : SimulationState
-    , carSpawnQueue : CarSpawnQueue
     , tool : Tool
+    , carSpawnQueue : CarSpawnQueue
+    , animations : ActiveAnimations
     , showDebugPanel : Bool
     , showRoadNetwork : Bool
     , showCarDebugVisuals : Bool
@@ -64,8 +66,9 @@ new =
         }
     , seed = initialSeed
     , simulation = Running
-    , carSpawnQueue = 0
     , tool = SmartConstruction
+    , carSpawnQueue = 0
+    , animations = Animations.empty
     , showDebugPanel = False
     , showRoadNetwork = False
     , showCarDebugVisuals = False

@@ -1,6 +1,7 @@
 module Subscriptions exposing (subscriptions)
 
 import Browser.Events as Events
+import Duration
 import Message exposing (Message(..))
 import Model.Liikennematto exposing (Liikennematto, SimulationState(..))
 import Time
@@ -35,7 +36,7 @@ subscriptions { simulation } =
     else
         Sub.batch
             (defaultSubs
-                ++ [ Events.onAnimationFrameDelta UpdateTraffic
+                ++ [ Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameReceived)
                    , Time.every environmentUpdateFrequency UpdateEnvironment
                    , Time.every dequeueFrequency CheckQueues
                    , Time.every carStatusCheckFrequency CheckCarStatus

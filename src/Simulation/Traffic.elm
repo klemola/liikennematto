@@ -9,7 +9,7 @@ import BoundingBox2d
 import Dict
 import Dict.Extra as Dict
 import Direction2d
-import Duration
+import Duration exposing (Duration)
 import Length
 import Model.Car as Car exposing (Car, Cars, Status(..))
 import Model.Entity as Entity
@@ -34,7 +34,7 @@ updateTraffic :
     { updateQueue : List Car
     , seed : Random.Seed
     , world : World
-    , delta : Float
+    , delta : Duration
     }
     -> ( World, Random.Seed )
 updateTraffic { updateQueue, seed, world, delta } =
@@ -137,12 +137,9 @@ chooseNextConnection seed world car =
             ( Steering.markAsConfused car, seed )
 
 
-updateCar : Float -> Car -> Car
+updateCar : Duration -> Car -> Car
 updateCar delta car =
     let
-        deltaDuration =
-            Duration.milliseconds delta
-
         steering =
             -- TODO: implement proper path following steering to use for movement
             Steering.noSteering
@@ -151,7 +148,7 @@ updateCar delta car =
             car.position
                 |> Point2d.translateIn
                     (Direction2d.fromAngle car.orientation)
-                    (car.velocity |> Quantity.for deltaDuration)
+                    (car.velocity |> Quantity.for delta)
 
         nextOrientation =
             case Polyline2d.vertices car.localPath of
@@ -164,13 +161,13 @@ updateCar delta car =
 
         nextVelocity =
             car.velocity
-                |> Quantity.plus (car.acceleration |> Quantity.for deltaDuration)
+                |> Quantity.plus (car.acceleration |> Quantity.for delta)
                 |> Quantity.clamp Quantity.zero Steering.maxVelocity
 
         nextRotation =
             case steering.angular of
                 Just angularAcceleration ->
-                    car.rotation |> Quantity.plus (angularAcceleration |> Quantity.for deltaDuration)
+                    car.rotation |> Quantity.plus (angularAcceleration |> Quantity.for delta)
 
                 Nothing ->
                     Quantity.zero

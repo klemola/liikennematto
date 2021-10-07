@@ -1,16 +1,19 @@
 module Message exposing (Message(..))
 
 import Browser.Events exposing (Visibility)
+import Duration exposing (Duration)
 import Model.Liikennematto exposing (SimulationState, Tool)
-import Model.Tilemap exposing (Cell)
+import Model.Tilemap exposing (Cell, TilemapChange)
 import Time
 
 
 type Message
-    = ResizeWindow Int Int
+    = NoOp
+    | ResizeWindow Int Int
     | VisibilityChanged Visibility
+    | AnimationFrameReceived Duration
+    | TilemapChanged TilemapChange
     | SetSimulation SimulationState
-    | UpdateTraffic Float
     | UpdateEnvironment Time.Posix
     | GenerateEnvironment ()
     | CheckQueues Time.Posix
@@ -25,4 +28,3 @@ type Message
     | ToggleShowCarDebugVisuals
     | ShowDotString String
     | HideDotString
-    | NoOp

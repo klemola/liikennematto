@@ -6,7 +6,7 @@ module Simulation.Simulation exposing
 import Dict
 import Message exposing (Message(..))
 import Model.Liikennematto exposing (Liikennematto, SimulationState(..), Tool(..))
-import Model.Tilemap as Tilemap
+import Model.Tilemap as Tilemap exposing (TilemapChange)
 import Model.TrafficLight as TrafficLight
 import Model.World as World exposing (World)
 import Process
@@ -31,48 +31,7 @@ initCmd seed =
 update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
 update msg model =
     case msg of
-        SetSimulation simulation ->
-            ( { model | simulation = simulation }, Cmd.none )
-
-        AddTile cell ->
-            let
-                ( worldWithTilemapChange, tilemapChange ) =
-                    Infrastructure.buildRoadAt cell model.world
-
-                _ =
-                    Debug.log "add tile -> changed cells" tilemapChange.changedCells
-
-                nextWorld =
-                    { worldWithTilemapChange | cars = Traffic.rerouteCarsIfNeeded worldWithTilemapChange }
-            in
-            ( { model | world = nextWorld }
-            , Cmd.none
-            )
-
-        RemoveTile cell ->
-            let
-                ( worldWithTilemapChange, tilemapChange ) =
-                    Infrastructure.removeRoadAt cell model.world
-
-                _ =
-                    Debug.log "remove tile -> changed cells" tilemapChange.changedCells
-
-                nextWorld =
-                    { worldWithTilemapChange | cars = Traffic.rerouteCarsIfNeeded worldWithTilemapChange }
-            in
-            ( { model | world = nextWorld }
-            , Cmd.none
-            )
-
-        ResetWorld ->
-            ( { model
-                | tool = SmartConstruction
-                , world = World.empty
-              }
-            , Cmd.none
-            )
-
-        UpdateTraffic rafDelta ->
+        AnimationFrameReceived delta ->
             let
                 cars =
                     Dict.values model.world.cars
@@ -82,12 +41,47 @@ update msg model =
                         { updateQueue = cars
                         , seed = model.seed
                         , world = model.world
-                        , delta = rafDelta
+                        , delta = delta
                         }
             in
             ( { model
                 | seed = nextSeed
                 , world = nextWorld
+              }
+            , Cmd.none
+            )
+
+        SetSimulation simulation ->
+            ( { model | simulation = simulation }, Cmd.none )
+
+        AddTile cell ->
+            let
+                ( worldWithTilemapChange, tilemapChange ) =
+                    Infrastructure.buildRoadAt cell model.world
+
+                nextWorld =
+                    { worldWithTilemapChange | cars = Traffic.rerouteCarsIfNeeded worldWithTilemapChange }
+            in
+            ( { model | world = nextWorld }
+            , tilemapChangedEffects tilemapChange
+            )
+
+        RemoveTile cell ->
+            let
+                ( worldWithTilemapChange, tilemapChange ) =
+                    Infrastructure.removeRoadAt cell model.world
+
+                nextWorld =
+                    { worldWithTilemapChange | cars = Traffic.rerouteCarsIfNeeded worldWithTilemapChange }
+            in
+            ( { model | world = nextWorld }
+            , tilemapChangedEffects tilemapChange
+            )
+
+        ResetWorld ->
+            ( { model
+                | tool = SmartConstruction
+                , world = World.empty
               }
             , Cmd.none
             )
@@ -155,6 +149,11 @@ generateEnvironmentAfterDelay seed =
         |> toFloat
         |> Process.sleep
         |> Task.perform GenerateEnvironment
+
+
+tilemapChangedEffects : TilemapChange -> Cmd Message
+tilemapChangedEffects tilemapChange =
+    Task.succeed tilemapChange |> Task.perform TilemapChanged
 
 
 
