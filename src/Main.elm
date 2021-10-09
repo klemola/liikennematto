@@ -159,7 +159,7 @@ render model =
             else
                 Element.clip
     in
-    Render.view model.world debugLayers
+    Render.view model.world model.animations debugLayers
         |> Element.html
         -- render + overlay
         |> Element.el
