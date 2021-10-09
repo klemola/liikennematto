@@ -2,10 +2,12 @@ module Render exposing (view)
 
 import Angle
 import Color
-import Dict
+import Dict exposing (Dict)
 import Graph exposing (Node)
 import Html exposing (Html)
 import Maybe.Extra as Maybe
+import Model.ActiveAnimations as Animations exposing (ActiveAnimations)
+import Model.Animation as Animation exposing (Animation)
 import Model.Car as Car exposing (Car, CarKind(..), Cars)
 import Model.Geometry exposing (LMPoint2d, pointToPixels, toPixelsValue)
 import Model.Lot exposing (BuildingKind(..), Lot, Lots)
@@ -87,14 +89,36 @@ nothing =
     Svg.g [] []
 
 
-view : World -> DebugLayers -> Html msg
-view { tilemap, cars, lots, roadNetwork, trafficLights } debugLayers =
+styles : Svg msg
+styles =
+    Svg.style [] [ Svg.text Animation.keyframes ]
+
+
+view : World -> ActiveAnimations -> DebugLayers -> Html msg
+view { tilemap, cars, lots, roadNetwork, trafficLights } animations debugLayers =
+    let
+        -- This works as long as the only animation kind is "TileUpdate"
+        tileAnimations =
+            animations
+                |> Animations.toList
+                |> List.foldl
+                    (\animation acc ->
+                        case Animation.toCell animation of
+                            Just cell ->
+                                Dict.insert (Tilemap.cellToString cell) animation acc
+
+                            Nothing ->
+                                acc
+                    )
+                    Dict.empty
+    in
     Svg.svg
         [ Attributes.width tilemapSizeScaledStr
         , Attributes.height tilemapSizeScaledStr
         , Attributes.viewBox <| "0 0 " ++ tilemapSizeScaledStr ++ " " ++ tilemapSizeScaledStr
         ]
-        ([ Svg.Lazy.lazy renderTilemap tilemap
+        ([ styles
+         , Svg.Lazy.lazy2 renderTilemap tilemap tileAnimations
          , Svg.Lazy.lazy renderLots lots
          , renderCars cars
          , Svg.Lazy.lazy renderTrafficLights trafficLights
@@ -113,8 +137,8 @@ renderColors =
     }
 
 
-renderTilemap : Tilemap -> Svg msg
-renderTilemap tilemap =
+renderTilemap : Tilemap -> Dict String Animation -> Svg msg
+renderTilemap tilemap tileAnimations =
     tilemap
         |> Tilemap.toList
             (\cell tile ->
@@ -122,7 +146,7 @@ renderTilemap tilemap =
                     tileElement =
                         case tileAsset tile of
                             Just asset ->
-                                renderTile cell asset
+                                renderTile cell asset tileAnimations
 
                             -- The asset is likely found, as the Tilemap only contains valid tiles, so this branch will not be considered
                             Nothing ->
@@ -133,18 +157,41 @@ renderTilemap tilemap =
         |> Svg.Keyed.node "g" []
 
 
-renderTile : Cell -> String -> Svg msg
-renderTile cell asset =
+renderTile : Cell -> String -> Dict String Animation -> Svg msg
+renderTile cell asset tileAnimations =
     let
         { x, y } =
             Tilemap.cellBottomLeftCorner cell |> pointToPixels
+
+        yAdjusted =
+            tilemapSizePixels - tileSizePixels - y
+
+        animationKey =
+            Tilemap.cellToString cell
+
+        animation =
+            tileAnimations
+                |> Dict.get animationKey
+                |> Maybe.map Animation.toStyleString
+                |> Maybe.withDefault ""
+
+        transformOrigin =
+            "transform-origin: "
+                ++ String.fromFloat (x + tileSizePixels / 2)
+                ++ "px "
+                ++ String.fromFloat (yAdjusted + tileSizePixels / 2)
+                ++ "px;"
+
+        style =
+            String.join "" [ transformOrigin, animation ]
     in
     Svg.image
         [ Attributes.xlinkHref ("assets/" ++ asset)
         , Attributes.x (String.fromFloat x)
-        , Attributes.y (String.fromFloat (tilemapSizePixels - tileSizePixels - y))
+        , Attributes.y (String.fromFloat yAdjusted)
         , Attributes.width (String.fromFloat tileSizePixels)
         , Attributes.height (String.fromFloat tileSizePixels)
+        , Attributes.style style
         ]
         []
 

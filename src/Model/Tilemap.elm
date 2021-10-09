@@ -472,7 +472,7 @@ cellToString (Cell coordinates) =
         ( x, y ) =
             coordinates
     in
-    "Cell (" ++ String.fromInt x ++ "," ++ String.fromInt y
+    "Cell (" ++ String.fromInt x ++ "," ++ String.fromInt y ++ ")"
 
 
 horizontalOrthogonalDirections : List OrthogonalDirection

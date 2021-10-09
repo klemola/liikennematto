@@ -1,6 +1,7 @@
 module TilemapTests exposing (suite)
 
 import Expect
+import Maybe.Extra as Maybe
 import Model.Tilemap as Tilemap exposing (Tilemap)
 import Test exposing (Test, describe, test)
 import Utility exposing (tilemapFromCoordinates)
@@ -37,8 +38,9 @@ suite =
                             (\tile ->
                                 tile == Just Tilemap.intersectionTDown
                             )
-                        |> Maybe.withDefault False
-                        |> Expect.true "Expected a T-shaped intersection after the mask is applied."
+                        |> Maybe.unwrap
+                            (Expect.fail "Could not find the tile")
+                            (Expect.true "Expected a T-shaped intersection after the mask is applied.")
                 )
             , test "Creates a curve with compatible tiles"
                 (\_ ->
@@ -48,8 +50,9 @@ suite =
                             (\tile ->
                                 tile == Just Tilemap.curveTopLeft
                             )
-                        |> Maybe.withDefault False
-                        |> Expect.true "Expected a curve road piece after the mask is applied."
+                        |> Maybe.unwrap
+                            (Expect.fail "Could not find the tile")
+                            (Expect.true "Expected a curve road piece after the mask is applied.")
                 )
             ]
         ]
