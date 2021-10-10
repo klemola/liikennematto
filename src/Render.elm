@@ -94,6 +94,15 @@ styles =
     Svg.style [] [ Svg.text Animation.keyframes ]
 
 
+renderColors : { road : Color.Color, terrain : Color.Color, sidewalk : Color.Color, sidewalkEdge : Color.Color }
+renderColors =
+    { road = Color.rgb255 52 65 67
+    , terrain = Color.rgb255 33 191 154
+    , sidewalk = Color.rgb255 191 213 217
+    , sidewalkEdge = Color.rgb255 44 56 58
+    }
+
+
 view : World -> ActiveAnimations -> DebugLayers -> Html msg
 view { tilemap, cars, lots, roadNetwork, trafficLights } animations debugLayers =
     let
@@ -116,6 +125,7 @@ view { tilemap, cars, lots, roadNetwork, trafficLights } animations debugLayers 
         [ Attributes.width tilemapSizeScaledStr
         , Attributes.height tilemapSizeScaledStr
         , Attributes.viewBox <| "0 0 " ++ tilemapSizeScaledStr ++ " " ++ tilemapSizeScaledStr
+        , Attributes.style <| "background-color: " ++ Color.toCssString renderColors.terrain ++ ";"
         ]
         ([ styles
          , Svg.Lazy.lazy2 renderTilemap tilemap tileAnimations
@@ -126,15 +136,6 @@ view { tilemap, cars, lots, roadNetwork, trafficLights } animations debugLayers 
          ]
             ++ renderDebugLayers debugLayers cars roadNetwork
         )
-
-
-renderColors : { road : Color.Color, terrain : Color.Color, sidewalk : Color.Color, sidewalkEdge : Color.Color }
-renderColors =
-    { road = Color.rgb255 52 65 67
-    , terrain = Color.rgb255 33 191 154
-    , sidewalk = Color.rgb255 191 213 217
-    , sidewalkEdge = Color.rgb255 44 56 58
-    }
 
 
 renderTilemap : Tilemap -> Dict String Animation -> Svg msg
