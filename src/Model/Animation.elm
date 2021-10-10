@@ -65,8 +65,12 @@ update delta animation =
     let
         nextElapsed =
             animation.elapsed |> Quantity.plus delta
+
+        paddedDuration =
+            -- Make sure that the animation can be completed
+            animation.duration |> Quantity.plus delta
     in
-    if nextElapsed |> Quantity.greaterThanOrEqualTo animation.duration then
+    if nextElapsed |> Quantity.greaterThan paddedDuration then
         Nothing
 
     else
@@ -137,9 +141,9 @@ keyframes =
     }
 
     @keyframes replace {
-        65%   { transform: scale(1);  filter: blur(0px); opacity: 1;   }
-        66%  { transform: scale(1.1); filter: blur(1px); opacity: 0.9; }
-        100% { transform: scale(1);   filter: blur(0px); opacity: 1;   }
+        65%  { transform: scale(1);   filter: blur(0px); }
+        66%  { transform: scale(1.1); filter: blur(1px); }
+        100% { transform: scale(1);   filter: blur(0px); }
     }
 
     @keyframes disappear {

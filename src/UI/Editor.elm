@@ -111,7 +111,7 @@ overlay world tool =
 
 
 tileOverlay :
-    { glowColor : Color
+    { glowColor : Maybe Color
     , cell : Cell
     , world : World
     , tool : Tool
@@ -121,13 +121,19 @@ tileOverlay { glowColor, cell, world, tool } =
     let
         tileSizePx =
             Element.px tileSizeInPixelsInt
+
+        glow =
+            glowColor
+                |> Maybe.map
+                    (\color ->
+                        [ Border.innerGlow color (tileSizeInPixelsFloat / 10) ]
+                    )
+                |> Maybe.withDefault []
     in
     Element.el
         [ Element.width tileSizePx
         , Element.height tileSizePx
-        , Element.mouseOver
-            [ Border.innerGlow glowColor (tileSizeInPixelsFloat / 4)
-            ]
+        , Element.mouseOver glow
         , Events.onClick (choosePrimaryAction cell tool world)
         , Element.htmlAttribute (CustomEvent.onRightClick <| chooseSecondaryAction cell tool)
         ]
@@ -173,19 +179,13 @@ tileHighlight :
     , selectedTool : Tool
     , cell : Cell
     }
-    -> Color
+    -> Maybe Color
 tileHighlight { world, selectedTool, cell } =
-    case selectedTool of
-        None ->
-            colors.transparent
+    case ( selectedTool, Tilemap.exists cell world.tilemap ) of
+        ( Bulldozer, True ) ->
+            Just colors.danger
 
-        Bulldozer ->
-            colors.danger
-
-        Dynamite ->
-            colors.transparent
-
-        SmartConstruction ->
+        ( SmartConstruction, _ ) ->
             let
                 canBuildHere =
                     Infrastructure.canBuildRoadAt cell world
@@ -194,13 +194,16 @@ tileHighlight { world, selectedTool, cell } =
                     World.hasLot cell world
             in
             if canBuildHere && mightDestroyLot then
-                colors.danger
+                Just colors.danger
 
             else if canBuildHere then
-                colors.target
+                Just colors.target
 
             else
-                colors.notAllowed
+                Just colors.notAllowed
+
+        _ ->
+            Nothing
 
 
 toolbar : Tool -> ControlButtonSize -> Element Message
