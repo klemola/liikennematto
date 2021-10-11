@@ -42,14 +42,4 @@ tilemapFromCoordinates cellCoordinates =
 
 worldFromTilemap : Tilemap -> World
 worldFromTilemap tilemap =
-    tilemap
-        |> Tilemap.toList (\cell _ -> cell)
-        |> List.head
-        |> Maybe.map
-            (\cell ->
-                World.empty
-                    |> (\world -> { world | tilemap = tilemap })
-                    |> Infrastructure.buildRoadAt cell
-                    |> Tuple.first
-            )
-        |> Maybe.withDefault World.empty
+    World.empty |> Infrastructure.createRoadNetwork tilemap

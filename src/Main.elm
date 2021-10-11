@@ -8,7 +8,6 @@ import Element.Background as Background
 import Element.Border as Border
 import Message exposing (Message(..))
 import Model.ActiveAnimations as Animations
-import Model.Animation as Animation
 import Model.Geometry as Geometry
 import Model.Liikennematto as Liikennematto exposing (Liikennematto, SimulationState(..))
 import Model.Tilemap as Tilemap
@@ -48,14 +47,12 @@ initCmd seed =
 update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
 update msg model =
     updateBase msg model
-        |> withUpdate updateAnimations msg
         |> withUpdate Simulation.update msg
         |> withUpdate UI.update msg
 
 
-updateBase : Message -> Liikennematto -> ( Liikennematto, Cmd msg )
+updateBase : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
 updateBase msg model =
-    -- Messages that don't comfortably fall into any other category; miscellanous
     case msg of
         VisibilityChanged newVisibility ->
             ( { model
@@ -86,29 +83,8 @@ updateBase msg model =
             , Cmd.none
             )
 
-        _ ->
-            ( model, Cmd.none )
-
-
-updateAnimations : Message -> Liikennematto -> ( Liikennematto, Cmd msg )
-updateAnimations msg model =
-    case msg of
         AnimationFrameReceived delta ->
             ( { model | animations = model.animations |> Animations.update delta }
-            , Cmd.none
-            )
-
-        TilemapChanged tilemapChange ->
-            let
-                animations =
-                    Animation.fromTilemapChange tilemapChange
-
-                nextAnimations =
-                    model.animations
-                        |> Animations.cancel Animation.isTileUpdate
-                        |> Animations.add animations
-            in
-            ( { model | animations = nextAnimations }
             , Cmd.none
             )
 
@@ -165,7 +141,7 @@ render model =
         |> Element.el
             [ Element.width (Element.px renderedSize)
             , Element.height (Element.px renderedSize)
-            , Element.inFront (UI.Editor.overlay model.world model.tool)
+            , Element.inFront (UI.Editor.overlay model.world model.pendingTilemapChange model.tool)
             , Background.color colors.terrain
             ]
         -- overflow wrapper

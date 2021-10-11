@@ -3,19 +3,18 @@ module Model.Tilemap exposing
     , DiagonalDirection(..)
     , OrthogonalDirection(..)
     , Tile
-    , TileChange(..)
+    , TileOperation(..)
     , Tilemap
     , TilemapChange
     , addTile
     , boundingBox
+    , canBuildRoadAt
     , cellBottomLeftCorner
     , cellBoundingBox
     , cellCenterPoint
     , cellFromCoordinates
     , cellToString
-    , cornerCells
     , curveTopLeft
-    , diagonalDirections
     , empty
     , exists
     , horizontalRoad
@@ -81,15 +80,16 @@ type alias CellCoordinates =
 
 type alias TilemapChange =
     { nextTilemap : Tilemap
+    , origin : Cell
     , changedCells : ChangedCells
     }
 
 
 type alias ChangedCells =
-    List ( Cell, TileChange )
+    List ( CellChange, TileOperation )
 
 
-type TileChange
+type TileOperation
     = Add
     | Remove
     | Change
@@ -187,6 +187,20 @@ exists cell tilemap =
     tileAt tilemap cell |> Maybe.isJust
 
 
+canBuildRoadAt : Cell -> Tilemap -> Bool
+canBuildRoadAt cell tilemap =
+    let
+        withinAllowedComplexity l =
+            List.length l < 3
+
+        hasLowComplexity diagonalDirection =
+            cornerCells diagonalDirection cell
+                |> List.filterMap (tileAt tilemap)
+                |> withinAllowedComplexity
+    in
+    List.all hasLowComplexity diagonalDirections
+
+
 toList : (Cell -> Tile -> a) -> Tilemap -> List a
 toList mapperFn (Tilemap tilemapContents) =
     let
@@ -237,7 +251,7 @@ size (Tilemap tilemapContents) =
 --
 
 
-applyMask : Cell -> TileChange -> Tilemap -> TilemapChange
+applyMask : Cell -> TileOperation -> Tilemap -> TilemapChange
 applyMask origin tileChange tilemap =
     let
         originTile =
@@ -253,7 +267,7 @@ applyMask origin tileChange tilemap =
                 ]
 
         acc =
-            TilemapChange tilemap []
+            TilemapChange tilemap origin []
     in
     List.foldl
         (\( cellToCheck, currentTile ) { nextTilemap, changedCells } ->
@@ -269,6 +283,7 @@ applyMask origin tileChange tilemap =
                     CellChange cellToCheck currentTile nextTile
             in
             { nextTilemap = nextTilemap |> replaceTile cellToCheck nextTile
+            , origin = origin
             , changedCells = updateChangedCells cellChange changedCells
             }
         )
@@ -284,8 +299,11 @@ type alias CellChange =
 
 
 updateChangedCells : CellChange -> ChangedCells -> ChangedCells
-updateChangedCells { cell, currentTile, nextTile } changedCells =
+updateChangedCells cellChange changedCells =
     let
+        { currentTile, nextTile } =
+            cellChange
+
         tileChange =
             if currentTile == emptyTile && nextTile /= emptyTile then
                 Just Add
@@ -301,7 +319,7 @@ updateChangedCells { cell, currentTile, nextTile } changedCells =
     in
     case tileChange of
         Just change ->
-            ( cell, change ) :: changedCells
+            ( cellChange, change ) :: changedCells
 
         Nothing ->
             changedCells

@@ -1,9 +1,8 @@
 module Simulation.Infrastructure exposing
-    ( buildRoadAt
-    , canBuildRoadAt
+    ( applyTilemapChange
     , connectLotToRoadNetwork
+    , createRoadNetwork
     , findNodeReplacement
-    , removeRoadAt
     )
 
 import BoundingBox2d
@@ -57,57 +56,32 @@ import Vector2d
 --
 
 
-canBuildRoadAt : Cell -> World -> Bool
-canBuildRoadAt cell world =
+createRoadNetwork : Tilemap -> World -> World
+createRoadNetwork tilemap world =
     let
-        withinAllowedComplexity l =
-            List.length l < 3
-
-        hasLowComplexity diagonalDirection =
-            Tilemap.cornerCells diagonalDirection cell
-                |> List.filterMap (Tilemap.tileAt world.tilemap)
-                |> withinAllowedComplexity
+        nextWorld =
+            { world | tilemap = tilemap }
     in
-    List.all hasLowComplexity Tilemap.diagonalDirections
+    updateRoadNetwork nextWorld
 
 
-buildRoadAt : Cell -> World -> ( World, TilemapChange )
-buildRoadAt cell world =
-    let
-        tilemapChange =
-            Tilemap.addTile cell world.tilemap
-    in
-    ( worldAfterTilemapChange cell tilemapChange.nextTilemap world
-    , tilemapChange
-    )
-
-
-removeRoadAt : Cell -> World -> ( World, TilemapChange )
-removeRoadAt cell world =
-    let
-        tilemapChange =
-            Tilemap.removeTile cell world.tilemap
-    in
-    ( worldAfterTilemapChange cell tilemapChange.nextTilemap world
-    , tilemapChange
-    )
-
-
-worldAfterTilemapChange : Cell -> Tilemap -> World -> World
-worldAfterTilemapChange cell nextTilemap world =
+applyTilemapChange : TilemapChange -> World -> World
+applyTilemapChange { origin, nextTilemap } world =
     let
         nextLots =
             Dict.filter
                 (\_ lot ->
-                    hasValidAnchorCell nextTilemap lot && not (Lot.inBounds cell lot)
+                    hasValidAnchorCell nextTilemap lot && not (Lot.inBounds origin lot)
                 )
                 world.lots
+
+        nextWorld =
+            { world
+                | tilemap = nextTilemap
+                , lots = nextLots
+            }
     in
-    { world
-        | tilemap = nextTilemap
-        , lots = nextLots
-    }
-        |> updateRoadNetwork
+    updateRoadNetwork nextWorld
 
 
 hasValidAnchorCell : Tilemap -> Lot -> Bool

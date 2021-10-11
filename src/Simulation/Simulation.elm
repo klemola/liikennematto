@@ -4,9 +4,10 @@ module Simulation.Simulation exposing
     )
 
 import Dict
+import Maybe.Extra as Maybe
 import Message exposing (Message(..))
 import Model.Liikennematto exposing (Liikennematto, SimulationState(..), Tool(..))
-import Model.Tilemap as Tilemap exposing (TilemapChange)
+import Model.Tilemap as Tilemap
 import Model.TrafficLight as TrafficLight
 import Model.World as World exposing (World)
 import Process
@@ -54,34 +55,34 @@ update msg model =
         SetSimulation simulation ->
             ( { model | simulation = simulation }, Cmd.none )
 
-        AddTile cell ->
-            let
-                ( worldWithTilemapChange, tilemapChange ) =
-                    Infrastructure.buildRoadAt cell model.world
+        TilemapChanged tilemapChange ->
+            if Maybe.unwrap False ((/=) tilemapChange) model.pendingTilemapChange then
+                -- Not the latest tilemap change (a new change is pending)
+                ( model, Cmd.none )
 
-                nextWorld =
-                    { worldWithTilemapChange | cars = Traffic.rerouteCarsIfNeeded worldWithTilemapChange }
-            in
-            ( { model | world = nextWorld }
-            , tilemapChangedEffects tilemapChange
-            )
+            else
+                let
+                    worldWithTilemapChange =
+                        Infrastructure.applyTilemapChange tilemapChange model.world
 
-        RemoveTile cell ->
-            let
-                ( worldWithTilemapChange, tilemapChange ) =
-                    Infrastructure.removeRoadAt cell model.world
+                    nextCars =
+                        Traffic.rerouteCarsIfNeeded worldWithTilemapChange
 
-                nextWorld =
-                    { worldWithTilemapChange | cars = Traffic.rerouteCarsIfNeeded worldWithTilemapChange }
-            in
-            ( { model | world = nextWorld }
-            , tilemapChangedEffects tilemapChange
-            )
+                    nextWorld =
+                        { worldWithTilemapChange | cars = nextCars }
+                in
+                ( { model
+                    | world = nextWorld
+                    , pendingTilemapChange = Nothing
+                  }
+                , Cmd.none
+                )
 
         ResetWorld ->
             ( { model
                 | tool = SmartConstruction
                 , world = World.empty
+                , pendingTilemapChange = Nothing
               }
             , Cmd.none
             )
@@ -149,11 +150,6 @@ generateEnvironmentAfterDelay seed =
         |> toFloat
         |> Process.sleep
         |> Task.perform GenerateEnvironment
-
-
-tilemapChangedEffects : TilemapChange -> Cmd Message
-tilemapChangedEffects tilemapChange =
-    Task.succeed tilemapChange |> Task.perform TilemapChanged
 
 
 

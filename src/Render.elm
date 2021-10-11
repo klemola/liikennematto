@@ -143,23 +143,13 @@ renderTilemap tilemap tileAnimations =
     tilemap
         |> Tilemap.toList
             (\cell tile ->
-                let
-                    tileElement =
-                        case tileAsset tile of
-                            Just asset ->
-                                renderTile cell asset tileAnimations
-
-                            -- The asset is likely found, as the Tilemap only contains valid tiles, so this branch will not be considered
-                            Nothing ->
-                                nothing
-                in
-                ( Tilemap.cellToString cell, tileElement )
+                ( Tilemap.cellToString cell, renderTile cell tile tileAnimations )
             )
         |> Svg.Keyed.node "g" []
 
 
-renderTile : Cell -> String -> Dict String Animation -> Svg msg
-renderTile cell asset tileAnimations =
+renderTile : Cell -> Tile -> Dict String Animation -> Svg msg
+renderTile cell tile tileAnimations =
     let
         { x, y } =
             Tilemap.cellBottomLeftCorner cell |> pointToPixels
@@ -167,34 +157,44 @@ renderTile cell asset tileAnimations =
         yAdjusted =
             tilemapSizePixels - tileSizePixels - y
 
-        animationKey =
-            Tilemap.cellToString cell
-
         animation =
-            tileAnimations
-                |> Dict.get animationKey
-                |> Maybe.map Animation.toStyleString
-                |> Maybe.withDefault ""
+            Dict.get (Tilemap.cellToString cell) tileAnimations
 
-        transformOrigin =
+        renderedTile =
+            animation
+                |> Maybe.andThen Animation.toTile
+                |> Maybe.withDefault tile
+
+        transformOriginStyleString =
             "transform-origin: "
                 ++ String.fromFloat (x + tileSizePixels / 2)
                 ++ "px "
                 ++ String.fromFloat (yAdjusted + tileSizePixels / 2)
                 ++ "px;"
 
+        animationStyleString =
+            animation
+                |> Maybe.map Animation.toStyleString
+                |> Maybe.withDefault ""
+
         style =
-            String.join "" [ transformOrigin, animation ]
+            String.join "" [ transformOriginStyleString, animationStyleString ]
     in
-    Svg.image
-        [ Attributes.xlinkHref ("assets/" ++ asset)
-        , Attributes.x (String.fromFloat x)
-        , Attributes.y (String.fromFloat yAdjusted)
-        , Attributes.width (String.fromFloat tileSizePixels)
-        , Attributes.height (String.fromFloat tileSizePixels)
-        , Attributes.style style
-        ]
-        []
+    case tileAsset renderedTile of
+        Just asset ->
+            Svg.image
+                [ Attributes.xlinkHref ("assets/" ++ asset)
+                , Attributes.x (String.fromFloat x)
+                , Attributes.y (String.fromFloat yAdjusted)
+                , Attributes.width (String.fromFloat tileSizePixels)
+                , Attributes.height (String.fromFloat tileSizePixels)
+                , Attributes.style style
+                ]
+                []
+
+        -- The asset is likely found, as the Tilemap only contains valid tiles, so this branch will not be considered
+        Nothing ->
+            nothing
 
 
 renderCars : Cars -> Svg msg
