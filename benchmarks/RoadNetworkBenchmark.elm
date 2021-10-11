@@ -2,7 +2,6 @@ module RoadNetworkBenchmark exposing (main, suite)
 
 import Benchmark exposing (..)
 import Benchmark.Runner exposing (BenchmarkProgram, program)
-import Model.Tilemap as Tilemap
 import Simulation.Infrastructure as Infrastructure
 import Worlds
 
@@ -16,10 +15,7 @@ suite =
                     world =
                         Worlds.worldWithFourWayIntersection
                 in
-                world.tilemap
-                    |> Tilemap.toList Tuple.pair
-                    |> List.head
-                    |> Maybe.map (\( cell, _ ) -> Infrastructure.removeRoadAt cell world)
+                Infrastructure.createRoadNetwork world.tilemap world
 
         -- this benchmark is, at the moment, really heavy - something like 163 runs per sec. May crash yer browser!
         , benchmark "large map" <|
@@ -28,10 +24,7 @@ suite =
                     world =
                         Worlds.largeWorld
                 in
-                world.tilemap
-                    |> Tilemap.toList Tuple.pair
-                    |> List.head
-                    |> Maybe.map (\( cell, _ ) -> Infrastructure.removeRoadAt cell world)
+                Infrastructure.createRoadNetwork world.tilemap world
         ]
 
 

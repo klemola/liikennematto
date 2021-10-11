@@ -5,6 +5,11 @@ import Maybe.Extra as Maybe
 import Model.Tilemap as Tilemap exposing (Tilemap)
 import Test exposing (Test, describe, test)
 import Utility exposing (tilemapFromCoordinates)
+import Worlds
+    exposing
+        ( highComplexityWorld
+        , lowComplexityWorld
+        )
 
 
 tilemapThatResemblesAIntersection : Tilemap
@@ -53,6 +58,22 @@ suite =
                         |> Maybe.unwrap
                             (Expect.fail "Could not find the tile")
                             (Expect.true "Expected a curve road piece after the mask is applied.")
+                )
+            ]
+        , describe ".canBuildRoadAt"
+            [ test "Allows a low complexity setup"
+                (\_ ->
+                    Tilemap.cellFromCoordinates ( 2, 2 )
+                        |> Maybe.map (\cell -> Tilemap.canBuildRoadAt cell lowComplexityWorld.tilemap)
+                        |> Maybe.withDefault False
+                        |> Expect.true "Expected valid world."
+                )
+            , test "Disallows a complex setup"
+                (\_ ->
+                    Tilemap.cellFromCoordinates ( 2, 2 )
+                        |> Maybe.map (\cell -> Tilemap.canBuildRoadAt cell highComplexityWorld.tilemap)
+                        |> Maybe.withDefault False
+                        |> Expect.false "Expected invalid world."
                 )
             ]
         ]

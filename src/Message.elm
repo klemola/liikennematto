@@ -12,6 +12,8 @@ type Message
     | ResizeWindow Int Int
     | VisibilityChanged Visibility
     | AnimationFrameReceived Duration
+    | AddTile Cell
+    | RemoveTile Cell
     | TilemapChanged TilemapChange
     | SetSimulation SimulationState
     | UpdateEnvironment Time.Posix
@@ -19,8 +21,6 @@ type Message
     | CheckQueues Time.Posix
     | CheckCarStatus Time.Posix
     | SpawnTestCar
-    | AddTile Cell
-    | RemoveTile Cell
     | ResetWorld
     | SelectTool Tool
     | ToggleDebugMode

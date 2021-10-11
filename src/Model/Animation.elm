@@ -3,13 +3,21 @@ module Model.Animation exposing
     , fromTilemapChange
     , isTileUpdate
     , keyframes
+    , tileAnimationDuration
     , toCell
     , toStyleString
+    , toTile
     , update
     )
 
 import Duration exposing (Duration)
-import Model.Tilemap exposing (Cell, TileChange(..), TilemapChange)
+import Model.Tilemap
+    exposing
+        ( Cell
+        , Tile
+        , TileOperation(..)
+        , TilemapChange
+        )
 import Quantity
 
 
@@ -22,7 +30,7 @@ type alias Animation =
 
 
 type AnimationKind
-    = TileUpdate Cell
+    = TileUpdate Cell Tile
 
 
 type AnimationName
@@ -31,31 +39,44 @@ type AnimationName
     | Disappear
 
 
+tileAnimationDuration : Duration
+tileAnimationDuration =
+    Duration.milliseconds 300
+
+
+tileChangeDuration : Duration
+tileChangeDuration =
+    tileAnimationDuration
+        |> Quantity.twice
+        -- extra wait time
+        |> Quantity.plus (Duration.milliseconds 100)
+
+
 fromTilemapChange : TilemapChange -> List Animation
 fromTilemapChange tilemapChange =
     tilemapChange.changedCells
         |> List.map
-            (\( cell, tileChange ) ->
+            (\( { cell, currentTile, nextTile }, tileChange ) ->
                 case tileChange of
                     Add ->
                         Animation
-                            (Duration.milliseconds 300)
+                            tileAnimationDuration
                             Quantity.zero
-                            (TileUpdate cell)
+                            (TileUpdate cell nextTile)
                             PopIn
 
                     Remove ->
                         Animation
-                            (Duration.milliseconds 150)
+                            tileAnimationDuration
                             Quantity.zero
-                            (TileUpdate cell)
+                            (TileUpdate cell currentTile)
                             Disappear
 
                     Change ->
                         Animation
-                            (Duration.milliseconds 700)
+                            tileChangeDuration
                             Quantity.zero
-                            (TileUpdate cell)
+                            (TileUpdate cell nextTile)
                             Replace
             )
 
@@ -80,15 +101,22 @@ update delta animation =
 isTileUpdate : Animation -> Bool
 isTileUpdate animation =
     case animation.kind of
-        TileUpdate _ ->
+        TileUpdate _ _ ->
             True
 
 
 toCell : Animation -> Maybe Cell
 toCell animation =
     case animation.kind of
-        TileUpdate tileCell ->
+        TileUpdate tileCell _ ->
             Just tileCell
+
+
+toTile : Animation -> Maybe Tile
+toTile animation =
+    case animation.kind of
+        TileUpdate _ tile ->
+            Just tile
 
 
 toStyleString : Animation -> String
@@ -147,12 +175,8 @@ keyframes =
     }
 
     @keyframes disappear {
-        0% {
-            opacity: 1.0;
-        }
-
-        100% {
-            opacity: 0;
-        }
+        0%   { transform: scale(1); filter: blur(0px); opacity: 1; }
+        66% { transform: scale(1.5); filter: blur(2px); opacity: 0; }
+        100% { transform: scale(1.5); filter: blur(2px); opacity: 0; }
     }
     """
