@@ -160,23 +160,24 @@ keyframes =
     """
     @keyframes pop-in {
         0%   { transform: scale(1    , 1   )  rotate( 0deg  ); }
-        12%  { transform: scale(1.05 , 1   )  rotate( 1.5deg); }
+        15%  { transform: scale(1.05 , 1   )  rotate( 1.5deg); }
         25%  { transform: scale(1.1  , 1.05)  rotate( 2deg  ); }
         50%  { transform: scale(1    , 1   )  rotate( 0deg  ); }
         75%  { transform: scale(1.05 , 1.1 )  rotate(-2deg  ); }
-        88%  { transform: scale(1    , 1.05)  rotate(-1.5deg); }
+        85%  { transform: scale(1    , 1.05)  rotate(-1.5deg); }
+        97%  { transform: scale(1    , 1   )  rotate( 0deg  ); }
         100% { transform: scale(1    , 1   )  rotate( 0deg  ); }
     }
 
     @keyframes replace {
-        65%  { transform: scale(1);   filter: blur(0px); }
-        66%  { transform: scale(1.1); filter: blur(1px); }
-        100% { transform: scale(1);   filter: blur(0px); }
+        65%  { transform: scale(1);   }
+        66%  { transform: scale(1.05); }
+        100% { transform: scale(1);   }
     }
 
     @keyframes disappear {
-        0%   { transform: scale(1); filter: blur(0px); opacity: 1; }
-        66% { transform: scale(1.5); filter: blur(2px); opacity: 0; }
-        100% { transform: scale(1.5); filter: blur(2px); opacity: 0; }
+        0%   { transform: scale(1);   opacity: 1.0; }
+        66%  { transform: scale(1.5); opacity: 0.0; }
+        100% { transform: scale(1.5); opacity: 0.0; }
     }
     """

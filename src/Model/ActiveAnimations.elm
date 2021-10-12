@@ -1,7 +1,6 @@
 module Model.ActiveAnimations exposing
     ( ActiveAnimations
     , add
-    , cancel
     , empty
     , toList
     , update
@@ -29,11 +28,6 @@ update : Duration -> ActiveAnimations -> ActiveAnimations
 update delta (ActiveAnimations animations) =
     -- removes animations when they are completed
     ActiveAnimations (animations |> List.filterMap (Animation.update delta))
-
-
-cancel : (Animation -> Bool) -> ActiveAnimations -> ActiveAnimations
-cancel cancelPredicate (ActiveAnimations animations) =
-    ActiveAnimations (List.filter (cancelPredicate >> not) animations)
 
 
 toList : ActiveAnimations -> List Animation
