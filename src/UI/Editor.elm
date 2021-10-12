@@ -105,9 +105,7 @@ animateTilemapChange tilemapChange animations =
         tileAnimations =
             Animation.fromTilemapChange tilemapChange
     in
-    animations
-        |> Animations.cancel Animation.isTileUpdate
-        |> Animations.add tileAnimations
+    animations |> Animations.add tileAnimations
 
 
 tilemapChangedEffects : TilemapChange -> Cmd Message
