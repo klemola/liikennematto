@@ -251,7 +251,11 @@ toConnections tilemap cell tile lots =
 
     else if Tilemap.isDeadend tile then
         Tilemap.potentialConnections tile
-            |> List.concatMap (Tilemap.orthogonalDirectionToLmDirection >> deadendConnections cell tile)
+            |> List.concatMap
+                (Tilemap.oppositeOrthogonalDirection
+                    >> Tilemap.orthogonalDirectionToLmDirection
+                    >> deadendConnections cell tile
+                )
 
     else
         Tilemap.potentialConnections tile

@@ -796,16 +796,16 @@ potentialConnections tile =
         [ Right, Up ]
 
     else if tile == deadendUp then
-        [ Up ]
-
-    else if tile == deadendRight then
-        [ Right ]
-
-    else if tile == deadendDown then
         [ Down ]
 
-    else if tile == deadendLeft then
+    else if tile == deadendRight then
         [ Left ]
+
+    else if tile == deadendDown then
+        [ Up ]
+
+    else if tile == deadendLeft then
+        [ Right ]
 
     else if tile == intersectionTUp then
         Up :: crossOrthogonalDirection Up
