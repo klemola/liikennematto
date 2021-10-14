@@ -49,32 +49,29 @@ tileAnimationDuration =
 fromTilemapChange : TilemapChange -> List Animation
 fromTilemapChange tilemapChange =
     tilemapChange.changedCells
-        |> List.map
+        |> List.filterMap
             (\( { cell, currentTile, nextTile }, tileChange ) ->
                 case tileChange of
                     Add ->
-                        { duration = tileAnimationDuration
-                        , elapsed = Quantity.zero
-                        , kind = TileUpdate cell nextTile
-                        , name = Appear
-                        , direction = animationDirectionFromTile nextTile
-                        }
+                        Just
+                            { duration = tileAnimationDuration
+                            , elapsed = Quantity.zero
+                            , kind = TileUpdate cell nextTile
+                            , name = Appear
+                            , direction = animationDirectionFromTile nextTile
+                            }
 
                     Remove ->
-                        { duration = tileAnimationDuration
-                        , elapsed = Quantity.zero
-                        , kind = TileUpdate cell currentTile
-                        , name = Disappear
-                        , direction = Nothing
-                        }
+                        Just
+                            { duration = tileAnimationDuration
+                            , elapsed = Quantity.zero
+                            , kind = TileUpdate cell currentTile
+                            , name = Disappear
+                            , direction = Nothing
+                            }
 
                     Change ->
-                        { duration = tileAnimationDuration
-                        , elapsed = Quantity.zero
-                        , kind = TileUpdate cell nextTile
-                        , name = Replace
-                        , direction = Nothing
-                        }
+                        Nothing
             )
 
 
@@ -183,10 +180,6 @@ keyframes =
         85%  { transform: scale(1    , 1.05) rotate(-1.5deg); }
         97%  { transform: scale(1    , 1   ) rotate( 0deg  ); }
         100% { transform: scale(1    , 1   ) rotate( 0deg  ); }
-    }
-
-    @keyframes replacex {
-        100% { transform: scale(1   ); }
     }
 
     @keyframes disappear {
