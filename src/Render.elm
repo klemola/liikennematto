@@ -3,6 +3,7 @@ module Render exposing (view)
 import Angle
 import Color
 import Dict exposing (Dict)
+import Direction2d exposing (y)
 import Graph exposing (Node)
 import Html exposing (Html)
 import Maybe.Extra as Maybe
@@ -21,6 +22,7 @@ import Model.RoadNetwork
 import Model.Tilemap as Tilemap
     exposing
         ( Cell
+        , OrthogonalDirection(..)
         , Tile
         , Tilemap
         , tileSize
@@ -159,42 +161,198 @@ renderTile cell tile tileAnimations =
 
         animation =
             Dict.get (Tilemap.cellToString cell) tileAnimations
-
-        renderedTile =
-            animation
-                |> Maybe.andThen Animation.toTile
-                |> Maybe.withDefault tile
-
-        transformOriginStyleString =
-            "transform-origin: "
-                ++ String.fromFloat (x + tileSizePixels / 2)
-                ++ "px "
-                ++ String.fromFloat (yAdjusted + tileSizePixels / 2)
-                ++ "px;"
-
-        animationStyleString =
-            animation
-                |> Maybe.map Animation.toStyleString
-                |> Maybe.withDefault ""
-
-        style =
-            String.join "" [ transformOriginStyleString, animationStyleString ]
     in
-    case tileAsset renderedTile of
-        Just asset ->
-            Svg.image
-                [ Attributes.xlinkHref ("assets/" ++ asset)
-                , Attributes.x (String.fromFloat x)
-                , Attributes.y (String.fromFloat yAdjusted)
-                , Attributes.width (String.fromFloat tileSizePixels)
-                , Attributes.height (String.fromFloat tileSizePixels)
-                , Attributes.style style
-                ]
-                []
+    case animation of
+        Just tileAnimation ->
+            let
+                renderedTile =
+                    Animation.toTile tileAnimation |> Maybe.withDefault tile
 
-        -- The asset is likely found, as the Tilemap only contains valid tiles, so this branch will not be considered
+                animationStyleString =
+                    Animation.toStyleString tileAnimation
+
+                tileStyles =
+                    String.join ""
+                        [ tileAnimationProperties tileAnimation ( x, yAdjusted )
+                        , animationStyleString
+                        ]
+
+                ( overflowTile, clipStyles ) =
+                    tileAnimation.direction
+                        |> Maybe.map (animationOverflowTile x yAdjusted)
+                        |> Maybe.withDefault ( nothing, "" )
+            in
+            Svg.g [ Attributes.style clipStyles ]
+                [ tileElement
+                    { x = x
+                    , y = yAdjusted
+                    , asset = tileAsset renderedTile
+                    , tileStyles = tileStyles
+                    }
+                , overflowTile
+                ]
+
         Nothing ->
-            nothing
+            tileElement
+                { x = x
+                , y = yAdjusted
+                , asset = tileAsset tile
+                , tileStyles = ""
+                }
+
+
+animationOverflowTile : Float -> Float -> OrthogonalDirection -> ( Svg msg, String )
+animationOverflowTile baseX baseY animationDirection =
+    let
+        overflowAsset =
+            if Tilemap.isVerticalDirection animationDirection then
+                tileAsset Tilemap.verticalRoad
+
+            else
+                tileAsset Tilemap.horizontalRoad
+
+        clipAmount =
+            String.fromFloat tileSizePixels ++ "px"
+
+        ( x, y, clipStyles ) =
+            case animationDirection of
+                Up ->
+                    ( baseX
+                    , baseY + tileSizePixels
+                    , "clip-path: inset(0 0 " ++ clipAmount ++ " 0);"
+                    )
+
+                Down ->
+                    ( baseX
+                    , baseY - tileSizePixels
+                    , "clip-path: inset(" ++ clipAmount ++ " 0 0 0);"
+                    )
+
+                Right ->
+                    ( baseX - tileSizePixels
+                    , baseY
+                    , "clip-path: inset(0 0 0 " ++ clipAmount ++ ");"
+                    )
+
+                Left ->
+                    ( baseX + tileSizePixels
+                    , baseY
+                    , "clip-path: inset(0 " ++ clipAmount ++ " 0 0);"
+                    )
+    in
+    ( tileElement
+        { x = x
+        , y = y
+        , asset = overflowAsset
+        , tileStyles = ""
+        }
+    , clipStyles
+    )
+
+
+tileElement : { x : Float, y : Float, asset : String, tileStyles : String } -> Svg msg
+tileElement { x, y, asset, tileStyles } =
+    Svg.image
+        [ Attributes.xlinkHref ("assets/" ++ asset)
+        , Attributes.x (String.fromFloat x)
+        , Attributes.y (String.fromFloat y)
+        , Attributes.width (String.fromFloat tileSizePixels)
+        , Attributes.height (String.fromFloat tileSizePixels)
+        , Attributes.style tileStyles
+        ]
+        []
+
+
+tileAppearOffset : Float
+tileAppearOffset =
+    toPixelsValue (tileSize |> Quantity.multiplyBy 0.6)
+
+
+tileAnimationProperties : Animation -> ( Float, Float ) -> String
+tileAnimationProperties animation ( tileX, tileY ) =
+    let
+        tileSizeOffsetStr =
+            String.fromFloat tileAppearOffset ++ "px"
+
+        halfTile =
+            tileSizePixels / 2
+
+        centerX =
+            tileX + halfTile
+
+        centerY =
+            tileY + halfTile
+
+        scale =
+            "0.95"
+
+        props =
+            case animation.direction of
+                Just dir ->
+                    case dir of
+                        Up ->
+                            { xOffset = "0"
+                            , yOffset = tileSizeOffsetStr
+                            , scaleX = "1"
+                            , scaleY = scale
+                            , transformOriginX = String.fromFloat centerX ++ "px"
+                            , transformOriginY = String.fromFloat (centerY + halfTile) ++ "px"
+                            }
+
+                        Down ->
+                            { xOffset = "0"
+                            , yOffset = "-" ++ tileSizeOffsetStr
+                            , scaleX = "1"
+                            , scaleY = scale
+                            , transformOriginX = String.fromFloat centerX ++ "px"
+                            , transformOriginY = String.fromFloat (centerY - halfTile) ++ "px"
+                            }
+
+                        Right ->
+                            { xOffset = "-" ++ tileSizeOffsetStr
+                            , yOffset = "0"
+                            , scaleX = scale
+                            , scaleY = "1"
+                            , transformOriginX = String.fromFloat (centerX - halfTile) ++ "px"
+                            , transformOriginY = String.fromFloat centerY ++ "px"
+                            }
+
+                        Left ->
+                            { xOffset = tileSizeOffsetStr
+                            , yOffset = "0"
+                            , scaleX = scale
+                            , scaleY = "1"
+                            , transformOriginX = String.fromFloat (centerX + halfTile) ++ "px"
+                            , transformOriginY = String.fromFloat centerY ++ "px"
+                            }
+
+                Nothing ->
+                    { xOffset = "0"
+                    , yOffset = "0"
+                    , scaleX = "1"
+                    , scaleY = "1"
+                    , transformOriginX = String.fromFloat centerX ++ "px"
+                    , transformOriginY = String.fromFloat centerY ++ "px"
+                    }
+    in
+    String.join " "
+        [ "--xOffset:"
+        , props.xOffset
+        , ";"
+        , "--yOffset:"
+        , props.yOffset
+        , ";"
+        , "--scaleX:"
+        , props.scaleX
+        , ";"
+        , "--scaleY:"
+        , props.scaleY
+        , ";"
+        , "transform-origin:"
+        , props.transformOriginX
+        , props.transformOriginY
+        , ";"
+        ]
 
 
 renderCars : Cars -> Svg msg
@@ -684,62 +842,62 @@ toPointsString points =
 --
 
 
-tileAsset : Tile -> Maybe String
+tileAsset : Tile -> String
 tileAsset tile =
     case tile of
         0 ->
             -- horizontal road tiles are match by tiles 0 and 6
             -- Room for improvement: use a special tile for "0"
-            Just "road_2_lanes_horizontal.png"
+            "road_2_lanes_horizontal.png"
 
         1 ->
-            Just "road_2_lanes_deadend_down.png"
+            "road_2_lanes_deadend_down.png"
 
         2 ->
-            Just "road_2_lanes_deadend_right.png"
+            "road_2_lanes_deadend_right.png"
 
         3 ->
-            Just "road_2_lanes_curve_bottom_right.png"
+            "road_2_lanes_curve_bottom_right.png"
 
         4 ->
-            Just "road_2_lanes_deadend_left.png"
+            "road_2_lanes_deadend_left.png"
 
         5 ->
-            Just "road_2_lanes_curve_bottom_left.png"
+            "road_2_lanes_curve_bottom_left.png"
 
         6 ->
             -- horizontal road tiles are match by tiles 0 and 6
-            Just "road_2_lanes_horizontal.png"
+            "road_2_lanes_horizontal.png"
 
         7 ->
-            Just "intersection_2_lanes_t_up.png"
+            "intersection_2_lanes_t_up.png"
 
         8 ->
-            Just "road_2_lanes_deadend_up.png"
+            "road_2_lanes_deadend_up.png"
 
         9 ->
-            Just "road_2_lanes_vertical.png"
+            "road_2_lanes_vertical.png"
 
         10 ->
-            Just "road_2_lanes_curve_top_right.png"
+            "road_2_lanes_curve_top_right.png"
 
         11 ->
-            Just "intersection_2_lanes_t_left.png"
+            "intersection_2_lanes_t_left.png"
 
         12 ->
-            Just "road_2_lanes_curve_top_left.png"
+            "road_2_lanes_curve_top_left.png"
 
         13 ->
-            Just "intersection_2_lanes_t_right.png"
+            "intersection_2_lanes_t_right.png"
 
         14 ->
-            Just "intersection_2_lanes_t_down.png"
+            "intersection_2_lanes_t_down.png"
 
         15 ->
-            Just "intersection_2_lanes_x.png"
+            "intersection_2_lanes_x.png"
 
         _ ->
-            Nothing
+            "road_not_found.png"
 
 
 buildingAsset : BuildingKind -> String
