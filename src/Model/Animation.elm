@@ -11,9 +11,10 @@ module Model.Animation exposing
     )
 
 import Duration exposing (Duration)
-import Model.Tilemap
+import Model.Tilemap as Tilemap
     exposing
         ( Cell
+        , OrthogonalDirection(..)
         , Tile
         , TileOperation(..)
         , TilemapChange
@@ -26,6 +27,7 @@ type alias Animation =
     , elapsed : Duration
     , kind : AnimationKind
     , name : AnimationName
+    , direction : Maybe OrthogonalDirection
     }
 
 
@@ -34,22 +36,14 @@ type AnimationKind
 
 
 type AnimationName
-    = PopIn
+    = Appear
     | Replace
     | Disappear
 
 
 tileAnimationDuration : Duration
 tileAnimationDuration =
-    Duration.milliseconds 300
-
-
-tileChangeDuration : Duration
-tileChangeDuration =
-    tileAnimationDuration
-        |> Quantity.twice
-        -- extra wait time
-        |> Quantity.plus (Duration.milliseconds 100)
+    Duration.milliseconds 250
 
 
 fromTilemapChange : TilemapChange -> List Animation
@@ -59,26 +53,39 @@ fromTilemapChange tilemapChange =
             (\( { cell, currentTile, nextTile }, tileChange ) ->
                 case tileChange of
                     Add ->
-                        Animation
-                            tileAnimationDuration
-                            Quantity.zero
-                            (TileUpdate cell nextTile)
-                            PopIn
+                        { duration = tileAnimationDuration
+                        , elapsed = Quantity.zero
+                        , kind = TileUpdate cell nextTile
+                        , name = Appear
+                        , direction = animationDirectionFromTile nextTile
+                        }
 
                     Remove ->
-                        Animation
-                            tileAnimationDuration
-                            Quantity.zero
-                            (TileUpdate cell currentTile)
-                            Disappear
+                        { duration = tileAnimationDuration
+                        , elapsed = Quantity.zero
+                        , kind = TileUpdate cell currentTile
+                        , name = Disappear
+                        , direction = Nothing
+                        }
 
                     Change ->
-                        Animation
-                            tileChangeDuration
-                            Quantity.zero
-                            (TileUpdate cell nextTile)
-                            Replace
+                        { duration = tileAnimationDuration
+                        , elapsed = Quantity.zero
+                        , kind = TileUpdate cell nextTile
+                        , name = Replace
+                        , direction = Nothing
+                        }
             )
+
+
+animationDirectionFromTile : Tile -> Maybe OrthogonalDirection
+animationDirectionFromTile tile =
+    case Tilemap.potentialConnections tile of
+        [ connection ] ->
+            Just (Tilemap.oppositeOrthogonalDirection connection)
+
+        _ ->
+            Nothing
 
 
 update : Duration -> Animation -> Maybe Animation
@@ -121,10 +128,9 @@ toTile animation =
 
 toStyleString : Animation -> String
 toStyleString animation =
-    -- TODO return Maybe String once delay is implemented, if there's delay left
     let
         name =
-            nameToString animation.name
+            keyframeName animation
 
         duration =
             (animation.duration
@@ -137,47 +143,55 @@ toStyleString animation =
         [ "animation:"
         , duration
         , name
-        , "ease-in-out"
         , ";"
         ]
 
 
-nameToString : AnimationName -> String
-nameToString name =
-    case name of
-        PopIn ->
-            "pop-in"
+keyframeName : Animation -> String
+keyframeName animation =
+    case ( animation.name, animation.direction ) of
+        ( Appear, Just _ ) ->
+            "appear-from-direction"
 
-        Replace ->
+        ( Appear, Nothing ) ->
+            "appear-directionless"
+
+        ( Replace, _ ) ->
             "replace"
 
-        Disappear ->
+        ( Disappear, _ ) ->
             "disappear"
 
 
 keyframes : String
 keyframes =
     """
-    @keyframes pop-in {
-        0%   { transform: scale(1    , 1   )  rotate( 0deg  ); }
-        15%  { transform: scale(1.05 , 1   )  rotate( 1.5deg); }
-        25%  { transform: scale(1.1  , 1.05)  rotate( 2deg  ); }
-        50%  { transform: scale(1    , 1   )  rotate( 0deg  ); }
-        75%  { transform: scale(1.05 , 1.1 )  rotate(-2deg  ); }
-        85%  { transform: scale(1    , 1.05)  rotate(-1.5deg); }
-        97%  { transform: scale(1    , 1   )  rotate( 0deg  ); }
-        100% { transform: scale(1    , 1   )  rotate( 0deg  ); }
+    @keyframes appear-from-direction {
+        0%   { transform: translate(var(--xOffset), var(--yOffset)); }
+        50%  { transform: translate(0,            , 0             ); }
+        51%  { transform: scale(    1             , 1             ); }
+        80%  { transform: scale(    var(--scaleX) , var(--scaleY) ); }
+        100% { transform: scale(    1             , 1             ); }
     }
 
-    @keyframes replace {
-        65%  { transform: scale(1);   }
-        66%  { transform: scale(1.05); }
-        100% { transform: scale(1);   }
+    @keyframes appear-directionless {
+        0%   { transform: scale(1    , 1   ) rotate( 0deg  ); }
+        15%  { transform: scale(1.05 , 1   ) rotate( 1.5deg); }
+        25%  { transform: scale(1.1  , 1.05) rotate( 2deg  ); }
+        50%  { transform: scale(1    , 1   ) rotate( 0deg  ); }
+        75%  { transform: scale(1.05 , 1.1 ) rotate(-2deg  ); }
+        85%  { transform: scale(1    , 1.05) rotate(-1.5deg); }
+        97%  { transform: scale(1    , 1   ) rotate( 0deg  ); }
+        100% { transform: scale(1    , 1   ) rotate( 0deg  ); }
+    }
+
+    @keyframes replacex {
+        100% { transform: scale(1   ); }
     }
 
     @keyframes disappear {
-        0%   { transform: scale(1);   opacity: 1.0; }
-        66%  { transform: scale(1.5); opacity: 0.0; }
+        0%   { transform: scale(1  ); opacity: 1.0; }
+        98%  { transform: scale(1.5); opacity: 0.0; }
         100% { transform: scale(1.5); opacity: 0.0; }
     }
     """
