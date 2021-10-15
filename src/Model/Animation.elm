@@ -174,9 +174,7 @@ keyframes =
     @keyframes appear-directionless {
         0%   { transform: scale(1    , 1   ) rotate( 0deg  ); }
         15%  { transform: scale(1.05 , 1   ) rotate( 1.5deg); }
-        25%  { transform: scale(1.1  , 1.05) rotate( 2deg  ); }
-        50%  { transform: scale(1    , 1   ) rotate( 0deg  ); }
-        75%  { transform: scale(1.05 , 1.1 ) rotate(-2deg  ); }
+        50%  { transform: scale(1.1  , 1.05) rotate( 2deg  ); }
         85%  { transform: scale(1    , 1.05) rotate(-1.5deg); }
         97%  { transform: scale(1    , 1   ) rotate( 0deg  ); }
         100% { transform: scale(1    , 1   ) rotate( 0deg  ); }
