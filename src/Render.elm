@@ -846,9 +846,7 @@ tileAsset : Tile -> String
 tileAsset tile =
     case tile of
         0 ->
-            -- horizontal road tiles are match by tiles 0 and 6
-            -- Room for improvement: use a special tile for "0"
-            "road_2_lanes_horizontal.png"
+            "road_center_piece.png"
 
         1 ->
             "road_2_lanes_deadend_down.png"
@@ -866,7 +864,6 @@ tileAsset tile =
             "road_2_lanes_curve_bottom_left.png"
 
         6 ->
-            -- horizontal road tiles are match by tiles 0 and 6
             "road_2_lanes_horizontal.png"
 
         7 ->
