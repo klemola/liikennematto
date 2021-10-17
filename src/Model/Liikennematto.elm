@@ -8,7 +8,7 @@ module Model.Liikennematto exposing
     )
 
 import Element
-import Model.ActiveAnimations as Animations exposing (ActiveAnimations)
+import Model.AnimationSchedule as Animations exposing (AnimationSchedule)
 import Model.Tilemap exposing (Tilemap, TilemapChange)
 import Model.World exposing (World)
 import Random
@@ -23,7 +23,7 @@ type alias Liikennematto =
     , tool : Tool
     , carSpawnQueue : CarSpawnQueue
     , pendingTilemapChange : Maybe TilemapChange
-    , animations : ActiveAnimations
+    , animationSchedule : AnimationSchedule
     , showDebugPanel : Bool
     , showRoadNetwork : Bool
     , showCarDebugVisuals : Bool
@@ -72,7 +72,7 @@ new =
     , tool = SmartConstruction
     , carSpawnQueue = 0
     , pendingTilemapChange = Nothing
-    , animations = Animations.empty
+    , animationSchedule = Animations.empty
     , showDebugPanel = False
     , showRoadNetwork = False
     , showCarDebugVisuals = False

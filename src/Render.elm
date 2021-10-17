@@ -7,8 +7,8 @@ import Direction2d exposing (y)
 import Graph exposing (Node)
 import Html exposing (Html)
 import Maybe.Extra as Maybe
-import Model.ActiveAnimations as Animations exposing (ActiveAnimations)
 import Model.Animation as Animation exposing (Animation)
+import Model.AnimationSchedule as AnimationSchedule exposing (AnimationSchedule)
 import Model.Car as Car exposing (Car, CarKind(..), Cars)
 import Model.Geometry exposing (LMPoint2d, pointToPixels, toPixelsValue)
 import Model.Lot exposing (BuildingKind(..), Lot, Lots)
@@ -105,13 +105,13 @@ renderColors =
     }
 
 
-view : World -> ActiveAnimations -> DebugLayers -> Html msg
-view { tilemap, cars, lots, roadNetwork, trafficLights } animations debugLayers =
+view : World -> AnimationSchedule -> DebugLayers -> Html msg
+view { tilemap, cars, lots, roadNetwork, trafficLights } animationSchedule debugLayers =
     let
         -- This works as long as the only animation kind is "TileUpdate"
         tileAnimations =
-            animations
-                |> Animations.toList
+            animationSchedule
+                |> AnimationSchedule.toList
                 |> List.foldl
                     (\animation acc ->
                         case Animation.toCell animation of
