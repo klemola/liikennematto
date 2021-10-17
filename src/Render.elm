@@ -204,13 +204,6 @@ renderTile cell tile tileAnimations =
 animationOverflowTile : Float -> Float -> OrthogonalDirection -> ( Svg msg, String )
 animationOverflowTile baseX baseY animationDirection =
     let
-        overflowAsset =
-            if Tilemap.isVerticalDirection animationDirection then
-                tileAsset Tilemap.verticalRoad
-
-            else
-                tileAsset Tilemap.horizontalRoad
-
         clipAmount =
             String.fromFloat tileSizePixels ++ "px"
 
@@ -240,12 +233,14 @@ animationOverflowTile baseX baseY animationDirection =
                     , "clip-path: inset(0 " ++ clipAmount ++ " 0 0);"
                     )
     in
-    ( tileElement
-        { x = x
-        , y = y
-        , asset = overflowAsset
-        , tileStyles = ""
-        }
+    ( Svg.rect
+        [ Attributes.x (String.fromFloat x)
+        , Attributes.y (String.fromFloat y)
+        , Attributes.width (String.fromFloat tileSizePixels)
+        , Attributes.height (String.fromFloat tileSizePixels)
+        , Attributes.fill "red"
+        ]
+        []
     , clipStyles
     )
 
