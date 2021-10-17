@@ -1,7 +1,6 @@
 module Model.Animation exposing
     ( Animation
     , fromTilemapChange
-    , isTileUpdate
     , keyframes
     , tileAnimationDuration
     , toCell
@@ -14,7 +13,7 @@ import Duration exposing (Duration)
 import Model.Tilemap as Tilemap
     exposing
         ( Cell
-        , OrthogonalDirection(..)
+        , OrthogonalDirection
         , Tile
         , TileOperation(..)
         , TilemapChange
@@ -37,7 +36,6 @@ type AnimationKind
 
 type AnimationName
     = Appear
-    | Replace
     | Disappear
 
 
@@ -102,13 +100,6 @@ update delta animation =
         Just { animation | elapsed = nextElapsed }
 
 
-isTileUpdate : Animation -> Bool
-isTileUpdate animation =
-    case animation.kind of
-        TileUpdate _ _ ->
-            True
-
-
 toCell : Animation -> Maybe Cell
 toCell animation =
     case animation.kind of
@@ -152,9 +143,6 @@ keyframeName animation =
 
         ( Appear, Nothing ) ->
             "appear-directionless"
-
-        ( Replace, _ ) ->
-            "replace"
 
         ( Disappear, _ ) ->
             "disappear"
