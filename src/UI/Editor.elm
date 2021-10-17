@@ -10,8 +10,8 @@ import Element exposing (Color, Element)
 import Element.Border as Border
 import Element.Events as Events
 import Message exposing (Message(..))
-import Model.ActiveAnimations as Animations exposing (ActiveAnimations)
 import Model.Animation as Animation
+import Model.AnimationSchedule as AnimationSchedule exposing (AnimationSchedule)
 import Model.Geometry as Geometry
 import Model.Liikennematto exposing (Liikennematto, Tool(..), latestTilemap)
 import Model.Tilemap as Tilemap exposing (Cell, TilemapChange, tileSize)
@@ -58,7 +58,7 @@ update msg model =
 
         AddTile cell ->
             let
-                { world, animations } =
+                { world, animationSchedule } =
                     model
 
                 tilemapChange =
@@ -67,13 +67,13 @@ update msg model =
                 nextWorld =
                     { world | tilemap = tilemapChange.nextTilemap }
 
-                nextAnimations =
-                    animateTilemapChange tilemapChange animations
+                nextAnimationSchedule =
+                    animateTilemapChange tilemapChange animationSchedule
             in
             ( { model
                 | world = nextWorld
                 , pendingTilemapChange = Nothing
-                , animations = nextAnimations
+                , animationSchedule = nextAnimationSchedule
               }
             , tilemapChangedEffects tilemapChange
             )
@@ -83,14 +83,14 @@ update msg model =
                 tilemapChange =
                     latestTilemap model |> Tilemap.removeTile cell
 
-                nextAnimations =
-                    animateTilemapChange tilemapChange model.animations
+                nextAnimationSchedule =
+                    animateTilemapChange tilemapChange model.animationSchedule
             in
             ( { model
                 | -- the tilemap update is delayed so that the animation can complete before the tile is removed
                   -- Room for improvement: if tiles had a state machine, the removal could be implemented as a transition + animation
                   pendingTilemapChange = Just tilemapChange
-                , animations = nextAnimations
+                , animationSchedule = nextAnimationSchedule
               }
             , tilemapChangedEffects tilemapChange
             )
@@ -99,13 +99,13 @@ update msg model =
             ( model, Cmd.none )
 
 
-animateTilemapChange : TilemapChange -> ActiveAnimations -> ActiveAnimations
-animateTilemapChange tilemapChange animations =
+animateTilemapChange : TilemapChange -> AnimationSchedule -> AnimationSchedule
+animateTilemapChange tilemapChange animationSchedule =
     let
         tileAnimations =
             Animation.fromTilemapChange tilemapChange
     in
-    animations |> Animations.add tileAnimations
+    animationSchedule |> AnimationSchedule.add tileAnimations
 
 
 tilemapChangedEffects : TilemapChange -> Cmd Message

@@ -7,7 +7,7 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Message exposing (Message(..))
-import Model.ActiveAnimations as Animations
+import Model.AnimationSchedule as AnimationSchedule
 import Model.Geometry as Geometry
 import Model.Liikennematto as Liikennematto exposing (Liikennematto, SimulationState(..))
 import Model.Tilemap as Tilemap
@@ -84,7 +84,7 @@ updateBase msg model =
             )
 
         AnimationFrameReceived delta ->
-            ( { model | animations = model.animations |> Animations.update delta }
+            ( { model | animationSchedule = model.animationSchedule |> AnimationSchedule.update delta }
             , Cmd.none
             )
 
@@ -135,7 +135,7 @@ render model =
             else
                 Element.clip
     in
-    Render.view model.world model.animations debugLayers
+    Render.view model.world model.animationSchedule debugLayers
         |> Element.html
         -- render + overlay
         |> Element.el
