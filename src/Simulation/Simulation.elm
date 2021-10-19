@@ -87,12 +87,12 @@ update msg model =
             , Cmd.none
             )
 
-        UpdateEnvironment _ ->
+        UpdateEnvironment ->
             ( { model | world = updateTrafficLights model.world }
             , Cmd.none
             )
 
-        GenerateEnvironment _ ->
+        GenerateEnvironment ->
             let
                 ( nextWorld, nextSeed ) =
                     attemptGenerateLot model.world model.seed model.simulation
@@ -104,7 +104,7 @@ update msg model =
             , generateEnvironmentAfterDelay nextSeed
             )
 
-        CheckQueues _ ->
+        CheckQueues ->
             let
                 ( nextWorld, nextCarSpawnQueue, nextSeed ) =
                     dequeueCarSpawn model.carSpawnQueue model.seed model.world
@@ -117,7 +117,7 @@ update msg model =
             , Cmd.none
             )
 
-        CheckCarStatus _ ->
+        CheckCarStatus ->
             let
                 ( nextWorld, nextSeed ) =
                     Traffic.checkCarStatus model.seed model.world
@@ -149,7 +149,7 @@ generateEnvironmentAfterDelay seed =
     randomMillis
         |> toFloat
         |> Process.sleep
-        |> Task.perform GenerateEnvironment
+        |> Task.perform (always GenerateEnvironment)
 
 
 

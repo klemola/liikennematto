@@ -1,4 +1,4 @@
-module RoundBenchmark exposing (main, suite)
+module RoundBenchmark exposing (main)
 
 import Benchmark exposing (..)
 import Benchmark.Runner exposing (BenchmarkProgram, program)

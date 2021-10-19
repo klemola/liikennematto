@@ -37,8 +37,8 @@ subscriptions { simulation } =
         Sub.batch
             (defaultSubs
                 ++ [ Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameReceived)
-                   , Time.every environmentUpdateFrequency UpdateEnvironment
-                   , Time.every dequeueFrequency CheckQueues
-                   , Time.every carStatusCheckFrequency CheckCarStatus
+                   , Time.every environmentUpdateFrequency (always UpdateEnvironment)
+                   , Time.every dequeueFrequency (always CheckQueues)
+                   , Time.every carStatusCheckFrequency (always CheckCarStatus)
                    ]
             )

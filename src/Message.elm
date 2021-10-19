@@ -4,7 +4,6 @@ import Browser.Events exposing (Visibility)
 import Duration exposing (Duration)
 import Model.Liikennematto exposing (SimulationState, Tool)
 import Model.Tilemap exposing (Cell, TilemapChange)
-import Time
 
 
 type Message
@@ -16,10 +15,10 @@ type Message
     | RemoveTile Cell
     | TilemapChanged TilemapChange
     | SetSimulation SimulationState
-    | UpdateEnvironment Time.Posix
-    | GenerateEnvironment ()
-    | CheckQueues Time.Posix
-    | CheckCarStatus Time.Posix
+    | UpdateEnvironment
+    | GenerateEnvironment
+    | CheckQueues
+    | CheckCarStatus
     | SpawnTestCar
     | ResetWorld
     | SelectTool Tool

@@ -233,7 +233,7 @@ checkYield { activeCar, otherCars } signPosition =
     in
     if distanceFromYieldSign |> Quantity.lessThanOrEqualTo yieldReactionDistance then
         distanceToClosestCollisionPoint activeCar otherCars (pathsIntersectAt checkArea activeCar)
-            |> Maybe.map (\_ -> StopAtTrafficControl distanceFromYieldSign)
+            |> Maybe.map (always (StopAtTrafficControl distanceFromYieldSign))
 
     else if distanceFromYieldSign |> Quantity.lessThanOrEqualTo yieldSlowDownDistance then
         Just SlowDownAtTrafficControl

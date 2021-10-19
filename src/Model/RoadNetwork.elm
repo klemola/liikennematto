@@ -160,6 +160,6 @@ toDotString =
             \connection -> Just (connectionKindToString connection.kind)
 
         edgeFormatter =
-            \_ -> Nothing
+            always Nothing
     in
     Graph.DOT.output nodeFormatter edgeFormatter
