@@ -726,18 +726,10 @@ createTrafficLight connection nextTrafficLights =
 
         facing =
             Direction2d.reverse connection.direction
-
-        color =
-            if connection.direction == Direction2d.positiveX || connection.direction == Direction2d.negativeX then
-                TrafficLight.Green
-
-            else
-                TrafficLight.Red
     in
     TrafficLight.new
         |> TrafficLight.withPosition connection.position
         |> TrafficLight.withFacing facing
-        |> TrafficLight.withColor color
         |> TrafficLight.build nextId
 
 

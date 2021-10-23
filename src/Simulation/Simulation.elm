@@ -4,11 +4,13 @@ module Simulation.Simulation exposing
     )
 
 import Dict
+import Duration
 import Maybe.Extra as Maybe
 import Message exposing (Message(..))
+import Model.FSM as FSM
 import Model.Liikennematto exposing (Liikennematto, SimulationState(..), Tool(..))
 import Model.Tilemap as Tilemap
-import Model.TrafficLight as TrafficLight
+import Model.TrafficLight exposing (TrafficLight)
 import Model.World as World exposing (World)
 import Process
 import Random
@@ -162,10 +164,21 @@ updateTrafficLights : World -> World
 updateTrafficLights world =
     let
         nextTrafficLights =
-            world.trafficLights
-                |> Dict.map (\_ trafficLight -> TrafficLight.advance trafficLight)
+            Dict.map
+                (\_ trafficLight -> updateTrafficLight trafficLight)
+                world.trafficLights
     in
     { world | trafficLights = nextTrafficLights }
+
+
+updateTrafficLight : TrafficLight -> TrafficLight
+updateTrafficLight trafficLight =
+    let
+        -- FSM change actions are ignored
+        ( nextFsm, _ ) =
+            FSM.update (Duration.seconds 1) trafficLight.fsm
+    in
+    { trafficLight | fsm = nextFsm }
 
 
 attemptGenerateLot : World -> Random.Seed -> SimulationState -> ( World, Random.Seed )

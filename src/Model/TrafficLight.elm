@@ -3,22 +3,21 @@ module Model.TrafficLight exposing
     , TrafficLight
     , TrafficLightColor(..)
     , TrafficLights
-    , advance
     , build
+    , color
     , new
     , shouldStopTraffic
-    , withColor
     , withFacing
     , withPosition
     )
 
 import Dict exposing (Dict)
 import Direction2d
-import Duration exposing (Duration)
+import Duration
 import Model.Entity exposing (Id)
+import Model.FSM as FSM exposing (FSM, State)
 import Model.Geometry exposing (LMDirection2d, LMPoint2d)
 import Point2d
-import Quantity
 
 
 type TrafficLightColor
@@ -29,18 +28,15 @@ type TrafficLightColor
 
 type alias TrafficLight =
     { id : Id
-    , color : TrafficLightColor
+    , fsm : FSM TrafficLightColor ()
     , position : LMPoint2d
     , facing : LMDirection2d
-    , timeRemaining : Duration
     }
 
 
 type alias NewTrafficLight =
-    { color : TrafficLightColor
-    , position : LMPoint2d
+    { position : LMPoint2d
     , facing : LMDirection2d
-    , timeRemaining : Duration
     }
 
 
@@ -48,41 +44,44 @@ type alias TrafficLights =
     Dict Id TrafficLight
 
 
-greenDuration : Duration
-greenDuration =
-    Duration.seconds 12
+green : State TrafficLightColor a
+green =
+    FSM.createState
+        Green
+        [ FSM.createTransition
+            (\_ -> yellow)
+            []
+            (FSM.Timer (Duration.seconds 12))
+        ]
 
 
-yellowDuration : Duration
-yellowDuration =
-    Duration.seconds 4
+yellow : State TrafficLightColor a
+yellow =
+    FSM.createState
+        Yellow
+        [ FSM.createTransition
+            (\_ -> red)
+            []
+            (FSM.Timer (Duration.seconds 4))
+        ]
 
 
-redDuration : Duration
-redDuration =
-    Duration.seconds 16
+red : State TrafficLightColor a
+red =
+    FSM.createState
+        Red
+        [ FSM.createTransition
+            (\_ -> green)
+            []
+            (FSM.Timer (Duration.seconds 16))
+        ]
 
 
 new : NewTrafficLight
 new =
-    { color = Green
-    , position = Point2d.origin
+    { position = Point2d.origin
     , facing = Direction2d.x
-    , timeRemaining = greenDuration
     }
-
-
-withColor : TrafficLightColor -> NewTrafficLight -> NewTrafficLight
-withColor trafficLightColor newTrafficLight =
-    case trafficLightColor of
-        Green ->
-            { newTrafficLight | color = Green, timeRemaining = greenDuration }
-
-        Yellow ->
-            { newTrafficLight | color = Yellow, timeRemaining = yellowDuration }
-
-        Red ->
-            { newTrafficLight | color = Red, timeRemaining = redDuration }
 
 
 withPosition : LMPoint2d -> NewTrafficLight -> NewTrafficLight
@@ -97,40 +96,30 @@ withFacing direction newTrafficLight =
 
 build : Int -> NewTrafficLight -> TrafficLight
 build id newTrafficLight =
+    let
+        initialState =
+            if newTrafficLight.facing == Direction2d.positiveX || newTrafficLight.facing == Direction2d.negativeX then
+                green
+
+            else
+                red
+    in
     { id = id
-    , color = newTrafficLight.color
+    , fsm = FSM.createFSM initialState
     , position = newTrafficLight.position
     , facing = newTrafficLight.facing
-    , timeRemaining = newTrafficLight.timeRemaining
     }
 
 
 shouldStopTraffic : TrafficLight -> Bool
 shouldStopTraffic trafficLight =
-    trafficLight.color == Red || trafficLight.color == Yellow
-
-
-advance : TrafficLight -> TrafficLight
-advance trafficLight =
     let
-        timeRemainingAfterTick =
-            trafficLight.timeRemaining
-                |> Quantity.minus (Duration.seconds 1)
+        currentState =
+            FSM.currentState trafficLight.fsm
     in
-    if timeRemainingAfterTick == Duration.seconds 0 then
-        let
-            ( nextColor, nextTimeRemaining ) =
-                case trafficLight.color of
-                    Green ->
-                        ( Yellow, yellowDuration )
+    currentState == Red || currentState == Yellow
 
-                    Yellow ->
-                        ( Red, redDuration )
 
-                    Red ->
-                        ( Green, greenDuration )
-        in
-        { trafficLight | color = nextColor, timeRemaining = nextTimeRemaining }
-
-    else
-        { trafficLight | timeRemaining = timeRemainingAfterTick }
+color : TrafficLight -> TrafficLightColor
+color trafficLight =
+    FSM.currentState trafficLight.fsm
