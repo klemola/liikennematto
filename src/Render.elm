@@ -27,7 +27,7 @@ import Model.Tilemap as Tilemap
         , Tilemap
         , tileSize
         )
-import Model.TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
+import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
 import Model.World exposing (World)
 import Pixels exposing (Pixels)
 import Polygon2d
@@ -556,7 +556,7 @@ renderTrafficLight trafficLight =
             Pixels.inPixels trafficLightRadius
 
         color =
-            case trafficLight.color of
+            case TrafficLight.color trafficLight of
                 Green ->
                     Color.darkGreen
 
