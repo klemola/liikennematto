@@ -8,6 +8,7 @@ module Model.FSM exposing
     , createStateId
     , createTransition
     , currentState
+    , getId
     , potentialTransitions
     , timeToStateChange
     , transitionTo
@@ -71,6 +72,11 @@ createFSM initialState =
 createStateId : String -> StateId
 createStateId =
     StateId
+
+
+getId : State state actionType -> StateId
+getId (State state) =
+    state.id
 
 
 createState : StateId -> state -> List (Transition state actionType) -> State state actionType

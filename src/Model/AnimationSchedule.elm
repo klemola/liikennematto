@@ -27,7 +27,7 @@ add newAnimations (AnimationSchedule schedule) =
 update : Duration -> AnimationSchedule -> AnimationSchedule
 update delta (AnimationSchedule schedule) =
     -- removes schedule when they are completed
-    AnimationSchedule (schedule |> List.filterMap (Animation.update delta))
+    AnimationSchedule schedule
 
 
 toList : AnimationSchedule -> List Animation

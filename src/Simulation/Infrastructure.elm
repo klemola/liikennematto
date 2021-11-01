@@ -24,6 +24,12 @@ import Model.Geometry as Geometry
         )
 import Model.Lookup exposing (roadNetworkLookup)
 import Model.Lot as Lot exposing (Lot, Lots)
+import Model.OrthogonalDirection
+    exposing
+        ( OrthogonalDirection(..)
+        , oppositeOrthogonalDirection
+        , orthogonalDirectionToLmDirection
+        )
 import Model.RoadNetwork as RoadNetwork
     exposing
         ( Connection
@@ -33,14 +39,12 @@ import Model.RoadNetwork as RoadNetwork
         , RoadNetwork
         , TrafficControl(..)
         )
+import Model.Tile as Tile exposing (Tile, tileSize)
 import Model.Tilemap as Tilemap
     exposing
         ( Cell
-        , OrthogonalDirection(..)
-        , Tile
         , Tilemap
         , TilemapChange
-        , tileSize
         )
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLights)
 import Model.World exposing (World)
@@ -66,20 +70,18 @@ createRoadNetwork tilemap world =
 
 
 applyTilemapChange : TilemapChange -> World -> World
-applyTilemapChange { origin, nextTilemap } world =
+applyTilemapChange _ world =
     let
         nextLots =
             Dict.filter
                 (\_ lot ->
-                    hasValidAnchorCell nextTilemap lot && not (Lot.inBounds origin lot)
+                    -- TODO: check Lots quadtree to see if there's a collision with changed Cells
+                    hasValidAnchorCell world.tilemap lot
                 )
                 world.lots
 
         nextWorld =
-            { world
-                | tilemap = nextTilemap
-                , lots = nextLots
-            }
+            { world | lots = nextLots }
     in
     updateRoadNetwork nextWorld
 
@@ -88,7 +90,7 @@ hasValidAnchorCell : Tilemap -> Lot -> Bool
 hasValidAnchorCell tilemap lot =
     case Tilemap.tileAt tilemap lot.anchor.anchorCell of
         Just tile ->
-            tile == Tilemap.horizontalRoad || tile == Tilemap.verticalRoad
+            Tile.isBasicRoad tile
 
         Nothing ->
             False
@@ -139,10 +141,10 @@ buildRoadNetwork : World -> ( RoadNetwork, TrafficLights )
 buildRoadNetwork { tilemap, lots, trafficLights } =
     let
         tilePriority ( _, tile ) =
-            if Tilemap.isDeadend tile then
+            if Tile.isDeadend tile then
                 0
 
-            else if Tilemap.isIntersection tile then
+            else if Tile.isIntersection tile then
                 1
 
             else
@@ -243,36 +245,38 @@ createConnections { nodes, tilemap, remainingTiles, lots } =
 
 toConnections : Tilemap -> Cell -> Tile -> Lots -> List Connection
 toConnections tilemap cell tile lots =
-    if tile == Tilemap.horizontalRoad then
-        lotConnections cell tile Geometry.right lots
+    if Tile.isBasicRoad tile then
+        lotConnections cell tile lots
 
-    else if tile == Tilemap.verticalRoad then
-        lotConnections cell tile Geometry.up lots
-
-    else if Tilemap.isDeadend tile then
-        Tilemap.potentialConnections tile
+    else if Tile.isDeadend tile then
+        Tile.potentialConnections tile
             |> List.concatMap
-                (Tilemap.oppositeOrthogonalDirection
-                    >> Tilemap.orthogonalDirectionToLmDirection
+                (oppositeOrthogonalDirection
+                    >> orthogonalDirectionToLmDirection
                     >> deadendConnections cell tile
                 )
 
     else
-        Tilemap.potentialConnections tile
+        Tile.potentialConnections tile
             |> List.concatMap (connectionsByTileEntryDirection tilemap cell tile)
 
 
-lotConnections : Cell -> Tile -> LMDirection2d -> Lots -> List Connection
-lotConnections cell tile trafficDirection lots =
+lotConnections : Cell -> Tile -> Lots -> List Connection
+lotConnections cell tile lots =
     case Dict.find (\_ lot -> lot.anchor.anchorCell == cell) lots of
         Just ( id, lot ) ->
             let
+                trafficDirection =
+                    lot.anchor.anchorDirection
+                        |> orthogonalDirectionToLmDirection
+                        |> Direction2d.rotateClockwise
+
                 ( posA, posB ) =
                     laneCenterPositionsByDirection cell trafficDirection
 
                 anchorDirection =
                     lot.anchor.anchorDirection
-                        |> Tilemap.orthogonalDirectionToLmDirection
+                        |> orthogonalDirectionToLmDirection
 
                 ( position, direction ) =
                     if anchorDirection == Direction2d.rotateClockwise trafficDirection then
@@ -454,7 +458,7 @@ hasStopgapInbetween tileA tileB =
 
 isCurveOrIntersection : Tile -> Bool
 isCurveOrIntersection tile =
-    Tilemap.isCurve tile || Tilemap.isIntersection tile
+    Tile.isCurve tile || Tile.isIntersection tile
 
 
 

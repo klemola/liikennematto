@@ -24,12 +24,15 @@ import Length exposing (Length)
 import Model.Car exposing (CarKind(..))
 import Model.Entity exposing (Id)
 import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
-import Model.Tilemap as Tilemap
+import Model.OrthogonalDirection
     exposing
-        ( Cell
-        , OrthogonalDirection(..)
-        , tileSize
+        ( OrthogonalDirection(..)
+        , isVerticalDirection
+        , oppositeOrthogonalDirection
+        , orthogonalDirectionToLmDirection
         )
+import Model.Tile exposing (tileSize)
+import Model.Tilemap as Tilemap exposing (Cell)
 import Point2d
 import Quantity
 import Vector2d
@@ -150,7 +153,7 @@ createAnchor : NewLot -> Cell -> Maybe Anchor
 createAnchor newLot anchorCell =
     let
         anchorDirection =
-            Tilemap.oppositeOrthogonalDirection newLot.content.entryDirection
+            oppositeOrthogonalDirection newLot.content.entryDirection
     in
     Tilemap.nextOrthogonalCell anchorDirection anchorCell
         |> Maybe.map
@@ -194,7 +197,7 @@ entryDetails : Anchor -> NewLot -> EntryDetails
 entryDetails anchor newLot =
     let
         ( width, height ) =
-            if Tilemap.isVerticalDirection anchor.anchorDirection then
+            if isVerticalDirection anchor.anchorDirection then
                 ( halfTile, drivewaySize )
 
             else
@@ -258,7 +261,7 @@ parkingSpot { entryCell } newLot =
 parkingSpotOrientation : Lot -> Angle
 parkingSpotOrientation lot =
     lot.content.entryDirection
-        |> Tilemap.orthogonalDirectionToLmDirection
+        |> orthogonalDirectionToLmDirection
         |> Direction2d.rotateClockwise
         |> Direction2d.toAngle
 

@@ -11,6 +11,7 @@ module Model.RoadNetwork exposing
     , findNodeByPosition
     , getOutgoingConnections
     , getRandomNode
+    , size
     , toDotString
     )
 
@@ -18,7 +19,8 @@ import Graph exposing (Graph, NodeContext, NodeId)
 import Graph.DOT
 import Model.Entity exposing (Id)
 import Model.Geometry exposing (LMDirection2d, LMPoint2d)
-import Model.Tilemap exposing (Cell, Tile)
+import Model.Tile exposing (Tile)
+import Model.Tilemap exposing (Cell)
 import Random
 import Random.Extra
 
@@ -72,6 +74,11 @@ empty =
 --
 -- Queries
 --
+
+
+size : RoadNetwork -> Int
+size =
+    Graph.size
 
 
 findNodeByLotId : RoadNetwork -> Int -> Maybe RNNodeContext

@@ -5,19 +5,16 @@ module UI.Editor exposing
     )
 
 import CustomEvent
-import Duration
 import Element exposing (Color, Element)
 import Element.Border as Border
 import Element.Events as Events
 import Message exposing (Message(..))
-import Model.Animation as Animation
-import Model.AnimationSchedule as AnimationSchedule exposing (AnimationSchedule)
 import Model.Geometry as Geometry
-import Model.Liikennematto exposing (Liikennematto, Tool(..), latestTilemap)
-import Model.Tilemap as Tilemap exposing (Cell, TilemapChange, tileSize)
+import Model.Liikennematto exposing (Liikennematto, Tool(..))
+import Model.RenderCache exposing (refreshTilemapCache)
+import Model.Tile exposing (Tile, tileSize)
+import Model.Tilemap as Tilemap exposing (Cell)
 import Model.World as World exposing (World)
-import Process
-import Task
 import UI.Core
     exposing
         ( ControlButtonSize
@@ -58,69 +55,50 @@ update msg model =
 
         AddTile cell ->
             let
-                { world, animationSchedule } =
+                { world } =
                     model
 
-                tilemapChange =
-                    latestTilemap model |> Tilemap.addTile cell
+                nextTilemap =
+                    world.tilemap |> Tilemap.addTile cell
 
                 nextWorld =
-                    { world | tilemap = tilemapChange.nextTilemap }
-
-                nextAnimationSchedule =
-                    animateTilemapChange tilemapChange animationSchedule
+                    { world | tilemap = nextTilemap }
             in
             ( { model
                 | world = nextWorld
-                , pendingTilemapChange = Nothing
-                , animationSchedule = nextAnimationSchedule
+                , renderCache = refreshTilemapCache nextTilemap model.renderCache
               }
-            , tilemapChangedEffects tilemapChange
+            , Cmd.none
             )
 
         RemoveTile cell ->
             let
-                tilemapChange =
-                    latestTilemap model |> Tilemap.removeTile cell
+                { world } =
+                    model
 
-                nextAnimationSchedule =
-                    animateTilemapChange tilemapChange model.animationSchedule
+                nextTilemap =
+                    model.world.tilemap |> Tilemap.removeTile cell
+
+                nextWorld =
+                    { world | tilemap = nextTilemap }
             in
             ( { model
-                | -- the tilemap update is delayed so that the animation can complete before the tile is removed
-                  -- Room for improvement: if tiles had a state machine, the removal could be implemented as a transition + animation
-                  pendingTilemapChange = Just tilemapChange
-                , animationSchedule = nextAnimationSchedule
+                | world = nextWorld
+                , renderCache = refreshTilemapCache nextTilemap model.renderCache
               }
-            , tilemapChangedEffects tilemapChange
+            , Cmd.none
             )
 
         _ ->
             ( model, Cmd.none )
 
 
-animateTilemapChange : TilemapChange -> AnimationSchedule -> AnimationSchedule
-animateTilemapChange tilemapChange animationSchedule =
-    let
-        tileAnimations =
-            Animation.fromTilemapChange tilemapChange
-    in
-    animationSchedule |> AnimationSchedule.add tileAnimations
-
-
-tilemapChangedEffects : TilemapChange -> Cmd Message
-tilemapChangedEffects tilemapChange =
-    Process.sleep (Duration.inMilliseconds Animation.tileAnimationDuration)
-        |> Task.map (always tilemapChange)
-        |> Task.perform TilemapChanged
-
-
 
 -- Views
 
 
-overlay : World -> Maybe TilemapChange -> Tool -> Element Message
-overlay world pendingTilemapChange tool =
+overlay : World -> Tool -> Element Message
+overlay world tool =
     let
         size =
             Element.px (Geometry.toPixelsValue Tilemap.mapSize |> floor)
@@ -136,11 +114,9 @@ overlay world pendingTilemapChange tool =
                             tileHighlight
                                 { world = world
                                 , selectedTool = tool
-                                , pendingTilemapChange = pendingTilemapChange
                                 , cell = cell
                                 }
                         , cell = cell
-                        , pendingTilemapChange = pendingTilemapChange
                         , world = world
                         , tool = tool
                         }
@@ -174,12 +150,11 @@ overlay world pendingTilemapChange tool =
 tileOverlay :
     { glowColor : Maybe Color
     , cell : Cell
-    , pendingTilemapChange : Maybe TilemapChange
     , world : World
     , tool : Tool
     }
     -> Element Message
-tileOverlay { glowColor, cell, pendingTilemapChange, world, tool } =
+tileOverlay { glowColor, cell, world, tool } =
     let
         tileSizePx =
             Element.px tileSizeInPixelsInt
@@ -196,19 +171,19 @@ tileOverlay { glowColor, cell, pendingTilemapChange, world, tool } =
         [ Element.width tileSizePx
         , Element.height tileSizePx
         , Element.mouseOver glow
-        , Events.onClick (choosePrimaryAction cell pendingTilemapChange tool world)
-        , Element.htmlAttribute (CustomEvent.onRightClick <| chooseSecondaryAction cell pendingTilemapChange tool)
+        , Events.onClick (choosePrimaryAction cell tool world)
+        , Element.htmlAttribute (CustomEvent.onRightClick <| chooseSecondaryAction cell tool)
         ]
         Element.none
 
 
-choosePrimaryAction : Cell -> Maybe TilemapChange -> Tool -> World -> Message
-choosePrimaryAction cell pendingTilemapChange tool world =
+choosePrimaryAction : Cell -> Tool -> World -> Message
+choosePrimaryAction cell tool world =
     case ( tool, Tilemap.tileAt world.tilemap cell ) of
         ( SmartConstruction, _ ) ->
             let
                 alreadyExists =
-                    Tilemap.exists cell world.tilemap || cellChanging pendingTilemapChange cell
+                    Tilemap.exists cell world.tilemap
             in
             if not alreadyExists && Tilemap.canBuildRoadAt cell world.tilemap then
                 AddTile cell
@@ -217,7 +192,8 @@ choosePrimaryAction cell pendingTilemapChange tool world =
                 NoOp
 
         ( Bulldozer, Just _ ) ->
-            if not (cellChanging pendingTilemapChange cell) then
+            -- TODO: check if the tile is transitioning
+            if not False then
                 RemoveTile cell
 
             else
@@ -230,11 +206,12 @@ choosePrimaryAction cell pendingTilemapChange tool world =
             NoOp
 
 
-chooseSecondaryAction : Cell -> Maybe TilemapChange -> Tool -> Message
-chooseSecondaryAction cell pendingTilemapChange tool =
+chooseSecondaryAction : Cell -> Tool -> Message
+chooseSecondaryAction cell tool =
     case tool of
         SmartConstruction ->
-            if not (cellChanging pendingTilemapChange cell) then
+            -- TODO: check if the tile is transitioning
+            if not False then
                 RemoveTile cell
 
             else
@@ -247,7 +224,6 @@ chooseSecondaryAction cell pendingTilemapChange tool =
 tileHighlight :
     { world : World
     , selectedTool : Tool
-    , pendingTilemapChange : Maybe TilemapChange
     , cell : Cell
     }
     -> Maybe Color
@@ -279,16 +255,6 @@ tileHighlight { world, selectedTool, cell } =
 
         _ ->
             Nothing
-
-
-cellChanging : Maybe TilemapChange -> Cell -> Bool
-cellChanging pendingTilemapChange cell =
-    case pendingTilemapChange of
-        Just { origin } ->
-            origin == cell
-
-        Nothing ->
-            False
 
 
 toolbar : Tool -> ControlButtonSize -> Element Message

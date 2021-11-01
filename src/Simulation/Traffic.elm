@@ -10,13 +10,12 @@ import Dict
 import Dict.Extra as Dict
 import Direction2d
 import Duration exposing (Duration)
-import Length
+import Length exposing (Length)
 import Model.Car as Car exposing (Car, Cars, Status(..))
 import Model.Entity as Entity
 import Model.Lookup exposing (carPositionLookup)
 import Model.Lot as Lot exposing (Lot)
 import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
-import Model.Tilemap as Tilemap exposing (tileSize)
 import Model.World as World exposing (World)
 import Point2d
 import Polyline2d
@@ -28,6 +27,11 @@ import Simulation.Infrastructure as Infrastructure
 import Simulation.Pathfinding as Pathfinding
 import Simulation.Round as Round
 import Simulation.Steering as Steering
+
+
+nearbyTrafficRadius : Length
+nearbyTrafficRadius =
+    Length.meters 16
 
 
 updateTraffic :
@@ -46,7 +50,7 @@ updateTraffic { updateQueue, seed, world, delta } =
             let
                 otherCars =
                     world.carPositionLookup
-                        |> QuadTree.neighborsWithin tileSize activeCar.boundingBox
+                        |> QuadTree.neighborsWithin nearbyTrafficRadius activeCar.boundingBox
                         |> List.filter (\car -> car.id /= activeCar.id)
 
                 -- 1. Path checks (route, local path)
@@ -352,7 +356,7 @@ validateSpawnConditions world nodeCtx =
                 |> not
 
         reasonableAmountOfTraffic =
-            Tilemap.size world.tilemap > Dict.size world.cars
+            RoadNetwork.size world.roadNetwork > Dict.size world.cars
 
         spawnPositionHasEnoughSpace =
             Dict.values world.cars

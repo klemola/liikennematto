@@ -1,9 +1,5 @@
 module Model.Tilemap exposing
     ( Cell
-    , DiagonalDirection(..)
-    , OrthogonalDirection(..)
-    , Tile
-    , TileOperation(..)
     , Tilemap
     , TilemapChange
     , addTile
@@ -14,60 +10,53 @@ module Model.Tilemap exposing
     , cellCenterPoint
     , cellFromCoordinates
     , cellToString
-    , curveTopLeft
     , empty
     , exists
-    , horizontalRoad
     , inBounds
-    , intersectionTDown
     , intersects
-    , isCurve
-    , isDeadend
-    , isIntersection
-    , isVerticalDirection
     , mapSize
     , nextOrthogonalCell
-    , oppositeOrthogonalDirection
-    , orthogonalDirectionToLmDirection
-    , orthogonalDirections
-    , potentialConnections
     , removeTile
     , rowsAndColumnsAmount
     , size
     , tileAt
-    , tileSize
     , toList
-    , verticalRoad
+    , update
     )
 
 import Array exposing (Array)
 import BoundingBox2d
 import Common
+import Duration exposing (Duration)
 import Length exposing (Length)
 import Maybe.Extra as Maybe
+import Model.FSM as FSM
 import Model.Geometry
     exposing
         ( LMBoundingBox2d
-        , LMDirection2d
         , LMPoint2d
-        , down
-        , left
-        , pixelsToMeters
-        , right
-        , up
+        )
+import Model.OrthogonalDirection
+    exposing
+        ( DiagonalDirection(..)
+        , OrthogonalDirection(..)
+        , diagonalDirections
+        )
+import Model.Tile as Tile
+    exposing
+        ( Tile
+        , TileKind
+        , TileOperation
+        , chooseTileKind
+        , tileSize
         )
 import Point2d
 import Quantity exposing (negativeInfinity)
-import Set exposing (Set)
 import Vector2d
 
 
 type Tilemap
-    = Tilemap (Array Tile)
-
-
-type alias Tile =
-    Int
+    = Tilemap (Array (Maybe Tile))
 
 
 type Cell
@@ -80,44 +69,14 @@ type alias CellCoordinates =
 
 type alias TilemapChange =
     { nextTilemap : Tilemap
-    , origin : Cell
-    , changedCells : ChangedCells
+    , changedCells : List Cell
     }
-
-
-type alias ChangedCells =
-    List ( CellChange, TileOperation )
-
-
-type TileOperation
-    = Add
-    | Remove
-    | Change
-
-
-type OrthogonalDirection
-    = Up
-    | Right
-    | Down
-    | Left
-
-
-type DiagonalDirection
-    = TopRight
-    | TopLeft
-    | BottomRight
-    | BottomLeft
 
 
 
 --
 -- Tilemap
 --
-
-
-tileSize : Length
-tileSize =
-    pixelsToMeters 80
 
 
 rowsAndColumnsAmount : Int
@@ -141,17 +100,7 @@ empty =
         arrSize =
             rowsAndColumnsAmount * rowsAndColumnsAmount
     in
-    Tilemap (Array.initialize arrSize (always emptyTile))
-
-
-addTile : Cell -> Tilemap -> TilemapChange
-addTile cell tilemap =
-    applyMask cell Add tilemap
-
-
-removeTile : Cell -> Tilemap -> TilemapChange
-removeTile cell tilemap =
-    applyMask cell Remove tilemap
+    Tilemap (Array.initialize arrSize (always Nothing))
 
 
 tileAt : Tilemap -> Cell -> Maybe Tile
@@ -161,14 +110,7 @@ tileAt (Tilemap tilemapContents) cell =
             indexFromCell cell
     in
     Array.get idx tilemapContents
-        |> Maybe.andThen
-            (\tile ->
-                if tile == emptyTile then
-                    Nothing
-
-                else
-                    Just tile
-            )
+        |> Maybe.andThen identity
 
 
 inBounds : LMBoundingBox2d -> Bool
@@ -213,15 +155,16 @@ toList mapperFn (Tilemap tilemapContents) =
         mappedAcc =
             -- This is an optimization - Array.indexedMap would require double iteration (cell mapping + Nothing values discarded)
             Array.foldl
-                (\tile { acc, index } ->
+                (\maybeTile { acc, index } ->
                     { acc =
-                        if tile == emptyTile then
-                            acc
+                        case maybeTile of
+                            Just tile ->
+                                cellFromIndex index
+                                    |> Maybe.map (\cell -> mapperFn cell tile :: acc)
+                                    |> Maybe.withDefault acc
 
-                        else
-                            cellFromIndex index
-                                |> Maybe.map (\cell -> mapperFn cell tile :: acc)
-                                |> Maybe.withDefault acc
+                            Nothing ->
+                                acc
                     , index = index + 1
                     }
                 )
@@ -234,12 +177,13 @@ toList mapperFn (Tilemap tilemapContents) =
 size : Tilemap -> Int
 size (Tilemap tilemapContents) =
     Array.foldl
-        (\tile count ->
-            if tile /= emptyTile then
-                count + 1
+        (\maybeTile count ->
+            case maybeTile of
+                Just _ ->
+                    count + 1
 
-            else
-                count
+                Nothing ->
+                    count
         )
         0
         tilemapContents
@@ -247,82 +191,160 @@ size (Tilemap tilemapContents) =
 
 
 --
--- Bit mask
+-- Update
 --
 
 
-applyMask : Cell -> TileOperation -> Tilemap -> TilemapChange
-applyMask origin tileChange tilemap =
-    let
-        originTile =
-            tileAt tilemap origin |> Maybe.withDefault emptyTile
-
-        potentiallyChangedCells =
-            Maybe.values
-                [ Just ( origin, originTile )
-                , nextOrthogonalTile Up origin tilemap
-                , nextOrthogonalTile Left origin tilemap
-                , nextOrthogonalTile Right origin tilemap
-                , nextOrthogonalTile Down origin tilemap
-                ]
-
-        acc =
-            TilemapChange tilemap origin []
-    in
-    List.foldl
-        (\( cellToCheck, currentTile ) { nextTilemap, changedCells } ->
-            let
-                nextTile =
-                    if cellToCheck == origin && tileChange == Remove then
-                        emptyTile
-
-                    else
-                        chooseTile nextTilemap cellToCheck
-
-                cellChange =
-                    CellChange cellToCheck currentTile nextTile
-            in
-            { nextTilemap = nextTilemap |> replaceTile cellToCheck nextTile
-            , origin = origin
-            , changedCells = updateChangedCells cellChange changedCells
-            }
-        )
-        acc
-        potentiallyChangedCells
-
-
-type alias CellChange =
-    { cell : Cell
-    , currentTile : Tile
-    , nextTile : Tile
+type alias TileFSMUpdate =
+    { tilemap : Tilemap
+    , actions : List Tile.Action
+    , emptiedIndices : List Int
+    , changedTilesAmount : Int
     }
 
 
-updateChangedCells : CellChange -> ChangedCells -> ChangedCells
-updateChangedCells cellChange changedCells =
+update : Duration -> Tilemap -> ( Tilemap, List Tile.Action, Int )
+update delta tilemap =
     let
-        { currentTile, nextTile } =
-            cellChange
+        fsmUpdate =
+            updateTileFSMs delta tilemap
 
-        tileChange =
-            if currentTile == emptyTile && nextTile /= emptyTile then
-                Just Add
+        nextTilemap =
+            List.foldl
+                (\idx acc ->
+                    let
+                        maybeCell =
+                            cellFromIndex idx
+                    in
+                    case maybeCell of
+                        Just cell ->
+                            removeEffects cell acc
 
-            else if currentTile /= emptyTile && nextTile == emptyTile then
-                Just Remove
-
-            else if currentTile /= nextTile then
-                Just Change
-
-            else
-                Nothing
+                        Nothing ->
+                            acc
+                )
+                fsmUpdate.tilemap
+                fsmUpdate.emptiedIndices
     in
-    case tileChange of
-        Just change ->
-            ( cellChange, change ) :: changedCells
+    ( nextTilemap, fsmUpdate.actions, fsmUpdate.changedTilesAmount )
 
-        Nothing ->
-            changedCells
+
+updateTileFSMs : Duration -> Tilemap -> TileFSMUpdate
+updateTileFSMs delta (Tilemap currentTilemap) =
+    let
+        { tilemap, actions, emptiedIndices, changedTilesAmount } =
+            Array.foldl
+                (\maybeTile acc ->
+                    case maybeTile of
+                        Just tile ->
+                            let
+                                ( nextFSM, tileActions ) =
+                                    FSM.update delta tile.fsm
+
+                                nextTile =
+                                    { kind = tile.kind
+                                    , fsm = nextFSM
+                                    }
+
+                                nextEmptiedIndices =
+                                    if Tile.isRemoved nextTile then
+                                        Array.length acc.tilemap :: acc.emptiedIndices
+
+                                    else
+                                        acc.emptiedIndices
+
+                                nextChangedTiles =
+                                    if FSM.currentState tile.fsm /= FSM.currentState nextTile.fsm then
+                                        acc.changedTilesAmount + 1
+
+                                    else
+                                        acc.changedTilesAmount
+                            in
+                            { tilemap = acc.tilemap |> Array.push (Just nextTile)
+                            , actions = acc.actions ++ tileActions
+                            , emptiedIndices = nextEmptiedIndices
+                            , changedTilesAmount = nextChangedTiles
+                            }
+
+                        Nothing ->
+                            { tilemap = acc.tilemap |> Array.push Nothing
+                            , actions = acc.actions
+                            , emptiedIndices = acc.emptiedIndices
+                            , changedTilesAmount = acc.changedTilesAmount
+                            }
+                )
+                { tilemap = Array.empty
+                , actions = []
+                , emptiedIndices = []
+                , changedTilesAmount = 0
+                }
+                currentTilemap
+    in
+    { tilemap = Tilemap tilemap
+    , actions = actions
+    , emptiedIndices = emptiedIndices
+    , changedTilesAmount = changedTilesAmount
+    }
+
+
+removeEffects : Cell -> Tilemap -> Tilemap
+removeEffects cell (Tilemap tilemap) =
+    tilemap
+        |> Array.set (indexFromCell cell) Nothing
+        |> Tilemap
+        |> updateNeighborCells cell
+
+
+addTile : Cell -> Tilemap -> Tilemap
+addTile cell tilemap =
+    tilemapChange cell Tile.Add tilemap
+
+
+removeTile : Cell -> Tilemap -> Tilemap
+removeTile cell tilemap =
+    tilemapChange cell Tile.Remove tilemap
+
+
+tilemapChange : Cell -> TileOperation -> Tilemap -> Tilemap
+tilemapChange origin tileChange tilemap =
+    let
+        originTileKind =
+            chooseTile tilemap origin
+
+        originTile =
+            Tile.new originTileKind tileChange
+
+        tilemapWithOriginChange =
+            updateCell origin originTile tilemap
+    in
+    updateNeighborCells origin tilemapWithOriginChange
+
+
+updateNeighborCells : Cell -> Tilemap -> Tilemap
+updateNeighborCells origin tilemap =
+    let
+        potentiallyChangedCells =
+            [ nextOrthogonalTile Up origin tilemap
+            , nextOrthogonalTile Left origin tilemap
+            , nextOrthogonalTile Right origin tilemap
+            , nextOrthogonalTile Down origin tilemap
+            ]
+    in
+    potentiallyChangedCells
+        |> Maybe.values
+        |> List.foldl
+            (\( changedCell, _ ) acc ->
+                let
+                    nextTileKind =
+                        chooseTile acc changedCell
+
+                    nextTile =
+                        -- "reset" the tile & FSM to avoid glitchy transitions
+                        Tile.new nextTileKind Tile.Change
+                in
+                updateCell changedCell nextTile acc
+            )
+            tilemap
 
 
 nextOrthogonalTile : OrthogonalDirection -> Cell -> Tilemap -> Maybe ( Cell, Tile )
@@ -339,7 +361,7 @@ nextOrthogonalTile dir cell tilemap =
         maybeTile
 
 
-chooseTile : Tilemap -> Cell -> Tile
+chooseTile : Tilemap -> Cell -> TileKind
 chooseTile tilemap origin =
     let
         orthogonalNeighbors =
@@ -349,7 +371,7 @@ chooseTile tilemap origin =
             , down = hasOrthogonalNeighborAt Down origin tilemap
             }
     in
-    fourBitBitmask orthogonalNeighbors
+    chooseTileKind orthogonalNeighbors
 
 
 hasOrthogonalNeighborAt : OrthogonalDirection -> Cell -> Tilemap -> Bool
@@ -357,52 +379,22 @@ hasOrthogonalNeighborAt dir cell tilemap =
     nextOrthogonalCell dir cell |> Maybe.unwrap False (\neighborCell -> exists neighborCell tilemap)
 
 
-replaceTile : Cell -> Tile -> Tilemap -> Tilemap
-replaceTile cell tile (Tilemap tilemapContents) =
+updateCell : Cell -> Tile -> Tilemap -> Tilemap
+updateCell cell tile (Tilemap tilemapContents) =
     let
         idx =
             indexFromCell cell
 
         tiles =
-            tilemapContents |> Array.set idx tile
+            tilemapContents |> Array.set idx (Just tile)
     in
     Tilemap tiles
 
 
-type alias OrthogonalNeighbors =
-    { up : Bool
-    , left : Bool
-    , right : Bool
-    , down : Bool
-    }
 
-
-{-| Calculates tile number (ID) based on surrounding tiles
-
-    Up = 2^0 = 1
-    Left = 2^1 = 2
-    Right = 2^2 = 4
-    Down = 2^3 = 8
-
-    e.g. tile bordered by tiles in Up and Right directions 1*1 + 2*0 + 4*1 + 8*0 = 0101 = 5
-
--}
-fourBitBitmask : OrthogonalNeighbors -> Int
-fourBitBitmask { up, left, right, down } =
-    1 * boolToBinary up + 2 * boolToBinary left + 4 * boolToBinary right + 8 * boolToBinary down
-
-
-boolToBinary : Bool -> Int
-boolToBinary booleanValue =
-    if booleanValue then
-        1
-
-    else
-        0
-
-
-
+--
 -- Cells
+--
 
 
 cellFromIndex : Int -> Maybe Cell
@@ -493,26 +485,6 @@ cellToString (Cell coordinates) =
     "Cell (" ++ String.fromInt x ++ "," ++ String.fromInt y ++ ")"
 
 
-horizontalOrthogonalDirections : List OrthogonalDirection
-horizontalOrthogonalDirections =
-    [ Left, Right ]
-
-
-verticalOrthogonalDirections : List OrthogonalDirection
-verticalOrthogonalDirections =
-    [ Up, Down ]
-
-
-orthogonalDirections : List OrthogonalDirection
-orthogonalDirections =
-    verticalOrthogonalDirections ++ horizontalOrthogonalDirections
-
-
-diagonalDirections : List DiagonalDirection
-diagonalDirections =
-    [ TopLeft, TopRight, BottomLeft, BottomRight ]
-
-
 nextOrthogonalCell : OrthogonalDirection -> Cell -> Maybe Cell
 nextOrthogonalCell dir (Cell coordinates) =
     let
@@ -553,59 +525,6 @@ nextDiagonalCell dir (Cell coordinates) =
             cellFromCoordinates ( x + 1, y + 1 )
 
 
-oppositeOrthogonalDirection : OrthogonalDirection -> OrthogonalDirection
-oppositeOrthogonalDirection dir =
-    case dir of
-        Up ->
-            Down
-
-        Right ->
-            Left
-
-        Down ->
-            Up
-
-        Left ->
-            Right
-
-
-crossOrthogonalDirection : OrthogonalDirection -> List OrthogonalDirection
-crossOrthogonalDirection fromDir =
-    case fromDir of
-        Up ->
-            horizontalOrthogonalDirections
-
-        Right ->
-            verticalOrthogonalDirections
-
-        Down ->
-            horizontalOrthogonalDirections
-
-        Left ->
-            verticalOrthogonalDirections
-
-
-isVerticalDirection : OrthogonalDirection -> Bool
-isVerticalDirection direction =
-    List.member direction verticalOrthogonalDirections
-
-
-orthogonalDirectionToLmDirection : OrthogonalDirection -> LMDirection2d
-orthogonalDirectionToLmDirection dir =
-    case dir of
-        Up ->
-            up
-
-        Right ->
-            right
-
-        Down ->
-            down
-
-        Left ->
-            left
-
-
 {-| Corner plus natural neighbors (clockwise).
 
     e.g. Left, TopLeft, Up
@@ -641,186 +560,3 @@ cornerCells c position =
                 , nextDiagonalCell BottomRight position
                 , nextOrthogonalCell Down position
                 ]
-
-
-
---
--- Tiles
---
-
-
-emptyTile : Tile
-emptyTile =
-    -1
-
-
-horizontalRoad : Tile
-horizontalRoad =
-    6
-
-
-verticalRoad : Tile
-verticalRoad =
-    9
-
-
-curveBottomRight : Tile
-curveBottomRight =
-    3
-
-
-curveBottomLeft : Tile
-curveBottomLeft =
-    5
-
-
-curveTopRight : Tile
-curveTopRight =
-    10
-
-
-curveTopLeft : Tile
-curveTopLeft =
-    12
-
-
-curveTiles : Set Tile
-curveTiles =
-    Set.fromList
-        [ curveTopLeft
-        , curveTopRight
-        , curveBottomLeft
-        , curveBottomRight
-        ]
-
-
-isCurve : Tile -> Bool
-isCurve tile =
-    Set.member tile curveTiles
-
-
-deadendDown : Tile
-deadendDown =
-    1
-
-
-deadendRight : Tile
-deadendRight =
-    2
-
-
-deadendLeft : Tile
-deadendLeft =
-    4
-
-
-deadendUp : Tile
-deadendUp =
-    8
-
-
-deadendTiles : Set Tile
-deadendTiles =
-    Set.fromList
-        [ deadendDown
-        , deadendRight
-        , deadendLeft
-        , deadendUp
-        ]
-
-
-isDeadend : Tile -> Bool
-isDeadend tile =
-    Set.member tile deadendTiles
-
-
-intersectionTUp : Tile
-intersectionTUp =
-    7
-
-
-intersectionTLeft : Tile
-intersectionTLeft =
-    11
-
-
-intersectionTRight : Tile
-intersectionTRight =
-    13
-
-
-intersectionTDown : Tile
-intersectionTDown =
-    14
-
-
-intersectionCross : Tile
-intersectionCross =
-    15
-
-
-intersectionTiles : Set Tile
-intersectionTiles =
-    Set.fromList
-        [ intersectionTUp
-        , intersectionTRight
-        , intersectionTDown
-        , intersectionTLeft
-        , intersectionCross
-        ]
-
-
-isIntersection : Tile -> Bool
-isIntersection tile =
-    Set.member tile intersectionTiles
-
-
-potentialConnections : Tile -> List OrthogonalDirection
-potentialConnections tile =
-    if tile == verticalRoad then
-        [ Up, Down ]
-
-    else if tile == horizontalRoad then
-        [ Left, Right ]
-
-    else if tile == curveTopRight then
-        [ Left, Down ]
-
-    else if tile == curveTopLeft then
-        [ Right, Down ]
-
-    else if tile == curveBottomRight then
-        [ Left, Up ]
-
-    else if tile == curveBottomLeft then
-        [ Right, Up ]
-
-    else if tile == deadendUp then
-        [ Down ]
-
-    else if tile == deadendRight then
-        [ Left ]
-
-    else if tile == deadendDown then
-        [ Up ]
-
-    else if tile == deadendLeft then
-        [ Right ]
-
-    else if tile == intersectionTUp then
-        Up :: crossOrthogonalDirection Up
-
-    else if tile == intersectionTRight then
-        Right :: crossOrthogonalDirection Right
-
-    else if tile == intersectionTDown then
-        Down :: crossOrthogonalDirection Down
-
-    else if tile == intersectionTLeft then
-        Left :: crossOrthogonalDirection Left
-
-    else if tile == intersectionCross then
-        orthogonalDirections
-
-    else
-        []
