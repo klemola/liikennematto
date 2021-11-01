@@ -47,6 +47,7 @@ type alias TrafficLights =
 green : State TrafficLightColor a
 green =
     FSM.createState
+        (FSM.createStateId "traffic-light-green")
         Green
         [ FSM.createTransition
             (\_ -> yellow)
@@ -58,6 +59,7 @@ green =
 yellow : State TrafficLightColor a
 yellow =
     FSM.createState
+        (FSM.createStateId "traffic-light-yellow")
         Yellow
         [ FSM.createTransition
             (\_ -> red)
@@ -69,6 +71,7 @@ yellow =
 red : State TrafficLightColor a
 red =
     FSM.createState
+        (FSM.createStateId "traffic-light-red")
         Red
         [ FSM.createTransition
             (\_ -> green)
