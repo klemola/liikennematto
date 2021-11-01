@@ -1,11 +1,16 @@
 module Model.FSM exposing
     ( FSM
     , State
+    , StateId
     , TransitionTrigger(..)
     , createFSM
     , createState
+    , createStateId
     , createTransition
     , currentState
+    , potentialTransitions
+    , timeToStateChange
+    , transitionTo
     , update
     )
 
@@ -23,9 +28,14 @@ type FSM state actionType
 
 type State state actionType
     = State
-        { kind : state
+        { id : StateId
+        , kind : state
         , transitions : List (Transition state actionType)
         }
+
+
+type StateId
+    = StateId String
 
 
 type Transition state actionType
@@ -58,10 +68,16 @@ createFSM initialState =
         }
 
 
-createState : state -> List (Transition state actionType) -> State state actionType
-createState kind transitions =
+createStateId : String -> StateId
+createStateId =
+    StateId
+
+
+createState : StateId -> state -> List (Transition state actionType) -> State state actionType
+createState id kind transitions =
     State
-        { kind = kind
+        { id = id
+        , kind = kind
         , transitions = transitions
         }
 
@@ -86,6 +102,25 @@ currentState (FSM fsm) =
             fsm.currentState
     in
     state.kind
+
+
+potentialTransitions : FSM state actionType -> List (Transition state actionType)
+potentialTransitions (FSM fsm) =
+    let
+        (State state) =
+            fsm.currentState
+    in
+    state.transitions
+
+
+timeToStateChange : Transition state actionType -> Maybe Duration
+timeToStateChange (Transition trs) =
+    case trs.trigger of
+        Timer timer ->
+            Just timer
+
+        _ ->
+            Nothing
 
 
 
@@ -138,6 +173,11 @@ update delta (FSM fsm) =
     )
 
 
+setTransitions : State state actionType -> List (Transition state actionType) -> State state actionType
+setTransitions (State state) updatedTransitions =
+    State { state | transitions = updatedTransitions }
+
+
 updateTransition :
     Duration
     -> Transition state actionType
@@ -185,15 +225,36 @@ updateTransition delta transition =
     )
 
 
+transitionTo : StateId -> FSM state actionType -> Result String ( FSM state actionType, List actionType )
+transitionTo stateId (FSM fsm) =
+    let
+        (State state) =
+            fsm.currentState
 
---
--- Utility
---
+        transition =
+            state.transitions
+                |> List.filter (directTransitionAllowed stateId)
+                |> List.head
+    in
+    case transition of
+        Just match ->
+            let
+                (Transition trs) =
+                    match
+            in
+            Result.Ok
+                ( FSM { fsm | currentState = trs.targetState () }
+                , trs.actions
+                )
+
+        Nothing ->
+            Result.Err "No matching transition found"
 
 
-setTransitions : State state actionType -> List (Transition state actionType) -> State state actionType
-setTransitions (State state) transitions =
-    State
-        { kind = state.kind
-        , transitions = transitions
-        }
+directTransitionAllowed : StateId -> Transition state actionType -> Bool
+directTransitionAllowed stateId (Transition trs) =
+    let
+        (State targetState) =
+            trs.targetState ()
+    in
+    trs.trigger == Direct && targetState.id == stateId
