@@ -84,7 +84,9 @@ updateBase msg model =
             )
 
         AnimationFrameReceived delta ->
-            ( { model | animationSchedule = model.animationSchedule |> AnimationSchedule.update delta }
+            ( { model
+                | animationSchedule = model.animationSchedule |> AnimationSchedule.update delta
+              }
             , Cmd.none
             )
 
@@ -135,13 +137,13 @@ render model =
             else
                 Element.clip
     in
-    Render.view model.world model.animationSchedule debugLayers
+    Render.view model.world model.renderCache debugLayers
         |> Element.html
         -- render + overlay
         |> Element.el
             [ Element.width (Element.px renderedSize)
             , Element.height (Element.px renderedSize)
-            , Element.inFront (UI.Editor.overlay model.world model.pendingTilemapChange model.tool)
+            , Element.inFront (UI.Editor.overlay model.world model.tool)
             , Background.color colors.terrain
             ]
         -- overflow wrapper

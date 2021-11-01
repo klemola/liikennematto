@@ -31,7 +31,7 @@ tilemapFromCoordinates cellCoordinates =
         (\coords acc ->
             case Tilemap.cellFromCoordinates coords of
                 Just cell ->
-                    Tilemap.addTile cell acc |> .nextTilemap
+                    Tilemap.addTile cell acc
 
                 Nothing ->
                     acc

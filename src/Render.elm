@@ -2,16 +2,17 @@ module Render exposing (view)
 
 import Angle
 import Color
-import Dict exposing (Dict)
+import Dict
 import Direction2d exposing (y)
 import Graph exposing (Node)
 import Html exposing (Html)
 import Maybe.Extra as Maybe
 import Model.Animation as Animation exposing (Animation)
-import Model.AnimationSchedule as AnimationSchedule exposing (AnimationSchedule)
 import Model.Car as Car exposing (Car, CarKind(..), Cars)
 import Model.Geometry exposing (LMPoint2d, pointToPixels, toPixelsValue)
 import Model.Lot exposing (BuildingKind(..), Lot, Lots)
+import Model.OrthogonalDirection exposing (OrthogonalDirection(..))
+import Model.RenderCache exposing (RenderCache, TilemapPresentation)
 import Model.RoadNetwork
     exposing
         ( Connection
@@ -19,14 +20,8 @@ import Model.RoadNetwork
         , RoadNetwork
         , TrafficControl(..)
         )
-import Model.Tilemap as Tilemap
-    exposing
-        ( Cell
-        , OrthogonalDirection(..)
-        , Tile
-        , Tilemap
-        , tileSize
-        )
+import Model.Tile exposing (TileKind, tileSize)
+import Model.Tilemap as Tilemap exposing (Cell)
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
 import Model.World exposing (World)
 import Pixels exposing (Pixels)
@@ -105,24 +100,8 @@ renderColors =
     }
 
 
-view : World -> AnimationSchedule -> DebugLayers -> Html msg
-view { tilemap, cars, lots, roadNetwork, trafficLights } animationSchedule debugLayers =
-    let
-        -- This works as long as the only animation kind is "TileUpdate"
-        tileAnimations =
-            animationSchedule
-                |> AnimationSchedule.toList
-                |> List.foldl
-                    (\animation acc ->
-                        case Animation.toCell animation of
-                            Just cell ->
-                                Dict.insert (Tilemap.cellToString cell) animation acc
-
-                            Nothing ->
-                                acc
-                    )
-                    Dict.empty
-    in
+view : World -> RenderCache -> DebugLayers -> Html msg
+view { cars, lots, roadNetwork, trafficLights } cache debugLayers =
     Svg.svg
         [ Attributes.width tilemapSizeScaledStr
         , Attributes.height tilemapSizeScaledStr
@@ -130,7 +109,7 @@ view { tilemap, cars, lots, roadNetwork, trafficLights } animationSchedule debug
         , Attributes.style <| "background-color: " ++ Color.toCssString renderColors.terrain ++ ";"
         ]
         ([ styles
-         , Svg.Lazy.lazy2 renderTilemap tilemap tileAnimations
+         , Svg.Lazy.lazy renderTilemap cache.tilemap
          , Svg.Lazy.lazy renderLots lots
          , renderCars cars
          , Svg.Lazy.lazy renderTrafficLights trafficLights
@@ -140,34 +119,34 @@ view { tilemap, cars, lots, roadNetwork, trafficLights } animationSchedule debug
         )
 
 
-renderTilemap : Tilemap -> Dict String Animation -> Svg msg
-renderTilemap tilemap tileAnimations =
+
+--
+-- Tiles
+--
+
+
+renderTilemap : TilemapPresentation -> Svg msg
+renderTilemap tilemap =
     tilemap
-        |> Tilemap.toList
-            (\cell tile ->
-                ( Tilemap.cellToString cell, renderTile cell tile tileAnimations )
+        |> List.map
+            (\( cell, tile, animation ) ->
+                ( Tilemap.cellToString cell, renderTile cell tile animation )
             )
         |> Svg.Keyed.node "g" []
 
 
-renderTile : Cell -> Tile -> Dict String Animation -> Svg msg
-renderTile cell tile tileAnimations =
+renderTile : Cell -> TileKind -> Maybe Animation -> Svg msg
+renderTile cell tileKind animation =
     let
         { x, y } =
             Tilemap.cellBottomLeftCorner cell |> pointToPixels
 
         yAdjusted =
             tilemapSizePixels - tileSizePixels - y
-
-        animation =
-            Dict.get (Tilemap.cellToString cell) tileAnimations
     in
     case animation of
         Just tileAnimation ->
             let
-                renderedTile =
-                    Animation.toTile tileAnimation |> Maybe.withDefault tile
-
                 animationStyleString =
                     Animation.toStyleString tileAnimation
 
@@ -186,7 +165,7 @@ renderTile cell tile tileAnimations =
                 [ tileElement
                     { x = x
                     , y = yAdjusted
-                    , asset = tileAsset renderedTile
+                    , asset = tileAsset tileKind
                     , tileStyles = tileStyles
                     }
                 , overflowTile
@@ -196,7 +175,7 @@ renderTile cell tile tileAnimations =
             tileElement
                 { x = x
                 , y = yAdjusted
-                , asset = tileAsset tile
+                , asset = tileAsset tileKind
                 , tileStyles = ""
                 }
 
@@ -350,6 +329,12 @@ tileAnimationProperties animation ( tileX, tileY ) =
         ]
 
 
+
+--
+-- Cars
+--
+
+
 renderCars : Cars -> Svg msg
 renderCars cars =
     cars
@@ -468,6 +453,12 @@ renderCar car =
         ]
 
 
+
+--
+-- Lots
+--
+
+
 renderLots : Lots -> Svg msg
 renderLots lots =
     lots
@@ -537,6 +528,10 @@ sidewalkMask lot =
         , Attributes.y <| String.fromFloat <| tilemapSizePixels - lotBottomLeftY - y - (height / 2)
         ]
         []
+
+
+
+-- Traffic control
 
 
 renderTrafficLights : TrafficLights -> Svg msg
@@ -837,9 +832,9 @@ toPointsString points =
 --
 
 
-tileAsset : Tile -> String
-tileAsset tile =
-    case tile of
+tileAsset : TileKind -> String
+tileAsset tileKind =
+    case tileKind of
         0 ->
             "road_center_piece.png"
 

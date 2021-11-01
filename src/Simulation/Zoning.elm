@@ -5,6 +5,8 @@ import Maybe.Extra as Maybe
 import Model.Car as Car
 import Model.Entity as Entity
 import Model.Lot as Lot exposing (Anchor, Lot, NewLot, allLots)
+import Model.OrthogonalDirection exposing (orthogonalDirections)
+import Model.Tile as Tile
 import Model.Tilemap as Tilemap
 import Model.World as World exposing (World)
 import Random
@@ -43,18 +45,14 @@ generateLot world seed =
 attemptBuildLot : World -> Random.Seed -> NewLot -> Maybe Lot
 attemptBuildLot world seed newLot =
     let
-        targetTile =
-            if Tilemap.isVerticalDirection newLot.content.entryDirection then
-                Tilemap.horizontalRoad
-
-            else
-                Tilemap.verticalRoad
-
         anchors =
             world.tilemap
                 |> Tilemap.toList
                     (\cell tile ->
-                        if tile == targetTile then
+                        if
+                            Tile.isBasicRoad tile
+                                && not (List.member newLot.content.entryDirection (Tile.potentialConnections tile))
+                        then
                             Lot.createAnchor newLot cell
                                 |> Maybe.andThen (validateAnchor newLot world)
 
@@ -90,7 +88,7 @@ validateAnchor newLot world anchor =
 
 isNotAtTheEndOfARoad : World -> Anchor -> Bool
 isNotAtTheEndOfARoad world { anchorCell } =
-    Tilemap.orthogonalDirections
+    orthogonalDirections
         |> List.all
             (\orthogonalDirection ->
                 case
@@ -98,7 +96,7 @@ isNotAtTheEndOfARoad world { anchorCell } =
                         |> Maybe.andThen (Tilemap.tileAt world.tilemap)
                 of
                     Just neighbor ->
-                        neighbor == Tilemap.horizontalRoad || neighbor == Tilemap.verticalRoad
+                        Tile.isBasicRoad neighbor
 
                     Nothing ->
                         True

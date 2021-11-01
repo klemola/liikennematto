@@ -3,13 +3,12 @@ module Model.Liikennematto exposing
     , Liikennematto
     , SimulationState(..)
     , Tool(..)
-    , latestTilemap
     , new
     )
 
 import Element
 import Model.AnimationSchedule as Animations exposing (AnimationSchedule)
-import Model.Tilemap exposing (Tilemap, TilemapChange)
+import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.World exposing (World)
 import Random
 import Worlds exposing (defaultWorld)
@@ -20,9 +19,9 @@ type alias Liikennematto =
     , screen : Screen
     , seed : Random.Seed
     , simulation : SimulationState
+    , renderCache : RenderCache
     , tool : Tool
     , carSpawnQueue : CarSpawnQueue
-    , pendingTilemapChange : Maybe TilemapChange
     , animationSchedule : AnimationSchedule
     , showDebugPanel : Bool
     , showRoadNetwork : Bool
@@ -69,19 +68,12 @@ new =
         }
     , seed = initialSeed
     , simulation = Running
+    , renderCache = RenderCache.new defaultWorld
     , tool = SmartConstruction
     , carSpawnQueue = 0
-    , pendingTilemapChange = Nothing
     , animationSchedule = Animations.empty
     , showDebugPanel = False
     , showRoadNetwork = False
     , showCarDebugVisuals = False
     , roadNetworkDotString = Nothing
     }
-
-
-latestTilemap : Liikennematto -> Tilemap
-latestTilemap model =
-    model.pendingTilemapChange
-        |> Maybe.map .nextTilemap
-        |> Maybe.withDefault model.world.tilemap

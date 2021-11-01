@@ -5,10 +5,10 @@ module Simulation.Simulation exposing
 
 import Dict
 import Duration
-import Maybe.Extra as Maybe
 import Message exposing (Message(..))
 import Model.FSM as FSM
 import Model.Liikennematto exposing (Liikennematto, SimulationState(..), Tool(..))
+import Model.RenderCache as RenderCache
 import Model.Tilemap as Tilemap
 import Model.TrafficLight exposing (TrafficLight)
 import Model.World as World exposing (World)
@@ -36,20 +36,35 @@ update msg model =
     case msg of
         AnimationFrameReceived delta ->
             let
+                { world } =
+                    model
+
+                ( nextTilemap, _, changedTilesAmount ) =
+                    Tilemap.update delta model.world.tilemap
+
+                worldWithUpdatedTilemap =
+                    { world | tilemap = nextTilemap }
+
                 cars =
-                    Dict.values model.world.cars
+                    Dict.values worldWithUpdatedTilemap.cars
 
                 ( nextWorld, nextSeed ) =
                     Traffic.updateTraffic
                         { updateQueue = cars
                         , seed = model.seed
-                        , world = model.world
+                        , world = worldWithUpdatedTilemap
                         , delta = delta
                         }
             in
             ( { model
                 | seed = nextSeed
                 , world = nextWorld
+                , renderCache =
+                    if changedTilesAmount == 0 then
+                        model.renderCache
+
+                    else
+                        RenderCache.refreshTilemapCache nextTilemap model.renderCache
               }
             , Cmd.none
             )
@@ -58,33 +73,24 @@ update msg model =
             ( { model | simulation = simulation }, Cmd.none )
 
         TilemapChanged tilemapChange ->
-            if Maybe.unwrap False ((/=) tilemapChange) model.pendingTilemapChange then
-                -- Not the latest tilemap change (a new change is pending)
-                ( model, Cmd.none )
+            let
+                worldAfterTilemapChange =
+                    Infrastructure.applyTilemapChange tilemapChange model.world
 
-            else
-                let
-                    worldWithTilemapChange =
-                        Infrastructure.applyTilemapChange tilemapChange model.world
+                nextCars =
+                    Traffic.rerouteCarsIfNeeded worldAfterTilemapChange
 
-                    nextCars =
-                        Traffic.rerouteCarsIfNeeded worldWithTilemapChange
-
-                    nextWorld =
-                        { worldWithTilemapChange | cars = nextCars }
-                in
-                ( { model
-                    | world = nextWorld
-                    , pendingTilemapChange = Nothing
-                  }
-                , Cmd.none
-                )
+                nextWorld =
+                    { worldAfterTilemapChange | cars = nextCars }
+            in
+            ( { model | world = nextWorld }
+            , Cmd.none
+            )
 
         ResetWorld ->
             ( { model
                 | tool = SmartConstruction
                 , world = World.empty
-                , pendingTilemapChange = Nothing
               }
             , Cmd.none
             )
