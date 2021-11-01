@@ -7,7 +7,6 @@ module Model.Liikennematto exposing
     )
 
 import Element
-import Model.AnimationSchedule as Animations exposing (AnimationSchedule)
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.World exposing (World)
 import Random
@@ -22,7 +21,6 @@ type alias Liikennematto =
     , renderCache : RenderCache
     , tool : Tool
     , carSpawnQueue : CarSpawnQueue
-    , animationSchedule : AnimationSchedule
     , showDebugPanel : Bool
     , showRoadNetwork : Bool
     , showCarDebugVisuals : Bool
@@ -71,7 +69,6 @@ new =
     , renderCache = RenderCache.new defaultWorld
     , tool = SmartConstruction
     , carSpawnQueue = 0
-    , animationSchedule = Animations.empty
     , showDebugPanel = False
     , showRoadNetwork = False
     , showCarDebugVisuals = False

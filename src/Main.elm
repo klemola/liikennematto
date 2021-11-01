@@ -7,7 +7,6 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Message exposing (Message(..))
-import Model.AnimationSchedule as AnimationSchedule
 import Model.Geometry as Geometry
 import Model.Liikennematto as Liikennematto exposing (Liikennematto, SimulationState(..))
 import Model.Tilemap as Tilemap
@@ -79,13 +78,6 @@ updateBase msg model =
                         else
                             Element.Landscape
                     }
-              }
-            , Cmd.none
-            )
-
-        AnimationFrameReceived delta ->
-            ( { model
-                | animationSchedule = model.animationSchedule |> AnimationSchedule.update delta
               }
             , Cmd.none
             )
