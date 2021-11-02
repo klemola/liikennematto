@@ -8,13 +8,15 @@ import CustomEvent
 import Element exposing (Color, Element)
 import Element.Border as Border
 import Element.Events as Events
+import Maybe.Extra as Maybe
 import Message exposing (Message(..))
 import Model.Geometry as Geometry
 import Model.Liikennematto exposing (Liikennematto, Tool(..))
-import Model.RenderCache exposing (refreshTilemapCache)
-import Model.Tile exposing (Tile, tileSize)
+import Model.RenderCache as RenderCache exposing (refreshTilemapCache)
+import Model.Tile as Tile exposing (tileSize)
 import Model.Tilemap as Tilemap exposing (Cell)
 import Model.World as World exposing (World)
+import Task
 import UI.Core
     exposing
         ( ControlButtonSize
@@ -85,6 +87,40 @@ update msg model =
             ( { model
                 | world = nextWorld
                 , renderCache = refreshTilemapCache nextTilemap model.renderCache
+              }
+            , Cmd.none
+            )
+
+        UpdateTilemap delta ->
+            let
+                { world } =
+                    model
+
+                ( nextTilemap, _, changedCells ) =
+                    Tilemap.update delta world.tilemap
+
+                nextWorld =
+                    { world | tilemap = nextTilemap }
+            in
+            ( { model
+                | world = nextWorld
+                , renderCache =
+                    if List.length changedCells == 0 then
+                        model.renderCache
+
+                    else
+                        refreshTilemapCache nextTilemap model.renderCache
+              }
+            , changedCells
+                |> Task.succeed
+                |> Task.perform TilemapChanged
+            )
+
+        ResetWorld ->
+            ( { model
+                | tool = SmartConstruction
+                , world = World.empty
+                , renderCache = RenderCache.new World.empty
               }
             , Cmd.none
             )
@@ -172,7 +208,7 @@ tileOverlay { glowColor, cell, world, tool } =
         , Element.height tileSizePx
         , Element.mouseOver glow
         , Events.onClick (choosePrimaryAction cell tool world)
-        , Element.htmlAttribute (CustomEvent.onRightClick <| chooseSecondaryAction cell tool)
+        , Element.htmlAttribute (CustomEvent.onRightClick <| chooseSecondaryAction cell tool world)
         ]
         Element.none
 
@@ -192,8 +228,11 @@ choosePrimaryAction cell tool world =
                 NoOp
 
         ( Bulldozer, Just _ ) ->
-            -- TODO: check if the tile is transitioning
-            if not False then
+            let
+                tile =
+                    Tilemap.tileAt world.tilemap cell
+            in
+            if Maybe.unwrap False Tile.isBuilt tile then
                 RemoveTile cell
 
             else
@@ -206,12 +245,15 @@ choosePrimaryAction cell tool world =
             NoOp
 
 
-chooseSecondaryAction : Cell -> Tool -> Message
-chooseSecondaryAction cell tool =
+chooseSecondaryAction : Cell -> Tool -> World -> Message
+chooseSecondaryAction cell tool world =
     case tool of
         SmartConstruction ->
-            -- TODO: check if the tile is transitioning
-            if not False then
+            let
+                tile =
+                    Tilemap.tileAt world.tilemap cell
+            in
+            if Maybe.unwrap False Tile.isBuilt tile then
                 RemoveTile cell
 
             else

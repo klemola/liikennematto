@@ -189,7 +189,7 @@ size (Tilemap tilemapContents) =
 
 
 type alias TilemapUpdate =
-    { tilemap : Tilemap
+    { tilemap : Array (Maybe Tile)
     , actions : List Tile.Action
     , emptiedIndices : List Int
     , changedIndices : List Int
@@ -199,8 +199,18 @@ type alias TilemapUpdate =
 update : Duration -> Tilemap -> ( Tilemap, List Tile.Action, List Cell )
 update delta tilemap =
     let
-        fsmUpdate =
-            updateTileFSMs delta tilemap
+        (Tilemap currentTilemap) =
+            tilemap
+
+        tilemapUpdate =
+            Array.foldl
+                (maybeUpdateTile delta)
+                { tilemap = Array.empty
+                , actions = []
+                , emptiedIndices = []
+                , changedIndices = []
+                }
+                currentTilemap
 
         nextTilemap =
             List.foldl
@@ -211,89 +221,77 @@ update delta tilemap =
                     in
                     case maybeCell of
                         Just cell ->
-                            removeEffects cell acc
+                            updateNeighborCells cell acc
 
                         Nothing ->
                             acc
                 )
-                fsmUpdate.tilemap
-                fsmUpdate.emptiedIndices
+                (Tilemap tilemapUpdate.tilemap)
+                tilemapUpdate.emptiedIndices
 
         changedCells =
-            fsmUpdate.changedIndices
+            tilemapUpdate.changedIndices
                 |> List.map cellFromIndex
                 |> Maybe.values
     in
-    ( nextTilemap, fsmUpdate.actions, changedCells )
+    ( nextTilemap, tilemapUpdate.actions, changedCells )
 
 
-updateTileFSMs : Duration -> Tilemap -> TilemapUpdate
-updateTileFSMs delta (Tilemap currentTilemap) =
+maybeUpdateTile : Duration -> Maybe Tile -> TilemapUpdate -> TilemapUpdate
+maybeUpdateTile delta maybeTile tilemapUpdate =
+    case maybeTile of
+        Just tile ->
+            updateTileFSM delta tile tilemapUpdate
+
+        Nothing ->
+            { tilemap = tilemapUpdate.tilemap |> Array.push Nothing
+            , actions = tilemapUpdate.actions
+            , emptiedIndices = tilemapUpdate.emptiedIndices
+            , changedIndices = tilemapUpdate.changedIndices
+            }
+
+
+updateTileFSM : Duration -> Tile -> TilemapUpdate -> TilemapUpdate
+updateTileFSM delta tile tilemapUpdate =
     let
-        { tilemap, actions, emptiedIndices, changedIndices } =
-            Array.foldl
-                (\maybeTile acc ->
-                    case maybeTile of
-                        Just tile ->
-                            let
-                                ( nextFSM, tileActions ) =
-                                    FSM.update delta tile.fsm
+        idx =
+            Array.length tilemapUpdate.tilemap
 
-                                idx =
-                                    Array.length acc.tilemap
+        ( nextFSM, tileActions ) =
+            FSM.update delta tile.fsm
 
-                                nextTile =
-                                    { kind = tile.kind
-                                    , fsm = nextFSM
-                                    }
+        isRemoved =
+            FSM.currentState nextFSM == Tile.Removed
 
-                                nextEmptiedIndices =
-                                    if Tile.isRemoved nextTile then
-                                        idx :: acc.emptiedIndices
+        nextTile =
+            if isRemoved then
+                Nothing
 
-                                    else
-                                        acc.emptiedIndices
+            else
+                Just
+                    { kind = tile.kind
+                    , fsm = nextFSM
+                    }
 
-                                nextChangedIndices =
-                                    if FSM.currentState tile.fsm /= FSM.currentState nextTile.fsm then
-                                        idx :: acc.changedIndices
+        nextEmptiedIndices =
+            if isRemoved then
+                idx :: tilemapUpdate.emptiedIndices
 
-                                    else
-                                        acc.changedIndices
-                            in
-                            { tilemap = acc.tilemap |> Array.push (Just nextTile)
-                            , actions = acc.actions ++ tileActions
-                            , emptiedIndices = nextEmptiedIndices
-                            , changedIndices = nextChangedIndices
-                            }
+            else
+                tilemapUpdate.emptiedIndices
 
-                        Nothing ->
-                            { tilemap = acc.tilemap |> Array.push Nothing
-                            , actions = acc.actions
-                            , emptiedIndices = acc.emptiedIndices
-                            , changedIndices = acc.changedIndices
-                            }
-                )
-                { tilemap = Array.empty
-                , actions = []
-                , emptiedIndices = []
-                , changedIndices = []
-                }
-                currentTilemap
+        nextChangedIndices =
+            if FSM.currentState tile.fsm /= FSM.currentState nextFSM then
+                idx :: tilemapUpdate.changedIndices
+
+            else
+                tilemapUpdate.changedIndices
     in
-    { tilemap = Tilemap tilemap
-    , actions = actions
-    , emptiedIndices = emptiedIndices
-    , changedIndices = changedIndices
+    { tilemap = tilemapUpdate.tilemap |> Array.push nextTile
+    , actions = tilemapUpdate.actions ++ tileActions
+    , emptiedIndices = nextEmptiedIndices
+    , changedIndices = nextChangedIndices
     }
-
-
-removeEffects : Cell -> Tilemap -> Tilemap
-removeEffects cell (Tilemap tilemap) =
-    tilemap
-        |> Array.set (indexFromCell cell) Nothing
-        |> Tilemap
-        |> updateNeighborCells cell
 
 
 addTile : Cell -> Tilemap -> Tilemap
