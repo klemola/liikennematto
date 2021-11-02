@@ -7,6 +7,11 @@ import Model.Liikennematto exposing (Liikennematto, SimulationState(..))
 import Time
 
 
+tilemapUpdateFrequency : Float
+tilemapUpdateFrequency =
+    50
+
+
 environmentUpdateFrequency : Float
 environmentUpdateFrequency =
     1000
@@ -28,6 +33,7 @@ subscriptions { simulation } =
         defaultSubs =
             [ Events.onResize ResizeWindow
             , Events.onVisibilityChange VisibilityChanged
+            , Time.every tilemapUpdateFrequency (always (UpdateTilemap (Duration.milliseconds tilemapUpdateFrequency)))
             ]
     in
     if simulation == Paused then

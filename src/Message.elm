@@ -3,7 +3,7 @@ module Message exposing (Message(..))
 import Browser.Events exposing (Visibility)
 import Duration exposing (Duration)
 import Model.Liikennematto exposing (SimulationState, Tool)
-import Model.Tilemap exposing (Cell, TilemapChange)
+import Model.Tilemap exposing (Cell)
 
 
 type Message
@@ -13,7 +13,8 @@ type Message
     | AnimationFrameReceived Duration
     | AddTile Cell
     | RemoveTile Cell
-    | TilemapChanged TilemapChange
+    | UpdateTilemap Duration
+    | TilemapChanged (List Cell)
     | SetSimulation SimulationState
     | UpdateEnvironment
     | GenerateEnvironment

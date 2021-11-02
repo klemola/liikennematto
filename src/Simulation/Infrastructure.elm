@@ -1,8 +1,8 @@
 module Simulation.Infrastructure exposing
-    ( applyTilemapChange
-    , connectLotToRoadNetwork
+    ( connectLotToRoadNetwork
     , createRoadNetwork
     , findNodeReplacement
+    , updateRoadNetwork
     )
 
 import BoundingBox2d
@@ -23,7 +23,7 @@ import Model.Geometry as Geometry
         , pixelsToMeters
         )
 import Model.Lookup exposing (roadNetworkLookup)
-import Model.Lot as Lot exposing (Lot, Lots)
+import Model.Lot exposing (Lot, Lots)
 import Model.OrthogonalDirection
     exposing
         ( OrthogonalDirection(..)
@@ -40,12 +40,7 @@ import Model.RoadNetwork as RoadNetwork
         , TrafficControl(..)
         )
 import Model.Tile as Tile exposing (Tile, tileSize)
-import Model.Tilemap as Tilemap
-    exposing
-        ( Cell
-        , Tilemap
-        , TilemapChange
-        )
+import Model.Tilemap as Tilemap exposing (Cell, Tilemap)
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLights)
 import Model.World exposing (World)
 import Point2d
@@ -67,33 +62,6 @@ createRoadNetwork tilemap world =
             { world | tilemap = tilemap }
     in
     updateRoadNetwork nextWorld
-
-
-applyTilemapChange : TilemapChange -> World -> World
-applyTilemapChange _ world =
-    let
-        nextLots =
-            Dict.filter
-                (\_ lot ->
-                    -- TODO: check Lots quadtree to see if there's a collision with changed Cells
-                    hasValidAnchorCell world.tilemap lot
-                )
-                world.lots
-
-        nextWorld =
-            { world | lots = nextLots }
-    in
-    updateRoadNetwork nextWorld
-
-
-hasValidAnchorCell : Tilemap -> Lot -> Bool
-hasValidAnchorCell tilemap lot =
-    case Tilemap.tileAt tilemap lot.anchor.anchorCell of
-        Just tile ->
-            Tile.isBasicRoad tile
-
-        Nothing ->
-            False
 
 
 

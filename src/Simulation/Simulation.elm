@@ -39,32 +39,20 @@ update msg model =
                 { world } =
                     model
 
-                ( nextTilemap, _, changedTilesAmount ) =
-                    Tilemap.update delta model.world.tilemap
-
-                worldWithUpdatedTilemap =
-                    { world | tilemap = nextTilemap }
-
                 cars =
-                    Dict.values worldWithUpdatedTilemap.cars
+                    Dict.values world.cars
 
                 ( nextWorld, nextSeed ) =
                     Traffic.updateTraffic
                         { updateQueue = cars
                         , seed = model.seed
-                        , world = worldWithUpdatedTilemap
+                        , world = world
                         , delta = delta
                         }
             in
             ( { model
                 | seed = nextSeed
                 , world = nextWorld
-                , renderCache =
-                    if changedTilesAmount == 0 then
-                        model.renderCache
-
-                    else
-                        RenderCache.refreshTilemapCache nextTilemap model.renderCache
               }
             , Cmd.none
             )
@@ -72,26 +60,48 @@ update msg model =
         SetSimulation simulation ->
             ( { model | simulation = simulation }, Cmd.none )
 
-        TilemapChanged tilemapChange ->
-            let
-                worldAfterTilemapChange =
-                    Infrastructure.applyTilemapChange tilemapChange model.world
-
-                nextCars =
-                    Traffic.rerouteCarsIfNeeded worldAfterTilemapChange
-
-                nextWorld =
-                    { worldAfterTilemapChange | cars = nextCars }
-            in
-            ( { model | world = nextWorld }
-            , Cmd.none
-            )
-
         ResetWorld ->
             ( { model
                 | tool = SmartConstruction
                 , world = World.empty
               }
+            , Cmd.none
+            )
+
+        UpdateTilemap delta ->
+            let
+                { world } =
+                    model
+
+                ( nextTilemap, _, changedCells ) =
+                    Tilemap.update delta model.world.tilemap
+
+                nextWorld =
+                    { world | tilemap = nextTilemap }
+            in
+            ( { model
+                | world = nextWorld
+                , renderCache =
+                    if List.length changedCells == 0 then
+                        model.renderCache
+
+                    else
+                        RenderCache.refreshTilemapCache nextTilemap model.renderCache
+              }
+            , changedCells
+                |> Task.succeed
+                |> Task.perform TilemapChanged
+            )
+
+        TilemapChanged tilemapChange ->
+            let
+                nextWorld =
+                    model.world
+                        |> Zoning.validateLots tilemapChange
+                        |> Infrastructure.updateRoadNetwork
+                        |> Traffic.rerouteCarsIfNeeded
+            in
+            ( { model | world = nextWorld }
             , Cmd.none
             )
 

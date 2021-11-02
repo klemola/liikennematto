@@ -1,4 +1,4 @@
-module Simulation.Zoning exposing (generateLot)
+module Simulation.Zoning exposing (generateLot, validateLots)
 
 import Dict
 import Maybe.Extra as Maybe
@@ -7,7 +7,7 @@ import Model.Entity as Entity
 import Model.Lot as Lot exposing (Anchor, Lot, NewLot, allLots)
 import Model.OrthogonalDirection exposing (orthogonalDirections)
 import Model.Tile as Tile
-import Model.Tilemap as Tilemap
+import Model.Tilemap as Tilemap exposing (Cell, Tilemap)
 import Model.World as World exposing (World)
 import Random
 import Random.List
@@ -141,3 +141,27 @@ addLotResident lotId lot world =
         |> Maybe.andThen Lot.resident
         |> Maybe.map (createCar >> addToWorld)
         |> Maybe.withDefault world
+
+
+validateLots : List Cell -> World -> World
+validateLots changedCells world =
+    let
+        nextLots =
+            Dict.filter
+                (\_ lot ->
+                    hasValidAnchorCell world.tilemap lot
+                        && List.all (\cell -> not (Lot.inBounds cell lot)) changedCells
+                )
+                world.lots
+    in
+    { world | lots = nextLots }
+
+
+hasValidAnchorCell : Tilemap -> Lot -> Bool
+hasValidAnchorCell tilemap lot =
+    case Tilemap.tileAt tilemap lot.anchor.anchorCell of
+        Just tile ->
+            Tile.isBasicRoad tile
+
+        Nothing ->
+            False
