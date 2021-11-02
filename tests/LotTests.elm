@@ -2,7 +2,9 @@ module LotTests exposing (suite)
 
 import Expect
 import Model.Lot as Lot exposing (Lot)
-import Model.Tilemap as Tilemap exposing (OrthogonalDirection(..), tileSize)
+import Model.OrthogonalDirection exposing (OrthogonalDirection(..))
+import Model.Tile exposing (tileSize)
+import Model.Tilemap as Tilemap
 import Quantity
 import Test exposing (Test, describe, test)
 
