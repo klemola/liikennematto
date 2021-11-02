@@ -1,7 +1,6 @@
 module Model.Tilemap exposing
     ( Cell
     , Tilemap
-    , TilemapChange
     , addTile
     , boundingBox
     , canBuildRoadAt
@@ -65,12 +64,6 @@ type Cell
 
 type alias CellCoordinates =
     ( Int, Int )
-
-
-type alias TilemapChange =
-    { nextTilemap : Tilemap
-    , changedCells : List Cell
-    }
 
 
 
@@ -195,15 +188,15 @@ size (Tilemap tilemapContents) =
 --
 
 
-type alias TileFSMUpdate =
+type alias TilemapUpdate =
     { tilemap : Tilemap
     , actions : List Tile.Action
     , emptiedIndices : List Int
-    , changedTilesAmount : Int
+    , changedIndices : List Int
     }
 
 
-update : Duration -> Tilemap -> ( Tilemap, List Tile.Action, Int )
+update : Duration -> Tilemap -> ( Tilemap, List Tile.Action, List Cell )
 update delta tilemap =
     let
         fsmUpdate =
@@ -225,14 +218,19 @@ update delta tilemap =
                 )
                 fsmUpdate.tilemap
                 fsmUpdate.emptiedIndices
+
+        changedCells =
+            fsmUpdate.changedIndices
+                |> List.map cellFromIndex
+                |> Maybe.values
     in
-    ( nextTilemap, fsmUpdate.actions, fsmUpdate.changedTilesAmount )
+    ( nextTilemap, fsmUpdate.actions, changedCells )
 
 
-updateTileFSMs : Duration -> Tilemap -> TileFSMUpdate
+updateTileFSMs : Duration -> Tilemap -> TilemapUpdate
 updateTileFSMs delta (Tilemap currentTilemap) =
     let
-        { tilemap, actions, emptiedIndices, changedTilesAmount } =
+        { tilemap, actions, emptiedIndices, changedIndices } =
             Array.foldl
                 (\maybeTile acc ->
                     case maybeTile of
@@ -241,6 +239,9 @@ updateTileFSMs delta (Tilemap currentTilemap) =
                                 ( nextFSM, tileActions ) =
                                     FSM.update delta tile.fsm
 
+                                idx =
+                                    Array.length acc.tilemap
+
                                 nextTile =
                                     { kind = tile.kind
                                     , fsm = nextFSM
@@ -248,42 +249,42 @@ updateTileFSMs delta (Tilemap currentTilemap) =
 
                                 nextEmptiedIndices =
                                     if Tile.isRemoved nextTile then
-                                        Array.length acc.tilemap :: acc.emptiedIndices
+                                        idx :: acc.emptiedIndices
 
                                     else
                                         acc.emptiedIndices
 
-                                nextChangedTiles =
+                                nextChangedIndices =
                                     if FSM.currentState tile.fsm /= FSM.currentState nextTile.fsm then
-                                        acc.changedTilesAmount + 1
+                                        idx :: acc.changedIndices
 
                                     else
-                                        acc.changedTilesAmount
+                                        acc.changedIndices
                             in
                             { tilemap = acc.tilemap |> Array.push (Just nextTile)
                             , actions = acc.actions ++ tileActions
                             , emptiedIndices = nextEmptiedIndices
-                            , changedTilesAmount = nextChangedTiles
+                            , changedIndices = nextChangedIndices
                             }
 
                         Nothing ->
                             { tilemap = acc.tilemap |> Array.push Nothing
                             , actions = acc.actions
                             , emptiedIndices = acc.emptiedIndices
-                            , changedTilesAmount = acc.changedTilesAmount
+                            , changedIndices = acc.changedIndices
                             }
                 )
                 { tilemap = Array.empty
                 , actions = []
                 , emptiedIndices = []
-                , changedTilesAmount = 0
+                , changedIndices = []
                 }
                 currentTilemap
     in
     { tilemap = Tilemap tilemap
     , actions = actions
     , emptiedIndices = emptiedIndices
-    , changedTilesAmount = changedTilesAmount
+    , changedIndices = changedIndices
     }
 
 
@@ -297,16 +298,16 @@ removeEffects cell (Tilemap tilemap) =
 
 addTile : Cell -> Tilemap -> Tilemap
 addTile cell tilemap =
-    tilemapChange cell Tile.Add tilemap
+    applyTilemapOperation cell Tile.Add tilemap
 
 
 removeTile : Cell -> Tilemap -> Tilemap
 removeTile cell tilemap =
-    tilemapChange cell Tile.Remove tilemap
+    applyTilemapOperation cell Tile.Remove tilemap
 
 
-tilemapChange : Cell -> TileOperation -> Tilemap -> Tilemap
-tilemapChange origin tileChange tilemap =
+applyTilemapOperation : Cell -> TileOperation -> Tilemap -> Tilemap
+applyTilemapOperation origin tileChange tilemap =
     let
         originTileKind =
             chooseTile tilemap origin

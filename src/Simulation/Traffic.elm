@@ -11,7 +11,7 @@ import Dict.Extra as Dict
 import Direction2d
 import Duration exposing (Duration)
 import Length exposing (Length)
-import Model.Car as Car exposing (Car, Cars, Status(..))
+import Model.Car as Car exposing (Car, Status(..))
 import Model.Entity as Entity
 import Model.Lookup exposing (carPositionLookup)
 import Model.Lot as Lot exposing (Lot)
@@ -287,9 +287,13 @@ moveCarToHome world car home =
 --
 
 
-rerouteCarsIfNeeded : World -> Cars
+rerouteCarsIfNeeded : World -> World
 rerouteCarsIfNeeded world =
-    Dict.map (\_ car -> updateRoute world car) world.cars
+    let
+        nextCars =
+            Dict.map (\_ car -> updateRoute world car) world.cars
+    in
+    { world | cars = nextCars }
 
 
 updateRoute : World -> Car -> Car
