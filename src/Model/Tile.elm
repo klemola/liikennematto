@@ -5,12 +5,11 @@ module Model.Tile exposing
     , TileOperation(..)
     , TileState(..)
     , chooseTileKind
-    , curveTopLeft
     , isBasicRoad
+    , isBuilt
     , isCurve
     , isDeadend
     , isIntersection
-    , isRemoved
     , new
     , potentialConnections
     , tileSize
@@ -55,7 +54,7 @@ type alias TileFSM =
 
 
 type Action
-    = RemoveEffects
+    = None
 
 
 type TileState
@@ -72,9 +71,9 @@ new kind op =
     }
 
 
-isRemoved : Tile -> Bool
-isRemoved tile =
-    FSM.currentState tile.fsm == Removed
+isBuilt : Tile -> Bool
+isBuilt tile =
+    FSM.currentState tile.fsm == Built
 
 
 

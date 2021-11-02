@@ -7,11 +7,15 @@ import Dict
 import Duration
 import Message exposing (Message(..))
 import Model.FSM as FSM
-import Model.Liikennematto exposing (Liikennematto, SimulationState(..), Tool(..))
-import Model.RenderCache as RenderCache
+import Model.Liikennematto
+    exposing
+        ( Liikennematto
+        , SimulationState(..)
+        , Tool(..)
+        )
 import Model.Tilemap as Tilemap
 import Model.TrafficLight exposing (TrafficLight)
-import Model.World as World exposing (World)
+import Model.World exposing (World)
 import Process
 import Random
 import Simulation.Infrastructure as Infrastructure
@@ -59,39 +63,6 @@ update msg model =
 
         SetSimulation simulation ->
             ( { model | simulation = simulation }, Cmd.none )
-
-        ResetWorld ->
-            ( { model
-                | tool = SmartConstruction
-                , world = World.empty
-              }
-            , Cmd.none
-            )
-
-        UpdateTilemap delta ->
-            let
-                { world } =
-                    model
-
-                ( nextTilemap, _, changedCells ) =
-                    Tilemap.update delta model.world.tilemap
-
-                nextWorld =
-                    { world | tilemap = nextTilemap }
-            in
-            ( { model
-                | world = nextWorld
-                , renderCache =
-                    if List.length changedCells == 0 then
-                        model.renderCache
-
-                    else
-                        RenderCache.refreshTilemapCache nextTilemap model.renderCache
-              }
-            , changedCells
-                |> Task.succeed
-                |> Task.perform TilemapChanged
-            )
 
         TilemapChanged tilemapChange ->
             let
