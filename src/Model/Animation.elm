@@ -38,6 +38,7 @@ toStyleString animation =
         [ "animation:"
         , duration
         , name
+        , "forwards"
         , ";"
         ]
 
@@ -71,13 +72,11 @@ keyframes =
         15%  { transform: scale(1.05 , 1   ) rotate( 1.5deg); }
         50%  { transform: scale(1.1  , 1.05) rotate( 2deg  ); }
         85%  { transform: scale(1    , 1.05) rotate(-1.5deg); }
-        97%  { transform: scale(1    , 1   ) rotate( 0deg  ); }
         100% { transform: scale(1    , 1   ) rotate( 0deg  ); }
     }
 
     @keyframes disappear {
         0%   { transform: scale(1  ); opacity: 1.0; }
-        98%  { transform: scale(1.5); opacity: 0.0; }
         100% { transform: scale(1.5); opacity: 0.0; }
     }
     """
