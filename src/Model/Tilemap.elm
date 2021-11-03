@@ -32,12 +32,9 @@ import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Geometry
     exposing
-        ( LMBoundingBox2d
-        , LMPoint2d
-        )
-import Model.OrthogonalDirection
-    exposing
         ( DiagonalDirection(..)
+        , LMBoundingBox2d
+        , LMPoint2d
         , OrthogonalDirection(..)
         , diagonalDirections
         )

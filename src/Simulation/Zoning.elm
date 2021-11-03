@@ -4,8 +4,8 @@ import Dict
 import Maybe.Extra as Maybe
 import Model.Car as Car
 import Model.Entity as Entity
+import Model.Geometry exposing (orthogonalDirections)
 import Model.Lot as Lot exposing (Anchor, Lot, NewLot, allLots)
-import Model.OrthogonalDirection exposing (orthogonalDirections)
 import Model.Tile as Tile
 import Model.Tilemap as Tilemap exposing (Cell, Tilemap)
 import Model.World as World exposing (World)

@@ -20,16 +20,13 @@ import Model.Geometry as Geometry
         ( LMBoundingBox2d
         , LMDirection2d
         , LMPoint2d
+        , OrthogonalDirection(..)
+        , oppositeOrthogonalDirection
+        , orthogonalDirectionToLmDirection
         , pixelsToMeters
         )
 import Model.Lookup exposing (roadNetworkLookup)
 import Model.Lot exposing (Lot, Lots)
-import Model.OrthogonalDirection
-    exposing
-        ( OrthogonalDirection(..)
-        , oppositeOrthogonalDirection
-        , orthogonalDirectionToLmDirection
-        )
 import Model.RoadNetwork as RoadNetwork
     exposing
         ( Connection

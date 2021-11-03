@@ -19,7 +19,7 @@ module Model.Tile exposing
 import Duration exposing (Duration)
 import FSM exposing (FSM, State)
 import Length exposing (Length)
-import Model.OrthogonalDirection
+import Model.Geometry
     exposing
         ( OrthogonalDirection(..)
         , crossOrthogonalDirection
