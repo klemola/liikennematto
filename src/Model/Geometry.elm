@@ -1,11 +1,19 @@
 module Model.Geometry exposing
-    ( LMBoundingBox2d
+    ( DiagonalDirection(..)
+    , LMBoundingBox2d
     , LMDirection2d
     , LMEntityCoordinates
     , LMPoint2d
     , LMPolyline2d
+    , OrthogonalDirection(..)
+    , crossOrthogonalDirection
+    , diagonalDirections
     , down
+    , isVerticalDirection
     , left
+    , oppositeOrthogonalDirection
+    , orthogonalDirectionToLmDirection
+    , orthogonalDirections
     , pixelsToMeters
     , pixelsToMetersRatio
     , pointToPixels
@@ -76,8 +84,23 @@ pointToPixels point =
 
 
 --
--- Alias
+-- Logical directions (for the tilemap)
 --
+-- Room for improvement: union types for logical directions may not be necessary - plain Direction2d values could work.
+
+
+type OrthogonalDirection
+    = Up
+    | Right
+    | Down
+    | Left
+
+
+type DiagonalDirection
+    = TopRight
+    | TopLeft
+    | BottomRight
+    | BottomLeft
 
 
 up : Direction2d.Direction2d LMEntityCoordinates
@@ -98,3 +121,76 @@ down =
 left : Direction2d.Direction2d LMEntityCoordinates
 left =
     Direction2d.negativeX
+
+
+horizontalOrthogonalDirections : List OrthogonalDirection
+horizontalOrthogonalDirections =
+    [ Left, Right ]
+
+
+verticalOrthogonalDirections : List OrthogonalDirection
+verticalOrthogonalDirections =
+    [ Up, Down ]
+
+
+orthogonalDirections : List OrthogonalDirection
+orthogonalDirections =
+    verticalOrthogonalDirections ++ horizontalOrthogonalDirections
+
+
+diagonalDirections : List DiagonalDirection
+diagonalDirections =
+    [ TopLeft, TopRight, BottomLeft, BottomRight ]
+
+
+oppositeOrthogonalDirection : OrthogonalDirection -> OrthogonalDirection
+oppositeOrthogonalDirection dir =
+    case dir of
+        Up ->
+            Down
+
+        Right ->
+            Left
+
+        Down ->
+            Up
+
+        Left ->
+            Right
+
+
+crossOrthogonalDirection : OrthogonalDirection -> List OrthogonalDirection
+crossOrthogonalDirection fromDir =
+    case fromDir of
+        Up ->
+            horizontalOrthogonalDirections
+
+        Right ->
+            verticalOrthogonalDirections
+
+        Down ->
+            horizontalOrthogonalDirections
+
+        Left ->
+            verticalOrthogonalDirections
+
+
+isVerticalDirection : OrthogonalDirection -> Bool
+isVerticalDirection direction =
+    List.member direction verticalOrthogonalDirections
+
+
+orthogonalDirectionToLmDirection : OrthogonalDirection -> LMDirection2d
+orthogonalDirectionToLmDirection dir =
+    case dir of
+        Up ->
+            up
+
+        Right ->
+            right
+
+        Down ->
+            down
+
+        Left ->
+            left

@@ -9,9 +9,14 @@ import Html exposing (Html)
 import Maybe.Extra as Maybe
 import Model.Animation as Animation exposing (Animation)
 import Model.Car as Car exposing (Car, CarKind(..), Cars)
-import Model.Geometry exposing (LMPoint2d, pointToPixels, toPixelsValue)
+import Model.Geometry
+    exposing
+        ( LMPoint2d
+        , OrthogonalDirection(..)
+        , pointToPixels
+        , toPixelsValue
+        )
 import Model.Lot exposing (BuildingKind(..), Lot, Lots)
-import Model.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Model.RenderCache exposing (RenderCache, TilemapPresentation)
 import Model.RoadNetwork
     exposing

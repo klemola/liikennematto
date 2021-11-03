@@ -23,10 +23,11 @@ import Direction2d
 import Length exposing (Length)
 import Model.Car exposing (CarKind(..))
 import Model.Entity exposing (Id)
-import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
-import Model.OrthogonalDirection
+import Model.Geometry
     exposing
-        ( OrthogonalDirection(..)
+        ( LMBoundingBox2d
+        , LMPoint2d
+        , OrthogonalDirection(..)
         , isVerticalDirection
         , oppositeOrthogonalDirection
         , orthogonalDirectionToLmDirection
