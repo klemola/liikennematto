@@ -27,9 +27,9 @@ import Array exposing (Array)
 import BoundingBox2d
 import Common
 import Duration exposing (Duration)
+import FSM
 import Length exposing (Length)
 import Maybe.Extra as Maybe
-import Model.FSM as FSM
 import Model.Geometry
     exposing
         ( LMBoundingBox2d

@@ -1,4 +1,4 @@
-module Model.FSM exposing
+module FSM exposing
     ( FSM
     , State
     , StateId

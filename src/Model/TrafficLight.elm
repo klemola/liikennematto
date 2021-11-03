@@ -14,8 +14,8 @@ module Model.TrafficLight exposing
 import Dict exposing (Dict)
 import Direction2d
 import Duration
+import FSM exposing (FSM, State)
 import Model.Entity exposing (Id)
-import Model.FSM as FSM exposing (FSM, State)
 import Model.Geometry exposing (LMDirection2d, LMPoint2d)
 import Point2d
 
