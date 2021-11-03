@@ -1,7 +1,7 @@
 module RenderFixture exposing (main)
 
 import Html exposing (Html)
-import Model.AnimationSchedule as AnimationSchedule
+import Model.RenderCache as RenderCache
 import Render
 import Rounds
 
@@ -12,4 +12,7 @@ main =
         world =
             Rounds.collisionSetupCollided.world
     in
-    Render.view world AnimationSchedule.empty { showRoadNetwork = False, showCarDebugVisuals = True }
+    Render.view
+        world
+        (RenderCache.new world)
+        { showRoadNetwork = False, showCarDebugVisuals = True }
