@@ -5,8 +5,8 @@ module Model.RenderCache exposing
     , refreshTilemapCache
     )
 
+import FSM
 import Model.Animation as Animation exposing (Animation)
-import Model.FSM as FSM
 import Model.OrthogonalDirection exposing (OrthogonalDirection, oppositeOrthogonalDirection)
 import Model.Tile as Tile exposing (Tile, TileKind)
 import Model.Tilemap as Tilemap exposing (Cell, Tilemap)

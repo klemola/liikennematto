@@ -5,8 +5,8 @@ module Simulation.Simulation exposing
 
 import Dict
 import Duration
+import FSM
 import Message exposing (Message(..))
-import Model.FSM as FSM
 import Model.Liikennematto
     exposing
         ( Liikennematto

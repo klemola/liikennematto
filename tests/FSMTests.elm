@@ -2,7 +2,7 @@ module FSMTests exposing (suite)
 
 import Duration exposing (Duration)
 import Expect
-import Model.FSM as FSM exposing (State, StateId)
+import FSM exposing (State, StateId)
 import Quantity
 import Test exposing (Test, describe, test)
 
