@@ -40,28 +40,40 @@ cyclicTimer =
 cyclicOne : State States a
 cyclicOne =
     FSM.createState
-        stateOneId
-        One
-        [ FSM.createTransition (\_ -> cyclicTwo) [] (FSM.Timer cyclicTimer)
-        ]
+        { id = stateOneId
+        , kind = One
+        , transitions =
+            [ FSM.createTransition (\_ -> cyclicTwo) [] (FSM.Timer cyclicTimer)
+            ]
+        , entryActions = []
+        , exitActions = []
+        }
 
 
 cyclicTwo : State States a
 cyclicTwo =
     FSM.createState
-        stateTwoId
-        Two
-        [ FSM.createTransition (\_ -> cyclicThree) [] (FSM.Timer cyclicTimer)
-        ]
+        { id = stateTwoId
+        , kind = Two
+        , transitions =
+            [ FSM.createTransition (\_ -> cyclicThree) [] (FSM.Timer cyclicTimer)
+            ]
+        , entryActions = []
+        , exitActions = []
+        }
 
 
 cyclicThree : State States a
 cyclicThree =
     FSM.createState
-        stateThreeId
-        Three
-        [ FSM.createTransition (\_ -> cyclicOne) [] (FSM.Timer cyclicTimer)
-        ]
+        { id = stateThreeId
+        , kind = Three
+        , transitions =
+            [ FSM.createTransition (\_ -> cyclicOne) [] (FSM.Timer cyclicTimer)
+            ]
+        , entryActions = []
+        , exitActions = []
+        }
 
 
 suite : Test
@@ -69,8 +81,8 @@ suite =
     describe "FSM"
         [ describe "timed transitions"
             (let
-                testFSM =
-                    FSM.createFSM cyclicOne
+                ( testFSM, _ ) =
+                    FSM.initialize cyclicOne
              in
              [ test "are updated when the FSM is updated"
                 (\_ ->
@@ -87,7 +99,7 @@ suite =
                 (\_ ->
                     testFSM
                         |> (FSM.update (Duration.milliseconds 200) >> Tuple.first)
-                        |> FSM.currentState
+                        |> FSM.toCurrentState
                         |> Expect.equal Two
                 )
              , test "transition the FSM to the target state (multiple updates)"
@@ -95,7 +107,7 @@ suite =
                     testFSM
                         |> (FSM.update (Duration.milliseconds 200) >> Tuple.first)
                         |> (FSM.update (Duration.milliseconds 200) >> Tuple.first)
-                        |> FSM.currentState
+                        |> FSM.toCurrentState
                         |> Expect.equal Three
                 )
              ]
@@ -103,16 +115,28 @@ suite =
         , describe "direct transitions"
             (let
                 targetState =
-                    FSM.createState stateTwoId Two []
+                    FSM.createState
+                        { id = stateTwoId
+                        , kind = Two
+                        , transitions = []
+                        , entryActions = []
+                        , exitActions = []
+                        }
 
                 transitions =
                     [ FSM.createTransition (\_ -> targetState) [] FSM.Direct ]
 
                 initialState =
-                    FSM.createState stateOneId One transitions
+                    FSM.createState
+                        { id = stateOneId
+                        , kind = One
+                        , transitions = transitions
+                        , entryActions = []
+                        , exitActions = []
+                        }
 
-                testFSM =
-                    FSM.createFSM initialState
+                ( testFSM, _ ) =
+                    FSM.initialize initialState
              in
              [ test "transition the FSM to valid target state"
                 (\_ ->

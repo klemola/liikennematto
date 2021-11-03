@@ -48,7 +48,7 @@ tileMapper cell tile =
 
 tileAnimation : Tile -> Maybe Animation
 tileAnimation tile =
-    case FSM.currentState tile.fsm of
+    case FSM.toCurrentState tile.fsm of
         Tile.Constructing ->
             Just
                 (Animation

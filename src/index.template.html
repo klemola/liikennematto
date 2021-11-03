@@ -11,6 +11,23 @@
         <script src="liikennematto.min.js"></script>
         <script>
             var app = Elm.Main.init();
+
+            var sound_a = new Audio("assets/bleep_a.mp3");
+            var sound_b = new Audio("assets/bleep_b.mp3");
+
+            app.ports.playAudio.subscribe(function (sound) {
+                sound_a.pause();
+                sound_a.currentTime = 0;
+                sound_b.pause();
+                sound_b.currentTime = 0;
+
+                if (sound === "A") {
+                    sound_a.play();
+                }
+                if (sound === "B") {
+                    sound_b.play();
+                }
+            });
         </script>
     </body>
 </html>

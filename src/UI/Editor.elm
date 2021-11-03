@@ -1,4 +1,4 @@
-module UI.Editor exposing
+port module UI.Editor exposing
     ( overlay
     , toolbar
     , update
@@ -25,6 +25,9 @@ import UI.Core
         , icon
         , whitespace
         )
+
+
+port playAudio : String -> Cmd msg
 
 
 tileSizeInPixelsFloat : Float
@@ -60,7 +63,7 @@ update msg model =
                 { world } =
                     model
 
-                nextTilemap =
+                ( nextTilemap, tileActions ) =
                     world.tilemap |> Tilemap.addTile cell
 
                 nextWorld =
@@ -70,7 +73,7 @@ update msg model =
                 | world = nextWorld
                 , renderCache = refreshTilemapCache nextTilemap model.renderCache
               }
-            , Cmd.none
+            , Cmd.batch (tileActionsToCmds tileActions)
             )
 
         RemoveTile cell ->
@@ -78,7 +81,7 @@ update msg model =
                 { world } =
                     model
 
-                nextTilemap =
+                ( nextTilemap, tileActions ) =
                     model.world.tilemap |> Tilemap.removeTile cell
 
                 nextWorld =
@@ -88,7 +91,7 @@ update msg model =
                 | world = nextWorld
                 , renderCache = refreshTilemapCache nextTilemap model.renderCache
               }
-            , Cmd.none
+            , Cmd.batch (tileActionsToCmds tileActions)
             )
 
         UpdateTilemap delta ->
@@ -96,24 +99,28 @@ update msg model =
                 { world } =
                     model
 
-                ( nextTilemap, _, changedCells ) =
+                ( nextTilemap, tileActions, changedCells ) =
                     Tilemap.update delta world.tilemap
 
                 nextWorld =
                     { world | tilemap = nextTilemap }
+
+                ( nextRenderCache, tilemapChangedEffects ) =
+                    if List.isEmpty changedCells then
+                        ( model.renderCache, Cmd.none )
+
+                    else
+                        ( refreshTilemapCache nextTilemap model.renderCache
+                        , changedCells
+                            |> Task.succeed
+                            |> Task.perform TilemapChanged
+                        )
             in
             ( { model
                 | world = nextWorld
-                , renderCache =
-                    if List.length changedCells == 0 then
-                        model.renderCache
-
-                    else
-                        refreshTilemapCache nextTilemap model.renderCache
+                , renderCache = nextRenderCache
               }
-            , changedCells
-                |> Task.succeed
-                |> Task.perform TilemapChanged
+            , Cmd.batch (tilemapChangedEffects :: tileActionsToCmds tileActions)
             )
 
         ResetWorld ->
@@ -127,6 +134,16 @@ update msg model =
 
         _ ->
             ( model, Cmd.none )
+
+
+tileActionsToCmds : List Tile.Action -> List (Cmd Message)
+tileActionsToCmds =
+    List.filterMap
+        (\action ->
+            case action of
+                Tile.PlayAudio sound ->
+                    Just (playAudio sound)
+        )
 
 
 

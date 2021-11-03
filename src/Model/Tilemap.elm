@@ -261,7 +261,7 @@ updateTileFSM delta tile tilemapUpdate =
             FSM.update delta tile.fsm
 
         isRemoved =
-            FSM.currentState nextFSM == Tile.Removed
+            FSM.toCurrentState nextFSM == Tile.Removed
 
         nextTile =
             if isRemoved then
@@ -281,7 +281,7 @@ updateTileFSM delta tile tilemapUpdate =
                 tilemapUpdate.emptiedIndices
 
         nextChangedIndices =
-            if FSM.currentState tile.fsm /= FSM.currentState nextFSM then
+            if FSM.toCurrentState tile.fsm /= FSM.toCurrentState nextFSM then
                 idx :: tilemapUpdate.changedIndices
 
             else
@@ -294,29 +294,31 @@ updateTileFSM delta tile tilemapUpdate =
     }
 
 
-addTile : Cell -> Tilemap -> Tilemap
+addTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )
 addTile cell tilemap =
     applyTilemapOperation cell Tile.Add tilemap
 
 
-removeTile : Cell -> Tilemap -> Tilemap
+removeTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )
 removeTile cell tilemap =
     applyTilemapOperation cell Tile.Remove tilemap
 
 
-applyTilemapOperation : Cell -> TileOperation -> Tilemap -> Tilemap
+applyTilemapOperation : Cell -> TileOperation -> Tilemap -> ( Tilemap, List Tile.Action )
 applyTilemapOperation origin tileChange tilemap =
     let
         originTileKind =
             chooseTile tilemap origin
 
-        originTile =
+        ( originTile, initialActions ) =
             Tile.new originTileKind tileChange
 
         tilemapWithOriginChange =
             updateCell origin originTile tilemap
     in
-    updateNeighborCells origin tilemapWithOriginChange
+    ( updateNeighborCells origin tilemapWithOriginChange
+    , initialActions
+    )
 
 
 updateNeighborCells : Cell -> Tilemap -> Tilemap
@@ -337,8 +339,9 @@ updateNeighborCells origin tilemap =
                     nextTileKind =
                         chooseTile acc changedCell
 
-                    nextTile =
-                        -- "reset" the tile & FSM to avoid glitchy transitions
+                    -- "reset" the tile & FSM to avoid glitchy transitions
+                    -- FSM actions are ignored
+                    ( nextTile, _ ) =
                         Tile.new nextTileKind Tile.Change
                 in
                 updateCell changedCell nextTile acc

@@ -1,5 +1,5 @@
 module Model.Tile exposing
-    ( Action
+    ( Action(..)
     , Tile
     , TileKind
     , TileOperation(..)
@@ -54,7 +54,7 @@ type alias TileFSM =
 
 
 type Action
-    = None
+    = PlayAudio String
 
 
 type TileState
@@ -64,16 +64,22 @@ type TileState
     | Removed
 
 
-new : TileKind -> TileOperation -> Tile
+new : TileKind -> TileOperation -> ( Tile, List Action )
 new kind op =
-    { kind = kind
-    , fsm = initializeFSM op
-    }
+    let
+        ( fsm, initialActions ) =
+            initializeFSM op
+    in
+    ( { kind = kind
+      , fsm = fsm
+      }
+    , initialActions
+    )
 
 
 isBuilt : Tile -> Bool
 isBuilt tile =
-    FSM.currentState tile.fsm == Built
+    FSM.toCurrentState tile.fsm == Built
 
 
 
@@ -90,48 +96,63 @@ transitionTimer =
 constructing : State TileState Action
 constructing =
     FSM.createState
-        (FSM.createStateId "tile-constructing")
-        Constructing
-        [ FSM.createTransition
-            (\_ -> built)
-            []
-            (FSM.Timer transitionTimer)
-        ]
+        { id = FSM.createStateId "tile-constructing"
+        , kind = Constructing
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> built)
+                [ PlayAudio "B" ]
+                (FSM.Timer transitionTimer)
+            ]
+        , entryActions = [ PlayAudio "A" ]
+        , exitActions = []
+        }
 
 
 built : State TileState Action
 built =
     FSM.createState
-        (FSM.createStateId "tile-built")
-        Built
-        [ FSM.createTransition
-            (\_ -> removing)
-            []
-            FSM.Direct
-        ]
+        { id = FSM.createStateId "tile-built"
+        , kind = Built
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> removing)
+                []
+                FSM.Direct
+            ]
+        , entryActions = []
+        , exitActions = []
+        }
 
 
 removing : State TileState Action
 removing =
     FSM.createState
-        (FSM.createStateId "tile-removing")
-        Removing
-        [ FSM.createTransition
-            (\_ -> removed)
-            []
-            (FSM.Timer transitionTimer)
-        ]
+        { id = FSM.createStateId "tile-removing"
+        , kind = Removing
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> removed)
+                []
+                (FSM.Timer transitionTimer)
+            ]
+        , entryActions = [ PlayAudio "Bye" ]
+        , exitActions = []
+        }
 
 
 removed : State TileState Action
 removed =
     FSM.createState
-        (FSM.createStateId "tile-removed")
-        Removed
-        []
+        { id = FSM.createStateId "tile-removed"
+        , kind = Removed
+        , transitions = []
+        , entryActions = []
+        , exitActions = []
+        }
 
 
-initializeFSM : TileOperation -> TileFSM
+initializeFSM : TileOperation -> ( TileFSM, List Action )
 initializeFSM op =
     let
         initialState =
@@ -146,7 +167,7 @@ initializeFSM op =
                     -- the "Change" operation should not have a transition; skip straight to the idle state
                     built
     in
-    FSM.createFSM initialState
+    FSM.initialize initialState
 
 
 
