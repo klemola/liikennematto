@@ -3,13 +3,13 @@ module Model.FSM exposing
     , State
     , StateId
     , TransitionTrigger(..)
-    , createFSM
     , createState
     , createStateId
     , createTransition
-    , currentState
+    , initialize
     , potentialTransitions
     , timeToStateChange
+    , toCurrentState
     , transitionTo
     , update
     )
@@ -31,6 +31,8 @@ type State state actionType
         { id : StateId
         , kind : state
         , transitions : List (Transition state actionType)
+        , entryActions : List actionType
+        , exitActions : List actionType
         }
 
 
@@ -60,12 +62,18 @@ type TransitionTrigger state
     | Direct
 
 
-createFSM : State state actionType -> FSM state actionType
-createFSM initialState =
-    FSM
+initialize : State state actionType -> ( FSM state actionType, List actionType )
+initialize initialState =
+    let
+        (State state) =
+            initialState
+    in
+    ( FSM
         { initialState = initialState
         , currentState = initialState
         }
+    , state.entryActions
+    )
 
 
 createStateId : String -> StateId
@@ -73,13 +81,16 @@ createStateId =
     StateId
 
 
-createState : StateId -> state -> List (Transition state actionType) -> State state actionType
-createState id kind transitions =
-    State
-        { id = id
-        , kind = kind
-        , transitions = transitions
-        }
+createState :
+    { id : StateId
+    , kind : state
+    , transitions : List (Transition state actionType)
+    , entryActions : List actionType
+    , exitActions : List actionType
+    }
+    -> State state actionType
+createState stateConfig =
+    State stateConfig
 
 
 createTransition :
@@ -95,8 +106,8 @@ createTransition targetState actions trigger =
         }
 
 
-currentState : FSM state actionType -> state
-currentState (FSM fsm) =
+toCurrentState : FSM state actionType -> state
+toCurrentState (FSM fsm) =
     let
         (State state) =
             fsm.currentState
@@ -147,7 +158,7 @@ update delta (FSM fsm) =
                 (\transition acc ->
                     let
                         ( updatedTransition, stateChange ) =
-                            updateTransition delta transition
+                            updateTransition delta fsm.currentState transition
                     in
                     { transitions = updatedTransition :: acc.transitions
                     , stateChange = Maybe.or acc.stateChange stateChange
@@ -180,12 +191,13 @@ setTransitions (State state) updatedTransitions =
 
 updateTransition :
     Duration
+    -> State state actionType
     -> Transition state actionType
     ->
         ( Transition state actionType
         , Maybe (StateChange state actionType)
         )
-updateTransition delta transition =
+updateTransition delta (State currentState) transition =
     let
         (Transition trs) =
             transition
@@ -212,9 +224,16 @@ updateTransition delta transition =
 
         stateChange =
             if isTriggered then
+                let
+                    (State nextState) =
+                        trs.targetState ()
+                in
                 Just
-                    { nextState = trs.targetState ()
-                    , actions = trs.actions
+                    { nextState = State nextState
+                    , actions =
+                        currentState.exitActions
+                            ++ trs.actions
+                            ++ nextState.entryActions
                     }
 
             else

@@ -31,7 +31,8 @@ tilemapFromCoordinates cellCoordinates =
         (\coords acc ->
             case Tilemap.cellFromCoordinates coords of
                 Just cell ->
-                    Tilemap.addTile cell acc
+                    -- TODO: check if tile FSM actions can be ignored when creating fixtures
+                    Tilemap.addTile cell acc |> Tuple.first
 
                 Nothing ->
                     acc

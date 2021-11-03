@@ -47,37 +47,49 @@ type alias TrafficLights =
 green : State TrafficLightColor a
 green =
     FSM.createState
-        (FSM.createStateId "traffic-light-green")
-        Green
-        [ FSM.createTransition
-            (\_ -> yellow)
-            []
-            (FSM.Timer (Duration.seconds 12))
-        ]
+        { id = FSM.createStateId "traffic-light-green"
+        , kind = Green
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> yellow)
+                []
+                (FSM.Timer (Duration.seconds 12))
+            ]
+        , entryActions = []
+        , exitActions = []
+        }
 
 
 yellow : State TrafficLightColor a
 yellow =
     FSM.createState
-        (FSM.createStateId "traffic-light-yellow")
-        Yellow
-        [ FSM.createTransition
-            (\_ -> red)
-            []
-            (FSM.Timer (Duration.seconds 4))
-        ]
+        { id = FSM.createStateId "traffic-light-yellow"
+        , kind = Yellow
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> red)
+                []
+                (FSM.Timer (Duration.seconds 4))
+            ]
+        , entryActions = []
+        , exitActions = []
+        }
 
 
 red : State TrafficLightColor a
 red =
     FSM.createState
-        (FSM.createStateId "traffic-light-red")
-        Red
-        [ FSM.createTransition
-            (\_ -> green)
-            []
-            (FSM.Timer (Duration.seconds 16))
-        ]
+        { id = FSM.createStateId "traffic-light-red"
+        , kind = Red
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> green)
+                []
+                (FSM.Timer (Duration.seconds 16))
+            ]
+        , entryActions = []
+        , exitActions = []
+        }
 
 
 new : NewTrafficLight
@@ -106,9 +118,13 @@ build id newTrafficLight =
 
             else
                 red
+
+        -- Traffic lights do not use FSM actions, so the initial actions are ignored
+        ( fsm, _ ) =
+            FSM.initialize initialState
     in
     { id = id
-    , fsm = FSM.createFSM initialState
+    , fsm = fsm
     , position = newTrafficLight.position
     , facing = newTrafficLight.facing
     }
@@ -118,11 +134,11 @@ shouldStopTraffic : TrafficLight -> Bool
 shouldStopTraffic trafficLight =
     let
         currentState =
-            FSM.currentState trafficLight.fsm
+            FSM.toCurrentState trafficLight.fsm
     in
     currentState == Red || currentState == Yellow
 
 
 color : TrafficLight -> TrafficLightColor
 color trafficLight =
-    FSM.currentState trafficLight.fsm
+    FSM.toCurrentState trafficLight.fsm
