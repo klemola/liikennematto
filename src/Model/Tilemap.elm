@@ -353,7 +353,21 @@ nextOrthogonalTile dir cell tilemap =
             nextOrthogonalCell dir cell
 
         maybeTile =
-            maybeCell |> Maybe.andThen (tileAt tilemap)
+            maybeCell
+                |> Maybe.andThen (tileAt tilemap)
+                |> Maybe.andThen
+                    (\tile ->
+                        let
+                            state =
+                                FSM.toCurrentState tile.fsm
+                        in
+                        -- tiles pending removal should not be used when checking tile neighbors
+                        if state == Tile.Removing || state == Tile.Removed then
+                            Nothing
+
+                        else
+                            Just tile
+                    )
     in
     Maybe.map2 Tuple.pair
         maybeCell
@@ -375,7 +389,9 @@ chooseTile tilemap origin =
 
 hasOrthogonalNeighborAt : OrthogonalDirection -> Cell -> Tilemap -> Bool
 hasOrthogonalNeighborAt dir cell tilemap =
-    nextOrthogonalCell dir cell |> Maybe.unwrap False (\neighborCell -> exists neighborCell tilemap)
+    tilemap
+        |> nextOrthogonalTile dir cell
+        |> Maybe.isJust
 
 
 updateCell : Cell -> Tile -> Tilemap -> Tilemap
