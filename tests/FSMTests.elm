@@ -37,7 +37,7 @@ cyclicTimer =
     Duration.milliseconds 200
 
 
-cyclicOne : State States a
+cyclicOne : State States actionType updateContext
 cyclicOne =
     FSM.createState
         { id = stateOneId
@@ -50,7 +50,7 @@ cyclicOne =
         }
 
 
-cyclicTwo : State States a
+cyclicTwo : State States actionType updateContext
 cyclicTwo =
     FSM.createState
         { id = stateTwoId
@@ -63,7 +63,7 @@ cyclicTwo =
         }
 
 
-cyclicThree : State States a
+cyclicThree : State States actionType updateContext
 cyclicThree =
     FSM.createState
         { id = stateThreeId
@@ -87,7 +87,7 @@ suite =
              [ test "are updated when the FSM is updated"
                 (\_ ->
                     testFSM
-                        |> (FSM.update (Duration.milliseconds 20) >> Tuple.first)
+                        |> (FSM.updateWithoutContext (Duration.milliseconds 20) >> Tuple.first)
                         |> FSM.potentialTransitions
                         |> List.head
                         |> Maybe.andThen FSM.timeToStateChange
@@ -98,15 +98,15 @@ suite =
              , test "transition the FSM to the target state (single update)"
                 (\_ ->
                     testFSM
-                        |> (FSM.update (Duration.milliseconds 200) >> Tuple.first)
+                        |> (FSM.updateWithoutContext (Duration.milliseconds 200) >> Tuple.first)
                         |> FSM.toCurrentState
                         |> Expect.equal Two
                 )
              , test "transition the FSM to the target state (multiple updates)"
                 (\_ ->
                     testFSM
-                        |> (FSM.update (Duration.milliseconds 200) >> Tuple.first)
-                        |> (FSM.update (Duration.milliseconds 200) >> Tuple.first)
+                        |> (FSM.updateWithoutContext (Duration.milliseconds 200) >> Tuple.first)
+                        |> (FSM.updateWithoutContext (Duration.milliseconds 200) >> Tuple.first)
                         |> FSM.toCurrentState
                         |> Expect.equal Three
                 )
@@ -149,6 +149,51 @@ suite =
                     testFSM
                         |> FSM.transitionTo stateThreeId
                         |> Expect.err
+                )
+             ]
+            )
+        , describe "conditional transitions"
+            (let
+                targetState =
+                    FSM.createState
+                        { id = stateTwoId
+                        , kind = Two
+                        , transitions = []
+                        , entryActions = []
+                        , exitActions = []
+                        }
+
+                mockPredicate updateContext _ =
+                    updateContext == 42
+
+                transitions =
+                    [ FSM.createTransition (\_ -> targetState) [] (FSM.Condition mockPredicate) ]
+
+                initialState =
+                    FSM.createState
+                        { id = stateOneId
+                        , kind = One
+                        , transitions = transitions
+                        , entryActions = []
+                        , exitActions = []
+                        }
+
+                ( testFSM, _ ) =
+                    FSM.initialize initialState
+             in
+             [ test "transition the FSM to target state when the condition is met"
+                (\_ ->
+                    testFSM
+                        |> (FSM.update (Duration.milliseconds 16) 42 >> Tuple.first)
+                        |> FSM.toCurrentState
+                        |> Expect.equal Two
+                )
+             , test "does not transition the FSM to target state when the condition fails"
+                (\_ ->
+                    testFSM
+                        |> (FSM.update (Duration.milliseconds 16) 0 >> Tuple.first)
+                        |> FSM.toCurrentState
+                        |> Expect.equal One
                 )
              ]
             )

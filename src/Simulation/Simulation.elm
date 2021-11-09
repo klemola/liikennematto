@@ -163,7 +163,7 @@ updateTrafficLight trafficLight =
     let
         -- FSM change actions are ignored
         ( nextFsm, _ ) =
-            FSM.update (Duration.seconds 1) trafficLight.fsm
+            FSM.updateWithoutContext (Duration.seconds 1) trafficLight.fsm
     in
     { trafficLight | fsm = nextFsm }
 
