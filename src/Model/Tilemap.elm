@@ -255,7 +255,7 @@ updateTileFSM delta tile tilemapUpdate =
             Array.length tilemapUpdate.tilemap
 
         ( nextFSM, tileActions ) =
-            FSM.update delta tile.fsm
+            FSM.updateWithoutContext delta tile.fsm
 
         isRemoved =
             FSM.toCurrentState nextFSM == Tile.Removed

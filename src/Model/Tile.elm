@@ -50,7 +50,7 @@ type TileOperation
 
 
 type alias TileFSM =
-    FSM TileState Action
+    FSM TileState Action ()
 
 
 type Action
@@ -93,7 +93,7 @@ transitionTimer =
     Duration.milliseconds 250
 
 
-constructing : State TileState Action
+constructing : State TileState Action ()
 constructing =
     FSM.createState
         { id = FSM.createStateId "tile-constructing"
@@ -109,7 +109,7 @@ constructing =
         }
 
 
-built : State TileState Action
+built : State TileState Action ()
 built =
     FSM.createState
         { id = FSM.createStateId "tile-built"
@@ -125,7 +125,7 @@ built =
         }
 
 
-removing : State TileState Action
+removing : State TileState Action ()
 removing =
     FSM.createState
         { id = FSM.createStateId "tile-removing"
@@ -141,7 +141,7 @@ removing =
         }
 
 
-removed : State TileState Action
+removed : State TileState Action ()
 removed =
     FSM.createState
         { id = FSM.createStateId "tile-removed"

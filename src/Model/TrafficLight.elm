@@ -28,7 +28,7 @@ type TrafficLightColor
 
 type alias TrafficLight =
     { id : Id
-    , fsm : FSM TrafficLightColor ()
+    , fsm : FSM TrafficLightColor () ()
     , position : LMPoint2d
     , facing : LMDirection2d
     }
@@ -44,7 +44,7 @@ type alias TrafficLights =
     Dict Id TrafficLight
 
 
-green : State TrafficLightColor a
+green : State TrafficLightColor actionType updateContext
 green =
     FSM.createState
         { id = FSM.createStateId "traffic-light-green"
@@ -60,7 +60,7 @@ green =
         }
 
 
-yellow : State TrafficLightColor a
+yellow : State TrafficLightColor actionType updateContext
 yellow =
     FSM.createState
         { id = FSM.createStateId "traffic-light-yellow"
@@ -76,7 +76,7 @@ yellow =
         }
 
 
-red : State TrafficLightColor a
+red : State TrafficLightColor actionType updateContext
 red =
     FSM.createState
         { id = FSM.createStateId "traffic-light-red"

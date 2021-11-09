@@ -6,12 +6,15 @@ module FSM exposing
     , createState
     , createStateId
     , createTransition
+    , getId
     , initialize
     , potentialTransitions
+    , reset
     , timeToStateChange
     , toCurrentState
     , transitionTo
     , update
+    , updateWithoutContext
     )
 
 import Duration exposing (Duration)
@@ -19,18 +22,18 @@ import Maybe.Extra as Maybe
 import Quantity
 
 
-type FSM state actionType
+type FSM state actionType updateContext
     = FSM
-        { initialState : State state actionType
-        , currentState : State state actionType
+        { initialState : State state actionType updateContext
+        , currentState : State state actionType updateContext
         }
 
 
-type State state actionType
+type State state actionType updateContext
     = State
         { id : StateId
         , kind : state
-        , transitions : List (Transition state actionType)
+        , transitions : List (Transition state actionType updateContext)
         , entryActions : List actionType
         , exitActions : List actionType
         }
@@ -40,12 +43,12 @@ type StateId
     = StateId String
 
 
-type Transition state actionType
+type Transition state actionType updateContext
     = Transition
         -- The target state is wrapped in an anonymous function in order to allow loops in state changes (i.e. traffic lights)
-        { targetState : () -> State state actionType
+        { targetState : () -> State state actionType updateContext
         , actions : List actionType
-        , trigger : TransitionTrigger state
+        , trigger : TransitionTrigger state updateContext
         }
 
 
@@ -56,13 +59,13 @@ type Transition state actionType
 3.  manually (direct transition)
 
 -}
-type TransitionTrigger state
+type TransitionTrigger state updateContext
     = Timer Duration
-    | Condition (state -> Bool)
+    | Condition (updateContext -> state -> Bool)
     | Direct
 
 
-initialize : State state actionType -> ( FSM state actionType, List actionType )
+initialize : State state actionType updateContext -> ( FSM state actionType updateContext, List actionType )
 initialize initialState =
     let
         (State state) =
@@ -84,20 +87,25 @@ createStateId =
 createState :
     { id : StateId
     , kind : state
-    , transitions : List (Transition state actionType)
+    , transitions : List (Transition state actionType updateContext)
     , entryActions : List actionType
     , exitActions : List actionType
     }
-    -> State state actionType
+    -> State state actionType updateContext
 createState stateConfig =
     State stateConfig
 
 
+getId : State state actionType updateContext -> StateId
+getId (State state) =
+    state.id
+
+
 createTransition :
-    (() -> State state actionType)
+    (() -> State state actionType updateContext)
     -> List actionType
-    -> TransitionTrigger state
-    -> Transition state actionType
+    -> TransitionTrigger state updateContext
+    -> Transition state actionType updateContext
 createTransition targetState actions trigger =
     Transition
         { targetState = targetState
@@ -106,7 +114,7 @@ createTransition targetState actions trigger =
         }
 
 
-toCurrentState : FSM state actionType -> state
+toCurrentState : FSM state actionType updateContext -> state
 toCurrentState (FSM fsm) =
     let
         (State state) =
@@ -115,7 +123,7 @@ toCurrentState (FSM fsm) =
     state.kind
 
 
-potentialTransitions : FSM state actionType -> List (Transition state actionType)
+potentialTransitions : FSM state actionType updateContext -> List (Transition state actionType updateContext)
 potentialTransitions (FSM fsm) =
     let
         (State state) =
@@ -124,7 +132,7 @@ potentialTransitions (FSM fsm) =
     state.transitions
 
 
-timeToStateChange : Transition state actionType -> Maybe Duration
+timeToStateChange : Transition state actionType updateContext -> Maybe Duration
 timeToStateChange (Transition trs) =
     case trs.trigger of
         Timer timer ->
@@ -140,14 +148,18 @@ timeToStateChange (Transition trs) =
 --
 
 
-type alias StateChange state actionType =
-    { nextState : State state actionType
+type alias StateChange state actionType updateContext =
+    { nextState : State state actionType updateContext
     , actions : List actionType
     }
 
 
-update : Duration -> FSM state actionType -> ( FSM state actionType, List actionType )
-update delta (FSM fsm) =
+update :
+    Duration
+    -> updateContext
+    -> FSM state actionType updateContext
+    -> ( FSM state actionType updateContext, List actionType )
+update delta updateContext (FSM fsm) =
     let
         (State state) =
             fsm.currentState
@@ -158,7 +170,7 @@ update delta (FSM fsm) =
                 (\transition acc ->
                     let
                         ( updatedTransition, stateChange ) =
-                            updateTransition delta fsm.currentState transition
+                            updateTransition delta fsm.currentState updateContext transition
                     in
                     { transitions = updatedTransition :: acc.transitions
                     , stateChange = Maybe.or acc.stateChange stateChange
@@ -184,20 +196,24 @@ update delta (FSM fsm) =
     )
 
 
-setTransitions : State state actionType -> List (Transition state actionType) -> State state actionType
+setTransitions :
+    State state actionType updateContext
+    -> List (Transition state actionType updateContext)
+    -> State state actionType updateContext
 setTransitions (State state) updatedTransitions =
     State { state | transitions = updatedTransitions }
 
 
 updateTransition :
     Duration
-    -> State state actionType
-    -> Transition state actionType
+    -> State state actionType updateContext
+    -> updateContext
+    -> Transition state actionType updateContext
     ->
-        ( Transition state actionType
-        , Maybe (StateChange state actionType)
+        ( Transition state actionType updateContext
+        , Maybe (StateChange state actionType updateContext)
         )
-updateTransition delta (State currentState) transition =
+updateTransition delta (State currentState) context transition =
     let
         (Transition trs) =
             transition
@@ -216,8 +232,7 @@ updateTransition delta (State currentState) transition =
                     )
 
                 Condition predicate ->
-                    -- TODO: stub
-                    ( trs, False )
+                    ( trs, predicate context currentState.kind )
 
                 Direct ->
                     ( trs, False )
@@ -244,7 +259,20 @@ updateTransition delta (State currentState) transition =
     )
 
 
-transitionTo : StateId -> FSM state actionType -> Result String ( FSM state actionType, List actionType )
+{-| Same as "update", but "Condition" trigger will not be considered. Useful for FSMs where the trigger is not used.
+-}
+updateWithoutContext : Duration -> FSM state actionType () -> ( FSM state actionType (), List actionType )
+updateWithoutContext delta fsm =
+    update delta () fsm
+
+
+{-| Attempt a manual transition to a target state (ID).
+Fails if the current state doesn't have a transition to the target state with the "Direct" trigger.
+-}
+transitionTo :
+    StateId
+    -> FSM state actionType updateContext
+    -> Result String ( FSM state actionType updateContext, List actionType )
 transitionTo stateId (FSM fsm) =
     let
         (State state) =
@@ -267,13 +295,34 @@ transitionTo stateId (FSM fsm) =
                 )
 
         Nothing ->
-            Result.Err "No matching transition found"
+            let
+                (StateId fromState) =
+                    stateId
+
+                (StateId toState) =
+                    stateId
+            in
+            Result.Err
+                (String.join " "
+                    [ "No matching transition found from"
+                    , fromState
+                    , "to"
+                    , toState
+                    ]
+                )
 
 
-directTransitionAllowed : StateId -> Transition state actionType -> Bool
+directTransitionAllowed : StateId -> Transition state actionType updateContext -> Bool
 directTransitionAllowed stateId (Transition trs) =
     let
         (State targetState) =
             trs.targetState ()
     in
     trs.trigger == Direct && targetState.id == stateId
+
+
+{-| Restart the FSM from it's initial state.
+-}
+reset : FSM state actionType updateContext -> ( FSM state actionType updateContext, List actionType )
+reset (FSM fsm) =
+    initialize fsm.initialState
