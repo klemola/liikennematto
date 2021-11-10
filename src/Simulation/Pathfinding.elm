@@ -1,33 +1,43 @@
-module Simulation.Pathfinding exposing (createRoute, maybeCreateRoute)
+module Simulation.Pathfinding exposing
+    ( createRoute
+    , maybeCreateRoute
+    , restoreRoute
+    , updatePath
+    )
 
 import Angle
+import BoundingBox2d
 import Common
 import CubicSpline2d exposing (CubicSpline2d)
 import Direction2d
 import Length exposing (Length)
-import Model.Car exposing (Car, Status(..))
-import Model.Geometry exposing (LMDirection2d, LMEntityCoordinates, LMPoint2d, LMPolyline2d)
-import Model.RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
+import Model.Car as Car exposing (Car, CarState(..))
+import Model.Geometry
+    exposing
+        ( LMDirection2d
+        , LMEntityCoordinates
+        , LMPoint2d
+        , LMPolyline2d
+        )
+import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
+import Model.World exposing (World)
 import Point2d
 import Polyline2d
+import QuadTree
 import Quantity
+import Random
+import Random.List
 
 
 type alias PathParameters =
     { origin : LMPoint2d
     , direction : LMDirection2d
-    , useOffsetSpline : Bool
     }
 
 
 splineSegmentsAmount : Int
 splineSegmentsAmount =
     20
-
-
-lotExitOffset : Length
-lotExitOffset =
-    Length.meters 10
 
 
 uTurnDistance : Length
@@ -60,7 +70,6 @@ createRoute nodeCtx car =
                 toNode
                     { origin = car.position
                     , direction = Direction2d.fromAngle car.orientation
-                    , useOffsetSpline = car.status == ParkedAtLot
                     }
                     nodeCtx
 
@@ -70,7 +79,7 @@ createRoute nodeCtx car =
 
 
 toNode : PathParameters -> RNNodeContext -> LMPolyline2d
-toNode { direction, origin, useOffsetSpline } { node } =
+toNode { direction, origin } { node } =
     let
         target =
             node.label.position
@@ -80,8 +89,8 @@ toNode { direction, origin, useOffsetSpline } { node } =
                 |> Common.angleFromDirection direction target
                 |> Quantity.abs
     in
-    if node.label.kind == LotEntry && useOffsetSpline then
-        offsetSpline origin target direction
+    if node.label.kind == LotEntry then
+        Polyline2d.fromVertices [ origin, target ]
 
     else if node.label.kind == DeadendExit then
         uTurnSpline origin target direction
@@ -91,31 +100,6 @@ toNode { direction, origin, useOffsetSpline } { node } =
 
     else
         curveSpline origin target direction
-
-
-offsetSpline : LMPoint2d -> LMPoint2d -> LMDirection2d -> LMPolyline2d
-offsetSpline origin target direction =
-    let
-        targetCp =
-            target |> Point2d.translateIn direction lotExitOffset
-
-        distanceToTarget =
-            Point2d.distanceFrom origin targetCp
-
-        handleCp1 =
-            origin
-                |> Point2d.translateIn
-                    direction
-                    (distanceToTarget |> Quantity.multiplyBy 0.25)
-
-        handleCp2 =
-            targetCp
-                |> Point2d.translateIn
-                    (Direction2d.reverse direction)
-                    (distanceToTarget |> Quantity.half)
-    in
-    CubicSpline2d.fromControlPoints origin handleCp1 handleCp2 targetCp
-        |> cubicSplineToLocalPath
 
 
 uTurnSpline : LMPoint2d -> LMPoint2d -> LMDirection2d -> LMPolyline2d
@@ -161,3 +145,101 @@ curveSpline origin target direction =
 cubicSplineToLocalPath : CubicSpline2d Length.Meters LMEntityCoordinates -> LMPolyline2d
 cubicSplineToLocalPath spline =
     CubicSpline2d.segments splineSegmentsAmount spline
+
+
+updatePath : World -> Random.Seed -> Car -> ( Car, Random.Seed )
+updatePath world seed car =
+    case Polyline2d.vertices car.localPath of
+        next :: others ->
+            if Point2d.equalWithin (Length.meters 0.5) car.position next then
+                ( { car | localPath = Polyline2d.fromVertices others }, seed )
+
+            else
+                ( car, seed )
+
+        [] ->
+            chooseNextConnection seed world car
+
+
+chooseNextConnection : Random.Seed -> World -> Car -> ( Car, Random.Seed )
+chooseNextConnection seed world car =
+    case car.route of
+        nodeCtx :: _ ->
+            let
+                randomConnectionGenerator =
+                    RoadNetwork.getOutgoingConnections nodeCtx
+                        |> Random.List.choose
+                        |> Random.map Tuple.first
+
+                ( connection, nextSeed ) =
+                    Random.step randomConnectionGenerator seed
+
+                nextCar =
+                    connection
+                        |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
+                        |> Maybe.map
+                            (\nextNodeCtx ->
+                                -- This is a temporary hack to make sure that tight turns can be completed
+                                let
+                                    nodeKind =
+                                        nodeCtx.node.label.kind
+                                in
+                                (if nodeKind == DeadendExit || nodeKind == LaneStart || nodeKind == LotEntry then
+                                    { car
+                                        | orientation = Direction2d.toAngle nodeCtx.node.label.direction
+                                        , position = nodeCtx.node.label.position
+                                    }
+
+                                 else
+                                    car
+                                )
+                                    |> createRoute nextNodeCtx
+                            )
+                        |> Maybe.withDefault car
+            in
+            ( nextCar, nextSeed )
+
+        _ ->
+            ( Car.triggerReroute car, seed )
+
+
+restoreRoute : World -> Car -> Car
+restoreRoute world car =
+    if Car.isPathfinding car then
+        case
+            List.head car.route
+                |> Maybe.andThen (findNodeReplacement world)
+                |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
+        of
+            Just nodeCtxResult ->
+                createRoute nodeCtxResult car
+
+            Nothing ->
+                Car.triggerReroute car
+
+    else
+        car
+
+
+findNodeReplacement : World -> RNNodeContext -> Maybe Int
+findNodeReplacement { roadNetworkLookup } target =
+    -- Tries to find a node in the lookup tree that could replace the reference node.
+    -- Useful in maintaning route after the road network has been updated.
+    let
+        targetPosition =
+            target.node.label.position
+
+        positionMatches =
+            roadNetworkLookup
+                |> QuadTree.findIntersecting
+                    { id = target.node.id
+                    , position = targetPosition
+                    , boundingBox = BoundingBox2d.singleton targetPosition
+                    }
+    in
+    case positionMatches of
+        match :: _ ->
+            Just match.id
+
+        [] ->
+            Nothing

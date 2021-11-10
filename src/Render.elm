@@ -2,13 +2,13 @@ module Render exposing (view)
 
 import Angle
 import Color
-import Dict
+import Dict exposing (Dict)
 import Direction2d exposing (y)
 import Graph exposing (Node)
 import Html exposing (Html)
 import Maybe.Extra as Maybe
 import Model.Animation as Animation exposing (Animation)
-import Model.Car as Car exposing (Car, CarKind(..), Cars)
+import Model.Car as Car exposing (Car, CarKind(..))
 import Model.Geometry
     exposing
         ( LMPoint2d
@@ -340,7 +340,7 @@ tileAnimationProperties animation ( tileX, tileY ) =
 --
 
 
-renderCars : Cars -> Svg msg
+renderCars : Dict Int Car -> Svg msg
 renderCars cars =
     cars
         |> Dict.foldl
@@ -624,7 +624,7 @@ renderYieldSign node =
 --
 
 
-renderDebugLayers : DebugLayers -> Cars -> RoadNetwork -> List (Svg msg)
+renderDebugLayers : DebugLayers -> Dict Int Car -> RoadNetwork -> List (Svg msg)
 renderDebugLayers { showRoadNetwork, showCarDebugVisuals } cars roadNetwork =
     let
         carsLayer =
@@ -745,7 +745,7 @@ renderRoadNetwork roadNetwork =
         ]
 
 
-renderCarsDebug : Cars -> Svg msg
+renderCarsDebug : Dict Int Car -> Svg msg
 renderCarsDebug cars =
     cars
         |> Dict.foldl

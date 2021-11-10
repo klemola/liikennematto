@@ -4,7 +4,6 @@ module Simulation.Steering exposing
     , angleToTarget
     , applyCollisionEffects
     , break
-    , markAsConfused
     , maxAcceleration
     , maxDeceleration
     , maxVelocity
@@ -12,6 +11,7 @@ module Simulation.Steering exposing
     , seekAndFaceTarget
     , slowDown
     , startMoving
+    , stop
     , stopAtTrafficControl
     )
 
@@ -22,7 +22,7 @@ import AngularSpeed exposing (AngularSpeed)
 import Direction2d
 import Duration
 import Length exposing (Length)
-import Model.Car as Car exposing (Car, Status(..))
+import Model.Car as Car exposing (Car)
 import Model.Geometry exposing (LMPoint2d)
 import Quantity exposing (Quantity(..))
 import Speed exposing (Speed)
@@ -202,6 +202,11 @@ stopAtTrafficControl distanceFromTrafficControl car =
     { car | acceleration = nextAcceleration }
 
 
+startMoving : Car -> Car
+startMoving car =
+    { car | acceleration = maxAcceleration }
+
+
 break : Length -> Car -> Car
 break breakDistance car =
     let
@@ -228,27 +233,15 @@ slowDown targetVelocity car =
     }
 
 
+stop : Car -> Car
+stop car =
+    { car | acceleration = maxDeceleration }
+
+
 applyCollisionEffects : Car -> Car
 applyCollisionEffects car =
     -- Bounce the car back on impact
     { car
         | acceleration = Quantity.zero
         , velocity = Speed.metersPerSecond -10
-    }
-
-
-startMoving : Car -> Car
-startMoving car =
-    { car
-        | status = Moving
-        , acceleration = maxAcceleration
-    }
-
-
-markAsConfused : Car -> Car
-markAsConfused car =
-    { car
-        | status = Confused
-        , route = []
-        , acceleration = maxDeceleration
     }

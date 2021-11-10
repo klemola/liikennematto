@@ -1,7 +1,6 @@
 module Simulation.Infrastructure exposing
     ( connectLotToRoadNetwork
     , createRoadNetwork
-    , findNodeReplacement
     , updateRoadNetwork
     )
 
@@ -41,7 +40,6 @@ import Model.Tilemap as Tilemap exposing (Cell, Tilemap)
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLights)
 import Model.World exposing (World)
 import Point2d
-import QuadTree
 import Quantity
 import Vector2d
 
@@ -134,30 +132,6 @@ buildRoadNetwork { tilemap, lots, trafficLights } =
             Graph.fromNodesAndEdges nodes edges
     in
     roadNetwork |> setupTrafficControl trafficLights
-
-
-findNodeReplacement : World -> RNNodeContext -> Maybe Int
-findNodeReplacement { roadNetworkLookup } target =
-    -- Tries to find a node in the lookup tree that could replace the reference node.
-    -- Useful in maintaning route after the road network has been updated.
-    let
-        targetPosition =
-            target.node.label.position
-
-        positionMatches =
-            roadNetworkLookup
-                |> QuadTree.findIntersecting
-                    { id = target.node.id
-                    , position = targetPosition
-                    , boundingBox = BoundingBox2d.singleton targetPosition
-                    }
-    in
-    case positionMatches of
-        match :: _ ->
-            Just match.id
-
-        [] ->
-            Nothing
 
 
 

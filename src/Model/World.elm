@@ -1,17 +1,20 @@
 module Model.World exposing
     ( World
+    , addLot
     , empty
     , hasLot
     , hasLotAnchor
     , isEmptyArea
+    , removeCar
+    , removeLot
     , setCar
     )
 
 import Common
-import Dict
+import Dict exposing (Dict)
 import Graph
-import Model.Car exposing (Car, Cars)
-import Model.Entity exposing (Id)
+import Model.Car as Car exposing (Car, CarKind(..))
+import Model.Entity as Entity exposing (Id)
 import Model.Geometry exposing (LMBoundingBox2d)
 import Model.Lookup
     exposing
@@ -20,7 +23,7 @@ import Model.Lookup
         , carPositionLookup
         , roadNetworkLookup
         )
-import Model.Lot as Lot exposing (Lots)
+import Model.Lot as Lot exposing (Lot, Lots)
 import Model.RoadNetwork as RoadNetwork exposing (RoadNetwork)
 import Model.Tilemap as Tilemap exposing (Cell, Tilemap)
 import Model.TrafficLight exposing (TrafficLights)
@@ -30,7 +33,7 @@ type alias World =
     { tilemap : Tilemap
     , roadNetwork : RoadNetwork
     , trafficLights : TrafficLights
-    , cars : Cars
+    , cars : Dict Id Car
     , lots : Lots
     , carPositionLookup : CarPositionLookup
     , roadNetworkLookup : RoadNetworkLookup
@@ -85,5 +88,51 @@ isEmptyArea testAreaBB world =
 
 
 setCar : Id -> Car -> World -> World
-setCar id car world =
-    { world | cars = Dict.insert id car world.cars }
+setCar carId car world =
+    { world | cars = Dict.insert carId car world.cars }
+
+
+removeCar : Id -> World -> World
+removeCar carId world =
+    { world | cars = Dict.remove carId world.cars }
+
+
+addLot : Lot -> World -> ( Id, World )
+addLot lot world =
+    let
+        nextLotId =
+            Entity.nextId world.lots
+
+        nextLots =
+            Dict.insert nextLotId lot world.lots
+    in
+    ( nextLotId, { world | lots = nextLots } )
+
+
+removeLot : Id -> World -> World
+removeLot lotId world =
+    let
+        nextCars =
+            Dict.map
+                (\_ car ->
+                    let
+                        shouldReroute =
+                            case car.homeLotId of
+                                Just homeLotId ->
+                                    homeLotId == lotId
+
+                                Nothing ->
+                                    False
+                    in
+                    if shouldReroute then
+                        Car.triggerReroute car
+
+                    else
+                        car
+                )
+                world.cars
+    in
+    { world
+        | lots = Dict.remove lotId world.lots
+        , cars = nextCars
+    }
