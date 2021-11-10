@@ -22,11 +22,6 @@ dequeueFrequency =
     500
 
 
-carStatusCheckFrequency : Float
-carStatusCheckFrequency =
-    1000
-
-
 subscriptions : Liikennematto -> Sub Message
 subscriptions { simulation } =
     let
@@ -45,6 +40,5 @@ subscriptions { simulation } =
                 ++ [ Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameReceived)
                    , Time.every environmentUpdateFrequency (always UpdateEnvironment)
                    , Time.every dequeueFrequency (always CheckQueues)
-                   , Time.every carStatusCheckFrequency (always CheckCarStatus)
                    ]
             )

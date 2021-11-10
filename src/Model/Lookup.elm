@@ -1,10 +1,15 @@
-module Model.Lookup exposing (CarPositionLookup, RoadNetworkLookup, carPositionLookup, roadNetworkLookup)
+module Model.Lookup exposing
+    ( CarPositionLookup
+    , RoadNetworkLookup
+    , carPositionLookup
+    , roadNetworkLookup
+    )
 
 import BoundingBox2d
-import Dict
+import Dict exposing (Dict)
 import Graph
 import Length
-import Model.Car exposing (Car, Cars)
+import Model.Car exposing (Car)
 import Model.Geometry exposing (LMBoundingBox2d, LMEntityCoordinates, LMPoint2d)
 import Model.RoadNetwork exposing (RoadNetwork)
 import Model.Tilemap as Tilemap
@@ -28,7 +33,7 @@ type alias LookupTreeEntry =
     { id : Int, position : LMPoint2d, boundingBox : LMBoundingBox2d }
 
 
-carPositionLookup : Cars -> CarPositionLookup
+carPositionLookup : Dict Int Car -> CarPositionLookup
 carPositionLookup cars =
     QuadTree.init Tilemap.boundingBox quadTreeLeafElementsAmount
         |> QuadTree.insertList (Dict.values cars)

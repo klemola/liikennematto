@@ -14,7 +14,7 @@ import Direction2d
 import Length exposing (Length, Meters)
 import LineSegment2d exposing (LineSegment2d)
 import Maybe.Extra
-import Model.Car as Car exposing (Car, Status(..))
+import Model.Car as Car exposing (Car, CarState(..))
 import Model.Geometry exposing (LMEntityCoordinates, LMPoint2d)
 import Model.RoadNetwork exposing (TrafficControl(..))
 import Model.TrafficLight as TrafficLight exposing (TrafficLight)
@@ -89,13 +89,9 @@ yieldReactionDistance =
 
 play : Round -> RoundResults
 play round =
-    if Car.isConfused round.activeCar then
-        toResults round
-
-    else
-        round
-            |> checkRules
-            |> toResults
+    round
+        |> checkRules
+        |> toResults
 
 
 toResults : Round -> RoundResults
@@ -113,13 +109,11 @@ checkRules round =
 
         Nothing ->
             -- cancel the effects of previously applied rules
-            if Car.isStoppedOrWaiting round.activeCar || Car.isBreaking round.activeCar then
-                case round.activeCar.status of
-                    Moving ->
-                        applyCarAction Steering.startMoving round
-
-                    _ ->
-                        round
+            if
+                Car.isPathfinding round.activeCar
+                    && (Car.isStoppedOrWaiting round.activeCar || Car.isBreaking round.activeCar)
+            then
+                applyCarAction Steering.startMoving round
 
             else
                 round

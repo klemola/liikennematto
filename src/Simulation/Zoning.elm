@@ -2,8 +2,6 @@ module Simulation.Zoning exposing (generateLot, validateLots)
 
 import Dict
 import Maybe.Extra as Maybe
-import Model.Car as Car
-import Model.Entity as Entity
 import Model.Geometry exposing (orthogonalDirections)
 import Model.Lot as Lot exposing (Anchor, Lot, NewLot, allLots)
 import Model.Tile as Tile
@@ -12,6 +10,7 @@ import Model.World as World exposing (World)
 import Random
 import Random.List
 import Simulation.Infrastructure as Infrastructure
+import Simulation.Traffic as Traffic
 
 
 generateLot : World -> Random.Seed -> ( World, Random.Seed )
@@ -106,55 +105,29 @@ isNotAtTheEndOfARoad world { anchorCell } =
 addLot : World -> Lot -> World
 addLot world lot =
     let
-        nextLotId =
-            Entity.nextId world.lots
-
-        nextLots =
-            Dict.insert nextLotId lot world.lots
-
-        worldWithLots =
-            { world | lots = nextLots }
+        ( lotId, worldWithlot ) =
+            World.addLot lot world
     in
-    worldWithLots
+    worldWithlot
         |> Infrastructure.connectLotToRoadNetwork
-        |> addLotResident nextLotId lot
-
-
-addLotResident : Int -> Lot -> World -> World
-addLotResident lotId lot world =
-    let
-        carId =
-            Entity.nextId world.cars
-
-        createCar kind =
-            Car.new kind
-                |> Car.withHome lotId
-                |> Car.withPosition lot.entryDetails.parkingSpot
-                |> Car.withOrientation (Lot.parkingSpotOrientation lot)
-                |> Car.build carId
-
-        addToWorld car =
-            { world | cars = Dict.insert carId car world.cars }
-    in
-    world.lots
-        |> Dict.get lotId
-        |> Maybe.andThen Lot.resident
-        |> Maybe.map (createCar >> addToWorld)
-        |> Maybe.withDefault world
+        |> Traffic.addLotResident lotId lot
 
 
 validateLots : List Cell -> World -> World
 validateLots changedCells world =
-    let
-        nextLots =
-            Dict.filter
-                (\_ lot ->
-                    hasValidAnchorCell world.tilemap lot
-                        && List.all (\cell -> not (Lot.inBounds cell lot)) changedCells
-                )
-                world.lots
-    in
-    { world | lots = nextLots }
+    Dict.foldl
+        (\lotId lot acc ->
+            if
+                hasValidAnchorCell world.tilemap lot
+                    && List.all (\cell -> not (Lot.inBounds cell lot)) changedCells
+            then
+                acc
+
+            else
+                World.removeLot lotId acc
+        )
+        world
+        world.lots
 
 
 hasValidAnchorCell : Tilemap -> Lot -> Bool

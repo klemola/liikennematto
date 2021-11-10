@@ -2,19 +2,20 @@ module Model.Car exposing
     ( Car
     , CarColors
     , CarKind(..)
-    , Cars
-    , Status(..)
+    , CarState(..)
     , adjustedShape
     , build
     , fieldOfView
     , isBreaking
-    , isConfused
+    , isPathfinding
     , isStoppedOrWaiting
     , length
     , new
     , rightSideOfFieldOfView
     , secondsTo
     , statusDescription
+    , triggerDespawn
+    , triggerReroute
     , viewDistance
     , width
     , withHome
@@ -29,9 +30,9 @@ import AngularSpeed exposing (AngularSpeed)
 import Axis2d
 import BoundingBox2d
 import Color exposing (Color)
-import Dict exposing (Dict)
 import Direction2d
-import Duration
+import Duration exposing (Duration)
+import FSM exposing (FSM)
 import Frame2d
 import Length exposing (Length, Meters)
 import Model.Entity exposing (Id)
@@ -53,6 +54,8 @@ import Triangle2d exposing (Triangle2d)
 
 type alias Car =
     { id : Id
+    , kind : CarKind
+    , fsm : CarFSM
     , position : LMPoint2d
     , orientation : Angle
     , velocity : Speed
@@ -60,28 +63,21 @@ type alias Car =
     , acceleration : Acceleration
     , shape : Polygon2d Meters LMEntityCoordinates
     , boundingBox : LMBoundingBox2d
-    , kind : CarKind
-    , status : Status
-    , homeLotId : Maybe Int
     , route : List RNNodeContext
     , localPath : LMPolyline2d
+    , homeLotId : Maybe Int
     }
 
 
 type alias NewCar =
-    { position : LMPoint2d
+    { kind : CarKind
+    , position : LMPoint2d
     , orientation : Angle
     , velocity : Speed
     , rotation : AngularSpeed
     , acceleration : Acceleration
-    , kind : CarKind
-    , status : Status
     , homeLotId : Maybe Int
     }
-
-
-type alias Cars =
-    Dict Id Car
 
 
 type alias CarColors =
@@ -97,10 +93,26 @@ type CarKind
     | TestCar
 
 
-type Status
-    = Moving
-    | ParkedAtLot
-    | Confused
+type alias CarFSM =
+    FSM CarState Action UpdateContext
+
+
+type CarState
+    = Parked
+    | Unparking
+    | Driving
+    | ReRouting
+    | Parking
+    | Despawning
+    | Despawned
+
+
+type alias Action =
+    ()
+
+
+type alias UpdateContext =
+    ( LMPoint2d, List RNNodeContext )
 
 
 
@@ -168,6 +180,204 @@ speedToFieldOfViewReduction =
 
 
 --
+-- FSM
+--
+
+
+unparkingTimer : Duration
+unparkingTimer =
+    Duration.milliseconds 500
+
+
+despawnTimer : Duration
+despawnTimer =
+    Duration.milliseconds 500
+
+
+parked : FSM.State CarState Action UpdateContext
+parked =
+    FSM.createState
+        { id = FSM.createStateId "car-parked"
+        , kind = Parked
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> unparking)
+                []
+                (FSM.Timer unparkingTimer)
+            ]
+        , entryActions = []
+        , exitActions = []
+        }
+
+
+unparking : FSM.State CarState Action UpdateContext
+unparking =
+    FSM.createState
+        { id = FSM.createStateId "car-unparking"
+        , kind = Unparking
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> driving)
+                []
+                (FSM.Condition unparkingComplete)
+            ]
+        , entryActions = []
+        , exitActions = []
+        }
+
+
+unparkingComplete : UpdateContext -> CarState -> Bool
+unparkingComplete ( currentPosition, route ) _ =
+    case List.head route of
+        Just nodeCtx ->
+            currentPosition
+                |> Point2d.distanceFrom nodeCtx.node.label.position
+                |> Quantity.lessThanOrEqualTo (Length.meters 0.5)
+
+        Nothing ->
+            False
+
+
+driving : FSM.State CarState Action UpdateContext
+driving =
+    FSM.createState
+        { id = FSM.createStateId "car-driving"
+        , kind = Driving
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> rerouting)
+                []
+                FSM.Direct
+            , FSM.createTransition
+                (\_ -> parking)
+                []
+                FSM.Direct
+            ]
+        , entryActions = []
+        , exitActions = []
+        }
+
+
+rerouting : FSM.State CarState Action UpdateContext
+rerouting =
+    FSM.createState
+        { id = FSM.createStateId "car-re-routing"
+        , kind = ReRouting
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> driving)
+                []
+                (FSM.Condition rerouteComplete)
+            , FSM.createTransition
+                (\_ -> despawning)
+                []
+                FSM.Direct
+            ]
+        , entryActions = []
+        , exitActions = []
+        }
+
+
+rerouteComplete : UpdateContext -> CarState -> Bool
+rerouteComplete ( _, route ) _ =
+    not (List.isEmpty route)
+
+
+parking : FSM.State CarState Action UpdateContext
+parking =
+    FSM.createState
+        { id = FSM.createStateId "car-parking"
+        , kind = Parking
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> parked)
+                []
+                FSM.Direct
+            ]
+        , entryActions = []
+        , exitActions = []
+        }
+
+
+despawning : FSM.State CarState Action UpdateContext
+despawning =
+    FSM.createState
+        { id = FSM.createStateId "car-despawning"
+        , kind = Despawning
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> despawned)
+                []
+                (FSM.Timer despawnTimer)
+            ]
+        , entryActions = []
+        , exitActions = []
+        }
+
+
+despawned : FSM.State CarState Action UpdateContext
+despawned =
+    FSM.createState
+        { id = FSM.createStateId "car-despawned"
+        , kind = Despawned
+        , transitions = []
+        , entryActions = []
+        , exitActions = []
+        }
+
+
+initializeFSM : NewCar -> ( CarFSM, List Action )
+initializeFSM newCar =
+    let
+        initialState =
+            case newCar.homeLotId of
+                Just _ ->
+                    parked
+
+                _ ->
+                    driving
+    in
+    FSM.initialize initialState
+
+
+triggerReroute : Car -> Car
+triggerReroute car =
+    let
+        transition =
+            car.fsm |> FSM.transitionTo (FSM.getId rerouting)
+    in
+    case transition of
+        Ok ( nextFSM, _ ) ->
+            { car
+                | fsm = nextFSM
+                , route = []
+                , localPath = Polyline2d.fromVertices []
+            }
+
+        Err _ ->
+            triggerDespawn car
+
+
+triggerDespawn : Car -> Car
+triggerDespawn car =
+    let
+        transition =
+            car.fsm |> FSM.transitionTo (FSM.getId despawning)
+    in
+    case transition of
+        Ok ( nextFSM, _ ) ->
+            { car
+                | fsm = nextFSM
+                , route = []
+                , localPath = Polyline2d.fromVertices []
+            }
+
+        Err _ ->
+            car
+
+
+
+--
 -- Builder
 --
 
@@ -180,17 +390,13 @@ new kind =
     , rotation = Quantity.zero
     , acceleration = Quantity.zero
     , kind = kind
-    , status = Confused
     , homeLotId = Nothing
     }
 
 
 withHome : Int -> NewCar -> NewCar
 withHome lotId car =
-    { car
-        | homeLotId = Just lotId
-        , status = ParkedAtLot
-    }
+    { car | homeLotId = Just lotId }
 
 
 withPosition : LMPoint2d -> NewCar -> NewCar
@@ -213,8 +419,13 @@ build id newCar =
     let
         ( shape, boundingBox ) =
             adjustedShape newCar.position newCar.orientation
+
+        ( fsm, _ ) =
+            initializeFSM newCar
     in
     { id = id
+    , kind = newCar.kind
+    , fsm = fsm
     , position = newCar.position
     , orientation = newCar.orientation
     , velocity = newCar.velocity
@@ -222,11 +433,9 @@ build id newCar =
     , acceleration = newCar.acceleration
     , shape = shape
     , boundingBox = boundingBox
-    , kind = newCar.kind
-    , status = newCar.status
-    , homeLotId = newCar.homeLotId
     , route = []
     , localPath = Polyline2d.fromVertices []
+    , homeLotId = newCar.homeLotId
     }
 
 
@@ -234,11 +443,6 @@ build id newCar =
 --
 -- Queries
 --
-
-
-isConfused : Car -> Bool
-isConfused car =
-    car.status == Confused
 
 
 isStoppedOrWaiting : Car -> Bool
@@ -249,6 +453,16 @@ isStoppedOrWaiting car =
 isBreaking : Car -> Bool
 isBreaking car =
     car.acceleration |> Quantity.lessThan Quantity.zero
+
+
+isPathfinding : Car -> Bool
+isPathfinding car =
+    let
+        currentState =
+            FSM.toCurrentState car.fsm
+    in
+    not (List.isEmpty car.route)
+        && (currentState == Driving || currentState == Parking || currentState == Unparking)
 
 
 secondsTo : LMPoint2d -> Car -> Quantity Float Duration.Seconds
@@ -339,15 +553,27 @@ adjustedShape nextPosition nextOrientation =
 
 statusDescription : Car -> String
 statusDescription car =
-    case car.status of
-        Moving ->
-            "Moving" ++ " " ++ routeDescription car.route
+    case FSM.toCurrentState car.fsm of
+        Parked ->
+            "Parked"
 
-        ParkedAtLot ->
-            "Parked @ lot"
+        Unparking ->
+            "Unparking"
 
-        Confused ->
-            "Confused"
+        Driving ->
+            "Driving" ++ " " ++ routeDescription car.route
+
+        ReRouting ->
+            "Re-routing"
+
+        Parking ->
+            "Parking"
+
+        Despawning ->
+            "Despawning"
+
+        Despawned ->
+            "Despawned"
 
 
 routeDescription : List RNNodeContext -> String

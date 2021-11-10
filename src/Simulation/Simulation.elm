@@ -106,18 +106,6 @@ update msg model =
             , Cmd.none
             )
 
-        CheckCarStatus ->
-            let
-                ( nextWorld, nextSeed ) =
-                    Traffic.checkCarStatus model.seed model.world
-            in
-            ( { model
-                | seed = nextSeed
-                , world = nextWorld
-              }
-            , Cmd.none
-            )
-
         SpawnTestCar ->
             ( { model | carSpawnQueue = model.carSpawnQueue + 1 }
             , Cmd.none

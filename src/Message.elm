@@ -19,7 +19,6 @@ type Message
     | UpdateEnvironment
     | GenerateEnvironment
     | CheckQueues
-    | CheckCarStatus
     | SpawnTestCar
     | ResetWorld
     | SelectTool Tool
