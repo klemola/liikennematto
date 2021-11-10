@@ -83,7 +83,7 @@ updateTraffic { updateQueue, seed, world, delta } =
                                 |> Tuple.mapFirst (updateCar delta >> Just)
 
                         Car.Despawned ->
-                            ( onDespawn world activeCar, seed )
+                            ( carAfterDespawn world carWithUpdatedFSM, seed )
 
                         _ ->
                             carWithUpdatedFSM
@@ -169,8 +169,8 @@ updateCar delta car =
     }
 
 
-onDespawn : World -> Car -> Maybe Car
-onDespawn world car =
+carAfterDespawn : World -> Car -> Maybe Car
+carAfterDespawn world car =
     car.homeLotId
         |> Maybe.andThen (\lotId -> Dict.get lotId world.lots)
         |> Maybe.map (moveCarToHome world car)
