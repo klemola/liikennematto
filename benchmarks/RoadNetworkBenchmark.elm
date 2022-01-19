@@ -2,8 +2,8 @@ module RoadNetworkBenchmark exposing (main)
 
 import Benchmark exposing (..)
 import Benchmark.Runner exposing (BenchmarkProgram, program)
+import Data.Worlds as Worlds
 import Simulation.Infrastructure as Infrastructure
-import Worlds
 
 
 suite : Benchmark

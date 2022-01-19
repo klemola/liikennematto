@@ -2,11 +2,11 @@ module RoundBenchmark exposing (main)
 
 import Benchmark exposing (..)
 import Benchmark.Runner exposing (BenchmarkProgram, program)
+import Data.Rounds as Rounds
 import Dict
 import Model.Tile exposing (tileSize)
 import Model.Tilemap as Tilemap
 import QuadTree
-import Rounds
 import Simulation.Round as Round exposing (Round)
 
 

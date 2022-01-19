@@ -1,5 +1,11 @@
 module WorldTests exposing (suite)
 
+import Data.Utility exposing (createBoundingBox)
+import Data.Worlds as Worlds
+    exposing
+        ( worldThatHasAVerticalRoadAtLeftSide
+        , worldThatHasParallelRoads
+        )
 import Dict
 import Expect
 import Model.Geometry exposing (OrthogonalDirection(..))
@@ -9,12 +15,6 @@ import Model.Tilemap as Tilemap
 import Model.World as World
 import Quantity
 import Test exposing (Test, describe, test)
-import Utility exposing (createBoundingBox)
-import Worlds
-    exposing
-        ( worldThatHasAVerticalRoadAtLeftSide
-        , worldThatHasParallelRoads
-        )
 
 
 twoByTwoLot : Maybe Lot

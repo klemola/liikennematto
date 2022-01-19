@@ -6,11 +6,11 @@ module Model.Liikennematto exposing
     , new
     )
 
+import Data.Worlds exposing (defaultWorld)
 import Element
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.World exposing (World)
 import Random
-import Worlds exposing (defaultWorld)
 
 
 type alias Liikennematto =

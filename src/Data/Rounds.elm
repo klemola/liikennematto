@@ -1,4 +1,4 @@
-module Rounds exposing
+module Data.Rounds exposing
     ( collisionSetupCollided
     , collisionSetupNearCollision
     , collisionSetupPathsIntersect
@@ -15,6 +15,14 @@ module Rounds exposing
     )
 
 import Angle exposing (Angle)
+import Data.Utility exposing (toLMPoint2d)
+import Data.Worlds
+    exposing
+        ( largeWorld
+        , simpleWorld
+        , worldWithFourWayIntersection
+        , worldWithThreeWayIntersection
+        )
 import Dict
 import Model.Car as Car exposing (Car)
 import Model.Geometry exposing (LMPoint2d)
@@ -27,8 +35,6 @@ import Simulation.Round exposing (Round)
 import Simulation.Steering as Steering
 import Simulation.Traffic as Traffic
 import Speed exposing (Speed)
-import Utility exposing (toLMPoint2d)
-import Worlds exposing (largeWorld, simpleWorld, worldWithFourWayIntersection, worldWithThreeWayIntersection)
 
 
 seed : Random.Seed

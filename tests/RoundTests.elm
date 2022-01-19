@@ -1,11 +1,7 @@
 module RoundTests exposing (suite)
 
 import Acceleration exposing (Acceleration)
-import Expect
-import Length
-import Maybe.Extra
-import Quantity
-import Rounds
+import Data.Rounds as Rounds
     exposing
         ( collisionSetupCollided
         , collisionSetupNearCollision
@@ -20,6 +16,10 @@ import Rounds
         , yieldWithPriorityTrafficSetup2
         , yieldWithoutPriorityTrafficSetup
         )
+import Expect
+import Length
+import Maybe.Extra
+import Quantity
 import Simulation.Round as Round
     exposing
         ( RoundResults

@@ -1,6 +1,6 @@
 {
     "type": "application",
-    "source-directories": ["src", "fixtures", "benchmarks"],
+    "source-directories": ["src", "benchmarks"],
     "elm-version": "0.19.1",
     "dependencies": {
         "direct": {

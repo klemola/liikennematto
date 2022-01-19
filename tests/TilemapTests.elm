@@ -1,15 +1,15 @@
 module TilemapTests exposing (suite)
 
-import Expect
-import Maybe.Extra as Maybe
-import Model.Tilemap as Tilemap exposing (Tilemap)
-import Test exposing (Test, describe, test)
-import Utility exposing (tilemapFromCoordinates)
-import Worlds
+import Data.Utility exposing (tilemapFromCoordinates)
+import Data.Worlds as Worlds
     exposing
         ( highComplexityWorld
         , lowComplexityWorld
         )
+import Expect
+import Maybe.Extra as Maybe
+import Model.Tilemap as Tilemap exposing (Tilemap)
+import Test exposing (Test, describe, test)
 
 
 tilemapThatResemblesAIntersection : Tilemap

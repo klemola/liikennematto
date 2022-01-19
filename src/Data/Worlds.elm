@@ -1,4 +1,4 @@
-module Worlds exposing
+module Data.Worlds exposing
     ( defaultWorld
     , highComplexityWorld
     , largeWorld
@@ -10,8 +10,8 @@ module Worlds exposing
     , worldWithThreeWayIntersection
     )
 
+import Data.Utility exposing (tilemapFromCoordinates, worldFromTilemap)
 import Model.World exposing (World)
-import Utility exposing (tilemapFromCoordinates, worldFromTilemap)
 
 
 defaultWorld : World

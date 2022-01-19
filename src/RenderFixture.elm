@@ -1,9 +1,9 @@
 module RenderFixture exposing (main)
 
+import Data.Rounds as Rounds
 import Html exposing (Html)
 import Model.RenderCache as RenderCache
 import Render
-import Rounds
 
 
 main : Html msg

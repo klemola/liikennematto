@@ -1,4 +1,4 @@
-module Utility exposing (..)
+module Data.Utility exposing (..)
 
 import Common
 import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d, pixelsToMetersRatio)
