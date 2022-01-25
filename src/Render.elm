@@ -2,10 +2,12 @@ module Render exposing (view)
 
 import Angle
 import Color
+import Data.RoadAssets exposing (roadAsset)
 import Dict exposing (Dict)
 import Direction2d exposing (y)
 import Graph exposing (Node)
 import Html exposing (Html)
+import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Animation as Animation exposing (Animation)
 import Model.Car as Car exposing (Car, CarKind(..))
@@ -51,14 +53,14 @@ nodeSize =
     Pixels.float 4
 
 
-signSize : Quantity Float Pixels
-signSize =
-    Pixels.float 10
+signDiameter : Length
+signDiameter =
+    Length.meters 2
 
 
-trafficLightRadius : Quantity Float Pixels
-trafficLightRadius =
-    signSize |> Quantity.divideBy 2
+trafficLightDiameter : Length
+trafficLightDiameter =
+    signDiameter
 
 
 carWidthPixels : Float
@@ -170,7 +172,7 @@ renderTile cell tileKind animation =
                 [ tileElement
                     { x = x
                     , y = yAdjusted
-                    , asset = tileAsset tileKind
+                    , tileIndex = tileKind
                     , tileStyles = tileStyles
                     }
                 , overflowTile
@@ -180,7 +182,7 @@ renderTile cell tileKind animation =
             tileElement
                 { x = x
                 , y = yAdjusted
-                , asset = tileAsset tileKind
+                , tileIndex = tileKind
                 , tileStyles = ""
                 }
 
@@ -229,17 +231,17 @@ animationOverflowTile baseX baseY animationDirection =
     )
 
 
-tileElement : { x : Float, y : Float, asset : String, tileStyles : String } -> Svg msg
-tileElement { x, y, asset, tileStyles } =
-    Svg.image
-        [ Attributes.xlinkHref ("assets/" ++ asset)
-        , Attributes.x (String.fromFloat x)
+tileElement : { x : Float, y : Float, tileIndex : Int, tileStyles : String } -> Svg msg
+tileElement { x, y, tileIndex, tileStyles } =
+    Svg.svg
+        [ Attributes.x (String.fromFloat x)
         , Attributes.y (String.fromFloat y)
         , Attributes.width (String.fromFloat tileSizePixels)
         , Attributes.height (String.fromFloat tileSizePixels)
+        , Attributes.viewBox "0 0 256 256"
         , Attributes.style tileStyles
         ]
-        []
+        (roadAsset tileIndex)
 
 
 tileAppearOffset : Float
@@ -553,7 +555,9 @@ renderTrafficLight trafficLight =
             pointToPixels trafficLight.position
 
         radius =
-            Pixels.inPixels trafficLightRadius
+            trafficLightDiameter
+                |> Quantity.half
+                |> toPixelsValue
 
         color =
             case TrafficLight.color trafficLight of
@@ -600,7 +604,7 @@ renderYieldSign : Node Connection -> Svg msg
 renderYieldSign node =
     let
         size =
-            Pixels.inPixels signSize
+            toPixelsValue signDiameter
 
         { x, y } =
             pointToPixels node.label.position
@@ -835,61 +839,6 @@ toPointsString points =
 --
 -- Assets
 --
-
-
-tileAsset : TileKind -> String
-tileAsset tileKind =
-    case tileKind of
-        0 ->
-            "road_center_piece.png"
-
-        1 ->
-            "road_2_lanes_deadend_down.png"
-
-        2 ->
-            "road_2_lanes_deadend_right.png"
-
-        3 ->
-            "road_2_lanes_curve_bottom_right.png"
-
-        4 ->
-            "road_2_lanes_deadend_left.png"
-
-        5 ->
-            "road_2_lanes_curve_bottom_left.png"
-
-        6 ->
-            "road_2_lanes_horizontal.png"
-
-        7 ->
-            "intersection_2_lanes_t_up.png"
-
-        8 ->
-            "road_2_lanes_deadend_up.png"
-
-        9 ->
-            "road_2_lanes_vertical.png"
-
-        10 ->
-            "road_2_lanes_curve_top_right.png"
-
-        11 ->
-            "intersection_2_lanes_t_left.png"
-
-        12 ->
-            "road_2_lanes_curve_top_left.png"
-
-        13 ->
-            "intersection_2_lanes_t_right.png"
-
-        14 ->
-            "intersection_2_lanes_t_down.png"
-
-        15 ->
-            "intersection_2_lanes_x.png"
-
-        _ ->
-            "road_not_found.png"
 
 
 buildingAsset : BuildingKind -> String
