@@ -8,10 +8,9 @@ import Element.Border as Border
 import Element.Font as Font
 import Message exposing (Message(..))
 import Model.Car as Car exposing (Car)
-import Model.Geometry exposing (LMPoint2d, pixelsToMetersRatio)
+import Model.Geometry exposing (pointToString)
 import Model.Liikennematto exposing (Liikennematto)
 import Model.RoadNetwork as RoadNetwork
-import Point2d
 import Quantity
 import Speed exposing (Speed)
 import UI.Core
@@ -199,26 +198,3 @@ accelerationToString acceleration =
                 |> String.fromFloat
     in
     "Acceleration: " ++ accelerationValue ++ " m/s²"
-
-
-pointToString : LMPoint2d -> String
-pointToString point =
-    let
-        { x, y } =
-            point
-                |> Point2d.at pixelsToMetersRatio
-                |> Point2d.toPixels
-
-        format n =
-            n
-                |> truncate
-                |> String.fromInt
-                |> String.padLeft 2 ' '
-    in
-    String.join
-        " "
-        [ "x:"
-        , format x
-        , "y:"
-        , format y
-        ]

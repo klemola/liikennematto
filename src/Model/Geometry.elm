@@ -14,9 +14,9 @@ module Model.Geometry exposing
     , oppositeOrthogonalDirection
     , orthogonalDirectionToLmDirection
     , orthogonalDirections
-    , pixelsToMeters
     , pixelsToMetersRatio
     , pointToPixels
+    , pointToString
     , right
     , toPixelsValue
     , up
@@ -59,13 +59,7 @@ type alias LMPolyline2d =
 
 pixelsToMetersRatio : Quantity Float (Rate Pixels.Pixels Length.Meters)
 pixelsToMetersRatio =
-    Pixels.pixels 5 |> Quantity.per (Length.meters 1)
-
-
-pixelsToMeters : Float -> Length
-pixelsToMeters pixels =
-    Pixels.float pixels
-        |> Quantity.at_ pixelsToMetersRatio
+    Pixels.pixels 8 |> Quantity.per (Length.meters 1)
 
 
 toPixelsValue : Length -> Float
@@ -80,6 +74,29 @@ pointToPixels point =
     point
         |> Point2d.at pixelsToMetersRatio
         |> Point2d.toPixels
+
+
+pointToString : LMPoint2d -> String
+pointToString point =
+    let
+        { x, y } =
+            point
+                |> Point2d.at pixelsToMetersRatio
+                |> Point2d.toPixels
+
+        format n =
+            n
+                |> truncate
+                |> String.fromInt
+                |> String.padLeft 2 ' '
+    in
+    String.join
+        " "
+        [ "x:"
+        , format x
+        , "y:"
+        , format y
+        ]
 
 
 
