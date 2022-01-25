@@ -67,13 +67,13 @@ createRoadNetwork tilemap world =
 innerLaneOffset : Length
 innerLaneOffset =
     -- the distance from a road tile's edge to the inner lane (from left / bottom side)
-    Length.meters 5.2
+    Length.meters 6
 
 
 outerLaneOffset : Length
 outerLaneOffset =
     -- the distance from a road tile's edge to the outer lane (from the left / bottom side)
-    Length.meters 10.8
+    Length.meters 10
 
 
 connectLotToRoadNetwork : World -> World
