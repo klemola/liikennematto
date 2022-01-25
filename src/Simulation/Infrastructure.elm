@@ -22,7 +22,6 @@ import Model.Geometry as Geometry
         , OrthogonalDirection(..)
         , oppositeOrthogonalDirection
         , orthogonalDirectionToLmDirection
-        , pixelsToMeters
         )
 import Model.Lookup exposing (roadNetworkLookup)
 import Model.Lot exposing (Lot, Lots)
@@ -68,13 +67,13 @@ createRoadNetwork tilemap world =
 innerLaneOffset : Length
 innerLaneOffset =
     -- the distance from a road tile's edge to the inner lane (from left / bottom side)
-    pixelsToMeters 26
+    Length.meters 5.2
 
 
 outerLaneOffset : Length
 outerLaneOffset =
     -- the distance from a road tile's edge to the outer lane (from the left / bottom side)
-    pixelsToMeters 54
+    Length.meters 10.8
 
 
 connectLotToRoadNetwork : World -> World
