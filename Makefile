@@ -38,4 +38,7 @@ benchmark:
 	elm make benchmarks/RoadNetworkBenchmark.elm --optimize --output build/benchmarks/road_network.html
 	elm make benchmarks/RoundBenchmark.elm --optimize --output build/benchmarks/round.html
 
-.PHONY: build check dev serve test benchmark
+stats:
+	cloc --exclude-dir=Data,assets src
+
+.PHONY: build check dev serve test benchmark stats
