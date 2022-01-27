@@ -59,6 +59,7 @@ roadAsset tileIndex =
             defaultRoad
 
 
+defaultRoad : List (Svg msg)
 defaultRoad =
     [ Svg.circle
         [ Attributes.cx "128"
@@ -79,6 +80,7 @@ defaultRoad =
     ]
 
 
+deadendDown : List (Svg msg)
 deadendDown =
     [ path
         [ Attributes.fill "#BCA9A9"
@@ -105,6 +107,7 @@ deadendDown =
     ]
 
 
+deadendRight : List (Svg msg)
 deadendRight =
     [ path
         [ Attributes.fill "#BCA9A9"
@@ -131,6 +134,7 @@ deadendRight =
     ]
 
 
+curveBottomRight : List (Svg msg)
 curveBottomRight =
     [ path
         [ Attributes.fill "#BCA9A9"
@@ -155,6 +159,7 @@ curveBottomRight =
     ]
 
 
+deadendLeft : List (Svg msg)
 deadendLeft =
     [ path
         [ Attributes.fill "#BCA9A9"
@@ -181,6 +186,7 @@ deadendLeft =
     ]
 
 
+curveBottomLeft : List (Svg msg)
 curveBottomLeft =
     [ path
         [ Attributes.fill "#BCA9A9"
@@ -205,6 +211,7 @@ curveBottomLeft =
     ]
 
 
+regularHorizontal : List (Svg msg)
 regularHorizontal =
     [ path
         [ Attributes.fill "#BCA9A9"
@@ -231,6 +238,7 @@ regularHorizontal =
     ]
 
 
+intersectionTUp : List (Svg msg)
 intersectionTUp =
     [ path
         [ Attributes.fill "#BCA9A9"
@@ -255,6 +263,7 @@ intersectionTUp =
     ]
 
 
+deadendUp : List (Svg msg)
 deadendUp =
     [ path
         [ Attributes.fill "#BCA9A9"
@@ -281,6 +290,7 @@ deadendUp =
     ]
 
 
+regularVertical : List (Svg msg)
 regularVertical =
     [ path
         [ Attributes.fill "#BCA9A9"
@@ -307,6 +317,7 @@ regularVertical =
     ]
 
 
+curveTopRight : List (Svg msg)
 curveTopRight =
     [ path
         [ Attributes.fill "#BCA9A9"
@@ -331,6 +342,7 @@ curveTopRight =
     ]
 
 
+intersectionTLeft : List (Svg msg)
 intersectionTLeft =
     [ path
         [ Attributes.fill "#BCA9A9"
@@ -355,6 +367,7 @@ intersectionTLeft =
     ]
 
 
+curveTopLeft : List (Svg msg)
 curveTopLeft =
     [ path
         [ Attributes.fill "#BCA9A9"
@@ -379,6 +392,7 @@ curveTopLeft =
     ]
 
 
+intersectionTRight : List (Svg msg)
 intersectionTRight =
     [ path
         [ Attributes.fill "#BCA9A9"
@@ -403,6 +417,7 @@ intersectionTRight =
     ]
 
 
+intersectionTDown : List (Svg msg)
 intersectionTDown =
     [ path
         [ Attributes.fill "#BCA9A9"
@@ -427,6 +442,7 @@ intersectionTDown =
     ]
 
 
+intersectionCrossroads : List (Svg msg)
 intersectionCrossroads =
     [ path
         [ Attributes.fill "#BCA9A9"
