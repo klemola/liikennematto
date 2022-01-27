@@ -1,4 +1,9 @@
-module Render exposing (view)
+module Render exposing
+    ( pixelsToMetersRatio
+    , tileSizePixels
+    , tilemapSizePixels
+    , view
+    )
 
 import Angle
 import Color
@@ -15,8 +20,6 @@ import Model.Geometry
     exposing
         ( LMPoint2d
         , OrthogonalDirection(..)
-        , pointToPixels
-        , toPixelsValue
         )
 import Model.Lot exposing (BuildingKind(..), Lot, Lots)
 import Model.RenderCache exposing (RenderCache, TilemapPresentation)
@@ -32,9 +35,10 @@ import Model.Tilemap as Tilemap exposing (Cell)
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
 import Model.World exposing (World)
 import Pixels exposing (Pixels)
+import Point2d
 import Polygon2d
 import Polyline2d
-import Quantity exposing (Quantity)
+import Quantity exposing (Quantity, Rate)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Svg.Keyed
@@ -46,6 +50,37 @@ type alias DebugLayers =
     { showRoadNetwork : Bool
     , showCarDebugVisuals : Bool
     }
+
+
+
+--
+-- Pixels conversion
+--
+
+
+pixelsToMetersRatio : Quantity Float (Rate Pixels.Pixels Length.Meters)
+pixelsToMetersRatio =
+    Pixels.pixels 8 |> Quantity.per (Length.meters 1)
+
+
+toPixelsValue : Length -> Float
+toPixelsValue length =
+    length
+        |> Quantity.at pixelsToMetersRatio
+        |> Pixels.inPixels
+
+
+pointToPixels : LMPoint2d -> { x : Float, y : Float }
+pointToPixels point =
+    point
+        |> Point2d.at pixelsToMetersRatio
+        |> Point2d.toPixels
+
+
+
+--
+-- Constants
+--
 
 
 nodeSize : Quantity Float Pixels
@@ -105,6 +140,12 @@ renderColors =
     , sidewalk = Color.rgb255 191 213 217
     , sidewalkEdge = Color.rgb255 44 56 58
     }
+
+
+
+--
+-- Render
+--
 
 
 view : World -> RenderCache -> DebugLayers -> Html msg

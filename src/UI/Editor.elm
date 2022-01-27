@@ -10,12 +10,12 @@ import Element.Border as Border
 import Element.Events as Events
 import Maybe.Extra as Maybe
 import Message exposing (Message(..))
-import Model.Geometry as Geometry
 import Model.Liikennematto exposing (Liikennematto, Tool(..))
 import Model.RenderCache as RenderCache exposing (refreshTilemapCache)
-import Model.Tile as Tile exposing (tileSize)
+import Model.Tile as Tile
 import Model.Tilemap as Tilemap exposing (Cell)
 import Model.World as World exposing (World)
+import Render
 import Task
 import UI.Core
     exposing
@@ -28,16 +28,6 @@ import UI.Core
 
 
 port playAudio : String -> Cmd msg
-
-
-tileSizeInPixelsFloat : Float
-tileSizeInPixelsFloat =
-    Geometry.toPixelsValue tileSize
-
-
-tileSizeInPixelsInt : Int
-tileSizeInPixelsInt =
-    tileSizeInPixelsFloat |> floor
 
 
 
@@ -154,7 +144,9 @@ overlay : World -> Tool -> Element Message
 overlay world tool =
     let
         size =
-            Element.px (Geometry.toPixelsValue Tilemap.mapSize |> floor)
+            Render.tileSizePixels
+                |> floor
+                |> Element.px
 
         rg =
             List.range 1 Tilemap.rowsAndColumnsAmount
@@ -193,7 +185,7 @@ overlay world tool =
                     colors.transparent
     in
     Element.el
-        [ Element.mouseOver [ Border.innerGlow highlight tileSizeInPixelsFloat ]
+        [ Element.mouseOver [ Border.innerGlow highlight Render.tileSizePixels ]
         , Element.width size
         , Element.height size
         ]
@@ -209,20 +201,22 @@ tileOverlay :
     -> Element Message
 tileOverlay { glowColor, cell, world, tool } =
     let
-        tileSizePx =
-            Element.px tileSizeInPixelsInt
+        overlaySize =
+            Render.tileSizePixels
+                |> floor
+                |> Element.px
 
         glow =
             glowColor
                 |> Maybe.map
                     (\color ->
-                        [ Border.innerGlow color (tileSizeInPixelsFloat / 10) ]
+                        [ Border.innerGlow color (Render.tileSizePixels / 10) ]
                     )
                 |> Maybe.withDefault []
     in
     Element.el
-        [ Element.width tileSizePx
-        , Element.height tileSizePx
+        [ Element.width overlaySize
+        , Element.height overlaySize
         , Element.mouseOver glow
         , Events.onClick (choosePrimaryAction cell tool world)
         , Element.htmlAttribute (CustomEvent.onRightClick <| chooseSecondaryAction cell tool world)

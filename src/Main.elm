@@ -7,9 +7,7 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Message exposing (Message(..))
-import Model.Geometry as Geometry
 import Model.Liikennematto as Liikennematto exposing (Liikennematto, SimulationState(..))
-import Model.Tilemap as Tilemap
 import Random
 import Render
 import Simulation.Simulation as Simulation
@@ -115,9 +113,7 @@ render model =
             }
 
         renderedSize =
-            Tilemap.mapSize
-                |> Geometry.toPixelsValue
-                |> floor
+            Render.tilemapSizePixels |> floor
 
         ( viewportWidth, viewportHeight ) =
             ( min model.screen.width renderedSize, min model.screen.height renderedSize )
