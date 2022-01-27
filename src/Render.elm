@@ -233,15 +233,18 @@ animationOverflowTile baseX baseY animationDirection =
 
 tileElement : { x : Float, y : Float, tileIndex : Int, tileStyles : String } -> Svg msg
 tileElement { x, y, tileIndex, tileStyles } =
-    Svg.svg
-        [ Attributes.x (String.fromFloat x)
-        , Attributes.y (String.fromFloat y)
-        , Attributes.width (String.fromFloat tileSizePixels)
-        , Attributes.height (String.fromFloat tileSizePixels)
-        , Attributes.viewBox "0 0 256 256"
-        , Attributes.style tileStyles
+    Svg.g
+        [ Attributes.style tileStyles
         ]
-        (roadAsset tileIndex)
+        [ Svg.svg
+            [ Attributes.x (String.fromFloat x)
+            , Attributes.y (String.fromFloat y)
+            , Attributes.width (String.fromFloat tileSizePixels)
+            , Attributes.height (String.fromFloat tileSizePixels)
+            , Attributes.viewBox "0 0 256 256"
+            ]
+            (roadAsset tileIndex)
+        ]
 
 
 tileAppearOffset : Float
