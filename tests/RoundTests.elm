@@ -1,7 +1,7 @@
 module RoundTests exposing (suite)
 
 import Acceleration exposing (Acceleration)
-import Data.Rounds as Rounds
+import Data.Rounds
     exposing
         ( collisionSetupCollided
         , collisionSetupNearCollision

@@ -1,7 +1,7 @@
 module TilemapTests exposing (suite)
 
 import Data.Utility exposing (tilemapFromCoordinates)
-import Data.Worlds as Worlds
+import Data.Worlds
     exposing
         ( highComplexityWorld
         , lowComplexityWorld

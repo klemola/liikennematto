@@ -49,7 +49,7 @@ connectedRoadsSetup =
             simpleWorld
 
         car =
-            buildCar CarA1 (Point2d.meters 0 144) (Angle.degrees 0) Steering.maxVelocity
+            buildCar CarA1 (Point2d.meters 10 150) (Angle.degrees 0) Steering.maxVelocity
 
         otherCars =
             []
@@ -68,12 +68,12 @@ collisionSetupPathsIntersect =
             worldWithFourWayIntersection
 
         car =
-            buildCar CarA1 (Point2d.meters 20.4 133.6) (Angle.degrees 30) Steering.maxVelocity
-                |> routeCarByDestination world (Point2d.meters 26.8 144)
+            buildCar CarA1 (Point2d.meters 20.4 133.4) (Angle.degrees 30) Steering.maxVelocity
+                |> routeCarByDestination world (Point2d.meters 26 144)
 
         otherCar =
-            buildCar CarB2 (Point2d.meters 32 138.2) (Angle.degrees 180) Steering.maxVelocity
-                |> routeCarByDestination world (Point2d.meters 16 138.8)
+            buildCar CarB2 (Point2d.meters 32 138) (Angle.degrees 180) Steering.maxVelocity
+                |> routeCarByDestination world (Point2d.meters 16 138)
 
         otherCars =
             [ otherCar
@@ -94,12 +94,12 @@ collisionSetupNearCollision =
             worldWithFourWayIntersection
 
         car =
-            buildCar CarA1 (Point2d.meters 22 134) (Angle.degrees 45) Steering.maxVelocity
-                |> routeCarByDestination world (Point2d.meters 26.8 144)
+            buildCar CarA1 (Point2d.meters 22 133.8) (Angle.degrees 45) Steering.maxVelocity
+                |> routeCarByDestination world (Point2d.meters 26 144)
 
         otherCar =
-            buildCar CarB2 (Point2d.meters 26 138.2) (Angle.degrees 180) Steering.maxVelocity
-                |> routeCarByDestination world (Point2d.meters 16 138.8)
+            buildCar CarB2 (Point2d.meters 26 138) (Angle.degrees 180) Steering.maxVelocity
+                |> routeCarByDestination world (Point2d.meters 16 138)
 
         otherCars =
             [ otherCar
@@ -120,12 +120,12 @@ collisionSetupCollided =
             worldWithFourWayIntersection
 
         car =
-            buildCar CarA1 (Point2d.meters 26.8 134.8) (Angle.degrees 90) Steering.maxVelocity
-                |> routeCarByDestination world (Point2d.meters 26.8 144)
+            buildCar CarA1 (Point2d.meters 26 134.6) (Angle.degrees 90) Steering.maxVelocity
+                |> routeCarByDestination world (Point2d.meters 26 144)
 
         otherCar =
-            buildCar CarB2 (Point2d.meters 26 138.2) (Angle.degrees 180) Steering.maxVelocity
-                |> routeCarByDestination world (Point2d.meters 16 138.8)
+            buildCar CarB2 (Point2d.meters 25.2 138) (Angle.degrees 180) Steering.maxVelocity
+                |> routeCarByDestination world (Point2d.meters 16 138)
 
         otherCars =
             [ otherCar
@@ -146,10 +146,10 @@ noCollisionSetupDifferentLanes =
             simpleWorld
 
         car =
-            buildCar CarA1 (Point2d.meters 12 149) (Angle.degrees 0) Steering.maxVelocity
+            buildCar CarA1 (Point2d.meters 12 150) (Angle.degrees 0) Steering.maxVelocity
 
         otherCar =
-            buildCar CarB2 (Point2d.meters 20 154.8) (Angle.degrees 180) Steering.maxVelocity
+            buildCar CarB2 (Point2d.meters 20 153.8) (Angle.degrees 180) Steering.maxVelocity
 
         otherCars =
             [ otherCar
@@ -170,10 +170,10 @@ noCollisionSetupIntersection =
             worldWithFourWayIntersection
 
         car =
-            buildCar CarA1 (Point2d.meters 16 133.2) (Angle.degrees 0) Steering.maxVelocity
+            buildCar CarA1 (Point2d.meters 16 134) (Angle.degrees 0) Steering.maxVelocity
 
         otherCar =
-            buildCar CarB2 (Point2d.meters 26.6 138) (Angle.degrees 90) Steering.maxVelocity
+            buildCar CarB2 (Point2d.meters 26 138) (Angle.degrees 90) Steering.maxVelocity
 
         otherCars =
             [ otherCar
@@ -194,8 +194,8 @@ redTrafficLightsSetup =
             worldWithFourWayIntersection
 
         car =
-            buildCar CarA1 (Point2d.meters 26.8 120) (Angle.degrees 90) Steering.maxVelocity
-                |> routeCarByDestination world (Point2d.meters 26.8 128)
+            buildCar CarA1 (Point2d.meters 26 120) (Angle.degrees 90) Steering.maxVelocity
+                |> routeCarByDestination world (Point2d.meters 26 128)
 
         otherCars =
             []
@@ -214,8 +214,8 @@ greenTrafficLightsSetup =
             worldWithFourWayIntersection
 
         car =
-            buildCar CarA1 (Point2d.meters 9.4 133) (Angle.degrees 0) Steering.maxVelocity
-                |> routeCarByDestination world (Point2d.meters 16 133.2)
+            buildCar CarA1 (Point2d.meters 9.4 134) (Angle.degrees 0) Steering.maxVelocity
+                |> routeCarByDestination world (Point2d.meters 16 134)
 
         otherCars =
             []
@@ -234,11 +234,11 @@ yieldWithPriorityTrafficSetup1 =
             worldWithThreeWayIntersection
 
         car =
-            buildCar CarA1 (Point2d.meters 28 117.2) (Angle.degrees 0) Quantity.zero
-                |> routeCarByDestination world (Point2d.meters 32 117.2)
+            buildCar CarA1 (Point2d.meters 28 118) (Angle.degrees 0) Quantity.zero
+                |> routeCarByDestination world (Point2d.meters 32 118)
 
         otherCar =
-            buildCar CarB2 (Point2d.meters 42.6 108.4) (Angle.degrees 90) Steering.maxVelocity
+            buildCar CarB2 (Point2d.meters 42 108.4) (Angle.degrees 90) Steering.maxVelocity
 
         otherCars =
             [ otherCar ]
@@ -258,11 +258,11 @@ yieldWithPriorityTrafficSetup2 =
             worldWithThreeWayIntersection
 
         car =
-            buildCar CarA1 (Point2d.meters 28 117.2) (Angle.degrees 0) Quantity.zero
-                |> routeCarByDestination world (Point2d.meters 32 117.2)
+            buildCar CarA1 (Point2d.meters 28 118) (Angle.degrees 0) Quantity.zero
+                |> routeCarByDestination world (Point2d.meters 32 118)
 
         otherCar =
-            buildCar CarB2 (Point2d.meters 37.2 128.4) (Angle.degrees 270) Steering.maxVelocity
+            buildCar CarB2 (Point2d.meters 38 128.4) (Angle.degrees 270) Steering.maxVelocity
 
         otherCars =
             [ otherCar ]
@@ -282,7 +282,7 @@ yieldWithoutPriorityTrafficSetup =
             worldWithThreeWayIntersection
 
         car =
-            buildCar CarA1 (Point2d.meters 28 117) (Angle.degrees 0) Quantity.zero
+            buildCar CarA1 (Point2d.meters 28 118) (Angle.degrees 0) Quantity.zero
 
         worldWithCars =
             world
@@ -298,8 +298,8 @@ yieldSlowDownSetup =
             worldWithThreeWayIntersection
 
         car =
-            buildCar CarA1 (Point2d.meters 24 117.2) (Angle.degrees 0) Quantity.zero
-                |> routeCarByDestination world (Point2d.meters 32 117.2)
+            buildCar CarA1 (Point2d.meters 24 118) (Angle.degrees 0) Quantity.zero
+                |> routeCarByDestination world (Point2d.meters 32 118)
 
         otherCars =
             []
