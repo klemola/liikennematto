@@ -16,12 +16,12 @@ module Model.Lot exposing
 
 import Angle exposing (Angle)
 import BoundingBox2d
-import Color
 import Common
+import Data.CarAssets exposing (sedan)
 import Dict exposing (Dict)
 import Direction2d
 import Length exposing (Length)
-import Model.Car exposing (CarKind(..))
+import Model.Car exposing (CarMake)
 import Model.Entity exposing (Id)
 import Model.Geometry
     exposing
@@ -272,53 +272,28 @@ inBounds cell lot =
     BoundingBox2d.isContainedIn lot.boundingBox (Tilemap.cellBoundingBox cell)
 
 
-resident : Lot -> Maybe CarKind
+resident : Lot -> Maybe CarMake
 resident lot =
     case lot.content.kind of
         ResidentialA ->
             Just <|
-                Sedan
-                    { body = Color.rgb255 47 149 208
-                    , detail = Color.rgb255 41 141 198
-                    , shade = Color.rgb255 208 147 173
-                    , edge = Color.rgb255 22 98 142
-                    }
+                sedan
 
         ResidentialB ->
             Just <|
-                Sedan
-                    { body = Color.rgb255 232 106 23
-                    , detail = Color.rgb255 191 100 40
-                    , shade = Color.rgb255 217 163 125
-                    , edge = Color.rgb255 159 73 16
-                    }
+                sedan
 
         ResidentialC ->
             Just <|
-                Sedan
-                    { body = Color.rgb255 255 204 0
-                    , detail = Color.rgb255 229 186 16
-                    , shade = Color.rgb255 147 208 205
-                    , edge = Color.rgb255 159 128 10
-                    }
+                sedan
 
         ResidentialD ->
             Just <|
-                Sedan
-                    { body = Color.rgb255 57 194 114
-                    , detail = Color.rgb255 48 182 104
-                    , shade = Color.rgb255 147 208 205
-                    , edge = Color.rgb255 20 119 61
-                    }
+                sedan
 
         ResidentialE ->
             Just <|
-                Sedan
-                    { body = Color.rgb255 93 91 91
-                    , detail = Color.rgb255 79 76 76
-                    , shade = Color.rgb255 208 184 147
-                    , edge = Color.rgb255 58 53 53
-                    }
+                sedan
 
         _ ->
             Nothing

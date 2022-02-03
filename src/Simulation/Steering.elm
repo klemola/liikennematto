@@ -22,7 +22,7 @@ import AngularSpeed exposing (AngularSpeed)
 import Direction2d
 import Duration
 import Length exposing (Length)
-import Model.Car as Car exposing (Car)
+import Model.Car exposing (Car)
 import Model.Geometry exposing (LMPoint2d)
 import Quantity exposing (Quantity(..))
 import Speed exposing (Speed)
@@ -56,11 +56,6 @@ maxRotation =
 trafficControlStopDistance : Length
 trafficControlStopDistance =
     Length.meters 4
-
-
-collisionMargin : Length
-collisionMargin =
-    Car.length |> Quantity.multiplyBy 1.5
 
 
 type alias Steering =
@@ -210,6 +205,9 @@ startMoving car =
 break : Length -> Car -> Car
 break breakDistance car =
     let
+        collisionMargin =
+            car.make.length |> Quantity.multiplyBy 1.5
+
         targetDistance =
             breakDistance
                 |> Quantity.minus collisionMargin

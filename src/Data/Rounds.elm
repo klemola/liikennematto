@@ -15,6 +15,7 @@ module Data.Rounds exposing
     )
 
 import Angle exposing (Angle)
+import Data.CarAssets exposing (testCar)
 import Data.Worlds
     exposing
         ( largeWorld
@@ -343,15 +344,15 @@ type TestCar
 buildCar : TestCar -> LMPoint2d -> Angle -> Speed -> Car
 buildCar option position orientation velocity =
     let
-        ( kind, id ) =
+        id =
             case option of
                 CarA1 ->
-                    ( Car.TestCar, 1 )
+                    1
 
                 CarB2 ->
-                    ( Car.TestCar, 2 )
+                    2
     in
-    Car.new kind
+    Car.new testCar
         |> Car.withPosition position
         |> Car.withOrientation orientation
         |> Car.withVelocity velocity
