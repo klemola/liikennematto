@@ -1,5 +1,6 @@
 module UI.Core exposing (..)
 
+import Data.Colors as Colors exposing (uiCompat)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -31,21 +32,20 @@ uiDimensions =
 
 
 colors =
-    { mainBackground = Element.rgb255 88 135 140
-    , menuBackground = Element.rgb255 159 192 198
-    , buttonBackground = Element.rgb255 228 228 235
-    , listItemBackground = Element.rgb255 109 151 156
-    , text = Element.rgb255 52 65 67
-    , textInverse = Element.rgb255 222 222 222
-    , link = Element.rgb255 10 132 199
-    , selected = Element.rgb255 242 212 13
-    , danger = Element.rgb255 235 119 52
-    , notAllowed = Element.rgb255 245 66 84
-    , target = Element.rgb255 222 222 222
-    , terrain = Element.rgb255 33 191 154
+    { mainBackground = uiCompat Colors.gray2
+    , menuBackground = uiCompat Colors.gray1
+    , buttonBackground = uiCompat Colors.gray4
+    , listItemBackground = uiCompat Colors.gray2
+    , text = uiCompat Colors.gray2
+    , textInverse = uiCompat Colors.gray6
+    , link = uiCompat Colors.blue
+    , selected = uiCompat Colors.blue
+    , danger = uiCompat Colors.yellow
+    , notAllowed = uiCompat Colors.red
+    , target = uiCompat Colors.gray6
     , transparent = Element.rgba255 0 0 0 0
-    , lightBorder = Element.rgb255 220 220 226
-    , heavyBorder = Element.rgb255 53 93 97
+    , lightBorder = uiCompat Colors.gray3
+    , heavyBorder = uiCompat Colors.gray3
     }
 
 
