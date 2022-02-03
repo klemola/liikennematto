@@ -1,6 +1,12 @@
 module Data.Colors exposing (..)
 
 import Color
+import Element
+
+
+uiCompat : Color.Color -> Element.Color
+uiCompat color =
+    Color.toRgba color |> Element.fromRgb
 
 
 gray1 : Color.Color
