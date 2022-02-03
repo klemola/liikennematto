@@ -8,6 +8,7 @@ module Render exposing
 import Angle
 import Color
 import Data.Cars exposing (carAsset)
+import Data.Colors as Colors
 import Data.Roads exposing (roadAsset)
 import Dict exposing (Dict)
 import Direction2d exposing (y)
@@ -124,15 +125,6 @@ styles =
     Svg.style [] [ Svg.text Animation.keyframes ]
 
 
-renderColors : { road : Color.Color, terrain : Color.Color, sidewalk : Color.Color, sidewalkEdge : Color.Color }
-renderColors =
-    { road = Color.rgb255 52 65 67
-    , terrain = Color.rgb255 33 191 154
-    , sidewalk = Color.rgb255 191 213 217
-    , sidewalkEdge = Color.rgb255 44 56 58
-    }
-
-
 
 --
 -- Render
@@ -145,7 +137,7 @@ view { cars, lots, roadNetwork, trafficLights } cache debugLayers =
         [ Attributes.width tilemapSizeScaledStr
         , Attributes.height tilemapSizeScaledStr
         , Attributes.viewBox <| "0 0 " ++ tilemapSizeScaledStr ++ " " ++ tilemapSizeScaledStr
-        , Attributes.style <| "background-color: " ++ Color.toCssString renderColors.terrain ++ ";"
+        , Attributes.style <| "background-color: " ++ Color.toCssString Colors.lightGreen ++ ";"
         ]
         ([ styles
          , Svg.Lazy.lazy renderTilemap cache.tilemap
@@ -505,7 +497,7 @@ sidewalkMask lot =
     Svg.rect
         [ Attributes.width <| String.fromFloat width
         , Attributes.height <| String.fromFloat height
-        , Attributes.fill <| Color.toCssString <| renderColors.sidewalk
+        , Attributes.fill <| Color.toCssString <| Colors.gray3
         , Attributes.x <| String.fromFloat <| x + lotBottomLeftX - (width / 2)
         , Attributes.y <| String.fromFloat <| tilemapSizePixels - lotBottomLeftY - y - (height / 2)
         ]
@@ -537,20 +529,20 @@ renderTrafficLight trafficLight =
         color =
             case TrafficLight.color trafficLight of
                 Green ->
-                    Color.darkGreen
+                    Colors.darkGreen
 
                 Yellow ->
-                    Color.darkYellow
+                    Colors.yellow
 
                 Red ->
-                    Color.darkRed
+                    Colors.red
     in
     Svg.circle
         [ Attributes.r <| String.fromFloat radius
         , Attributes.cx <| String.fromFloat x
         , Attributes.cy <| String.fromFloat (tilemapSizePixels - y)
         , Attributes.fill <| Color.toCssString color
-        , Attributes.stroke <| Color.toCssString Color.grey
+        , Attributes.stroke <| Color.toCssString Colors.gray4
         , Attributes.strokeWidth <| String.fromInt 1
         ]
         []
@@ -632,22 +624,22 @@ renderRoadNetwork roadNetwork =
         nodeColor kind =
             case kind of
                 LaneStart ->
-                    Color.white
+                    Colors.gray6
 
                 LaneEnd ->
-                    Color.lightBlue
+                    Colors.lightBlue
 
                 DeadendEntry ->
-                    Color.lightPurple
+                    Colors.lightBrown
 
                 DeadendExit ->
-                    Color.darkGray
+                    Colors.lightBrown
 
                 LotEntry ->
-                    Color.lightGreen
+                    Colors.lightGreen
 
                 Stopgap ->
-                    Color.lightYellow
+                    Colors.yellow
 
         nodes =
             roadNetwork
@@ -706,7 +698,7 @@ renderRoadNetwork roadNetwork =
                                 in
                                 ( "Edge-" ++ String.fromInt fromNodeCtx.node.id ++ String.fromInt toNodeCtx.node.id
                                 , Svg.path
-                                    [ Attributes.stroke <| Color.toCssString Color.orange
+                                    [ Attributes.stroke <| Color.toCssString Colors.orange
                                     , Attributes.strokeWidth <| "2"
                                     , Attributes.d <| "M " ++ fromStr ++ " L " ++ toStr
                                     ]
@@ -751,7 +743,7 @@ renderCarPath car =
             toPointsString (Polyline2d.vertices car.localPath)
     in
     Svg.polyline
-        [ Attributes.stroke <| Color.toCssString Color.red
+        [ Attributes.stroke <| Color.toCssString Colors.red
         , Attributes.strokeWidth <| "2"
         , Attributes.points <| points
         , Attributes.fill "none"
@@ -767,7 +759,7 @@ renderCarCollisionDetection car =
     in
     Svg.polygon
         [ Attributes.points points
-        , Attributes.fill <| Color.toCssString Color.red
+        , Attributes.fill <| Color.toCssString Colors.red
         , Attributes.opacity "0.5"
         ]
         []
@@ -787,7 +779,7 @@ renderCarFieldOfView car =
     in
     Svg.polygon
         [ Attributes.points points
-        , Attributes.fill <| Color.toCssString Color.purple
+        , Attributes.fill <| Color.toCssString Colors.blue
         , Attributes.opacity "0.3"
         ]
         []
