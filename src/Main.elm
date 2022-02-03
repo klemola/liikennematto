@@ -4,7 +4,6 @@ import Browser
 import Browser.Dom exposing (getViewport)
 import Browser.Events as Events
 import Element exposing (Element)
-import Element.Background as Background
 import Element.Border as Border
 import Message exposing (Message(..))
 import Model.Liikennematto as Liikennematto exposing (Liikennematto, SimulationState(..))
@@ -13,7 +12,7 @@ import Render
 import Simulation.Simulation as Simulation
 import Subscriptions exposing (subscriptions)
 import Task
-import UI.Core exposing (borderRadius, colors)
+import UI.Core exposing (borderRadius)
 import UI.Editor
 import UI.UI as UI
 
@@ -132,7 +131,6 @@ render model =
             [ Element.width (Element.px renderedSize)
             , Element.height (Element.px renderedSize)
             , Element.inFront (UI.Editor.overlay model.world model.tool)
-            , Background.color colors.terrain
             ]
         -- overflow wrapper
         |> Element.el
