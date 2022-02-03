@@ -13,7 +13,7 @@ module Model.World exposing
 import Common
 import Dict exposing (Dict)
 import Graph
-import Model.Car as Car exposing (Car, CarKind(..))
+import Model.Car as Car exposing (Car)
 import Model.Entity as Entity exposing (Id)
 import Model.Geometry exposing (LMBoundingBox2d)
 import Model.Lookup

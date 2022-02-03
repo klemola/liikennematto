@@ -1,15 +1,14 @@
 module Model.Car exposing
     ( Car
-    , CarColors
-    , CarKind(..)
+    , CarMake
     , CarState(..)
+    , CarStyle(..)
     , adjustedShape
     , build
     , fieldOfView
     , isBreaking
     , isPathfinding
     , isStoppedOrWaiting
-    , length
     , new
     , rightSideOfFieldOfView
     , secondsTo
@@ -17,7 +16,6 @@ module Model.Car exposing
     , triggerDespawn
     , triggerReroute
     , viewDistance
-    , width
     , withHome
     , withOrientation
     , withPosition
@@ -54,7 +52,7 @@ import Triangle2d exposing (Triangle2d)
 
 type alias Car =
     { id : Id
-    , kind : CarKind
+    , make : CarMake
     , fsm : CarFSM
     , position : LMPoint2d
     , orientation : Angle
@@ -70,7 +68,7 @@ type alias Car =
 
 
 type alias NewCar =
-    { kind : CarKind
+    { make : CarMake
     , position : LMPoint2d
     , orientation : Angle
     , velocity : Speed
@@ -80,17 +78,21 @@ type alias NewCar =
     }
 
 
-type alias CarColors =
-    { body : Color
-    , detail : Color
-    , shade : Color
-    , edge : Color
+type alias CarMake =
+    { bodyColor : Color
+    , length : Length
+    , width : Length
+    , shape : Shape
+    , style : CarStyle
     }
 
 
-type CarKind
-    = Sedan CarColors
-    | TestCar
+type CarStyle
+    = Sedan
+
+
+type alias Shape =
+    Polygon2d Meters LMEntityCoordinates
 
 
 type alias CarFSM =
@@ -119,48 +121,6 @@ type alias UpdateContext =
 --
 -- Constants
 --
-
-
-length : Length
-length =
-    Length.meters 4.6
-
-
-width : Length
-width =
-    Length.meters 2.3
-
-
-shapeAtOrigin : Polygon2d Meters LMEntityCoordinates
-shapeAtOrigin =
-    let
-        halfLength =
-            Quantity.half length
-
-        halfWidth =
-            Quantity.half width
-
-        p1 =
-            Point2d.xy
-                (Quantity.negate halfLength)
-                (Quantity.negate halfWidth)
-
-        p2 =
-            Point2d.xy
-                halfLength
-                (Quantity.negate halfWidth)
-
-        p3 =
-            Point2d.xy
-                halfLength
-                halfWidth
-
-        p4 =
-            Point2d.xy
-                (Quantity.negate halfLength)
-                halfWidth
-    in
-    Polygon2d.singleLoop [ p1, p2, p3, p4 ]
 
 
 viewDistance : Length
@@ -382,14 +342,14 @@ triggerDespawn car =
 --
 
 
-new : CarKind -> NewCar
+new : CarMake -> NewCar
 new kind =
     { position = Point2d.origin
     , orientation = Quantity.zero
     , velocity = Quantity.zero
     , rotation = Quantity.zero
     , acceleration = Quantity.zero
-    , kind = kind
+    , make = kind
     , homeLotId = Nothing
     }
 
@@ -418,13 +378,13 @@ build : Int -> NewCar -> Car
 build id newCar =
     let
         ( shape, boundingBox ) =
-            adjustedShape newCar.position newCar.orientation
+            adjustedShape newCar.make newCar.position newCar.orientation
 
         ( fsm, _ ) =
             initializeFSM newCar
     in
     { id = id
-    , kind = newCar.kind
+    , make = newCar.make
     , fsm = fsm
     , position = newCar.position
     , orientation = newCar.orientation
@@ -501,7 +461,7 @@ rightSideOfFieldOfView car =
             Direction2d.fromAngle car.orientation
 
         viewOffset =
-            length |> Quantity.multiplyBy 0.25
+            car.make.length |> Quantity.multiplyBy 0.25
 
         origin =
             car.position |> Point2d.translateIn direction viewOffset
@@ -530,14 +490,14 @@ rightSideOfFieldOfView car =
     Triangle2d.from origin limitFront limitRight
 
 
-adjustedShape : LMPoint2d -> Angle -> ( Polygon2d Meters LMEntityCoordinates, LMBoundingBox2d )
-adjustedShape nextPosition nextOrientation =
+adjustedShape : CarMake -> LMPoint2d -> Angle -> ( Polygon2d Meters LMEntityCoordinates, LMBoundingBox2d )
+adjustedShape make nextPosition nextOrientation =
     let
         carFrame =
             Frame2d.atPoint nextPosition |> Frame2d.rotateBy nextOrientation
 
         nextShape =
-            shapeAtOrigin |> Polygon2d.placeIn carFrame
+            make.shape |> Polygon2d.placeIn carFrame
     in
     ( nextShape
     , Polygon2d.boundingBox nextShape

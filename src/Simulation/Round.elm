@@ -59,13 +59,6 @@ maxCarCollisionTestDistance =
     Length.meters 16
 
 
-carFrontBumperDistance : Length
-carFrontBumperDistance =
-    Car.length
-        |> Quantity.half
-        |> Quantity.plus (Length.meters 0.1)
-
-
 trafficLightReactionDistance : Length
 trafficLightReactionDistance =
     Length.meters 32
@@ -158,13 +151,18 @@ applyCarAction action round =
 checkForwardCollision : Round -> Maybe Rule
 checkForwardCollision { activeCar, otherCars } =
     let
+        carFrontBumberDistance =
+            activeCar.make.length
+                |> Quantity.half
+                |> Quantity.plus (Length.meters 0.1)
+
         ray =
             toRay activeCar maxCarCollisionTestDistance
     in
     distanceToClosestCollisionPoint activeCar otherCars (forwardCollisionWith ray activeCar)
         |> Maybe.map
             (\collisionDistance ->
-                if collisionDistance |> Quantity.lessThanOrEqualTo carFrontBumperDistance then
+                if collisionDistance |> Quantity.lessThanOrEqualTo carFrontBumberDistance then
                     ReactToCollision
 
                 else

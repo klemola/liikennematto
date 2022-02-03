@@ -6,6 +6,7 @@ module Simulation.Traffic exposing
     )
 
 import BoundingBox2d
+import Data.CarAssets exposing (testCar)
 import Dict
 import Dict.Extra as Dict
 import Direction2d
@@ -157,7 +158,7 @@ updateCar delta car =
                     Quantity.zero
 
         ( nextShape, nextBoundingBox ) =
-            Car.adjustedShape nextPosition nextOrientation
+            Car.adjustedShape car.make nextPosition nextOrientation
     in
     { car
         | position = nextPosition
@@ -269,7 +270,7 @@ spawnCar seed world =
                             |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
 
                     car =
-                        Car.new Car.TestCar
+                        Car.new testCar
                             |> Car.withPosition nodeCtx.node.label.position
                             |> Car.withOrientation (Direction2d.toAngle nodeCtx.node.label.direction)
                             |> Car.build id
