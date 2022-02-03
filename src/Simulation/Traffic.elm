@@ -6,7 +6,7 @@ module Simulation.Traffic exposing
     )
 
 import BoundingBox2d
-import Data.CarAssets exposing (testCar)
+import Data.Cars exposing (testCar)
 import Dict
 import Dict.Extra as Dict
 import Direction2d

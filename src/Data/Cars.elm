@@ -1,4 +1,4 @@
-module Data.CarAssets exposing
+module Data.Cars exposing
     ( carAsset
     , sedan
     , testCar

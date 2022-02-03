@@ -15,7 +15,7 @@ module Data.Rounds exposing
     )
 
 import Angle exposing (Angle)
-import Data.CarAssets exposing (testCar)
+import Data.Cars exposing (testCar)
 import Data.Worlds
     exposing
         ( largeWorld

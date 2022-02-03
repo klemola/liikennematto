@@ -1,4 +1,4 @@
-module Data.RoadAssets exposing (roadAsset)
+module Data.Roads exposing (roadAsset)
 
 import Svg exposing (Svg, path)
 import Svg.Attributes as Attributes

@@ -17,7 +17,7 @@ module Model.Lot exposing
 import Angle exposing (Angle)
 import BoundingBox2d
 import Common
-import Data.CarAssets exposing (sedan)
+import Data.Cars exposing (sedan)
 import Dict exposing (Dict)
 import Direction2d
 import Length exposing (Length)

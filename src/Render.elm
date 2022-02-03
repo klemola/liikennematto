@@ -7,8 +7,8 @@ module Render exposing
 
 import Angle
 import Color
-import Data.CarAssets exposing (carAsset)
-import Data.RoadAssets exposing (roadAsset)
+import Data.Cars exposing (carAsset)
+import Data.Roads exposing (roadAsset)
 import Dict exposing (Dict)
 import Direction2d exposing (y)
 import Graph exposing (Node)
