@@ -779,7 +779,7 @@ renderCarFieldOfView car =
     in
     Svg.polygon
         [ Attributes.points points
-        , Attributes.fill <| Color.toCssString Colors.blue
+        , Attributes.fill <| Color.toCssString Colors.darkBlue
         , Attributes.opacity "0.3"
         ]
         []
