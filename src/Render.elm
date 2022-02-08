@@ -9,6 +9,7 @@ import Angle
 import Color
 import Data.Cars exposing (carAsset)
 import Data.Colors as Colors
+import Data.Lots exposing (lotAsset)
 import Data.Roads exposing (roadAsset)
 import Dict exposing (Dict)
 import Direction2d exposing (y)
@@ -436,7 +437,7 @@ renderCar car =
 renderLots : Lots -> Svg msg
 renderLots lots =
     lots
-        |> Dict.foldl (\_ lot acc -> ( buildingAsset lot.content.kind, renderLot lot ) :: acc) []
+        |> Dict.foldl (\_ lot acc -> ( lot.content.name, renderLot lot ) :: acc) []
         |> Svg.Keyed.node "g" []
 
 
@@ -446,8 +447,11 @@ renderLot lot =
         { x, y } =
             pointToPixels lot.position
 
-        asset =
-            "assets/" ++ buildingAsset lot.content.kind
+        renderX =
+            x - width / 2
+
+        renderY =
+            tilemapSizePixels - (height / 2) - y
 
         width =
             toPixelsValue lot.width
@@ -455,57 +459,34 @@ renderLot lot =
         height =
             toPixelsValue lot.height
 
-        mask =
-            sidewalkMask lot
-    in
-    Svg.g []
-        [ Svg.image
-            [ Attributes.xlinkHref asset
-            , Attributes.x <| String.fromFloat (x - width / 2)
-            , Attributes.y <| String.fromFloat <| tilemapSizePixels - (height / 2) - y
-            , Attributes.width <| String.fromFloat width
-            , Attributes.height <| String.fromFloat height
+        translateStr =
+            "translate(" ++ String.fromFloat renderX ++ " " ++ String.fromFloat renderY ++ ")"
+
+        viewBox =
+            [ "0 0"
+            , String.fromFloat (width * 2)
+            , String.fromFloat (height * 2)
             ]
-            []
-        , mask
-        ]
+                |> String.join " "
 
-
-sidewalkMask : Lot -> Svg msg
-sidewalkMask lot =
-    -- sidewalk mask hides terrain between sidewalk and the lot
-    -- Room for improvement: use special road tiles when connected to a lot
-    let
-        lotPosition =
-            pointToPixels lot.position
-
-        lotBottomLeftX =
-            lotPosition.x - (toPixelsValue lot.width / 2)
-
-        lotBottomLeftY =
-            lotPosition.y - (toPixelsValue lot.height / 2)
-
-        { x, y } =
-            pointToPixels lot.entryDetails.entryPoint
-
-        width =
-            toPixelsValue lot.entryDetails.width
-
-        height =
-            toPixelsValue lot.entryDetails.height
+        asset =
+            lotAsset lot
     in
-    Svg.rect
-        [ Attributes.width <| String.fromFloat width
-        , Attributes.height <| String.fromFloat height
-        , Attributes.fill <| Color.toCssString <| Colors.gray3
-        , Attributes.x <| String.fromFloat <| x + lotBottomLeftX - (width / 2)
-        , Attributes.y <| String.fromFloat <| tilemapSizePixels - lotBottomLeftY - y - (height / 2)
+    Svg.g [ Attributes.transform translateStr ]
+        [ Svg.svg
+            [ Attributes.width (String.fromFloat width)
+            , Attributes.height (String.fromFloat height)
+            , Attributes.viewBox viewBox
+            , Attributes.fill "none"
+            ]
+            asset
         ]
-        []
 
 
 
+--
 -- Traffic control
+--
 
 
 renderTrafficLights : TrafficLights -> Svg msg
@@ -800,37 +781,3 @@ toPointsString points =
         )
         ""
         points
-
-
-
---
--- Assets
---
-
-
-buildingAsset : BuildingKind -> String
-buildingAsset kind =
-    case kind of
-        ResidentialA ->
-            "residential_a.png"
-
-        ResidentialB ->
-            "residential_b.png"
-
-        ResidentialC ->
-            "residential_c.png"
-
-        ResidentialD ->
-            "residential_d.png"
-
-        ResidentialE ->
-            "residential_e.png"
-
-        TwoByOneTest ->
-            "geometry_test_2x1.png"
-
-        ThreeByThreeTest ->
-            "geometry_test_3x3.png"
-
-        TwoByThreeTest ->
-            "geometry_test_2x3.png"

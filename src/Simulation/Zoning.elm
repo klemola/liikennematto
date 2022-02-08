@@ -1,9 +1,10 @@
 module Simulation.Zoning exposing (generateLot, validateLots)
 
+import Data.Lots exposing (allLots)
 import Dict
 import Maybe.Extra as Maybe
 import Model.Geometry exposing (orthogonalDirections)
-import Model.Lot as Lot exposing (Anchor, Lot, NewLot, allLots)
+import Model.Lot as Lot exposing (Anchor, Lot, NewLot)
 import Model.Tile as Tile
 import Model.Tilemap as Tilemap exposing (Cell, Tilemap)
 import Model.World as World exposing (World)
