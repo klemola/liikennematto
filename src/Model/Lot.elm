@@ -5,23 +5,19 @@ module Model.Lot exposing
     , Lot
     , Lots
     , NewLot
-    , allLots
     , build
     , createAnchor
     , inBounds
     , newLotBuildArea
     , parkingSpotOrientation
-    , resident
     )
 
 import Angle exposing (Angle)
 import BoundingBox2d
 import Common
-import Data.Cars exposing (sedan)
 import Dict exposing (Dict)
 import Direction2d
 import Length exposing (Length)
-import Model.Car exposing (CarMake)
 import Model.Entity exposing (Id)
 import Model.Geometry
     exposing
@@ -71,6 +67,7 @@ type alias Anchor =
 
 type alias Building =
     { kind : BuildingKind
+    , name : String
     , entryDirection : OrthogonalDirection
     }
 
@@ -84,14 +81,8 @@ type alias EntryDetails =
 
 
 type BuildingKind
-    = ResidentialA
-    | ResidentialB
-    | ResidentialC
-    | ResidentialD
-    | ResidentialE
-    | TwoByOneTest
-    | ThreeByThreeTest
-    | TwoByThreeTest
+    = ResidentialSingle1
+    | School
 
 
 halfTile : Length
@@ -107,31 +98,6 @@ drivewaySize =
 drivewayOverlap : Length
 drivewayOverlap =
     tileSize |> Quantity.divideBy 16
-
-
-allLots : List NewLot
-allLots =
-    [ { content = Building ResidentialA Down, width = tileSize, height = tileSize }
-    , { content = Building ResidentialB Right, width = tileSize, height = tileSize }
-    , { content = Building ResidentialC Left, width = tileSize, height = tileSize }
-    , { content = Building ResidentialD Up, width = tileSize, height = tileSize }
-    , { content = Building ResidentialE Down
-      , width = tileSize |> Quantity.multiplyBy 2
-      , height = tileSize |> Quantity.multiplyBy 2
-      }
-    , { content = Building TwoByOneTest Left
-      , width = tileSize |> Quantity.multiplyBy 2
-      , height = tileSize
-      }
-    , { content = Building ThreeByThreeTest Right
-      , width = tileSize |> Quantity.multiplyBy 3
-      , height = tileSize |> Quantity.multiplyBy 3
-      }
-    , { content = Building TwoByThreeTest Up
-      , width = tileSize |> Quantity.multiplyBy 2
-      , height = tileSize |> Quantity.multiplyBy 3
-      }
-    ]
 
 
 build : NewLot -> Anchor -> Lot
@@ -270,30 +236,3 @@ parkingSpotOrientation lot =
 inBounds : Cell -> Lot -> Bool
 inBounds cell lot =
     BoundingBox2d.isContainedIn lot.boundingBox (Tilemap.cellBoundingBox cell)
-
-
-resident : Lot -> Maybe CarMake
-resident lot =
-    case lot.content.kind of
-        ResidentialA ->
-            Just <|
-                sedan
-
-        ResidentialB ->
-            Just <|
-                sedan
-
-        ResidentialC ->
-            Just <|
-                sedan
-
-        ResidentialD ->
-            Just <|
-                sedan
-
-        ResidentialE ->
-            Just <|
-                sedan
-
-        _ ->
-            Nothing
