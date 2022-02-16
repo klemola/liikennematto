@@ -3,7 +3,7 @@ module Data.Lots exposing (allLots, lotAsset, resident)
 import Data.Cars exposing (sedan)
 import Model.Car exposing (CarMake)
 import Model.Geometry exposing (OrthogonalDirection(..))
-import Model.Lot exposing (BuildingKind(..), Lot, NewLot)
+import Model.Lot exposing (Lot, LotKind(..), NewLot)
 import Model.Tile exposing (tileSize)
 import Quantity
 import Svg exposing (Svg, path)
@@ -12,19 +12,13 @@ import Svg.Attributes as Attributes
 
 allLots : List NewLot
 allLots =
-    [ { content =
-            { kind = ResidentialSingle1
-            , name = "residential_single_1"
-            , entryDirection = Right
-            }
+    [ { kind = ResidentialSingle1
+      , drivewayExit = Right
       , width = tileSize |> Quantity.multiplyBy 2
       , height = tileSize |> Quantity.multiplyBy 2
       }
-    , { content =
-            { kind = School
-            , name = "school"
-            , entryDirection = Left
-            }
+    , { kind = School
+      , drivewayExit = Left
       , width = tileSize |> Quantity.multiplyBy 3
       , height = tileSize |> Quantity.multiplyBy 3
       }
@@ -33,7 +27,7 @@ allLots =
 
 resident : Lot -> Maybe CarMake
 resident lot =
-    case lot.content.kind of
+    case lot.kind of
         ResidentialSingle1 ->
             Just sedan
 
@@ -43,7 +37,7 @@ resident lot =
 
 lotAsset : Lot -> List (Svg msg)
 lotAsset lot =
-    case lot.content.kind of
+    case lot.kind of
         ResidentialSingle1 ->
             residentialSingle1
 

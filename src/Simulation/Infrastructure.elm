@@ -24,7 +24,7 @@ import Model.Geometry as Geometry
         , orthogonalDirectionToLmDirection
         )
 import Model.Lookup exposing (roadNetworkLookup)
-import Model.Lot exposing (Lot, Lots)
+import Model.Lot exposing (Lot)
 import Model.RoadNetwork as RoadNetwork
     exposing
         ( Connection
@@ -181,7 +181,7 @@ createConnections { nodes, tilemap, remainingTiles, lots } =
                 }
 
 
-toConnections : Tilemap -> Cell -> Tile -> Lots -> List Connection
+toConnections : Tilemap -> Cell -> Tile -> Dict Id Lot -> List Connection
 toConnections tilemap cell tile lots =
     if Tile.isBasicRoad tile then
         lotConnections cell tile lots
@@ -199,13 +199,13 @@ toConnections tilemap cell tile lots =
             |> List.concatMap (connectionsByTileEntryDirection tilemap cell tile)
 
 
-lotConnections : Cell -> Tile -> Lots -> List Connection
+lotConnections : Cell -> Tile -> Dict Id Lot -> List Connection
 lotConnections cell tile lots =
-    case Dict.find (\_ lot -> lot.anchor.anchorCell == cell) lots of
+    case Dict.find (\_ lot -> lot.anchor.cell == cell) lots of
         Just ( id, lot ) ->
             let
                 trafficDirection =
-                    lot.anchor.anchorDirection
+                    lot.anchor.direction
                         |> orthogonalDirectionToLmDirection
                         |> Direction2d.rotateClockwise
 
@@ -213,7 +213,7 @@ lotConnections cell tile lots =
                     laneCenterPositionsByDirection cell trafficDirection
 
                 anchorDirection =
-                    lot.anchor.anchorDirection
+                    lot.anchor.direction
                         |> orthogonalDirectionToLmDirection
 
                 ( position, direction ) =

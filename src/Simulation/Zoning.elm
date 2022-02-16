@@ -3,6 +3,7 @@ module Simulation.Zoning exposing (generateLot, validateLots)
 import Data.Lots exposing (allLots)
 import Dict
 import Maybe.Extra as Maybe
+import Model.Entity as Entity
 import Model.Geometry exposing (orthogonalDirections)
 import Model.Lot as Lot exposing (Anchor, Lot, NewLot)
 import Model.Tile as Tile
@@ -19,11 +20,11 @@ generateLot world seed =
     let
         existingBuildingKinds =
             world.lots
-                |> Dict.map (\_ lot -> lot.content.kind)
+                |> Dict.map (\_ lot -> lot.kind)
                 |> Dict.values
 
         unusedLots =
-            List.filter (\{ content } -> not (List.member content.kind existingBuildingKinds)) allLots
+            List.filter (\newLot -> not (List.member newLot.kind existingBuildingKinds)) allLots
 
         randomLot =
             unusedLots
@@ -51,7 +52,7 @@ attemptBuildLot world seed newLot =
                     (\cell tile ->
                         if
                             Tile.isBasicRoad tile
-                                && not (List.member newLot.content.entryDirection (Tile.potentialConnections tile))
+                                && not (List.member newLot.drivewayExit (Tile.potentialConnections tile))
                         then
                             Lot.createAnchor newLot cell
                                 |> Maybe.andThen (validateAnchor newLot world)
@@ -63,10 +64,13 @@ attemptBuildLot world seed newLot =
 
         ( shuffledAnchors, _ ) =
             Random.step (Random.List.shuffle anchors) seed
+
+        nextLotId =
+            Entity.nextId world.lots
     in
     shuffledAnchors
         |> List.head
-        |> Maybe.map (Lot.build newLot)
+        |> Maybe.map (Lot.build nextLotId newLot)
 
 
 validateAnchor : NewLot -> World -> Anchor -> Maybe Anchor
@@ -77,7 +81,7 @@ validateAnchor newLot world anchor =
     in
     if
         World.isEmptyArea lotBoundingBox world
-            && not (World.hasLotAnchor anchor.anchorCell world)
+            && not (World.hasLotAnchor anchor.cell world)
             && isNotAtTheEndOfARoad world anchor
     then
         Just anchor
@@ -87,12 +91,12 @@ validateAnchor newLot world anchor =
 
 
 isNotAtTheEndOfARoad : World -> Anchor -> Bool
-isNotAtTheEndOfARoad world { anchorCell } =
+isNotAtTheEndOfARoad world anchor =
     orthogonalDirections
         |> List.all
             (\orthogonalDirection ->
                 case
-                    Tilemap.nextOrthogonalCell orthogonalDirection anchorCell
+                    Tilemap.nextOrthogonalCell orthogonalDirection anchor.cell
                         |> Maybe.andThen (Tilemap.tileAt world.tilemap)
                 of
                     Just neighbor ->
@@ -106,12 +110,12 @@ isNotAtTheEndOfARoad world { anchorCell } =
 addLot : World -> Lot -> World
 addLot world lot =
     let
-        ( lotId, worldWithlot ) =
+        worldWithlot =
             World.addLot lot world
     in
     worldWithlot
         |> Infrastructure.connectLotToRoadNetwork
-        |> Traffic.addLotResident lotId lot
+        |> Traffic.addLotResident lot.id lot
 
 
 validateLots : List Cell -> World -> World
@@ -133,7 +137,7 @@ validateLots changedCells world =
 
 hasValidAnchorCell : Tilemap -> Lot -> Bool
 hasValidAnchorCell tilemap lot =
-    case Tilemap.tileAt tilemap lot.anchor.anchorCell of
+    case Tilemap.tileAt tilemap lot.anchor.cell of
         Just tile ->
             Tile.isBasicRoad tile
 

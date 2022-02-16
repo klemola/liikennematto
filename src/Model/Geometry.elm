@@ -9,7 +9,6 @@ module Model.Geometry exposing
     , crossOrthogonalDirection
     , diagonalDirections
     , down
-    , isVerticalDirection
     , left
     , oppositeOrthogonalDirection
     , orthogonalDirectionToLmDirection
@@ -136,11 +135,6 @@ crossOrthogonalDirection fromDir =
 
         Left ->
             verticalOrthogonalDirections
-
-
-isVerticalDirection : OrthogonalDirection -> Bool
-isVerticalDirection direction =
-    List.member direction verticalOrthogonalDirections
 
 
 orthogonalDirectionToLmDirection : OrthogonalDirection -> LMDirection2d
