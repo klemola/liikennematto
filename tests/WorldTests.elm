@@ -23,17 +23,15 @@ twoByTwoLot : Maybe Lot
 twoByTwoLot =
     let
         newLot =
-            { content =
-                { kind = Lot.ResidentialE
-                , entryDirection = Down
-                }
+            { kind = Lot.ResidentialSingle1
+            , drivewayExit = Down
             , width = tileSize |> Quantity.multiplyBy 2
             , height = tileSize |> Quantity.multiplyBy 2
             }
     in
     Tilemap.cellFromCoordinates ( 1, 8 )
         |> Maybe.andThen (Lot.createAnchor newLot)
-        |> Maybe.map (Lot.build newLot)
+        |> Maybe.map (Lot.build 1 newLot)
 
 
 suite : Test

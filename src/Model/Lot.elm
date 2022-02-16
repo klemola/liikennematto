@@ -1,9 +1,7 @@
 module Model.Lot exposing
     ( Anchor
-    , Building
-    , BuildingKind(..)
     , Lot
-    , Lots
+    , LotKind(..)
     , NewLot
     , build
     , createAnchor
@@ -15,7 +13,6 @@ module Model.Lot exposing
 import Angle exposing (Angle)
 import BoundingBox2d
 import Common
-import Dict exposing (Dict)
 import Direction2d
 import Length exposing (Length)
 import Model.Entity exposing (Id)
@@ -24,7 +21,6 @@ import Model.Geometry
         ( LMBoundingBox2d
         , LMPoint2d
         , OrthogonalDirection(..)
-        , isVerticalDirection
         , oppositeOrthogonalDirection
         , orthogonalDirectionToLmDirection
         )
@@ -36,51 +32,35 @@ import Vector2d
 
 
 type alias Lot =
-    { content : Building
+    { id : Id
+    , kind : LotKind
+    , drivewayExit : OrthogonalDirection
+    , parkingSpot : LMPoint2d
     , width : Length
     , height : Length
     , position : LMPoint2d
     , boundingBox : LMBoundingBox2d
-    , entryDetails : EntryDetails
     , anchor : Anchor
     }
 
 
 type alias NewLot =
-    { content : Building
+    { kind : LotKind
+    , drivewayExit : OrthogonalDirection
     , width : Length
     , height : Length
     }
 
 
-type alias Lots =
-    Dict Id Lot
-
-
 type alias Anchor =
     -- road piece cell and direction from the road to the lot
-    { anchorCell : Cell
-    , entryCell : Cell
-    , anchorDirection : OrthogonalDirection
+    { cell : Cell
+    , direction : OrthogonalDirection
+    , lotEntry : Cell
     }
 
 
-type alias Building =
-    { kind : BuildingKind
-    , name : String
-    , entryDirection : OrthogonalDirection
-    }
-
-
-type alias EntryDetails =
-    { width : Length
-    , height : Length
-    , entryPoint : LMPoint2d
-    , parkingSpot : LMPoint2d
-    }
-
-
-type BuildingKind
+type LotKind
     = ResidentialSingle1
     | School
 
@@ -90,28 +70,20 @@ halfTile =
     Quantity.half tileSize
 
 
-drivewaySize : Length
-drivewaySize =
-    tileSize |> Quantity.divideBy 6
-
-
-drivewayOverlap : Length
-drivewayOverlap =
-    tileSize |> Quantity.divideBy 16
-
-
-build : NewLot -> Anchor -> Lot
-build newLot anchor =
+build : Id -> NewLot -> Anchor -> Lot
+build id newLot anchor =
     let
         buildAreaBB =
             newLotBuildArea anchor newLot
     in
-    { content = newLot.content
+    { id = id
+    , kind = newLot.kind
+    , drivewayExit = newLot.drivewayExit
     , width = newLot.width
     , height = newLot.height
     , position = BoundingBox2d.centerPoint buildAreaBB
     , boundingBox = buildAreaBB
-    , entryDetails = entryDetails anchor newLot
+    , parkingSpot = parkingSpot anchor newLot
     , anchor = anchor
     }
 
@@ -120,23 +92,23 @@ createAnchor : NewLot -> Cell -> Maybe Anchor
 createAnchor newLot anchorCell =
     let
         anchorDirection =
-            oppositeOrthogonalDirection newLot.content.entryDirection
+            oppositeOrthogonalDirection newLot.drivewayExit
     in
     Tilemap.nextOrthogonalCell anchorDirection anchorCell
         |> Maybe.map
-            (\entryCell ->
-                { anchorCell = anchorCell
-                , anchorDirection = anchorDirection
-                , entryCell = entryCell
+            (\lotEntry ->
+                { cell = anchorCell
+                , direction = anchorDirection
+                , lotEntry = lotEntry
                 }
             )
 
 
 newLotBuildArea : Anchor -> NewLot -> LMBoundingBox2d
-newLotBuildArea { anchorDirection, entryCell } { width, height } =
+newLotBuildArea anchor { width, height } =
     let
         origin =
-            Tilemap.cellBottomLeftCorner entryCell
+            Tilemap.cellBottomLeftCorner anchor.lotEntry
 
         displacement =
             Vector2d.xy
@@ -147,7 +119,7 @@ newLotBuildArea { anchorDirection, entryCell } { width, height } =
             origin |> Point2d.translateBy displacement
 
         bottomLeftCorner =
-            case anchorDirection of
+            case anchor.direction of
                 Down ->
                     adjustedForVerticalEntry
 
@@ -160,53 +132,14 @@ newLotBuildArea { anchorDirection, entryCell } { width, height } =
     Common.boundingBoxWithDimensions width height bottomLeftCorner
 
 
-entryDetails : Anchor -> NewLot -> EntryDetails
-entryDetails anchor newLot =
-    let
-        ( width, height ) =
-            if isVerticalDirection anchor.anchorDirection then
-                ( halfTile, drivewaySize )
-
-            else
-                ( drivewaySize, halfTile )
-
-        entryPoint =
-            case newLot.content.entryDirection of
-                Up ->
-                    Point2d.xy
-                        (newLot.width |> Quantity.minus halfTile)
-                        (newLot.height |> Quantity.plus drivewayOverlap)
-
-                Right ->
-                    Point2d.xy
-                        (newLot.width |> Quantity.plus drivewayOverlap)
-                        (newLot.height |> Quantity.minus halfTile)
-
-                Down ->
-                    Point2d.xy
-                        halfTile
-                        (Quantity.negate drivewayOverlap)
-
-                Left ->
-                    Point2d.xy
-                        (Quantity.negate drivewayOverlap)
-                        halfTile
-    in
-    { width = width
-    , height = height
-    , entryPoint = entryPoint
-    , parkingSpot = parkingSpot anchor newLot
-    }
-
-
 parkingSpot : Anchor -> NewLot -> LMPoint2d
-parkingSpot { entryCell } newLot =
+parkingSpot anchor newLot =
     let
         origin =
-            Tilemap.cellBottomLeftCorner entryCell
+            Tilemap.cellBottomLeftCorner anchor.lotEntry
 
         ( shiftX, shiftY ) =
-            case newLot.content.entryDirection of
+            case newLot.drivewayExit of
                 Up ->
                     ( halfTile, tileSize )
 
@@ -227,7 +160,7 @@ parkingSpot { entryCell } newLot =
 
 parkingSpotOrientation : Lot -> Angle
 parkingSpotOrientation lot =
-    lot.content.entryDirection
+    lot.drivewayExit
         |> orthogonalDirectionToLmDirection
         |> Direction2d.rotateClockwise
         |> Direction2d.toAngle

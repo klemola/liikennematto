@@ -205,7 +205,7 @@ addLotResident lotId lot world =
         createCar kind =
             Car.new kind
                 |> Car.withHome lotId
-                |> Car.withPosition lot.entryDetails.parkingSpot
+                |> Car.withPosition lot.parkingSpot
                 |> Car.withOrientation (Lot.parkingSpotOrientation lot)
                 |> Car.build carId
                 |> Pathfinding.maybeCreateRoute homeNode
@@ -232,7 +232,7 @@ moveCarToHome world car home =
         Just nodeCtx ->
             { car
                 | fsm = nextFSM
-                , position = home.entryDetails.parkingSpot
+                , position = home.parkingSpot
                 , orientation = Lot.parkingSpotOrientation home
                 , velocity = Quantity.zero
                 , acceleration = Steering.maxAcceleration

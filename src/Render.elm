@@ -19,12 +19,13 @@ import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Animation as Animation exposing (Animation)
 import Model.Car as Car exposing (Car)
+import Model.Entity exposing (Id)
 import Model.Geometry
     exposing
         ( LMPoint2d
         , OrthogonalDirection(..)
         )
-import Model.Lot exposing (BuildingKind(..), Lot, Lots)
+import Model.Lot exposing (Lot, LotKind(..))
 import Model.RenderCache exposing (RenderCache, TilemapPresentation)
 import Model.RoadNetwork
     exposing
@@ -434,10 +435,10 @@ renderCar car =
 --
 
 
-renderLots : Lots -> Svg msg
+renderLots : Dict Id Lot -> Svg msg
 renderLots lots =
     lots
-        |> Dict.foldl (\_ lot acc -> ( lot.content.name, renderLot lot ) :: acc) []
+        |> Dict.foldl (\_ lot acc -> ( "Lot-" ++ String.fromInt lot.id, renderLot lot ) :: acc) []
         |> Svg.Keyed.node "g" []
 
 
