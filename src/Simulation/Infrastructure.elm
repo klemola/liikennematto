@@ -13,6 +13,7 @@ import Graph exposing (Edge, Node)
 import IntDict
 import Length exposing (Length)
 import Maybe.Extra as Maybe
+import Model.Cell as Cell exposing (Cell)
 import Model.Entity as Entity exposing (Id)
 import Model.Geometry as Geometry
     exposing
@@ -34,8 +35,8 @@ import Model.RoadNetwork as RoadNetwork
         , RoadNetwork
         , TrafficControl(..)
         )
-import Model.Tile as Tile exposing (Tile, tileSize)
-import Model.Tilemap as Tilemap exposing (Cell, Tilemap)
+import Model.Tile as Tile exposing (Tile)
+import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLights)
 import Model.World exposing (World)
 import Point2d
@@ -201,7 +202,7 @@ toConnections tilemap cell tile lots =
 
 lotConnections : Cell -> Tile -> Dict Id Lot -> List Connection
 lotConnections cell tile lots =
-    case Dict.find (\_ lot -> lot.anchor.cell == cell) lots of
+    case Dict.find (\_ lot -> lot.anchor.from == cell) lots of
         Just ( id, lot ) ->
             let
                 trafficDirection =
@@ -272,12 +273,12 @@ laneCenterPositionsByDirection : Cell -> LMDirection2d -> ( LMPoint2d, LMPoint2d
 laneCenterPositionsByDirection cell trafficDirection =
     let
         connectionOffsetFromTileCenter =
-            tileSize
+            Cell.size
                 |> Quantity.half
                 |> Quantity.minus innerLaneOffset
 
         tileCenterPosition =
-            Tilemap.cellCenterPoint cell
+            Cell.centerPoint cell
     in
     ( tileCenterPosition
         |> Point2d.translateIn
@@ -294,10 +295,10 @@ connectionsByTileEntryDirection : Tilemap -> Cell -> Tile -> OrthogonalDirection
 connectionsByTileEntryDirection tilemap cell tile direction =
     let
         origin =
-            Tilemap.cellBottomLeftCorner cell
+            Cell.bottomLeftCorner cell
 
         isStopgapTile =
-            Tilemap.nextOrthogonalCell direction cell
+            Cell.nextOrthogonalCell direction cell
                 |> Maybe.andThen (Tilemap.tileAt tilemap)
                 |> Maybe.unwrap False (hasStopgapInbetween tile)
 
@@ -314,7 +315,7 @@ connectionsByTileEntryDirection tilemap cell tile direction =
     case direction of
         Up ->
             [ { kind = startConnectionKind
-              , position = shift outerLaneOffset tileSize
+              , position = shift outerLaneOffset Cell.size
               , direction = Geometry.up
               , cell = cell
               , tile = tile
@@ -322,7 +323,7 @@ connectionsByTileEntryDirection tilemap cell tile direction =
               , lotId = Nothing
               }
             , { kind = endConnectionKind
-              , position = shift innerLaneOffset tileSize
+              , position = shift innerLaneOffset Cell.size
               , direction = Geometry.down
               , cell = cell
               , tile = tile
@@ -333,7 +334,7 @@ connectionsByTileEntryDirection tilemap cell tile direction =
 
         Right ->
             [ { kind = startConnectionKind
-              , position = shift tileSize innerLaneOffset
+              , position = shift Cell.size innerLaneOffset
               , direction = Geometry.right
               , cell = cell
               , tile = tile
@@ -341,7 +342,7 @@ connectionsByTileEntryDirection tilemap cell tile direction =
               , lotId = Nothing
               }
             , { kind = endConnectionKind
-              , position = shift tileSize outerLaneOffset
+              , position = shift Cell.size outerLaneOffset
               , direction = Geometry.left
               , cell = cell
               , tile = tile
@@ -526,7 +527,7 @@ connectsWithinCell current other =
             ( connectionDirection current, connectionDirection other )
 
         range =
-            Quantity.half tileSize
+            Quantity.half Cell.size
 
         target =
             connectionPosition other
@@ -572,7 +573,7 @@ connectionLookupAreaToRight node range =
 
         otherCorner =
             origin
-                |> Point2d.translateIn nodeDirection tileSize
+                |> Point2d.translateIn nodeDirection Cell.size
                 |> Point2d.translateIn nodeDirectionRotatedRight range
     in
     BoundingBox2d.from origin otherCorner

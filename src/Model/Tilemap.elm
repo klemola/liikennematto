@@ -1,22 +1,14 @@
 module Model.Tilemap exposing
-    ( Cell
-    , Tilemap
+    ( Tilemap
     , addTile
     , boundingBox
     , canBuildRoadAt
-    , cellBottomLeftCorner
-    , cellBoundingBox
-    , cellCenterPoint
-    , cellFromCoordinates
-    , cellToString
     , empty
     , exists
     , inBounds
     , intersects
     , mapSize
-    , nextOrthogonalCell
     , removeTile
-    , rowsAndColumnsAmount
     , size
     , tileAt
     , toList
@@ -30,11 +22,11 @@ import Duration exposing (Duration)
 import FSM
 import Length exposing (Length)
 import Maybe.Extra as Maybe
+import Model.Cell as Cell exposing (Cell)
 import Model.Geometry
     exposing
         ( DiagonalDirection(..)
         , LMBoundingBox2d
-        , LMPoint2d
         , OrthogonalDirection(..)
         , diagonalDirections
         )
@@ -44,39 +36,19 @@ import Model.Tile as Tile
         , TileKind
         , TileOperation
         , chooseTileKind
-        , tileSize
         )
 import Point2d
-import Quantity exposing (negativeInfinity)
-import Vector2d
+import Quantity
 
 
 type Tilemap
     = Tilemap (Array (Maybe Tile))
 
 
-type Cell
-    = Cell CellCoordinates
-
-
-type alias CellCoordinates =
-    ( Int, Int )
-
-
-
---
--- Tilemap
---
-
-
-rowsAndColumnsAmount : Int
-rowsAndColumnsAmount =
-    10
-
-
 mapSize : Length
 mapSize =
-    tileSize |> Quantity.multiplyBy (toFloat rowsAndColumnsAmount)
+    -- TODO: check usage and consider tuple (sizeX, sizeY)
+    Cell.size |> Quantity.multiplyBy (toFloat Cell.horizontalCellsAmount)
 
 
 boundingBox : LMBoundingBox2d
@@ -88,7 +60,7 @@ empty : Tilemap
 empty =
     let
         arrSize =
-            rowsAndColumnsAmount * rowsAndColumnsAmount
+            Cell.horizontalCellsAmount * Cell.verticalCellsAmount
     in
     Tilemap (Array.initialize arrSize (always Nothing))
 
@@ -110,7 +82,7 @@ inBounds testBB =
 
 intersects : LMBoundingBox2d -> Tilemap -> Bool
 intersects testBB tilemap =
-    toList (\cell _ -> cellBoundingBox cell) tilemap
+    toList (\cell _ -> Cell.boundingBox cell) tilemap
         |> List.any (Common.boundingBoxOverlaps testBB)
 
 
@@ -126,7 +98,7 @@ canBuildRoadAt cell tilemap =
             List.length l < 3
 
         hasLowComplexity diagonalDirection =
-            cornerCells diagonalDirection cell
+            Cell.quadrantNeighbors diagonalDirection cell
                 |> List.filterMap (tileAt tilemap)
                 |> withinAllowedComplexity
     in
@@ -177,6 +149,45 @@ size (Tilemap tilemapContents) =
         )
         0
         tilemapContents
+
+
+updateCell : Cell -> Tile -> Tilemap -> Tilemap
+updateCell cell tile (Tilemap tilemapContents) =
+    let
+        idx =
+            indexFromCell cell
+    in
+    Tilemap (tilemapContents |> Array.set idx (Just tile))
+
+
+cellFromIndex : Int -> Maybe Cell
+cellFromIndex idx =
+    let
+        xyZeroIndexed =
+            { x = remainderBy Cell.horizontalCellsAmount idx
+            , y = idx // Cell.verticalCellsAmount
+            }
+    in
+    -- Cells are 1-indexed - map the coordinates to match
+    Cell.fromCoordinates
+        ( xyZeroIndexed.x + 1
+        , xyZeroIndexed.y + 1
+        )
+
+
+indexFromCell : Cell -> Int
+indexFromCell cell =
+    let
+        ( cellX, cellY ) =
+            Cell.coordinates cell
+
+        xyZeroIndexed =
+            { x = cellX - 1
+            , y = cellY - 1
+            }
+    in
+    -- Arrays are 0-indexed - map the coordinates to match
+    xyZeroIndexed.x + (xyZeroIndexed.y * Cell.verticalCellsAmount)
 
 
 
@@ -292,13 +303,13 @@ updateTileFSM delta tile tilemapUpdate =
 
 
 addTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )
-addTile cell tilemap =
-    applyTilemapOperation cell Tile.Add tilemap
+addTile origin tilemap =
+    applyTilemapOperation origin Tile.Add tilemap
 
 
 removeTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )
-removeTile cell tilemap =
-    applyTilemapOperation cell Tile.Remove tilemap
+removeTile origin tilemap =
+    applyTilemapOperation origin Tile.Remove tilemap
 
 
 applyTilemapOperation : Cell -> TileOperation -> Tilemap -> ( Tilemap, List Tile.Action )
@@ -350,7 +361,7 @@ nextOrthogonalTile : OrthogonalDirection -> Cell -> Tilemap -> Maybe ( Cell, Til
 nextOrthogonalTile dir cell tilemap =
     let
         maybeCell =
-            nextOrthogonalCell dir cell
+            Cell.nextOrthogonalCell dir cell
 
         maybeTile =
             maybeCell
@@ -392,186 +403,3 @@ hasOrthogonalNeighborAt dir cell tilemap =
     tilemap
         |> nextOrthogonalTile dir cell
         |> Maybe.isJust
-
-
-updateCell : Cell -> Tile -> Tilemap -> Tilemap
-updateCell cell tile (Tilemap tilemapContents) =
-    let
-        idx =
-            indexFromCell cell
-
-        tiles =
-            tilemapContents |> Array.set idx (Just tile)
-    in
-    Tilemap tiles
-
-
-
---
--- Cells
---
-
-
-cellFromIndex : Int -> Maybe Cell
-cellFromIndex idx =
-    let
-        xyZeroIndexed =
-            { x = remainderBy rowsAndColumnsAmount idx
-            , y = idx // rowsAndColumnsAmount
-            }
-    in
-    -- Cells are 1-indexed - map the coordinates to match
-    cellFromCoordinates ( xyZeroIndexed.x + 1, xyZeroIndexed.y + 1 )
-
-
-indexFromCell : Cell -> Int
-indexFromCell (Cell ( x, y )) =
-    let
-        xyZeroIndexed =
-            { x = x - 1
-            , y = y - 1
-            }
-    in
-    -- Arrays are 0-indexed - map the coordinates to match
-    xyZeroIndexed.x + (xyZeroIndexed.y * rowsAndColumnsAmount)
-
-
-cellFromCoordinates : CellCoordinates -> Maybe Cell
-cellFromCoordinates ( x, y ) =
-    if isValidCoordinate x && isValidCoordinate y then
-        Just (Cell ( x, y ))
-
-    else
-        Nothing
-
-
-isValidCoordinate : Int -> Bool
-isValidCoordinate coordinate =
-    coordinate > 0 && coordinate <= rowsAndColumnsAmount
-
-
-cellBottomLeftCorner : Cell -> LMPoint2d
-cellBottomLeftCorner (Cell coordinates) =
-    let
-        ( cellX, cellY ) =
-            coordinates
-    in
-    if cellX > 0 && cellY > 0 then
-        let
-            ( xMultiplier, yMultiplier ) =
-                ( toFloat (cellX - 1)
-                , toFloat (rowsAndColumnsAmount - cellY)
-                )
-        in
-        Point2d.xy
-            (tileSize |> Quantity.multiplyBy xMultiplier)
-            (tileSize |> Quantity.multiplyBy yMultiplier)
-
-    else
-        -- When Cells are built from coordinates, the coordinates are required to be positive.
-        -- Invalid input results in a fallback value that is guaranteed to be outside the tilemap.
-        Point2d.xy negativeInfinity negativeInfinity
-
-
-cellCenterPoint : Cell -> LMPoint2d
-cellCenterPoint cell =
-    let
-        displacement =
-            Vector2d.xy
-                (Quantity.half tileSize)
-                (Quantity.half tileSize)
-    in
-    cellBottomLeftCorner cell
-        |> Point2d.translateBy displacement
-
-
-cellBoundingBox : Cell -> LMBoundingBox2d
-cellBoundingBox cell =
-    cellBottomLeftCorner cell
-        |> Common.boundingBoxWithDimensions tileSize tileSize
-
-
-cellToString : Cell -> String
-cellToString (Cell coordinates) =
-    let
-        ( x, y ) =
-            coordinates
-    in
-    "Cell (" ++ String.fromInt x ++ "," ++ String.fromInt y ++ ")"
-
-
-nextOrthogonalCell : OrthogonalDirection -> Cell -> Maybe Cell
-nextOrthogonalCell dir (Cell coordinates) =
-    let
-        ( x, y ) =
-            coordinates
-    in
-    case dir of
-        Up ->
-            cellFromCoordinates ( x, y - 1 )
-
-        Right ->
-            cellFromCoordinates ( x + 1, y )
-
-        Down ->
-            cellFromCoordinates ( x, y + 1 )
-
-        Left ->
-            cellFromCoordinates ( x - 1, y )
-
-
-nextDiagonalCell : DiagonalDirection -> Cell -> Maybe Cell
-nextDiagonalCell dir (Cell coordinates) =
-    let
-        ( x, y ) =
-            coordinates
-    in
-    case dir of
-        TopLeft ->
-            cellFromCoordinates ( x - 1, y - 1 )
-
-        TopRight ->
-            cellFromCoordinates ( x + 1, y - 1 )
-
-        BottomLeft ->
-            cellFromCoordinates ( x - 1, y + 1 )
-
-        BottomRight ->
-            cellFromCoordinates ( x + 1, y + 1 )
-
-
-{-| Corner plus natural neighbors (clockwise).
-
-    e.g. Left, TopLeft, Up
-
--}
-cornerCells : DiagonalDirection -> Cell -> List Cell
-cornerCells c position =
-    case c of
-        TopLeft ->
-            Maybe.values
-                [ nextOrthogonalCell Left position
-                , nextDiagonalCell TopLeft position
-                , nextOrthogonalCell Up position
-                ]
-
-        TopRight ->
-            Maybe.values
-                [ nextOrthogonalCell Up position
-                , nextDiagonalCell TopRight position
-                , nextOrthogonalCell Right position
-                ]
-
-        BottomLeft ->
-            Maybe.values
-                [ nextOrthogonalCell Down position
-                , nextDiagonalCell BottomLeft position
-                , nextOrthogonalCell Left position
-                ]
-
-        BottomRight ->
-            Maybe.values
-                [ nextOrthogonalCell Right position
-                , nextDiagonalCell BottomRight position
-                , nextOrthogonalCell Down position
-                ]

@@ -19,6 +19,7 @@ import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Animation as Animation exposing (Animation)
 import Model.Car as Car exposing (Car)
+import Model.Cell as Cell exposing (Cell)
 import Model.Entity exposing (Id)
 import Model.Geometry
     exposing
@@ -34,8 +35,8 @@ import Model.RoadNetwork
         , RoadNetwork
         , TrafficControl(..)
         )
-import Model.Tile exposing (TileKind, tileSize)
-import Model.Tilemap as Tilemap exposing (Cell)
+import Model.Tile exposing (TileKind)
+import Model.Tilemap as Tilemap
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
 import Model.World exposing (World)
 import Pixels exposing (Pixels)
@@ -114,7 +115,7 @@ tilemapSizeScaledStr =
 
 tileSizePixels : Float
 tileSizePixels =
-    toPixelsValue tileSize
+    toPixelsValue Cell.size
 
 
 nothing : Svg msg
@@ -163,7 +164,7 @@ renderTilemap tilemap =
     tilemap
         |> List.map
             (\( cell, tile, animation ) ->
-                ( Tilemap.cellToString cell, renderTile cell tile animation )
+                ( Cell.toString cell, renderTile cell tile animation )
             )
         |> Svg.Keyed.node "g" []
 
@@ -172,7 +173,7 @@ renderTile : Cell -> TileKind -> Maybe Animation -> Svg msg
 renderTile cell tileKind animation =
     let
         { x, y } =
-            Tilemap.cellBottomLeftCorner cell |> pointToPixels
+            Cell.bottomLeftCorner cell |> pointToPixels
 
         yAdjusted =
             tilemapSizePixels - tileSizePixels - y
@@ -275,7 +276,7 @@ tileElement { x, y, tileIndex, tileStyles } =
 
 tileAppearOffset : Float
 tileAppearOffset =
-    toPixelsValue (tileSize |> Quantity.multiplyBy 0.6)
+    toPixelsValue (Cell.size |> Quantity.multiplyBy 0.6)
 
 
 tileAnimationProperties : Animation -> ( Float, Float ) -> String

@@ -7,9 +7,10 @@ module Model.RenderCache exposing
 
 import FSM
 import Model.Animation as Animation exposing (Animation)
+import Model.Cell exposing (Cell)
 import Model.Geometry exposing (OrthogonalDirection, oppositeOrthogonalDirection)
 import Model.Tile as Tile exposing (Tile, TileKind)
-import Model.Tilemap as Tilemap exposing (Cell, Tilemap)
+import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.World exposing (World)
 
 

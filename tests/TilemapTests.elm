@@ -8,6 +8,7 @@ import Data.Worlds
         )
 import Expect
 import Maybe.Extra as Maybe
+import Model.Cell as Cell
 import Model.Tilemap as Tilemap exposing (Tilemap)
 import Test exposing (Test, describe, test)
 
@@ -37,7 +38,7 @@ suite =
         [ describe ".applyMask"
             [ test "Creates an intersection with compatible tiles"
                 (\_ ->
-                    Tilemap.cellFromCoordinates ( 2, 1 )
+                    Cell.fromCoordinates ( 2, 1 )
                         |> Maybe.andThen (Tilemap.tileAt tilemapThatResemblesAIntersection)
                         |> Maybe.map
                             (\tile ->
@@ -49,7 +50,7 @@ suite =
                 )
             , test "Creates a curve with compatible tiles"
                 (\_ ->
-                    Tilemap.cellFromCoordinates ( 1, 1 )
+                    Cell.fromCoordinates ( 1, 1 )
                         |> Maybe.andThen (Tilemap.tileAt tilemapThatResemblesACurve)
                         |> Maybe.map
                             (\tile ->
@@ -63,14 +64,14 @@ suite =
         , describe ".canBuildRoadAt"
             [ test "Allows a low complexity setup"
                 (\_ ->
-                    Tilemap.cellFromCoordinates ( 2, 2 )
+                    Cell.fromCoordinates ( 2, 2 )
                         |> Maybe.map (\cell -> Tilemap.canBuildRoadAt cell lowComplexityWorld.tilemap)
                         |> Maybe.withDefault False
                         |> Expect.true "Expected valid world."
                 )
             , test "Disallows a complex setup"
                 (\_ ->
-                    Tilemap.cellFromCoordinates ( 2, 2 )
+                    Cell.fromCoordinates ( 2, 2 )
                         |> Maybe.map (\cell -> Tilemap.canBuildRoadAt cell highComplexityWorld.tilemap)
                         |> Maybe.withDefault False
                         |> Expect.false "Expected invalid world."
