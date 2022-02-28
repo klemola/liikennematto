@@ -4,7 +4,7 @@ import Data.Cars exposing (sedan)
 import Model.Car exposing (CarMake)
 import Model.Geometry exposing (OrthogonalDirection(..))
 import Model.Lot exposing (Lot, LotKind(..), NewLot)
-import Model.Tile exposing (tileSize)
+import Model.Cell as Cell
 import Quantity
 import Svg exposing (Svg, path)
 import Svg.Attributes as Attributes
@@ -14,13 +14,13 @@ allLots : List NewLot
 allLots =
     [ { kind = ResidentialSingle1
       , drivewayExit = Right
-      , width = tileSize |> Quantity.multiplyBy 2
-      , height = tileSize |> Quantity.multiplyBy 2
+      , width = Cell.size |> Quantity.multiplyBy 2
+      , height = Cell.size |> Quantity.multiplyBy 2
       }
     , { kind = School
       , drivewayExit = Left
-      , width = tileSize |> Quantity.multiplyBy 3
-      , height = tileSize |> Quantity.multiplyBy 3
+      , width = Cell.size |> Quantity.multiplyBy 3
+      , height = Cell.size |> Quantity.multiplyBy 3
       }
     ]
 

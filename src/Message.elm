@@ -2,8 +2,8 @@ module Message exposing (Message(..))
 
 import Browser.Events exposing (Visibility)
 import Duration exposing (Duration)
+import Model.Cell exposing (Cell)
 import Model.Liikennematto exposing (SimulationState, Tool)
-import Model.Tilemap exposing (Cell)
 
 
 type Message

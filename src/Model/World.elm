@@ -14,6 +14,7 @@ import Common
 import Dict exposing (Dict)
 import Graph
 import Model.Car as Car exposing (Car)
+import Model.Cell exposing (Cell)
 import Model.Entity exposing (Id)
 import Model.Geometry exposing (LMBoundingBox2d)
 import Model.Lookup
@@ -25,7 +26,7 @@ import Model.Lookup
         )
 import Model.Lot as Lot exposing (Lot)
 import Model.RoadNetwork as RoadNetwork exposing (RoadNetwork)
-import Model.Tilemap as Tilemap exposing (Cell, Tilemap)
+import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.TrafficLight exposing (TrafficLights)
 
 
@@ -65,7 +66,7 @@ hasLot cell { lots } =
 
 hasLotAnchor : Cell -> World -> Bool
 hasLotAnchor cell { lots } =
-    List.any (\lot -> lot.anchor.cell == cell) (Dict.values lots)
+    List.any (\lot -> lot.anchor.from == cell) (Dict.values lots)
 
 
 isEmptyArea : LMBoundingBox2d -> World -> Bool

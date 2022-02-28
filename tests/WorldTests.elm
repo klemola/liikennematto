@@ -9,10 +9,9 @@ import Data.Worlds
 import Dict
 import Expect
 import Length
+import Model.Cell as Cell
 import Model.Geometry exposing (OrthogonalDirection(..))
 import Model.Lot as Lot exposing (Lot)
-import Model.Tile exposing (tileSize)
-import Model.Tilemap as Tilemap
 import Model.World as World
 import Point2d
 import Quantity
@@ -25,12 +24,12 @@ twoByTwoLot =
         newLot =
             { kind = Lot.ResidentialSingle1
             , drivewayExit = Down
-            , width = tileSize |> Quantity.multiplyBy 2
-            , height = tileSize |> Quantity.multiplyBy 2
+            , width = Cell.size |> Quantity.multiplyBy 2
+            , height = Cell.size |> Quantity.multiplyBy 2
             }
     in
-    Tilemap.cellFromCoordinates ( 1, 8 )
-        |> Maybe.andThen (Lot.createAnchor newLot)
+    Cell.fromCoordinates ( 1, 8 )
+        |> Maybe.andThen (Lot.connectToCell newLot)
         |> Maybe.map (Lot.build 1 newLot)
 
 

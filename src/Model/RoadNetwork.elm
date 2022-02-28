@@ -17,10 +17,10 @@ module Model.RoadNetwork exposing
 
 import Graph exposing (Graph, NodeContext, NodeId)
 import Graph.DOT
+import Model.Cell exposing (Cell)
 import Model.Entity exposing (Id)
 import Model.Geometry exposing (LMDirection2d, LMPoint2d)
 import Model.Tile exposing (Tile)
-import Model.Tilemap exposing (Cell)
 import Random
 import Random.Extra
 

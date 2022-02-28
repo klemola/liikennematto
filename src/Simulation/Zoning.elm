@@ -3,11 +3,12 @@ module Simulation.Zoning exposing (generateLot, validateLots)
 import Data.Lots exposing (allLots)
 import Dict
 import Maybe.Extra as Maybe
+import Model.Cell as Cell exposing (Anchor, Cell)
 import Model.Entity as Entity
 import Model.Geometry exposing (orthogonalDirections)
-import Model.Lot as Lot exposing (Anchor, Lot, NewLot)
+import Model.Lot as Lot exposing (Lot, NewLot)
 import Model.Tile as Tile
-import Model.Tilemap as Tilemap exposing (Cell, Tilemap)
+import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.World as World exposing (World)
 import Random
 import Random.List
@@ -54,7 +55,7 @@ attemptBuildLot world seed newLot =
                             Tile.isBasicRoad tile
                                 && not (List.member newLot.drivewayExit (Tile.potentialConnections tile))
                         then
-                            Lot.createAnchor newLot cell
+                            Lot.connectToCell newLot cell
                                 |> Maybe.andThen (validateAnchor newLot world)
 
                         else
@@ -81,7 +82,7 @@ validateAnchor newLot world anchor =
     in
     if
         World.isEmptyArea lotBoundingBox world
-            && not (World.hasLotAnchor anchor.cell world)
+            && not (World.hasLotAnchor anchor.from world)
             && isNotAtTheEndOfARoad world anchor
     then
         Just anchor
@@ -96,7 +97,7 @@ isNotAtTheEndOfARoad world anchor =
         |> List.all
             (\orthogonalDirection ->
                 case
-                    Tilemap.nextOrthogonalCell orthogonalDirection anchor.cell
+                    Cell.nextOrthogonalCell orthogonalDirection anchor.from
                         |> Maybe.andThen (Tilemap.tileAt world.tilemap)
                 of
                     Just neighbor ->
@@ -137,7 +138,7 @@ validateLots changedCells world =
 
 hasValidAnchorCell : Tilemap -> Lot -> Bool
 hasValidAnchorCell tilemap lot =
-    case Tilemap.tileAt tilemap lot.anchor.cell of
+    case Tilemap.tileAt tilemap lot.anchor.from of
         Just tile ->
             Tile.isBasicRoad tile
 

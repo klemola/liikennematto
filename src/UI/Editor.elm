@@ -10,10 +10,11 @@ import Element.Border as Border
 import Element.Events as Events
 import Maybe.Extra as Maybe
 import Message exposing (Message(..))
+import Model.Cell as Cell exposing (Cell)
 import Model.Liikennematto exposing (Liikennematto, Tool(..))
 import Model.RenderCache as RenderCache exposing (refreshTilemapCache)
 import Model.Tile as Tile
-import Model.Tilemap as Tilemap exposing (Cell)
+import Model.Tilemap as Tilemap
 import Model.World as World exposing (World)
 import Render
 import Task
@@ -148,11 +149,8 @@ overlay world tool =
                 |> floor
                 |> Element.px
 
-        rg =
-            List.range 1 Tilemap.rowsAndColumnsAmount
-
         cellElement x y =
-            case Tilemap.cellFromCoordinates ( x, y ) of
+            case Cell.fromCoordinates ( x, y ) of
                 Just cell ->
                     tileOverlay
                         { glowColor =
@@ -172,9 +170,13 @@ overlay world tool =
         rows =
             List.map
                 (\y ->
-                    Element.row [] (List.map (\x -> cellElement x y) rg)
+                    Element.row []
+                        (List.map
+                            (\x -> cellElement x y)
+                            (List.range 1 Cell.verticalCellsAmount)
+                        )
                 )
-                rg
+                (List.range 1 Cell.horizontalCellsAmount)
 
         highlight =
             case tool of

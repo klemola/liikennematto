@@ -12,13 +12,11 @@ module Model.Tile exposing
     , isIntersection
     , new
     , potentialConnections
-    , tileSize
     , transitionTimer
     )
 
 import Duration exposing (Duration)
 import FSM exposing (FSM, State)
-import Length exposing (Length)
 import Model.Geometry
     exposing
         ( OrthogonalDirection(..)
@@ -26,11 +24,6 @@ import Model.Geometry
         , orthogonalDirections
         )
 import Set exposing (Set)
-
-
-tileSize : Length
-tileSize =
-    Length.meters 16
 
 
 type alias Tile =
