@@ -1,14 +1,14 @@
-module Simulation.Zoning exposing (generateLot, validateLots)
+module Simulation.Zoning exposing (generateLot, removeInvalidLots)
 
 import Data.Lots exposing (allLots)
 import Dict
 import Maybe.Extra as Maybe
-import Model.Cell as Cell exposing (Anchor, Cell)
+import Model.Cell as Cell exposing (Cell)
 import Model.Entity as Entity
-import Model.Geometry exposing (orthogonalDirections)
+import Model.Geometry exposing (oppositeOrthogonalDirection, orthogonalDirections)
 import Model.Lot as Lot exposing (Lot, NewLot)
 import Model.Tile as Tile
-import Model.Tilemap as Tilemap exposing (Tilemap)
+import Model.Tilemap as Tilemap
 import Model.World as World exposing (World)
 import Random
 import Random.List
@@ -44,10 +44,10 @@ generateLot world seed =
     ( nextWorld, nextSeed )
 
 
-attemptBuildLot : World -> Random.Seed -> NewLot -> Maybe Lot
+attemptBuildLot : World -> Random.Seed -> NewLot -> Maybe ( Lot, Cell )
 attemptBuildLot world seed newLot =
     let
-        anchors =
+        anchorOptions =
             world.tilemap
                 |> Tilemap.toList
                     (\cell tile ->
@@ -55,8 +55,7 @@ attemptBuildLot world seed newLot =
                             Tile.isBasicRoad tile
                                 && not (List.member newLot.drivewayExit (Tile.potentialConnections tile))
                         then
-                            Lot.connectToCell newLot cell
-                                |> Maybe.andThen (validateAnchor newLot world)
+                            validateAnchor newLot world cell
 
                         else
                             Nothing
@@ -64,17 +63,20 @@ attemptBuildLot world seed newLot =
                 |> Maybe.values
 
         ( shuffledAnchors, _ ) =
-            Random.step (Random.List.shuffle anchors) seed
+            Random.step (Random.List.shuffle anchorOptions) seed
 
         nextLotId =
             Entity.nextId world.lots
     in
     shuffledAnchors
         |> List.head
-        |> Maybe.map (Lot.build nextLotId newLot)
+        |> Maybe.map
+            (\anchor ->
+                ( Lot.build nextLotId newLot anchor, anchor )
+            )
 
 
-validateAnchor : NewLot -> World -> Anchor -> Maybe Anchor
+validateAnchor : NewLot -> World -> Cell -> Maybe Cell
 validateAnchor newLot world anchor =
     let
         lotBoundingBox =
@@ -82,7 +84,7 @@ validateAnchor newLot world anchor =
     in
     if
         World.isEmptyArea lotBoundingBox world
-            && not (World.hasLotAnchor anchor.from world)
+            && not (Tilemap.hasAnchor world.tilemap anchor)
             && isNotAtTheEndOfARoad world anchor
     then
         Just anchor
@@ -91,13 +93,13 @@ validateAnchor newLot world anchor =
         Nothing
 
 
-isNotAtTheEndOfARoad : World -> Anchor -> Bool
+isNotAtTheEndOfARoad : World -> Cell -> Bool
 isNotAtTheEndOfARoad world anchor =
     orthogonalDirections
         |> List.all
             (\orthogonalDirection ->
                 case
-                    Cell.nextOrthogonalCell orthogonalDirection anchor.from
+                    Cell.nextOrthogonalCell orthogonalDirection anchor
                         |> Maybe.andThen (Tilemap.tileAt world.tilemap)
                 of
                     Just neighbor ->
@@ -108,39 +110,53 @@ isNotAtTheEndOfARoad world anchor =
             )
 
 
-addLot : World -> Lot -> World
-addLot world lot =
+addLot : World -> ( Lot, Cell ) -> World
+addLot world ( lot, anchor ) =
     let
         worldWithlot =
-            World.addLot lot world
+            { world
+                | lots = Dict.insert lot.id lot world.lots
+                , tilemap =
+                    Tilemap.addAnchor anchor
+                        lot.id
+                        (oppositeOrthogonalDirection lot.drivewayExit)
+                        world.tilemap
+            }
     in
     worldWithlot
         |> Infrastructure.connectLotToRoadNetwork
         |> Traffic.addLotResident lot.id lot
 
 
-validateLots : List Cell -> World -> World
-validateLots changedCells world =
+removeInvalidLots : List Cell -> World -> World
+removeInvalidLots changedCells world =
+    let
+        changedAnchorlotIds =
+            List.filterMap (Tilemap.anchorAt world.tilemap >> Maybe.map Tuple.first)
+                changedCells
+
+        _ =
+            Debug.log "changedCells" changedCells
+    in
     Dict.foldl
+        -- Room for improvement: add a QuadTree lookup for lots and remove lots based on Cell BB overlap
         (\lotId lot acc ->
-            if
-                hasValidAnchorCell world.tilemap lot
-                    && List.all (\cell -> not (Lot.inBounds cell lot)) changedCells
-            then
-                acc
+            let
+                lotOverlapsWithRoad =
+                    List.any (\cell -> Lot.inBounds cell lot) changedCells
+
+                lotAnchorWasRemoved =
+                    List.any ((==) lotId) changedAnchorlotIds
+            in
+            if lotOverlapsWithRoad || lotAnchorWasRemoved then
+                let
+                    _ =
+                        Debug.log "remove" lotId
+                in
+                World.removeLot lotId acc
 
             else
-                World.removeLot lotId acc
+                acc
         )
         world
         world.lots
-
-
-hasValidAnchorCell : Tilemap -> Lot -> Bool
-hasValidAnchorCell tilemap lot =
-    case Tilemap.tileAt tilemap lot.anchor.from of
-        Just tile ->
-            Tile.isBasicRoad tile
-
-        Nothing ->
-            False

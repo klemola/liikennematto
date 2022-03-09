@@ -25,7 +25,6 @@ import Model.Geometry as Geometry
         , orthogonalDirectionToLmDirection
         )
 import Model.Lookup exposing (roadNetworkLookup)
-import Model.Lot exposing (Lot)
 import Model.RoadNetwork as RoadNetwork
     exposing
         ( Connection
@@ -101,7 +100,7 @@ updateRoadNetwork world =
 
 
 buildRoadNetwork : World -> ( RoadNetwork, TrafficLights )
-buildRoadNetwork { tilemap, lots, trafficLights } =
+buildRoadNetwork { tilemap, trafficLights } =
     let
         tilePriority ( _, tile ) =
             if Tile.isDeadend tile then
@@ -116,7 +115,6 @@ buildRoadNetwork { tilemap, lots, trafficLights } =
         nodes =
             createConnections
                 { tilemap = tilemap
-                , lots = lots
                 , nodes = Dict.empty
                 , remainingTiles =
                     tilemap
@@ -145,12 +143,11 @@ type alias NodesMemo =
 
 createConnections :
     { tilemap : Tilemap
-    , lots : Dict Int Lot
     , nodes : NodesMemo
     , remainingTiles : List ( Cell, Tile )
     }
     -> NodesMemo
-createConnections { nodes, tilemap, remainingTiles, lots } =
+createConnections { nodes, tilemap, remainingTiles } =
     case remainingTiles of
         [] ->
             nodes
@@ -158,7 +155,7 @@ createConnections { nodes, tilemap, remainingTiles, lots } =
         ( cell, tile ) :: otherTiles ->
             let
                 connectionsInTile =
-                    toConnections tilemap cell tile lots
+                    toConnections tilemap cell tile
 
                 maybeCreateNode nodeSpec currentNodes =
                     let
@@ -174,7 +171,6 @@ createConnections { nodes, tilemap, remainingTiles, lots } =
             in
             createConnections
                 { tilemap = tilemap
-                , lots = lots
                 , nodes =
                     connectionsInTile
                         |> List.foldl maybeCreateNode nodes
@@ -182,10 +178,10 @@ createConnections { nodes, tilemap, remainingTiles, lots } =
                 }
 
 
-toConnections : Tilemap -> Cell -> Tile -> Dict Id Lot -> List Connection
-toConnections tilemap cell tile lots =
+toConnections : Tilemap -> Cell -> Tile -> List Connection
+toConnections tilemap cell tile =
     if Tile.isBasicRoad tile then
-        lotConnections cell tile lots
+        lotConnections cell tile tilemap
 
     else if Tile.isDeadend tile then
         Tile.potentialConnections tile
@@ -200,24 +196,21 @@ toConnections tilemap cell tile lots =
             |> List.concatMap (connectionsByTileEntryDirection tilemap cell tile)
 
 
-lotConnections : Cell -> Tile -> Dict Id Lot -> List Connection
-lotConnections cell tile lots =
-    case Dict.find (\_ lot -> lot.anchor.from == cell) lots of
-        Just ( id, lot ) ->
+lotConnections : Cell -> Tile -> Tilemap -> List Connection
+lotConnections cell tile tilemap =
+    case Tilemap.anchorAt tilemap cell of
+        Just ( id, direction ) ->
             let
+                anchorDirection =
+                    orthogonalDirectionToLmDirection direction
+
                 trafficDirection =
-                    lot.anchor.direction
-                        |> orthogonalDirectionToLmDirection
-                        |> Direction2d.rotateClockwise
+                    anchorDirection |> Direction2d.rotateClockwise
 
                 ( posA, posB ) =
                     laneCenterPositionsByDirection cell trafficDirection
 
-                anchorDirection =
-                    lot.anchor.direction
-                        |> orthogonalDirectionToLmDirection
-
-                ( position, direction ) =
+                ( position, lotEntryDirection ) =
                     if anchorDirection == Direction2d.rotateClockwise trafficDirection then
                         ( posA, trafficDirection )
 
@@ -226,7 +219,7 @@ lotConnections cell tile lots =
             in
             [ { kind = LotEntry
               , position = position
-              , direction = direction
+              , direction = lotEntryDirection
               , cell = cell
               , tile = tile
               , trafficControl = None

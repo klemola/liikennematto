@@ -1,9 +1,7 @@
 module Model.World exposing
     ( World
-    , addLot
     , empty
     , hasLot
-    , hasLotAnchor
     , isEmptyArea
     , removeCar
     , removeLot
@@ -64,11 +62,6 @@ hasLot cell { lots } =
     List.any (Lot.inBounds cell) (Dict.values lots)
 
 
-hasLotAnchor : Cell -> World -> Bool
-hasLotAnchor cell { lots } =
-    List.any (\lot -> lot.anchor.from == cell) (Dict.values lots)
-
-
 isEmptyArea : LMBoundingBox2d -> World -> Bool
 isEmptyArea testAreaBB world =
     let
@@ -98,11 +91,6 @@ removeCar carId world =
     { world | cars = Dict.remove carId world.cars }
 
 
-addLot : Lot -> World -> World
-addLot lot world =
-    { world | lots = Dict.insert lot.id lot world.lots }
-
-
 removeLot : Id -> World -> World
 removeLot lotId world =
     let
@@ -128,5 +116,6 @@ removeLot lotId world =
     in
     { world
         | lots = Dict.remove lotId world.lots
+        , tilemap = Tilemap.removeAnchor lotId world.tilemap
         , cars = nextCars
     }

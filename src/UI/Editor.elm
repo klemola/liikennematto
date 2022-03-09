@@ -90,19 +90,19 @@ update msg model =
                 { world } =
                     model
 
-                ( nextTilemap, tileActions, changedCells ) =
+                tilemapUpdateResult =
                     Tilemap.update delta world.tilemap
 
                 nextWorld =
-                    { world | tilemap = nextTilemap }
+                    { world | tilemap = tilemapUpdateResult.tilemap }
 
                 ( nextRenderCache, tilemapChangedEffects ) =
-                    if List.isEmpty changedCells then
+                    if List.isEmpty tilemapUpdateResult.changedCells then
                         ( model.renderCache, Cmd.none )
 
                     else
-                        ( refreshTilemapCache nextTilemap model.renderCache
-                        , changedCells
+                        ( refreshTilemapCache tilemapUpdateResult.tilemap model.renderCache
+                        , tilemapUpdateResult.changedCells
                             |> Task.succeed
                             |> Task.perform TilemapChanged
                         )
@@ -111,7 +111,7 @@ update msg model =
                 | world = nextWorld
                 , renderCache = nextRenderCache
               }
-            , Cmd.batch (tilemapChangedEffects :: tileActionsToCmds tileActions)
+            , Cmd.batch (tilemapChangedEffects :: tileActionsToCmds tilemapUpdateResult.actions)
             )
 
         ResetWorld ->
