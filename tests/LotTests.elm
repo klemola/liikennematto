@@ -13,13 +13,12 @@ twoByTwoLot =
     let
         newLot =
             { kind = Lot.ResidentialSingle1
-            , drivewayExit = Down
+            , drivewayExit = Right
             , width = Cell.size |> Quantity.multiplyBy 2
             , height = Cell.size |> Quantity.multiplyBy 2
             }
     in
-    Cell.fromCoordinates ( 1, 3 )
-        |> Maybe.andThen (Lot.connectToCell newLot)
+    Cell.fromCoordinates ( 3, 2 )
         |> Maybe.map (Lot.build 1 newLot)
 
 
@@ -28,13 +27,12 @@ threeByThreeLot =
     let
         newLot =
             { kind = Lot.School
-            , drivewayExit = Down
+            , drivewayExit = Left
             , width = Cell.size |> Quantity.multiplyBy 3
             , height = Cell.size |> Quantity.multiplyBy 3
             }
     in
-    Cell.fromCoordinates ( 1, 2 )
-        |> Maybe.andThen (Lot.connectToCell newLot)
+    Cell.fromCoordinates ( 1, 3 )
         |> Maybe.map (Lot.build 2 newLot)
 
 
@@ -63,7 +61,7 @@ suite =
             , test
                 "validates if a cell is *NOT* in lot's bounds for 3x3 lot"
                 (\_ ->
-                    Maybe.map2 Lot.inBounds (Cell.fromCoordinates ( 4, 2 )) threeByThreeLot
+                    Maybe.map2 Lot.inBounds (Cell.fromCoordinates ( 5, 2 )) threeByThreeLot
                         |> Maybe.withDefault True
                         |> Expect.false "Expected the cell to be out of the lot's bounds"
                 )

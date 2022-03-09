@@ -29,7 +29,6 @@ twoByTwoLot =
             }
     in
     Cell.fromCoordinates ( 1, 8 )
-        |> Maybe.andThen (Lot.connectToCell newLot)
         |> Maybe.map (Lot.build 1 newLot)
 
 

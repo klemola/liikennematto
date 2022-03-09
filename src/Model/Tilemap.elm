@@ -1,13 +1,17 @@
 module Model.Tilemap exposing
     ( Tilemap
+    , addAnchor
     , addTile
+    , anchorAt
     , boundingBox
     , canBuildRoadAt
     , empty
     , exists
+    , hasAnchor
     , inBounds
     , intersects
     , mapSize
+    , removeAnchor
     , removeTile
     , size
     , tileAt
@@ -18,11 +22,14 @@ module Model.Tilemap exposing
 import Array exposing (Array)
 import BoundingBox2d
 import Common
+import Dict exposing (Dict)
+import Dict.Extra as Dict
 import Duration exposing (Duration)
 import FSM
 import Length exposing (Length)
 import Maybe.Extra as Maybe
-import Model.Cell as Cell exposing (Cell)
+import Model.Cell as Cell exposing (Cell, CellCoordinates)
+import Model.Entity exposing (Id)
 import Model.Geometry
     exposing
         ( DiagonalDirection(..)
@@ -42,7 +49,10 @@ import Quantity
 
 
 type Tilemap
-    = Tilemap (Array (Maybe Tile))
+    = Tilemap
+        { cells : Array (Maybe Tile)
+        , anchors : Dict CellCoordinates ( Id, OrthogonalDirection )
+        }
 
 
 mapSize : Length
@@ -62,7 +72,10 @@ empty =
         arrSize =
             Cell.horizontalCellsAmount * Cell.verticalCellsAmount
     in
-    Tilemap (Array.initialize arrSize (always Nothing))
+    Tilemap
+        { cells = Array.initialize arrSize (always Nothing)
+        , anchors = Dict.empty
+        }
 
 
 tileAt : Tilemap -> Cell -> Maybe Tile
@@ -71,8 +84,18 @@ tileAt (Tilemap tilemapContents) cell =
         idx =
             indexFromCell cell
     in
-    Array.get idx tilemapContents
+    Array.get idx tilemapContents.cells
         |> Maybe.andThen identity
+
+
+anchorAt : Tilemap -> Cell -> Maybe ( Id, OrthogonalDirection )
+anchorAt (Tilemap tilemapContents) cell =
+    Dict.get (Cell.coordinates cell) tilemapContents.anchors
+
+
+hasAnchor : Tilemap -> Cell -> Bool
+hasAnchor (Tilemap tilemapContents) cell =
+    Dict.member (Cell.coordinates cell) tilemapContents.anchors
 
 
 inBounds : LMBoundingBox2d -> Bool
@@ -131,7 +154,7 @@ toList mapperFn (Tilemap tilemapContents) =
                     }
                 )
                 initialAcc
-                tilemapContents
+                tilemapContents.cells
     in
     mappedAcc.acc
 
@@ -148,7 +171,7 @@ size (Tilemap tilemapContents) =
                     count
         )
         0
-        tilemapContents
+        tilemapContents.cells
 
 
 updateCell : Cell -> Tile -> Tilemap -> Tilemap
@@ -157,7 +180,10 @@ updateCell cell tile (Tilemap tilemapContents) =
         idx =
             indexFromCell cell
     in
-    Tilemap (tilemapContents |> Array.set idx (Just tile))
+    Tilemap
+        { cells = tilemapContents.cells |> Array.set idx (Just tile)
+        , anchors = tilemapContents.anchors
+        }
 
 
 cellFromIndex : Int -> Maybe Cell
@@ -197,52 +223,62 @@ indexFromCell cell =
 
 
 type alias TilemapUpdate =
-    { tilemap : Array (Maybe Tile)
+    { nextCells : Array (Maybe Tile)
     , actions : List Tile.Action
     , emptiedIndices : List Int
     , changedIndices : List Int
     }
 
 
-update : Duration -> Tilemap -> ( Tilemap, List Tile.Action, List Cell )
+type alias TilemapUpdateResult =
+    { tilemap : Tilemap
+    , actions : List Tile.Action
+    , changedCells : List Cell
+    }
+
+
+update : Duration -> Tilemap -> TilemapUpdateResult
 update delta tilemap =
     let
         (Tilemap currentTilemap) =
             tilemap
 
-        tilemapUpdate =
+        cellsUpdate =
             Array.foldl
                 (maybeUpdateTile delta)
-                { tilemap = Array.empty
+                { nextCells = Array.empty
                 , actions = []
                 , emptiedIndices = []
                 , changedIndices = []
                 }
-                currentTilemap
+                currentTilemap.cells
 
         nextTilemap =
             List.foldl
                 (\idx acc ->
-                    let
-                        maybeCell =
-                            cellFromIndex idx
-                    in
-                    case maybeCell of
+                    case cellFromIndex idx of
                         Just cell ->
                             updateNeighborCells cell acc
 
                         Nothing ->
                             acc
                 )
-                (Tilemap tilemapUpdate.tilemap)
-                tilemapUpdate.emptiedIndices
+                (Tilemap
+                    { cells = cellsUpdate.nextCells
+                    , anchors = currentTilemap.anchors
+                    }
+                )
+                cellsUpdate.emptiedIndices
 
         changedCells =
-            tilemapUpdate.changedIndices
+            cellsUpdate.changedIndices
                 |> List.map cellFromIndex
                 |> Maybe.values
     in
-    ( nextTilemap, tilemapUpdate.actions, changedCells )
+    { tilemap = nextTilemap
+    , actions = cellsUpdate.actions
+    , changedCells = changedCells
+    }
 
 
 maybeUpdateTile : Duration -> Maybe Tile -> TilemapUpdate -> TilemapUpdate
@@ -252,7 +288,7 @@ maybeUpdateTile delta maybeTile tilemapUpdate =
             updateTileFSM delta tile tilemapUpdate
 
         Nothing ->
-            { tilemap = tilemapUpdate.tilemap |> Array.push Nothing
+            { nextCells = tilemapUpdate.nextCells |> Array.push Nothing
             , actions = tilemapUpdate.actions
             , emptiedIndices = tilemapUpdate.emptiedIndices
             , changedIndices = tilemapUpdate.changedIndices
@@ -263,7 +299,7 @@ updateTileFSM : Duration -> Tile -> TilemapUpdate -> TilemapUpdate
 updateTileFSM delta tile tilemapUpdate =
     let
         idx =
-            Array.length tilemapUpdate.tilemap
+            Array.length tilemapUpdate.nextCells
 
         ( nextFSM, tileActions ) =
             FSM.updateWithoutContext delta tile.fsm
@@ -295,7 +331,7 @@ updateTileFSM delta tile tilemapUpdate =
             else
                 tilemapUpdate.changedIndices
     in
-    { tilemap = tilemapUpdate.tilemap |> Array.push nextTile
+    { nextCells = tilemapUpdate.nextCells |> Array.push nextTile
     , actions = tilemapUpdate.actions ++ tileActions
     , emptiedIndices = nextEmptiedIndices
     , changedIndices = nextChangedIndices
@@ -355,6 +391,29 @@ updateNeighborCells origin tilemap =
                 updateCell changedCell nextTile acc
             )
             tilemap
+
+
+addAnchor : Cell -> Id -> OrthogonalDirection -> Tilemap -> Tilemap
+addAnchor anchor lotId anchorDirection (Tilemap tilemapContents) =
+    Tilemap
+        { anchors =
+            Dict.insert
+                (Cell.coordinates anchor)
+                ( lotId, anchorDirection )
+                tilemapContents.anchors
+        , cells = tilemapContents.cells
+        }
+
+
+removeAnchor : Id -> Tilemap -> Tilemap
+removeAnchor lotId (Tilemap tilemapContents) =
+    Tilemap
+        { anchors =
+            Dict.filter
+                (\_ ( anchorLotId, _ ) -> anchorLotId /= lotId)
+                tilemapContents.anchors
+        , cells = tilemapContents.cells
+        }
 
 
 nextOrthogonalTile : OrthogonalDirection -> Cell -> Tilemap -> Maybe ( Cell, Tile )

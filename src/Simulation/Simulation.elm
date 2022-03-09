@@ -68,7 +68,7 @@ update msg model =
             let
                 nextWorld =
                     model.world
-                        |> Zoning.validateLots tilemapChange
+                        |> Zoning.removeInvalidLots tilemapChange
                         |> Infrastructure.updateRoadNetwork
                         |> Traffic.rerouteCarsIfNeeded
             in

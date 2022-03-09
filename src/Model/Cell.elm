@@ -1,6 +1,5 @@
 module Model.Cell exposing
-    ( Anchor
-    , Cell
+    ( Cell
     , CellCoordinates
     , bottomLeftCorner
     , boundingBox
@@ -36,14 +35,6 @@ type Cell
 
 type alias CellCoordinates =
     ( Int, Int )
-
-
-type alias Anchor =
-    -- connects two Cells with a direction of travel
-    { from : Cell
-    , to : Cell
-    , direction : OrthogonalDirection
-    }
 
 
 horizontalCellsAmount : Int
