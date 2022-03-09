@@ -134,9 +134,6 @@ removeInvalidLots changedCells world =
         changedAnchorlotIds =
             List.filterMap (Tilemap.anchorAt world.tilemap >> Maybe.map Tuple.first)
                 changedCells
-
-        _ =
-            Debug.log "changedCells" changedCells
     in
     Dict.foldl
         -- Room for improvement: add a QuadTree lookup for lots and remove lots based on Cell BB overlap
@@ -149,10 +146,6 @@ removeInvalidLots changedCells world =
                     List.any ((==) lotId) changedAnchorlotIds
             in
             if lotOverlapsWithRoad || lotAnchorWasRemoved then
-                let
-                    _ =
-                        Debug.log "remove" lotId
-                in
                 World.removeLot lotId acc
 
             else

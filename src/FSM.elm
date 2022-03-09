@@ -297,7 +297,7 @@ transitionTo stateId (FSM fsm) =
         Nothing ->
             let
                 (StateId fromState) =
-                    stateId
+                    state.id
 
                 (StateId toState) =
                     stateId

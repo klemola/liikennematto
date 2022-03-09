@@ -4,6 +4,7 @@ module Model.Tile exposing
     , TileKind
     , TileOperation(..)
     , TileState(..)
+    , attemptRemove
     , chooseTileKind
     , isBasicRoad
     , isBuilt
@@ -13,6 +14,7 @@ module Model.Tile exposing
     , new
     , potentialConnections
     , transitionTimer
+    , updateTileKind
     )
 
 import Duration exposing (Duration)
@@ -37,9 +39,8 @@ type alias TileKind =
 
 
 type TileOperation
-    = Add
-    | Remove
-    | Change
+    = BuildInstantly
+    | Add
 
 
 type alias TileFSM =
@@ -53,6 +54,7 @@ type Action
 type TileState
     = Constructing
     | Built
+    | Changing
     | Removing
     | Removed
 
@@ -68,6 +70,27 @@ new kind op =
       }
     , initialActions
     )
+
+
+attemptRemove : Tile -> ( Tile, List Action )
+attemptRemove tile =
+    case FSM.transitionTo (FSM.getId removing) tile.fsm of
+        Ok ( nextFSM, actions ) ->
+            ( Tile tile.kind nextFSM, actions )
+
+        Err _ ->
+            ( tile, [] )
+
+
+updateTileKind : TileKind -> Tile -> ( Tile, List Action )
+updateTileKind nextKind tile =
+    case FSM.transitionTo (FSM.getId changing) tile.fsm of
+        Ok ( nextFSM, actions ) ->
+            ( Tile nextKind nextFSM, actions )
+
+        Err _ ->
+            -- in
+            ( tile, [] )
 
 
 isBuilt : Tile -> Bool
@@ -96,6 +119,10 @@ constructing =
                 (\_ -> built)
                 [ PlayAudio "B" ]
                 (FSM.Timer transitionTimer)
+            , FSM.createTransition
+                (\_ -> changing)
+                []
+                FSM.Direct
             ]
         , entryActions = [ PlayAudio "A" ]
         , exitActions = []
@@ -112,6 +139,30 @@ built =
                 (\_ -> removing)
                 []
                 FSM.Direct
+            , FSM.createTransition
+                (\_ -> changing)
+                []
+                FSM.Direct
+            ]
+        , entryActions = []
+        , exitActions = []
+        }
+
+
+changing : State TileState Action ()
+changing =
+    FSM.createState
+        { id = FSM.createStateId "tile-changing"
+        , kind = Changing
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> removing)
+                []
+                FSM.Direct
+            , FSM.createTransition
+                (\_ -> built)
+                []
+                (FSM.Condition (\_ state -> state == Changing))
             ]
         , entryActions = []
         , exitActions = []
@@ -150,15 +201,11 @@ initializeFSM op =
     let
         initialState =
             case op of
+                BuildInstantly ->
+                    built
+
                 Add ->
                     constructing
-
-                Remove ->
-                    removing
-
-                Change ->
-                    -- the "Change" operation should not have a transition; skip straight to the idle state
-                    built
     in
     FSM.initialize initialState
 

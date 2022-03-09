@@ -8,18 +8,11 @@ import Simulation.Infrastructure as Infrastructure
 
 tilemapFromCoordinates : List ( Int, Int ) -> Tilemap
 tilemapFromCoordinates cellCoordinates =
-    List.foldl
-        (\coords acc ->
-            case Cell.fromCoordinates coords of
-                Just cell ->
-                    -- TODO: check if tile FSM actions can be ignored when creating fixtures
-                    Tilemap.addTile cell acc |> Tuple.first
-
-                Nothing ->
-                    acc
-        )
-        Tilemap.empty
-        cellCoordinates
+    let
+        cells =
+            List.filterMap Cell.fromCoordinates cellCoordinates
+    in
+    Tilemap.fromCells cells
 
 
 worldFromTilemap : Tilemap -> World
