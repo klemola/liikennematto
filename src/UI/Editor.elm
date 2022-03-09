@@ -55,7 +55,7 @@ update msg model =
                     model
 
                 ( nextTilemap, tileActions ) =
-                    world.tilemap |> Tilemap.addTile cell
+                    Tilemap.addTile cell world.tilemap
 
                 nextWorld =
                     { world | tilemap = nextTilemap }
@@ -73,7 +73,7 @@ update msg model =
                     model
 
                 ( nextTilemap, tileActions ) =
-                    model.world.tilemap |> Tilemap.removeTile cell
+                    Tilemap.removeTile cell model.world.tilemap
 
                 nextWorld =
                     { world | tilemap = nextTilemap }

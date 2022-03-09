@@ -7,6 +7,7 @@ module Model.Tilemap exposing
     , canBuildRoadAt
     , empty
     , exists
+    , fromCells
     , hasAnchor
     , inBounds
     , intersects
@@ -76,6 +77,29 @@ empty =
         { cells = Array.initialize arrSize (always Nothing)
         , anchors = Dict.empty
         }
+
+
+fromCells : List Cell -> Tilemap
+fromCells cells =
+    fromCellsHelper cells empty
+
+
+fromCellsHelper : List Cell -> Tilemap -> Tilemap
+fromCellsHelper remainingCells tilemap =
+    case remainingCells of
+        [] ->
+            tilemap
+
+        cell :: others ->
+            let
+                tilemapUpdateResult =
+                    tilemap
+                        |> applyTilemapOperation cell Tile.BuildInstantly
+                        |> Tuple.first
+                        -- run a FSM update cycle to make sure that tiles are not transitioning
+                        |> update (Duration.milliseconds 1000)
+            in
+            fromCellsHelper others tilemapUpdateResult.tilemap
 
 
 tileAt : Tilemap -> Cell -> Maybe Tile
@@ -345,7 +369,21 @@ addTile origin tilemap =
 
 removeTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )
 removeTile origin tilemap =
-    applyTilemapOperation origin Tile.Remove tilemap
+    case
+        tileAt tilemap origin
+            |> Maybe.map Tile.attemptRemove
+    of
+        Just ( tile, actions ) ->
+            let
+                tilemapWithOriginChange =
+                    updateCell origin tile tilemap
+            in
+            ( updateNeighborCells origin tilemapWithOriginChange
+            , actions
+            )
+
+        Nothing ->
+            ( tilemap, [] )
 
 
 applyTilemapOperation : Cell -> TileOperation -> Tilemap -> ( Tilemap, List Tile.Action )
@@ -378,15 +416,14 @@ updateNeighborCells origin tilemap =
     potentiallyChangedCells
         |> Maybe.values
         |> List.foldl
-            (\( changedCell, _ ) acc ->
+            (\( changedCell, tile ) acc ->
                 let
                     nextTileKind =
                         chooseTile acc changedCell
 
-                    -- "reset" the tile & FSM to avoid glitchy transitions
                     -- FSM actions are ignored
                     ( nextTile, _ ) =
-                        Tile.new nextTileKind Tile.Change
+                        Tile.updateTileKind nextTileKind tile
                 in
                 updateCell changedCell nextTile acc
             )
