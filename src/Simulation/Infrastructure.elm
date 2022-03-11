@@ -199,7 +199,7 @@ toConnections tilemap cell tile =
 lotConnections : Cell -> Tile -> Tilemap -> List Connection
 lotConnections cell tile tilemap =
     case Tilemap.anchorAt tilemap cell of
-        Just ( id, direction ) ->
+        Just ( id, direction, _ ) ->
             let
                 anchorDirection =
                     orthogonalDirectionToLmDirection direction

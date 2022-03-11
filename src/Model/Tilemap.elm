@@ -112,9 +112,22 @@ tileAt (Tilemap tilemapContents) cell =
         |> Maybe.andThen identity
 
 
-anchorAt : Tilemap -> Cell -> Maybe ( Id, OrthogonalDirection )
-anchorAt (Tilemap tilemapContents) cell =
-    Dict.get (Cell.coordinates cell) tilemapContents.anchors
+anchorAt : Tilemap -> Cell -> Maybe ( Id, OrthogonalDirection, Tile )
+anchorAt tilemap cell =
+    let
+        (Tilemap tilemapContents) =
+            tilemap
+
+        anchor =
+            Dict.get (Cell.coordinates cell) tilemapContents.anchors
+
+        tile =
+            tileAt tilemap cell
+    in
+    Maybe.map2
+        (\( id, anchorDir ) anchorTile -> ( id, anchorDir, anchorTile ))
+        anchor
+        tile
 
 
 hasAnchor : Tilemap -> Cell -> Bool
@@ -386,6 +399,23 @@ removeTile origin tilemap =
             ( tilemap, [] )
 
 
+setAnchorTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )
+setAnchorTile anchor tilemap =
+    case tileAt tilemap anchor of
+        Just tile ->
+            let
+                anchorTileKind =
+                    chooseTile tilemap anchor
+
+                ( anchorTile, actions ) =
+                    Tile.updateTileKind anchorTileKind tile
+            in
+            ( updateCell anchor anchorTile tilemap, actions )
+
+        Nothing ->
+            ( tilemap, [] )
+
+
 applyTilemapOperation : Cell -> TileOperation -> Tilemap -> ( Tilemap, List Tile.Action )
 applyTilemapOperation origin tileChange tilemap =
     let
@@ -432,14 +462,20 @@ updateNeighborCells origin tilemap =
 
 addAnchor : Cell -> Id -> OrthogonalDirection -> Tilemap -> Tilemap
 addAnchor anchor lotId anchorDirection (Tilemap tilemapContents) =
-    Tilemap
-        { anchors =
+    let
+        nextAnchors =
             Dict.insert
                 (Cell.coordinates anchor)
                 ( lotId, anchorDirection )
                 tilemapContents.anchors
-        , cells = tilemapContents.cells
-        }
+
+        tilemapWithAnchor =
+            Tilemap
+                { anchors = nextAnchors
+                , cells = tilemapContents.cells
+                }
+    in
+    setAnchorTile anchor tilemapWithAnchor |> Tuple.first
 
 
 removeAnchor : Id -> Tilemap -> Tilemap
@@ -490,12 +526,30 @@ chooseTile tilemap origin =
             , right = hasOrthogonalNeighborAt Right origin tilemap
             , down = hasOrthogonalNeighborAt Down origin tilemap
             }
+
+        lotModifier =
+            hasAnchor tilemap origin
     in
-    chooseTileKind orthogonalNeighbors
+    chooseTileKind orthogonalNeighbors lotModifier
 
 
 hasOrthogonalNeighborAt : OrthogonalDirection -> Cell -> Tilemap -> Bool
 hasOrthogonalNeighborAt dir cell tilemap =
+    hasNeighborTileAt dir cell tilemap || hasLotAt dir cell tilemap
+
+
+hasNeighborTileAt : OrthogonalDirection -> Cell -> Tilemap -> Bool
+hasNeighborTileAt dir cell tilemap =
     tilemap
         |> nextOrthogonalTile dir cell
         |> Maybe.isJust
+
+
+hasLotAt : OrthogonalDirection -> Cell -> Tilemap -> Bool
+hasLotAt anchorDir anchor tilemap =
+    case anchorAt tilemap anchor of
+        Just ( _, dir, _ ) ->
+            dir == anchorDir
+
+        Nothing ->
+            False

@@ -56,6 +56,15 @@ roadAsset tileIndex =
         15 ->
             intersectionCrossroads
 
+        23 ->
+            lotEntryTUp
+
+        27 ->
+            lotEntryTLeft
+
+        29 ->
+            lotEntryTRight
+
         _ ->
             defaultRoad
 
@@ -463,6 +472,87 @@ intersectionCrossroads =
     , path
         [ Attributes.fill Colors.gray1CSS
         , Attributes.d "M255.496 30.492l-.025 1.5.025-1.5zm-.025 1.5l.504.008.05-3-.504-.008-.05 3zM224 0c0 17.466 14.007 31.705 31.471 31.991l.05-3C239.694 28.734 227 15.83 227 0h-3zM32 256c0-17.673-14.327-32-32-32v3c16.016 0 29 12.984 29 29h3zm224-32c-17.673 0-32 14.327-32 32h3c0-16.016 12.984-29 29-29v-3zM0 32c17.673 0 32-14.327 32-32h-3c0 16.016-12.984 29-29 29v3z"
+        ]
+        []
+    ]
+
+
+
+--
+-- Lot modifiers
+--
+
+
+lotEntryTUp : List (Svg msg)
+lotEntryTUp =
+    [ path
+        [ Attributes.d "M136 0V16C136 24.8366 143.163 32 152 32H256V224H0V32C8.83656 32 16 24.8366 16 16V0H136Z"
+        , Attributes.fill "#BCA9A9"
+        ]
+        []
+    , path
+        [ Attributes.d "M0 68V188H256V68H0Z"
+        , Attributes.fill "#785E5E"
+        ]
+        []
+    , path
+        [ Attributes.d "M0 227H256V224H0V227ZM136 0V16H139V0H136ZM152 32H256V29H152V32ZM136 16C136 24.8366 143.163 32 152 32V29C144.82 29 139 23.1797 139 16H136ZM16 16V0H13V16H16ZM13 16C13 23.1797 7.1797 29 0 29V32C8.83656 32 16 24.8366 16 16H13Z"
+        , Attributes.fill "#302525"
+        ]
+        []
+    , path
+        [ Attributes.d "M12.8 130.2H38.4V126.2H12.8V130.2ZM64.0001 130.2H89.6001V126.2H64.0001V130.2ZM115.2 130.2H140.8V126.2H115.2V130.2ZM166.4 130.2H192V126.2H166.4V130.2ZM217.6 130.2H243.2V126.2H217.6V130.2Z"
+        , Attributes.fill "#F0F0DD"
+        ]
+        []
+    ]
+
+
+lotEntryTLeft : List (Svg msg)
+lotEntryTLeft =
+    [ path
+        [ Attributes.d "M0 120H16C24.8366 120 32 112.837 32 104L32 0H224L224 256H32C32 247.163 24.8366 240 16 240H0L0 120Z"
+        , Attributes.fill "#BCA9A9"
+        ]
+        []
+    , path
+        [ Attributes.d "M68 256H188V0H68L68 256Z"
+        , Attributes.fill "#785E5E"
+        ]
+        []
+    , path
+        [ Attributes.d "M227 256L227 0H224L224 256H227ZM0 120H16V117H0L0 120ZM32 104L32 0H29L29 104H32ZM16 120C24.8366 120 32 112.837 32 104H29C29 111.18 23.1797 117 16 117V120ZM16 240H0L0 243H16V240ZM16 243C23.1797 243 29 248.82 29 256H32C32 247.163 24.8366 240 16 240V243Z"
+        , Attributes.fill "#302525"
+        ]
+        []
+    , path
+        [ Attributes.d "M130.2 243.2V217.6H126.2V243.2H130.2ZM130.2 192V166.4H126.2V192H130.2ZM130.2 140.8V115.2H126.2L126.2 140.8H130.2ZM130.2 89.5999V63.9999H126.2V89.5999H130.2ZM130.2 38.3999V12.7999H126.2V38.3999H130.2Z"
+        , Attributes.fill "#F0F0DD"
+        ]
+        []
+    ]
+
+
+lotEntryTRight : List (Svg msg)
+lotEntryTRight =
+    [ path
+        [ Attributes.d "M256 120H240C231.163 120 224 112.837 224 104V0H32L32 256H224C224 247.163 231.163 240 240 240H256V120Z"
+        , Attributes.fill "#BCA9A9"
+        ]
+        []
+    , path
+        [ Attributes.d "M188 256H68L68 0H188L188 256Z"
+        , Attributes.fill "#785E5E"
+        ]
+        []
+    , path
+        [ Attributes.d "M29 256L29 0H32L32 256H29ZM256 120H240V117H256V120ZM224 104V0H227V104H224ZM240 120C231.163 120 224 112.837 224 104H227C227 111.18 232.82 117 240 117V120ZM240 240H256V243H240V240ZM240 243C232.82 243 227 248.82 227 256H224C224 247.163 231.163 240 240 240V243Z"
+        , Attributes.fill "#302525"
+        ]
+        []
+    , path
+        [ Attributes.d "M125.8 243.2V217.6H129.8V243.2H125.8ZM125.8 192V166.4H129.8V192H125.8ZM125.8 140.8L125.8 115.2H129.8V140.8H125.8ZM125.8 89.5999V63.9999H129.8V89.5999H125.8ZM125.8 38.3999V12.7999H129.8V38.3999H125.8Z"
+        , Attributes.fill "#F0F0DD"
         ]
         []
     ]
