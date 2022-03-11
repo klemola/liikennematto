@@ -4,7 +4,7 @@ import Data.Lots exposing (allLots)
 import Dict
 import Maybe.Extra as Maybe
 import Model.Cell as Cell exposing (Cell)
-import Model.Entity as Entity
+import Model.Entity as Entity exposing (Id)
 import Model.Geometry exposing (oppositeOrthogonalDirection, orthogonalDirections)
 import Model.Lot as Lot exposing (Lot, NewLot)
 import Model.Tile as Tile
@@ -130,26 +130,36 @@ addLot world ( lot, anchor ) =
 
 removeInvalidLots : List Cell -> World -> World
 removeInvalidLots changedCells world =
-    let
-        changedAnchorlotIds =
-            List.filterMap (Tilemap.anchorAt world.tilemap >> Maybe.map Tuple.first)
-                changedCells
-    in
     Dict.foldl
-        -- Room for improvement: add a QuadTree lookup for lots and remove lots based on Cell BB overlap
-        (\lotId lot acc ->
-            let
-                lotOverlapsWithRoad =
-                    List.any (\cell -> Lot.inBounds cell lot) changedCells
-
-                lotAnchorWasRemoved =
-                    List.any ((==) lotId) changedAnchorlotIds
-            in
-            if lotOverlapsWithRoad || lotAnchorWasRemoved then
-                World.removeLot lotId acc
-
-            else
-                acc
-        )
+        (validateLot changedCells)
         world
         world.lots
+
+
+validateLot : List Cell -> Id -> Lot -> World -> World
+validateLot changedCells lotId lot world =
+    let
+        changedAnchors =
+            List.filterMap (Tilemap.anchorAt world.tilemap)
+                changedCells
+
+        -- Room for improvement: add a QuadTree lookup for lots and remove lots based on Cell BB overlap
+        lotOverlapsWithRoad =
+            List.any (\cell -> Lot.inBounds cell lot) changedCells
+
+        lotAnchorWasRemoved =
+            List.any
+                (\( id, _, tile ) ->
+                    if id == lot.id then
+                        not (Tile.isLotEntry tile)
+
+                    else
+                        False
+                )
+                changedAnchors
+    in
+    if lotOverlapsWithRoad || lotAnchorWasRemoved then
+        World.removeLot lotId world
+
+    else
+        world

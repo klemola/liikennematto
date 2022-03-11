@@ -11,6 +11,7 @@ module Model.Tile exposing
     , isCurve
     , isDeadend
     , isIntersection
+    , isLotEntry
     , new
     , potentialConnections
     , transitionTimer
@@ -89,7 +90,6 @@ updateTileKind nextKind tile =
             ( Tile nextKind nextFSM, actions )
 
         Err _ ->
-            -- in
             ( tile, [] )
 
 
@@ -224,24 +224,31 @@ type alias OrthogonalNeighbors =
     }
 
 
-chooseTileKind : OrthogonalNeighbors -> TileKind
-chooseTileKind neighbors =
-    fourBitBitmask neighbors
+chooseTileKind : OrthogonalNeighbors -> Bool -> TileKind
+chooseTileKind =
+    fiveBitBitmask
 
 
-{-| Calculates tile number (ID) based on surrounding tiles
+{-| Calculates tile number (ID) based on surrounding tiles, with terrain variation taken into account (e.g. Lots)
 
     Up = 2^0 = 1
     Left = 2^1 = 2
     Right = 2^2 = 4
     Down = 2^3 = 8
+    Terrain modifier = 2^4 = 16
 
-    e.g. tile bordered by tiles in Up and Right directions 1*1 + 2*0 + 4*1 + 8*0 = 0101 = 5
+    e.g. tile bordered by tiles in Up, Left and Right directions, with the modifier on
+
+    1*1 + 2*1 + 4*1 + 8*0 + 16 * 1 = 10111 = 23
 
 -}
-fourBitBitmask : OrthogonalNeighbors -> Int
-fourBitBitmask { up, left, right, down } =
-    1 * boolToBinary up + 2 * boolToBinary left + 4 * boolToBinary right + 8 * boolToBinary down
+fiveBitBitmask : OrthogonalNeighbors -> Bool -> Int
+fiveBitBitmask { up, left, right, down } terrainModifier =
+    (1 * boolToBinary up)
+        + (2 * boolToBinary left)
+        + (4 * boolToBinary right)
+        + (8 * boolToBinary down)
+        + (16 * boolToBinary terrainModifier)
 
 
 boolToBinary : Bool -> Int
@@ -393,6 +400,35 @@ isIntersection tile =
     Set.member tile.kind intersectionTiles
 
 
+lotEntryTUp : TileKind
+lotEntryTUp =
+    23
+
+
+lotEntryTLeft : TileKind
+lotEntryTLeft =
+    27
+
+
+lotEntryTRight : TileKind
+lotEntryTRight =
+    29
+
+
+lotEntryTiles : Set TileKind
+lotEntryTiles =
+    Set.fromList
+        [ lotEntryTUp
+        , lotEntryTLeft
+        , lotEntryTRight
+        ]
+
+
+isLotEntry : Tile -> Bool
+isLotEntry tile =
+    Set.member tile.kind lotEntryTiles
+
+
 potentialConnections : Tile -> List OrthogonalDirection
 potentialConnections tile =
     let
@@ -429,16 +465,16 @@ potentialConnections tile =
     else if kind == deadendLeft then
         [ Right ]
 
-    else if kind == intersectionTUp then
+    else if kind == intersectionTUp || kind == lotEntryTUp then
         Up :: crossOrthogonalDirection Up
 
-    else if kind == intersectionTRight then
+    else if kind == intersectionTRight || kind == lotEntryTRight then
         Right :: crossOrthogonalDirection Right
 
     else if kind == intersectionTDown then
         Down :: crossOrthogonalDirection Down
 
-    else if kind == intersectionTLeft then
+    else if kind == intersectionTLeft || kind == lotEntryTLeft then
         Left :: crossOrthogonalDirection Left
 
     else if kind == intersectionCross then
