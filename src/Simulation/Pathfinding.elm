@@ -89,10 +89,7 @@ toNode { direction, origin } { node } =
                 |> Common.angleFromDirection direction target
                 |> Quantity.abs
     in
-    if node.label.kind == LotEntry then
-        Polyline2d.fromVertices [ origin, target ]
-
-    else if node.label.kind == DeadendExit then
+    if node.label.kind == DeadendExit then
         uTurnSpline origin target direction
 
     else if angleDegreesToTarget |> Quantity.lessThan (Angle.radians 0.1) then
@@ -168,6 +165,7 @@ chooseNextConnection seed world car =
             let
                 randomConnectionGenerator =
                     RoadNetwork.getOutgoingConnections nodeCtx
+                        |> List.filterMap (RoadNetwork.findNodeByNodeId world.roadNetwork >> Maybe.andThen discardLotEntry)
                         |> Random.List.choose
                         |> Random.map Tuple.first
 
@@ -175,32 +173,42 @@ chooseNextConnection seed world car =
                     Random.step randomConnectionGenerator seed
 
                 nextCar =
-                    connection
-                        |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
-                        |> Maybe.map
-                            (\nextNodeCtx ->
-                                -- This is a temporary hack to make sure that tight turns can be completed
-                                let
-                                    nodeKind =
-                                        nodeCtx.node.label.kind
-                                in
-                                (if nodeKind == DeadendExit || nodeKind == LaneStart || nodeKind == LotEntry then
-                                    { car
-                                        | orientation = Direction2d.toAngle nodeCtx.node.label.direction
-                                        , position = nodeCtx.node.label.position
-                                    }
+                    case connection of
+                        Just nextNodeCtx ->
+                            -- This is a temporary hack to make sure that tight turns can be completed
+                            let
+                                nodeKind =
+                                    nodeCtx.node.label.kind
 
-                                 else
-                                    car
-                                )
-                                    |> createRoute nextNodeCtx
-                            )
-                        |> Maybe.withDefault car
+                                adjusted =
+                                    if nodeKind == DeadendExit || nodeKind == LaneConnector then
+                                        { car
+                                            | orientation = Direction2d.toAngle nodeCtx.node.label.direction
+                                            , position = nodeCtx.node.label.position
+                                        }
+
+                                    else
+                                        car
+                            in
+                            createRoute nextNodeCtx adjusted
+
+                        Nothing ->
+                            car
             in
             ( nextCar, nextSeed )
 
         _ ->
             ( Car.triggerReroute car, seed )
+
+
+discardLotEntry : RNNodeContext -> Maybe RNNodeContext
+discardLotEntry nodeCtx =
+    case nodeCtx.node.label.kind of
+        LotEntry _ ->
+            Nothing
+
+        _ ->
+            Just nodeCtx
 
 
 restoreRoute : World -> Car -> Car

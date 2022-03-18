@@ -200,7 +200,7 @@ addLotResident lotId lot world =
             Entity.nextId world.cars
 
         homeNode =
-            RoadNetwork.findNodeByLotId world.roadNetwork lotId
+            RoadNetwork.findLotExitByNodeId world.roadNetwork lotId
 
         createCar kind =
             Car.new kind
@@ -223,7 +223,7 @@ moveCarToHome : World -> Car -> Lot -> Car
 moveCarToHome world car home =
     let
         homeNode =
-            car.homeLotId |> Maybe.andThen (RoadNetwork.findNodeByLotId world.roadNetwork)
+            car.homeLotId |> Maybe.andThen (RoadNetwork.findLotExitByNodeId world.roadNetwork)
 
         ( nextFSM, _ ) =
             FSM.reset car.fsm

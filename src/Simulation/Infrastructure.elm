@@ -40,7 +40,7 @@ import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLights)
 import Model.World exposing (World)
 import Point2d
 import Quantity
-import Vector2d
+import Vector2d exposing (Vector2d)
 
 
 
@@ -76,6 +76,52 @@ outerLaneOffset =
     Length.meters 10
 
 
+lotNodeOffset : Length
+lotNodeOffset =
+    -- the offset of lot entry tiles' driveway (vs. center-positioned road)
+    Cell.size |> Quantity.multiplyBy 0.2
+
+
+laneStartOffsetUp : Vector2d Length.Meters coordinates
+laneStartOffsetUp =
+    Vector2d.xy outerLaneOffset Cell.size
+
+
+laneEndOffsetUp : Vector2d Length.Meters coordinates
+laneEndOffsetUp =
+    Vector2d.xy innerLaneOffset Cell.size
+
+
+laneStartOffsetRight : Vector2d Length.Meters coordinates
+laneStartOffsetRight =
+    Vector2d.xy Cell.size innerLaneOffset
+
+
+laneEndOffsetRight : Vector2d Length.Meters coordinates
+laneEndOffsetRight =
+    Vector2d.xy Cell.size outerLaneOffset
+
+
+laneStartOffsetDown : Vector2d Length.Meters coordinates
+laneStartOffsetDown =
+    Vector2d.xy innerLaneOffset Quantity.zero
+
+
+laneEndOffsetDown : Vector2d Length.Meters coordinates
+laneEndOffsetDown =
+    Vector2d.xy outerLaneOffset Quantity.zero
+
+
+laneStartOffsetLeft : Vector2d Length.Meters coordinates
+laneStartOffsetLeft =
+    Vector2d.xy Quantity.zero outerLaneOffset
+
+
+laneEndOffsetLeft : Vector2d Length.Meters coordinates
+laneEndOffsetLeft =
+    Vector2d.xy Quantity.zero innerLaneOffset
+
+
 connectLotToRoadNetwork : World -> World
 connectLotToRoadNetwork =
     -- Room for improvement: re-building the whole roadnetwork when a new lot is added is not optimal
@@ -106,11 +152,14 @@ buildRoadNetwork { tilemap, trafficLights } =
             if Tile.isDeadend tile then
                 0
 
-            else if Tile.isIntersection tile then
+            else if Tile.isLotEntry tile then
                 1
 
-            else
+            else if Tile.isIntersection tile then
                 2
+
+            else
+                3
 
         nodes =
             createConnections
@@ -181,7 +230,7 @@ createConnections { nodes, tilemap, remainingTiles } =
 toConnections : Tilemap -> Cell -> Tile -> List Connection
 toConnections tilemap cell tile =
     if Tile.isBasicRoad tile then
-        lotConnections cell tile tilemap
+        []
 
     else if Tile.isDeadend tile then
         Tile.potentialConnections tile
@@ -194,41 +243,6 @@ toConnections tilemap cell tile =
     else
         Tile.potentialConnections tile
             |> List.concatMap (connectionsByTileEntryDirection tilemap cell tile)
-
-
-lotConnections : Cell -> Tile -> Tilemap -> List Connection
-lotConnections cell tile tilemap =
-    case Tilemap.anchorAt tilemap cell of
-        Just ( id, direction, _ ) ->
-            let
-                anchorDirection =
-                    orthogonalDirectionToLmDirection direction
-
-                trafficDirection =
-                    anchorDirection |> Direction2d.rotateClockwise
-
-                ( posA, posB ) =
-                    laneCenterPositionsByDirection cell trafficDirection
-
-                ( position, lotEntryDirection ) =
-                    if anchorDirection == Direction2d.rotateClockwise trafficDirection then
-                        ( posA, trafficDirection )
-
-                    else
-                        ( posB, Direction2d.reverse trafficDirection )
-            in
-            [ { kind = LotEntry
-              , position = position
-              , direction = lotEntryDirection
-              , cell = cell
-              , tile = tile
-              , trafficControl = None
-              , lotId = Just id
-              }
-            ]
-
-        Nothing ->
-            []
 
 
 deadendConnections : Cell -> Tile -> LMDirection2d -> List Connection
@@ -244,7 +258,6 @@ deadendConnections cell tile trafficDirection =
             , cell = cell
             , tile = tile
             , trafficControl = None
-            , lotId = Nothing
             }
 
         exitConnection =
@@ -254,7 +267,6 @@ deadendConnections cell tile trafficDirection =
             , cell = cell
             , tile = tile
             , trafficControl = None
-            , lotId = Nothing
             }
     in
     [ entryConnection
@@ -290,107 +302,117 @@ connectionsByTileEntryDirection tilemap cell tile direction =
         origin =
             Cell.bottomLeftCorner cell
 
-        isStopgapTile =
-            Cell.nextOrthogonalCell direction cell
-                |> Maybe.andThen (Tilemap.tileAt tilemap)
-                |> Maybe.unwrap False (hasStopgapInbetween tile)
+        anchor =
+            Tilemap.anchorAt tilemap cell
 
-        ( startConnectionKind, endConnectionKind ) =
-            if isStopgapTile then
-                ( Stopgap, Stopgap )
+        startDirection =
+            Geometry.orthogonalDirectionToLmDirection direction
 
-            else
-                ( LaneStart, LaneEnd )
+        endDirection =
+            Direction2d.reverse startDirection
 
-        shift x y =
-            origin |> Point2d.translateBy (Vector2d.xy x y)
+        ( startConnectionKind, endConnectionKind, extraOffset ) =
+            case anchor of
+                Just ( lotId, anchorDirection, _ ) ->
+                    if direction == anchorDirection then
+                        ( LotEntry lotId, LotExit lotId, toLotOffset direction )
+
+                    else
+                        ( LaneConnector, LaneConnector, Vector2d.zero )
+
+                Nothing ->
+                    ( LaneConnector, LaneConnector, Vector2d.zero )
+
+        ( startOffset, endOffset ) =
+            connectionPositionByEntryDirection direction
+
+        startConnectionCell =
+            chooseConnectionCell tilemap tile direction startConnectionKind cell
     in
-    case direction of
+    [ { kind = startConnectionKind
+      , position = origin |> Point2d.translateBy (startOffset |> Vector2d.plus extraOffset)
+      , direction = startDirection
+      , cell = startConnectionCell
+      , tile = tile
+      , trafficControl = None
+      }
+    , { kind = endConnectionKind
+      , position = origin |> Point2d.translateBy (endOffset |> Vector2d.plus extraOffset)
+      , direction = endDirection
+      , cell = cell
+      , tile = tile
+      , trafficControl = None
+      }
+    ]
+
+
+toLotOffset : OrthogonalDirection -> Vector2d Length.Meters coordinates
+toLotOffset anchorDirection =
+    case anchorDirection of
         Up ->
-            [ { kind = startConnectionKind
-              , position = shift outerLaneOffset Cell.size
-              , direction = Geometry.up
-              , cell = cell
-              , tile = tile
-              , trafficControl = None
-              , lotId = Nothing
-              }
-            , { kind = endConnectionKind
-              , position = shift innerLaneOffset Cell.size
-              , direction = Geometry.down
-              , cell = cell
-              , tile = tile
-              , trafficControl = None
-              , lotId = Nothing
-              }
-            ]
+            Vector2d.xy (Quantity.negate lotNodeOffset) Quantity.zero
 
         Right ->
-            [ { kind = startConnectionKind
-              , position = shift Cell.size innerLaneOffset
-              , direction = Geometry.right
-              , cell = cell
-              , tile = tile
-              , trafficControl = None
-              , lotId = Nothing
-              }
-            , { kind = endConnectionKind
-              , position = shift Cell.size outerLaneOffset
-              , direction = Geometry.left
-              , cell = cell
-              , tile = tile
-              , trafficControl = None
-              , lotId = Nothing
-              }
-            ]
-
-        Down ->
-            [ { kind = startConnectionKind
-              , position = shift innerLaneOffset Quantity.zero
-              , direction = Geometry.down
-              , cell = cell
-              , tile = tile
-              , trafficControl = None
-              , lotId = Nothing
-              }
-            , { kind = endConnectionKind
-              , position = shift outerLaneOffset Quantity.zero
-              , direction = Geometry.up
-              , cell = cell
-              , tile = tile
-              , trafficControl = None
-              , lotId = Nothing
-              }
-            ]
+            Vector2d.xy Quantity.zero (Quantity.negate lotNodeOffset)
 
         Left ->
-            [ { kind = startConnectionKind
-              , position = shift Quantity.zero outerLaneOffset
-              , direction = Geometry.left
-              , cell = cell
-              , tile = tile
-              , trafficControl = None
-              , lotId = Nothing
-              }
-            , { kind = endConnectionKind
-              , position = shift Quantity.zero innerLaneOffset
-              , direction = Geometry.right
-              , cell = cell
-              , tile = tile
-              , trafficControl = None
-              , lotId = Nothing
-              }
-            ]
+            Vector2d.xy Quantity.zero (Quantity.negate lotNodeOffset)
+
+        _ ->
+            Vector2d.zero
+
+
+connectionPositionByEntryDirection : OrthogonalDirection -> ( Vector2d Length.Meters coordinates, Vector2d Length.Meters coordinates )
+connectionPositionByEntryDirection direction =
+    case direction of
+        Up ->
+            ( laneStartOffsetUp, laneEndOffsetUp )
+
+        Right ->
+            ( laneStartOffsetRight, laneEndOffsetRight )
+
+        Down ->
+            ( laneStartOffsetDown, laneEndOffsetDown )
+
+        Left ->
+            ( laneStartOffsetLeft, laneEndOffsetLeft )
+
+
+chooseConnectionCell :
+    Tilemap
+    -> Tile
+    -> OrthogonalDirection
+    -> ConnectionKind
+    -> Cell
+    -> Cell
+chooseConnectionCell tilemap tile direction startConnectionKind baseCell =
+    if startConnectionKind /= LaneConnector then
+        baseCell
+
+    else
+        case Cell.nextOrthogonalCell direction baseCell of
+            Just nextCell ->
+                if
+                    Tilemap.tileAt tilemap nextCell
+                        |> Maybe.unwrap False (hasStopgapInbetween tile)
+                then
+                    nextCell
+
+                else
+                    baseCell
+
+            Nothing ->
+                baseCell
 
 
 hasStopgapInbetween : Tile -> Tile -> Bool
 hasStopgapInbetween tileA tileB =
-    isCurveOrIntersection tileA && isCurveOrIntersection tileB
+    isPotentialStopgap tileA && isPotentialStopgap tileB
 
 
-isCurveOrIntersection : Tile -> Bool
-isCurveOrIntersection tile =
-    Tile.isCurve tile || Tile.isIntersection tile
+isPotentialStopgap : Tile -> Bool
+isPotentialStopgap tile =
+    Tile.isCurve tile || Tile.isIntersection tile || Tile.isLotEntry tile
 
 
 
@@ -415,29 +437,32 @@ toEdges nodes current =
 
         matcherFn =
             case current.label.kind of
-                LaneStart ->
-                    findLaneEnd nodes >> potentialResultToEdges
-
-                LaneEnd ->
-                    findLanesInsideCell nodes
-
                 DeadendEntry ->
                     connectDeadendEntryWithExit >> potentialResultToEdges
 
                 DeadendExit ->
-                    findLaneEnd nodes >> potentialResultToEdges
+                    completeLane nodes >> potentialResultToEdges
 
-                LotEntry ->
-                    findLaneEnd nodes >> potentialResultToEdges
+                LotEntry _ ->
+                    always []
 
-                Stopgap ->
+                LotExit _ ->
                     findLanesInsideCell nodes
+
+                _ ->
+                    -- TODO: broken on "stopgap" lane connectors which face another cell
+                    if Cell.centerPoint current.label.cell |> Common.isInTheNormalPlaneOf current.label.direction current.label.position then
+                        findLanesInsideCell nodes
+
+                    else
+                        -- the node is facing away from its' Cell
+                        completeLane nodes >> potentialResultToEdges
     in
     matcherFn current
 
 
-findLaneEnd : List (Node Connection) -> Node Connection -> Maybe (Edge Lane)
-findLaneEnd nodes current =
+completeLane : List (Node Connection) -> Node Connection -> Maybe (Edge Lane)
+completeLane nodes current =
     let
         isPotentialConnection other =
             (other.id /= current.id)
@@ -445,7 +470,7 @@ findLaneEnd nodes current =
                 && isFacing current other
 
         checkCompatibility other =
-            if other.label.kind == LaneEnd || other.label.kind == DeadendEntry || other.label.kind == LotEntry then
+            if other.label.kind == LaneConnector || other.label.kind == DeadendEntry then
                 Just other
 
             else
@@ -500,7 +525,7 @@ findLanesInsideCell nodes current =
     nodes
         |> List.filterMap
             (\other ->
-                if current.id /= other.id && endsEdgeInsideCell other && connectsWithinCell current other then
+                if current.id /= other.id && connectsWithinCell current other then
                     Just (connect current other)
 
                 else
@@ -508,68 +533,61 @@ findLanesInsideCell nodes current =
             )
 
 
-endsEdgeInsideCell : Node Connection -> Bool
-endsEdgeInsideCell node =
-    node.label.kind == LaneStart || node.label.kind == Stopgap || node.label.kind == DeadendExit
-
-
 connectsWithinCell : Node Connection -> Node Connection -> Bool
 connectsWithinCell current other =
     let
-        ( fromDir, toDir ) =
-            ( connectionDirection current, connectionDirection other )
+        fromDir =
+            connectionDirection current
 
-        range =
-            Quantity.half Cell.size
+        toDir =
+            connectionDirection other
 
         target =
             connectionPosition other
 
-        leftLookupArea =
-            connectionLookupAreaToLeft current (range |> Quantity.plus innerLaneOffset)
-
-        rightLookupArea =
-            connectionLookupAreaToRight current range
+        ( leftLookupArea, rightLookupArea ) =
+            connectionLookupArea current
 
         canContinueLeft =
-            (toDir == fromDir || toDir == Direction2d.rotateCounterclockwise fromDir) && BoundingBox2d.contains target leftLookupArea
+            (toDir == fromDir || toDir == Direction2d.rotateCounterclockwise fromDir)
+                && BoundingBox2d.contains target leftLookupArea
 
         canContinueRight =
-            (toDir == fromDir || toDir == Direction2d.rotateClockwise fromDir) && BoundingBox2d.contains target rightLookupArea
+            (toDir == fromDir || toDir == Direction2d.rotateClockwise fromDir)
+                && BoundingBox2d.contains target rightLookupArea
     in
     canContinueLeft || canContinueRight
 
 
-connectionLookupAreaToLeft : Node Connection -> Length -> LMBoundingBox2d
-connectionLookupAreaToLeft node range =
+connectionLookupArea : Node Connection -> ( LMBoundingBox2d, LMBoundingBox2d )
+connectionLookupArea node =
     let
         bb =
-            connectionLookupAreaToRight node range
+            Cell.boundingBox node.label.cell
 
-        leftDir =
-            Direction2d.rotateCounterclockwise (connectionDirection node)
-    in
-    BoundingBox2d.translateIn leftDir range bb
+        { lower, upper } =
+            Common.splitBoundingBoxVertically bb
 
+        { left, right } =
+            Common.splitBoundingBoxHorizontally bb
 
-connectionLookupAreaToRight : Node Connection -> Length -> LMBoundingBox2d
-connectionLookupAreaToRight node range =
-    let
-        origin =
-            connectionPosition node
-
-        nodeDirection =
+        dir =
             connectionDirection node
-
-        nodeDirectionRotatedRight =
-            Direction2d.rotateClockwise nodeDirection
-
-        otherCorner =
-            origin
-                |> Point2d.translateIn nodeDirection Cell.size
-                |> Point2d.translateIn nodeDirectionRotatedRight range
     in
-    BoundingBox2d.from origin otherCorner
+    if dir == Geometry.up then
+        ( left, right )
+
+    else if dir == Geometry.right then
+        ( upper, lower )
+
+    else if dir == Geometry.down then
+        ( right, left )
+
+    else if dir == Geometry.left then
+        ( lower, upper )
+
+    else
+        ( left, right )
 
 
 connectDeadendEntryWithExit : Node Connection -> Maybe (Edge Lane)

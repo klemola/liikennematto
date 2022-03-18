@@ -39,7 +39,7 @@ import Model.Tile exposing (TileKind)
 import Model.Tilemap as Tilemap
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
 import Model.World exposing (World)
-import Pixels exposing (Pixels)
+import Pixels
 import Point2d
 import Polygon2d
 import Polyline2d
@@ -88,9 +88,9 @@ pointToPixels point =
 --
 
 
-nodeSize : Quantity Float Pixels
-nodeSize =
-    Pixels.float 4
+nodeRadius : Length
+nodeRadius =
+    Length.meters 0.8
 
 
 signDiameter : Length
@@ -606,10 +606,7 @@ renderRoadNetwork roadNetwork =
     let
         nodeColor kind =
             case kind of
-                LaneStart ->
-                    Colors.gray6
-
-                LaneEnd ->
+                LaneConnector ->
                     Colors.lightBlue
 
                 DeadendEntry ->
@@ -618,10 +615,10 @@ renderRoadNetwork roadNetwork =
                 DeadendExit ->
                     Colors.lightBrown
 
-                LotEntry ->
-                    Colors.lightGreen
+                LotEntry _ ->
+                    Colors.yellow
 
-                Stopgap ->
+                LotExit _ ->
                     Colors.yellow
 
         nodes =
@@ -630,22 +627,37 @@ renderRoadNetwork roadNetwork =
                     (\nodeCtx acc ->
                         let
                             radius =
-                                Pixels.inPixels nodeSize
+                                toPixelsValue nodeRadius
 
                             { position, kind } =
                                 nodeCtx.node.label
 
-                            { x, y } =
+                            nodeXY =
                                 pointToPixels position
+
+                            helperPos =
+                                position |> Point2d.translateIn nodeCtx.node.label.direction (Quantity.half nodeRadius)
+
+                            helperXY =
+                                pointToPixels helperPos
                         in
                         ( "Node-" ++ String.fromInt nodeCtx.node.id
-                        , Svg.circle
-                            [ Attributes.r <| String.fromFloat radius
-                            , Attributes.cx <| String.fromFloat x
-                            , Attributes.cy <| String.fromFloat (tilemapSizePixels - y)
-                            , Attributes.fill <| Color.toCssString <| nodeColor kind
+                        , Svg.g []
+                            [ Svg.circle
+                                [ Attributes.r <| String.fromFloat radius
+                                , Attributes.cx <| String.fromFloat nodeXY.x
+                                , Attributes.cy <| String.fromFloat (tilemapSizePixels - nodeXY.y)
+                                , Attributes.fill <| Color.toCssString <| nodeColor kind
+                                ]
+                                []
+                            , Svg.circle
+                                [ Attributes.r <| String.fromFloat (radius / 3)
+                                , Attributes.cx <| String.fromFloat helperXY.x
+                                , Attributes.cy <| String.fromFloat (tilemapSizePixels - helperXY.y)
+                                , Attributes.fill Colors.gray4CSS
+                                ]
+                                []
                             ]
-                            []
                         )
                             :: acc
                     )
