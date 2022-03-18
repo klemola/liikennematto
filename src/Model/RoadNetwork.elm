@@ -6,7 +6,7 @@ module Model.RoadNetwork exposing
     , RoadNetwork
     , TrafficControl(..)
     , empty
-    , findNodeByLotId
+    , findLotExitByNodeId
     , findNodeByNodeId
     , findNodeByPosition
     , getOutgoingConnections
@@ -39,20 +39,16 @@ type alias Connection =
     , direction : LMDirection2d
     , cell : Cell
     , tile : Tile
-
-    -- Room for improvement: support more than one lot per (anchor) cell
     , trafficControl : TrafficControl
-    , lotId : Maybe Int
     }
 
 
 type ConnectionKind
-    = LaneStart
-    | LaneEnd
+    = LaneConnector
     | DeadendEntry
     | DeadendExit
-    | LotEntry
-    | Stopgap
+    | LotEntry Id
+    | LotExit Id
 
 
 type TrafficControl
@@ -81,16 +77,21 @@ size =
     Graph.size
 
 
-findNodeByLotId : RoadNetwork -> Int -> Maybe RNNodeContext
-findNodeByLotId roadNetwork lotId =
+findLotExitByNodeId : RoadNetwork -> Int -> Maybe RNNodeContext
+findLotExitByNodeId roadNetwork lotId =
     roadNetwork
         |> Graph.fold
             (\ctx acc ->
-                if ctx.node.label.lotId == Just lotId then
-                    Just ctx
+                case ctx.node.label.kind of
+                    LotExit id ->
+                        if id == lotId then
+                            Just ctx
 
-                else
-                    acc
+                        else
+                            acc
+
+                    _ ->
+                        acc
             )
             Nothing
 
@@ -141,11 +142,8 @@ getOutgoingConnections nodeCtx =
 connectionKindToString : ConnectionKind -> String
 connectionKindToString kind =
     case kind of
-        LaneStart ->
-            "Lane start"
-
-        LaneEnd ->
-            "Lane end"
+        LaneConnector ->
+            "Lane connector"
 
         DeadendEntry ->
             "Deadend entry"
@@ -153,11 +151,11 @@ connectionKindToString kind =
         DeadendExit ->
             "Deadend exit"
 
-        LotEntry ->
-            "Lot entry"
+        LotEntry id ->
+            "Lot entry #" ++ String.fromInt id
 
-        Stopgap ->
-            "Stopgap"
+        LotExit id ->
+            "Lot exit #" ++ String.fromInt id
 
 
 toDotString : RoadNetwork -> String
