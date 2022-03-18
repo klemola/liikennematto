@@ -4,7 +4,7 @@ import Benchmark exposing (..)
 import Benchmark.Runner exposing (BenchmarkProgram, program)
 import Data.Rounds as Rounds
 import Dict
-import Model.Tile exposing (tileSize)
+import Model.Cell as Cell
 import Model.Tilemap as Tilemap
 import QuadTree
 import Simulation.Round as Round exposing (Round)
@@ -54,7 +54,7 @@ chooseOtherCarsWithQuadtree round =
         nearbyCars =
             QuadTree.init Tilemap.boundingBox 4
                 |> QuadTree.insertList round.otherCars
-                |> QuadTree.neighborsWithin tileSize round.activeCar.boundingBox
+                |> QuadTree.neighborsWithin Cell.size round.activeCar.boundingBox
     in
     { round | otherCars = nearbyCars }
 
