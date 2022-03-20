@@ -180,6 +180,10 @@ unparking =
                 (\_ -> driving)
                 []
                 (FSM.Condition unparkingComplete)
+            , FSM.createTransition
+                (\_ -> rerouting)
+                []
+                FSM.Direct
             ]
         , entryActions = []
         , exitActions = []
