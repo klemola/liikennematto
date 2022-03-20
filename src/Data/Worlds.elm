@@ -24,6 +24,7 @@ defaultWorld =
         , ( 5, 4 )
         , ( 5, 5 )
         ]
+        []
         |> worldFromTilemap
 
 
@@ -33,6 +34,7 @@ simpleWorld =
         [ ( 1, 1 )
         , ( 2, 1 )
         ]
+        []
         |> worldFromTilemap
 
 
@@ -43,6 +45,7 @@ lowComplexityWorld =
         , ( 2, 1 )
         , ( 3, 1 )
         ]
+        []
         |> worldFromTilemap
 
 
@@ -53,6 +56,7 @@ highComplexityWorld =
         , ( 2, 1 )
         , ( 1, 2 )
         ]
+        []
         |> worldFromTilemap
 
 
@@ -70,6 +74,7 @@ worldThatHasAVerticalRoadAtLeftSide =
         , ( 1, 9 )
         , ( 1, 10 )
         ]
+        []
         |> worldFromTilemap
 
 
@@ -97,6 +102,7 @@ worldThatHasParallelRoads =
         , ( 3, 9 )
         , ( 3, 10 )
         ]
+        []
         |> worldFromTilemap
 
 
@@ -109,6 +115,7 @@ worldWithFourWayIntersection =
         , ( 2, 3 )
         , ( 3, 2 )
         ]
+        []
         |> worldFromTilemap
 
 
@@ -123,6 +130,7 @@ worldWithThreeWayIntersection =
         , ( 3, 4 )
         , ( 3, 5 )
         ]
+        []
         |> worldFromTilemap
 
 
@@ -186,4 +194,5 @@ largeWorld =
         , ( 10, 9 )
         , ( 10, 10 )
         ]
+        []
         |> worldFromTilemap

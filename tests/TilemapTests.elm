@@ -9,6 +9,7 @@ import Data.Worlds
 import Expect
 import Maybe.Extra as Maybe
 import Model.Cell as Cell
+import Model.Geometry exposing (OrthogonalDirection(..))
 import Model.Tilemap as Tilemap exposing (Tilemap)
 import Test exposing (Test, describe, test)
 
@@ -21,6 +22,7 @@ tilemapThatResemblesAIntersection =
         , ( 3, 1 )
         , ( 2, 2 )
         ]
+        []
 
 
 tilemapThatResemblesACurve : Tilemap
@@ -30,12 +32,28 @@ tilemapThatResemblesACurve =
         , ( 2, 1 )
         , ( 1, 2 )
         ]
+        []
+
+
+tilemapWithAnchor : Tilemap
+tilemapWithAnchor =
+    tilemapFromCoordinates
+        [ ( 1, 1 )
+        , ( 1, 2 )
+        , ( 1, 3 )
+        , ( 1, 4 )
+        ]
+        [ { cellCoordinates = ( 1, 3 )
+          , lotId = 1
+          , anchorDirection = Right
+          }
+        ]
 
 
 suite : Test
 suite =
     describe "Tilemap"
-        [ describe ".applyMask"
+        [ describe "bitmasking tile by it's neighbors"
             [ test "Creates an intersection with compatible tiles"
                 (\_ ->
                     Cell.fromCoordinates ( 2, 1 )
@@ -59,6 +77,18 @@ suite =
                         |> Maybe.unwrap
                             (Expect.fail "Could not find the tile")
                             (Expect.true "Expected a curve road piece after the mask is applied.")
+                )
+            , test "Creates a lot entry with compatible tiles"
+                (\_ ->
+                    Cell.fromCoordinates ( 1, 3 )
+                        |> Maybe.andThen (Tilemap.tileAt tilemapWithAnchor)
+                        |> Maybe.map
+                            (\tile ->
+                                tile.kind == 29
+                            )
+                        |> Maybe.unwrap
+                            (Expect.fail "Could not find the tile")
+                            (Expect.true "Expected a lot entry road piece after the mask is applied.")
                 )
             ]
         , describe ".canBuildRoadAt"
