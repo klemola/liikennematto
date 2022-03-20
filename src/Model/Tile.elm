@@ -42,6 +42,7 @@ type alias TileKind =
 type TileOperation
     = BuildInstantly
     | Add
+    | Change
 
 
 type alias TileFSM =
@@ -206,6 +207,9 @@ initializeFSM op =
 
                 Add ->
                     constructing
+
+                Change ->
+                    changing
     in
     FSM.initialize initialState
 

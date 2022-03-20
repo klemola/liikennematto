@@ -313,7 +313,7 @@ connectionsByTileEntryDirection tilemap cell tile direction =
 
         ( startConnectionKind, endConnectionKind, extraOffset ) =
             case anchor of
-                Just ( lotId, anchorDirection, _ ) ->
+                Just ( lotId, anchorDirection ) ->
                     if direction == anchorDirection then
                         ( LotEntry lotId, LotExit lotId, toLotOffset direction )
 

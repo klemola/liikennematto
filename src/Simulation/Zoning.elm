@@ -140,7 +140,11 @@ validateLot : List Cell -> Id -> Lot -> World -> World
 validateLot changedCells lotId lot world =
     let
         changedAnchors =
-            List.filterMap (Tilemap.anchorAt world.tilemap)
+            List.filterMap
+                (\cell ->
+                    Tilemap.anchorAt world.tilemap cell
+                        |> Maybe.map (Tuple.pair cell)
+                )
                 changedCells
 
         -- Room for improvement: add a QuadTree lookup for lots and remove lots based on Cell BB overlap
@@ -149,16 +153,21 @@ validateLot changedCells lotId lot world =
 
         lotAnchorWasRemoved =
             List.any
-                (\( id, _, tile ) ->
-                    if id == lot.id then
-                        not (Tile.isLotEntry tile)
+                (\( cell, ( id, _ ) ) ->
+                    case Tilemap.tileAt world.tilemap cell of
+                        Just tile ->
+                            if id == lot.id then
+                                not (Tile.isLotEntry tile)
 
-                    else
-                        False
+                            else
+                                False
+
+                        Nothing ->
+                            True
                 )
                 changedAnchors
     in
-    if lotOverlapsWithRoad || lotAnchorWasRemoved then
+    if lotAnchorWasRemoved || lotOverlapsWithRoad then
         World.removeLot lotId world
 
     else
