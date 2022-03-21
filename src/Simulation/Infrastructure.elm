@@ -394,8 +394,10 @@ chooseConnectionCell tilemap tile direction startConnectionKind baseCell =
             Just nextCell ->
                 if
                     Tilemap.tileAt tilemap nextCell
-                        |> Maybe.unwrap False (hasStopgapInbetween tile)
+                        |> Maybe.unwrap False (hasOverlappingConnections tile)
                 then
+                    -- Some tile combinations have overlapping connections on their edges.
+                    -- Using the neighbor tile's cell as the basis for the connection ensures all lanes are mapped correctly.
                     nextCell
 
                 else
@@ -405,13 +407,13 @@ chooseConnectionCell tilemap tile direction startConnectionKind baseCell =
                 baseCell
 
 
-hasStopgapInbetween : Tile -> Tile -> Bool
-hasStopgapInbetween tileA tileB =
-    isPotentialStopgap tileA && isPotentialStopgap tileB
+hasOverlappingConnections : Tile -> Tile -> Bool
+hasOverlappingConnections tileA tileB =
+    hasConnectionsInMultipleDirections tileA && hasConnectionsInMultipleDirections tileB
 
 
-isPotentialStopgap : Tile -> Bool
-isPotentialStopgap tile =
+hasConnectionsInMultipleDirections : Tile -> Bool
+hasConnectionsInMultipleDirections tile =
     Tile.isCurve tile || Tile.isIntersection tile || Tile.isLotEntry tile
 
 
@@ -450,7 +452,6 @@ toEdges nodes current =
                     findLanesInsideCell nodes
 
                 _ ->
-                    -- TODO: broken on "stopgap" lane connectors which face another cell
                     if Cell.centerPoint current.label.cell |> Common.isInTheNormalPlaneOf current.label.direction current.label.position then
                         findLanesInsideCell nodes
 
