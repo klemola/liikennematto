@@ -164,6 +164,10 @@ parked =
                 (\_ -> unparking)
                 []
                 (FSM.Timer unparkingTimer)
+            , FSM.createTransition
+                (\_ -> rerouting)
+                []
+                FSM.Direct
             ]
         , entryActions = []
         , exitActions = []
@@ -255,6 +259,10 @@ parking =
         , transitions =
             [ FSM.createTransition
                 (\_ -> parked)
+                []
+                FSM.Direct
+            , FSM.createTransition
+                (\_ -> rerouting)
                 []
                 FSM.Direct
             ]
