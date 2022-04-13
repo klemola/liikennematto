@@ -7,7 +7,7 @@ module Simulation.Traffic exposing
 
 import BoundingBox2d
 import Data.Cars exposing (testCar)
-import Data.Lots as Lots
+import Data.Lots
 import Dict
 import Dict.Extra as Dict
 import Direction2d
@@ -214,7 +214,7 @@ addLotResident lotId lot world =
         addToWorld car =
             { world | cars = Dict.insert carId car world.cars }
     in
-    Lots.resident lot
+    Data.Lots.resident lot.kind
         |> Maybe.map (createCar >> addToWorld)
         |> Maybe.withDefault world
 

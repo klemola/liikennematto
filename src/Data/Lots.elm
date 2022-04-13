@@ -1,13 +1,32 @@
-module Data.Lots exposing (allLots, lotAsset, resident)
+module Data.Lots exposing
+    ( LotKind(..)
+    , NewLot
+    , allLots
+    , lotAsset
+    , resident
+    )
 
 import Data.Cars exposing (sedan)
+import Length exposing (Length)
 import Model.Car exposing (CarMake)
-import Model.Geometry exposing (OrthogonalDirection(..))
-import Model.Lot exposing (Lot, LotKind(..), NewLot)
 import Model.Cell as Cell
+import Model.Geometry exposing (OrthogonalDirection(..))
 import Quantity
 import Svg exposing (Svg, path)
 import Svg.Attributes as Attributes
+
+
+type alias NewLot =
+    { kind : LotKind
+    , drivewayExit : OrthogonalDirection
+    , width : Length
+    , height : Length
+    }
+
+
+type LotKind
+    = ResidentialSingle1
+    | School
 
 
 allLots : List NewLot
@@ -25,9 +44,9 @@ allLots =
     ]
 
 
-resident : Lot -> Maybe CarMake
-resident lot =
-    case lot.kind of
+resident : LotKind -> Maybe CarMake
+resident kind =
+    case kind of
         ResidentialSingle1 ->
             Just sedan
 
@@ -35,9 +54,9 @@ resident lot =
             Nothing
 
 
-lotAsset : Lot -> List (Svg msg)
-lotAsset lot =
-    case lot.kind of
+lotAsset : LotKind -> List (Svg msg)
+lotAsset kind =
+    case kind of
         ResidentialSingle1 ->
             residentialSingle1
 

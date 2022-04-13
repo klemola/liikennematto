@@ -1,16 +1,15 @@
 module Model.Lot exposing
     ( Lot
-    , LotKind(..)
-    , NewLot
     , build
+    , constructionSite
     , inBounds
-    , newLotBuildArea
     , parkingSpotOrientation
     )
 
 import Angle exposing (Angle)
 import BoundingBox2d
 import Common
+import Data.Lots exposing (LotKind, NewLot)
 import Direction2d
 import Length exposing (Length)
 import Model.Cell as Cell exposing (Cell)
@@ -39,24 +38,11 @@ type alias Lot =
     }
 
 
-type alias NewLot =
-    { kind : LotKind
-    , drivewayExit : OrthogonalDirection
-    , width : Length
-    , height : Length
-    }
-
-
-type LotKind
-    = ResidentialSingle1
-    | School
-
-
 build : Id -> NewLot -> Cell -> Lot
 build id newLot anchor =
     let
         buildAreaBB =
-            newLotBuildArea anchor newLot
+            constructionSite anchor newLot
     in
     { id = id
     , kind = newLot.kind
@@ -71,8 +57,8 @@ build id newLot anchor =
     }
 
 
-newLotBuildArea : Cell -> NewLot -> LMBoundingBox2d
-newLotBuildArea anchor { width, height, drivewayExit } =
+constructionSite : Cell -> NewLot -> LMBoundingBox2d
+constructionSite anchor { width, height, drivewayExit } =
     let
         origin =
             Cell.bottomLeftCorner anchor

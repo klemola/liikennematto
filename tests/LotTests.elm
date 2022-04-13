@@ -1,5 +1,6 @@
 module LotTests exposing (suite)
 
+import Data.Lots exposing (LotKind(..))
 import Expect
 import Model.Cell as Cell
 import Model.Geometry exposing (OrthogonalDirection(..))
@@ -12,7 +13,7 @@ twoByTwoLot : Maybe Lot
 twoByTwoLot =
     let
         newLot =
-            { kind = Lot.ResidentialSingle1
+            { kind = ResidentialSingle1
             , drivewayExit = Right
             , width = Cell.size |> Quantity.multiplyBy 2
             , height = Cell.size |> Quantity.multiplyBy 2
@@ -26,7 +27,7 @@ threeByThreeLot : Maybe Lot
 threeByThreeLot =
     let
         newLot =
-            { kind = Lot.School
+            { kind = School
             , drivewayExit = Left
             , width = Cell.size |> Quantity.multiplyBy 3
             , height = Cell.size |> Quantity.multiplyBy 3

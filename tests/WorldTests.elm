@@ -1,6 +1,7 @@
 module WorldTests exposing (suite)
 
 import Common exposing (boundingBoxWithDimensions)
+import Data.Lots exposing (LotKind(..))
 import Data.Worlds
     exposing
         ( worldThatHasAVerticalRoadAtLeftSide
@@ -22,7 +23,7 @@ twoByTwoLot : Maybe Lot
 twoByTwoLot =
     let
         newLot =
-            { kind = Lot.ResidentialSingle1
+            { kind = ResidentialSingle1
             , drivewayExit = Down
             , width = Cell.size |> Quantity.multiplyBy 2
             , height = Cell.size |> Quantity.multiplyBy 2

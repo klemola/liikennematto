@@ -1,12 +1,12 @@
 module Simulation.Zoning exposing (generateLot, removeInvalidLots)
 
-import Data.Lots exposing (allLots)
+import Data.Lots exposing (NewLot, allLots)
 import Dict
 import Maybe.Extra as Maybe
 import Model.Cell as Cell exposing (Cell)
 import Model.Entity as Entity exposing (Id)
 import Model.Geometry exposing (oppositeOrthogonalDirection, orthogonalDirections)
-import Model.Lot as Lot exposing (Lot, NewLot)
+import Model.Lot as Lot exposing (Lot)
 import Model.Tile as Tile
 import Model.Tilemap as Tilemap
 import Model.World as World exposing (World)
@@ -80,7 +80,7 @@ validateAnchor : NewLot -> World -> Cell -> Maybe Cell
 validateAnchor newLot world anchor =
     let
         lotBoundingBox =
-            Lot.newLotBuildArea anchor newLot
+            Lot.constructionSite anchor newLot
     in
     if
         World.isEmptyArea lotBoundingBox world

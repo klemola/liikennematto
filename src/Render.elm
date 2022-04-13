@@ -26,7 +26,7 @@ import Model.Geometry
         ( LMPoint2d
         , OrthogonalDirection(..)
         )
-import Model.Lot exposing (Lot, LotKind(..))
+import Model.Lot exposing (Lot)
 import Model.RenderCache exposing (RenderCache, TilemapPresentation)
 import Model.RoadNetwork
     exposing
@@ -472,7 +472,7 @@ renderLot lot =
                 |> String.join " "
 
         asset =
-            lotAsset lot
+            lotAsset lot.kind
     in
     Svg.g [ Attributes.transform translateStr ]
         [ Svg.svg
