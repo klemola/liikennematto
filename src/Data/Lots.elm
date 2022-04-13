@@ -6,9 +6,8 @@ module Data.Lots exposing
     , resident
     )
 
-import Data.Cars exposing (sedan)
+import Data.Cars exposing (CarMake, sedan)
 import Length exposing (Length)
-import Model.Car exposing (CarMake)
 import Model.Cell as Cell
 import Model.Geometry exposing (OrthogonalDirection(..))
 import Quantity

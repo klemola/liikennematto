@@ -415,7 +415,7 @@ renderCar car =
             "translate(" ++ String.fromFloat renderX ++ " " ++ String.fromFloat renderY ++ ")"
 
         ( asset, viewBox ) =
-            carAsset car
+            carAsset car.make
     in
     Svg.g
         [ Attributes.transform <| String.join " " [ rotateStr, translateStr ]

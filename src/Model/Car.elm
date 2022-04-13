@@ -1,8 +1,6 @@
 module Model.Car exposing
     ( Car
-    , CarMake
     , CarState(..)
-    , CarStyle(..)
     , adjustedShape
     , build
     , fieldOfView
@@ -27,7 +25,7 @@ import Angle exposing (Angle)
 import AngularSpeed exposing (AngularSpeed)
 import Axis2d
 import BoundingBox2d
-import Color exposing (Color)
+import Data.Cars exposing (CarMake, Shape)
 import Direction2d
 import Duration exposing (Duration)
 import FSM exposing (FSM)
@@ -59,7 +57,7 @@ type alias Car =
     , velocity : Speed
     , rotation : AngularSpeed
     , acceleration : Acceleration
-    , shape : Polygon2d Meters LMEntityCoordinates
+    , shape : Shape
     , boundingBox : LMBoundingBox2d
     , route : List RNNodeContext
     , localPath : LMPolyline2d
@@ -76,23 +74,6 @@ type alias NewCar =
     , acceleration : Acceleration
     , homeLotId : Maybe Int
     }
-
-
-type alias CarMake =
-    { bodyColor : Color
-    , length : Length
-    , width : Length
-    , shape : Shape
-    , style : CarStyle
-    }
-
-
-type CarStyle
-    = Sedan
-
-
-type alias Shape =
-    Polygon2d Meters LMEntityCoordinates
 
 
 type alias CarFSM =
@@ -509,7 +490,7 @@ adjustedShape make nextPosition nextOrientation =
             Frame2d.atPoint nextPosition |> Frame2d.rotateBy nextOrientation
 
         nextShape =
-            make.shape |> Polygon2d.placeIn carFrame
+            make.shapeAtOrigin |> Polygon2d.placeIn carFrame
     in
     ( nextShape
     , Polygon2d.boundingBox nextShape

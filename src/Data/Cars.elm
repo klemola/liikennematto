@@ -1,23 +1,43 @@
 module Data.Cars exposing
-    ( carAsset
+    ( CarMake
+    , CarStyle
+    , Shape
+    , carAsset
     , sedan
     , testCar
     )
 
-import Color
+import Color exposing (Color)
 import Data.Colors as Colors
-import Length
-import Model.Car exposing (Car, CarMake, CarStyle(..))
+import Length exposing (Length, Meters)
+import Model.Geometry exposing (LMEntityCoordinates)
 import Point2d
-import Polygon2d
+import Polygon2d exposing (Polygon2d)
 import Quantity
 import Svg exposing (Svg, path)
 import Svg.Attributes as Attributes
 
 
-carAsset : Car -> ( List (Svg msg), String )
-carAsset car =
-    case car.make.style of
+type alias CarMake =
+    { bodyColor : Color
+    , length : Length
+    , width : Length
+    , shapeAtOrigin : Shape
+    , style : CarStyle
+    }
+
+
+type CarStyle
+    = Sedan
+
+
+type alias Shape =
+    Polygon2d Meters LMEntityCoordinates
+
+
+carAsset : CarMake -> ( List (Svg msg), String )
+carAsset make =
+    case make.style of
         Sedan ->
             ( sedanGraphics, sedanViewBox )
 
@@ -63,7 +83,7 @@ sedan =
     { bodyColor = Colors.red
     , length = length
     , width = width
-    , shape = shape
+    , shapeAtOrigin = shape
     , style = Sedan
     }
 
