@@ -1,40 +1,28 @@
 module LotTests exposing (suite)
 
-import Data.Lots exposing (LotKind(..))
+import Data.Lots
+    exposing
+        ( LotKind(..)
+        , residentialSingle1
+        , school
+        )
 import Expect
 import Model.Cell as Cell
 import Model.Geometry exposing (OrthogonalDirection(..))
 import Model.Lot as Lot exposing (Lot)
-import Quantity
 import Test exposing (Test, describe, test)
 
 
 twoByTwoLot : Maybe Lot
 twoByTwoLot =
-    let
-        newLot =
-            { kind = ResidentialSingle1
-            , drivewayExit = Right
-            , width = Cell.size |> Quantity.multiplyBy 2
-            , height = Cell.size |> Quantity.multiplyBy 2
-            }
-    in
     Cell.fromCoordinates ( 3, 2 )
-        |> Maybe.map (Lot.build 1 newLot)
+        |> Maybe.map (Lot.build 1 residentialSingle1)
 
 
 threeByThreeLot : Maybe Lot
 threeByThreeLot =
-    let
-        newLot =
-            { kind = School
-            , drivewayExit = Left
-            , width = Cell.size |> Quantity.multiplyBy 3
-            , height = Cell.size |> Quantity.multiplyBy 3
-            }
-    in
     Cell.fromCoordinates ( 1, 3 )
-        |> Maybe.map (Lot.build 2 newLot)
+        |> Maybe.map (Lot.build 2 school)
 
 
 suite : Test

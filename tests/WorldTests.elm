@@ -1,7 +1,7 @@
 module WorldTests exposing (suite)
 
 import Common exposing (boundingBoxWithDimensions)
-import Data.Lots exposing (LotKind(..))
+import Data.Lots exposing (LotKind(..), school)
 import Data.Worlds
     exposing
         ( worldThatHasAVerticalRoadAtLeftSide
@@ -15,22 +15,13 @@ import Model.Geometry exposing (OrthogonalDirection(..))
 import Model.Lot as Lot exposing (Lot)
 import Model.World as World
 import Point2d
-import Quantity
 import Test exposing (Test, describe, test)
 
 
-twoByTwoLot : Maybe Lot
-twoByTwoLot =
-    let
-        newLot =
-            { kind = ResidentialSingle1
-            , drivewayExit = Down
-            , width = Cell.size |> Quantity.multiplyBy 2
-            , height = Cell.size |> Quantity.multiplyBy 2
-            }
-    in
+testLot : Maybe Lot
+testLot =
     Cell.fromCoordinates ( 1, 8 )
-        |> Maybe.map (Lot.build 1 newLot)
+        |> Maybe.map (Lot.build 1 school)
 
 
 suite : Test
@@ -52,7 +43,7 @@ suite =
                 (\_ ->
                     let
                         lots =
-                            twoByTwoLot
+                            testLot
                                 |> Maybe.map (\lot -> Dict.fromList [ ( 1, lot ) ])
                                 |> Maybe.withDefault Dict.empty
 

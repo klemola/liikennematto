@@ -1,8 +1,25 @@
-module Data.Roads exposing (roadAsset)
+module Data.Roads exposing
+    ( innerLaneOffset
+    , outerLaneOffset
+    , roadAsset
+    )
 
 import Data.Colors as Colors
+import Length exposing (Length)
 import Svg exposing (Svg, path)
 import Svg.Attributes as Attributes
+
+
+innerLaneOffset : Length
+innerLaneOffset =
+    -- the distance from a road tile's edge to the inner lane (from left / bottom side)
+    Length.meters 6
+
+
+outerLaneOffset : Length
+outerLaneOffset =
+    -- the distance from a road tile's edge to the outer lane (from the left / bottom side)
+    Length.meters 10
 
 
 roadAsset : Int -> List (Svg msg)

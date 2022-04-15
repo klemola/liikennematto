@@ -6,7 +6,7 @@ module Simulation.Traffic exposing
     )
 
 import BoundingBox2d
-import Data.Cars exposing (testCar)
+import Data.Cars exposing (CarMake, testCar)
 import Data.Lots
 import Dict
 import Dict.Extra as Dict
@@ -15,7 +15,8 @@ import Duration exposing (Duration)
 import FSM
 import Length exposing (Length)
 import Model.Car as Car exposing (Car, CarState(..))
-import Model.Entity as Entity
+import Model.Entity as Entity exposing (Id)
+import Model.Geometry exposing (LMPoint2d)
 import Model.Lookup exposing (carPositionLookup)
 import Model.Lot as Lot exposing (Lot)
 import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
@@ -175,7 +176,34 @@ carAfterDespawn : World -> Car -> Maybe Car
 carAfterDespawn world car =
     car.homeLotId
         |> Maybe.andThen (\lotId -> Dict.get lotId world.lots)
+        |> Maybe.andThen (\lot -> findParkingSpot lot |> Maybe.map (Tuple.pair lot))
         |> Maybe.map (moveCarToHome world car)
+
+
+moveCarToHome : World -> Car -> ( Lot, LMPoint2d ) -> Car
+moveCarToHome world car ( home, parkingSpot ) =
+    let
+        homeNode =
+            car.homeLotId |> Maybe.andThen (RoadNetwork.findLotExitByNodeId world.roadNetwork)
+
+        ( nextFSM, _ ) =
+            FSM.reset car.fsm
+    in
+    case homeNode of
+        Just nodeCtx ->
+            { car
+                | fsm = nextFSM
+                , position = parkingSpot
+                , orientation = Lot.parkingSpotOrientation home
+                , velocity = Quantity.zero
+                , acceleration = Steering.maxAcceleration
+                , route = []
+                , localPath = Polyline2d.fromVertices []
+            }
+                |> Pathfinding.createRoute nodeCtx
+
+        _ ->
+            car
 
 
 rerouteCarsIfNeeded : World -> World
@@ -193,7 +221,7 @@ rerouteCarsIfNeeded world =
 --
 
 
-addLotResident : Int -> Lot -> World -> World
+addLotResident : Id -> Lot -> World -> World
 addLotResident lotId lot world =
     let
         carId =
@@ -202,47 +230,39 @@ addLotResident lotId lot world =
         homeNode =
             RoadNetwork.findLotExitByNodeId world.roadNetwork lotId
 
-        createCar kind =
-            Car.new kind
-                |> Car.withHome lotId
-                |> Car.withPosition lot.parkingSpot
-                |> Car.withOrientation (Lot.parkingSpotOrientation lot)
-                |> Car.build carId
-                |> Pathfinding.maybeCreateRoute homeNode
-                |> Steering.startMoving
-
         addToWorld car =
             { world | cars = Dict.insert carId car world.cars }
     in
-    Data.Lots.resident lot.kind
-        |> Maybe.map (createCar >> addToWorld)
+    pickParkingSpotAndCarMake lot
+        |> Maybe.map (createCar lot homeNode carId >> addToWorld)
         |> Maybe.withDefault world
 
 
-moveCarToHome : World -> Car -> Lot -> Car
-moveCarToHome world car home =
+pickParkingSpotAndCarMake : Lot -> Maybe ( CarMake, LMPoint2d )
+pickParkingSpotAndCarMake lot =
     let
-        homeNode =
-            car.homeLotId |> Maybe.andThen (RoadNetwork.findLotExitByNodeId world.roadNetwork)
+        make =
+            Data.Lots.resident lot.kind
 
-        ( nextFSM, _ ) =
-            FSM.reset car.fsm
+        parkingSpot =
+            findParkingSpot lot
     in
-    case homeNode of
-        Just nodeCtx ->
-            { car
-                | fsm = nextFSM
-                , position = home.parkingSpot
-                , orientation = Lot.parkingSpotOrientation home
-                , velocity = Quantity.zero
-                , acceleration = Steering.maxAcceleration
-                , route = []
-                , localPath = Polyline2d.fromVertices []
-            }
-                |> Pathfinding.createRoute nodeCtx
+    Maybe.map2 Tuple.pair make parkingSpot
 
-        _ ->
-            car
+
+findParkingSpot lot =
+    List.head lot.parkingSpots |> Maybe.map .position
+
+
+createCar : Lot -> Maybe RNNodeContext -> Id -> ( CarMake, LMPoint2d ) -> Car
+createCar lot homeNode carId ( make, parkingSpot ) =
+    Car.new make
+        |> Car.withHome lot.id
+        |> Car.withPosition parkingSpot
+        |> Car.withOrientation (Lot.parkingSpotOrientation lot)
+        |> Car.build carId
+        |> Pathfinding.maybeCreateRoute homeNode
+        |> Steering.startMoving
 
 
 

@@ -53,7 +53,7 @@ attemptBuildLot world seed newLot =
                     (\cell tile ->
                         if
                             Tile.isBasicRoad tile
-                                && not (List.member newLot.drivewayExit (Tile.potentialConnections tile))
+                                && not (List.member newLot.drivewayExitDirection (Tile.potentialConnections tile))
                         then
                             validateAnchor newLot world cell
 
@@ -119,7 +119,7 @@ addLot world ( lot, anchor ) =
                 , tilemap =
                     Tilemap.addAnchor anchor
                         lot.id
-                        (oppositeOrthogonalDirection lot.drivewayExit)
+                        (oppositeOrthogonalDirection lot.drivewayExitDirection)
                         world.tilemap
             }
     in

@@ -6,12 +6,14 @@ module Simulation.Infrastructure exposing
 
 import BoundingBox2d
 import Common
+import Data.Lots exposing (drivewayOffset)
+import Data.Roads exposing (innerLaneOffset, outerLaneOffset)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Direction2d
 import Graph exposing (Edge, Node)
 import IntDict
-import Length exposing (Length)
+import Length
 import Maybe.Extra as Maybe
 import Model.Cell as Cell exposing (Cell)
 import Model.Entity as Entity exposing (Id)
@@ -62,24 +64,6 @@ createRoadNetwork tilemap world =
 --
 -- Road network
 --
-
-
-innerLaneOffset : Length
-innerLaneOffset =
-    -- the distance from a road tile's edge to the inner lane (from left / bottom side)
-    Length.meters 6
-
-
-outerLaneOffset : Length
-outerLaneOffset =
-    -- the distance from a road tile's edge to the outer lane (from the left / bottom side)
-    Length.meters 10
-
-
-lotNodeOffset : Length
-lotNodeOffset =
-    -- the offset of lot entry tiles' driveway (vs. center-positioned road)
-    Cell.size |> Quantity.multiplyBy 0.2
 
 
 laneStartOffsetUp : Vector2d Length.Meters coordinates
@@ -350,13 +334,13 @@ toLotOffset : OrthogonalDirection -> Vector2d Length.Meters coordinates
 toLotOffset anchorDirection =
     case anchorDirection of
         Up ->
-            Vector2d.xy (Quantity.negate lotNodeOffset) Quantity.zero
+            Vector2d.xy (Quantity.negate drivewayOffset) Quantity.zero
 
         Right ->
-            Vector2d.xy Quantity.zero (Quantity.negate lotNodeOffset)
+            Vector2d.xy Quantity.zero (Quantity.negate drivewayOffset)
 
         Left ->
-            Vector2d.xy Quantity.zero (Quantity.negate lotNodeOffset)
+            Vector2d.xy Quantity.zero (Quantity.negate drivewayOffset)
 
         _ ->
             Vector2d.zero

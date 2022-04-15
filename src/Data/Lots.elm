@@ -2,14 +2,19 @@ module Data.Lots exposing
     ( LotKind(..)
     , NewLot
     , allLots
+    , drivewayOffset
     , lotAsset
     , resident
+    , residentialSingle1
+    , school
     )
 
 import Data.Cars exposing (CarMake, sedan)
+import Data.Roads exposing (innerLaneOffset, outerLaneOffset)
 import Length exposing (Length)
 import Model.Cell as Cell
-import Model.Geometry exposing (OrthogonalDirection(..))
+import Model.Geometry exposing (LMPoint2dLocal, OrthogonalDirection(..))
+import Point2d
 import Quantity
 import Svg exposing (Svg, path)
 import Svg.Attributes as Attributes
@@ -17,9 +22,13 @@ import Svg.Attributes as Attributes
 
 type alias NewLot =
     { kind : LotKind
-    , drivewayExit : OrthogonalDirection
     , width : Length
     , height : Length
+    , parkingSpotExitDirection : OrthogonalDirection
+    , parkingSpots : List LMPoint2dLocal
+    , drivewayExitDirection : OrthogonalDirection
+    , entryPosition : LMPoint2dLocal
+    , exitPosition : LMPoint2dLocal
     }
 
 
@@ -30,17 +39,56 @@ type LotKind
 
 allLots : List NewLot
 allLots =
-    [ { kind = ResidentialSingle1
-      , drivewayExit = Right
-      , width = Cell.size |> Quantity.multiplyBy 2
-      , height = Cell.size |> Quantity.multiplyBy 2
-      }
-    , { kind = School
-      , drivewayExit = Left
-      , width = Cell.size |> Quantity.multiplyBy 3
-      , height = Cell.size |> Quantity.multiplyBy 3
-      }
+    [ residentialSingle1
+    , school
     ]
+
+
+drivewayOffset : Length
+drivewayOffset =
+    -- the offset of lot entry tiles' driveway (vs. center-positioned road)
+    Cell.size |> Quantity.multiplyBy 0.2
+
+
+toEntryPosition : OrthogonalDirection -> Length -> Length -> LMPoint2dLocal
+toEntryPosition =
+    toRoadConnectionPosition innerLaneOffset
+
+
+toExitPosition : OrthogonalDirection -> Length -> Length -> LMPoint2dLocal
+toExitPosition =
+    toRoadConnectionPosition outerLaneOffset
+
+
+toRoadConnectionPosition : Length -> OrthogonalDirection -> Length -> Length -> LMPoint2dLocal
+toRoadConnectionPosition laneOffset drivewayExitDirection lotWidth lotHeight =
+    case drivewayExitDirection of
+        Right ->
+            Point2d.xy
+                lotWidth
+                (lotHeight
+                    |> Quantity.minus Cell.size
+                    |> Quantity.plus laneOffset
+                    |> Quantity.plus drivewayOffset
+                )
+
+        Down ->
+            Point2d.xy
+                -- for now the entry/exit is from the bottom left cell, revisit when the fire station is added
+                (laneOffset |> Quantity.plus drivewayOffset)
+                lotHeight
+
+        Left ->
+            Point2d.xy
+                Quantity.zero
+                (lotHeight
+                    |> Quantity.minus Cell.size
+                    |> Quantity.plus laneOffset
+                    |> Quantity.plus drivewayOffset
+                )
+
+        _ ->
+            Point2d.origin
 
 
 resident : LotKind -> Maybe CarMake
@@ -57,14 +105,39 @@ lotAsset : LotKind -> List (Svg msg)
 lotAsset kind =
     case kind of
         ResidentialSingle1 ->
-            residentialSingle1
+            residentialSingle1Asset
 
         School ->
-            school
+            schoolAsset
 
 
-residentialSingle1 : List (Svg msg)
+residentialSingle1 : NewLot
 residentialSingle1 =
+    let
+        width =
+            Cell.size |> Quantity.multiplyBy 2
+
+        height =
+            Cell.size |> Quantity.multiplyBy 2
+
+        drivewayExitDirection =
+            Right
+    in
+    { kind = ResidentialSingle1
+    , width = width
+    , height = height
+    , parkingSpotExitDirection = Right
+    , parkingSpots =
+        [ Point2d.fromMeters { x = 21.25, y = 4.715 }
+        ]
+    , drivewayExitDirection = drivewayExitDirection
+    , entryPosition = toEntryPosition drivewayExitDirection width height
+    , exitPosition = toExitPosition drivewayExitDirection width height
+    }
+
+
+residentialSingle1Asset : List (Svg msg)
+residentialSingle1Asset =
     [ Svg.g
         [ Attributes.clipPath "url(#clip0_602_10)"
         ]
@@ -513,8 +586,36 @@ residentialSingle1 =
     ]
 
 
-school : List (Svg msg)
+school : NewLot
 school =
+    let
+        width =
+            Cell.size |> Quantity.multiplyBy 3
+
+        height =
+            Cell.size |> Quantity.multiplyBy 3
+
+        drivewayExitDirection =
+            Left
+    in
+    { kind = School
+    , width = width
+    , height = height
+    , parkingSpotExitDirection = Down
+    , parkingSpots =
+        [ Point2d.fromMeters { x = 4.75, y = 9.25 }
+        , Point2d.fromMeters { x = 12, y = 9.25 }
+        , Point2d.fromMeters { x = 19.25, y = 9.25 }
+        , Point2d.fromMeters { x = 26.5, y = 9.25 }
+        ]
+    , drivewayExitDirection = drivewayExitDirection
+    , entryPosition = toEntryPosition drivewayExitDirection width height
+    , exitPosition = toExitPosition drivewayExitDirection width height
+    }
+
+
+schoolAsset : List (Svg msg)
+schoolAsset =
     [ Svg.g
         [ Attributes.clipPath "url(#clip0_597_3)"
         ]

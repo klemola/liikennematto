@@ -18,10 +18,13 @@ import Model.Geometry
     exposing
         ( LMBoundingBox2d
         , LMPoint2d
+        , LMPoint2dLocal
+        , LMPolyline2d
         , OrthogonalDirection(..)
         , orthogonalDirectionToLmDirection
         )
 import Point2d
+import Polyline2d
 import Quantity
 import Vector2d
 
@@ -29,42 +32,68 @@ import Vector2d
 type alias Lot =
     { id : Id
     , kind : LotKind
-    , drivewayExit : OrthogonalDirection
-    , parkingSpot : LMPoint2d
     , width : Length
     , height : Length
     , position : LMPoint2d
     , boundingBox : LMBoundingBox2d
+    , drivewayExitDirection : OrthogonalDirection
+    , parkingSpotExitDirection : OrthogonalDirection
+    , parkingSpots : List ParkingSpot
+    }
+
+
+type alias ParkingSpot =
+    { position : LMPoint2d
+    , pathFromLotEntry : LMPolyline2d
+    , pathToLotExit : LMPolyline2d
+    , owner : Maybe Id
+    , reservedBy : Maybe Id
     }
 
 
 build : Id -> NewLot -> Cell -> Lot
 build id newLot anchor =
     let
-        buildAreaBB =
+        constructionSiteBB =
             constructionSite anchor newLot
     in
     { id = id
     , kind = newLot.kind
-    , drivewayExit = newLot.drivewayExit
     , width = newLot.width
     , height = newLot.height
-    , position = BoundingBox2d.centerPoint buildAreaBB
-    , boundingBox = buildAreaBB
+    , position = BoundingBox2d.centerPoint constructionSiteBB
+    , boundingBox = constructionSiteBB
+    , drivewayExitDirection = newLot.drivewayExitDirection
+    , parkingSpotExitDirection = newLot.parkingSpotExitDirection
+    , parkingSpots =
+        List.map
+            (createParkingSpot newLot constructionSiteBB)
+            newLot.parkingSpots
+    }
 
-    -- TODO: temp value
-    , parkingSpot = BoundingBox2d.centerPoint buildAreaBB
+
+createParkingSpot : NewLot -> LMBoundingBox2d -> LMPoint2dLocal -> ParkingSpot
+createParkingSpot newLot constructionSiteBB spot =
+    let
+        lotFrame =
+            Common.boundingBoxToFrame constructionSiteBB
+    in
+    { position = Point2d.placeIn lotFrame spot
+    , pathFromLotEntry = Polyline2d.fromVertices []
+    , pathToLotExit = Polyline2d.fromVertices []
+    , owner = Nothing
+    , reservedBy = Nothing
     }
 
 
 constructionSite : Cell -> NewLot -> LMBoundingBox2d
-constructionSite anchor { width, height, drivewayExit } =
+constructionSite anchor { width, height, drivewayExitDirection } =
     let
         origin =
             Cell.bottomLeftCorner anchor
 
         displacement =
-            case drivewayExit of
+            case drivewayExitDirection of
                 Up ->
                     -- Top right entry/exit cell
                     Vector2d.xy
@@ -100,9 +129,8 @@ constructionSite anchor { width, height, drivewayExit } =
 
 parkingSpotOrientation : Lot -> Angle
 parkingSpotOrientation lot =
-    lot.drivewayExit
+    lot.parkingSpotExitDirection
         |> orthogonalDirectionToLmDirection
-        |> Direction2d.rotateClockwise
         |> Direction2d.toAngle
 
 
