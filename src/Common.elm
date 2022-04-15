@@ -1,6 +1,7 @@
 module Common exposing
     ( angleFromDirection
     , boundingBoxOverlaps
+    , boundingBoxToFrame
     , boundingBoxWithDimensions
     , isInTheNormalPlaneOf
     , splitBoundingBoxHorizontally
@@ -10,6 +11,7 @@ module Common exposing
 import Angle exposing (Angle)
 import BoundingBox2d
 import Direction2d
+import Frame2d
 import Length exposing (Length)
 import Model.Geometry exposing (LMBoundingBox2d, LMDirection2d, LMPoint2d)
 import Point2d
@@ -112,6 +114,17 @@ boundingBoxLowerHalf bb =
         , maxX = maxX
         , maxY = y
         }
+
+
+boundingBoxToFrame bb =
+    let
+        bbExtrema =
+            BoundingBox2d.extrema bb
+
+        pos =
+            Point2d.xy bbExtrema.minX bbExtrema.minY
+    in
+    Frame2d.atPoint pos
 
 
 isInTheNormalPlaneOf : LMDirection2d -> LMPoint2d -> LMPoint2d -> Bool
