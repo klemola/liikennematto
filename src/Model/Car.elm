@@ -25,27 +25,28 @@ import Angle exposing (Angle)
 import AngularSpeed exposing (AngularSpeed)
 import Axis2d
 import BoundingBox2d
-import Data.Cars exposing (CarMake, Shape)
+import Data.Cars exposing (CarMake)
 import Direction2d
 import Duration exposing (Duration)
 import FSM exposing (FSM)
 import Frame2d
-import Length exposing (Length, Meters)
+import Length exposing (Length)
 import Model.Entity exposing (Id)
 import Model.Geometry
     exposing
         ( LMBoundingBox2d
-        , LMEntityCoordinates
         , LMPoint2d
         , LMPolyline2d
+        , LMShape2d
+        , LMTriangle2d
         )
 import Model.RoadNetwork exposing (RNNodeContext)
 import Point2d
-import Polygon2d exposing (Polygon2d)
+import Polygon2d
 import Polyline2d
 import Quantity exposing (Quantity, Rate)
 import Speed exposing (Speed)
-import Triangle2d exposing (Triangle2d)
+import Triangle2d
 
 
 type alias Car =
@@ -57,7 +58,7 @@ type alias Car =
     , velocity : Speed
     , rotation : AngularSpeed
     , acceleration : Acceleration
-    , shape : Shape
+    , shape : LMShape2d
     , boundingBox : LMBoundingBox2d
     , route : List RNNodeContext
     , localPath : LMPolyline2d
@@ -347,7 +348,7 @@ new kind =
     }
 
 
-withHome : Int -> NewCar -> NewCar
+withHome : Id -> NewCar -> NewCar
 withHome lotId car =
     { car | homeLotId = Just lotId }
 
@@ -433,7 +434,7 @@ secondsTo target car =
 --
 
 
-fieldOfView : Car -> Triangle2d Meters LMEntityCoordinates
+fieldOfView : Car -> LMTriangle2d
 fieldOfView car =
     let
         ( p1, _, p3 ) =
@@ -447,7 +448,7 @@ fieldOfView car =
     Triangle2d.fromVertices ( p1, p3 |> Point2d.mirrorAcross axis, p3 )
 
 
-rightSideOfFieldOfView : Car -> Triangle2d Meters LMEntityCoordinates
+rightSideOfFieldOfView : Car -> LMTriangle2d
 rightSideOfFieldOfView car =
     let
         direction =
@@ -483,7 +484,7 @@ rightSideOfFieldOfView car =
     Triangle2d.from origin limitFront limitRight
 
 
-adjustedShape : CarMake -> LMPoint2d -> Angle -> ( Polygon2d Meters LMEntityCoordinates, LMBoundingBox2d )
+adjustedShape : CarMake -> LMPoint2d -> Angle -> ( LMShape2d, LMBoundingBox2d )
 adjustedShape make nextPosition nextOrientation =
     let
         carFrame =
