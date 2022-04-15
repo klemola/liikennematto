@@ -8,12 +8,16 @@ module Model.Lookup exposing
 import BoundingBox2d
 import Dict exposing (Dict)
 import Graph
-import Length
 import Model.Car exposing (Car)
-import Model.Geometry exposing (LMBoundingBox2d, LMEntityCoordinates, LMPoint2d)
+import Model.Geometry
+    exposing
+        ( LMBoundingBox2d
+        , LMPoint2d
+        , LMQuadTree
+        )
 import Model.RoadNetwork exposing (RoadNetwork)
 import Model.Tilemap as Tilemap
-import QuadTree exposing (QuadTree)
+import QuadTree
 
 
 quadTreeLeafElementsAmount : Int
@@ -22,11 +26,11 @@ quadTreeLeafElementsAmount =
 
 
 type alias CarPositionLookup =
-    QuadTree Length.Meters LMEntityCoordinates Car
+    LMQuadTree Car
 
 
 type alias RoadNetworkLookup =
-    QuadTree Length.Meters LMEntityCoordinates LookupTreeEntry
+    LMQuadTree LookupTreeEntry
 
 
 type alias LookupTreeEntry =

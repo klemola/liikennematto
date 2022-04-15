@@ -11,11 +11,16 @@ module Simulation.Round exposing
 import Angle
 import Dict
 import Direction2d
-import Length exposing (Length, Meters)
-import LineSegment2d exposing (LineSegment2d)
+import Length exposing (Length)
+import LineSegment2d
 import Maybe.Extra
 import Model.Car as Car exposing (Car, CarState(..))
-import Model.Geometry exposing (LMEntityCoordinates, LMPoint2d)
+import Model.Geometry
+    exposing
+        ( LMLineSegment2d
+        , LMPoint2d
+        , LMTriangle2d
+        )
 import Model.RoadNetwork exposing (TrafficControl(..))
 import Model.TrafficLight as TrafficLight exposing (TrafficLight)
 import Model.World exposing (World)
@@ -24,7 +29,7 @@ import Polygon2d
 import Quantity
 import Random
 import Simulation.Steering as Steering
-import Triangle2d exposing (Triangle2d)
+import Triangle2d
 
 
 type alias Round =
@@ -240,7 +245,7 @@ checkYield { activeCar, otherCars } signPosition =
 --
 
 
-forwardCollisionWith : LineSegment2d Meters LMEntityCoordinates -> Car -> Car -> Maybe LMPoint2d
+forwardCollisionWith : LMLineSegment2d -> Car -> Car -> Maybe LMPoint2d
 forwardCollisionWith ray activeCar otherCar =
     let
         maxOrientationDifference =
@@ -268,7 +273,7 @@ forwardCollisionWith ray activeCar otherCar =
             |> List.head
 
 
-pathCollisionWith : Triangle2d Meters LMEntityCoordinates -> Car -> Car -> Maybe LMPoint2d
+pathCollisionWith : LMTriangle2d -> Car -> Car -> Maybe LMPoint2d
 pathCollisionWith fieldOfViewTriangle activeCar otherCar =
     let
         maxOrientationDifference =
@@ -306,7 +311,7 @@ distanceToClosestCollisionPoint activeCar carsToCheck predicate =
         |> Quantity.minimum
 
 
-pathsIntersectAt : Triangle2d Meters LMEntityCoordinates -> Car -> Car -> Maybe LMPoint2d
+pathsIntersectAt : LMTriangle2d -> Car -> Car -> Maybe LMPoint2d
 pathsIntersectAt checkArea car otherCar =
     if Triangle2d.contains otherCar.position checkArea then
         LineSegment2d.intersectionPoint
@@ -317,7 +322,7 @@ pathsIntersectAt checkArea car otherCar =
         Nothing
 
 
-toRay : Car -> Length -> LineSegment2d Meters LMEntityCoordinates
+toRay : Car -> Length -> LMLineSegment2d
 toRay car distance =
     let
         origin =

@@ -8,14 +8,14 @@ module Simulation.Pathfinding exposing
 import Angle
 import BoundingBox2d
 import Common
-import CubicSpline2d exposing (CubicSpline2d)
+import CubicSpline2d
 import Direction2d
 import Length exposing (Length)
 import Model.Car as Car exposing (Car, CarState(..))
 import Model.Geometry
     exposing
-        ( LMDirection2d
-        , LMEntityCoordinates
+        ( LMCubicSpline2d
+        , LMDirection2d
         , LMPoint2d
         , LMPolyline2d
         )
@@ -139,7 +139,7 @@ curveSpline origin target direction =
         |> cubicSplineToLocalPath
 
 
-cubicSplineToLocalPath : CubicSpline2d Length.Meters LMEntityCoordinates -> LMPolyline2d
+cubicSplineToLocalPath : LMCubicSpline2d -> LMPolyline2d
 cubicSplineToLocalPath spline =
     CubicSpline2d.segments splineSegmentsAmount spline
 

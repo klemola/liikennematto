@@ -1,7 +1,6 @@
 module Data.Cars exposing
     ( CarMake
     , CarStyle
-    , Shape
     , carAsset
     , sedan
     , testCar
@@ -9,10 +8,10 @@ module Data.Cars exposing
 
 import Color exposing (Color)
 import Data.Colors as Colors
-import Length exposing (Length, Meters)
-import Model.Geometry exposing (LMEntityCoordinates)
+import Length exposing (Length)
+import Model.Geometry exposing (LMShape2d)
 import Point2d
-import Polygon2d exposing (Polygon2d)
+import Polygon2d
 import Quantity
 import Svg exposing (Svg, path)
 import Svg.Attributes as Attributes
@@ -22,17 +21,13 @@ type alias CarMake =
     { bodyColor : Color
     , length : Length
     , width : Length
-    , shapeAtOrigin : Shape
+    , shapeAtOrigin : LMShape2d
     , style : CarStyle
     }
 
 
 type CarStyle
     = Sedan
-
-
-type alias Shape =
-    Polygon2d Meters LMEntityCoordinates
 
 
 carAsset : CarMake -> ( List (Svg msg), String )
