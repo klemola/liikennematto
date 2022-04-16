@@ -16,9 +16,8 @@ import FSM
 import Length exposing (Length)
 import Model.Car as Car exposing (Car, CarState(..))
 import Model.Entity as Entity exposing (Id)
-import Model.Geometry exposing (LMPoint2d)
 import Model.Lookup exposing (carPositionLookup)
-import Model.Lot as Lot exposing (Lot)
+import Model.Lot as Lot exposing (Lot, ParkingSpot)
 import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Model.World as World exposing (World)
 import Point2d
@@ -180,7 +179,7 @@ carAfterDespawn world car =
         |> Maybe.map (moveCarToHome world car)
 
 
-moveCarToHome : World -> Car -> ( Lot, LMPoint2d ) -> Car
+moveCarToHome : World -> Car -> ( Lot, ParkingSpot ) -> Car
 moveCarToHome world car ( home, parkingSpot ) =
     let
         homeNode =
@@ -193,14 +192,14 @@ moveCarToHome world car ( home, parkingSpot ) =
         Just nodeCtx ->
             { car
                 | fsm = nextFSM
-                , position = parkingSpot
+                , position = parkingSpot.position
                 , orientation = Lot.parkingSpotOrientation home
                 , velocity = Quantity.zero
                 , acceleration = Steering.maxAcceleration
                 , route = []
                 , localPath = Polyline2d.fromVertices []
             }
-                |> Pathfinding.createRoute nodeCtx
+                |> Pathfinding.createRouteToLotExit nodeCtx parkingSpot.pathToLotExit
 
         _ ->
             car
@@ -230,38 +229,38 @@ addLotResident lotId lot world =
         homeNode =
             RoadNetwork.findLotExitByNodeId world.roadNetwork lotId
 
-        addToWorld car =
-            { world | cars = Dict.insert carId car world.cars }
-    in
-    pickParkingSpotAndCarMake lot
-        |> Maybe.map (createCar lot homeNode carId >> addToWorld)
-        |> Maybe.withDefault world
-
-
-pickParkingSpotAndCarMake : Lot -> Maybe ( CarMake, LMPoint2d )
-pickParkingSpotAndCarMake lot =
-    let
-        make =
+        carMake =
             Data.Lots.resident lot.kind
 
         parkingSpot =
             findParkingSpot lot
     in
-    Maybe.map2 Tuple.pair make parkingSpot
+    case
+        Maybe.map3
+            (createCar lot carId)
+            homeNode
+            carMake
+            parkingSpot
+    of
+        Just car ->
+            { world | cars = Dict.insert carId car world.cars }
+
+        Nothing ->
+            world
 
 
 findParkingSpot lot =
-    List.head lot.parkingSpots |> Maybe.map .position
+    List.head lot.parkingSpots
 
 
-createCar : Lot -> Maybe RNNodeContext -> Id -> ( CarMake, LMPoint2d ) -> Car
-createCar lot homeNode carId ( make, parkingSpot ) =
+createCar : Lot -> Id -> RNNodeContext -> CarMake -> ParkingSpot -> Car
+createCar lot carId homeNode make parkingSpot =
     Car.new make
         |> Car.withHome lot.id
-        |> Car.withPosition parkingSpot
+        |> Car.withPosition parkingSpot.position
         |> Car.withOrientation (Lot.parkingSpotOrientation lot)
         |> Car.build carId
-        |> Pathfinding.maybeCreateRoute homeNode
+        |> Pathfinding.createRouteToLotExit homeNode parkingSpot.pathToLotExit
         |> Steering.startMoving
 
 
@@ -295,7 +294,7 @@ spawnCar seed world =
                             |> Car.withPosition nodeCtx.node.label.position
                             |> Car.withOrientation (Direction2d.toAngle nodeCtx.node.label.direction)
                             |> Car.build id
-                            |> Pathfinding.maybeCreateRoute nextNode
+                            |> Pathfinding.maybeCreateRouteToNode nextNode
                             |> Steering.startMoving
                 in
                 ( { world | cars = Dict.insert id car world.cars }

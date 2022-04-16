@@ -368,7 +368,7 @@ routeCarByDestination world position car =
     in
     case destination of
         Just nodeCtx ->
-            Pathfinding.createRoute nodeCtx car
+            Pathfinding.createRouteToNode nodeCtx car
 
         Nothing ->
             car

@@ -4,26 +4,52 @@ module Common exposing
     , boundingBoxToFrame
     , boundingBoxWithDimensions
     , isInTheNormalPlaneOf
+    , rightAnglePosition
     , splitBoundingBoxHorizontally
     , splitBoundingBoxVertically
     )
 
 import Angle exposing (Angle)
 import BoundingBox2d
-import Direction2d
+import Direction2d exposing (Direction2d)
 import Frame2d
 import Length exposing (Length)
 import Model.Geometry exposing (LMBoundingBox2d, LMDirection2d, LMPoint2d)
-import Point2d
+import Point2d exposing (Point2d)
 import Quantity
 import Vector2d
 
 
-angleFromDirection : LMDirection2d -> LMPoint2d -> LMPoint2d -> Angle
+angleFromDirection :
+    Direction2d coordinates
+    -> Point2d Length.Meters coordinates
+    -> Point2d Length.Meters coordinates
+    -> Angle
 angleFromDirection direction target origin =
     Direction2d.from origin target
         |> Maybe.map (Direction2d.angleFrom direction)
         |> Maybe.withDefault (Angle.degrees 0)
+
+
+rightAnglePosition :
+    Point2d Length.Meters coordinates
+    -> Point2d Length.Meters coordinates
+    -> Direction2d coordinates
+    -> Point2d Length.Meters coordinates
+rightAnglePosition origin target direction =
+    let
+        distanceToTarget =
+            Point2d.distanceFrom origin target
+
+        cosine =
+            origin
+                |> angleFromDirection direction target
+                |> Angle.cos
+
+        distanceToRightAnglePosition =
+            distanceToTarget |> Quantity.multiplyBy cosine
+    in
+    Point2d.translateIn direction distanceToRightAnglePosition origin
 
 
 boundingBoxWithDimensions : Length -> Length -> LMPoint2d -> LMBoundingBox2d

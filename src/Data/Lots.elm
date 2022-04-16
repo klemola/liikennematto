@@ -50,26 +50,15 @@ drivewayOffset =
     Cell.size |> Quantity.multiplyBy 0.2
 
 
-toEntryPosition : OrthogonalDirection -> Length -> Length -> LMPoint2dLocal
-toEntryPosition =
-    toRoadConnectionPosition innerLaneOffset
-
-
-toExitPosition : OrthogonalDirection -> Length -> Length -> LMPoint2dLocal
-toExitPosition =
-    toRoadConnectionPosition outerLaneOffset
-
-
 toRoadConnectionPosition : Length -> OrthogonalDirection -> Length -> Length -> LMPoint2dLocal
 toRoadConnectionPosition laneOffset drivewayExitDirection lotWidth lotHeight =
     case drivewayExitDirection of
         Right ->
             Point2d.xy
                 lotWidth
-                (lotHeight
-                    |> Quantity.minus Cell.size
-                    |> Quantity.plus laneOffset
-                    |> Quantity.plus drivewayOffset
+                (Cell.size
+                    |> Quantity.minus laneOffset
+                    |> Quantity.minus drivewayOffset
                 )
 
         Down ->
@@ -81,10 +70,9 @@ toRoadConnectionPosition laneOffset drivewayExitDirection lotWidth lotHeight =
         Left ->
             Point2d.xy
                 Quantity.zero
-                (lotHeight
-                    |> Quantity.minus Cell.size
-                    |> Quantity.plus laneOffset
-                    |> Quantity.plus drivewayOffset
+                (Cell.size
+                    |> Quantity.minus laneOffset
+                    |> Quantity.minus drivewayOffset
                 )
 
         _ ->
@@ -98,7 +86,7 @@ resident kind =
             Just sedan
 
         School ->
-            Nothing
+            Just sedan
 
 
 lotAsset : LotKind -> List (Svg msg)
@@ -128,11 +116,11 @@ residentialSingle1 =
     , height = height
     , parkingSpotExitDirection = Right
     , parkingSpots =
-        [ Point2d.fromMeters { x = 21.25, y = 4.715 }
+        [ Point2d.fromMeters { x = 21.25, y = 3.75 }
         ]
     , drivewayExitDirection = drivewayExitDirection
-    , entryPosition = toEntryPosition drivewayExitDirection width height
-    , exitPosition = toExitPosition drivewayExitDirection width height
+    , entryPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width height
+    , exitPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width height
     }
 
 
@@ -609,8 +597,8 @@ school =
         , Point2d.fromMeters { x = 26.5, y = 9.25 }
         ]
     , drivewayExitDirection = drivewayExitDirection
-    , entryPosition = toEntryPosition drivewayExitDirection width height
-    , exitPosition = toExitPosition drivewayExitDirection width height
+    , entryPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width height
+    , exitPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width height
     }
 
 
