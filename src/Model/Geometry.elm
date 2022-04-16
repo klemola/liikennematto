@@ -2,7 +2,9 @@ module Model.Geometry exposing
     ( DiagonalDirection(..)
     , LMBoundingBox2d
     , LMCubicSpline2d
+    , LMCubicSpline2dLocal
     , LMDirection2d
+    , LMFrame2d
     , LMLineSegment2d
     , LMPoint2d
     , LMPoint2dLocal
@@ -25,6 +27,7 @@ module Model.Geometry exposing
 import BoundingBox2d exposing (BoundingBox2d)
 import CubicSpline2d exposing (CubicSpline2d)
 import Direction2d exposing (Direction2d)
+import Frame2d exposing (Frame2d)
 import Length
 import LineSegment2d exposing (LineSegment2d)
 import Point2d exposing (Point2d)
@@ -62,6 +65,10 @@ type alias LMCubicSpline2d =
     CubicSpline2d Length.Meters GlobalCoordinates
 
 
+type alias LMCubicSpline2dLocal =
+    CubicSpline2d Length.Meters LocalCoordinates
+
+
 type alias LMPolyline2d =
     Polyline2d Length.Meters GlobalCoordinates
 
@@ -76,6 +83,10 @@ type alias LMShape2d =
 
 type alias LMTriangle2d =
     Triangle2d Length.Meters GlobalCoordinates
+
+
+type alias LMFrame2d =
+    Frame2d Length.Meters GlobalCoordinates { defines : LocalCoordinates }
 
 
 type alias LMQuadTree a =
@@ -103,22 +114,22 @@ type DiagonalDirection
     | BottomLeft
 
 
-up : Direction2d.Direction2d GlobalCoordinates
+up : Direction2d.Direction2d coordinates
 up =
     Direction2d.positiveY
 
 
-right : Direction2d.Direction2d GlobalCoordinates
+right : Direction2d.Direction2d coordinates
 right =
     Direction2d.positiveX
 
 
-down : Direction2d.Direction2d GlobalCoordinates
+down : Direction2d.Direction2d coordinates
 down =
     Direction2d.negativeY
 
 
-left : Direction2d.Direction2d GlobalCoordinates
+left : Direction2d.Direction2d coordinates
 left =
     Direction2d.negativeX
 
@@ -175,7 +186,7 @@ crossOrthogonalDirection fromDir =
             verticalOrthogonalDirections
 
 
-orthogonalDirectionToLmDirection : OrthogonalDirection -> LMDirection2d
+orthogonalDirectionToLmDirection : OrthogonalDirection -> Direction2d.Direction2d coordinates
 orthogonalDirectionToLmDirection dir =
     case dir of
         Up ->

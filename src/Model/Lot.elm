@@ -1,5 +1,6 @@
 module Model.Lot exposing
     ( Lot
+    , ParkingSpot
     , build
     , constructionSite
     , inBounds
@@ -17,15 +18,15 @@ import Model.Entity exposing (Id)
 import Model.Geometry
     exposing
         ( LMBoundingBox2d
+        , LMCubicSpline2d
         , LMPoint2d
         , LMPoint2dLocal
-        , LMPolyline2d
         , OrthogonalDirection(..)
         , orthogonalDirectionToLmDirection
         )
 import Point2d
-import Polyline2d
 import Quantity
+import Splines
 import Vector2d
 
 
@@ -44,8 +45,8 @@ type alias Lot =
 
 type alias ParkingSpot =
     { position : LMPoint2d
-    , pathFromLotEntry : LMPolyline2d
-    , pathToLotExit : LMPolyline2d
+    , pathFromLotEntry : LMCubicSpline2d
+    , pathToLotExit : LMCubicSpline2d
     , owner : Maybe Id
     , reservedBy : Maybe Id
     }
@@ -77,10 +78,28 @@ createParkingSpot newLot constructionSiteBB spot =
     let
         lotFrame =
             Common.boundingBoxToFrame constructionSiteBB
+
+        entrySpline =
+            Splines.lotEntrySpline
+                { parkingSpotPosition = spot
+                , lotEntryPosition = newLot.entryPosition
+                , lotExitPosition = newLot.exitPosition
+                , parkingSpotExitDirection = newLot.parkingSpotExitDirection
+                , drivewayExitDirection = newLot.drivewayExitDirection
+                }
+
+        exitSpline =
+            Splines.lotExitSpline
+                { parkingSpotPosition = spot
+                , lotEntryPosition = newLot.entryPosition
+                , lotExitPosition = newLot.exitPosition
+                , parkingSpotExitDirection = newLot.parkingSpotExitDirection
+                , drivewayExitDirection = newLot.drivewayExitDirection
+                }
     in
     { position = Point2d.placeIn lotFrame spot
-    , pathFromLotEntry = Polyline2d.fromVertices []
-    , pathToLotExit = Polyline2d.fromVertices []
+    , pathFromLotEntry = Splines.asGlobalSpline entrySpline lotFrame
+    , pathToLotExit = Splines.asGlobalSpline exitSpline lotFrame
     , owner = Nothing
     , reservedBy = Nothing
     }
