@@ -12,10 +12,13 @@ import Model.Geometry exposing (OrthogonalDirection, oppositeOrthogonalDirection
 import Model.Tile as Tile exposing (Tile, TileKind)
 import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.World exposing (World)
+import Render.Conversion exposing (toPixelsValue)
 
 
 type alias RenderCache =
     { tilemap : TilemapPresentation
+    , tilemapWidthPixels : Float
+    , tilemapHeightPixels : Float
     }
 
 
@@ -29,7 +32,21 @@ type alias TilePresentation =
 
 new : World -> RenderCache
 new { tilemap } =
-    { tilemap = toTilemapCache tilemap }
+    let
+        tilemapDimensions =
+            Tilemap.dimensions tilemap
+
+        tilemapWidthPixels =
+            toPixelsValue tilemapDimensions.width
+
+        tilemapHeigthPixels =
+            toPixelsValue tilemapDimensions.height
+    in
+    { tilemap = toTilemapCache tilemap
+    , tilemapWidthPixels =
+        tilemapWidthPixels
+    , tilemapHeightPixels = tilemapHeigthPixels
+    }
 
 
 refreshTilemapCache : Tilemap -> RenderCache -> RenderCache

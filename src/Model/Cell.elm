@@ -1,17 +1,16 @@
 module Model.Cell exposing
     ( Cell
     , CellCoordinates
+    , Constraints
     , bottomLeftCorner
     , boundingBox
     , centerPoint
     , coordinates
     , fromCoordinates
-    , horizontalCellsAmount
     , nextOrthogonalCell
     , quadrantNeighbors
     , size
     , toString
-    , verticalCellsAmount
     )
 
 import Common
@@ -37,14 +36,12 @@ type alias CellCoordinates =
     ( Int, Int )
 
 
-horizontalCellsAmount : Int
-horizontalCellsAmount =
-    10
-
-
-verticalCellsAmount : Int
-verticalCellsAmount =
-    horizontalCellsAmount
+type alias Constraints a =
+    -- The partial record definition allows one to pass a larger config record as constraints, for convenience
+    { a
+        | verticalCellsAmount : Int
+        , horizontalCellsAmount : Int
+    }
 
 
 size : Length
@@ -52,8 +49,8 @@ size =
     Length.meters 16
 
 
-fromCoordinates : CellCoordinates -> Maybe Cell
-fromCoordinates ( x, y ) =
+fromCoordinates : Constraints a -> CellCoordinates -> Maybe Cell
+fromCoordinates { horizontalCellsAmount, verticalCellsAmount } ( x, y ) =
     if
         isValidCoordinate x horizontalCellsAmount
             && isValidCoordinate y verticalCellsAmount
@@ -74,8 +71,8 @@ coordinates (Cell coords) =
     coords
 
 
-bottomLeftCorner : Cell -> LMPoint2d
-bottomLeftCorner cell =
+bottomLeftCorner : Constraints a -> Cell -> LMPoint2d
+bottomLeftCorner constraints cell =
     let
         ( cellX, cellY ) =
             coordinates cell
@@ -84,7 +81,7 @@ bottomLeftCorner cell =
         let
             ( xMultiplier, yMultiplier ) =
                 ( toFloat (cellX - 1)
-                , toFloat (verticalCellsAmount - cellY)
+                , toFloat (constraints.verticalCellsAmount - cellY)
                 )
         in
         Point2d.xy
@@ -97,20 +94,20 @@ bottomLeftCorner cell =
         Point2d.xy negativeInfinity negativeInfinity
 
 
-centerPoint : Cell -> LMPoint2d
-centerPoint cell =
+centerPoint : Constraints a -> Cell -> LMPoint2d
+centerPoint constraints cell =
     let
         displacement =
             Vector2d.xy
                 (Quantity.half size)
                 (Quantity.half size)
     in
-    bottomLeftCorner cell |> Point2d.translateBy displacement
+    bottomLeftCorner constraints cell |> Point2d.translateBy displacement
 
 
-boundingBox : Cell -> LMBoundingBox2d
-boundingBox cell =
-    Common.boundingBoxWithDimensions size size (bottomLeftCorner cell)
+boundingBox : Constraints a -> Cell -> LMBoundingBox2d
+boundingBox constraints cell =
+    Common.boundingBoxWithDimensions size size (bottomLeftCorner constraints cell)
 
 
 toString : Cell -> String
@@ -122,44 +119,44 @@ toString cell =
     "Cell (" ++ String.fromInt x ++ "," ++ String.fromInt y ++ ")"
 
 
-nextOrthogonalCell : OrthogonalDirection -> Cell -> Maybe Cell
-nextOrthogonalCell dir cell =
+nextOrthogonalCell : Constraints a -> OrthogonalDirection -> Cell -> Maybe Cell
+nextOrthogonalCell constraints dir cell =
     let
         ( x, y ) =
             coordinates cell
     in
     case dir of
         Up ->
-            fromCoordinates ( x, y - 1 )
+            fromCoordinates constraints ( x, y - 1 )
 
         Right ->
-            fromCoordinates ( x + 1, y )
+            fromCoordinates constraints ( x + 1, y )
 
         Down ->
-            fromCoordinates ( x, y + 1 )
+            fromCoordinates constraints ( x, y + 1 )
 
         Left ->
-            fromCoordinates ( x - 1, y )
+            fromCoordinates constraints ( x - 1, y )
 
 
-nextDiagonalCell : DiagonalDirection -> Cell -> Maybe Cell
-nextDiagonalCell dir cell =
+nextDiagonalCell : Constraints a -> DiagonalDirection -> Cell -> Maybe Cell
+nextDiagonalCell constraints dir cell =
     let
         ( x, y ) =
             coordinates cell
     in
     case dir of
         TopLeft ->
-            fromCoordinates ( x - 1, y - 1 )
+            fromCoordinates constraints ( x - 1, y - 1 )
 
         TopRight ->
-            fromCoordinates ( x + 1, y - 1 )
+            fromCoordinates constraints ( x + 1, y - 1 )
 
         BottomLeft ->
-            fromCoordinates ( x - 1, y + 1 )
+            fromCoordinates constraints ( x - 1, y + 1 )
 
         BottomRight ->
-            fromCoordinates ( x + 1, y + 1 )
+            fromCoordinates constraints ( x + 1, y + 1 )
 
 
 {-| Corner plus natural neighbors (clockwise).
@@ -167,33 +164,33 @@ nextDiagonalCell dir cell =
     e.g. Left, TopLeft, Up
 
 -}
-quadrantNeighbors : DiagonalDirection -> Cell -> List Cell
-quadrantNeighbors dir origin =
+quadrantNeighbors : Constraints a -> DiagonalDirection -> Cell -> List Cell
+quadrantNeighbors constraints dir origin =
     case dir of
         TopLeft ->
             Maybe.values
-                [ nextOrthogonalCell Left origin
-                , nextDiagonalCell TopLeft origin
-                , nextOrthogonalCell Up origin
+                [ nextOrthogonalCell constraints Left origin
+                , nextDiagonalCell constraints TopLeft origin
+                , nextOrthogonalCell constraints Up origin
                 ]
 
         TopRight ->
             Maybe.values
-                [ nextOrthogonalCell Up origin
-                , nextDiagonalCell TopRight origin
-                , nextOrthogonalCell Right origin
+                [ nextOrthogonalCell constraints Up origin
+                , nextDiagonalCell constraints TopRight origin
+                , nextOrthogonalCell constraints Right origin
                 ]
 
         BottomLeft ->
             Maybe.values
-                [ nextOrthogonalCell Down origin
-                , nextDiagonalCell BottomLeft origin
-                , nextOrthogonalCell Left origin
+                [ nextOrthogonalCell constraints Down origin
+                , nextDiagonalCell constraints BottomLeft origin
+                , nextOrthogonalCell constraints Left origin
                 ]
 
         BottomRight ->
             Maybe.values
-                [ nextOrthogonalCell Right origin
-                , nextDiagonalCell BottomRight origin
-                , nextOrthogonalCell Down origin
+                [ nextOrthogonalCell constraints Right origin
+                , nextDiagonalCell constraints BottomRight origin
+                , nextOrthogonalCell constraints Down origin
                 ]

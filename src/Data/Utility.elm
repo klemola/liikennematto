@@ -1,5 +1,6 @@
-module Data.Utility exposing (..)
+module Data.Utility exposing (tilemapFromCoordinates, worldFromTilemap)
 
+import Data.Defaults as Defaults
 import Model.Cell as Cell
 import Model.Entity exposing (Id)
 import Model.Geometry exposing (OrthogonalDirection)
@@ -15,14 +16,21 @@ type alias AnchorDef =
     }
 
 
+tilemapConfig : Tilemap.TilemapConfig
+tilemapConfig =
+    { horizontalCellsAmount = Defaults.horizontalCellsAmount
+    , verticalCellsAmount = Defaults.verticalCellsAmount
+    }
+
+
 tilemapFromCoordinates : List ( Int, Int ) -> List AnchorDef -> Tilemap
 tilemapFromCoordinates cellCoordinates anchorDefs =
     let
         cells =
-            List.filterMap Cell.fromCoordinates cellCoordinates
+            List.filterMap (Cell.fromCoordinates tilemapConfig) cellCoordinates
 
         withCells =
-            Tilemap.fromCells cells
+            Tilemap.fromCells tilemapConfig cells
     in
     addAnchors withCells anchorDefs
 
@@ -31,7 +39,7 @@ addAnchors : Tilemap -> List AnchorDef -> Tilemap
 addAnchors tilemap anchorDefs =
     List.foldl
         (\{ cellCoordinates, lotId, anchorDirection } nextTilemap ->
-            case Cell.fromCoordinates cellCoordinates of
+            case Cell.fromCoordinates tilemapConfig cellCoordinates of
                 Just cell ->
                     Tilemap.addAnchor cell lotId anchorDirection nextTilemap
 
@@ -44,4 +52,4 @@ addAnchors tilemap anchorDefs =
 
 worldFromTilemap : Tilemap -> World
 worldFromTilemap tilemap =
-    World.empty |> Infrastructure.createRoadNetwork tilemap
+    World.empty tilemapConfig |> Infrastructure.createRoadNetwork tilemap

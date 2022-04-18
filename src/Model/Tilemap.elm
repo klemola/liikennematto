@@ -1,22 +1,25 @@
 module Model.Tilemap exposing
     ( Tilemap
+    , TilemapConfig
     , addAnchor
     , addTile
     , anchorAt
     , boundingBox
     , canBuildRoadAt
+    , config
+    , dimensions
     , empty
     , exists
     , fromCells
     , hasAnchor
     , inBounds
     , intersects
-    , mapSize
     , removeAnchor
     , removeTile
     , size
     , tileAt
     , toList
+    , toQuadTree
     , update
     )
 
@@ -35,6 +38,7 @@ import Model.Geometry
     exposing
         ( DiagonalDirection(..)
         , LMBoundingBox2d
+        , LMQuadTree
         , OrthogonalDirection(..)
         , diagonalDirections
         )
@@ -46,6 +50,7 @@ import Model.Tile as Tile
         , chooseTileKind
         )
 import Point2d
+import QuadTree
 import Quantity
 
 
@@ -53,35 +58,46 @@ type Tilemap
     = Tilemap
         { cells : Array (Maybe Tile)
         , anchors : Dict CellCoordinates ( Id, OrthogonalDirection )
+        , horizontalCellsAmount : Int
+        , verticalCellsAmount : Int
+        , width : Length
+        , height : Length
+        , boundingBox : LMBoundingBox2d
         }
 
 
-mapSize : Length
-mapSize =
-    -- TODO: check usage and consider tuple (sizeX, sizeY)
-    Cell.size |> Quantity.multiplyBy (toFloat Cell.horizontalCellsAmount)
+type alias TilemapConfig =
+    { horizontalCellsAmount : Int
+    , verticalCellsAmount : Int
+    }
 
 
-boundingBox : LMBoundingBox2d
-boundingBox =
-    Common.boundingBoxWithDimensions mapSize mapSize Point2d.origin
-
-
-empty : Tilemap
-empty =
+empty : TilemapConfig -> Tilemap
+empty tilemapConfig =
     let
+        width =
+            Cell.size |> Quantity.multiplyBy (toFloat tilemapConfig.horizontalCellsAmount)
+
+        height =
+            Cell.size |> Quantity.multiplyBy (toFloat tilemapConfig.verticalCellsAmount)
+
         arrSize =
-            Cell.horizontalCellsAmount * Cell.verticalCellsAmount
+            tilemapConfig.horizontalCellsAmount * tilemapConfig.verticalCellsAmount
     in
     Tilemap
         { cells = Array.initialize arrSize (always Nothing)
         , anchors = Dict.empty
+        , horizontalCellsAmount = tilemapConfig.horizontalCellsAmount
+        , verticalCellsAmount = tilemapConfig.verticalCellsAmount
+        , width = width
+        , height = height
+        , boundingBox = Common.boundingBoxWithDimensions width height Point2d.origin
         }
 
 
-fromCells : List Cell -> Tilemap
-fromCells cells =
-    fromCellsHelper cells empty
+fromCells : TilemapConfig -> List Cell -> Tilemap
+fromCells tilemapConfig cells =
+    fromCellsHelper cells (empty tilemapConfig)
 
 
 fromCellsHelper : List Cell -> Tilemap -> Tilemap
@@ -103,10 +119,13 @@ fromCellsHelper remainingCells tilemap =
 
 
 tileAt : Tilemap -> Cell -> Maybe Tile
-tileAt (Tilemap tilemapContents) cell =
+tileAt tilemap cell =
     let
+        (Tilemap tilemapContents) =
+            tilemap
+
         idx =
-            indexFromCell cell
+            indexFromCell tilemap cell
     in
     Array.get idx tilemapContents.cells
         |> Maybe.andThen identity
@@ -126,14 +145,18 @@ hasAnchor (Tilemap tilemapContents) cell =
     Dict.member (Cell.coordinates cell) tilemapContents.anchors
 
 
-inBounds : LMBoundingBox2d -> Bool
-inBounds testBB =
-    BoundingBox2d.isContainedIn boundingBox testBB
+inBounds : Tilemap -> LMBoundingBox2d -> Bool
+inBounds (Tilemap tilemap) testBB =
+    BoundingBox2d.isContainedIn tilemap.boundingBox testBB
 
 
 intersects : LMBoundingBox2d -> Tilemap -> Bool
 intersects testBB tilemap =
-    toList (\cell _ -> Cell.boundingBox cell) tilemap
+    let
+        tilemapConfig =
+            config tilemap
+    in
+    toList (\cell _ -> Cell.boundingBox tilemapConfig cell) tilemap
         |> List.any (Common.boundingBoxOverlaps testBB)
 
 
@@ -144,21 +167,26 @@ exists cell tilemap =
 
 canBuildRoadAt : Cell -> Tilemap -> Bool
 canBuildRoadAt cell tilemap =
-    let
-        withinAllowedComplexity l =
-            List.length l < 3
+    List.all (hasLowComplexity cell tilemap) diagonalDirections
 
-        hasLowComplexity diagonalDirection =
-            Cell.quadrantNeighbors diagonalDirection cell
-                |> List.filterMap (tileAt tilemap)
-                |> withinAllowedComplexity
+
+hasLowComplexity : Cell -> Tilemap -> DiagonalDirection -> Bool
+hasLowComplexity cell tilemap diagonalDirection =
+    let
+        tilemapConfig =
+            config tilemap
     in
-    List.all hasLowComplexity diagonalDirections
+    Cell.quadrantNeighbors tilemapConfig diagonalDirection cell
+        |> List.filterMap (tileAt tilemap)
+        |> (\tiles -> List.length tiles < 3)
 
 
 toList : (Cell -> Tile -> a) -> Tilemap -> List a
-toList mapperFn (Tilemap tilemapContents) =
+toList mapperFn tilemap =
     let
+        (Tilemap tilemapContents) =
+            tilemap
+
         -- Keep track of the array index, which Array.foldl does not
         initialAcc =
             { acc = []
@@ -172,7 +200,7 @@ toList mapperFn (Tilemap tilemapContents) =
                     { acc =
                         case maybeTile of
                             Just tile ->
-                                cellFromIndex index
+                                cellFromIndex tilemap index
                                     |> Maybe.map (\cell -> mapperFn cell tile :: acc)
                                     |> Maybe.withDefault acc
 
@@ -185,6 +213,18 @@ toList mapperFn (Tilemap tilemapContents) =
                 tilemapContents.cells
     in
     mappedAcc.acc
+
+
+toQuadTree : Tilemap -> Int -> LMQuadTree a
+toQuadTree (Tilemap tilemapContents) quadTreeLeafElementsAmount =
+    QuadTree.init tilemapContents.boundingBox quadTreeLeafElementsAmount
+
+
+config : Tilemap -> TilemapConfig
+config (Tilemap tilemapContents) =
+    { verticalCellsAmount = tilemapContents.verticalCellsAmount
+    , horizontalCellsAmount = tilemapContents.horizontalCellsAmount
+    }
 
 
 size : Tilemap -> Int
@@ -202,35 +242,50 @@ size (Tilemap tilemapContents) =
         tilemapContents.cells
 
 
+dimensions : Tilemap -> { width : Length, height : Length }
+dimensions (Tilemap tilemapContents) =
+    { width = tilemapContents.width
+    , height = tilemapContents.height
+    }
+
+
+boundingBox : Tilemap -> LMBoundingBox2d
+boundingBox (Tilemap tilemapContents) =
+    tilemapContents.boundingBox
+
+
 updateCell : Cell -> Tile -> Tilemap -> Tilemap
-updateCell cell tile (Tilemap tilemapContents) =
+updateCell cell tile tilemap =
     let
+        (Tilemap tilemapContents) =
+            tilemap
+
         idx =
-            indexFromCell cell
+            indexFromCell tilemap cell
     in
-    Tilemap
-        { cells = tilemapContents.cells |> Array.set idx (Just tile)
-        , anchors = tilemapContents.anchors
-        }
+    Tilemap { tilemapContents | cells = tilemapContents.cells |> Array.set idx (Just tile) }
 
 
-cellFromIndex : Int -> Maybe Cell
-cellFromIndex idx =
+cellFromIndex : Tilemap -> Int -> Maybe Cell
+cellFromIndex tilemap idx =
     let
+        tilemapConfig =
+            config tilemap
+
         xyZeroIndexed =
-            { x = remainderBy Cell.horizontalCellsAmount idx
-            , y = idx // Cell.verticalCellsAmount
+            { x = remainderBy tilemapConfig.horizontalCellsAmount idx
+            , y = idx // tilemapConfig.verticalCellsAmount
             }
     in
     -- Cells are 1-indexed - map the coordinates to match
-    Cell.fromCoordinates
+    Cell.fromCoordinates tilemapConfig
         ( xyZeroIndexed.x + 1
         , xyZeroIndexed.y + 1
         )
 
 
-indexFromCell : Cell -> Int
-indexFromCell cell =
+indexFromCell : Tilemap -> Cell -> Int
+indexFromCell (Tilemap tilemapContents) cell =
     let
         ( cellX, cellY ) =
             Cell.coordinates cell
@@ -241,7 +296,7 @@ indexFromCell cell =
             }
     in
     -- Arrays are 0-indexed - map the coordinates to match
-    xyZeroIndexed.x + (xyZeroIndexed.y * Cell.verticalCellsAmount)
+    xyZeroIndexed.x + (xyZeroIndexed.y * tilemapContents.verticalCellsAmount)
 
 
 
@@ -284,23 +339,19 @@ update delta tilemap =
         nextTilemap =
             List.foldl
                 (\idx acc ->
-                    case cellFromIndex idx of
+                    case cellFromIndex tilemap idx of
                         Just cell ->
                             updateNeighborCells cell acc
 
                         Nothing ->
                             acc
                 )
-                (Tilemap
-                    { cells = cellsUpdate.nextCells
-                    , anchors = currentTilemap.anchors
-                    }
-                )
+                (Tilemap { currentTilemap | cells = cellsUpdate.nextCells })
                 cellsUpdate.emptiedIndices
 
         changedCells =
             cellsUpdate.changedIndices
-                |> List.map cellFromIndex
+                |> List.map (cellFromIndex nextTilemap)
                 |> Maybe.values
     in
     { tilemap = nextTilemap
@@ -466,10 +517,7 @@ addAnchor anchor lotId anchorDirection (Tilemap tilemapContents) =
                 tilemapContents.anchors
 
         tilemapWithAnchor =
-            Tilemap
-                { anchors = nextAnchors
-                , cells = tilemapContents.cells
-                }
+            Tilemap { tilemapContents | anchors = nextAnchors }
     in
     setAnchorTile anchor tilemapWithAnchor |> Tuple.first
 
@@ -485,17 +533,14 @@ removeAnchor lotId tilemap =
                 (\_ ( anchorLotId, _ ) -> anchorLotId == lotId)
                 tilemapContents.anchors
     in
-    case anchor |> Maybe.andThen anchorCell of
+    case anchor |> Maybe.andThen (anchorCell tilemap) of
         Just cell ->
             let
                 cellCoordinates =
                     Cell.coordinates cell
 
                 tilemapWithAnchorRemoved =
-                    Tilemap
-                        { anchors = Dict.remove cellCoordinates tilemapContents.anchors
-                        , cells = tilemapContents.cells
-                        }
+                    Tilemap { tilemapContents | anchors = Dict.remove cellCoordinates tilemapContents.anchors }
             in
             case tileAt tilemap cell of
                 Just _ ->
@@ -509,16 +554,23 @@ removeAnchor lotId tilemap =
             tilemap
 
 
-anchorCell : ( CellCoordinates, ( Id, OrthogonalDirection ) ) -> Maybe Cell
-anchorCell ( cellCoordinates, _ ) =
-    Cell.fromCoordinates cellCoordinates
+anchorCell : Tilemap -> ( CellCoordinates, ( Id, OrthogonalDirection ) ) -> Maybe Cell
+anchorCell tilemap ( cellCoordinates, _ ) =
+    let
+        tilemapConfig =
+            config tilemap
+    in
+    Cell.fromCoordinates tilemapConfig cellCoordinates
 
 
 nextOrthogonalTile : OrthogonalDirection -> Cell -> Tilemap -> Maybe ( Cell, Tile )
 nextOrthogonalTile dir cell tilemap =
     let
+        tilemapConfig =
+            config tilemap
+
         maybeCell =
-            Cell.nextOrthogonalCell dir cell
+            Cell.nextOrthogonalCell tilemapConfig dir cell
 
         maybeTile =
             maybeCell

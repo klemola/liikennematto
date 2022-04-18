@@ -111,14 +111,19 @@ render model =
             , showCarDebugVisuals = model.showCarDebugVisuals
             }
 
-        renderedSize =
-            Render.tilemapSizePixels |> floor
+        renderWidth =
+            floor model.renderCache.tilemapWidthPixels
+
+        renderHeight =
+            floor model.renderCache.tilemapHeightPixels
 
         ( viewportWidth, viewportHeight ) =
-            ( min model.screen.width renderedSize, min model.screen.height renderedSize )
+            ( min model.screen.width renderWidth
+            , min model.screen.height renderHeight
+            )
 
         overflowStrategy =
-            if renderedSize > model.screen.width || renderedSize > model.screen.height then
+            if renderWidth > model.screen.width || renderHeight > model.screen.height then
                 Element.scrollbars
 
             else
@@ -128,8 +133,8 @@ render model =
         |> Element.html
         -- render + overlay
         |> Element.el
-            [ Element.width (Element.px renderedSize)
-            , Element.height (Element.px renderedSize)
+            [ Element.width (Element.px renderWidth)
+            , Element.height (Element.px renderHeight)
             , Element.inFront (UI.Editor.overlay model.world model.tool)
             ]
         -- overflow wrapper

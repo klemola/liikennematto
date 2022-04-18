@@ -56,8 +56,15 @@ suite =
         [ describe "bitmasking tile by it's neighbors"
             [ test "Creates an intersection with compatible tiles"
                 (\_ ->
-                    Cell.fromCoordinates ( 2, 1 )
-                        |> Maybe.andThen (Tilemap.tileAt tilemapThatResemblesAIntersection)
+                    let
+                        tilemap =
+                            tilemapThatResemblesAIntersection
+
+                        tilemapConfig =
+                            Tilemap.config tilemap
+                    in
+                    Cell.fromCoordinates tilemapConfig ( 2, 1 )
+                        |> Maybe.andThen (Tilemap.tileAt tilemap)
                         |> Maybe.map
                             (\tile ->
                                 tile.kind == 14
@@ -68,8 +75,15 @@ suite =
                 )
             , test "Creates a curve with compatible tiles"
                 (\_ ->
-                    Cell.fromCoordinates ( 1, 1 )
-                        |> Maybe.andThen (Tilemap.tileAt tilemapThatResemblesACurve)
+                    let
+                        tilemap =
+                            tilemapThatResemblesACurve
+
+                        tilemapConfig =
+                            Tilemap.config tilemap
+                    in
+                    Cell.fromCoordinates tilemapConfig ( 1, 1 )
+                        |> Maybe.andThen (Tilemap.tileAt tilemap)
                         |> Maybe.map
                             (\tile ->
                                 tile.kind == 12
@@ -80,7 +94,14 @@ suite =
                 )
             , test "Creates a lot entry with compatible tiles"
                 (\_ ->
-                    Cell.fromCoordinates ( 1, 3 )
+                    let
+                        tilemap =
+                            tilemapWithAnchor
+
+                        tilemapConfig =
+                            Tilemap.config tilemap
+                    in
+                    Cell.fromCoordinates tilemapConfig ( 1, 3 )
                         |> Maybe.andThen (Tilemap.tileAt tilemapWithAnchor)
                         |> Maybe.map
                             (\tile ->
@@ -94,15 +115,29 @@ suite =
         , describe ".canBuildRoadAt"
             [ test "Allows a low complexity setup"
                 (\_ ->
-                    Cell.fromCoordinates ( 2, 2 )
+                    let
+                        tilemap =
+                            lowComplexityWorld.tilemap
+
+                        tilemapConfig =
+                            Tilemap.config tilemap
+                    in
+                    Cell.fromCoordinates tilemapConfig ( 2, 2 )
                         |> Maybe.map (\cell -> Tilemap.canBuildRoadAt cell lowComplexityWorld.tilemap)
                         |> Maybe.withDefault False
                         |> Expect.true "Expected valid world."
                 )
             , test "Disallows a complex setup"
                 (\_ ->
-                    Cell.fromCoordinates ( 2, 2 )
-                        |> Maybe.map (\cell -> Tilemap.canBuildRoadAt cell highComplexityWorld.tilemap)
+                    let
+                        tilemap =
+                            highComplexityWorld.tilemap
+
+                        tilemapConfig =
+                            Tilemap.config tilemap
+                    in
+                    Cell.fromCoordinates tilemapConfig ( 2, 2 )
+                        |> Maybe.map (\cell -> Tilemap.canBuildRoadAt cell tilemap)
                         |> Maybe.withDefault False
                         |> Expect.false "Expected invalid world."
                 )

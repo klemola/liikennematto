@@ -51,7 +51,7 @@ updateTraffic :
 updateTraffic { updateQueue, seed, world, delta } =
     case updateQueue of
         [] ->
-            ( { world | carPositionLookup = carPositionLookup world.cars }, seed )
+            ( { world | carPositionLookup = carPositionLookup world.tilemap world.cars }, seed )
 
         activeCar :: queue ->
             let

@@ -13,7 +13,7 @@ import Model.Liikennematto exposing (Liikennematto)
 import Model.RoadNetwork as RoadNetwork
 import Point2d
 import Quantity
-import Render exposing (pixelsToMetersRatio)
+import Render.Conversion exposing (pixelsToMetersRatio)
 import Speed exposing (Speed)
 import UI.Core
     exposing
