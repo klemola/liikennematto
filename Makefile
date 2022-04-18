@@ -38,7 +38,11 @@ benchmark:
 	elm make benchmarks/RoadNetworkBenchmark.elm --optimize --output build/benchmarks/road_network.html
 	elm make benchmarks/RoundBenchmark.elm --optimize --output build/benchmarks/round.html
 
+devtools:
+	elm make devtools/RenderFixture.elm --output build/render_fixture.html
+	elm make devtools/LotsDebug.elm --output build/lots_debug.html
+
 stats:
 	cloc --exclude-dir=Data,assets src
 
-.PHONY: build check dev serve test benchmark stats
+.PHONY: build check dev serve test benchmark devtools stats

@@ -1,5 +1,6 @@
 module Render exposing
     ( pixelsToMetersRatio
+    , renderLot
     , tileSizePixels
     , tilemapSizePixels
     , view
