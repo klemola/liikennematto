@@ -41,15 +41,19 @@ type alias World =
     }
 
 
-empty : World
-empty =
-    { tilemap = Tilemap.empty
+empty : Tilemap.TilemapConfig -> World
+empty tilemapConfig =
+    let
+        tilemap =
+            Tilemap.empty tilemapConfig
+    in
+    { tilemap = tilemap
     , roadNetwork = RoadNetwork.empty
     , trafficLights = Dict.empty
     , cars = Dict.empty
     , lots = Dict.empty
-    , carPositionLookup = carPositionLookup Dict.empty
-    , roadNetworkLookup = roadNetworkLookup Graph.empty
+    , carPositionLookup = carPositionLookup tilemap Dict.empty
+    , roadNetworkLookup = roadNetworkLookup tilemap Graph.empty
     }
 
 
@@ -60,8 +64,12 @@ empty =
 
 
 hasLot : Cell -> World -> Bool
-hasLot cell { lots } =
-    List.any (Lot.inBounds cell) (Dict.values lots)
+hasLot cell { lots, tilemap } =
+    let
+        tilemapConfig =
+            Tilemap.config tilemap
+    in
+    List.any (Lot.inBounds tilemapConfig cell) (Dict.values lots)
 
 
 isEmptyArea : LMBoundingBox2d -> World -> Bool
@@ -74,7 +82,7 @@ isEmptyArea testAreaBB world =
             Dict.foldl (\_ lot acc -> lot.boundingBox :: acc) [] world.lots
                 |> List.any (Common.boundingBoxOverlaps testAreaBB)
     in
-    Tilemap.inBounds testAreaBB && not lotOverlap && not tilemapOverlap
+    Tilemap.inBounds world.tilemap testAreaBB && not lotOverlap && not tilemapOverlap
 
 
 

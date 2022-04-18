@@ -2,6 +2,7 @@ module Data.Worlds exposing
     ( defaultWorld
     , highComplexityWorld
     , largeWorld
+    , lotTestWorld
     , lowComplexityWorld
     , simpleWorld
     , worldThatHasAVerticalRoadAtLeftSide
@@ -33,6 +34,48 @@ simpleWorld =
     tilemapFromCoordinates
         [ ( 1, 1 )
         , ( 2, 1 )
+        ]
+        []
+        |> worldFromTilemap
+
+
+lotTestWorld : World
+lotTestWorld =
+    tilemapFromCoordinates
+        -- a full height vertical road
+        [ ( 1, 1 )
+        , ( 1, 2 )
+        , ( 1, 3 )
+        , ( 1, 4 )
+        , ( 1, 5 )
+        , ( 1, 6 )
+        , ( 1, 7 )
+        , ( 1, 8 )
+        , ( 1, 9 )
+        , ( 1, 10 )
+
+        -- enough horizontal space for anything (3 cells), then another vertical road
+        , ( 4, 1 )
+        , ( 4, 2 )
+        , ( 4, 3 )
+        , ( 4, 4 )
+        , ( 4, 5 )
+        , ( 4, 6 )
+        , ( 4, 7 )
+        , ( 4, 8 )
+        , ( 4, 9 )
+        , ( 4, 10 )
+
+        -- finally horizontal roads for the last vertical ~third of the map
+        -- #1
+        , ( 8, 1 )
+        , ( 9, 1 )
+        , ( 10, 1 )
+
+        -- #2
+        , ( 8, 4 )
+        , ( 9, 4 )
+        , ( 10, 4 )
         ]
         []
         |> worldFromTilemap

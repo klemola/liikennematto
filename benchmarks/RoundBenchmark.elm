@@ -52,7 +52,7 @@ chooseOtherCarsWithQuadtree : Round -> Round
 chooseOtherCarsWithQuadtree round =
     let
         nearbyCars =
-            QuadTree.init Tilemap.boundingBox 4
+            Tilemap.toQuadTree round.world.tilemap 4
                 |> QuadTree.insertList round.otherCars
                 |> QuadTree.neighborsWithin Cell.size round.activeCar.boundingBox
     in

@@ -12,16 +12,11 @@ import Expect
 import Length
 import Model.Cell as Cell
 import Model.Geometry exposing (OrthogonalDirection(..))
-import Model.Lot as Lot exposing (Lot)
+import Model.Lot as Lot
+import Model.Tilemap as Tilemap
 import Model.World as World
 import Point2d
 import Test exposing (Test, describe, test)
-
-
-testLot : Maybe Lot
-testLot =
-    Cell.fromCoordinates ( 1, 8 )
-        |> Maybe.map (Lot.build 1 school)
 
 
 suite : Test
@@ -42,6 +37,13 @@ suite =
             , test "correctly determines if an area is empty (existing lot in target area)"
                 (\_ ->
                     let
+                        tilemapConfig =
+                            Tilemap.config worldThatHasAVerticalRoadAtLeftSide.tilemap
+
+                        testLot =
+                            Cell.fromCoordinates tilemapConfig ( 1, 8 )
+                                |> Maybe.map (Lot.build tilemapConfig 1 school)
+
                         lots =
                             testLot
                                 |> Maybe.map (\lot -> Dict.fromList [ ( 1, lot ) ])

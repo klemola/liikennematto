@@ -5,6 +5,7 @@ port module UI.Editor exposing
     )
 
 import CustomEvent
+import Data.Defaults as Defaults
 import Element exposing (Color, Element)
 import Element.Border as Border
 import Element.Events as Events
@@ -115,10 +116,17 @@ update msg model =
             )
 
         ResetWorld ->
+            let
+                world =
+                    World.empty
+                        { horizontalCellsAmount = Defaults.horizontalCellsAmount
+                        , verticalCellsAmount = Defaults.verticalCellsAmount
+                        }
+            in
             ( { model
                 | tool = SmartConstruction
-                , world = World.empty
-                , renderCache = RenderCache.new World.empty
+                , world = world
+                , renderCache = RenderCache.new world
               }
             , Cmd.none
             )
@@ -149,8 +157,13 @@ overlay world tool =
                 |> floor
                 |> Element.px
 
+        tilemapConfig =
+            Tilemap.config world.tilemap
+
         cellElement x y =
-            case Cell.fromCoordinates ( x, y ) of
+            case
+                Cell.fromCoordinates tilemapConfig ( x, y )
+            of
                 Just cell ->
                     tileOverlay
                         { glowColor =
@@ -173,10 +186,10 @@ overlay world tool =
                     Element.row []
                         (List.map
                             (\x -> cellElement x y)
-                            (List.range 1 Cell.verticalCellsAmount)
+                            (List.range 1 tilemapConfig.verticalCellsAmount)
                         )
                 )
-                (List.range 1 Cell.horizontalCellsAmount)
+                (List.range 1 tilemapConfig.horizontalCellsAmount)
 
         highlight =
             case tool of

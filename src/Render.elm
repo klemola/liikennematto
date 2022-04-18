@@ -1,8 +1,6 @@
 module Render exposing
-    ( pixelsToMetersRatio
-    , renderLot
+    ( renderLot
     , tileSizePixels
-    , tilemapSizePixels
     , view
     )
 
@@ -37,14 +35,14 @@ import Model.RoadNetwork
         , TrafficControl(..)
         )
 import Model.Tile exposing (TileKind)
-import Model.Tilemap as Tilemap
+import Model.Tilemap as Tilemap exposing (TilemapConfig)
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
 import Model.World exposing (World)
-import Pixels
 import Point2d
 import Polygon2d
 import Polyline2d
-import Quantity exposing (Quantity, Rate)
+import Quantity
+import Render.Conversion exposing (pixelsToMetersRatio, toPixelsValue)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Svg.Keyed
@@ -56,24 +54,6 @@ type alias DebugLayers =
     { showRoadNetwork : Bool
     , showCarDebugVisuals : Bool
     }
-
-
-
---
--- Pixels conversion
---
-
-
-pixelsToMetersRatio : Quantity Float (Rate Pixels.Pixels Length.Meters)
-pixelsToMetersRatio =
-    Pixels.pixels 8 |> Quantity.per (Length.meters 1)
-
-
-toPixelsValue : Length -> Float
-toPixelsValue length =
-    length
-        |> Quantity.at pixelsToMetersRatio
-        |> Pixels.inPixels
 
 
 pointToPixels : LMPoint2d -> { x : Float, y : Float }
@@ -104,16 +84,6 @@ trafficLightDiameter =
     signDiameter
 
 
-tilemapSizePixels : Float
-tilemapSizePixels =
-    toPixelsValue Tilemap.mapSize
-
-
-tilemapSizeScaledStr : String
-tilemapSizeScaledStr =
-    String.fromFloat tilemapSizePixels
-
-
 tileSizePixels : Float
 tileSizePixels =
     toPixelsValue Cell.size
@@ -136,21 +106,31 @@ styles =
 
 
 view : World -> RenderCache -> DebugLayers -> Html msg
-view { cars, lots, roadNetwork, trafficLights } cache debugLayers =
+view { cars, lots, roadNetwork, trafficLights, tilemap } cache debugLayers =
+    let
+        tilemapConfig =
+            Tilemap.config tilemap
+
+        tilemapWidth =
+            String.fromFloat cache.tilemapWidthPixels
+
+        tilemapHeight =
+            String.fromFloat cache.tilemapHeightPixels
+    in
     Svg.svg
-        [ Attributes.width tilemapSizeScaledStr
-        , Attributes.height tilemapSizeScaledStr
-        , Attributes.viewBox <| "0 0 " ++ tilemapSizeScaledStr ++ " " ++ tilemapSizeScaledStr
+        [ Attributes.width tilemapWidth
+        , Attributes.height tilemapHeight
+        , Attributes.viewBox <| "0 0 " ++ tilemapWidth ++ " " ++ tilemapHeight
         , Attributes.style <| "background-color: " ++ Color.toCssString Colors.lightGreen ++ ";"
         ]
         ([ styles
-         , Svg.Lazy.lazy renderTilemap cache.tilemap
-         , Svg.Lazy.lazy renderLots lots
-         , renderCars cars
-         , Svg.Lazy.lazy renderTrafficLights trafficLights
-         , renderTrafficSigns roadNetwork
+         , Svg.Lazy.lazy3 renderTilemap tilemapConfig cache.tilemapHeightPixels cache.tilemap
+         , Svg.Lazy.lazy2 renderLots cache.tilemapHeightPixels lots
+         , renderCars cache.tilemapHeightPixels cars
+         , Svg.Lazy.lazy2 renderTrafficLights cache.tilemapHeightPixels trafficLights
+         , Svg.Lazy.lazy2 renderTrafficSigns cache.tilemapHeightPixels roadNetwork
          ]
-            ++ renderDebugLayers debugLayers cars roadNetwork
+            ++ renderDebugLayers cache.tilemapHeightPixels debugLayers cars roadNetwork
         )
 
 
@@ -160,24 +140,26 @@ view { cars, lots, roadNetwork, trafficLights } cache debugLayers =
 --
 
 
-renderTilemap : TilemapPresentation -> Svg msg
-renderTilemap tilemap =
+renderTilemap : TilemapConfig -> Float -> TilemapPresentation -> Svg msg
+renderTilemap tilemapConfig tilemapHeightPixels tilemap =
     tilemap
         |> List.map
             (\( cell, tile, animation ) ->
-                ( Cell.toString cell, renderTile cell tile animation )
+                ( Cell.toString cell
+                , renderTile tilemapConfig tilemapHeightPixels cell tile animation
+                )
             )
         |> Svg.Keyed.node "g" []
 
 
-renderTile : Cell -> TileKind -> Maybe Animation -> Svg msg
-renderTile cell tileKind animation =
+renderTile : TilemapConfig -> Float -> Cell -> TileKind -> Maybe Animation -> Svg msg
+renderTile tilemapConfig tilemapHeightPixels cell tileKind animation =
     let
         { x, y } =
-            Cell.bottomLeftCorner cell |> pointToPixels
+            Cell.bottomLeftCorner tilemapConfig cell |> pointToPixels
 
         yAdjusted =
-            tilemapSizePixels - tileSizePixels - y
+            tilemapHeightPixels - tileSizePixels - y
     in
     case animation of
         Just tileAnimation ->
@@ -373,19 +355,19 @@ tileAnimationProperties animation ( tileX, tileY ) =
 --
 
 
-renderCars : Dict Int Car -> Svg msg
-renderCars cars =
+renderCars : Float -> Dict Int Car -> Svg msg
+renderCars tilemapHeightPixels cars =
     cars
         |> Dict.foldl
             (\_ car acc ->
-                ( "Car-" ++ String.fromInt car.id, renderCar car ) :: acc
+                ( "Car-" ++ String.fromInt car.id, renderCar tilemapHeightPixels car ) :: acc
             )
             []
         |> Svg.Keyed.node "g" []
 
 
-renderCar : Car -> Svg msg
-renderCar car =
+renderCar : Float -> Car -> Svg msg
+renderCar tilemapHeightPixels car =
     let
         { x, y } =
             pointToPixels car.position
@@ -400,7 +382,7 @@ renderCar car =
             x - (carLengthPixels / 2)
 
         renderY =
-            tilemapSizePixels - y - (carWidthPixels / 2)
+            tilemapHeightPixels - y - (carWidthPixels / 2)
 
         rotateVal =
             car.orientation
@@ -410,7 +392,7 @@ renderCar car =
 
         -- rotate about the center of the car
         rotateStr =
-            "rotate(" ++ rotateVal ++ "," ++ String.fromFloat x ++ "," ++ String.fromFloat (tilemapSizePixels - y) ++ ")"
+            "rotate(" ++ rotateVal ++ "," ++ String.fromFloat x ++ "," ++ String.fromFloat (tilemapHeightPixels - y) ++ ")"
 
         translateStr =
             "translate(" ++ String.fromFloat renderX ++ " " ++ String.fromFloat renderY ++ ")"
@@ -437,15 +419,15 @@ renderCar car =
 --
 
 
-renderLots : Dict Id Lot -> Svg msg
-renderLots lots =
+renderLots : Float -> Dict Id Lot -> Svg msg
+renderLots tilemapHeightPixels lots =
     lots
-        |> Dict.foldl (\_ lot acc -> ( "Lot-" ++ String.fromInt lot.id, renderLot lot ) :: acc) []
+        |> Dict.foldl (\_ lot acc -> ( "Lot-" ++ String.fromInt lot.id, renderLot tilemapHeightPixels lot ) :: acc) []
         |> Svg.Keyed.node "g" []
 
 
-renderLot : Lot -> Svg msg
-renderLot lot =
+renderLot : Float -> Lot -> Svg msg
+renderLot tilemapHeightPixels lot =
     let
         { x, y } =
             pointToPixels lot.position
@@ -454,7 +436,7 @@ renderLot lot =
             x - width / 2
 
         renderY =
-            tilemapSizePixels - (height / 2) - y
+            tilemapHeightPixels - (height / 2) - y
 
         width =
             toPixelsValue lot.width
@@ -492,15 +474,15 @@ renderLot lot =
 --
 
 
-renderTrafficLights : TrafficLights -> Svg msg
-renderTrafficLights trafficLights =
+renderTrafficLights : Float -> TrafficLights -> Svg msg
+renderTrafficLights tilemapHeightPixels trafficLights =
     trafficLights
-        |> Dict.foldl (\_ tl acc -> ( "TrafficLight-" ++ String.fromInt tl.id, renderTrafficLight tl ) :: acc) []
+        |> Dict.foldl (\_ tl acc -> ( "TrafficLight-" ++ String.fromInt tl.id, renderTrafficLight tilemapHeightPixels tl ) :: acc) []
         |> Svg.Keyed.node "g" []
 
 
-renderTrafficLight : TrafficLight -> Svg msg
-renderTrafficLight trafficLight =
+renderTrafficLight : Float -> TrafficLight -> Svg msg
+renderTrafficLight tilemapHeightPixels trafficLight =
     let
         { x, y } =
             pointToPixels trafficLight.position
@@ -524,7 +506,7 @@ renderTrafficLight trafficLight =
     Svg.circle
         [ Attributes.r <| String.fromFloat radius
         , Attributes.cx <| String.fromFloat x
-        , Attributes.cy <| String.fromFloat (tilemapSizePixels - y)
+        , Attributes.cy <| String.fromFloat (tilemapHeightPixels - y)
         , Attributes.fill <| Color.toCssString color
         , Attributes.stroke <| Color.toCssString Colors.gray4
         , Attributes.strokeWidth <| String.fromInt 1
@@ -532,8 +514,8 @@ renderTrafficLight trafficLight =
         []
 
 
-renderTrafficSigns : RoadNetwork -> Svg msg
-renderTrafficSigns roadNetwork =
+renderTrafficSigns : Float -> RoadNetwork -> Svg msg
+renderTrafficSigns tilemapHeightPixels roadNetwork =
     roadNetwork
         |> Graph.nodes
         |> List.filterMap
@@ -542,7 +524,7 @@ renderTrafficSigns roadNetwork =
                     Yield ->
                         Just
                             ( "Yield-" ++ String.fromInt node.id
-                            , renderYieldSign node
+                            , renderYieldSign tilemapHeightPixels node
                             )
 
                     _ ->
@@ -551,8 +533,8 @@ renderTrafficSigns roadNetwork =
         |> Svg.Keyed.node "g" []
 
 
-renderYieldSign : Node Connection -> Svg msg
-renderYieldSign node =
+renderYieldSign : Float -> Node Connection -> Svg msg
+renderYieldSign tilemapHeightPixels node =
     let
         size =
             toPixelsValue signDiameter
@@ -566,7 +548,7 @@ renderYieldSign node =
     Svg.image
         [ Attributes.xlinkHref asset
         , Attributes.x <| String.fromFloat (x - size / 2)
-        , Attributes.y <| String.fromFloat <| tilemapSizePixels - y - (size / 2)
+        , Attributes.y <| String.fromFloat <| tilemapHeightPixels - y - (size / 2)
         , Attributes.width <| String.fromFloat size
         , Attributes.height <| String.fromFloat size
         ]
@@ -579,19 +561,19 @@ renderYieldSign node =
 --
 
 
-renderDebugLayers : DebugLayers -> Dict Int Car -> RoadNetwork -> List (Svg msg)
-renderDebugLayers { showRoadNetwork, showCarDebugVisuals } cars roadNetwork =
+renderDebugLayers : Float -> DebugLayers -> Dict Int Car -> RoadNetwork -> List (Svg msg)
+renderDebugLayers tilemapHeightPixels { showRoadNetwork, showCarDebugVisuals } cars roadNetwork =
     let
         carsLayer =
             if showCarDebugVisuals then
-                Just (renderCarsDebug cars)
+                Just (renderCarsDebug tilemapHeightPixels cars)
 
             else
                 Nothing
 
         roadNetworkLayer =
             if showRoadNetwork then
-                Just (renderRoadNetwork roadNetwork)
+                Just (renderRoadNetwork tilemapHeightPixels roadNetwork)
 
             else
                 Nothing
@@ -602,8 +584,8 @@ renderDebugLayers { showRoadNetwork, showCarDebugVisuals } cars roadNetwork =
         ]
 
 
-renderRoadNetwork : RoadNetwork -> Svg msg
-renderRoadNetwork roadNetwork =
+renderRoadNetwork : Float -> RoadNetwork -> Svg msg
+renderRoadNetwork tilemapHeightPixels roadNetwork =
     let
         nodeColor kind =
             case kind of
@@ -647,14 +629,14 @@ renderRoadNetwork roadNetwork =
                             [ Svg.circle
                                 [ Attributes.r <| String.fromFloat radius
                                 , Attributes.cx <| String.fromFloat nodeXY.x
-                                , Attributes.cy <| String.fromFloat (tilemapSizePixels - nodeXY.y)
+                                , Attributes.cy <| String.fromFloat (tilemapHeightPixels - nodeXY.y)
                                 , Attributes.fill <| Color.toCssString <| nodeColor kind
                                 ]
                                 []
                             , Svg.circle
                                 [ Attributes.r <| String.fromFloat (radius / 3)
                                 , Attributes.cx <| String.fromFloat helperXY.x
-                                , Attributes.cy <| String.fromFloat (tilemapSizePixels - helperXY.y)
+                                , Attributes.cy <| String.fromFloat (tilemapHeightPixels - helperXY.y)
                                 , Attributes.fill Colors.gray4CSS
                                 ]
                                 []
@@ -687,10 +669,10 @@ renderRoadNetwork roadNetwork =
                                         pointToPixels toNodeCtx.node.label.position
 
                                     fromStr =
-                                        String.fromFloat from.x ++ " " ++ String.fromFloat (tilemapSizePixels - from.y)
+                                        String.fromFloat from.x ++ " " ++ String.fromFloat (tilemapHeightPixels - from.y)
 
                                     toStr =
-                                        String.fromFloat to.x ++ " " ++ String.fromFloat (tilemapSizePixels - to.y)
+                                        String.fromFloat to.x ++ " " ++ String.fromFloat (tilemapHeightPixels - to.y)
                                 in
                                 ( "Edge-" ++ String.fromInt fromNodeCtx.node.id ++ String.fromInt toNodeCtx.node.id
                                 , Svg.path
@@ -712,31 +694,31 @@ renderRoadNetwork roadNetwork =
         ]
 
 
-renderCarsDebug : Dict Int Car -> Svg msg
-renderCarsDebug cars =
+renderCarsDebug : Float -> Dict Int Car -> Svg msg
+renderCarsDebug tilemapHeightPixels cars =
     cars
         |> Dict.foldl
             (\_ car acc ->
-                ( "CarDebug-" ++ String.fromInt car.id, renderCarDebug car ) :: acc
+                ( "CarDebug-" ++ String.fromInt car.id, renderCarDebug tilemapHeightPixels car ) :: acc
             )
             []
         |> Svg.Keyed.node "g" []
 
 
-renderCarDebug : Car -> Svg msg
-renderCarDebug car =
+renderCarDebug : Float -> Car -> Svg msg
+renderCarDebug tilemapHeightPixels car =
     Svg.g []
-        [ renderCarFieldOfView car
-        , renderCarCollisionDetection car
-        , renderCarPath car
+        [ renderCarFieldOfView tilemapHeightPixels car
+        , renderCarCollisionDetection tilemapHeightPixels car
+        , renderCarPath tilemapHeightPixels car
         ]
 
 
-renderCarPath : Car -> Svg msg
-renderCarPath car =
+renderCarPath : Float -> Car -> Svg msg
+renderCarPath tilemapHeightPixels car =
     let
         points =
-            toPointsString (Polyline2d.vertices car.localPath)
+            toPointsString tilemapHeightPixels (Polyline2d.vertices car.localPath)
     in
     Svg.polyline
         [ Attributes.stroke <| Color.toCssString Colors.red
@@ -747,11 +729,11 @@ renderCarPath car =
         []
 
 
-renderCarCollisionDetection : Car -> Svg msg
-renderCarCollisionDetection car =
+renderCarCollisionDetection : Float -> Car -> Svg msg
+renderCarCollisionDetection tilemapHeightPixels car =
     let
         points =
-            Polygon2d.outerLoop car.shape |> toPointsString
+            Polygon2d.outerLoop car.shape |> toPointsString tilemapHeightPixels
     in
     Svg.polygon
         [ Attributes.points points
@@ -761,8 +743,8 @@ renderCarCollisionDetection car =
         []
 
 
-renderCarFieldOfView : Car -> Svg msg
-renderCarFieldOfView car =
+renderCarFieldOfView : Float -> Car -> Svg msg
+renderCarFieldOfView tilemapHeightPixels car =
     let
         triangle =
             Car.fieldOfView car
@@ -771,7 +753,7 @@ renderCarFieldOfView car =
             Triangle2d.vertices triangle
 
         points =
-            toPointsString [ p1, p2, p3 ]
+            toPointsString tilemapHeightPixels [ p1, p2, p3 ]
     in
     Svg.polygon
         [ Attributes.points points
@@ -781,8 +763,8 @@ renderCarFieldOfView car =
         []
 
 
-toPointsString : List LMPoint2d -> String
-toPointsString points =
+toPointsString : Float -> List LMPoint2d -> String
+toPointsString tilemapHeightPixels points =
     List.foldl
         (\point acc ->
             let
@@ -790,7 +772,7 @@ toPointsString points =
                     pointToPixels point
 
                 pointStr =
-                    String.fromFloat x ++ "," ++ String.fromFloat (tilemapSizePixels - y) ++ " "
+                    String.fromFloat x ++ "," ++ String.fromFloat (tilemapHeightPixels - y) ++ " "
             in
             pointStr ++ acc
         )
