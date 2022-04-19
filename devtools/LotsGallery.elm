@@ -65,37 +65,38 @@ renderLotDebug lot =
 
 renderParkingSpotPaths : List ParkingSpot -> List (Svg msg)
 renderParkingSpotPaths parkingSpots =
-    List.indexedMap
-        (\idx parkingSpot ->
-            let
-                opacity =
-                    0.6 - (toFloat idx * 0.1)
+    parkingSpots
+        |> List.indexedMap
+            (\idx parkingSpot ->
+                let
+                    opacity =
+                        0.6 - (toFloat idx * 0.1)
 
-                color =
-                    case idx of
-                        0 ->
-                            Color.rgba 0 0 1 opacity
+                    color =
+                        case idx of
+                            0 ->
+                                Color.rgba 0 0 1 opacity
 
-                        1 ->
-                            Color.rgba 0 1 1 opacity
+                            1 ->
+                                Color.rgba 0 1 1 opacity
 
-                        2 ->
-                            Color.rgba 1 0 0 opacity
+                            2 ->
+                                Color.rgba 1 0 0 opacity
 
-                        _ ->
-                            Color.rgba 0 0 0 opacity
-            in
-            cubicSpline (flipSlineYCoordinate parkingSpot.pathToLotExit) color
-        )
-        parkingSpots
+                            _ ->
+                                Color.rgba 0 0 0 opacity
+                in
+                parkingSpot.pathToLotExit |> List.map (flipSplineYCoordinate >> cubicSpline color)
+            )
+        |> List.concat
 
 
 type SVGCoordinates
     = SVGCoordinates -- Y down instead of up
 
 
-flipSlineYCoordinate : LMCubicSpline2d -> CubicSpline2d Length.Meters SVGCoordinates
-flipSlineYCoordinate spline =
+flipSplineYCoordinate : LMCubicSpline2d -> CubicSpline2d Length.Meters SVGCoordinates
+flipSplineYCoordinate spline =
     let
         cp1 =
             CubicSpline2d.firstControlPoint spline |> flipPointYCoordinate
@@ -123,8 +124,8 @@ flipPointYCoordinate originalPoint =
         newY
 
 
-cubicSpline : CubicSpline2d Length.Meters SVGCoordinates -> Color -> Svg msg
-cubicSpline spline color =
+cubicSpline : Color -> CubicSpline2d Length.Meters SVGCoordinates -> Svg msg
+cubicSpline color spline =
     let
         splinePixels =
             CubicSpline2d.at Render.pixelsToMetersRatio spline

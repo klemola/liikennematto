@@ -29,6 +29,7 @@ type alias NewLot =
     , drivewayExitDirection : OrthogonalDirection
     , entryPosition : LMPoint2dLocal
     , exitPosition : LMPoint2dLocal
+    , parkingLaneStartPosition : LMPoint2dLocal
     }
 
 
@@ -121,6 +122,7 @@ residentialSingle1 =
     , drivewayExitDirection = drivewayExitDirection
     , entryPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width height
     , exitPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width height
+    , parkingLaneStartPosition = Point2d.fromMeters { x = 26, y = 3.75 }
     }
 
 
@@ -591,14 +593,15 @@ school =
     , height = height
     , parkingSpotExitDirection = Down
     , parkingSpots =
-        [ Point2d.fromMeters { x = 4.75, y = 9.25 }
-        , Point2d.fromMeters { x = 12, y = 9.25 }
-        , Point2d.fromMeters { x = 19.25, y = 9.25 }
-        , Point2d.fromMeters { x = 26.5, y = 9.25 }
+        [ Point2d.fromMeters { x = 5.25, y = 9.25 }
+        , Point2d.fromMeters { x = 12.25, y = 9.25 }
+        , Point2d.fromMeters { x = 19.5, y = 9.25 }
+        , Point2d.fromMeters { x = 26.75, y = 9.25 }
         ]
     , drivewayExitDirection = drivewayExitDirection
     , entryPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width height
     , exitPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width height
+    , parkingLaneStartPosition = Point2d.fromMeters { x = 8.6, y = 3.75 }
     }
 
 

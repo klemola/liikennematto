@@ -32,6 +32,13 @@ cubicSplineToLocalPath spline =
     CubicSpline2d.segments splineSegmentsAmount spline
 
 
+multipleSplinesToLocalPath : List LMCubicSpline2d -> LMPolyline2d
+multipleSplinesToLocalPath splines =
+    splines
+        |> List.concatMap (CubicSpline2d.segments splineSegmentsAmount >> Polyline2d.vertices)
+        |> Polyline2d.fromVertices
+
+
 maybeCreateRouteToNode : Maybe RNNodeContext -> Car -> Car
 maybeCreateRouteToNode maybeNodeCtx car =
     maybeNodeCtx
@@ -66,11 +73,11 @@ createRouteToNode nodeCtx car =
     }
 
 
-createRouteToLotExit : RNNodeContext -> LMCubicSpline2d -> Car -> Car
-createRouteToLotExit nodeCtx lotExitSpline car =
+createRouteToLotExit : RNNodeContext -> List LMCubicSpline2d -> Car -> Car
+createRouteToLotExit nodeCtx pathToLotExit car =
     { car
         | route = [ nodeCtx ]
-        , localPath = cubicSplineToLocalPath lotExitSpline
+        , localPath = multipleSplinesToLocalPath pathToLotExit
     }
 
 
