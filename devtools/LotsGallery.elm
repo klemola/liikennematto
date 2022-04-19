@@ -1,4 +1,4 @@
-module LotsDebug exposing (..)
+module LotsGallery exposing (..)
 
 import Circle2d
 import Color exposing (Color)
@@ -20,6 +20,7 @@ import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 
 
+tilemapSizeScaledStr : String
 tilemapSizeScaledStr =
     String.fromFloat Render.tilemapSizePixels
 

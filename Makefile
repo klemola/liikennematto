@@ -40,7 +40,7 @@ benchmark:
 
 devtools:
 	elm make devtools/RenderFixture.elm --output build/render_fixture.html
-	elm make devtools/LotsDebug.elm --output build/lots_debug.html
+	elm make devtools/LotsGallery.elm --output build/lots_debug.html
 
 stats:
 	cloc --exclude-dir=Data,assets src
