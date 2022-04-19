@@ -7,8 +7,8 @@ module Splines exposing
 
 import Angle
 import Common
-import CubicSpline2d
-import Direction2d
+import CubicSpline2d exposing (CubicSpline2d)
+import Direction2d exposing (Direction2d)
 import Length exposing (Length)
 import Model.Geometry
     exposing
@@ -22,7 +22,7 @@ import Model.Geometry
         , orthogonalDirectionToLmDirection
         )
 import Model.RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
-import Point2d
+import Point2d exposing (Point2d)
 import Quantity
 import Vector2d
 
@@ -32,8 +32,8 @@ uTurnDistance =
     Length.meters 4
 
 
-asGlobalSpline : LMCubicSpline2dLocal -> LMFrame2d -> LMCubicSpline2d
-asGlobalSpline localSpline frame =
+asGlobalSpline : LMFrame2d -> LMCubicSpline2dLocal -> LMCubicSpline2d
+asGlobalSpline frame localSpline =
     CubicSpline2d.placeIn frame localSpline
 
 
@@ -61,85 +61,103 @@ toNode { direction, origin } { node } =
         straightSpline origin target
 
     else
-        curveSpline origin target direction
+        curveSpline Natural origin target direction
 
 
-uTurnSpline : LMPoint2d -> LMPoint2d -> LMDirection2d -> LMCubicSpline2d
+uTurnSpline : Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> CubicSpline2d Length.Meters a
 uTurnSpline origin target direction =
     let
-        handleCp1 =
+        startHandleCp =
             Point2d.translateIn direction uTurnDistance origin
 
-        handleCp2 =
+        endHandleCp =
             Point2d.translateIn direction uTurnDistance target
     in
-    CubicSpline2d.fromControlPoints origin handleCp1 handleCp2 target
+    CubicSpline2d.fromControlPoints origin startHandleCp endHandleCp target
 
 
-straightSpline : LMPoint2d -> LMPoint2d -> LMCubicSpline2d
+straightSpline : Point2d Length.Meters a -> Point2d Length.Meters a -> CubicSpline2d Length.Meters a
 straightSpline origin target =
     CubicSpline2d.fromEndpoints origin Vector2d.zero target Vector2d.zero
 
 
-curveSpline : LMPoint2d -> LMPoint2d -> LMDirection2d -> LMCubicSpline2d
-curveSpline origin target direction =
+sameDirectionSpline : Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> CubicSpline2d Length.Meters a
+sameDirectionSpline origin target direction =
+    let
+        distanceToTarget =
+            Point2d.distanceFrom origin target
+
+        magnitude =
+            Quantity.half distanceToTarget
+
+        startHandleCp =
+            origin |> Point2d.translateIn direction magnitude
+
+        endHandleCp =
+            target |> Point2d.translateIn (Direction2d.reverse direction) magnitude
+    in
+    CubicSpline2d.fromControlPoints origin startHandleCp endHandleCp target
+
+
+type CurveKind
+    = Natural
+    | Geometric
+
+
+curveSpline : CurveKind -> Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> CubicSpline2d Length.Meters a
+curveSpline kind origin target direction =
     let
         rightAnglePos =
             Common.rightAnglePosition origin target direction
 
-        handleCp1 =
-            Point2d.midpoint origin rightAnglePos
+        ( startHandleCp, endHandleCp ) =
+            case kind of
+                Natural ->
+                    ( Point2d.midpoint origin rightAnglePos
+                    , Point2d.midpoint rightAnglePos target
+                    )
 
-        handleCp2 =
-            Point2d.midpoint rightAnglePos target
+                Geometric ->
+                    ( rightAnglePos, rightAnglePos )
     in
-    CubicSpline2d.fromControlPoints origin handleCp1 handleCp2 target
+    CubicSpline2d.fromControlPoints origin startHandleCp endHandleCp target
 
 
 type alias LotSplineProperties =
     { parkingSpotPosition : LMPoint2dLocal
     , lotEntryPosition : LMPoint2dLocal
     , lotExitPosition : LMPoint2dLocal
+    , parkingLaneStartPosition : LMPoint2dLocal
     , parkingSpotExitDirection : OrthogonalDirection
     , drivewayExitDirection : OrthogonalDirection
     }
 
 
-lotEntrySpline : LotSplineProperties -> LMCubicSpline2dLocal
+lotEntrySpline : LotSplineProperties -> List LMCubicSpline2dLocal
 lotEntrySpline { parkingSpotPosition, lotEntryPosition, parkingSpotExitDirection } =
     let
-        handleCp1 =
+        startHandleCp =
             Point2d.origin
 
-        handleCp2 =
+        endHandleCp =
             Point2d.origin
     in
-    CubicSpline2d.fromControlPoints lotEntryPosition handleCp1 handleCp2 parkingSpotPosition
+    [ CubicSpline2d.fromControlPoints lotEntryPosition startHandleCp endHandleCp parkingSpotPosition ]
 
 
-lotExitSpline : LotSplineProperties -> LMCubicSpline2dLocal
-lotExitSpline { parkingSpotPosition, lotExitPosition, parkingSpotExitDirection, drivewayExitDirection } =
+lotExitSpline : LotSplineProperties -> List LMCubicSpline2dLocal
+lotExitSpline { parkingSpotPosition, lotExitPosition, parkingSpotExitDirection, parkingLaneStartPosition, drivewayExitDirection } =
     let
         startDirection =
             orthogonalDirectionToLmDirection parkingSpotExitDirection
-
-        distanceToTarget =
-            Point2d.distanceFrom parkingSpotPosition lotExitPosition
-
-        rightAnglePos =
-            Common.rightAnglePosition parkingSpotPosition lotExitPosition startDirection
-
-        ( handleCp1, handleCp2 ) =
-            if drivewayExitDirection == parkingSpotExitDirection then
-                ( parkingSpotPosition |> Point2d.translateIn startDirection (Quantity.half distanceToTarget)
-                , lotExitPosition |> Point2d.translateIn (Direction2d.reverse startDirection) (Quantity.half distanceToTarget)
-                )
-
-            else
-                ( rightAnglePos, rightAnglePos )
     in
-    CubicSpline2d.fromControlPoints
-        parkingSpotPosition
-        handleCp1
-        handleCp2
-        lotExitPosition
+    if Point2d.distanceFrom parkingSpotPosition lotExitPosition |> Quantity.lessThanOrEqualTo (Length.meters 6) then
+        [ curveSpline Geometric parkingSpotPosition lotExitPosition startDirection ]
+
+    else if parkingSpotExitDirection == drivewayExitDirection then
+        [ sameDirectionSpline parkingSpotPosition lotExitPosition startDirection ]
+
+    else
+        [ curveSpline Geometric parkingSpotPosition parkingLaneStartPosition startDirection
+        , sameDirectionSpline parkingLaneStartPosition lotExitPosition (orthogonalDirectionToLmDirection drivewayExitDirection)
+        ]

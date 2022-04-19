@@ -45,8 +45,8 @@ type alias Lot =
 
 type alias ParkingSpot =
     { position : LMPoint2d
-    , pathFromLotEntry : LMCubicSpline2d
-    , pathToLotExit : LMCubicSpline2d
+    , pathFromLotEntry : List LMCubicSpline2d
+    , pathToLotExit : List LMCubicSpline2d
     , owner : Maybe Id
     , reservedBy : Maybe Id
     }
@@ -86,6 +86,7 @@ createParkingSpot newLot constructionSiteBB spot =
                 , lotExitPosition = newLot.exitPosition
                 , parkingSpotExitDirection = newLot.parkingSpotExitDirection
                 , drivewayExitDirection = newLot.drivewayExitDirection
+                , parkingLaneStartPosition = newLot.parkingLaneStartPosition
                 }
 
         exitSpline =
@@ -95,11 +96,12 @@ createParkingSpot newLot constructionSiteBB spot =
                 , lotExitPosition = newLot.exitPosition
                 , parkingSpotExitDirection = newLot.parkingSpotExitDirection
                 , drivewayExitDirection = newLot.drivewayExitDirection
+                , parkingLaneStartPosition = newLot.parkingLaneStartPosition
                 }
     in
     { position = Point2d.placeIn lotFrame spot
-    , pathFromLotEntry = Splines.asGlobalSpline entrySpline lotFrame
-    , pathToLotExit = Splines.asGlobalSpline exitSpline lotFrame
+    , pathFromLotEntry = entrySpline |> List.map (Splines.asGlobalSpline lotFrame)
+    , pathToLotExit = exitSpline |> List.map (Splines.asGlobalSpline lotFrame)
     , owner = Nothing
     , reservedBy = Nothing
     }
