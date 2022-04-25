@@ -1,5 +1,6 @@
 module Simulation.Pathfinding exposing
-    ( createRouteToLotExit
+    ( chooseRandomOutgoingConnection
+    , createRouteToLotExit
     , createRouteToNode
     , maybeCreateRouteToNode
     , restoreRoute
@@ -12,7 +13,7 @@ import Direction2d
 import Length
 import Model.Car as Car exposing (Car, CarState(..))
 import Model.Geometry exposing (LMCubicSpline2d, LMPolyline2d)
-import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
+import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext, RoadNetwork)
 import Model.World exposing (World)
 import Point2d
 import Polyline2d
@@ -101,10 +102,7 @@ chooseNextConnection seed world car =
         nodeCtx :: _ ->
             let
                 randomConnectionGenerator =
-                    RoadNetwork.getOutgoingConnections nodeCtx
-                        |> List.filterMap (RoadNetwork.findNodeByNodeId world.roadNetwork >> Maybe.andThen discardLotEntry)
-                        |> Random.List.choose
-                        |> Random.map Tuple.first
+                    chooseRandomOutgoingConnection world.roadNetwork nodeCtx
 
                 ( connection, nextSeed ) =
                     Random.step randomConnectionGenerator seed
@@ -138,10 +136,21 @@ chooseNextConnection seed world car =
             ( Car.triggerReroute car, seed )
 
 
-discardLotEntry : RNNodeContext -> Maybe RNNodeContext
-discardLotEntry nodeCtx =
+chooseRandomOutgoingConnection : RoadNetwork -> RNNodeContext -> Random.Generator (Maybe RNNodeContext)
+chooseRandomOutgoingConnection roadNetwork nodeCtx =
+    RoadNetwork.getOutgoingConnections nodeCtx
+        |> List.filterMap (RoadNetwork.findNodeByNodeId roadNetwork >> Maybe.andThen discardLotNodes)
+        |> Random.List.choose
+        |> Random.map Tuple.first
+
+
+discardLotNodes : RNNodeContext -> Maybe RNNodeContext
+discardLotNodes nodeCtx =
     case nodeCtx.node.label.kind of
         LotEntry _ ->
+            Nothing
+
+        LotExit _ ->
             Nothing
 
         _ ->

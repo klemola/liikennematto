@@ -620,7 +620,7 @@ renderRoadNetwork roadNetwork =
                     Colors.yellow
 
                 LotExit _ ->
-                    Colors.yellow
+                    Colors.yellowGreen
 
         nodes =
             roadNetwork

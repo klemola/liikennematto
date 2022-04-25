@@ -273,7 +273,7 @@ createCar lot carId homeNode make parkingSpot =
 spawnCar : Random.Seed -> World -> ( World, Random.Seed, Maybe Entity.Id )
 spawnCar seed world =
     let
-        ( maybeRandomNodeCtx, nextSeed ) =
+        ( maybeRandomNodeCtx, seedAfterRandomNode ) =
             RoadNetwork.getRandomNode world.roadNetwork seed
     in
     maybeRandomNodeCtx
@@ -284,10 +284,11 @@ spawnCar seed world =
                     id =
                         Entity.nextId world.cars
 
-                    nextNode =
-                        RoadNetwork.getOutgoingConnections nodeCtx
-                            |> List.head
-                            |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
+                    randomConnectionGenerator =
+                        Pathfinding.chooseRandomOutgoingConnection world.roadNetwork nodeCtx
+
+                    ( nextNode, seedAfterRandomConnection ) =
+                        Random.step randomConnectionGenerator seedAfterRandomNode
 
                     car =
                         Car.new testCar
@@ -298,11 +299,11 @@ spawnCar seed world =
                             |> Steering.startMoving
                 in
                 ( { world | cars = Dict.insert id car world.cars }
-                , nextSeed
+                , seedAfterRandomConnection
                 , Just id
                 )
             )
-        |> Maybe.withDefault ( world, nextSeed, Nothing )
+        |> Maybe.withDefault ( world, seedAfterRandomNode, Nothing )
 
 
 validateSpawnConditions : World -> RNNodeContext -> Maybe RNNodeContext
