@@ -4,6 +4,7 @@ module Model.Geometry exposing
     , LMCubicSpline2d
     , LMCubicSpline2dLocal
     , LMDirection2d
+    , LMDirection2dLocal
     , LMFrame2d
     , LMLineSegment2d
     , LMPoint2d
@@ -55,6 +56,10 @@ type alias LMPoint2dLocal =
 
 type alias LMDirection2d =
     Direction2d GlobalCoordinates
+
+
+type alias LMDirection2dLocal =
+    Direction2d LocalCoordinates
 
 
 type alias LMBoundingBox2d =
