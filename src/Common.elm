@@ -14,7 +14,7 @@ import BoundingBox2d
 import Direction2d exposing (Direction2d)
 import Frame2d
 import Length exposing (Length)
-import Model.Geometry exposing (LMBoundingBox2d, LMDirection2d, LMPoint2d)
+import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
 import Point2d exposing (Point2d)
 import Quantity
 import Vector2d
@@ -153,7 +153,7 @@ boundingBoxToFrame bb =
     Frame2d.atPoint pos
 
 
-isInTheNormalPlaneOf : LMDirection2d -> LMPoint2d -> LMPoint2d -> Bool
+isInTheNormalPlaneOf : Direction2d a -> Point2d Length.Meters a -> Point2d Length.Meters a -> Bool
 isInTheNormalPlaneOf normal origin other =
     let
         p =

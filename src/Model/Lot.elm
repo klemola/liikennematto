@@ -79,25 +79,20 @@ createParkingSpot newLot constructionSiteBB spot =
         lotFrame =
             Common.boundingBoxToFrame constructionSiteBB
 
+        splineProps =
+            { parkingSpotPosition = spot
+            , lotEntryPosition = newLot.entryPosition
+            , lotExitPosition = newLot.exitPosition
+            , parkingSpotExitDirection = orthogonalDirectionToLmDirection newLot.parkingSpotExitDirection
+            , drivewayExitDirection = orthogonalDirectionToLmDirection newLot.drivewayExitDirection
+            , parkingLaneStartPosition = newLot.parkingLaneStartPosition
+            }
+
         entrySpline =
-            Splines.lotEntrySpline
-                { parkingSpotPosition = spot
-                , lotEntryPosition = newLot.entryPosition
-                , lotExitPosition = newLot.exitPosition
-                , parkingSpotExitDirection = newLot.parkingSpotExitDirection
-                , drivewayExitDirection = newLot.drivewayExitDirection
-                , parkingLaneStartPosition = newLot.parkingLaneStartPosition
-                }
+            Splines.lotEntrySpline splineProps
 
         exitSpline =
-            Splines.lotExitSpline
-                { parkingSpotPosition = spot
-                , lotEntryPosition = newLot.entryPosition
-                , lotExitPosition = newLot.exitPosition
-                , parkingSpotExitDirection = newLot.parkingSpotExitDirection
-                , drivewayExitDirection = newLot.drivewayExitDirection
-                , parkingLaneStartPosition = newLot.parkingLaneStartPosition
-                }
+            Splines.lotExitSpline splineProps
     in
     { position = Point2d.placeIn lotFrame spot
     , pathFromLotEntry = entrySpline |> List.map (Splines.asGlobalSpline lotFrame)

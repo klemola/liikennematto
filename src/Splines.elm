@@ -15,11 +15,11 @@ import Model.Geometry
         ( LMCubicSpline2d
         , LMCubicSpline2dLocal
         , LMDirection2d
+        , LMDirection2dLocal
         , LMFrame2d
         , LMPoint2d
         , LMPoint2dLocal
         , OrthogonalDirection(..)
-        , orthogonalDirectionToLmDirection
         )
 import Model.RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Point2d exposing (Point2d)
@@ -128,30 +128,36 @@ type alias LotSplineProperties =
     , lotEntryPosition : LMPoint2dLocal
     , lotExitPosition : LMPoint2dLocal
     , parkingLaneStartPosition : LMPoint2dLocal
-    , parkingSpotExitDirection : OrthogonalDirection
-    , drivewayExitDirection : OrthogonalDirection
+    , parkingSpotExitDirection : LMDirection2dLocal
+    , drivewayExitDirection : LMDirection2dLocal
     }
 
 
 lotEntrySpline : LotSplineProperties -> List LMCubicSpline2dLocal
-lotEntrySpline { parkingSpotPosition, lotEntryPosition, parkingSpotExitDirection } =
+lotEntrySpline { parkingSpotPosition, lotEntryPosition, parkingSpotExitDirection, parkingLaneStartPosition, drivewayExitDirection } =
     let
-        startHandleCp =
-            Point2d.origin
-
-        endHandleCp =
-            Point2d.origin
+        startDirection =
+            drivewayExitDirection |> Direction2d.reverse
     in
-    [ CubicSpline2d.fromControlPoints lotEntryPosition startHandleCp endHandleCp parkingSpotPosition ]
+    if parkingSkipsParkingLane parkingLaneStartPosition parkingSpotPosition drivewayExitDirection then
+        [ curveSpline Geometric lotEntryPosition parkingSpotPosition startDirection ]
+
+    else if parkingSpotExitDirection == drivewayExitDirection then
+        [ sameDirectionSpline lotEntryPosition parkingSpotPosition startDirection ]
+
+    else
+        [ sameDirectionSpline lotEntryPosition parkingLaneStartPosition startDirection
+        , curveSpline Geometric parkingLaneStartPosition parkingSpotPosition startDirection
+        ]
 
 
 lotExitSpline : LotSplineProperties -> List LMCubicSpline2dLocal
 lotExitSpline { parkingSpotPosition, lotExitPosition, parkingSpotExitDirection, parkingLaneStartPosition, drivewayExitDirection } =
     let
         startDirection =
-            orthogonalDirectionToLmDirection parkingSpotExitDirection
+            parkingSpotExitDirection
     in
-    if Point2d.distanceFrom parkingSpotPosition lotExitPosition |> Quantity.lessThanOrEqualTo (Length.meters 6) then
+    if parkingSkipsParkingLane parkingLaneStartPosition parkingSpotPosition drivewayExitDirection then
         [ curveSpline Geometric parkingSpotPosition lotExitPosition startDirection ]
 
     else if parkingSpotExitDirection == drivewayExitDirection then
@@ -159,5 +165,10 @@ lotExitSpline { parkingSpotPosition, lotExitPosition, parkingSpotExitDirection, 
 
     else
         [ curveSpline Geometric parkingSpotPosition parkingLaneStartPosition startDirection
-        , sameDirectionSpline parkingLaneStartPosition lotExitPosition (orthogonalDirectionToLmDirection drivewayExitDirection)
+        , sameDirectionSpline parkingLaneStartPosition lotExitPosition drivewayExitDirection
         ]
+
+
+parkingSkipsParkingLane : Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> Bool
+parkingSkipsParkingLane parkingLaneStartPosition parkingSpotPosition lotExitDirection =
+    parkingSpotPosition |> Common.isInTheNormalPlaneOf lotExitDirection parkingLaneStartPosition
