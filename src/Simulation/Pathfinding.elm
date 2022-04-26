@@ -2,6 +2,7 @@ module Simulation.Pathfinding exposing
     ( chooseRandomOutgoingConnection
     , createRouteToLotExit
     , createRouteToNode
+    , initRoute
     , maybeCreateRouteToNode
     , restoreRoute
     , updatePath
@@ -9,11 +10,14 @@ module Simulation.Pathfinding exposing
 
 import BoundingBox2d
 import CubicSpline2d
+import Dict
 import Direction2d
 import Length
+import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car, CarState(..))
 import Model.Geometry exposing (LMCubicSpline2d, LMPolyline2d)
-import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext, RoadNetwork)
+import Model.Lot as Lot
+import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Model.World exposing (World)
 import Point2d
 import Polyline2d
@@ -38,6 +42,13 @@ multipleSplinesToLocalPath splines =
     splines
         |> List.concatMap (CubicSpline2d.segments splineSegmentsAmount >> Polyline2d.vertices)
         |> Polyline2d.fromVertices
+
+
+initRoute : World -> Random.Seed -> RNNodeContext -> Car -> ( Car, Random.Seed )
+initRoute world seed nodeCtx car =
+    nodeCtx
+        |> generateRouteFromConnection world car seed
+        |> Maybe.withDefault ( Car.triggerReroute car, seed )
 
 
 maybeCreateRouteToNode : Maybe RNNodeContext -> Car -> Car
@@ -98,57 +109,63 @@ updatePath world seed car =
 
 chooseNextConnection : Random.Seed -> World -> Car -> ( Car, Random.Seed )
 chooseNextConnection seed world car =
-    case car.route of
-        nodeCtx :: _ ->
+    car.route
+        |> List.head
+        |> Maybe.andThen (generateRouteFromConnection world car seed)
+        |> Maybe.withDefault ( Car.triggerReroute car, seed )
+
+
+generateRouteFromConnection : World -> Car -> Random.Seed -> RNNodeContext -> Maybe ( Car, Random.Seed )
+generateRouteFromConnection world car seed nodeCtx =
+    let
+        randomConnectionGenerator =
+            chooseRandomOutgoingConnection world car nodeCtx
+
+        ( connection, nextSeed ) =
+            Random.step randomConnectionGenerator seed
+    in
+    Maybe.map
+        (\nextNodeCtx ->
+            -- This is a temporary hack to make sure that tight turns can be completed
             let
-                randomConnectionGenerator =
-                    chooseRandomOutgoingConnection world.roadNetwork nodeCtx
+                nodeKind =
+                    nodeCtx.node.label.kind
 
-                ( connection, nextSeed ) =
-                    Random.step randomConnectionGenerator seed
+                adjusted =
+                    if nodeKind == DeadendExit || nodeKind == LaneConnector then
+                        { car
+                            | orientation = Direction2d.toAngle nodeCtx.node.label.direction
+                            , position = nodeCtx.node.label.position
+                        }
 
-                nextCar =
-                    case connection of
-                        Just nextNodeCtx ->
-                            -- This is a temporary hack to make sure that tight turns can be completed
-                            let
-                                nodeKind =
-                                    nodeCtx.node.label.kind
+                    else
+                        car
 
-                                adjusted =
-                                    if nodeKind == DeadendExit || nodeKind == LaneConnector then
-                                        { car
-                                            | orientation = Direction2d.toAngle nodeCtx.node.label.direction
-                                            , position = nodeCtx.node.label.position
-                                        }
-
-                                    else
-                                        car
-                            in
-                            createRouteToNode nextNodeCtx adjusted
-
-                        Nothing ->
-                            car
+                carWithRoute =
+                    createRouteToNode nextNodeCtx adjusted
             in
-            ( nextCar, nextSeed )
+            ( carWithRoute, nextSeed )
+        )
+        connection
 
-        _ ->
-            ( Car.triggerReroute car, seed )
 
-
-chooseRandomOutgoingConnection : RoadNetwork -> RNNodeContext -> Random.Generator (Maybe RNNodeContext)
-chooseRandomOutgoingConnection roadNetwork nodeCtx =
+chooseRandomOutgoingConnection : World -> Car -> RNNodeContext -> Random.Generator (Maybe RNNodeContext)
+chooseRandomOutgoingConnection world car nodeCtx =
     RoadNetwork.getOutgoingConnections nodeCtx
-        |> List.filterMap (RoadNetwork.findNodeByNodeId roadNetwork >> Maybe.andThen discardLotNodes)
+        |> List.filterMap (RoadNetwork.findNodeByNodeId world.roadNetwork >> Maybe.andThen (discardInvalidConnections world car))
         |> Random.List.choose
         |> Random.map Tuple.first
 
 
-discardLotNodes : RNNodeContext -> Maybe RNNodeContext
-discardLotNodes nodeCtx =
+discardInvalidConnections : World -> Car -> RNNodeContext -> Maybe RNNodeContext
+discardInvalidConnections world car nodeCtx =
     case nodeCtx.node.label.kind of
-        LotEntry _ ->
-            Nothing
+        LotEntry lotId ->
+            world.lots
+                |> Dict.get lotId
+                -- given that a lot is found, continue only if the car has a home
+                |> Maybe.next car.homeLotId
+                |> Maybe.map (Lot.findFreeParkingSpot car.id >> always nodeCtx)
 
         LotExit _ ->
             Nothing

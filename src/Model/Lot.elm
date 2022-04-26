@@ -2,9 +2,12 @@ module Model.Lot exposing
     ( Lot
     , ParkingSpot
     , build
+    , claimParkingSpot
     , constructionSite
+    , findFreeParkingSpot
     , inBounds
     , parkingSpotOrientation
+    , updateParkingSpot
     )
 
 import Angle exposing (Angle)
@@ -44,7 +47,8 @@ type alias Lot =
 
 
 type alias ParkingSpot =
-    { position : LMPoint2d
+    { id : Id
+    , position : LMPoint2d
     , pathFromLotEntry : List LMCubicSpline2d
     , pathToLotExit : List LMCubicSpline2d
     , owner : Maybe Id
@@ -53,12 +57,12 @@ type alias ParkingSpot =
 
 
 build : Id -> NewLot -> Cell -> Lot
-build id newLot anchor =
+build lotId newLot anchor =
     let
         constructionSiteBB =
             constructionSite anchor newLot
     in
-    { id = id
+    { id = lotId
     , kind = newLot.kind
     , width = newLot.width
     , height = newLot.height
@@ -67,14 +71,14 @@ build id newLot anchor =
     , drivewayExitDirection = newLot.drivewayExitDirection
     , parkingSpotExitDirection = newLot.parkingSpotExitDirection
     , parkingSpots =
-        List.map
-            (createParkingSpot newLot constructionSiteBB)
+        List.indexedMap
+            (\spotId position -> createParkingSpot spotId newLot constructionSiteBB position)
             newLot.parkingSpots
     }
 
 
-createParkingSpot : NewLot -> LMBoundingBox2d -> LMPoint2dLocal -> ParkingSpot
-createParkingSpot newLot constructionSiteBB spot =
+createParkingSpot : Int -> NewLot -> LMBoundingBox2d -> LMPoint2dLocal -> ParkingSpot
+createParkingSpot idx newLot constructionSiteBB spot =
     let
         lotFrame =
             Common.boundingBoxToFrame constructionSiteBB
@@ -94,7 +98,8 @@ createParkingSpot newLot constructionSiteBB spot =
         exitSpline =
             Splines.lotExitSpline splineProps
     in
-    { position = Point2d.placeIn lotFrame spot
+    { id = idx
+    , position = Point2d.placeIn lotFrame spot
     , pathFromLotEntry = entrySpline |> List.map (Splines.asGlobalSpline lotFrame)
     , pathToLotExit = exitSpline |> List.map (Splines.asGlobalSpline lotFrame)
     , owner = Nothing
@@ -148,6 +153,57 @@ parkingSpotOrientation lot =
     lot.parkingSpotExitDirection
         |> orthogonalDirectionToLmDirection
         |> Direction2d.toAngle
+
+
+findFreeParkingSpot : Id -> Lot -> Maybe ParkingSpot
+findFreeParkingSpot carId lot =
+    findFreeParkingSpotHelper carId lot.parkingSpots
+
+
+findFreeParkingSpotHelper : Id -> List ParkingSpot -> Maybe ParkingSpot
+findFreeParkingSpotHelper carId spots =
+    case spots of
+        [] ->
+            Nothing
+
+        parkingSpot :: others ->
+            case ( parkingSpot.owner, parkingSpot.reservedBy ) of
+                ( Nothing, Nothing ) ->
+                    Just parkingSpot
+
+                ( Just ownerId, Nothing ) ->
+                    if carId == ownerId then
+                        Just parkingSpot
+
+                    else
+                        findFreeParkingSpotHelper carId others
+
+                -- the parking spot is reserved (might also be owned by someone)
+                _ ->
+                    findFreeParkingSpotHelper carId others
+
+
+claimParkingSpot : Id -> Lot -> Maybe ParkingSpot
+claimParkingSpot carId lot =
+    findFreeParkingSpot carId lot |> Maybe.map (\parkingSpot -> { parkingSpot | owner = Just carId })
+
+
+updateParkingSpot : ParkingSpot -> Lot -> Lot
+updateParkingSpot parkingSpot lot =
+    let
+        nextParkingSpots =
+            List.map (replaceParkingSpotIfIdMatches parkingSpot) lot.parkingSpots
+    in
+    { lot | parkingSpots = nextParkingSpots }
+
+
+replaceParkingSpotIfIdMatches : ParkingSpot -> ParkingSpot -> ParkingSpot
+replaceParkingSpotIfIdMatches parkingSpot comparison =
+    if comparison.id == parkingSpot.id then
+        parkingSpot
+
+    else
+        comparison
 
 
 inBounds : Cell -> Lot -> Bool

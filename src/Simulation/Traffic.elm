@@ -175,7 +175,7 @@ carAfterDespawn : World -> Car -> Maybe Car
 carAfterDespawn world car =
     car.homeLotId
         |> Maybe.andThen (\lotId -> Dict.get lotId world.lots)
-        |> Maybe.andThen (\lot -> findParkingSpot lot |> Maybe.map (Tuple.pair lot))
+        |> Maybe.andThen (\lot -> Lot.findFreeParkingSpot car.id lot |> Maybe.map (Tuple.pair lot))
         |> Maybe.map (moveCarToHome world car)
 
 
@@ -226,6 +226,8 @@ addLotResident lotId lot world =
         carId =
             Entity.nextId world.cars
 
+        -- Room for improvement: create the route and path after a resident is spawned so that
+        -- a resident can be added before the road network is updated
         homeNode =
             RoadNetwork.findLotExitByNodeId world.roadNetwork lotId
 
@@ -233,28 +235,33 @@ addLotResident lotId lot world =
             Data.Lots.resident lot.kind
 
         parkingSpot =
-            findParkingSpot lot
+            Lot.claimParkingSpot carId lot
     in
-    case
-        Maybe.map3
-            (createCar lot carId)
-            homeNode
-            carMake
-            parkingSpot
-    of
-        Just car ->
-            { world | cars = Dict.insert carId car world.cars }
-
-        Nothing ->
-            world
+    Maybe.map3
+        (createResident world carId lot)
+        homeNode
+        carMake
+        parkingSpot
+        |> Maybe.withDefault world
 
 
-findParkingSpot lot =
-    List.head lot.parkingSpots
+createResident : World -> Id -> Lot -> RNNodeContext -> CarMake -> ParkingSpot -> World
+createResident world carId lot homeNode make parkingSpot =
+    let
+        lotWithClaimedParkingSpot =
+            Lot.updateParkingSpot parkingSpot lot
+
+        car =
+            createCar carId lotWithClaimedParkingSpot make homeNode parkingSpot
+    in
+    { world
+        | cars = Dict.insert carId car world.cars
+        , lots = Dict.insert lot.id lotWithClaimedParkingSpot world.lots
+    }
 
 
-createCar : Lot -> Id -> RNNodeContext -> CarMake -> ParkingSpot -> Car
-createCar lot carId homeNode make parkingSpot =
+createCar : Id -> Lot -> CarMake -> RNNodeContext -> ParkingSpot -> Car
+createCar carId lot make homeNode parkingSpot =
     Car.new make
         |> Car.withHome lot.id
         |> Car.withPosition parkingSpot.position
@@ -284,22 +291,16 @@ spawnCar seed world =
                     id =
                         Entity.nextId world.cars
 
-                    randomConnectionGenerator =
-                        Pathfinding.chooseRandomOutgoingConnection world.roadNetwork nodeCtx
-
-                    ( nextNode, seedAfterRandomConnection ) =
-                        Random.step randomConnectionGenerator seedAfterRandomNode
-
-                    car =
+                    ( car, seedAfterRouteInit ) =
                         Car.new testCar
                             |> Car.withPosition nodeCtx.node.label.position
                             |> Car.withOrientation (Direction2d.toAngle nodeCtx.node.label.direction)
                             |> Car.build id
-                            |> Pathfinding.maybeCreateRouteToNode nextNode
-                            |> Steering.startMoving
+                            |> Pathfinding.initRoute world seedAfterRandomNode nodeCtx
+                            |> Tuple.mapFirst Steering.startMoving
                 in
                 ( { world | cars = Dict.insert id car world.cars }
-                , seedAfterRandomConnection
+                , seedAfterRouteInit
                 , Just id
                 )
             )
