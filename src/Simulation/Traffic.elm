@@ -6,6 +6,7 @@ module Simulation.Traffic exposing
     )
 
 import BoundingBox2d
+import Common
 import Data.Cars exposing (CarMake, testCar)
 import Data.Lots
 import Dict
@@ -14,6 +15,7 @@ import Direction2d
 import Duration exposing (Duration)
 import FSM
 import Length exposing (Length)
+import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car, CarState(..))
 import Model.Entity as Entity exposing (Id)
 import Model.Lookup exposing (carPositionLookup)
@@ -55,7 +57,10 @@ updateTraffic { updateQueue, seed, world, delta } =
                         |> List.filter (\car -> car.id /= activeCar.id)
 
                 fsmUpdateContext =
-                    ( activeCar.position, activeCar.route )
+                    { currentPosition = activeCar.position
+                    , route = activeCar.route
+                    , localPath = activeCar.localPath
+                    }
 
                 ( nextFSM, _ ) =
                     FSM.update delta fsmUpdateContext activeCar.fsm
@@ -63,7 +68,7 @@ updateTraffic { updateQueue, seed, world, delta } =
                 carWithUpdatedFSM =
                     { activeCar | fsm = nextFSM }
 
-                ( nextCar, nextSeed ) =
+                ( carAfterSteeringAndPathfinding, nextSeed ) =
                     case FSM.toCurrentState nextFSM of
                         Car.Parked ->
                             ( Just carWithUpdatedFSM, seed )
@@ -74,7 +79,6 @@ updateTraffic { updateQueue, seed, world, delta } =
                                 (carWithUpdatedFSM
                                     |> Car.triggerDespawn
                                     |> Steering.stop
-                                    |> updateCar delta
                                 )
                             , seed
                             )
@@ -82,7 +86,7 @@ updateTraffic { updateQueue, seed, world, delta } =
                         Car.Despawning ->
                             ( carWithUpdatedFSM, seed )
                                 |> applyRound world otherCars
-                                |> Tuple.mapFirst (updateCar delta >> Just)
+                                |> Tuple.mapFirst Just
 
                         Car.Despawned ->
                             ( carAfterDespawn world carWithUpdatedFSM, seed )
@@ -91,18 +95,16 @@ updateTraffic { updateQueue, seed, world, delta } =
                             carWithUpdatedFSM
                                 |> Pathfinding.updatePath world seed
                                 |> applyRound world otherCars
-                                |> Tuple.mapFirst (updateCar delta >> Just)
+                                |> Tuple.mapFirst Just
             in
             updateTraffic
                 { updateQueue = queue
                 , seed = nextSeed
                 , world =
-                    case nextCar of
-                        Just updatedCar ->
-                            World.setCar updatedCar.id updatedCar world
-
-                        Nothing ->
-                            World.removeCar activeCar.id world
+                    carAfterSteeringAndPathfinding
+                        |> Maybe.map (updateCar delta)
+                        |> Maybe.map (\updatedCar -> World.setCar updatedCar.id updatedCar world)
+                        |> Maybe.withDefaultLazy (\_ -> World.removeCar activeCar.id world)
                 , delta = delta
                 }
 
@@ -139,10 +141,10 @@ updateCar delta car =
         nextOrientation =
             case Polyline2d.vertices car.localPath of
                 next :: _ ->
-                    Steering.angleToTarget car.position next
+                    Common.angleToTarget car.position next
                         |> Maybe.withDefault car.orientation
 
-                _ ->
+                [] ->
                     car.orientation
 
         nextVelocity =
