@@ -1,9 +1,7 @@
 module Simulation.Pathfinding exposing
-    ( chooseRandomOutgoingConnection
-    , createRouteToLotExit
+    ( createRouteToLotExit
     , createRouteToNode
     , initRoute
-    , maybeCreateRouteToNode
     , restoreRoute
     , updatePath
     )
@@ -51,13 +49,6 @@ initRoute world seed nodeCtx car =
         |> Maybe.withDefault ( Car.triggerReroute car, seed )
 
 
-maybeCreateRouteToNode : Maybe RNNodeContext -> Car -> Car
-maybeCreateRouteToNode maybeNodeCtx car =
-    maybeNodeCtx
-        |> Maybe.map (\nodeCtx -> createRouteToNode nodeCtx car)
-        |> Maybe.withDefault car
-
-
 createRouteToNode : RNNodeContext -> Car -> Car
 createRouteToNode nodeCtx car =
     let
@@ -93,6 +84,14 @@ createRouteToLotExit nodeCtx pathToLotExit car =
     }
 
 
+createRouteToParkingSpot : List LMCubicSpline2d -> Car -> Car
+createRouteToParkingSpot pathToParkingSpot car =
+    { car
+        | route = []
+        , localPath = multipleSplinesToLocalPath pathToParkingSpot
+    }
+
+
 updatePath : World -> Random.Seed -> Car -> ( Car, Random.Seed )
 updatePath world seed car =
     case Polyline2d.vertices car.localPath of
@@ -104,45 +103,62 @@ updatePath world seed car =
                 ( car, seed )
 
         [] ->
-            chooseNextConnection seed world car
+            case List.head car.route of
+                Just currentNodeCtx ->
+                    case currentNodeCtx.node.label.kind of
+                        LotEntry lotId ->
+                            -- Begin parking
+                            Dict.get lotId world.lots
+                                |> Maybe.andThen (Lot.findFreeParkingSpot car.id)
+                                |> Maybe.map
+                                    (\parkingSpot ->
+                                        ( car
+                                            |> createRouteToParkingSpot parkingSpot.pathFromLotEntry
+                                            |> Car.triggerParking
+                                        , seed
+                                        )
+                                    )
+                                |> Maybe.withDefault
+                                    ( Car.triggerDespawn car, seed )
 
+                        otherKind ->
+                            let
+                                adjustedCar =
+                                    -- This is a temporary hack to make sure that tight turns can be completed
+                                    if otherKind == DeadendExit || otherKind == LaneConnector then
+                                        { car
+                                            | orientation = Direction2d.toAngle currentNodeCtx.node.label.direction
+                                            , position = currentNodeCtx.node.label.position
+                                        }
 
-chooseNextConnection : Random.Seed -> World -> Car -> ( Car, Random.Seed )
-chooseNextConnection seed world car =
-    car.route
-        |> List.head
-        |> Maybe.andThen (generateRouteFromConnection world car seed)
-        |> Maybe.withDefault ( Car.triggerReroute car, seed )
+                                    else
+                                        car
+                            in
+                            generateRouteFromConnection world adjustedCar seed currentNodeCtx
+                                |> Maybe.withDefault ( Car.triggerReroute adjustedCar, seed )
+
+                Nothing ->
+                    if Car.isParking car then
+                        ( car, seed )
+
+                    else
+                        ( Car.triggerReroute car, seed )
 
 
 generateRouteFromConnection : World -> Car -> Random.Seed -> RNNodeContext -> Maybe ( Car, Random.Seed )
-generateRouteFromConnection world car seed nodeCtx =
+generateRouteFromConnection world car seed currentNodeCtx =
     let
         randomConnectionGenerator =
-            chooseRandomOutgoingConnection world car nodeCtx
+            chooseRandomOutgoingConnection world car currentNodeCtx
 
         ( connection, nextSeed ) =
             Random.step randomConnectionGenerator seed
     in
     Maybe.map
         (\nextNodeCtx ->
-            -- This is a temporary hack to make sure that tight turns can be completed
             let
-                nodeKind =
-                    nodeCtx.node.label.kind
-
-                adjusted =
-                    if nodeKind == DeadendExit || nodeKind == LaneConnector then
-                        { car
-                            | orientation = Direction2d.toAngle nodeCtx.node.label.direction
-                            , position = nodeCtx.node.label.position
-                        }
-
-                    else
-                        car
-
                 carWithRoute =
-                    createRouteToNode nextNodeCtx adjusted
+                    createRouteToNode nextNodeCtx car
             in
             ( carWithRoute, nextSeed )
         )

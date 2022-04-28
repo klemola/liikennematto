@@ -5,6 +5,7 @@ module Model.Car exposing
     , build
     , fieldOfView
     , isBreaking
+    , isParking
     , isPathfinding
     , isStoppedOrWaiting
     , new
@@ -12,6 +13,7 @@ module Model.Car exposing
     , secondsTo
     , statusDescription
     , triggerDespawn
+    , triggerParking
     , triggerReroute
     , viewDistance
     , withHome
@@ -96,7 +98,10 @@ type alias Action =
 
 
 type alias UpdateContext =
-    ( LMPoint2d, List RNNodeContext )
+    { currentPosition : LMPoint2d
+    , route : List RNNodeContext
+    , localPath : LMPolyline2d
+    }
 
 
 
@@ -126,11 +131,6 @@ speedToFieldOfViewReduction =
 --
 
 
-unparkingTimer : Duration
-unparkingTimer =
-    Duration.milliseconds 500
-
-
 despawnTimer : Duration
 despawnTimer =
     Duration.milliseconds 500
@@ -145,7 +145,7 @@ parked =
             [ FSM.createTransition
                 (\_ -> unparking)
                 []
-                (FSM.Timer unparkingTimer)
+                (FSM.Condition readyForUnparking)
             , FSM.createTransition
                 (\_ -> rerouting)
                 []
@@ -154,6 +154,11 @@ parked =
         , entryActions = []
         , exitActions = []
         }
+
+
+readyForUnparking : UpdateContext -> CarState -> Bool
+readyForUnparking { route } state =
+    state == Parked && not (List.isEmpty route)
 
 
 unparking : FSM.State CarState Action UpdateContext
@@ -165,7 +170,7 @@ unparking =
             [ FSM.createTransition
                 (\_ -> driving)
                 []
-                (FSM.Condition unparkingComplete)
+                (FSM.Condition unparkingCompleted)
             , FSM.createTransition
                 (\_ -> rerouting)
                 []
@@ -176,8 +181,8 @@ unparking =
         }
 
 
-unparkingComplete : UpdateContext -> CarState -> Bool
-unparkingComplete ( currentPosition, route ) _ =
+unparkingCompleted : UpdateContext -> CarState -> Bool
+unparkingCompleted { currentPosition, route } _ =
     case List.head route of
         Just nodeCtx ->
             currentPosition
@@ -229,7 +234,7 @@ rerouting =
 
 
 rerouteComplete : UpdateContext -> CarState -> Bool
-rerouteComplete ( _, route ) _ =
+rerouteComplete { route } _ =
     not (List.isEmpty route)
 
 
@@ -242,7 +247,7 @@ parking =
             [ FSM.createTransition
                 (\_ -> parked)
                 []
-                FSM.Direct
+                (FSM.Condition parkingCompleted)
             , FSM.createTransition
                 (\_ -> rerouting)
                 []
@@ -251,6 +256,11 @@ parking =
         , entryActions = []
         , exitActions = []
         }
+
+
+parkingCompleted : UpdateContext -> CarState -> Bool
+parkingCompleted { localPath } _ =
+    List.isEmpty (Polyline2d.vertices localPath)
 
 
 despawning : FSM.State CarState Action UpdateContext
@@ -296,11 +306,7 @@ initializeFSM newCar =
 
 triggerReroute : Car -> Car
 triggerReroute car =
-    let
-        transition =
-            car.fsm |> FSM.transitionTo (FSM.getId rerouting)
-    in
-    case transition of
+    case car.fsm |> FSM.transitionTo (FSM.getId rerouting) of
         Ok ( nextFSM, _ ) ->
             { car
                 | fsm = nextFSM
@@ -312,13 +318,22 @@ triggerReroute car =
             triggerDespawn car
 
 
+triggerParking : Car -> Car
+triggerParking car =
+    case car.fsm |> FSM.transitionTo (FSM.getId parking) of
+        Ok ( nextFSM, _ ) ->
+            { car
+                | fsm = nextFSM
+                , route = []
+            }
+
+        Err _ ->
+            triggerReroute car
+
+
 triggerDespawn : Car -> Car
 triggerDespawn car =
-    let
-        transition =
-            car.fsm |> FSM.transitionTo (FSM.getId despawning)
-    in
-    case transition of
+    case car.fsm |> FSM.transitionTo (FSM.getId despawning) of
         Ok ( nextFSM, _ ) ->
             { car
                 | fsm = nextFSM
@@ -417,6 +432,15 @@ isPathfinding car =
     in
     not (List.isEmpty car.route)
         && (currentState == Driving || currentState == Parking || currentState == Unparking)
+
+
+isParking : Car -> Bool
+isParking car =
+    let
+        currentState =
+            FSM.toCurrentState car.fsm
+    in
+    currentState == Parking
 
 
 secondsTo : LMPoint2d -> Car -> Quantity Float Duration.Seconds

@@ -51,6 +51,7 @@ type Rule
     | ReactToCollision
     | StopAtTrafficControl Length
     | SlowDownAtTrafficControl
+    | StopAtParkingSpot
 
 
 
@@ -123,6 +124,7 @@ ruleToApply round =
         [ \() -> checkForwardCollision round
         , \() -> checkTrafficControl round
         , \() -> checkPathCollision round
+        , \() -> checkParking round
         ]
 
 
@@ -140,6 +142,9 @@ applyRule round rule =
 
         SlowDownAtTrafficControl ->
             applyCarAction (Steering.slowDown (Steering.maxVelocity |> Quantity.half)) round
+
+        StopAtParkingSpot ->
+            applyCarAction Steering.stopAtPathEnd round
 
 
 applyCarAction : (Car -> Car) -> Round -> Round
@@ -234,6 +239,15 @@ checkYield { activeCar, otherCars } signPosition =
 
     else if distanceFromYieldSign |> Quantity.lessThanOrEqualTo yieldSlowDownDistance then
         Just SlowDownAtTrafficControl
+
+    else
+        Nothing
+
+
+checkParking : Round -> Maybe Rule
+checkParking { activeCar } =
+    if Car.isParking activeCar then
+        Just StopAtParkingSpot
 
     else
         Nothing

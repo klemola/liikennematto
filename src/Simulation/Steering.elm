@@ -1,7 +1,6 @@
 module Simulation.Steering exposing
     ( Steering
     , align
-    , angleToTarget
     , applyCollisionEffects
     , break
     , maxAcceleration
@@ -12,6 +11,7 @@ module Simulation.Steering exposing
     , slowDown
     , startMoving
     , stop
+    , stopAtPathEnd
     , stopAtTrafficControl
     )
 
@@ -19,11 +19,11 @@ import Acceleration exposing (Acceleration)
 import Angle exposing (Angle)
 import AngularAcceleration exposing (AngularAcceleration)
 import AngularSpeed exposing (AngularSpeed)
-import Direction2d
 import Duration
 import Length exposing (Length)
 import Model.Car exposing (Car)
-import Model.Geometry exposing (LMPoint2d)
+import Point2d
+import Polyline2d
 import Quantity exposing (Quantity(..))
 import Speed exposing (Speed)
 
@@ -159,12 +159,6 @@ align { currentRotation, currentOrientation, targetOrientation } =
 --
 
 
-angleToTarget : LMPoint2d -> LMPoint2d -> Maybe Angle
-angleToTarget origin target =
-    Direction2d.from origin target
-        |> Maybe.map Direction2d.toAngle
-
-
 accelerateToZeroOverDistance : Speed -> Length -> Acceleration
 accelerateToZeroOverDistance (Quantity speed) (Quantity distanceFromTarget) =
     if distanceFromTarget == 0 then
@@ -234,6 +228,31 @@ slowDown targetVelocity car =
 stop : Car -> Car
 stop car =
     { car | acceleration = maxDeceleration }
+
+
+stopAtPathEnd : Car -> Car
+stopAtPathEnd car =
+    let
+        target =
+            -- Room for improvement: this is slow. Try to cache the endpoint of the path or just use the spline instead
+            car.localPath
+                |> Polyline2d.vertices
+                |> List.reverse
+                |> List.head
+
+        nextAcceleration =
+            case target of
+                Just endPoint ->
+                    Quantity.max maxDeceleration
+                        (accelerateToZeroOverDistance
+                            car.velocity
+                            (Point2d.distanceFrom car.position endPoint)
+                        )
+
+                Nothing ->
+                    maxDeceleration
+    in
+    { car | acceleration = nextAcceleration }
 
 
 applyCollisionEffects : Car -> Car

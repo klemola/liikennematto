@@ -1,5 +1,6 @@
 module Common exposing
     ( angleFromDirection
+    , angleToTarget
     , boundingBoxOverlaps
     , boundingBoxToFrame
     , boundingBoxWithDimensions
@@ -165,3 +166,9 @@ isInTheNormalPlaneOf normal origin other =
     Direction2d.toVector normal
         |> Vector2d.dot (a |> Vector2d.minus p)
         |> Quantity.greaterThanOrEqualToZero
+
+
+angleToTarget : Point2d Length.Meters a -> Point2d Length.Meters a -> Maybe Angle
+angleToTarget origin target =
+    Direction2d.from origin target
+        |> Maybe.map Direction2d.toAngle
