@@ -1,5 +1,6 @@
 module Model.Car exposing
-    ( Car
+    ( Action(..)
+    , Car
     , CarState(..)
     , adjustedShape
     , build
@@ -62,7 +63,7 @@ type alias Car =
     , acceleration : Acceleration
     , shape : LMShape2d
     , boundingBox : LMBoundingBox2d
-    , route : List RNNodeContext
+    , route : Route
     , localPath : LMPolyline2d
     , homeLotId : Maybe Int
     }
@@ -79,28 +80,13 @@ type alias NewCar =
     }
 
 
-type alias CarFSM =
-    FSM CarState Action UpdateContext
-
-
-type CarState
-    = Parked
-    | Unparking
-    | Driving
-    | ReRouting
-    | Parking
-    | Despawning
-    | Despawned
-
-
-type alias Action =
-    ()
-
-
-type alias UpdateContext =
-    { currentPosition : LMPoint2d
-    , route : List RNNodeContext
-    , localPath : LMPolyline2d
+type alias Route =
+    { connections : List RNNodeContext
+    , parking :
+        Maybe
+            { lotId : Id
+            , parkingSpotId : Id
+            }
     }
 
 
@@ -125,10 +111,41 @@ speedToFieldOfViewReduction =
     Speed.metersPerSecond 2 |> Quantity.per (Angle.degrees 10)
 
 
+unrouted : Route
+unrouted =
+    { connections = [], parking = Nothing }
+
+
 
 --
 -- FSM
 --
+
+
+type alias CarFSM =
+    FSM CarState Action UpdateContext
+
+
+type CarState
+    = Parked
+    | Unparking
+    | Driving
+    | ReRouting
+    | Parking
+    | Despawning
+    | Despawned
+
+
+type Action
+    = TriggerParkingSideEffects
+    | TriggerUnparkingSideEffects
+
+
+type alias UpdateContext =
+    { currentPosition : LMPoint2d
+    , route : Route
+    , localPath : LMPolyline2d
+    }
 
 
 despawnTimer : Duration
@@ -158,7 +175,7 @@ parked =
 
 readyForUnparking : UpdateContext -> CarState -> Bool
 readyForUnparking { route } state =
-    state == Parked && not (List.isEmpty route)
+    state == Parked && not (List.isEmpty route.connections)
 
 
 unparking : FSM.State CarState Action UpdateContext
@@ -176,14 +193,14 @@ unparking =
                 []
                 FSM.Direct
             ]
-        , entryActions = []
+        , entryActions = [ TriggerUnparkingSideEffects ]
         , exitActions = []
         }
 
 
 unparkingCompleted : UpdateContext -> CarState -> Bool
 unparkingCompleted { currentPosition, route } _ =
-    case List.head route of
+    case List.head route.connections of
         Just nodeCtx ->
             currentPosition
                 |> Point2d.distanceFrom nodeCtx.node.label.position
@@ -235,7 +252,7 @@ rerouting =
 
 rerouteComplete : UpdateContext -> CarState -> Bool
 rerouteComplete { route } _ =
-    not (List.isEmpty route)
+    not (List.isEmpty route.connections)
 
 
 parking : FSM.State CarState Action UpdateContext
@@ -253,7 +270,7 @@ parking =
                 []
                 FSM.Direct
             ]
-        , entryActions = []
+        , entryActions = [ TriggerParkingSideEffects ]
         , exitActions = []
         }
 
@@ -306,43 +323,33 @@ initializeFSM newCar =
 
 triggerReroute : Car -> Car
 triggerReroute car =
-    case car.fsm |> FSM.transitionTo (FSM.getId rerouting) of
-        Ok ( nextFSM, _ ) ->
-            { car
-                | fsm = nextFSM
-                , route = []
-                , localPath = Polyline2d.fromVertices []
-            }
-
-        Err _ ->
-            triggerDespawn car
+    let
+        nextFSM =
+            car.fsm |> FSM.transitionOnNextUpdate (FSM.getId rerouting)
+    in
+    { car
+        | fsm = nextFSM
+        , route = unrouted
+        , localPath = Polyline2d.fromVertices []
+    }
 
 
 triggerParking : Car -> Car
 triggerParking car =
-    case car.fsm |> FSM.transitionTo (FSM.getId parking) of
-        Ok ( nextFSM, _ ) ->
-            { car
-                | fsm = nextFSM
-                , route = []
-            }
-
-        Err _ ->
-            triggerReroute car
+    { car | fsm = car.fsm |> FSM.transitionOnNextUpdate (FSM.getId parking) }
 
 
 triggerDespawn : Car -> Car
 triggerDespawn car =
-    case car.fsm |> FSM.transitionTo (FSM.getId despawning) of
-        Ok ( nextFSM, _ ) ->
-            { car
-                | fsm = nextFSM
-                , route = []
-                , localPath = Polyline2d.fromVertices []
-            }
-
-        Err _ ->
-            car
+    let
+        nextFSM =
+            car.fsm |> FSM.transitionOnNextUpdate (FSM.getId despawning)
+    in
+    { car
+        | fsm = nextFSM
+        , route = unrouted
+        , localPath = Polyline2d.fromVertices []
+    }
 
 
 
@@ -402,7 +409,7 @@ build id newCar =
     , acceleration = newCar.acceleration
     , shape = shape
     , boundingBox = boundingBox
-    , route = []
+    , route = unrouted
     , localPath = Polyline2d.fromVertices []
     , homeLotId = newCar.homeLotId
     }
@@ -430,7 +437,7 @@ isPathfinding car =
         currentState =
             FSM.toCurrentState car.fsm
     in
-    not (List.isEmpty car.route)
+    not (List.isEmpty car.route.connections)
         && (currentState == Driving || currentState == Parking || currentState == Unparking)
 
 
@@ -539,7 +546,7 @@ statusDescription car =
             "Unparking"
 
         Driving ->
-            "Driving" ++ " " ++ routeDescription car.route
+            "Driving" ++ " " ++ routeDescription car.route.connections
 
         ReRouting ->
             "Re-routing"

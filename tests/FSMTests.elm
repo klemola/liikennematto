@@ -150,6 +150,15 @@ suite =
                         |> FSM.transitionTo stateThreeId
                         |> Expect.err
                 )
+             , test "can be queued to be updated on the next update"
+                (\_ ->
+                    testFSM
+                        |> FSM.transitionOnNextUpdate stateTwoId
+                        |> FSM.updateWithoutContext (Duration.seconds 1)
+                        |> Tuple.first
+                        |> FSM.toCurrentState
+                        |> Expect.equal Two
+                )
              ]
             )
         , describe "conditional transitions"

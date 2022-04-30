@@ -6,6 +6,7 @@ module Model.World exposing
     , removeCar
     , removeLot
     , setCar
+    , setLot
     )
 
 import Common
@@ -81,14 +82,19 @@ isEmptyArea testAreaBB world =
 --
 
 
-setCar : Id -> Car -> World -> World
-setCar carId car world =
-    { world | cars = Dict.insert carId car world.cars }
+setCar : Car -> World -> World
+setCar car world =
+    { world | cars = Dict.insert car.id car world.cars }
 
 
 removeCar : Id -> World -> World
 removeCar carId world =
     { world | cars = Dict.remove carId world.cars }
+
+
+setLot : Lot -> World -> World
+setLot lot world =
+    { world | lots = Dict.insert lot.id lot world.lots }
 
 
 removeLot : Id -> World -> World
