@@ -13,8 +13,9 @@ import Direction2d
 import Length
 import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car, CarState(..))
+import Model.Entity exposing (Id)
 import Model.Geometry exposing (LMCubicSpline2d, LMPolyline2d)
-import Model.Lot as Lot
+import Model.Lot as Lot exposing (ParkingSpot)
 import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Model.World exposing (World)
 import Point2d
@@ -52,8 +53,11 @@ initRoute world seed nodeCtx car =
 createRouteToNode : RNNodeContext -> Car -> Car
 createRouteToNode nodeCtx car =
     let
+        currentRoute =
+            car.route
+
         newPathRequired =
-            case car.route of
+            case currentRoute.connections of
                 target :: _ ->
                     target.node.label.position /= nodeCtx.node.label.position
 
@@ -61,7 +65,7 @@ createRouteToNode nodeCtx car =
                     True
     in
     { car
-        | route = [ nodeCtx ]
+        | route = { currentRoute | connections = [ nodeCtx ] }
         , localPath =
             if newPathRequired then
                 nodeCtx
@@ -79,16 +83,26 @@ createRouteToNode nodeCtx car =
 createRouteToLotExit : RNNodeContext -> List LMCubicSpline2d -> Car -> Car
 createRouteToLotExit nodeCtx pathToLotExit car =
     { car
-        | route = [ nodeCtx ]
+        | route =
+            { connections = [ nodeCtx ]
+            , parking = Nothing
+            }
         , localPath = multipleSplinesToLocalPath pathToLotExit
     }
 
 
-createRouteToParkingSpot : List LMCubicSpline2d -> Car -> Car
-createRouteToParkingSpot pathToParkingSpot car =
+createRouteToParkingSpot : Id -> ParkingSpot -> Car -> Car
+createRouteToParkingSpot lotId parkingSpot car =
     { car
-        | route = []
-        , localPath = multipleSplinesToLocalPath pathToParkingSpot
+        | route =
+            { connections = []
+            , parking =
+                Just
+                    { lotId = lotId
+                    , parkingSpotId = parkingSpot.id
+                    }
+            }
+        , localPath = multipleSplinesToLocalPath parkingSpot.pathFromLotEntry
     }
 
 
@@ -103,17 +117,17 @@ updatePath world seed car =
                 ( car, seed )
 
         [] ->
-            case List.head car.route of
+            case List.head car.route.connections of
                 Just currentNodeCtx ->
                     case currentNodeCtx.node.label.kind of
                         LotEntry lotId ->
-                            -- Begin parking
+                            -- Begin parking TODO: do this earlier (as soon as the LotEntry connection is the current target)
                             Dict.get lotId world.lots
                                 |> Maybe.andThen (Lot.findFreeParkingSpot car.id)
                                 |> Maybe.map
                                     (\parkingSpot ->
                                         ( car
-                                            |> createRouteToParkingSpot parkingSpot.pathFromLotEntry
+                                            |> createRouteToParkingSpot lotId parkingSpot
                                             |> Car.triggerParking
                                         , seed
                                         )
@@ -180,8 +194,9 @@ discardInvalidConnections world car nodeCtx =
             world.lots
                 |> Dict.get lotId
                 -- given that a lot is found, continue only if the car has a home
-                |> Maybe.next car.homeLotId
-                |> Maybe.map (Lot.findFreeParkingSpot car.id >> always nodeCtx)
+                -- |> Maybe.next car.homeLotId
+                |> Maybe.andThen (Lot.findFreeParkingSpot car.id)
+                |> Maybe.map (always nodeCtx)
 
         LotExit _ ->
             Nothing
@@ -194,7 +209,7 @@ restoreRoute : World -> Car -> Car
 restoreRoute world car =
     if Car.isPathfinding car then
         case
-            List.head car.route
+            List.head car.route.connections
                 |> Maybe.andThen (findNodeReplacement world)
                 |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
         of

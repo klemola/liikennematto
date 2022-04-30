@@ -12,6 +12,7 @@ module FSM exposing
     , reset
     , timeToStateChange
     , toCurrentState
+    , transitionOnNextUpdate
     , transitionTo
     , update
     , updateWithoutContext
@@ -26,6 +27,7 @@ type FSM state actionType updateContext
     = FSM
         { initialState : State state actionType updateContext
         , currentState : State state actionType updateContext
+        , queuedTransitions : List StateId
         }
 
 
@@ -74,6 +76,7 @@ initialize initialState =
     ( FSM
         { initialState = initialState
         , currentState = initialState
+        , queuedTransitions = []
         }
     , state.entryActions
     )
@@ -170,7 +173,7 @@ update delta updateContext (FSM fsm) =
                 (\transition acc ->
                     let
                         ( updatedTransition, stateChange ) =
-                            updateTransition delta fsm.currentState updateContext transition
+                            updateTransition delta fsm.currentState fsm.queuedTransitions updateContext transition
                     in
                     { transitions = updatedTransition :: acc.transitions
                     , stateChange = Maybe.or acc.stateChange stateChange
@@ -191,7 +194,11 @@ update delta updateContext (FSM fsm) =
                     , actions = []
                     }
     in
-    ( FSM { fsm | currentState = nextState }
+    ( FSM
+        { fsm
+            | currentState = nextState
+            , queuedTransitions = []
+        }
     , actions
     )
 
@@ -207,16 +214,20 @@ setTransitions (State state) updatedTransitions =
 updateTransition :
     Duration
     -> State state actionType updateContext
+    -> List StateId
     -> updateContext
     -> Transition state actionType updateContext
     ->
         ( Transition state actionType updateContext
         , Maybe (StateChange state actionType updateContext)
         )
-updateTransition delta (State currentState) context transition =
+updateTransition delta (State currentState) queuedTransitions context transition =
     let
         (Transition trs) =
             transition
+
+        (State targetState) =
+            trs.targetState ()
 
         ( updatedTransition, isTriggered ) =
             case trs.trigger of
@@ -235,20 +246,16 @@ updateTransition delta (State currentState) context transition =
                     ( trs, predicate context currentState.kind )
 
                 Direct ->
-                    ( trs, False )
+                    ( trs, queuedTransitions |> List.any (\queuedStateId -> queuedStateId == targetState.id) )
 
         stateChange =
             if isTriggered then
-                let
-                    (State nextState) =
-                        trs.targetState ()
-                in
                 Just
-                    { nextState = State nextState
+                    { nextState = State targetState
                     , actions =
                         currentState.exitActions
                             ++ trs.actions
-                            ++ nextState.entryActions
+                            ++ targetState.entryActions
                     }
 
             else
@@ -319,6 +326,14 @@ directTransitionAllowed stateId (Transition trs) =
             trs.targetState ()
     in
     trs.trigger == Direct && targetState.id == stateId
+
+
+transitionOnNextUpdate :
+    StateId
+    -> FSM state actionType updateContext
+    -> FSM state actionType updateContext
+transitionOnNextUpdate stateId (FSM fsm) =
+    FSM { fsm | queuedTransitions = stateId :: fsm.queuedTransitions }
 
 
 {-| Restart the FSM from it's initial state.

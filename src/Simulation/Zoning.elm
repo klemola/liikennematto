@@ -112,18 +112,18 @@ isNotAtTheEndOfARoad world anchor =
 
 addLot : World -> ( Lot, Cell ) -> World
 addLot world ( lot, anchor ) =
-    let
-        worldWithlot =
-            { world
-                | lots = Dict.insert lot.id lot world.lots
-                , tilemap =
-                    Tilemap.addAnchor anchor
-                        lot.id
-                        (oppositeOrthogonalDirection lot.drivewayExitDirection)
-                        world.tilemap
-            }
-    in
-    worldWithlot
+    world
+        |> World.setLot lot
+        -- TODO: add "setTilemap" to World
+        |> (\worldWithLot ->
+                { worldWithLot
+                    | tilemap =
+                        Tilemap.addAnchor anchor
+                            lot.id
+                            (oppositeOrthogonalDirection lot.drivewayExitDirection)
+                            world.tilemap
+                }
+           )
         |> Infrastructure.connectLotToRoadNetwork
         |> Traffic.addLotResident lot.id lot
 

@@ -192,7 +192,7 @@ checkPathCollision { activeCar, otherCars } =
 
 checkTrafficControl : Round -> Maybe Rule
 checkTrafficControl round =
-    round.activeCar.route
+    round.activeCar.route.connections
         |> List.head
         |> Maybe.andThen
             (\{ node } ->

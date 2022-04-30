@@ -62,7 +62,7 @@ updateTraffic { updateQueue, seed, world, delta } =
                     , localPath = activeCar.localPath
                     }
 
-                ( nextFSM, _ ) =
+                ( nextFSM, actions ) =
                     FSM.update delta fsmUpdateContext activeCar.fsm
 
                 carWithUpdatedFSM =
@@ -96,15 +96,19 @@ updateTraffic { updateQueue, seed, world, delta } =
                                 |> Pathfinding.updatePath world seed
                                 |> applyRound world otherCars
                                 |> Tuple.mapFirst Just
+
+                nextWorld =
+                    carAfterSteeringAndPathfinding
+                        |> Maybe.map (updateCar delta)
+                        |> Maybe.map (\car -> World.setCar car world)
+                        |> Maybe.withDefaultLazy (\_ -> World.removeCar activeCar.id world)
+                        -- The car might already be deleted, but the actions still need to be applied (using the car data on FSM update)
+                        |> applyActions actions carWithUpdatedFSM
             in
             updateTraffic
                 { updateQueue = queue
                 , seed = nextSeed
-                , world =
-                    carAfterSteeringAndPathfinding
-                        |> Maybe.map (updateCar delta)
-                        |> Maybe.map (\updatedCar -> World.setCar updatedCar.id updatedCar world)
-                        |> Maybe.withDefaultLazy (\_ -> World.removeCar activeCar.id world)
+                , world = nextWorld
                 , delta = delta
                 }
 
@@ -123,6 +127,34 @@ applyRound world otherCars ( activeCar, seed ) =
             Round.play round
     in
     ( roundResults.car, roundResults.seed )
+
+
+applyActions : List Car.Action -> Car -> World -> World
+applyActions actions car world =
+    List.foldl
+        (\action nextWorld ->
+            case action of
+                Car.TriggerParkingSideEffects ->
+                    applyParkingSpotChange car nextWorld (Lot.reseveParkingSpot car.id)
+
+                Car.TriggerUnparkingSideEffects ->
+                    applyParkingSpotChange car nextWorld Lot.unreserveParkingSpot
+        )
+        world
+        actions
+
+
+applyParkingSpotChange : Car -> World -> (Id -> Lot -> Lot) -> World
+applyParkingSpotChange car world changeFn =
+    car.route.parking
+        |> Maybe.andThen
+            (\carParking ->
+                world.lots
+                    |> Dict.get carParking.lotId
+                    |> Maybe.map (changeFn carParking.parkingSpotId)
+                    |> Maybe.map (\lot -> World.setLot lot world)
+            )
+        |> Maybe.withDefault world
 
 
 updateCar : Duration -> Car -> Car
@@ -198,8 +230,6 @@ moveCarToHome world car ( home, parkingSpot ) =
                 , orientation = Lot.parkingSpotOrientation home
                 , velocity = Quantity.zero
                 , acceleration = Steering.maxAcceleration
-                , route = []
-                , localPath = Polyline2d.fromVertices []
             }
                 |> Pathfinding.createRouteToLotExit nodeCtx parkingSpot.pathToLotExit
 
@@ -256,10 +286,9 @@ createResident world carId lot homeNode make parkingSpot =
         car =
             createCar carId lotWithClaimedParkingSpot make homeNode parkingSpot
     in
-    { world
-        | cars = Dict.insert carId car world.cars
-        , lots = Dict.insert lot.id lotWithClaimedParkingSpot world.lots
-    }
+    world
+        |> World.setCar car
+        |> World.setLot lotWithClaimedParkingSpot
 
 
 createCar : Id -> Lot -> CarMake -> RNNodeContext -> ParkingSpot -> Car
@@ -301,7 +330,7 @@ spawnCar seed world =
                             |> Pathfinding.initRoute world seedAfterRandomNode nodeCtx
                             |> Tuple.mapFirst Steering.startMoving
                 in
-                ( { world | cars = Dict.insert id car world.cars }
+                ( World.setCar car world
                 , seedAfterRouteInit
                 , Just id
                 )

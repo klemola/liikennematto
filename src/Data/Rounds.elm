@@ -57,7 +57,7 @@ connectedRoadsSetup =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
+                |> World.setCar car
     in
     Round worldWithCars car otherCars seed
 
@@ -82,8 +82,8 @@ collisionSetupPathsIntersect =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
-                |> World.setCar otherCar.id otherCar
+                |> World.setCar car
+                |> World.setCar otherCar
     in
     Round worldWithCars car otherCars seed
 
@@ -108,8 +108,8 @@ collisionSetupNearCollision =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
-                |> World.setCar otherCar.id otherCar
+                |> World.setCar car
+                |> World.setCar otherCar
     in
     Round worldWithCars car otherCars seed
 
@@ -134,8 +134,8 @@ collisionSetupCollided =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
-                |> World.setCar otherCar.id otherCar
+                |> World.setCar car
+                |> World.setCar otherCar
     in
     Round worldWithCars car otherCars seed
 
@@ -158,8 +158,8 @@ noCollisionSetupDifferentLanes =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
-                |> World.setCar otherCar.id otherCar
+                |> World.setCar car
+                |> World.setCar otherCar
     in
     Round worldWithCars car otherCars seed
 
@@ -182,8 +182,8 @@ noCollisionSetupIntersection =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
-                |> World.setCar otherCar.id otherCar
+                |> World.setCar car
+                |> World.setCar otherCar
     in
     Round worldWithCars car otherCars seed
 
@@ -203,7 +203,7 @@ redTrafficLightsSetup =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
+                |> World.setCar car
     in
     Round worldWithCars car otherCars seed
 
@@ -223,7 +223,7 @@ greenTrafficLightsSetup =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
+                |> World.setCar car
     in
     Round worldWithCars car otherCars seed
 
@@ -246,8 +246,8 @@ yieldWithPriorityTrafficSetup1 =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
-                |> World.setCar otherCar.id otherCar
+                |> World.setCar car
+                |> World.setCar otherCar
     in
     Round worldWithCars car otherCars seed
 
@@ -270,8 +270,8 @@ yieldWithPriorityTrafficSetup2 =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
-                |> World.setCar otherCar.id otherCar
+                |> World.setCar car
+                |> World.setCar otherCar
     in
     Round worldWithCars car otherCars seed
 
@@ -287,7 +287,7 @@ yieldWithoutPriorityTrafficSetup =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
+                |> World.setCar car
     in
     Round worldWithCars car [] seed
 
@@ -307,7 +307,7 @@ yieldSlowDownSetup =
 
         worldWithCars =
             world
-                |> World.setCar car.id car
+                |> World.setCar car
     in
     Round worldWithCars car otherCars seed
 
