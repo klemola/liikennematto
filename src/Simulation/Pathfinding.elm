@@ -91,8 +91,16 @@ createRouteToLotExit nodeCtx pathToLotExit car =
     }
 
 
-createRouteToParkingSpot : Id -> ParkingSpot -> Car -> Car
-createRouteToParkingSpot lotId parkingSpot car =
+createRouteToParkingSpot : Id -> RNNodeContext -> ParkingSpot -> Car -> Car
+createRouteToParkingSpot lotId lotEntryNode parkingSpot car =
+    let
+        pathToLotEntry =
+            Splines.toNode
+                { origin = car.position
+                , direction = Direction2d.fromAngle car.orientation
+                }
+                lotEntryNode
+    in
     { car
         | route =
             { connections = []
@@ -102,7 +110,7 @@ createRouteToParkingSpot lotId parkingSpot car =
                     , parkingSpotId = parkingSpot.id
                     }
             }
-        , localPath = multipleSplinesToLocalPath parkingSpot.pathFromLotEntry
+        , localPath = multipleSplinesToLocalPath (pathToLotEntry :: parkingSpot.pathFromLotEntry)
     }
 
 
@@ -120,20 +128,17 @@ updatePath world seed car =
             case List.head car.route.connections of
                 Just currentNodeCtx ->
                     case currentNodeCtx.node.label.kind of
-                        LotEntry lotId ->
-                            -- Begin parking TODO: do this earlier (as soon as the LotEntry connection is the current target)
-                            Dict.get lotId world.lots
-                                |> Maybe.andThen (Lot.findFreeParkingSpot car.id)
-                                |> Maybe.map
-                                    (\parkingSpot ->
-                                        ( car
-                                            |> createRouteToParkingSpot lotId parkingSpot
-                                            |> Car.triggerParking
-                                        , seed
-                                        )
-                                    )
-                                |> Maybe.withDefault
-                                    ( Car.triggerDespawn car, seed )
+                        LotEntry _ ->
+                            -- Having no route is expected once the parking routine has started
+                            let
+                                nextCar =
+                                    if Car.isParking car then
+                                        car
+
+                                    else
+                                        Car.triggerReroute car
+                            in
+                            ( nextCar, seed )
 
                         otherKind ->
                             let
@@ -172,7 +177,21 @@ generateRouteFromConnection world car seed currentNodeCtx =
         (\nextNodeCtx ->
             let
                 carWithRoute =
-                    createRouteToNode nextNodeCtx car
+                    case nextNodeCtx.node.label.kind of
+                        LotEntry lotId ->
+                            Dict.get lotId world.lots
+                                |> Maybe.andThen (Lot.findFreeParkingSpot car.id)
+                                |> Maybe.map
+                                    (\parkingSpot ->
+                                        car
+                                            |> createRouteToParkingSpot lotId nextNodeCtx parkingSpot
+                                            |> Car.triggerParking
+                                    )
+                                |> Maybe.withDefault
+                                    (Car.triggerDespawn car)
+
+                        _ ->
+                            createRouteToNode nextNodeCtx car
             in
             ( carWithRoute, nextSeed )
         )
