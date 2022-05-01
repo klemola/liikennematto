@@ -6,6 +6,7 @@ module Model.Car exposing
     , build
     , fieldOfView
     , isBreaking
+    , isDriving
     , isParking
     , isPathfinding
     , isStoppedOrWaiting
@@ -113,7 +114,9 @@ speedToFieldOfViewReduction =
 
 unrouted : Route
 unrouted =
-    { connections = [], parking = Nothing }
+    { connections = []
+    , parking = Nothing
+    }
 
 
 
@@ -193,8 +196,8 @@ unparking =
                 []
                 FSM.Direct
             ]
-        , entryActions = [ TriggerUnparkingSideEffects ]
-        , exitActions = []
+        , entryActions = []
+        , exitActions = [ TriggerUnparkingSideEffects ]
         }
 
 
@@ -448,6 +451,15 @@ isParking car =
             FSM.toCurrentState car.fsm
     in
     currentState == Parking
+
+
+isDriving : Car -> Bool
+isDriving car =
+    let
+        currentState =
+            FSM.toCurrentState car.fsm
+    in
+    currentState == Driving
 
 
 secondsTo : LMPoint2d -> Car -> Quantity Float Duration.Seconds
