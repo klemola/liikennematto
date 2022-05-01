@@ -27,6 +27,7 @@ import Model.Lot as Lot exposing (Lot)
 import Model.RoadNetwork as RoadNetwork exposing (RoadNetwork)
 import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.TrafficLight exposing (TrafficLights)
+import Set
 
 
 type alias World =
@@ -99,29 +100,42 @@ setLot lot world =
 
 removeLot : Id -> World -> World
 removeLot lotId world =
-    let
-        nextCars =
-            Dict.map
-                (\_ car ->
-                    let
-                        shouldReroute =
-                            case car.homeLotId of
-                                Just homeLotId ->
-                                    homeLotId == lotId
+    case Dict.get lotId world.lots of
+        Just lot ->
+            let
+                parkedCarsIds =
+                    lot.parkingSpots
+                        |> List.filterMap (\parkingSpot -> parkingSpot.reservedBy)
+                        |> Set.fromList
 
-                                Nothing ->
-                                    False
-                    in
-                    if shouldReroute then
-                        Car.triggerReroute car
+                nextCars =
+                    Dict.map
+                        (\_ car ->
+                            let
+                                isParked =
+                                    Set.member car.id parkedCarsIds
 
-                    else
-                        car
-                )
-                world.cars
-    in
-    { world
-        | lots = Dict.remove lotId world.lots
-        , tilemap = Tilemap.removeAnchor lotId world.tilemap
-        , cars = nextCars
-    }
+                                shouldReroute =
+                                    case car.homeLotId of
+                                        Just homeLotId ->
+                                            homeLotId == lotId
+
+                                        Nothing ->
+                                            False
+                            in
+                            if isParked || shouldReroute then
+                                Car.triggerReroute car
+
+                            else
+                                car
+                        )
+                        world.cars
+            in
+            { world
+                | lots = Dict.remove lotId world.lots
+                , tilemap = Tilemap.removeAnchor lotId world.tilemap
+                , cars = nextCars
+            }
+
+        Nothing ->
+            world
