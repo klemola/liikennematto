@@ -188,7 +188,7 @@ generateRouteFromConnection world car seed currentNodeCtx =
                                             |> Car.triggerParking
                                     )
                                 |> Maybe.withDefault
-                                    (Car.triggerDespawn car)
+                                    (Car.triggerReroute car)
 
                         _ ->
                             createRouteToNode nextNodeCtx car
@@ -212,7 +212,8 @@ discardInvalidConnections world car nodeCtx =
         LotEntry lotId ->
             world.lots
                 |> Dict.get lotId
-                -- given that a lot is found, continue only if the car has a home
+                -- Given that a lot is found, continue only if the car has a home (e.g. the car is not a test car)
+                -- Will be enabled once there are enough lots with residents
                 -- |> Maybe.next car.homeLotId
                 |> Maybe.andThen (Lot.findFreeParkingSpot car.id)
                 |> Maybe.map (always nodeCtx)
