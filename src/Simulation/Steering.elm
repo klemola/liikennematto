@@ -1,5 +1,6 @@
 module Simulation.Steering exposing
     ( Steering
+    , accelerateToZeroOverDistance
     , align
     , applyCollisionEffects
     , break
@@ -56,6 +57,11 @@ maxRotation =
 trafficControlStopDistance : Length
 trafficControlStopDistance =
     Length.meters 4
+
+
+parkingRadius : Length
+parkingRadius =
+    Length.meters 12
 
 
 type alias Steering =
@@ -160,12 +166,26 @@ align { currentRotation, currentOrientation, targetOrientation } =
 
 
 accelerateToZeroOverDistance : Speed -> Length -> Acceleration
-accelerateToZeroOverDistance (Quantity speed) (Quantity distanceFromTarget) =
+accelerateToZeroOverDistance (Quantity currentSpeed) (Quantity distanceFromTarget) =
     if distanceFromTarget == 0 then
         maxDeceleration
 
     else
-        Quantity (-speed * speed / (2 * distanceFromTarget))
+        let
+            finalSpeed =
+                if currentSpeed == 0 then
+                    -- Accelerate to move towards the target
+                    Speed.inMetersPerSecond maxVelocity * 0.75
+
+                else
+                    -- Already in motion; try to achieve optimal deceleration
+                    0
+
+            -- Linear acceleration (or deceleration) for a distance from a starting speed to final speed
+            acceleration =
+                (finalSpeed * finalSpeed - currentSpeed * currentSpeed) / (2 * distanceFromTarget)
+        in
+        Quantity acceleration
 
 
 
@@ -215,14 +235,7 @@ break breakDistance car =
 
 slowDown : Speed -> Car -> Car
 slowDown targetVelocity car =
-    { car
-        | acceleration =
-            if car.velocity |> Quantity.greaterThan targetVelocity then
-                Acceleration.metersPerSecondSquared -5
-
-            else
-                maxAcceleration
-    }
+    { car | acceleration = reachTargetVelocity car.velocity targetVelocity }
 
 
 stop : Car -> Car
@@ -243,11 +256,20 @@ stopAtPathEnd car =
         nextAcceleration =
             case target of
                 Just endPoint ->
-                    Quantity.max maxDeceleration
-                        (accelerateToZeroOverDistance
-                            car.velocity
-                            (Point2d.distanceFrom car.position endPoint)
-                        )
+                    let
+                        distanceToParkingSpot =
+                            Point2d.distanceFrom car.position endPoint
+                    in
+                    if distanceToParkingSpot |> Quantity.lessThanOrEqualTo parkingRadius then
+                        Quantity.max
+                            maxDeceleration
+                            (accelerateToZeroOverDistance
+                                car.velocity
+                                distanceToParkingSpot
+                            )
+
+                    else
+                        reachTargetVelocity car.velocity (Quantity.half maxVelocity)
 
                 Nothing ->
                     maxDeceleration
@@ -262,3 +284,12 @@ applyCollisionEffects car =
         | acceleration = Quantity.zero
         , velocity = Speed.metersPerSecond -10
     }
+
+
+reachTargetVelocity : Speed -> Speed -> Acceleration
+reachTargetVelocity currentVelocity targetVelocity =
+    if currentVelocity |> Quantity.greaterThan targetVelocity then
+        Acceleration.metersPerSecondSquared -5
+
+    else
+        maxAcceleration
