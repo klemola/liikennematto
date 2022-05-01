@@ -164,17 +164,26 @@ updateCar delta car =
             -- TODO: implement proper path following steering to use for movement
             Steering.noSteering
 
+        carTravelDirection =
+            Direction2d.fromAngle car.orientation
+
         nextPosition =
             car.position
                 |> Point2d.translateIn
-                    (Direction2d.fromAngle car.orientation)
+                    carTravelDirection
                     (car.velocity |> Quantity.for delta)
 
         nextOrientation =
             case Polyline2d.vertices car.localPath of
-                next :: _ ->
-                    Common.angleToTarget car.position next
-                        |> Maybe.withDefault car.orientation
+                nextPointOnPath :: _ ->
+                    -- Temporarily check if the point of path is behind the car
+                    -- Not required once the localPath is a spline
+                    if nextPointOnPath |> Common.isInTheNormalPlaneOf carTravelDirection car.position then
+                        Common.angleToTarget car.position nextPointOnPath
+                            |> Maybe.withDefault car.orientation
+
+                    else
+                        car.orientation
 
                 [] ->
                     car.orientation
