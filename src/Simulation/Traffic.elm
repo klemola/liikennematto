@@ -71,7 +71,13 @@ updateTraffic { updateQueue, seed, world, delta } =
                 ( carAfterSteeringAndPathfinding, nextSeed ) =
                     case FSM.toCurrentState nextFSM of
                         Car.Parked ->
-                            ( Just carWithUpdatedFSM, seed )
+                            ( Just
+                                (carWithUpdatedFSM
+                                    |> Pathfinding.leaveLot world
+                                    |> Steering.startMoving
+                                )
+                            , seed
+                            )
 
                         Car.ReRouting ->
                             -- Temporary implementation; pathfinding doesn't support search for nearest node
@@ -93,7 +99,7 @@ updateTraffic { updateQueue, seed, world, delta } =
 
                         _ ->
                             carWithUpdatedFSM
-                                |> Pathfinding.updatePath world seed
+                                |> Pathfinding.updateRoute world seed
                                 |> applyRound world otherCars
                                 |> Tuple.mapFirst Just
 
@@ -226,7 +232,7 @@ moveCarToHome : World -> Car -> ( Lot, ParkingSpot ) -> Car
 moveCarToHome world car ( home, parkingSpot ) =
     let
         homeNode =
-            car.homeLotId |> Maybe.andThen (RoadNetwork.findLotExitByNodeId world.roadNetwork)
+            car.homeLotId |> Maybe.andThen (RoadNetwork.findLotExitNodeByLotId world.roadNetwork)
 
         ( nextFSM, _ ) =
             FSM.reset car.fsm
@@ -240,6 +246,7 @@ moveCarToHome world car ( home, parkingSpot ) =
                 , velocity = Quantity.zero
                 , acceleration = Steering.maxAcceleration
             }
+                |> Pathfinding.setupParking home.id parkingSpot.id
                 |> Pathfinding.createRouteToLotExit nodeCtx parkingSpot.pathToLotExit
 
         _ ->
@@ -270,7 +277,7 @@ addLotResident lotId lot world =
         -- Room for improvement: create the route and path after a resident is spawned so that
         -- a resident can be added before the road network is updated
         homeNode =
-            RoadNetwork.findLotExitByNodeId world.roadNetwork lotId
+            RoadNetwork.findLotExitNodeByLotId world.roadNetwork lotId
 
         carMake =
             Data.Lots.resident lot.kind
@@ -307,6 +314,7 @@ createCar carId lot make homeNode parkingSpot =
         |> Car.withPosition parkingSpot.position
         |> Car.withOrientation (Lot.parkingSpotOrientation lot)
         |> Car.build carId
+        |> Pathfinding.setupParking lot.id parkingSpot.id
         |> Pathfinding.createRouteToLotExit homeNode parkingSpot.pathToLotExit
         |> Steering.startMoving
 
@@ -336,7 +344,7 @@ spawnCar seed world =
                             |> Car.withPosition nodeCtx.node.label.position
                             |> Car.withOrientation (Direction2d.toAngle nodeCtx.node.label.direction)
                             |> Car.build id
-                            |> Pathfinding.initRoute world seedAfterRandomNode nodeCtx
+                            |> Pathfinding.setupRoute world seedAfterRandomNode nodeCtx
                             |> Tuple.mapFirst Steering.startMoving
                 in
                 ( World.setCar car world

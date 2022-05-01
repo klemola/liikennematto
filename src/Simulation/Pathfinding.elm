@@ -1,9 +1,11 @@
 module Simulation.Pathfinding exposing
     ( createRouteToLotExit
     , createRouteToNode
-    , initRoute
+    , leaveLot
     , restoreRoute
-    , updatePath
+    , setupParking
+    , setupRoute
+    , updateRoute
     )
 
 import BoundingBox2d
@@ -14,7 +16,7 @@ import Length
 import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car, CarState(..))
 import Model.Entity exposing (Id)
-import Model.Geometry exposing (LMCubicSpline2d, LMPolyline2d)
+import Model.Geometry exposing (LMCubicSpline2d, LMPolyline2d, orthogonalDirectionToLmDirection)
 import Model.Lot as Lot exposing (ParkingSpot)
 import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Model.World exposing (World)
@@ -43,11 +45,26 @@ multipleSplinesToLocalPath splines =
         |> Polyline2d.fromVertices
 
 
-initRoute : World -> Random.Seed -> RNNodeContext -> Car -> ( Car, Random.Seed )
-initRoute world seed nodeCtx car =
+setupRoute : World -> Random.Seed -> RNNodeContext -> Car -> ( Car, Random.Seed )
+setupRoute world seed nodeCtx car =
     nodeCtx
         |> generateRouteFromConnection world car seed
         |> Maybe.withDefault ( Car.triggerReroute car, seed )
+
+
+setupParking : Id -> Id -> Car -> Car
+setupParking lotId parkingSpotId car =
+    let
+        route =
+            { connections = []
+            , parking =
+                Just
+                    { lotId = lotId
+                    , parkingSpotId = parkingSpotId
+                    }
+            }
+    in
+    { car | route = route }
 
 
 createRouteToNode : RNNodeContext -> Car -> Car
@@ -65,7 +82,15 @@ createRouteToNode nodeCtx car =
                     True
     in
     { car
-        | route = { currentRoute | connections = [ nodeCtx ] }
+        | route =
+            { connections = [ nodeCtx ]
+            , parking =
+                if Car.isDriving car then
+                    Nothing
+
+                else
+                    currentRoute.parking
+            }
         , localPath =
             if newPathRequired then
                 nodeCtx
@@ -85,7 +110,7 @@ createRouteToLotExit nodeCtx pathToLotExit car =
     { car
         | route =
             { connections = [ nodeCtx ]
-            , parking = Nothing
+            , parking = car.route.parking
             }
         , localPath = multipleSplinesToLocalPath pathToLotExit
     }
@@ -102,20 +127,44 @@ createRouteToParkingSpot lotId lotEntryNode parkingSpot car =
                 lotEntryNode
     in
     { car
-        | route =
-            { connections = []
-            , parking =
-                Just
-                    { lotId = lotId
-                    , parkingSpotId = parkingSpot.id
-                    }
-            }
-        , localPath = multipleSplinesToLocalPath (pathToLotEntry :: parkingSpot.pathFromLotEntry)
+        | localPath = multipleSplinesToLocalPath (pathToLotEntry :: parkingSpot.pathFromLotEntry)
     }
+        |> setupParking lotId parkingSpot.id
 
 
-updatePath : World -> Random.Seed -> Car -> ( Car, Random.Seed )
-updatePath world seed car =
+leaveLot : World -> Car -> Car
+leaveLot world car =
+    case car.route.parking of
+        Just { lotId, parkingSpotId } ->
+            Dict.get lotId world.lots
+                |> Maybe.andThen
+                    (\lot ->
+                        let
+                            parkingSpot =
+                                Lot.parkingSpotById lot parkingSpotId |> Maybe.map .pathToLotExit
+
+                            lotExitNode =
+                                RoadNetwork.findLotExitNodeByLotId world.roadNetwork lotId
+
+                            rotatedCar =
+                                Just
+                                    { car
+                                        | orientation =
+                                            lot.parkingSpotExitDirection
+                                                |> orthogonalDirectionToLmDirection
+                                                |> Direction2d.toAngle
+                                    }
+                        in
+                        Maybe.map3 createRouteToLotExit lotExitNode parkingSpot rotatedCar
+                    )
+                |> Maybe.withDefault car
+
+        Nothing ->
+            car
+
+
+updateRoute : World -> Random.Seed -> Car -> ( Car, Random.Seed )
+updateRoute world seed car =
     case Polyline2d.vertices car.localPath of
         next :: others ->
             if Point2d.equalWithin (Length.meters 0.5) car.position next then
@@ -129,16 +178,7 @@ updatePath world seed car =
                 Just currentNodeCtx ->
                     case currentNodeCtx.node.label.kind of
                         LotEntry _ ->
-                            -- Having no route is expected once the parking routine has started
-                            let
-                                nextCar =
-                                    if Car.isParking car then
-                                        car
-
-                                    else
-                                        Car.triggerReroute car
-                            in
-                            ( nextCar, seed )
+                            ( Car.triggerReroute car, seed )
 
                         otherKind ->
                             let
@@ -157,11 +197,7 @@ updatePath world seed car =
                                 |> Maybe.withDefault ( Car.triggerReroute adjustedCar, seed )
 
                 Nothing ->
-                    if Car.isParking car then
-                        ( car, seed )
-
-                    else
-                        ( Car.triggerReroute car, seed )
+                    ( Car.triggerReroute car, seed )
 
 
 generateRouteFromConnection : World -> Car -> Random.Seed -> RNNodeContext -> Maybe ( Car, Random.Seed )

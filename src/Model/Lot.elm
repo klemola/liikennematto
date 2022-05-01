@@ -6,6 +6,7 @@ module Model.Lot exposing
     , constructionSite
     , findFreeParkingSpot
     , inBounds
+    , parkingSpotById
     , parkingSpotOrientation
     , reseveParkingSpot
     , unreserveParkingSpot

@@ -6,7 +6,7 @@ module Model.RoadNetwork exposing
     , RoadNetwork
     , TrafficControl(..)
     , empty
-    , findLotExitByNodeId
+    , findLotExitNodeByLotId
     , findNodeByNodeId
     , findNodeByPosition
     , getOutgoingConnections
@@ -77,8 +77,8 @@ size =
     Graph.size
 
 
-findLotExitByNodeId : RoadNetwork -> Int -> Maybe RNNodeContext
-findLotExitByNodeId roadNetwork lotId =
+findLotExitNodeByLotId : RoadNetwork -> Int -> Maybe RNNodeContext
+findLotExitNodeByLotId roadNetwork lotId =
     roadNetwork
         |> Graph.fold
             (\ctx acc ->
