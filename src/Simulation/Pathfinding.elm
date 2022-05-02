@@ -12,6 +12,7 @@ import BoundingBox2d
 import CubicSpline2d
 import Dict
 import Direction2d
+import Duration exposing (Duration)
 import Length
 import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car, CarState(..))
@@ -23,6 +24,7 @@ import Model.World exposing (World)
 import Point2d
 import Polyline2d
 import QuadTree
+import Quantity
 import Random
 import Random.List
 import Splines
@@ -31,6 +33,11 @@ import Splines
 splineSegmentsAmount : Int
 splineSegmentsAmount =
     20
+
+
+parkingWaitTimer : Duration
+parkingWaitTimer =
+    Duration.milliseconds 1500
 
 
 cubicSplineToLocalPath : LMCubicSpline2d -> LMPolyline2d
@@ -57,6 +64,7 @@ setupParking lotId parkingSpotId car =
     let
         route =
             { connections = []
+            , waitTimer = Nothing
             , parking =
                 Just
                     { lotId = lotId
@@ -84,6 +92,7 @@ createRouteToNode nodeCtx car =
     { car
         | route =
             { connections = [ nodeCtx ]
+            , waitTimer = currentRoute.waitTimer
             , parking =
                 if Car.isDriving car then
                     Nothing
@@ -110,6 +119,7 @@ createRouteToLotExit nodeCtx pathToLotExit car =
     { car
         | route =
             { connections = [ nodeCtx ]
+            , waitTimer = Just parkingWaitTimer
             , parking = car.route.parking
             }
         , localPath = multipleSplinesToLocalPath pathToLotExit
@@ -163,41 +173,70 @@ leaveLot world car =
             car
 
 
-updateRoute : World -> Random.Seed -> Car -> ( Car, Random.Seed )
-updateRoute world seed car =
-    case Polyline2d.vertices car.localPath of
+updateRoute : World -> Duration -> Random.Seed -> Car -> ( Car, Random.Seed )
+updateRoute world delta seed car =
+    let
+        currentRoute =
+            car.route
+
+        routeWithUpdatedTimers =
+            { currentRoute
+                | waitTimer =
+                    currentRoute.waitTimer
+                        |> Maybe.andThen (updateTimer delta)
+            }
+
+        updatedCar =
+            { car | route = routeWithUpdatedTimers }
+    in
+    case Polyline2d.vertices updatedCar.localPath of
         next :: others ->
-            if Point2d.equalWithin (Length.meters 0.5) car.position next then
-                ( { car | localPath = Polyline2d.fromVertices others }, seed )
+            if Point2d.equalWithin (Length.meters 0.5) updatedCar.position next then
+                ( { updatedCar | localPath = Polyline2d.fromVertices others }
+                , seed
+                )
 
             else
-                ( car, seed )
+                ( updatedCar, seed )
 
         [] ->
-            case List.head car.route.connections of
+            case List.head routeWithUpdatedTimers.connections of
                 Just currentNodeCtx ->
                     case currentNodeCtx.node.label.kind of
                         LotEntry _ ->
-                            ( Car.triggerReroute car, seed )
+                            ( Car.triggerReroute updatedCar, seed )
 
                         otherKind ->
                             let
                                 adjustedCar =
                                     -- This is a temporary hack to make sure that tight turns can be completed
                                     if otherKind == DeadendExit || otherKind == LaneConnector then
-                                        { car
+                                        { updatedCar
                                             | orientation = Direction2d.toAngle currentNodeCtx.node.label.direction
                                             , position = currentNodeCtx.node.label.position
                                         }
 
                                     else
-                                        car
+                                        updatedCar
                             in
                             generateRouteFromConnection world adjustedCar seed currentNodeCtx
                                 |> Maybe.withDefault ( Car.triggerReroute adjustedCar, seed )
 
                 Nothing ->
-                    ( Car.triggerReroute car, seed )
+                    ( updatedCar, seed )
+
+
+updateTimer : Duration -> Duration -> Maybe Duration
+updateTimer delta timer =
+    let
+        nextDuration =
+            timer |> Quantity.minus delta
+    in
+    if Quantity.lessThanOrEqualToZero nextDuration then
+        Nothing
+
+    else
+        Just nextDuration
 
 
 generateRouteFromConnection : World -> Car -> Random.Seed -> RNNodeContext -> Maybe ( Car, Random.Seed )

@@ -11,6 +11,7 @@ module Simulation.Round exposing
 import Angle
 import Dict
 import Direction2d
+import FSM
 import Length exposing (Length)
 import LineSegment2d
 import Maybe.Extra
@@ -52,6 +53,7 @@ type Rule
     | StopAtTrafficControl Length
     | SlowDownAtTrafficControl
     | StopAtParkingSpot
+    | StayParked
 
 
 
@@ -122,9 +124,9 @@ ruleToApply : Round -> Maybe Rule
 ruleToApply round =
     Maybe.Extra.orListLazy
         [ \() -> checkForwardCollision round
+        , \() -> checkParking round
         , \() -> checkTrafficControl round
         , \() -> checkPathCollision round
-        , \() -> checkParking round
         ]
 
 
@@ -145,6 +147,9 @@ applyRule round rule =
 
         StopAtParkingSpot ->
             applyCarAction Steering.stopAtPathEnd round
+
+        StayParked ->
+            applyCarAction Steering.stop round
 
 
 applyCarAction : (Car -> Car) -> Round -> Round
@@ -246,11 +251,15 @@ checkYield { activeCar, otherCars } signPosition =
 
 checkParking : Round -> Maybe Rule
 checkParking { activeCar } =
-    if Car.isParking activeCar then
-        Just StopAtParkingSpot
+    case FSM.toCurrentState activeCar.fsm of
+        Parking ->
+            Just StopAtParkingSpot
 
-    else
-        Nothing
+        Parked ->
+            Just StayParked
+
+        _ ->
+            Nothing
 
 
 

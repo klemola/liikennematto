@@ -10,13 +10,12 @@ import Common
 import Data.Cars exposing (CarMake, testCar)
 import Data.Lots
 import Dict
-import Dict.Extra as Dict
 import Direction2d
 import Duration exposing (Duration)
 import FSM
 import Length exposing (Length)
 import Maybe.Extra as Maybe
-import Model.Car as Car exposing (Car, CarState(..))
+import Model.Car as Car exposing (Car)
 import Model.Entity as Entity exposing (Id)
 import Model.Lookup exposing (carPositionLookup)
 import Model.Lot as Lot exposing (Lot, ParkingSpot)
@@ -70,15 +69,6 @@ updateTraffic { updateQueue, seed, world, delta } =
 
                 ( carAfterSteeringAndPathfinding, nextSeed ) =
                     case FSM.toCurrentState nextFSM of
-                        Car.Parked ->
-                            ( Just
-                                (carWithUpdatedFSM
-                                    |> Pathfinding.leaveLot world
-                                    |> Steering.startMoving
-                                )
-                            , seed
-                            )
-
                         Car.ReRouting ->
                             -- Temporary implementation; pathfinding doesn't support search for nearest node
                             ( Just
@@ -89,17 +79,12 @@ updateTraffic { updateQueue, seed, world, delta } =
                             , seed
                             )
 
-                        Car.Despawning ->
-                            ( carWithUpdatedFSM, seed )
-                                |> applyRound world otherCars
-                                |> Tuple.mapFirst Just
-
                         Car.Despawned ->
                             ( carAfterDespawn world carWithUpdatedFSM, seed )
 
                         _ ->
                             carWithUpdatedFSM
-                                |> Pathfinding.updateRoute world seed
+                                |> Pathfinding.updateRoute world delta seed
                                 |> applyRound world otherCars
                                 |> Tuple.mapFirst Just
 
@@ -145,6 +130,13 @@ applyActions actions car world =
 
                 Car.TriggerUnparkingSideEffects ->
                     applyParkingSpotChange car nextWorld Lot.unreserveParkingSpot
+
+                Car.CreateRoute ->
+                    let
+                        nextCar =
+                            car |> Pathfinding.leaveLot world
+                    in
+                    World.setCar nextCar world
         )
         world
         actions

@@ -124,6 +124,7 @@ type CarState
 
 type Action
     = TriggerParkingSideEffects
+    | CreateRoute
     | TriggerUnparkingSideEffects
 
 
@@ -154,14 +155,14 @@ parked =
                 []
                 FSM.Direct
             ]
-        , entryActions = []
+        , entryActions = [ CreateRoute ]
         , exitActions = []
         }
 
 
 readyForUnparking : UpdateContext -> CarState -> Bool
 readyForUnparking { route } state =
-    state == Parked && not (List.isEmpty route.connections)
+    state == Parked && not (List.isEmpty route.connections) && route.waitTimer == Nothing
 
 
 unparking : FSM.State CarState Action UpdateContext

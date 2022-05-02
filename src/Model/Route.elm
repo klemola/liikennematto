@@ -4,12 +4,14 @@ module Model.Route exposing
     , unrouted
     )
 
+import Duration exposing (Duration)
 import Model.Entity exposing (Id)
 import Model.RoadNetwork exposing (RNNodeContext)
 
 
 type alias Route =
     { connections : List RNNodeContext
+    , waitTimer : Maybe Duration
     , parking :
         Maybe
             { lotId : Id
@@ -21,6 +23,7 @@ type alias Route =
 unrouted : Route
 unrouted =
     { connections = []
+    , waitTimer = Nothing
     , parking = Nothing
     }
 
