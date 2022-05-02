@@ -44,7 +44,7 @@ import Model.Geometry
         , LMShape2d
         , LMTriangle2d
         )
-import Model.RoadNetwork exposing (RNNodeContext)
+import Model.Route as Route exposing (Route)
 import Point2d
 import Polygon2d
 import Polyline2d
@@ -81,16 +81,6 @@ type alias NewCar =
     }
 
 
-type alias Route =
-    { connections : List RNNodeContext
-    , parking :
-        Maybe
-            { lotId : Id
-            , parkingSpotId : Id
-            }
-    }
-
-
 
 --
 -- Constants
@@ -110,13 +100,6 @@ maxFieldOfView =
 speedToFieldOfViewReduction : Quantity Float (Rate Speed.MetersPerSecond Angle.Radians)
 speedToFieldOfViewReduction =
     Speed.metersPerSecond 2 |> Quantity.per (Angle.degrees 10)
-
-
-unrouted : Route
-unrouted =
-    { connections = []
-    , parking = Nothing
-    }
 
 
 
@@ -332,7 +315,7 @@ triggerReroute car =
     in
     { car
         | fsm = nextFSM
-        , route = unrouted
+        , route = Route.unrouted
         , localPath = Polyline2d.fromVertices []
     }
 
@@ -350,7 +333,7 @@ triggerDespawn car =
     in
     { car
         | fsm = nextFSM
-        , route = unrouted
+        , route = Route.unrouted
         , localPath = Polyline2d.fromVertices []
     }
 
@@ -412,7 +395,7 @@ build id newCar =
     , acceleration = newCar.acceleration
     , shape = shape
     , boundingBox = boundingBox
-    , route = unrouted
+    , route = Route.unrouted
     , localPath = Polyline2d.fromVertices []
     , homeLotId = newCar.homeLotId
     }
@@ -558,7 +541,7 @@ statusDescription car =
             "Unparking"
 
         Driving ->
-            "Driving" ++ " " ++ routeDescription car.route.connections
+            "Driving" ++ " " ++ Route.description car.route
 
         ReRouting ->
             "Re-routing"
@@ -571,13 +554,3 @@ statusDescription car =
 
         Despawned ->
             "Despawned"
-
-
-routeDescription : List RNNodeContext -> String
-routeDescription route =
-    case route of
-        target :: _ ->
-            "(target node: " ++ String.fromInt target.node.id ++ ")"
-
-        _ ->
-            "(no route)"
