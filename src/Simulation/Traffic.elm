@@ -69,13 +69,11 @@ updateTraffic { updateQueue, seed, world, delta } =
 
                 ( carAfterSteeringAndPathfinding, nextSeed ) =
                     case FSM.toCurrentState nextFSM of
-                        Car.ReRouting ->
-                            -- Temporary implementation; pathfinding doesn't support search for nearest node
-                            ( Just
-                                (carWithUpdatedFSM
-                                    |> Car.triggerDespawn
-                                    |> Steering.stop
-                                )
+                        Car.Despawning ->
+                            ( carWithUpdatedFSM
+                                |> Steering.stop
+                                |> Pathfinding.clearRoute
+                                |> Just
                             , seed
                             )
 

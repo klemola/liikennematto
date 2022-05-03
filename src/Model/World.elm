@@ -112,10 +112,10 @@ removeLot lotId world =
                     Dict.map
                         (\_ car ->
                             let
-                                isParked =
+                                isParkedOnLot =
                                     Set.member car.id parkedCarsIds
 
-                                shouldReroute =
+                                homeRemoved =
                                     case car.homeLotId of
                                         Just homeLotId ->
                                             homeLotId == lotId
@@ -123,8 +123,8 @@ removeLot lotId world =
                                         Nothing ->
                                             False
                             in
-                            if isParked || shouldReroute then
-                                Car.triggerReroute car
+                            if isParkedOnLot || homeRemoved then
+                                Car.triggerDespawn car
 
                             else
                                 car
