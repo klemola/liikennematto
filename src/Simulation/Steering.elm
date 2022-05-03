@@ -167,14 +167,14 @@ align { currentRotation, currentOrientation, targetOrientation } =
 
 accelerateToZeroOverDistance : Speed -> Length -> Acceleration
 accelerateToZeroOverDistance (Quantity currentSpeed) (Quantity distanceFromTarget) =
-    if distanceFromTarget == 0 then
+    if distanceFromTarget < 0.5 then
         maxDeceleration
 
     else
         let
             finalSpeed =
-                if currentSpeed == 0 then
-                    -- Accelerate to move towards the target
+                if currentSpeed < 0.1 then
+                    -- (Nearly) stopped before reaching the target; accelerate to move towards the target
                     Speed.inMetersPerSecond maxVelocity * 0.75
 
                 else
