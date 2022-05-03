@@ -1,5 +1,6 @@
 module Simulation.Pathfinding exposing
-    ( createRouteToLotExit
+    ( clearRoute
+    , createRouteToLotExit
     , createRouteToNode
     , leaveLot
     , restoreRoute
@@ -20,6 +21,7 @@ import Model.Entity exposing (Id)
 import Model.Geometry exposing (LMCubicSpline2d, LMPolyline2d, orthogonalDirectionToLmDirection)
 import Model.Lot as Lot exposing (ParkingSpot)
 import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
+import Model.Route exposing (unrouted)
 import Model.World exposing (World)
 import Point2d
 import Polyline2d
@@ -56,7 +58,12 @@ setupRoute : World -> Random.Seed -> RNNodeContext -> Car -> ( Car, Random.Seed 
 setupRoute world seed nodeCtx car =
     nodeCtx
         |> generateRouteFromConnection world car seed
-        |> Maybe.withDefault ( Car.triggerReroute car, seed )
+        |> Maybe.withDefault ( Car.triggerDespawn car, seed )
+
+
+clearRoute : Car -> Car
+clearRoute car =
+    { car | route = unrouted }
 
 
 setupParking : Id -> Id -> Car -> Car
@@ -204,7 +211,7 @@ updateRoute world delta seed car =
                 Just currentNodeCtx ->
                     case currentNodeCtx.node.label.kind of
                         LotEntry _ ->
-                            ( Car.triggerReroute updatedCar, seed )
+                            ( updatedCar, seed )
 
                         otherKind ->
                             let
@@ -220,7 +227,7 @@ updateRoute world delta seed car =
                                         updatedCar
                             in
                             generateRouteFromConnection world adjustedCar seed currentNodeCtx
-                                |> Maybe.withDefault ( Car.triggerReroute adjustedCar, seed )
+                                |> Maybe.withDefault ( Car.triggerDespawn adjustedCar, seed )
 
                 Nothing ->
                     ( updatedCar, seed )
@@ -263,7 +270,7 @@ generateRouteFromConnection world car seed currentNodeCtx =
                                             |> Car.triggerParking
                                     )
                                 |> Maybe.withDefault
-                                    (Car.triggerReroute car)
+                                    (Car.triggerDespawn car)
 
                         _ ->
                             createRouteToNode nextNodeCtx car
@@ -312,7 +319,7 @@ restoreRoute world car =
                 createRouteToNode nodeCtxResult car
 
             Nothing ->
-                Car.triggerReroute car
+                Car.triggerDespawn car
 
     else
         car

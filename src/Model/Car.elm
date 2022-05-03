@@ -16,7 +16,6 @@ module Model.Car exposing
     , statusDescription
     , triggerDespawn
     , triggerParking
-    , triggerReroute
     , viewDistance
     , withHome
     , withOrientation
@@ -116,7 +115,6 @@ type CarState
     = Parked
     | Unparking
     | Driving
-    | ReRouting
     | Parking
     | Despawning
     | Despawned
@@ -147,13 +145,13 @@ parked =
         , kind = Parked
         , transitions =
             [ FSM.createTransition
+                (\_ -> despawning)
+                []
+                FSM.Direct
+            , FSM.createTransition
                 (\_ -> unparking)
                 []
                 (FSM.Condition readyForUnparking)
-            , FSM.createTransition
-                (\_ -> rerouting)
-                []
-                FSM.Direct
             ]
         , entryActions = [ CreateRoute ]
         , exitActions = []
@@ -161,8 +159,8 @@ parked =
 
 
 readyForUnparking : UpdateContext -> CarState -> Bool
-readyForUnparking { route } state =
-    state == Parked && not (List.isEmpty route.connections) && route.waitTimer == Nothing
+readyForUnparking { route } _ =
+    not (List.isEmpty route.connections) && route.waitTimer == Nothing
 
 
 unparking : FSM.State CarState Action UpdateContext
@@ -176,7 +174,7 @@ unparking =
                 []
                 (FSM.Condition unparkingCompleted)
             , FSM.createTransition
-                (\_ -> rerouting)
+                (\_ -> despawning)
                 []
                 FSM.Direct
             ]
@@ -204,29 +202,9 @@ driving =
         , kind = Driving
         , transitions =
             [ FSM.createTransition
-                (\_ -> rerouting)
-                []
-                FSM.Direct
-            , FSM.createTransition
                 (\_ -> parking)
                 []
                 FSM.Direct
-            ]
-        , entryActions = []
-        , exitActions = []
-        }
-
-
-rerouting : FSM.State CarState Action UpdateContext
-rerouting =
-    FSM.createState
-        { id = FSM.createStateId "car-re-routing"
-        , kind = ReRouting
-        , transitions =
-            [ FSM.createTransition
-                (\_ -> driving)
-                []
-                (FSM.Condition rerouteComplete)
             , FSM.createTransition
                 (\_ -> despawning)
                 []
@@ -237,11 +215,6 @@ rerouting =
         }
 
 
-rerouteComplete : UpdateContext -> CarState -> Bool
-rerouteComplete { route } _ =
-    not (List.isEmpty route.connections)
-
-
 parking : FSM.State CarState Action UpdateContext
 parking =
     FSM.createState
@@ -249,13 +222,13 @@ parking =
         , kind = Parking
         , transitions =
             [ FSM.createTransition
+                (\_ -> despawning)
+                []
+                FSM.Direct
+            , FSM.createTransition
                 (\_ -> parked)
                 []
                 (FSM.Condition parkingCompleted)
-            , FSM.createTransition
-                (\_ -> rerouting)
-                []
-                FSM.Direct
             ]
         , entryActions = [ TriggerParkingSideEffects ]
         , exitActions = []
@@ -308,19 +281,6 @@ initializeFSM newCar =
     FSM.initialize initialState
 
 
-triggerReroute : Car -> Car
-triggerReroute car =
-    let
-        nextFSM =
-            car.fsm |> FSM.transitionOnNextUpdate (FSM.getId rerouting)
-    in
-    { car
-        | fsm = nextFSM
-        , route = Route.unrouted
-        , localPath = Polyline2d.fromVertices []
-    }
-
-
 triggerParking : Car -> Car
 triggerParking car =
     { car | fsm = car.fsm |> FSM.transitionOnNextUpdate (FSM.getId parking) }
@@ -334,8 +294,6 @@ triggerDespawn car =
     in
     { car
         | fsm = nextFSM
-        , route = Route.unrouted
-        , localPath = Polyline2d.fromVertices []
     }
 
 
@@ -543,9 +501,6 @@ statusDescription car =
 
         Driving ->
             "Driving" ++ " " ++ Route.description car.route
-
-        ReRouting ->
-            "Re-routing"
 
         Parking ->
             "Parking"
