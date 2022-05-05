@@ -121,9 +121,10 @@ type CarState
 
 
 type Action
-    = TriggerParkingSideEffects
-    | CreateRoute
-    | TriggerUnparkingSideEffects
+    = TriggerParkingStartEffects
+    | TriggerParkingCompletedEffects
+    | TriggerUnparkingStartEffects
+    | TriggerUnparkingCompletedEffects
 
 
 type alias UpdateContext =
@@ -153,14 +154,21 @@ parked =
                 []
                 (FSM.Condition readyForUnparking)
             ]
-        , entryActions = [ CreateRoute ]
+        , entryActions = [ TriggerParkingCompletedEffects ]
         , exitActions = []
         }
 
 
 readyForUnparking : UpdateContext -> CarState -> Bool
 readyForUnparking { route } _ =
-    not (List.isEmpty route.connections) && route.waitTimer == Nothing
+    case route.parking of
+        Just { lockAvailable, waitTimer } ->
+            lockAvailable
+                && (waitTimer == Nothing)
+                && not (List.isEmpty route.connections)
+
+        Nothing ->
+            False
 
 
 unparking : FSM.State CarState Action UpdateContext
@@ -178,8 +186,8 @@ unparking =
                 []
                 FSM.Direct
             ]
-        , entryActions = []
-        , exitActions = [ TriggerUnparkingSideEffects ]
+        , entryActions = [ TriggerUnparkingStartEffects ]
+        , exitActions = [ TriggerUnparkingCompletedEffects ]
         }
 
 
@@ -230,7 +238,7 @@ parking =
                 []
                 (FSM.Condition parkingCompleted)
             ]
-        , entryActions = [ TriggerParkingSideEffects ]
+        , entryActions = [ TriggerParkingStartEffects ]
         , exitActions = []
         }
 

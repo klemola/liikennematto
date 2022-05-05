@@ -1,5 +1,6 @@
 module Model.Route exposing
-    ( Route
+    ( Parking
+    , Route
     , description
     , unrouted
     )
@@ -11,19 +12,21 @@ import Model.RoadNetwork exposing (RNNodeContext)
 
 type alias Route =
     { connections : List RNNodeContext
+    , parking : Maybe Parking
+    }
+
+
+type alias Parking =
+    { lotId : Id
+    , parkingSpotId : Id
     , waitTimer : Maybe Duration
-    , parking :
-        Maybe
-            { lotId : Id
-            , parkingSpotId : Id
-            }
+    , lockAvailable : Bool
     }
 
 
 unrouted : Route
 unrouted =
     { connections = []
-    , waitTimer = Nothing
     , parking = Nothing
     }
 

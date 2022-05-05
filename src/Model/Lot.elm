@@ -1,14 +1,18 @@
 module Model.Lot exposing
     ( Lot
     , ParkingSpot
+    , acquireParkingLock
     , build
     , claimParkingSpot
     , constructionSite
     , findFreeParkingSpot
+    , hasParkingLockSet
     , inBounds
+    , parkingAllowed
     , parkingSpotById
     , parkingSpotOrientation
-    , reseveParkingSpot
+    , releaseParkingLock
+    , reserveParkingSpot
     , unreserveParkingSpot
     , updateParkingSpot
     )
@@ -19,6 +23,7 @@ import Common
 import Data.Lots exposing (LotKind, NewLot)
 import Direction2d
 import Length exposing (Length)
+import Maybe.Extra as Maybe
 import Model.Cell as Cell exposing (Cell)
 import Model.Entity exposing (Id)
 import Model.Geometry
@@ -46,6 +51,7 @@ type alias Lot =
     , drivewayExitDirection : OrthogonalDirection
     , parkingSpotExitDirection : OrthogonalDirection
     , parkingSpots : List ParkingSpot
+    , parkingLock : Maybe Id
     }
 
 
@@ -67,6 +73,7 @@ build lotId newLot anchor =
         List.indexedMap
             (\spotId position -> createParkingSpot spotId newLot constructionSiteBB position)
             newLot.parkingSpots
+    , parkingLock = Nothing
     }
 
 
@@ -118,8 +125,55 @@ inBounds cell lot =
 
 
 --
--- Parking spots
+-- Parking
 --
+
+
+parkingAllowed : Id -> Lot -> Bool
+parkingAllowed carId lot =
+    not (hasParkingLockSet lot)
+        && (findFreeParkingSpot carId lot |> Maybe.isJust)
+
+
+
+-- Lock
+
+
+acquireParkingLock : Id -> Lot -> Maybe Lot
+acquireParkingLock carId lot =
+    case lot.parkingLock of
+        Just _ ->
+            Nothing
+
+        Nothing ->
+            Just { lot | parkingLock = Just carId }
+
+
+releaseParkingLock : Id -> Lot -> Lot
+releaseParkingLock carId lot =
+    let
+        nextParkingLock =
+            lot.parkingLock
+                |> Maybe.andThen
+                    (\currentLockOwner ->
+                        if currentLockOwner == carId then
+                            Nothing
+
+                        else
+                            -- Retain the lock if the lock is not owned by the car in question
+                            lot.parkingLock
+                    )
+    in
+    { lot | parkingLock = nextParkingLock }
+
+
+hasParkingLockSet : Lot -> Bool
+hasParkingLockSet lot =
+    lot.parkingLock /= Nothing
+
+
+
+-- Parking spots
 
 
 type alias ParkingSpot =
@@ -202,8 +256,8 @@ claimParkingSpot carId lot =
     findFreeParkingSpot carId lot |> Maybe.map (\parkingSpot -> { parkingSpot | owner = Just carId })
 
 
-reseveParkingSpot : Id -> Id -> Lot -> Lot
-reseveParkingSpot carId parkingSpotId lot =
+reserveParkingSpot : Id -> Id -> Lot -> Lot
+reserveParkingSpot carId parkingSpotId lot =
     setParkingSpotReservation (Just carId) parkingSpotId lot
 
 
