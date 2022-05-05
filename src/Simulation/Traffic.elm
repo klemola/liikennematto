@@ -120,37 +120,58 @@ applyRound world otherCars ( activeCar, seed ) =
 
 applyActions : List Car.Action -> Car -> World -> World
 applyActions actions car world =
-    List.foldl
-        (\action nextWorld ->
-            case action of
-                Car.TriggerParkingSideEffects ->
-                    applyParkingSpotChange car nextWorld (Lot.reseveParkingSpot car.id)
-
-                Car.TriggerUnparkingSideEffects ->
-                    applyParkingSpotChange car nextWorld Lot.unreserveParkingSpot
-
-                Car.CreateRoute ->
-                    let
-                        nextCar =
-                            car |> Pathfinding.leaveLot world
-                    in
-                    World.setCar nextCar world
-        )
+    List.foldl (applyAction car)
         world
         actions
 
 
-applyParkingSpotChange : Car -> World -> (Id -> Lot -> Lot) -> World
-applyParkingSpotChange car world changeFn =
-    car.route.parking
-        |> Maybe.andThen
-            (\carParking ->
-                world.lots
-                    |> Dict.get carParking.lotId
-                    |> Maybe.map (changeFn carParking.parkingSpotId)
-                    |> Maybe.map (\lot -> World.setLot lot world)
-            )
-        |> Maybe.withDefault world
+applyAction : Car -> Car.Action -> World -> World
+applyAction car action world =
+    case
+        car.route.parking
+            |> Maybe.andThen
+                (\{ lotId, parkingSpotId } ->
+                    Dict.get lotId world.lots
+                        |> Maybe.map (Tuple.pair parkingSpotId)
+                )
+    of
+        Just ( parkingSpotId, lot ) ->
+            case action of
+                Car.TriggerParkingStartEffects ->
+                    lot
+                        |> Lot.acquireParkingLock car.id
+                        |> Maybe.map (Lot.reserveParkingSpot car.id parkingSpotId)
+                        |> Maybe.map (\updatedLot -> World.setLot updatedLot world)
+                        |> Maybe.withDefault world
+
+                Car.TriggerParkingCompletedEffects ->
+                    world
+                        |> World.setCar (car |> Pathfinding.leaveLot world)
+                        |> World.setLot (Lot.releaseParkingLock car.id lot)
+
+                Car.TriggerUnparkingStartEffects ->
+                    case Lot.acquireParkingLock car.id lot of
+                        Just lotWithLock ->
+                            World.setLot lotWithLock world
+
+                        Nothing ->
+                            -- The parking lock should have been free but was not
+                            -- Room for improvement: acquire the parking lock when before unparking
+                            world
+                                |> World.setCar (Car.triggerDespawn car)
+                                |> World.setLot (Lot.unreserveParkingSpot parkingSpotId lot)
+
+                Car.TriggerUnparkingCompletedEffects ->
+                    let
+                        nextLot =
+                            lot
+                                |> Lot.releaseParkingLock car.id
+                                |> Lot.unreserveParkingSpot parkingSpotId
+                    in
+                    world |> World.setLot nextLot
+
+        Nothing ->
+            world
 
 
 updateCar : Duration -> Car -> Car

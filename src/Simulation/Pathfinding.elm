@@ -21,7 +21,7 @@ import Model.Entity exposing (Id)
 import Model.Geometry exposing (LMCubicSpline2d, LMPolyline2d, orthogonalDirectionToLmDirection)
 import Model.Lot as Lot exposing (ParkingSpot)
 import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
-import Model.Route exposing (unrouted)
+import Model.Route as Route
 import Model.World exposing (World)
 import Point2d
 import Polyline2d
@@ -63,7 +63,7 @@ setupRoute world seed nodeCtx car =
 
 clearRoute : Car -> Car
 clearRoute car =
-    { car | route = unrouted }
+    { car | route = Route.unrouted }
 
 
 setupParking : Id -> Id -> Car -> Car
@@ -71,11 +71,12 @@ setupParking lotId parkingSpotId car =
     let
         route =
             { connections = []
-            , waitTimer = Nothing
             , parking =
                 Just
                     { lotId = lotId
                     , parkingSpotId = parkingSpotId
+                    , waitTimer = Nothing
+                    , lockAvailable = False
                     }
             }
     in
@@ -99,7 +100,6 @@ createRouteToNode nodeCtx car =
     { car
         | route =
             { connections = [ nodeCtx ]
-            , waitTimer = currentRoute.waitTimer
             , parking =
                 if Car.isDriving car then
                     Nothing
@@ -123,11 +123,16 @@ createRouteToNode nodeCtx car =
 
 createRouteToLotExit : RNNodeContext -> List LMCubicSpline2d -> Car -> Car
 createRouteToLotExit nodeCtx pathToLotExit car =
+    let
+        nextParking =
+            -- Room for improvement: parking should always exist here (Just x)
+            car.route.parking
+                |> Maybe.map (\parking -> { parking | waitTimer = Just parkingWaitTimer })
+    in
     { car
         | route =
             { connections = [ nodeCtx ]
-            , waitTimer = Just parkingWaitTimer
-            , parking = car.route.parking
+            , parking = nextParking
             }
         , localPath = multipleSplinesToLocalPath pathToLotExit
     }
@@ -186,15 +191,14 @@ updateRoute world delta seed car =
         currentRoute =
             car.route
 
-        routeWithUpdatedTimers =
+        routeWithParkingUpdate =
             { currentRoute
-                | waitTimer =
-                    currentRoute.waitTimer
-                        |> Maybe.andThen (updateTimer delta)
+                | parking =
+                    currentRoute.parking |> Maybe.map (updateParking delta world)
             }
 
         updatedCar =
-            { car | route = routeWithUpdatedTimers }
+            { car | route = routeWithParkingUpdate }
     in
     case Polyline2d.vertices updatedCar.localPath of
         next :: others ->
@@ -207,7 +211,7 @@ updateRoute world delta seed car =
                 ( updatedCar, seed )
 
         [] ->
-            case List.head routeWithUpdatedTimers.connections of
+            case List.head routeWithParkingUpdate.connections of
                 Just currentNodeCtx ->
                     case currentNodeCtx.node.label.kind of
                         LotEntry _ ->
@@ -231,6 +235,23 @@ updateRoute world delta seed car =
 
                 Nothing ->
                     ( updatedCar, seed )
+
+
+updateParking : Duration -> World -> Route.Parking -> Route.Parking
+updateParking delta world parking =
+    let
+        nextTimer =
+            parking.waitTimer |> Maybe.andThen (updateTimer delta)
+
+        lockAvailable =
+            Dict.get parking.lotId world.lots
+                |> Maybe.map (Lot.hasParkingLockSet >> not)
+                |> Maybe.withDefault False
+    in
+    { parking
+        | waitTimer = nextTimer
+        , lockAvailable = lockAvailable
+    }
 
 
 updateTimer : Duration -> Duration -> Maybe Duration
@@ -297,7 +318,7 @@ discardInvalidConnections world car nodeCtx =
                 -- Given that a lot is found, continue only if the car has a home (e.g. the car is not a test car)
                 -- Will be enabled once there are enough lots with residents
                 -- |> Maybe.next car.homeLotId
-                |> Maybe.andThen (Lot.findFreeParkingSpot car.id)
+                |> Maybe.filter (Lot.parkingAllowed car.id)
                 |> Maybe.map (always nodeCtx)
 
         LotExit _ ->
