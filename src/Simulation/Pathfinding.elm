@@ -37,11 +37,6 @@ splineSegmentsAmount =
     20
 
 
-parkingWaitTimer : Duration
-parkingWaitTimer =
-    Duration.milliseconds 1500
-
-
 cubicSplineToLocalPath : LMCubicSpline2d -> LMPolyline2d
 cubicSplineToLocalPath spline =
     CubicSpline2d.segments splineSegmentsAmount spline
@@ -66,18 +61,12 @@ clearRoute car =
     { car | route = Route.unrouted }
 
 
-setupParking : Id -> Id -> Car -> Car
-setupParking lotId parkingSpotId car =
+setupParking : Route.Parking -> Car -> Car
+setupParking parking car =
     let
         route =
             { connections = []
-            , parking =
-                Just
-                    { lotId = lotId
-                    , parkingSpotId = parkingSpotId
-                    , waitTimer = Nothing
-                    , lockAvailable = False
-                    }
+            , parking = Just parking
             }
     in
     { car | route = route }
@@ -123,23 +112,46 @@ createRouteToNode nodeCtx car =
 
 createRouteToLotExit : RNNodeContext -> List LMCubicSpline2d -> Car -> Car
 createRouteToLotExit nodeCtx pathToLotExit car =
-    let
-        nextParking =
-            -- Room for improvement: parking should always exist here (Just x)
-            car.route.parking
-                |> Maybe.map (\parking -> { parking | waitTimer = Just parkingWaitTimer })
-    in
     { car
         | route =
             { connections = [ nodeCtx ]
-            , parking = nextParking
+            , parking = car.route.parking
             }
         , localPath = multipleSplinesToLocalPath pathToLotExit
     }
 
 
-createRouteToParkingSpot : Id -> RNNodeContext -> ParkingSpot -> Car -> Car
-createRouteToParkingSpot lotId lotEntryNode parkingSpot car =
+createRouteToParkingSpot : Id -> World -> Car -> RNNodeContext -> Random.Seed -> ( Car, Random.Seed )
+createRouteToParkingSpot lotId world car nextNodeCtx seed =
+    let
+        timerGenerator =
+            Random.float 1500 30000 |> Random.map Duration.milliseconds
+
+        ( waitTimer, nextSeed ) =
+            Random.step timerGenerator seed
+
+        nextCar =
+            Dict.get lotId world.lots
+                |> Maybe.andThen (Lot.findFreeParkingSpot car.id)
+                |> Maybe.map
+                    (\parkingSpot ->
+                        car
+                            |> setupParking
+                                { lotId = lotId
+                                , parkingSpotId = parkingSpot.id
+                                , waitTimer = Just waitTimer
+                                , lockAvailable = True
+                                }
+                            |> createPathToParkingSpot nextNodeCtx parkingSpot
+                            |> Car.triggerParking
+                    )
+                |> Maybe.withDefault (Car.triggerDespawn car)
+    in
+    ( nextCar, nextSeed )
+
+
+createPathToParkingSpot : RNNodeContext -> ParkingSpot -> Car -> Car
+createPathToParkingSpot lotEntryNode parkingSpot car =
     let
         pathToLotEntry =
             Splines.toNode
@@ -151,7 +163,6 @@ createRouteToParkingSpot lotId lotEntryNode parkingSpot car =
     { car
         | localPath = multipleSplinesToLocalPath (pathToLotEntry :: parkingSpot.pathFromLotEntry)
     }
-        |> setupParking lotId parkingSpot.id
 
 
 leaveLot : World -> Car -> Car
@@ -194,7 +205,7 @@ updateRoute world delta seed car =
         routeWithParkingUpdate =
             { currentRoute
                 | parking =
-                    currentRoute.parking |> Maybe.map (updateParking delta world)
+                    currentRoute.parking |> Maybe.map (updateParking delta world car)
             }
 
         updatedCar =
@@ -237,11 +248,15 @@ updateRoute world delta seed car =
                     ( updatedCar, seed )
 
 
-updateParking : Duration -> World -> Route.Parking -> Route.Parking
-updateParking delta world parking =
+updateParking : Duration -> World -> Car -> Route.Parking -> Route.Parking
+updateParking delta world car parking =
     let
         nextTimer =
-            parking.waitTimer |> Maybe.andThen (updateTimer delta)
+            if Car.isParked car then
+                parking.waitTimer |> Maybe.andThen (updateTimer delta)
+
+            else
+                parking.waitTimer
 
         lockAvailable =
             Dict.get parking.lotId world.lots
@@ -278,25 +293,12 @@ generateRouteFromConnection world car seed currentNodeCtx =
     in
     Maybe.map
         (\nextNodeCtx ->
-            let
-                carWithRoute =
-                    case nextNodeCtx.node.label.kind of
-                        LotEntry lotId ->
-                            Dict.get lotId world.lots
-                                |> Maybe.andThen (Lot.findFreeParkingSpot car.id)
-                                |> Maybe.map
-                                    (\parkingSpot ->
-                                        car
-                                            |> createRouteToParkingSpot lotId nextNodeCtx parkingSpot
-                                            |> Car.triggerParking
-                                    )
-                                |> Maybe.withDefault
-                                    (Car.triggerDespawn car)
+            case nextNodeCtx.node.label.kind of
+                LotEntry lotId ->
+                    createRouteToParkingSpot lotId world car nextNodeCtx nextSeed
 
-                        _ ->
-                            createRouteToNode nextNodeCtx car
-            in
-            ( carWithRoute, nextSeed )
+                _ ->
+                    ( createRouteToNode nextNodeCtx car, nextSeed )
         )
         connection
 

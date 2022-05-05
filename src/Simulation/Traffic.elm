@@ -36,6 +36,11 @@ nearbyTrafficRadius =
     Length.meters 16
 
 
+initialParkingWaitTimer : Maybe Duration
+initialParkingWaitTimer =
+    Just (Duration.milliseconds 1500)
+
+
 updateTraffic :
     { updateQueue : List Car
     , seed : Random.Seed
@@ -245,6 +250,13 @@ moveCarToHome world car ( home, parkingSpot ) =
         homeNode =
             car.homeLotId |> Maybe.andThen (RoadNetwork.findLotExitNodeByLotId world.roadNetwork)
 
+        parking =
+            { lotId = home.id
+            , parkingSpotId = parkingSpot.id
+            , waitTimer = initialParkingWaitTimer
+            , lockAvailable = False
+            }
+
         ( nextFSM, _ ) =
             FSM.reset car.fsm
     in
@@ -257,7 +269,7 @@ moveCarToHome world car ( home, parkingSpot ) =
                 , velocity = Quantity.zero
                 , acceleration = Steering.maxAcceleration
             }
-                |> Pathfinding.setupParking home.id parkingSpot.id
+                |> Pathfinding.setupParking parking
                 |> Pathfinding.createRouteToLotExit nodeCtx parkingSpot.pathToLotExit
 
         _ ->
@@ -320,12 +332,20 @@ createResident world carId lot homeNode make parkingSpot =
 
 createCar : Id -> Lot -> CarMake -> RNNodeContext -> ParkingSpot -> Car
 createCar carId lot make homeNode parkingSpot =
+    let
+        parking =
+            { lotId = lot.id
+            , parkingSpotId = parkingSpot.id
+            , waitTimer = initialParkingWaitTimer
+            , lockAvailable = False
+            }
+    in
     Car.new make
         |> Car.withHome lot.id
         |> Car.withPosition parkingSpot.position
         |> Car.withOrientation (Lot.parkingSpotOrientation lot)
         |> Car.build carId
-        |> Pathfinding.setupParking lot.id parkingSpot.id
+        |> Pathfinding.setupParking parking
         |> Pathfinding.createRouteToLotExit homeNode parkingSpot.pathToLotExit
         |> Steering.startMoving
 

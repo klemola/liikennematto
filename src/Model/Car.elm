@@ -7,6 +7,7 @@ module Model.Car exposing
     , fieldOfView
     , isBreaking
     , isDriving
+    , isParked
     , isParking
     , isPathfinding
     , isStoppedOrWaiting
@@ -401,6 +402,15 @@ isParking car =
             FSM.toCurrentState car.fsm
     in
     currentState == Parking
+
+
+isParked : Car -> Bool
+isParked car =
+    let
+        currentState =
+            FSM.toCurrentState car.fsm
+    in
+    currentState == Parked
 
 
 isDriving : Car -> Bool
