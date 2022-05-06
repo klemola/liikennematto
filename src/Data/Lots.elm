@@ -593,10 +593,10 @@ school =
     , height = height
     , parkingSpotExitDirection = Down
     , parkingSpots =
-        [ Point2d.fromMeters { x = 5.25, y = 9.25 }
-        , Point2d.fromMeters { x = 12.25, y = 9.25 }
-        , Point2d.fromMeters { x = 19.5, y = 9.25 }
-        , Point2d.fromMeters { x = 26.75, y = 9.25 }
+        [ Point2d.fromMeters { x = 5.25, y = 9.4 }
+        , Point2d.fromMeters { x = 12.25, y = 9.4 }
+        , Point2d.fromMeters { x = 19.5, y = 9.4 }
+        , Point2d.fromMeters { x = 26.75, y = 9.4 }
         ]
     , drivewayExitDirection = drivewayExitDirection
     , entryPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width height
