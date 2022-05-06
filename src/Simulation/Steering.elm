@@ -61,7 +61,7 @@ trafficControlStopDistance =
 
 parkingRadius : Length
 parkingRadius =
-    Length.meters 12
+    Length.meters 10
 
 
 type alias Steering =
