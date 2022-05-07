@@ -35,7 +35,6 @@ import Model.RoadNetwork
         , TrafficControl(..)
         )
 import Model.Tile exposing (TileKind)
-import Model.Tilemap as Tilemap exposing (TilemapConfig)
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
 import Model.World exposing (World)
 import Point2d
@@ -106,11 +105,8 @@ styles =
 
 
 view : World -> RenderCache -> DebugLayers -> Html msg
-view { cars, lots, roadNetwork, trafficLights, tilemap } cache debugLayers =
+view { cars, lots, roadNetwork, trafficLights } cache debugLayers =
     let
-        tilemapConfig =
-            Tilemap.config tilemap
-
         tilemapWidth =
             String.fromFloat cache.tilemapWidthPixels
 
@@ -124,7 +120,7 @@ view { cars, lots, roadNetwork, trafficLights, tilemap } cache debugLayers =
         , Attributes.style <| "background-color: " ++ Color.toCssString Colors.lightGreen ++ ";"
         ]
         ([ styles
-         , Svg.Lazy.lazy3 renderTilemap tilemapConfig cache.tilemapHeightPixels cache.tilemap
+         , Svg.Lazy.lazy2 renderTilemap cache.tilemapHeightPixels cache.tilemap
          , Svg.Lazy.lazy2 renderLots cache.tilemapHeightPixels lots
          , renderCars cache.tilemapHeightPixels cars
          , Svg.Lazy.lazy2 renderTrafficLights cache.tilemapHeightPixels trafficLights
@@ -140,23 +136,23 @@ view { cars, lots, roadNetwork, trafficLights, tilemap } cache debugLayers =
 --
 
 
-renderTilemap : TilemapConfig -> Float -> TilemapPresentation -> Svg msg
-renderTilemap tilemapConfig tilemapHeightPixels tilemap =
+renderTilemap : Float -> TilemapPresentation -> Svg msg
+renderTilemap tilemapHeightPixels tilemap =
     tilemap
         |> List.map
             (\( cell, tile, animation ) ->
                 ( Cell.toString cell
-                , renderTile tilemapConfig tilemapHeightPixels cell tile animation
+                , renderTile tilemapHeightPixels cell tile animation
                 )
             )
         |> Svg.Keyed.node "g" []
 
 
-renderTile : TilemapConfig -> Float -> Cell -> TileKind -> Maybe Animation -> Svg msg
-renderTile tilemapConfig tilemapHeightPixels cell tileKind animation =
+renderTile : Float -> Cell -> TileKind -> Maybe Animation -> Svg msg
+renderTile tilemapHeightPixels cell tileKind animation =
     let
         { x, y } =
-            Cell.bottomLeftCorner tilemapConfig cell |> pointToPixels
+            Cell.bottomLeftCorner cell |> pointToPixels
 
         yAdjusted =
             tilemapHeightPixels - tileSizePixels - y

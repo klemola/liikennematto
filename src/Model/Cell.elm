@@ -29,7 +29,15 @@ import Vector2d
 
 
 type Cell
-    = Cell CellCoordinates
+    = Cell CellProperties
+
+
+type alias CellProperties =
+    { x : Int
+    , y : Int
+    , bottomLeftCorner : LMPoint2d
+    , boundingBox : LMBoundingBox2d
+    }
 
 
 type alias CellCoordinates =
@@ -49,74 +57,51 @@ size =
     Length.meters 16
 
 
+
+--
+-- Create new Cells
+--
+
+
 fromCoordinates : Constraints a -> CellCoordinates -> Maybe Cell
-fromCoordinates { horizontalCellsAmount, verticalCellsAmount } ( x, y ) =
+fromCoordinates constraints cellCoordinates =
+    let
+        ( x, y ) =
+            cellCoordinates
+    in
     if
-        isValidCoordinate x horizontalCellsAmount
-            && isValidCoordinate y verticalCellsAmount
+        isValidCoordinate x constraints.horizontalCellsAmount
+            && isValidCoordinate y constraints.verticalCellsAmount
     then
-        Just (Cell ( x, y ))
+        let
+            xMultiplier =
+                (x - 1) |> toFloat
+
+            yMultiplier =
+                (constraints.verticalCellsAmount - y) |> toFloat
+
+            bottomLeftCornerPoint =
+                if x > 0 && y > 0 then
+                    Point2d.xy
+                        (size |> Quantity.multiplyBy xMultiplier)
+                        (size |> Quantity.multiplyBy yMultiplier)
+
+                else
+                    -- When Cells are built from coordinates, the coordinates are required to be positive.
+                    -- Invalid input results in a fallback value that is guaranteed to be outside the tilemap.
+                    Point2d.xy negativeInfinity negativeInfinity
+
+            cellProperties =
+                { x = x
+                , y = y
+                , bottomLeftCorner = bottomLeftCornerPoint
+                , boundingBox = Common.boundingBoxWithDimensions size size bottomLeftCornerPoint
+                }
+        in
+        Just (Cell cellProperties)
 
     else
         Nothing
-
-
-isValidCoordinate : Int -> Int -> Bool
-isValidCoordinate coordinate cellsAmount =
-    coordinate > 0 && coordinate <= cellsAmount
-
-
-coordinates : Cell -> CellCoordinates
-coordinates (Cell coords) =
-    coords
-
-
-bottomLeftCorner : Constraints a -> Cell -> LMPoint2d
-bottomLeftCorner constraints cell =
-    let
-        ( cellX, cellY ) =
-            coordinates cell
-    in
-    if cellX > 0 && cellY > 0 then
-        let
-            ( xMultiplier, yMultiplier ) =
-                ( toFloat (cellX - 1)
-                , toFloat (constraints.verticalCellsAmount - cellY)
-                )
-        in
-        Point2d.xy
-            (size |> Quantity.multiplyBy xMultiplier)
-            (size |> Quantity.multiplyBy yMultiplier)
-
-    else
-        -- When Cells are built from coordinates, the coordinates are required to be positive.
-        -- Invalid input results in a fallback value that is guaranteed to be outside the tilemap.
-        Point2d.xy negativeInfinity negativeInfinity
-
-
-centerPoint : Constraints a -> Cell -> LMPoint2d
-centerPoint constraints cell =
-    let
-        displacement =
-            Vector2d.xy
-                (Quantity.half size)
-                (Quantity.half size)
-    in
-    bottomLeftCorner constraints cell |> Point2d.translateBy displacement
-
-
-boundingBox : Constraints a -> Cell -> LMBoundingBox2d
-boundingBox constraints cell =
-    Common.boundingBoxWithDimensions size size (bottomLeftCorner constraints cell)
-
-
-toString : Cell -> String
-toString cell =
-    let
-        ( x, y ) =
-            coordinates cell
-    in
-    "Cell (" ++ String.fromInt x ++ "," ++ String.fromInt y ++ ")"
 
 
 nextOrthogonalCell : Constraints a -> OrthogonalDirection -> Cell -> Maybe Cell
@@ -194,3 +179,49 @@ quadrantNeighbors constraints dir origin =
                 , nextDiagonalCell constraints BottomRight origin
                 , nextOrthogonalCell constraints Down origin
                 ]
+
+
+
+--
+-- Queries & interop
+--
+
+
+isValidCoordinate : Int -> Int -> Bool
+isValidCoordinate coordinate cellsAmount =
+    coordinate > 0 && coordinate <= cellsAmount
+
+
+coordinates : Cell -> CellCoordinates
+coordinates (Cell cellProperties) =
+    ( cellProperties.x, cellProperties.y )
+
+
+bottomLeftCorner : Cell -> LMPoint2d
+bottomLeftCorner (Cell cellProperties) =
+    cellProperties.bottomLeftCorner
+
+
+centerPoint : Cell -> LMPoint2d
+centerPoint (Cell cellProperties) =
+    let
+        displacement =
+            Vector2d.xy
+                (Quantity.half size)
+                (Quantity.half size)
+    in
+    cellProperties.bottomLeftCorner |> Point2d.translateBy displacement
+
+
+boundingBox : Cell -> LMBoundingBox2d
+boundingBox (Cell cellProperties) =
+    cellProperties.boundingBox
+
+
+toString : Cell -> String
+toString cell =
+    let
+        ( x, y ) =
+            coordinates cell
+    in
+    "Cell (" ++ String.fromInt x ++ "," ++ String.fromInt y ++ ")"

@@ -75,7 +75,7 @@ attemptBuildLot world seed newLot =
         |> List.head
         |> Maybe.map
             (\anchor ->
-                ( Lot.build tilemapConfig nextLotId newLot anchor, anchor )
+                ( Lot.build nextLotId newLot anchor, anchor )
             )
 
 
@@ -83,7 +83,7 @@ validateAnchor : TilemapConfig -> NewLot -> World -> Cell -> Maybe Cell
 validateAnchor tilemapConfig newLot world anchor =
     let
         lotBoundingBox =
-            Lot.constructionSite tilemapConfig anchor newLot
+            Lot.constructionSite anchor newLot
     in
     if
         World.isEmptyArea lotBoundingBox world
@@ -142,9 +142,6 @@ removeInvalidLots changedCells world =
 validateLot : List Cell -> Id -> Lot -> World -> World
 validateLot changedCells lotId lot world =
     let
-        tilemapConfig =
-            Tilemap.config world.tilemap
-
         changedAnchors =
             List.filterMap
                 (\cell ->
@@ -155,7 +152,7 @@ validateLot changedCells lotId lot world =
 
         -- Room for improvement: add a QuadTree lookup for lots and remove lots based on Cell BB overlap
         lotOverlapsWithRoad =
-            List.any (\cell -> Lot.inBounds tilemapConfig cell lot) changedCells
+            List.any (\cell -> Lot.inBounds cell lot) changedCells
 
         lotAnchorWasRemoved =
             List.any

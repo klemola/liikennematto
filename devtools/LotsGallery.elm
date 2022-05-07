@@ -61,7 +61,7 @@ main =
                             id1Indexed + 2
                 in
                 Model.Cell.fromCoordinates tilemapConfig ( x, 3 )
-                    |> Maybe.map (Model.Lot.build tilemapConfig id newLot)
+                    |> Maybe.map (Model.Lot.build id newLot)
             )
         |> List.filterMap identity
         |> List.map (renderLotDebug tilemapHeight renderCache)

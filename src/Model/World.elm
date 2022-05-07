@@ -64,12 +64,8 @@ empty tilemapConfig =
 
 
 hasLot : Cell -> World -> Bool
-hasLot cell { lots, tilemap } =
-    let
-        tilemapConfig =
-            Tilemap.config tilemap
-    in
-    List.any (Lot.inBounds tilemapConfig cell) (Dict.values lots)
+hasLot cell { lots } =
+    List.any (Lot.inBounds cell) (Dict.values lots)
 
 
 isEmptyArea : LMBoundingBox2d -> World -> Bool
