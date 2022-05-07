@@ -120,11 +120,11 @@ view { cars, lots, roadNetwork, trafficLights } cache debugLayers =
         , Attributes.style <| "background-color: " ++ Color.toCssString Colors.lightGreen ++ ";"
         ]
         ([ styles
-         , Svg.Lazy.lazy2 renderTilemap cache.tilemapHeightPixels cache.tilemap
-         , Svg.Lazy.lazy2 renderLots cache.tilemapHeightPixels lots
+         , Svg.Lazy.lazy (renderTilemap cache.tilemapHeightPixels) cache.tilemap
+         , Svg.Lazy.lazy (renderLots cache.tilemapHeightPixels) lots
          , renderCars cache.tilemapHeightPixels cars
-         , Svg.Lazy.lazy2 renderTrafficLights cache.tilemapHeightPixels trafficLights
-         , Svg.Lazy.lazy2 renderTrafficSigns cache.tilemapHeightPixels roadNetwork
+         , Svg.Lazy.lazy (renderTrafficLights cache.tilemapHeightPixels) trafficLights
+         , Svg.Lazy.lazy (renderTrafficSigns cache.tilemapHeightPixels) roadNetwork
          ]
             ++ renderDebugLayers cache.tilemapHeightPixels debugLayers cars roadNetwork
         )
