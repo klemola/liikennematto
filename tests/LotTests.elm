@@ -22,13 +22,13 @@ tilemapConfig =
 twoByTwoLot : Maybe Lot
 twoByTwoLot =
     Cell.fromCoordinates tilemapConfig ( 4, 5 )
-        |> Maybe.map (Lot.build tilemapConfig 1 residentialSingle1)
+        |> Maybe.map (Lot.build 1 residentialSingle1)
 
 
 threeByThreeLot : Maybe Lot
 threeByThreeLot =
     Cell.fromCoordinates tilemapConfig ( 1, 3 )
-        |> Maybe.map (Lot.build tilemapConfig 2 school)
+        |> Maybe.map (Lot.build 2 school)
 
 
 suite : Test
@@ -37,7 +37,7 @@ suite =
         [ describe ".inBounds"
             [ test "validates if a cell is in lot's bounds for 2x2 lot"
                 (\_ ->
-                    Maybe.map2 (Lot.inBounds tilemapConfig)
+                    Maybe.map2 Lot.inBounds
                         (Cell.fromCoordinates tilemapConfig ( 2, 5 ))
                         twoByTwoLot
                         |> Maybe.withDefault False
@@ -45,7 +45,7 @@ suite =
                 )
             , test "validates if a cell is in lot's bounds for 3x3 lot"
                 (\_ ->
-                    Maybe.map2 (Lot.inBounds tilemapConfig)
+                    Maybe.map2 Lot.inBounds
                         (Cell.fromCoordinates tilemapConfig ( 3, 1 ))
                         threeByThreeLot
                         |> Maybe.withDefault False
@@ -53,7 +53,7 @@ suite =
                 )
             , test "validates if a cell is *NOT* in lot's bounds for 2x2 lot"
                 (\_ ->
-                    Maybe.map2 (Lot.inBounds tilemapConfig)
+                    Maybe.map2 Lot.inBounds
                         (Cell.fromCoordinates tilemapConfig ( 2, 6 ))
                         twoByTwoLot
                         |> Maybe.withDefault True
@@ -62,7 +62,7 @@ suite =
             , test
                 "validates if a cell is *NOT* in lot's bounds for 3x3 lot"
                 (\_ ->
-                    Maybe.map2 (Lot.inBounds tilemapConfig)
+                    Maybe.map2 Lot.inBounds
                         (Cell.fromCoordinates tilemapConfig ( 5, 2 ))
                         threeByThreeLot
                         |> Maybe.withDefault True

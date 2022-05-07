@@ -42,7 +42,7 @@ suite =
 
                         testLot =
                             Cell.fromCoordinates tilemapConfig ( 1, 8 )
-                                |> Maybe.map (Lot.build tilemapConfig 1 school)
+                                |> Maybe.map (Lot.build 1 school)
 
                         lots =
                             testLot

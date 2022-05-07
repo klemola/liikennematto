@@ -157,7 +157,7 @@ buildRoadNetwork { tilemap, trafficLights } =
                 |> Dict.values
 
         edges =
-            createLanes tilemap nodes
+            createLanes nodes
 
         roadNetwork =
             Graph.fromNodesAndEdges nodes edges
@@ -221,7 +221,7 @@ toConnections tilemap cell tile =
             |> List.concatMap
                 (oppositeOrthogonalDirection
                     >> orthogonalDirectionToLmDirection
-                    >> deadendConnections tilemap cell tile
+                    >> deadendConnections cell tile
                 )
 
     else
@@ -229,11 +229,11 @@ toConnections tilemap cell tile =
             |> List.concatMap (connectionsByTileEntryDirection tilemap cell tile)
 
 
-deadendConnections : Tilemap -> Cell -> Tile -> LMDirection2d -> List Connection
-deadendConnections tilemap cell tile trafficDirection =
+deadendConnections : Cell -> Tile -> LMDirection2d -> List Connection
+deadendConnections cell tile trafficDirection =
     let
         ( entryPosition, exitPosition ) =
-            laneCenterPositionsByDirection tilemap cell trafficDirection
+            laneCenterPositionsByDirection cell trafficDirection
 
         entryConnection =
             { kind = DeadendEntry
@@ -258,19 +258,16 @@ deadendConnections tilemap cell tile trafficDirection =
     ]
 
 
-laneCenterPositionsByDirection : Tilemap -> Cell -> LMDirection2d -> ( LMPoint2d, LMPoint2d )
-laneCenterPositionsByDirection tilemap cell trafficDirection =
+laneCenterPositionsByDirection : Cell -> LMDirection2d -> ( LMPoint2d, LMPoint2d )
+laneCenterPositionsByDirection cell trafficDirection =
     let
         connectionOffsetFromTileCenter =
             Cell.size
                 |> Quantity.half
                 |> Quantity.minus innerLaneOffset
 
-        tilemapConfig =
-            Tilemap.config tilemap
-
         tileCenterPosition =
-            Cell.centerPoint tilemapConfig cell
+            Cell.centerPoint cell
     in
     ( tileCenterPosition
         |> Point2d.translateIn
@@ -286,11 +283,8 @@ laneCenterPositionsByDirection tilemap cell trafficDirection =
 connectionsByTileEntryDirection : Tilemap -> Cell -> Tile -> OrthogonalDirection -> List Connection
 connectionsByTileEntryDirection tilemap cell tile direction =
     let
-        tilemapConfig =
-            Tilemap.config tilemap
-
         origin =
-            Cell.bottomLeftCorner tilemapConfig cell
+            Cell.bottomLeftCorner cell
 
         anchor =
             Tilemap.anchorAt tilemap cell
@@ -420,17 +414,14 @@ connect current match =
     Edge current.id match.id ()
 
 
-createLanes : Tilemap -> List (Node Connection) -> List (Edge Lane)
-createLanes tilemap nodes =
-    List.concatMap (toEdges tilemap nodes) nodes
+createLanes : List (Node Connection) -> List (Edge Lane)
+createLanes nodes =
+    List.concatMap (toEdges nodes) nodes
 
 
-toEdges : Tilemap -> List (Node Connection) -> Node Connection -> List (Edge Lane)
-toEdges tilemap nodes current =
+toEdges : List (Node Connection) -> Node Connection -> List (Edge Lane)
+toEdges nodes current =
     let
-        tilemapConfig =
-            Tilemap.config tilemap
-
         potentialResultToEdges =
             Maybe.unwrap [] List.singleton
 
@@ -446,11 +437,11 @@ toEdges tilemap nodes current =
                     always []
 
                 LotExit _ ->
-                    findLanesInsideCell tilemapConfig nodes
+                    findLanesInsideCell nodes
 
                 _ ->
-                    if Cell.centerPoint tilemapConfig current.label.cell |> Common.isInTheNormalPlaneOf current.label.direction current.label.position then
-                        findLanesInsideCell tilemapConfig nodes
+                    if Cell.centerPoint current.label.cell |> Common.isInTheNormalPlaneOf current.label.direction current.label.position then
+                        findLanesInsideCell nodes
 
                     else
                         -- the node is facing away from its' Cell
@@ -518,12 +509,12 @@ closestToOriginOrdering nodeA nodeB =
         |> Length.inMeters
 
 
-findLanesInsideCell : Tilemap.TilemapConfig -> List (Node Connection) -> Node Connection -> List (Edge Lane)
-findLanesInsideCell tilemapConfig nodes current =
+findLanesInsideCell : List (Node Connection) -> Node Connection -> List (Edge Lane)
+findLanesInsideCell nodes current =
     nodes
         |> List.filterMap
             (\other ->
-                if current.id /= other.id && connectsWithinCell tilemapConfig current other then
+                if current.id /= other.id && connectsWithinCell current other then
                     Just (connect current other)
 
                 else
@@ -531,8 +522,8 @@ findLanesInsideCell tilemapConfig nodes current =
             )
 
 
-connectsWithinCell : Tilemap.TilemapConfig -> Node Connection -> Node Connection -> Bool
-connectsWithinCell tilemapConfig current other =
+connectsWithinCell : Node Connection -> Node Connection -> Bool
+connectsWithinCell current other =
     let
         fromDir =
             connectionDirection current
@@ -544,7 +535,7 @@ connectsWithinCell tilemapConfig current other =
             connectionPosition other
 
         ( leftLookupArea, rightLookupArea ) =
-            connectionLookupArea tilemapConfig current
+            connectionLookupArea current
 
         canContinueLeft =
             (toDir == fromDir || toDir == Direction2d.rotateCounterclockwise fromDir)
@@ -557,11 +548,11 @@ connectsWithinCell tilemapConfig current other =
     canContinueLeft || canContinueRight
 
 
-connectionLookupArea : Tilemap.TilemapConfig -> Node Connection -> ( LMBoundingBox2d, LMBoundingBox2d )
-connectionLookupArea tilemapConfig node =
+connectionLookupArea : Node Connection -> ( LMBoundingBox2d, LMBoundingBox2d )
+connectionLookupArea node =
     let
         bb =
-            Cell.boundingBox tilemapConfig node.label.cell
+            Cell.boundingBox node.label.cell
 
         { lower, upper } =
             Common.splitBoundingBoxVertically bb

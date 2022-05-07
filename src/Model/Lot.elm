@@ -55,11 +55,11 @@ type alias Lot =
     }
 
 
-build : Cell.Constraints a -> Id -> NewLot -> Cell -> Lot
-build cellConstraints lotId newLot anchor =
+build : Id -> NewLot -> Cell -> Lot
+build lotId newLot anchor =
     let
         constructionSiteBB =
-            constructionSite cellConstraints anchor newLot
+            constructionSite anchor newLot
     in
     { id = lotId
     , kind = newLot.kind
@@ -77,11 +77,11 @@ build cellConstraints lotId newLot anchor =
     }
 
 
-constructionSite : Cell.Constraints a -> Cell -> NewLot -> LMBoundingBox2d
-constructionSite cellConstraints anchor { width, height, drivewayExitDirection } =
+constructionSite : Cell -> NewLot -> LMBoundingBox2d
+constructionSite anchor { width, height, drivewayExitDirection } =
     let
         origin =
-            Cell.bottomLeftCorner cellConstraints anchor
+            Cell.bottomLeftCorner anchor
 
         displacement =
             case drivewayExitDirection of
@@ -118,9 +118,9 @@ constructionSite cellConstraints anchor { width, height, drivewayExitDirection }
     Common.boundingBoxWithDimensions width height bottomLeftCorner
 
 
-inBounds : Cell.Constraints a -> Cell -> Lot -> Bool
-inBounds cellConstraints cell lot =
-    BoundingBox2d.isContainedIn lot.boundingBox (Cell.boundingBox cellConstraints cell)
+inBounds : Cell -> Lot -> Bool
+inBounds cell lot =
+    BoundingBox2d.isContainedIn lot.boundingBox (Cell.boundingBox cell)
 
 
 

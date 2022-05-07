@@ -152,11 +152,7 @@ inBounds (Tilemap tilemap) testBB =
 
 intersects : LMBoundingBox2d -> Tilemap -> Bool
 intersects testBB tilemap =
-    let
-        tilemapConfig =
-            config tilemap
-    in
-    toList (\cell _ -> Cell.boundingBox tilemapConfig cell) tilemap
+    toList (\cell _ -> Cell.boundingBox cell) tilemap
         |> List.any (Common.boundingBoxOverlaps testBB)
 
 
