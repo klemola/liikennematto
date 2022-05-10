@@ -8,7 +8,6 @@ module Model.Car exposing
     , isBreaking
     , isDriving
     , isParked
-    , isParking
     , isPathfinding
     , isStoppedOrWaiting
     , new
@@ -393,15 +392,6 @@ isPathfinding car =
     in
     not (List.isEmpty car.route.connections)
         && (currentState == Driving || currentState == Parking || currentState == Unparking)
-
-
-isParking : Car -> Bool
-isParking car =
-    let
-        currentState =
-            FSM.toCurrentState car.fsm
-    in
-    currentState == Parking
 
 
 isParked : Car -> Bool

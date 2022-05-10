@@ -1,7 +1,7 @@
 module WorldTests exposing (suite)
 
 import Common exposing (boundingBoxWithDimensions)
-import Data.Lots exposing (LotKind(..), school)
+import Data.Lots exposing (school)
 import Data.Worlds
     exposing
         ( worldThatHasAVerticalRoadAtLeftSide
@@ -11,7 +11,6 @@ import Dict
 import Expect
 import Length
 import Model.Cell as Cell
-import Model.Geometry exposing (OrthogonalDirection(..))
 import Model.Lot as Lot
 import Model.Tilemap as Tilemap
 import Model.World as World

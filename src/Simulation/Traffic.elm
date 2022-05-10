@@ -19,7 +19,7 @@ import Model.Car as Car exposing (Car)
 import Model.Entity as Entity exposing (Id)
 import Model.Lookup exposing (carPositionLookup)
 import Model.Lot as Lot exposing (Lot, ParkingSpot)
-import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
+import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext)
 import Model.World as World exposing (World)
 import Point2d
 import Polyline2d

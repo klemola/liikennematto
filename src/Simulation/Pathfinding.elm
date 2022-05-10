@@ -16,7 +16,7 @@ import Direction2d
 import Duration exposing (Duration)
 import Length
 import Maybe.Extra as Maybe
-import Model.Car as Car exposing (Car, CarState(..))
+import Model.Car as Car exposing (Car)
 import Model.Entity exposing (Id)
 import Model.Geometry exposing (LMCubicSpline2d, LMPolyline2d, orthogonalDirectionToLmDirection)
 import Model.Lot as Lot exposing (ParkingSpot)
