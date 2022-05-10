@@ -35,13 +35,17 @@ type alias NewLot =
 
 type LotKind
     = ResidentialSingle1
+    | ResidentialRow1
     | School
+    | Cafe
 
 
 allLots : List NewLot
 allLots =
     [ residentialSingle1
+    , residentialRow1
     , school
+    , cafe
     ]
 
 
@@ -86,7 +90,13 @@ resident kind =
         ResidentialSingle1 ->
             Just sedan
 
+        ResidentialRow1 ->
+            Just sedan
+
         School ->
+            Just sedan
+
+        Cafe ->
             Just sedan
 
 
@@ -96,8 +106,14 @@ lotAsset kind =
         ResidentialSingle1 ->
             residentialSingle1Asset
 
+        ResidentialRow1 ->
+            residentialRow1Asset
+
         School ->
             schoolAsset
+
+        Cafe ->
+            cafeAsset
 
 
 residentialSingle1 : NewLot
@@ -1152,6 +1168,1380 @@ schoolAsset =
             [ Svg.rect
                 [ Attributes.width "768"
                 , Attributes.height "768"
+                , Attributes.fill "white"
+                ]
+                []
+            ]
+        ]
+    ]
+
+
+cafe : NewLot
+cafe =
+    let
+        width =
+            Cell.size |> Quantity.multiplyBy 2
+
+        height =
+            Cell.size |> Quantity.multiplyBy 2
+
+        drivewayExitDirection =
+            Right
+    in
+    { kind = Cafe
+    , width = width
+    , height = height
+    , parkingSpotExitDirection = Down
+    , parkingSpots =
+        [ Point2d.fromMeters { x = 5.25, y = 9.4 }
+        , Point2d.fromMeters { x = 12.25, y = 9.4 }
+        , Point2d.fromMeters { x = 19.5, y = 9.4 }
+        , Point2d.fromMeters { x = 26.75, y = 9.4 }
+        ]
+    , drivewayExitDirection = drivewayExitDirection
+    , entryPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width height
+    , exitPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width height
+    , parkingLaneStartPosition = Point2d.fromMeters { x = 23.2, y = 3.75 }
+    }
+
+
+cafeAsset : List (Svg msg)
+cafeAsset =
+    [ Svg.g
+        [ Attributes.clipPath "url(#clip0_1001_509)"
+        ]
+        [ path
+            [ Attributes.d "M513.5 376C513.5 375.172 512.828 374.5 512 374.5H493C488.858 374.5 485.5 371.142 485.5 367V328C485.5 323.858 482.142 320.5 478 320.5H34C29.8579 320.5 26.5 323.858 26.5 328V490C26.5 494.142 29.8579 497.5 34 497.5H512C512.828 497.5 513.5 496.828 513.5 496V376Z"
+            , Attributes.fill "#BCA9A9"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            , Attributes.strokeLinejoin "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M134 406C134 407.105 134.895 408 136 408C137.105 408 138 407.105 138 406L134 406ZM138 406L138 322L134 322L134 406L138 406Z"
+            , Attributes.fill "#F0F0DD"
+            ]
+            []
+        , path
+            [ Attributes.d "M370 406C370 407.105 370.895 408 372 408C373.105 408 374 407.105 374 406L370 406ZM374 406L374 322L370 322L370 406L374 406Z"
+            , Attributes.fill "#F0F0DD"
+            ]
+            []
+        , path
+            [ Attributes.d "M252 406C252 407.105 252.895 408 254 408C255.105 408 256 407.105 256 406L252 406ZM256 406L256 322L252 322L252 406L256 406Z"
+            , Attributes.fill "#F0F0DD"
+            ]
+            []
+        , path
+            [ Attributes.d "M481.172 54.8284C483.691 52.3086 488 54.0932 488 57.6569V229.515C488 231.106 487.368 232.632 486.243 233.757L430.828 289.172C428.309 291.691 424 289.907 424 286.343V112L481.172 54.8284Z"
+            , Attributes.fill "#D8A46A"
+            ]
+            []
+        , path
+            [ Attributes.d "M400 88L459.757 28.2426C462.101 25.8995 465.899 25.8995 468.243 28.2426L483.757 43.7574C486.101 46.1005 486.101 49.8995 483.757 52.2426L424 112L400 88Z"
+            , Attributes.fill "#448CD4"
+            ]
+            []
+        , path
+            [ Attributes.d "M110.243 25.7574C111.368 24.6321 112.894 24 114.485 24H459.172C460.953 24 461.846 26.1543 460.586 27.4142L400 88H48L110.243 25.7574Z"
+            , Attributes.fill "#448CD4"
+            ]
+            []
+        , path
+            [ Attributes.d "M48 88H400L424 112H28.8284C27.0466 112 26.1543 109.846 27.4142 108.586L48 88Z"
+            , Attributes.fill "#448CD4"
+            ]
+            []
+        , path
+            [ Attributes.d "M152 112H424V290C424 293.314 421.314 296 418 296H30C26.6863 296 24 293.314 24 290V118C24 114.686 26.6863 112 30 112H152Z"
+            , Attributes.fill "#D8A46A"
+            ]
+            []
+        , path
+            [ Attributes.d "M422.757 294.5H27C26.1716 294.5 25.5 293.828 25.5 293V113.243C25.5 112.845 25.658 112.463 25.9393 112.182L112.182 25.9393C112.463 25.658 112.845 25.5 113.243 25.5H462.757C463.155 25.5 463.537 25.658 463.818 25.9393L486.061 48.182C486.342 48.4633 486.5 48.8448 486.5 49.2426V230.757C486.5 231.155 486.342 231.537 486.061 231.818L423.818 294.061C423.537 294.342 423.155 294.5 422.757 294.5Z"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.d "M486 50L424 112M424 293V112M462 26L400 88M400 88L424 112M400 88H154H50M424 112H154H27"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.d "M277.5 180.5H398.5V259C398.5 260.381 397.381 261.5 396 261.5H280C278.619 261.5 277.5 260.381 277.5 259V180.5Z"
+            , Attributes.fill "#88B0DD"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.d "M279 166.5H397C397.828 166.5 398.5 167.172 398.5 168V181.5H277.5V168C277.5 167.172 278.172 166.5 279 166.5Z"
+            , Attributes.fill "#448CD4"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.d "M49.5 180.5H130.5V259C130.5 260.381 129.381 261.5 128 261.5H52C50.6193 261.5 49.5 260.381 49.5 259V180.5Z"
+            , Attributes.fill "#88B0DD"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.d "M51 166.5H129C129.828 166.5 130.5 167.172 130.5 168V181.5H49.5V168C49.5 167.172 50.1716 166.5 51 166.5Z"
+            , Attributes.fill "#448CD4"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.d "M167 215.5H241C241.828 215.5 242.5 216.172 242.5 217V294.5H165.5V217C165.5 216.172 166.172 215.5 167 215.5Z"
+            , Attributes.fill "#EB9151"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M204 214V296"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.d "M220 260C220.828 260 221.5 259.328 221.5 258.5C221.5 257.672 220.828 257 220 257V260ZM211 257H209.5V260H211V257ZM220 257H211V260H220V257Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M197 260H198.5V257H197V260ZM188 257C187.172 257 186.5 257.672 186.5 258.5C186.5 259.328 187.172 260 188 260V257ZM197 257H188V260H197V257Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M450.939 193.182L474.5 169.621V243.379L450.5 267.379V194.243C450.5 193.845 450.658 193.463 450.939 193.182Z"
+            , Attributes.fill "#448CD4"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , Svg.ellipse
+            [ Attributes.cx "458"
+            , Attributes.cy "224"
+            , Attributes.rx "2"
+            , Attributes.ry "3"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M261.5 134.504C261.5 166.518 235.778 191.5 204 191.5C172.222 191.5 146.5 166.518 146.5 134.504C146.5 102.457 172.256 76.5 204 76.5C235.744 76.5 261.5 102.457 261.5 134.504Z"
+            , Attributes.fill "#EB9151"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.d "M235.5 163.752C235.5 164.755 235.037 165.838 233.801 166.96C232.546 168.101 230.563 169.211 227.748 170.178C222.123 172.11 213.534 173.346 201.903 173.346C190.264 173.346 182.249 172.108 177.2 170.194C172.1 168.262 170.5 165.863 170.5 163.752C170.5 161.641 172.1 159.243 177.2 157.31C182.249 155.397 190.264 154.158 201.903 154.158C213.534 154.158 222.123 155.395 227.748 157.326C230.563 158.293 232.546 159.404 233.801 160.544C235.037 161.667 235.5 162.749 235.5 163.752Z"
+            , Attributes.fill "#DAD1D1"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.fillRule "evenodd"
+            , Attributes.clipRule "evenodd"
+            , Attributes.d "M187.52 162.857C191.195 164.45 208.904 166.195 217.679 162.857C225.957 159.709 227.286 154.584 228.155 151.233C228.207 151.032 228.257 150.838 228.308 150.65C228.796 148.83 231.335 147.34 234.133 145.699C236.425 144.355 238.89 142.909 240.541 141.097C244.21 137.073 245.791 127.829 241.066 123.052C238.189 120.143 234.21 118.887 231.539 118.349C229.903 118.02 228.55 116.688 228.422 115.008L228.308 113.499C225.905 110.747 217.945 109.131 212.489 108.678C207.033 108.225 203.476 108.08 194.857 108.678C187.219 109.208 184.885 109.483 180.065 111.81C179.447 112.108 178.787 112.427 178.07 112.766C174.921 124.644 175.884 145.09 177.546 150.65C179.207 156.211 183.845 161.265 187.52 162.857ZM229.743 140.686C230.84 142.349 237.97 136.25 238.518 131.261C239.066 126.271 229.195 122.389 229.195 124.607C229.195 125.006 229.177 125.725 229.155 126.648C229.051 130.865 228.844 139.321 229.743 140.686Z"
+            , Attributes.fill "#DAD1D1"
+            ]
+            []
+        , path
+            [ Attributes.d "M228.308 113.499L228.422 115.008C228.55 116.688 229.903 118.02 231.539 118.349C234.21 118.887 238.189 120.143 241.066 123.052C245.791 127.829 244.21 137.073 240.541 141.097C238.89 142.909 236.425 144.355 234.133 145.699C231.335 147.34 228.796 148.83 228.308 150.65C228.257 150.838 228.207 151.032 228.155 151.233C227.286 154.584 225.957 159.709 217.679 162.857C208.904 166.195 191.195 164.45 187.52 162.857C183.845 161.265 179.207 156.211 177.546 150.65C175.884 145.09 174.921 124.644 178.07 112.766M228.308 113.499C225.905 110.747 217.945 109.131 212.489 108.678C207.033 108.225 203.476 108.08 194.857 108.678C187.219 109.208 184.885 109.483 180.065 111.81C179.447 112.108 178.787 112.427 178.07 112.766M228.308 113.499C223.743 118.734 218.345 120.941 212.489 121.402C204.991 121.993 195.993 121.402 194.857 121.402C191.793 121.402 184.373 121.297 178.07 112.766M238.518 131.261C237.97 136.25 230.84 142.349 229.743 140.686C228.844 139.321 229.051 130.865 229.155 126.648C229.177 125.725 229.195 125.006 229.195 124.607C229.195 122.389 239.066 126.271 238.518 131.261Z"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.d "M205.762 105.671C205.109 107.301 205.15 109.198 205.433 110.915C205.657 112.278 206.046 113.602 206.437 114.713C205.18 113.791 203.708 112.58 202.482 111.209C200.965 109.511 199.972 107.73 200.001 106.06C200.037 103.921 201.217 102.798 202.872 101.442C202.972 101.36 203.074 101.277 203.178 101.192C204.736 99.9252 206.63 98.386 207.266 95.6169C207.914 92.8 207.544 89.0592 207.171 86.6054C208.302 87.6229 209.686 88.9995 210.828 90.5244C212.234 92.4019 213.128 94.3154 212.985 95.9728C212.811 98.0016 211.656 99.2738 210.117 100.633C209.92 100.807 209.714 100.984 209.503 101.165C208.139 102.337 206.552 103.7 205.762 105.671Z"
+            , Attributes.fill "#F0F0DD"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "2"
+            ]
+            []
+        , path
+            [ Attributes.d "M43.3793 271L38 276V308H136.621V307.502L137.069 307.5L142 303V271H43.3793Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M142 271H143C143 270.448 142.552 270 142 270V271ZM136.621 308V309C136.873 309 137.116 308.904 137.302 308.732L136.621 308ZM38 276L37.3192 275.268C37.1156 275.457 37 275.722 37 276H38ZM141.042 303.89L140.362 303.158L141.042 303.89ZM137.302 276.732L142.681 271.732L141.319 270.268L135.94 275.268L137.302 276.732ZM141 271V301.693H143V271H141ZM140.362 303.158L135.94 307.268L137.302 308.732L141.723 304.623L140.362 303.158ZM137.621 308V276H135.621V308H137.621ZM136.621 307H41V309H136.621V307ZM39 305V276H37V305H39ZM38.6808 276.732L43.1966 272.535L41.835 271.07L37.3192 275.268L38.6808 276.732ZM44.5582 272H142V270H44.5582V272ZM38 277H136.621V275H38V277ZM43.1966 272.535C43.5666 272.191 44.0531 272 44.5582 272V270C43.5479 270 42.575 270.382 41.835 271.07L43.1966 272.535ZM41 307C39.8954 307 39 306.105 39 305H37C37 307.209 38.7909 309 41 309V307ZM141 301.693C141 302.248 140.769 302.779 140.362 303.158L141.723 304.623C142.537 303.866 143 302.804 143 301.693H141Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M109 299.476C109.573 298.543 111.976 299.321 112.999 300.002"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M56 292.402C56.5725 291.469 58.9759 292.247 59.9987 292.928"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M98 304C97.5 302.115 95.75 302.01 95 302.115"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M125 300C123 301.053 123 304 123 304"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M128.316 292C128.916 293.399 131.481 294.107 131.481 294.107"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M53.2272 301.958C51.5965 301.681 49 303.586 49 303.586"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M112.357 290.085C111.065 289.051 107.87 289.46 107.87 289.46"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M81 299C78 299.789 78 302 78 302"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M72 285C72 283.003 73.3333 281.921 74 282.004"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M104.503 281.876C102.281 281.631 102.281 281.631 101 281.039"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M127 280.761C128.873 280.254 130.226 281.231 130.317 281.877"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M84.1365 289C84.1365 291.5 85.2779 292.307 86.1115 292.816"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M52 283C51.2 282.021 48.8 281.947 48 282.021"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M273.448 271L266 276V308H402.552V307.502L403.172 307.5L410 303V271H273.448Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M410 271H411C411 270.448 410.552 270 410 270V271ZM402.552 308V309C402.75 309 402.944 308.941 403.109 308.83L402.552 308ZM266 276L265.443 275.17C265.166 275.355 265 275.667 265 276H266ZM272.69 271.509L272.132 270.679L272.69 271.509ZM408.672 303.891L408.115 303.061L408.672 303.891ZM403.109 276.83L410.557 271.83L409.443 270.17L401.994 275.17L403.109 276.83ZM409 271V301.401H411V271H409ZM408.115 303.061L401.994 307.17L403.109 308.83L409.229 304.722L408.115 303.061ZM403.552 308V276H401.552V308H403.552ZM402.552 307H269V309H402.552V307ZM267 305V276H265V305H267ZM266.557 276.83L273.247 272.339L272.132 270.679L265.443 275.17L266.557 276.83ZM274.362 272H410V270H274.362V272ZM266 277H402.552V275H266V277ZM273.247 272.339C273.577 272.118 273.965 272 274.362 272V270C273.568 270 272.792 270.236 272.132 270.679L273.247 272.339ZM269 307C267.895 307 267 306.105 267 305H265C265 307.209 266.791 309 269 309V307ZM409 301.401C409 302.067 408.668 302.69 408.115 303.061L409.229 304.722C410.336 303.979 411 302.733 411 301.401H409Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M353 303C354 301.665 354 301.665 355 301"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M295 288C296 286.665 296 286.665 297 286"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M340.503 293.876C338.281 293.631 338.281 293.631 337 293.039"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M274 299.761C275.873 299.254 277.226 300.231 277.317 300.877"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M366.757 293C368.544 293.756 369.008 295.359 368.681 295.924"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M303 298.476C304.011 296.828 307.346 297.645 308.697 298.568"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M385 287.196C387.003 288.582 388.249 285.899 388.718 285.043"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M316 290C316 288.003 317.333 286.921 318 287.004"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M349 284.196C350.5 284.196 351.61 283.548 351.916 282.942"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M385.316 299C386.109 300.452 389.213 301.309 389.213 301.309"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M326.316 282C327.109 283.452 330.213 284.309 330.213 284.309"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M321.316 302C322.109 303.452 325.213 304.309 325.213 304.309"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M277 283C274 283.526 274 285 274 285"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M372.288 282.542C370.249 280.279 369 281.062 369 281.062"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        ]
+    , Svg.defs []
+        [ Svg.clipPath
+            [ Attributes.id "clip0_1001_509"
+            ]
+            [ Svg.rect
+                [ Attributes.width "512"
+                , Attributes.height "512"
+                , Attributes.fill "white"
+                ]
+                []
+            ]
+        ]
+    ]
+
+
+residentialRow1 : NewLot
+residentialRow1 =
+    let
+        width =
+            Cell.size |> Quantity.multiplyBy 4
+
+        height =
+            Cell.size |> Quantity.multiplyBy 2
+
+        drivewayExitDirection =
+            Left
+    in
+    { kind = ResidentialRow1
+    , width = width
+    , height = height
+    , parkingSpotExitDirection = Down
+    , parkingSpots =
+        [ Point2d.fromMeters { x = 4.5, y = 9.4 }
+        , Point2d.fromMeters { x = 11.5, y = 9.4 }
+        , Point2d.fromMeters { x = 18.75, y = 9.4 }
+        ]
+    , drivewayExitDirection = drivewayExitDirection
+    , entryPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width height
+    , exitPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width height
+    , parkingLaneStartPosition = Point2d.fromMeters { x = 8.6, y = 3.75 }
+    }
+
+
+residentialRow1Asset : List (Svg msg)
+residentialRow1Asset =
+    [ Svg.g
+        [ Attributes.clipPath "url(#clip0_1001_555)"
+        ]
+        [ path
+            [ Attributes.d "M929.269 353.763L933.5 352L933.644 351.928C935.3 351.1 936.131 349.21 935.623 347.43C935.543 347.149 935.384 346.897 935.166 346.703L931.852 343.758C931.303 343.27 930.594 343 929.859 343H924.562C923.644 343 922.844 343.625 922.621 344.515L921.789 347.845C921.611 348.557 921.837 349.309 922.378 349.804L926.088 353.205C926.949 353.995 928.19 354.212 929.269 353.763Z"
+            , Attributes.fill "#D8A46A"
+            ]
+            []
+        , path
+            [ Attributes.d "M-1.5 496C-1.5 496.828 -0.82843 497.5 0 497.5L341 497.5C343.485 497.5 345.5 495.485 345.5 493V325C345.5 322.515 343.485 320.5 341 320.5H23C20.5147 320.5 18.5 322.515 18.5 325V367C18.5 371.142 15.1421 374.5 11 374.5H0C-0.82843 374.5 -1.5 375.172 -1.5 376V496Z"
+            , Attributes.fill "#BCA9A9"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            , Attributes.strokeLinejoin "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M134 406C134 407.105 133.105 408 132 408C130.895 408 130 407.105 130 406L134 406ZM130 406L130 322L134 322L134 406L130 406Z"
+            , Attributes.fill "#F0F0DD"
+            ]
+            []
+        , path
+            [ Attributes.d "M244 406C244 407.105 243.105 408 242 408C240.895 408 240 407.105 240 406L244 406ZM240 406L240 322L244 322L244 406L240 406Z"
+            , Attributes.fill "#F0F0DD"
+            ]
+            []
+        , path
+            [ Attributes.d "M788.5 131H1010.5V317C1010.5 320.314 1007.81 323 1004.5 323H788.5V131Z"
+            , Attributes.fill "#EBD252"
+            ]
+            []
+        , path
+            [ Attributes.d "M510.5 107H732.5V299H510.5V107Z"
+            , Attributes.fill "#EBD252"
+            ]
+            []
+        , path
+            [ Attributes.d "M232.5 83H454.5V275H232.5V83Z"
+            , Attributes.fill "#EBD252"
+            ]
+            []
+        , path
+            [ Attributes.d "M454.5 83L510.5 107V299L454.5 275V83Z"
+            , Attributes.fill "#EB9151"
+            ]
+            []
+        , path
+            [ Attributes.d "M732.5 107L788.5 131V323L732.5 299V107Z"
+            , Attributes.fill "#EB9151"
+            ]
+            []
+        , path
+            [ Attributes.d "M146.5 46L232.5 83V275L150.129 239.561C147.927 238.614 146.5 236.447 146.5 234.05V46Z"
+            , Attributes.fill "#EB9151"
+            ]
+            []
+        , path
+            [ Attributes.d "M869.268 71C870.081 71 870.885 71.165 871.632 71.4851L1010.5 131H788.5L708 97L730.724 72.8852C731.857 71.6821 733.437 71 735.09 71H869.268Z"
+            , Attributes.fill "#448CD4"
+            ]
+            []
+        , path
+            [ Attributes.d "M591.25 47C592.075 47 592.89 47.1698 593.646 47.4989L728 106H506L426.5 71L452.815 48.4445C453.902 47.5124 455.287 47 456.72 47H591.25Z"
+            , Attributes.fill "#448CD4"
+            ]
+            []
+        , path
+            [ Attributes.d "M313.268 23C314.081 23 314.885 23.165 315.632 23.4851L454.5 83H232.5L146.5 46L174.885 24.2384C175.932 23.4353 177.215 23 178.535 23H313.268Z"
+            , Attributes.fill "#448CD4"
+            ]
+            []
+        , Svg.rect
+            [ Attributes.x "261.5"
+            , Attributes.y "115.5"
+            , Attributes.width "39"
+            , Attributes.height "39"
+            , Attributes.rx "1.5"
+            , Attributes.fill "#88B0DD"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , Svg.rect
+            [ Attributes.x "340.5"
+            , Attributes.y "201.5"
+            , Attributes.width "89"
+            , Attributes.height "53"
+            , Attributes.rx "1.5"
+            , Attributes.fill "#88B0DD"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , Svg.rect
+            [ Attributes.x "340.5"
+            , Attributes.y "115.5"
+            , Attributes.width "89"
+            , Attributes.height "53"
+            , Attributes.rx "1.5"
+            , Attributes.fill "#88B0DD"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.d "M429 158H341V165C341 166.657 342.343 168 344 168H426C427.657 168 429 166.657 429 165V158Z"
+            , Attributes.fill "#DAD1D1"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "2"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M260 201H302C302.828 201 303.5 201.672 303.5 202.5V275H258.5V202.5C258.5 201.672 259.172 201 260 201Z"
+            , Attributes.fill "#DAD1D1"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , Svg.circle
+            [ Attributes.cx "272"
+            , Attributes.cy "235.797"
+            , Attributes.r "3"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M278.817 188.421L259.5 201H302.5L283.183 188.421C281.856 187.557 280.144 187.557 278.817 188.421Z"
+            , Attributes.fill "#EB9151"
+            ]
+            []
+        , path
+            [ Attributes.d "M249 208L259.5 201M313 208L302.5 201M259.5 201L278.817 188.421C280.144 187.557 281.856 187.557 283.183 188.421L302.5 201M259.5 201H302.5"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , Svg.rect
+            [ Attributes.x "543.5"
+            , Attributes.y "139.5"
+            , Attributes.width "39"
+            , Attributes.height "39"
+            , Attributes.rx "1.5"
+            , Attributes.fill "#88B0DD"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , Svg.rect
+            [ Attributes.x "622.5"
+            , Attributes.y "225.5"
+            , Attributes.width "89"
+            , Attributes.height "53"
+            , Attributes.rx "1.5"
+            , Attributes.fill "#88B0DD"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.d "M624 139.5H672.5V192.5H624C623.172 192.5 622.5 191.828 622.5 191V141C622.5 140.172 623.172 139.5 624 139.5Z"
+            , Attributes.fill "#88B0DD"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.d "M670.5 139.5H710C710.828 139.5 711.5 140.172 711.5 141V207C711.5 207.828 710.828 208.5 710 208.5H672C671.172 208.5 670.5 207.828 670.5 207V139.5Z"
+            , Attributes.fill "#DAD1D1"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.d "M673 176H672V178H673V176ZM709 178H710V176H709V178ZM675.176 206V207H677.176V206H675.176ZM682.588 206V207H684.588V206H682.588ZM704.824 206V207H706.824V206H704.824ZM697.412 206V207H699.412V206H697.412ZM690 206V207H692V206H690ZM673 178H676.176V176H673V178ZM675.176 177V206H677.176V177H675.176ZM676.176 178H683.588V176H676.176V178ZM682.588 177V206H684.588V177H682.588ZM705.824 178H709V176H705.824V178ZM704.824 177V206H706.824V177H704.824ZM698.412 178H705.824V176H698.412V178ZM697.412 177V206H699.412V177H697.412ZM683.588 178H691V176H683.588V178ZM691 178H698.412V176H691V178ZM690 177V206H692V177H690Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M542 225H584C584.828 225 585.5 225.672 585.5 226.5V299H540.5V226.5C540.5 225.672 541.172 225 542 225Z"
+            , Attributes.fill "#DAD1D1"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , Svg.circle
+            [ Attributes.cx "554"
+            , Attributes.cy "259.797"
+            , Attributes.r "3"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M560.817 212.421L541.5 225H584.5L565.183 212.421C563.856 211.557 562.144 211.557 560.817 212.421Z"
+            , Attributes.fill "#EB9151"
+            ]
+            []
+        , path
+            [ Attributes.d "M531 232L541.5 225M595 232L584.5 225M541.5 225L560.817 212.421C562.144 211.557 563.856 211.557 565.183 212.421L584.5 225M541.5 225H584.5"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M818 249H860C860.828 249 861.5 249.672 861.5 250.5V323H816.5V250.5C816.5 249.672 817.172 249 818 249Z"
+            , Attributes.fill "#DAD1D1"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , Svg.circle
+            [ Attributes.cx "830"
+            , Attributes.cy "283.797"
+            , Attributes.r "3"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M836.817 236.421L817.5 249H860.5L841.183 236.421C839.856 235.557 838.144 235.557 836.817 236.421Z"
+            , Attributes.fill "#EB9151"
+            ]
+            []
+        , path
+            [ Attributes.d "M807 256L817.5 249M871 256L860.5 249M817.5 249L836.817 236.421C838.144 235.557 839.856 235.557 841.183 236.421L860.5 249M817.5 249H860.5"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , Svg.rect
+            [ Attributes.x "819.5"
+            , Attributes.y "163.5"
+            , Attributes.width "39"
+            , Attributes.height "39"
+            , Attributes.rx "1.5"
+            , Attributes.fill "#88B0DD"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , Svg.rect
+            [ Attributes.x "898.5"
+            , Attributes.y "249.5"
+            , Attributes.width "89"
+            , Attributes.height "53"
+            , Attributes.rx "1.5"
+            , Attributes.fill "#88B0DD"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , Svg.rect
+            [ Attributes.x "898.5"
+            , Attributes.y "163.5"
+            , Attributes.width "89"
+            , Attributes.height "53"
+            , Attributes.rx "1.5"
+            , Attributes.fill "#88B0DD"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.d "M987 206H899V213C899 214.657 900.343 216 902 216H984C985.657 216 987 214.657 987 213V206Z"
+            , Attributes.fill "#DAD1D1"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "2"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M510.5 299V107M510.5 107H732.5M510.5 107L454.5 83M510.5 107L534.5 83M732.5 107L788.5 131M732.5 107V299M732.5 107L708.5 96.5M788.5 131H1009.5M788.5 131V323M788.5 131L812.5 107M454.5 83H232.5M454.5 83V275M454.5 83L426.5 71M232.5 83L146 46M232.5 83V275M232.5 83L256.5 59M534.5 83H676.5M534.5 83L454.5 47M812.5 107H954M812.5 107L732.5 71M256.5 59H398.5M256.5 59L176.5 23"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.d "M370.5 47L315.066 23.2426C314.693 23.0825 314.291 23 313.884 23H177.523C176.86 23 176.215 23.2198 175.69 23.6251L148.056 44.9532C147.075 45.7106 146.5 46.8801 146.5 48.1197V236.025C146.5 237.223 147.213 238.307 148.314 238.781L231.932 274.756C232.307 274.917 232.71 275 233.118 275H453.268C454.081 275 454.885 275.165 455.632 275.485L509.934 298.757C510.307 298.917 510.71 299 511.116 299H731.679C732.221 299 732.757 299.11 733.255 299.323L787.934 322.757C788.307 322.917 788.709 323 789.116 323H1007.5C1009.16 323 1010.5 321.657 1010.5 320V132.978C1010.5 131.778 1009.78 130.693 1008.68 130.221L871.066 71.2426C870.693 71.0825 870.291 71 869.884 71H733.796C732.969 71 732.179 71.3415 731.612 71.9439L708.5 96.5L648.5 71L593.066 47.2426C592.693 47.0825 592.291 47 591.884 47H455.61C454.894 47 454.201 47.2562 453.657 47.7222L426.5 71L370.5 47Z"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.d "M886 375H974L1011 443H923L886 375Z"
+            , Attributes.fill "#D8A46A"
+            ]
+            []
+        , path
+            [ Attributes.d "M924.938 439.239C925.026 439.4 925.194 439.5 925.377 439.5H1004.27C1004.45 439.5 1004.61 439.407 1004.7 439.255C1004.79 439.104 1004.79 438.916 1004.71 438.761L972.062 378.761C971.974 378.6 971.806 378.5 971.623 378.5H892.73C892.554 378.5 892.391 378.593 892.3 378.745C892.21 378.896 892.207 379.084 892.291 379.239L924.938 439.239ZM886.841 375.5H973.703L1010.16 442.5H923.297L886.841 375.5Z"
+            , Attributes.fill "#966F40"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinejoin "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M886 386V375L923 443H1011V454H923L886 386Z"
+            , Attributes.fill "#966F40"
+            ]
+            []
+        , path
+            [ Attributes.d "M923 454L922.122 454.478C922.297 454.8 922.634 455 923 455V454ZM1011 454V455C1011.55 455 1012 454.552 1012 454H1011ZM1011 443H1012C1012 442.833 1011.96 442.669 1011.88 442.522L1011 443ZM974 375L974.878 374.522C974.703 374.2 974.366 374 974 374V375ZM886 375V374C885.448 374 885 374.448 885 375H886ZM886 386H885C885 386.167 885.042 386.331 885.122 386.478L886 386ZM923 455H1011V453H923V455ZM1012 454V443H1010V454H1012ZM1011.88 442.522L974.878 374.522L973.122 375.478L1010.12 443.478L1011.88 442.522ZM974 374H886V376H974V374ZM885 375V386H887V375H885ZM885.122 386.478L922.122 454.478L923.878 453.522L886.878 385.522L885.122 386.478ZM922 443V454H924V443H922ZM923 444H1011V442H923V444ZM923.878 442.522L886.878 374.522L885.122 375.478L922.122 443.478L923.878 442.522Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M616 448L614.5 448.5L607.5 459.5L601 473C601 473 601.268 473.5 603 473.5C604.732 473.5 605 473 605 473L610 460L616 448Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M597 445.5L592 473C592 473 593.5 473.5 595 473.5C596.5 473.5 598 473 598 473L597.5 469.5V459.5L598 445L597 445.5Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M583 443.5L581 446.5L580 457.5L583 473C583 473 584 473.5 585 473.5C586 473.5 587 473 587 473L584 464L582 454L583 443.5Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M601.367 472.612C609.926 453.045 615.744 446.839 616.796 446.496C617.848 446.152 608.381 460.929 605.079 472.612"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M586.673 472.612C578.708 453.321 584.007 443.476 583.219 442.46C582.431 441.443 576.71 455.59 583.219 472.612"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M597.694 472.612C596.469 468.531 598.51 440.776 598.51 439.551C598.51 438.327 591.98 472.612 591.98 472.612"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M971 431C971 425.265 981 426.084 981 431"
+            , Attributes.stroke "#966F40"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M934 416C935 418 938.5 418.5 941 416"
+            , Attributes.stroke "#966F40"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M965 407C965 404.132 972 404.542 972 407"
+            , Attributes.stroke "#966F40"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M937 433C937 430.132 944 430.542 944 433"
+            , Attributes.stroke "#966F40"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M956 388C958 391 964 390.5 965 388"
+            , Attributes.stroke "#966F40"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M935 386C935 383.132 940 383.542 940 386"
+            , Attributes.stroke "#966F40"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M917 398C917 393.699 926 394.313 926 398"
+            , Attributes.stroke "#966F40"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M950.447 406.671L949.144 399.724C949.011 399.014 948.392 398.5 947.67 398.5H943.781C943.092 398.5 942.493 398.968 942.326 399.636L940.577 406.63C940.467 407.072 940.801 407.5 941.256 407.5H949.759C950.197 407.5 950.528 407.102 950.447 406.671Z"
+            , Attributes.fill "#966F40"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinejoin "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M818 323.5H817V324.5V370.727C817 371.845 816.121 372.727 815.029 372.727H814.84H814.648H814.452H814.253H814.051H813.846H813.638H813.426H813.212H812.994H812.774H812.55H812.323H812.094H811.861H811.625H811.387H811.145H810.9H810.653H810.402H810.149H809.892H809.633H809.371H809.106H808.838H808.567H808.294H808.017H807.738H807.456H807.171H806.884H806.593H806.3H806.004H805.706H805.405H805.101H804.794H804.485H804.173H803.858H803.541H803.221H802.899H802.574H802.246H801.916H801.583H801.248H800.91H800.57H800.227H799.882H799.534H799.184H798.831H798.476H798.119H797.759H797.396H797.032H796.664H796.295H795.923H795.549H795.173H794.794H794.413H794.029H793.644H793.256H792.866H792.473H792.079H791.682H791.283H790.882H790.478H790.073H789.665H789.255H788.844H788.429H788.013H787.595H787.175H786.753H786.328H785.902H785.474H785.043H784.611H784.177H783.74H783.302H782.862H782.42H781.976H781.53H781.082H780.632H780.181H779.727H779.272H778.815H778.356H777.895H777.433H776.969H776.503H776.035H775.565H775.094H774.621H774.147H773.67H773.193H772.713H772.232H771.749H771.264H770.778H770.29H769.801H769.31H768.818H768.324H767.829H767.332H766.833H766.333H765.832H765.329H764.825H764.319H763.812H763.303H762.793H762.281H761.769H761.254H760.739H760.222H759.704H759.185H758.664H758.142H757.618H757.094H756.568H756.041H755.513H754.983H754.452H753.921H753.387H752.853H752.318H751.781H751.244H750.705H750.165H749.625H749.083H748.54H747.996H747.451H746.904H746.357H745.809H745.26H744.71H744.159H743.607H743.055H742.501H741.946H741.391H740.834H740.277H739.719H739.16H738.6H738.04H737.478H736.916H736.353H735.789H735.225H734.66H734.094H733.527H732.96H732.392H731.823H731.254H730.684H730.114H729.542H728.971H728.398H727.825H727.252H726.678H726.103H725.528H724.952H724.376H723.799H723.222H722.644H722.066H721.488H720.909H720.33H719.75H719.17H718.589H718.008H717.427H716.845H716.264H715.681H715.099H714.516H713.933H713.35H712.766H712.182H711.598H711.014H710.43H709.845H709.26H708.676H708.09H707.505H706.92H706.335H705.749H705.163H704.578H703.992H703.406H702.82H702.235H701.649H701.063H700.477H699.892H699.306H698.72H698.135H697.549H696.964H696.379H695.793H695.208H694.624H694.039H693.454H692.87H692.286H691.702H691.118H690.535H689.952H689.369H688.786H688.204H687.622H687.04H686.459H685.878H685.297H684.717H684.137H683.557H682.978H682.399H681.821H681.243H680.666H680.089H679.512H678.936H678.361H677.786H677.212H676.638H676.065H675.492H674.92H674.348H673.777H673.207H672.638H672.069H671.5H670.933H670.366H669.799H669.234H668.669H668.105H667.542H666.979H666.417H665.856H665.296H664.737H664.178H663.621H663.064H662.508H661.953H661.399H660.845H660.293H659.742H659.191H658.642H658.093H657.545H656.999H656.453H655.909H655.365H654.823H654.281H653.741H653.202H652.664H652.127H651.591H651.056H650.522H649.99H649.459H648.928H648.4H647.872H647.345H646.82H646.296H645.774H645.252H644.732H644.213H643.696H643.18H642.665H642.151H641.639H641.128H640.619H640.111H639.605H639.1H638.596H638.094H637.593H637.094H636.596H636.1H635.605H635.112H634.62H634.13H633.642H633.155H632.67H632.186H631.704H631.224H630.745H630.268H629.792H629.318H628.846H628.376H627.907H627.441H626.975H626.512H626.051H625.591H625.133H624.677H624.222H623.77H623.319H622.87H622.424H621.979H621.536H621.094H620.655H620.218H619.783H619.349H618.918H618.488H618.061H617.636H617.212H616.791H616.372H615.955H615.54H615.127H614.716H614.307H613.901H613.496H613.094H612.694H612.296H611.9H611.507H611.115H610.726H610.34H609.955H609.573H609.193H608.815H608.44H608.067H607.696H607.328H606.962H606.599H606.237H605.879H605.522H605.168H604.817H604.468H604.121H603.777H603.436H603.097H602.76H602.426H602.095H601.766H601.44H601.116H600.795H600.476H600.16H599.847H599.537H599.229H598.923H598.621H598.321H598.024H597.729H597.438H597.149H596.863H596.579H596.299H596.021H595.746H595.474H595.204H594.938H594.674H594.414H594.156H593.901H593.649H593.4H593.154H592.91H592.67H592.433H592.199H591.968H591.739H591.514H591.292H591.073H590.857H590.644H590.434H590.228H590.024H589.824H589.626H589.432H589.241H589.054H588.869H588.688H588.51H588.335H588.163H587.995H587.83H587.668H587.509H587.354H587.202H587.054H586.909C585.844 372.727 585 371.873 585 370.727V300.5V299.5H584H542H541V300.5V370.727C541 371.832 540.105 372.727 539 372.727H538.625H538.25H537.875H537.5H537.125H536.75H536.375H536H535.625H535.25H534.875H534.5H534.125H533.75H533.375H533H532.625H532.25H531.875H531.5H531.125H530.75H530.375H530H529.625H529.25H528.875H528.5H528.125H527.75H527.375H527H526.625H526.25H525.875H525.5H525.125H524.75H524.375H524H523.625H523.25H522.875H522.5H522.125H521.75H521.375H521H520.625H520.25H519.875H519.5H519.125H518.75H518.375H518H517.625H517.25H516.875H516.5H516.125H515.75H515.375H515H514.625H514.25H513.875H513.5H513.125H512.75H512.375H512H511.625H511.25H510.875H510.5H510.125H509.75H509.375H509H508.625H508.25H507.875H507.5H507.125H506.75H506.375H506H505.625H505.25H504.875H504.5H504.125H503.75H503.375H503H502.625H502.25H501.875H501.5H501.125H500.75H500.375H500H499.625H499.25H498.875H498.5H498.125H497.75H497.375H497H496.625H496.25H495.875H495.5H495.125H494.75H494.375H494H493.625H493.25H492.875H492.5H492.125H491.75H491.375H491H490.625H490.25H489.875H489.5H489.125H488.75H488.375H488H487.625H487.25H486.875H486.5H486.125H485.75H485.375H485H484.625H484.25H483.875H483.5H483.125H482.75H482.375H482H481.625H481.25H480.875H480.5H480.125H479.75H479.375H479H478.625H478.25H477.875H477.5H477.125H476.75H476.375H476H475.625H475.25H474.875H474.5H474.125H473.75H473.375H473H472.625H472.25H471.875H471.5H471.125H470.75H470.375H470H469.625H469.25H468.875H468.5H468.125H467.75H467.375H467H466.625H466.25H465.875H465.5H465.125H464.75H464.375H464H463.625H463.25H462.875H462.5H462.125H461.75H461.375H461H460.625H460.25H459.875H459.5H459.125H458.75H458.375H458H457.625H457.25H456.875H456.5H456.125H455.75H455.375H455H454.625H454.25H453.875H453.5H453.125H452.75H452.375H452H451.625H451.25H450.875H450.5H450.125H449.75H449.375H449H448.625H448.25H447.875H447.5H447.125H446.75H446.375H446H445.625H445.25H444.875H444.5H444.125H443.75H443.375H443H442.625H442.25H441.875H441.5H441.125H440.75H440.375H440H439.625H439.25H438.875H438.5H438.125H437.75H437.375H437H436.625H436.25H435.875H435.5H435.125H434.75H434.375H434H433.625H433.25H432.875H432.5H432.125H431.75H431.375H431H430.625H430.25H429.875H429.5H429.125H428.75H428.375H428H427.625H427.25H426.875H426.5H426.125H425.75H425.375H425H424.625H424.25H423.875H423.5H423.125H422.75H422.375H422H421.625H421.25H420.875H420.5H420.125H419.75H419.375H419H418.625H418.25H417.875H417.5H417.125H416.75H416.375H416H415.625H415.25H414.875H414.5H414.125H413.75H413.375H413H412.625H412.25H411.875H411.5H411.125H410.75H410.375H410H409.625H409.25H408.875H408.5H408.125H407.75H407.375H407H406.625H406.25H405.875H405.5H405.125H404.75H404.375H404H403.625H403.25H402.875H402.5H402.125H401.75H401.375H401H400.625H400.25H399.875H399.5H399.125H398.75H398.375H398H397.625H397.25H396.875H396.5H396.125H395.75H395.375H395H394.625H394.25H393.875H393.5H393.125H392.75H392.375H392H391.625H391.25H390.875H390.5H390.125H389.75H389.375H389H388.625H388.25H387.875H387.5H387.125H386.75H386.375H386H385.625H385.25H384.875H384.5H384.125H383.75H383.375H383H382.625H382.25H381.875H381.5H381.125H380.75H380.375H380H379.625H379.25H378.875H378.5H378.125H377.75H377.375H377H376.625H376.25H375.875H375.5H375.125H374.75H374.375H374H373.625H373.25H372.875H372.5H372.125H371.75H371.375H371H370.625H370.25H369.875H369.5H369.125H368.75H368.375H368H367.625H367.25H366.875H366.5H366.125H365.75H365.375H365H364.625H364.25H363.875H363.5H363.125H362.75H362.375H362H361.625H361.25H360.875H360.5H360.125H359.75H359.375H359H358.625H358.25H357.875H357.5H357.125H356.75H356.375H356H355.625H355.25H354.875H354.5H354.125H353.75H353.375H353H352.625H352.25H351.875H351.5H351.125H350.75H350.375H350H349.625H349.25H348.875H348.5H348.125H347.75H347.375H347H346V373.727V410V411H347H347.254H347.517H347.789H348.07H348.359H348.657H348.963H349.279H349.602H349.935H350.275H350.625H350.983H351.349H351.723H352.106H352.497H352.897H353.304H353.72H354.144H354.576H355.017H355.465H355.921H356.385H356.858H357.338H357.826H358.322H358.826H359.337H359.856H360.383H360.918H361.46H362.01H362.567H363.132H363.705H364.285H364.872H365.467H366.069H366.678H367.295H367.919H368.55H369.189H369.834H370.487H371.147H371.813H372.487H373.168H373.856H374.55H375.252H375.96H376.675H377.397H378.126H378.861H379.603H380.352H381.107H381.869H382.637H383.412H384.193H384.981H385.775H386.576H387.382H388.195H389.015H389.84H390.672H391.51H392.354H393.204H394.06H394.922H395.79H396.664H397.543H398.429H399.321H400.218H401.121H402.03H402.944H403.865H404.79H405.722H406.659H407.601H408.549H409.502H410.461H411.425H412.395H413.369H414.35H415.335H416.325H417.321H418.322H419.328H420.339H421.355H422.376H423.402H424.432H425.468H426.509H427.554H428.605H429.66H430.719H431.784H432.853H433.926H435.004H436.087H437.174H438.266H439.362H440.463H441.568H442.677H443.791H444.909H446.031H447.157H448.287H449.422H450.56H451.703H452.85H454H455.155H456.314H457.476H458.642H459.812H460.986H462.164H463.345H464.53H465.719H466.911H468.107H469.306H470.509H471.715H472.925H474.138H475.355H476.574H477.797H479.024H480.253H481.486H482.722H483.961H485.203H486.448H487.696H488.947H490.201H491.458H492.718H493.981H495.246H496.515H497.785H499.059H500.335H501.614H502.896H504.18H505.467H506.756H508.047H509.341H510.638H511.936H513.238H514.541H515.846H517.154H518.464H519.776H521.09H522.407H523.725H525.045H526.367H527.692H529.018H530.346H531.676H533.007H534.34H535.675H537.012H538.351H539.691H541.032H542.375H543.72H545.066H546.414H547.763H549.113H550.465H551.818H553.172H554.528H555.884H557.242H558.601H559.961H561.323H562.685H564.048H565.412H566.777H568.143H569.51H570.878H572.246H573.615H574.985H576.356H577.727H579.099H580.471H581.844H583.217H584.591H585.966H587.34H588.716H590.091H591.467H592.843H594.219H595.595H596.972H598.349H599.725H601.102H602.479H603.856H605.233H606.609H607.986H609.362H610.739H612.115H613.49H614.866H616.241H617.616H618.99H620.364H621.737H623.11H624.483H625.854H627.226H628.596H629.966H631.335H632.704H634.071H635.438H636.804H638.169H639.533H640.897H642.259H643.62H644.98H646.339H647.697H649.054H650.409H651.764H653.117H654.468H655.819H657.168H658.515H659.862H661.206H662.549H663.891H665.231H666.57H667.906H669.241H670.575H671.906H673.236H674.564H675.89H677.214H678.537H679.857H681.175H682.492H683.806H685.118H686.428H687.736H689.041H690.345H691.646H692.945H694.241H695.535H696.827H698.116H699.402H700.686H701.968H703.247H704.523H705.797H707.068H708.336H709.602H710.865H712.124H713.381H714.635H715.887H717.135H718.38H719.622H720.861H722.097H723.33H724.559H725.786H727.009H728.229H729.445H730.658H731.868H733.074H734.277H735.477H736.673H737.865H739.053H740.238H741.42H742.598H743.771H744.942H746.108H747.27H748.429H749.584H750.734H751.881H753.024H754.163H755.297H756.428H757.554H758.676H759.794H760.908H762.017H763.122H764.222H765.319H766.41H767.498H768.581H769.659H770.733H771.802H772.866H773.926H774.981H776.031H777.077H778.117H779.153H780.184H781.21H782.231H783.247H784.258H785.264H786.265H787.261H788.251H789.237H790.217H791.192H792.161H793.126H794.084H795.038H795.986H796.928H797.865H798.797H799.723H800.643H801.557H802.466H803.369H804.267H805.158H806.044H806.924H807.798H808.666H809.528H810.384H811.234H812.078H812.916H813.748H814.574H815.393H816.206H817.013H817.813H818.608H819.395H820.177H820.952H821.72H822.482H823.237H823.986H824.728H825.464H826.192H826.914H827.629H828.338H829.039H829.734H830.422H831.103H831.777H832.444H833.104H833.756H834.402H835.04H835.672H836.296H836.913H837.522H838.124H838.719H839.307H839.887H840.459H841.024H841.582H842.132H842.674H843.209H843.736H844.255H844.767H845.271H845.767H846.255H846.735H847.207H847.672H848.128H848.577H849.017H849.449H849.873H850.289H850.697H851.097H851.488H851.871H852.245H852.612H852.97H853.319H853.66H853.992H854.316H854.632H854.938H855.236H855.526H855.806H856.078H856.341H856.596H856.841H857.078H857.305C859.651 411 861 409.062 861 407V324.5V323.5H860H818ZM260 275.5H259V276.5V319V320H260H302H303V319V276.5V275.5H302H260Z"
+            , Attributes.fill "#D8A46A"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "2"
+            ]
+            []
+        , Svg.rect
+            [ Attributes.x "594"
+            , Attributes.y "312"
+            , Attributes.width "134"
+            , Attributes.height "47"
+            , Attributes.rx "2"
+            , Attributes.fill "#966F40"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "2"
+            , Attributes.strokeLinejoin "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M699.5 344C699.5 344.552 698.94 345 698.25 345C697.56 345 697 344.552 697 344C697 343.448 697.56 343 698.25 343C698.94 343 699.5 343.448 699.5 344Z"
+            , Attributes.fill "#D8A46A"
+            ]
+            []
+        , path
+            [ Attributes.d "M684.5 338C684.5 338.552 683.94 339 683.25 339C682.56 339 682 338.552 682 338C682 337.448 682.56 337 683.25 337C683.94 337 684.5 337.448 684.5 338Z"
+            , Attributes.fill "#D8A46A"
+            ]
+            []
+        , path
+            [ Attributes.d "M638.5 347C638.5 347.552 637.94 348 637.25 348C636.56 348 636 347.552 636 347C636 346.448 636.56 346 637.25 346C637.94 346 638.5 346.448 638.5 347Z"
+            , Attributes.fill "#D8A46A"
+            ]
+            []
+        , path
+            [ Attributes.d "M605.5 339C605.5 339.552 604.94 340 604.25 340C603.56 340 603 339.552 603 339C603 338.448 603.56 338 604.25 338C604.94 338 605.5 338.448 605.5 339Z"
+            , Attributes.fill "#D8A46A"
+            ]
+            []
+        , path
+            [ Attributes.d "M639.5 329C639.5 329.552 638.94 330 638.25 330C637.56 330 637 329.552 637 329C637 328.448 637.56 328 638.25 328C638.94 328 639.5 328.448 639.5 329Z"
+            , Attributes.fill "#D8A46A"
+            ]
+            []
+        , path
+            [ Attributes.d "M716.5 332C716.5 332.552 715.94 333 715.25 333C714.56 333 714 332.552 714 332C714 331.448 714.56 331 715.25 331C715.94 331 716.5 331.448 716.5 332Z"
+            , Attributes.fill "#D8A46A"
+            ]
+            []
+        , path
+            [ Attributes.d "M679.5 350C679.5 350.552 678.94 351 678.25 351C677.56 351 677 350.552 677 350C677 349.448 677.56 349 678.25 349C678.94 349 679.5 349.448 679.5 350Z"
+            , Attributes.fill "#D8A46A"
+            ]
+            []
+        , path
+            [ Attributes.d "M678.5 324C678.5 324.552 677.94 325 677.25 325C676.56 325 676 324.552 676 324C676 323.448 676.56 323 677.25 323C677.94 323 678.5 323.448 678.5 324Z"
+            , Attributes.fill "#D8A46A"
+            ]
+            []
+        , path
+            [ Attributes.d "M621.5 348C621.5 348.552 620.94 349 620.25 349C619.56 349 619 348.552 619 348C619 347.448 619.56 347 620.25 347C620.94 347 621.5 347.448 621.5 348Z"
+            , Attributes.fill "#D8A46A"
+            ]
+            []
+        , path
+            [ Attributes.d "M709.179 297.403C708.619 300.087 707.347 302.754 705.518 304.512C704.281 305.702 702.594 306.453 700.726 306.905C698.861 307.356 696.85 307.5 695 307.5C693.15 307.5 691.139 307.356 689.274 306.905C687.406 306.453 685.719 305.702 684.482 304.512C682.632 302.733 681.352 300.025 680.802 297.31C680.701 296.814 680.897 296.414 681.234 296.172C681.578 295.924 682.081 295.839 682.58 296.048L687.45 298.089C688.202 298.404 689.06 298.333 689.749 297.899L694.251 295.063C694.72 294.767 695.313 294.755 695.794 295.029L700.923 297.958C701.62 298.356 702.466 298.395 703.196 298.063L707.38 296.163C707.882 295.935 708.392 296.012 708.742 296.257C709.084 296.496 709.285 296.899 709.179 297.403Z"
+            , Attributes.fill "#E93F3F"
+            , Attributes.stroke "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M698.556 321.79C698.169 321.819 697.947 322.144 697.972 322.532C698.312 327.94 698.793 332.852 699.124 333.141C699.864 333.785 696.165 334 695.178 334C694.191 334 690.985 333.57 691.478 333.141C692.482 332.267 693.125 328.881 693.432 324.087C693.47 323.489 692.965 322.986 692.378 322.867C691.661 322.722 690.775 322.415 689.675 321.912C686.195 320.32 682.478 318.091 683.061 316.878C683.318 316.341 687.947 315.92 691.427 317.512C691.903 317.73 693.638 318.715 693.638 318.468C693.692 313.901 693.458 308.697 692.958 308H697.891C697.484 308.355 697.497 312.592 697.705 317.49C697.729 318.061 697.892 318.188 698.351 317.848C698.843 317.483 699.487 317.072 699.871 316.878C702.657 315.472 706.737 315.363 706.953 315.77C707.467 316.741 703.684 319.796 700.899 321.202C699.927 321.693 699.107 321.75 698.556 321.79Z"
+            , Attributes.fill "#4C8943"
+            , Attributes.stroke "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M677.179 315.403C676.619 318.087 675.347 320.754 673.518 322.512C672.281 323.702 670.594 324.453 668.726 324.905C666.861 325.356 664.85 325.5 663 325.5C661.15 325.5 659.139 325.356 657.274 324.905C655.406 324.453 653.719 323.702 652.482 322.512C650.632 320.733 649.352 318.025 648.802 315.31C648.701 314.814 648.897 314.414 649.234 314.172C649.578 313.924 650.081 313.839 650.58 314.048L655.45 316.089C656.202 316.404 657.06 316.333 657.749 315.899L662.251 313.063C662.72 312.767 663.313 312.755 663.794 313.029L668.923 315.958C669.62 316.356 670.466 316.395 671.196 316.063L675.38 314.163C675.882 313.935 676.392 314.012 676.742 314.257C677.084 314.496 677.285 314.899 677.179 315.403Z"
+            , Attributes.fill "#EBD252"
+            , Attributes.stroke "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M660.241 339.79C660.624 339.819 660.842 340.141 660.818 340.524C660.486 345.935 660.016 350.852 659.692 351.141C658.969 351.785 662.583 352 663.547 352C664.51 352 667.642 351.57 667.16 351.141C666.178 350.265 665.55 345.776 665.251 340.819C665.215 340.221 665.721 339.718 666.307 339.593C667.002 339.446 667.86 339.141 668.921 338.644C672.32 337.052 676.517 334.092 675.948 332.878C675.696 332.341 670.609 332.652 667.21 334.244C666.745 334.462 665.051 335.446 665.051 335.2C664.998 330.633 665.226 326.697 665.715 326H660.897C661.294 326.355 661.282 330.592 661.078 335.492C661.055 336.061 660.893 336.185 660.438 335.841C659.959 335.478 659.336 335.071 658.963 334.878C656.242 333.472 652.257 333.363 652.046 333.77C651.544 334.741 655.239 337.796 657.959 339.202C658.904 339.691 659.702 339.749 660.241 339.79Z"
+            , Attributes.fill "#4C8943"
+            , Attributes.stroke "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M639.179 297.403C638.619 300.087 637.347 302.754 635.518 304.512C634.281 305.702 632.594 306.453 630.726 306.905C628.861 307.356 626.85 307.5 625 307.5C623.15 307.5 621.139 307.356 619.274 306.905C617.406 306.453 615.719 305.702 614.482 304.512C612.632 302.733 611.352 300.025 610.802 297.31C610.701 296.814 610.897 296.414 611.234 296.172C611.578 295.924 612.081 295.839 612.58 296.048L617.45 298.089C618.202 298.404 619.06 298.333 619.749 297.899L624.251 295.063C624.72 294.767 625.313 294.755 625.794 295.029L630.923 297.958C631.62 298.356 632.466 298.395 633.196 298.063L637.38 296.163C637.882 295.935 638.392 296.012 638.742 296.257C639.084 296.496 639.285 296.899 639.179 297.403Z"
+            , Attributes.fill "#E93F3F"
+            , Attributes.stroke "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M628.556 321.79C628.169 321.819 627.947 322.144 627.972 322.532C628.312 327.94 628.793 332.852 629.124 333.141C629.864 333.785 626.165 334 625.178 334C624.191 334 620.985 333.57 621.478 333.141C622.482 332.267 623.125 328.881 623.432 324.087C623.47 323.489 622.965 322.986 622.378 322.867C621.661 322.722 620.775 322.415 619.675 321.912C616.195 320.32 612.478 318.091 613.061 316.878C613.318 316.341 617.947 315.92 621.427 317.512C621.903 317.73 623.638 318.715 623.638 318.468C623.692 313.901 623.458 308.697 622.958 308H627.891C627.484 308.355 627.497 312.592 627.705 317.49C627.729 318.061 627.892 318.188 628.351 317.848C628.843 317.483 629.487 317.072 629.871 316.878C632.657 315.472 636.737 315.363 636.953 315.77C637.467 316.741 633.684 319.796 630.899 321.202C629.927 321.693 629.107 321.75 628.556 321.79Z"
+            , Attributes.fill "#4C8943"
+            , Attributes.stroke "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M433.764 423.683L430.542 427.366H424.557L420.414 433.35L413.509 437.954L412.128 444.859L407.524 447.161L406.143 454.987L402.46 462.353L406.143 468.337L404.762 473.401L407.064 475.703L414.43 478.926L422.256 480.767L432.844 482.148L447.115 483.069H487.166L495.452 482.608L504.199 480.307L509.263 478.005L511.564 473.862L507.882 466.956V460.972L503.278 455.908V452.225L500.976 448.082L496.373 446.24L494.071 442.558L490.388 440.716H485.785L482.102 435.192L476.577 433.35L475.196 431.049L470.133 427.366H465.529L460.005 422.762H454.02L450.337 420.921H446.194L442.051 423.683H433.764Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M447.204 420.107C446.285 420.219 445.086 420.525 444.557 420.776C443.442 421.333 441.91 422.615 441.715 423.2C441.603 423.535 441.436 423.507 440.767 423.061C440.099 422.587 439.486 422.504 437.173 422.504C434.637 422.531 434.275 422.587 433.077 423.284C431.795 424.064 430.346 425.485 430.346 426.014C430.346 426.154 429.622 426.182 428.702 426.098C426.557 425.847 425.386 426.098 423.882 427.101C422.572 427.965 420.315 430.779 420.315 431.532C420.315 432.117 419.702 433.51 419.423 433.51C419.312 433.51 418.894 433.649 418.448 433.844C418.03 434.012 417.612 434.179 417.529 434.207C416.804 434.374 415.216 435.488 414.185 436.547C412.346 438.442 411.649 439.974 411.621 442.371C411.594 443.708 411.454 444.377 411.259 444.377C411.064 444.377 410.145 444.767 409.225 445.241C406.355 446.745 405.408 448.724 405.603 453.043C405.658 454.547 405.631 455.801 405.519 455.801C405.129 455.801 403.095 457.919 402.649 458.811C401.34 461.346 402.064 465.08 404.349 467.365L405.603 468.647L405.045 469.26C404.405 469.956 403.764 472.353 403.987 473.217C404.237 474.136 407.915 477.531 409.03 478.005C412.588 479.517 413.509 479.966 417.192 480.767C427.78 483.069 431.463 482.892 442.051 483.529C449.877 484 449.963 484 472.282 484C487.384 484 494.406 483.638 497.917 482.69C504.382 480.963 506.834 480.127 508.088 479.291C508.617 478.929 509.146 478.65 509.258 478.65C509.871 478.65 511.571 476.867 512.156 475.641C512.546 474.833 512.574 474.415 512.323 473.384C512.016 472.046 509.704 467.588 509.063 467.059C508.728 466.808 508.728 466.585 509.063 465.61C509.927 463.158 508.338 459.257 505.44 456.693C504.27 455.662 504.187 455.495 504.187 454.213C504.187 449.448 502.32 446.829 498.335 446.021C496.802 445.714 496.775 445.687 496.022 444.154C495.131 442.287 494.852 441.925 493.71 441.117C491.62 439.668 489.001 439.222 487.106 440.03L486.186 440.392L485.573 439.111C483.985 435.711 481.477 433.538 478.44 432.925C476.88 432.618 476.601 432.479 476.601 431.977C476.601 430.668 473.341 427.881 470.638 426.906C469.997 426.683 468.548 426.46 467.406 426.432C465.595 426.349 465.288 426.265 464.898 425.68C463.115 422.922 458.684 421.222 455.424 422.058C454.059 422.42 453.947 422.392 453.251 421.779C451.439 420.191 449.991 419.773 447.204 420.107ZM451.189 422.197C452.47 423.005 452.888 423.479 454.003 425.569C455.034 427.408 455.647 428.216 456.065 428.216C456.483 428.216 456.037 426.126 455.396 425.011C454.923 424.231 454.867 423.925 455.118 423.674C455.647 423.144 459.074 423.367 460.495 424.008C463.003 425.151 465.427 428.411 465.065 430.166C464.87 431.225 465.121 431.838 465.734 431.838C466.152 431.838 466.291 431.532 466.458 430.584C466.542 429.888 466.57 429.024 466.514 428.634C466.375 427.965 466.43 427.937 467.824 427.937C469.635 427.937 470.749 428.327 472.672 429.581C474.957 431.086 475.347 431.922 475.347 435.46C475.347 438.191 475.375 438.386 475.904 438.386C476.517 438.386 476.796 437.55 476.852 435.377C476.88 434.095 476.907 434.067 477.799 434.067C479.415 434.067 481.449 435.265 482.843 437.049C484.514 439.166 485.127 441.089 484.682 442.928C484.041 445.547 484.013 446.105 484.542 445.993C484.988 445.91 486.075 443.625 486.075 442.733C486.075 442.12 487.134 441.368 488.332 441.173C491.035 440.699 493.459 442.009 494.629 444.544C495.632 446.773 495.744 448.027 495.019 449.253C494.713 449.811 494.434 450.451 494.434 450.674C494.434 451.343 495.27 451.12 496.134 450.201C496.747 449.56 496.942 449.058 496.942 448.25C496.942 446.996 497.109 446.941 498.92 447.581C501.484 448.501 502.793 450.702 502.821 454.13C502.849 456.052 502.431 457.501 501.289 459.563C500.453 461.04 500.369 461.653 501.038 461.653C501.679 461.653 502.515 460.845 502.515 460.204C502.515 459.925 502.626 459.702 502.765 459.702C502.905 459.702 503.239 459.145 503.546 458.448L504.075 457.195L504.995 458.142C506.332 459.507 507.029 460.817 507.614 462.962C507.976 464.384 507.67 465.582 506.276 467.894C505.663 468.898 505.385 469.65 505.552 469.817C505.886 470.151 506.778 469.65 507.53 468.703L508.143 467.922L508.589 468.591C509.481 469.929 510.874 473.244 510.874 474.052C510.874 475.501 509.286 477.424 507.196 478.511C505.998 479.124 504.242 479.681 499.171 481.046C493.905 482.44 489.056 482.663 467.991 482.607C451.874 482.549 431.002 482.148 417.652 479.386C413.509 478.529 407.049 476.115 405.686 472.966C405.073 471.573 406.16 469.26 407.275 469.538C407.581 469.622 407.888 469.483 408.055 469.148C408.278 468.73 408.222 468.563 407.665 468.285C404.6 466.613 402.9 462.712 403.987 459.842C404.516 458.504 406.021 457 407.024 456.804C407.358 456.749 408.278 456.582 409.03 456.442C410.173 456.275 410.423 456.108 410.423 455.662C410.423 455.16 410.256 455.105 409.03 455.188C407.748 455.272 407.609 455.216 407.302 454.492C406.94 453.628 407.052 450.424 407.498 449.225C408.612 446.3 411.872 445.018 415.16 446.188C415.913 446.467 416.358 446.495 416.553 446.3C416.916 445.937 415.55 444.711 414.519 444.488C412.987 444.154 412.987 444.182 413.126 442.343C413.265 440.197 413.962 438.748 415.522 437.216C416.665 436.101 418.81 434.903 419.646 434.903C419.841 434.903 420.928 435.349 422.015 435.878C424.049 436.882 424.885 437.049 425.163 436.603C425.303 436.38 422.489 434.29 421.68 434.012C421.151 433.844 421.708 431.922 422.767 430.306C423.882 428.634 425.972 427.38 427.671 427.38C428.507 427.38 430.82 428.411 432.854 429.665C433.133 429.86 433.467 429.943 433.551 429.86C433.829 429.553 432.798 427.909 432.13 427.603C431.21 427.185 431.294 426.823 432.603 425.513C433.969 424.12 435.752 423.59 438.092 423.869C439.932 424.092 441.548 424.956 443.359 426.739C444.083 427.436 444.724 427.854 444.78 427.686C444.975 427.101 444.25 425.429 443.554 424.9C442.69 424.231 442.718 424.036 443.665 423.117C444.808 422.03 446.173 421.556 448.263 421.528C449.768 421.528 450.353 421.668 451.189 422.197Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M460.05 447.637C458.684 450.284 455.452 451.845 451.997 451.538C450.046 451.371 448.904 450.73 448.04 449.393C447.288 448.195 446.786 447.972 446.786 448.808C446.786 449.866 447.343 450.786 448.458 451.594L449.6 452.43L448.765 452.848C447.761 453.377 445.059 453.433 443.693 452.959C442.411 452.541 441.353 451.706 440.963 450.897C440.795 450.535 440.545 450.229 440.377 450.229C439.876 450.229 440.071 451.65 440.712 452.681L441.297 453.656L440.628 454.158C438.594 455.69 434.303 454.548 431.684 451.761C430.653 450.675 429.789 450.173 429.789 450.647C429.789 451.204 430.681 452.709 431.349 453.322C432.548 454.408 434.888 455.718 436.198 456.08C438.566 456.721 442.049 455.607 442.049 454.241C442.049 453.907 442.161 453.907 442.634 454.13C442.941 454.297 444.223 454.52 445.477 454.603C447.455 454.743 447.956 454.659 449.099 454.13C449.823 453.795 450.409 453.35 450.409 453.127C450.409 452.82 450.966 452.736 453 452.736C455.34 452.736 455.786 452.653 457.291 451.901C459.158 450.953 460.468 449.671 460.941 448.306C461.359 447.08 461.359 446.885 460.858 446.885C460.635 446.885 460.272 447.219 460.05 447.637Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M487.886 456.609C487.802 456.776 487.997 457.306 488.304 457.807C488.638 458.337 488.861 459.229 488.861 459.897C488.861 460.873 488.666 461.291 487.858 462.21C487.301 462.823 486.186 463.631 485.35 464.049C484.041 464.69 483.595 464.774 482.146 464.634C481.226 464.551 480.168 464.272 479.777 464.021C479.387 463.77 478.997 463.631 478.914 463.715C478.579 464.049 479.164 465.331 479.833 465.609C480.864 466.083 480.558 466.696 478.83 467.588C476.768 468.675 473.787 468.786 471.78 467.866C471.056 467.532 470.359 467.253 470.248 467.253C469.858 467.281 470.22 468.201 470.805 468.702C471.418 469.204 471.418 469.232 470.917 470.151C470.025 471.767 468.102 472.074 464.759 471.127C461.889 470.319 460.746 470.848 463.059 471.935C464.954 472.798 466.681 473.161 468.409 472.993C470.304 472.826 471.223 472.213 472.031 470.653C472.477 469.789 472.728 469.566 473.006 469.761C473.87 470.291 477.019 469.901 479.248 468.981C480.641 468.396 481.895 467.281 481.895 466.613C481.895 466.195 482.118 466.111 483.093 466.111C485.685 466.111 489.335 463.464 489.976 461.123C490.394 459.591 490.171 458.476 489.251 457.278C488.527 456.331 488.192 456.163 487.886 456.609Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M423.492 465.136C423.324 465.804 423.436 466.613 423.854 467.671C424.021 468.117 423.854 468.145 422.182 467.978C419.702 467.755 418.309 467.003 417.779 465.609C417.501 464.913 417.111 464.801 416.86 465.414C416.637 466.027 417.25 467.226 418.225 468.089C419.591 469.315 423.269 469.789 424.355 468.897C424.634 468.674 424.968 468.702 425.665 469.092C426.389 469.483 427.281 469.594 430.123 469.622C432.241 469.65 434.024 469.817 434.526 470.012C435.975 470.597 440.656 470.012 440.656 469.204C440.656 468.786 439.987 468.674 438.538 468.897C436.476 469.232 434.916 468.842 433.829 467.755C433.3 467.226 432.854 466.613 432.854 466.362C432.854 465.749 432.129 465.164 431.6 465.386C431.238 465.526 431.266 465.749 431.851 466.891L432.547 468.256L431.098 468.424C429.594 468.619 428.841 468.535 426.64 468.006C425.08 467.616 424.801 467.365 424.662 466.083C424.606 465.554 424.55 465.052 424.523 464.969C424.523 464.857 424.3 464.718 424.077 464.606C423.798 464.523 423.603 464.69 423.492 465.136Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M406.75 344.458H423.375L450.062 344.895L459.688 344.02L464.062 342.27L467.125 335.708V332.645L463.188 326.52L459.25 324.333V321.708L457.938 315.583L453.562 311.645H448.75L447.438 308.145L443.938 304.208L438.688 302.895L434.312 305.083L427.312 303.333L422.5 305.083L419.438 309.458L416.812 309.02L412.438 309.895L408.938 314.708L408.062 318.645L401.938 325.208V330.458L398.875 334.395L399.75 340.958L406.75 344.458Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M437.523 302.363C436.213 302.823 434.612 303.794 434.612 304.134C434.612 304.522 434.151 304.425 432.695 303.745C430.536 302.702 428.765 302.387 426.945 302.678C424.446 303.09 422.724 303.842 421.632 305.007C420.322 306.39 420.225 306.536 419.691 307.652L419.23 308.646L417.58 308.404C416.222 308.234 415.615 308.282 414.305 308.622C412.946 308.986 412.485 309.253 411.466 310.32C409.986 311.849 409.137 312.916 408.385 314.202C407.924 314.979 407.803 315.537 407.803 316.968C407.803 318.715 407.754 318.788 407.172 318.958C405.789 319.321 404.236 320.656 402.878 322.645C401.155 325.144 400.67 326.964 401.107 329.22L401.325 330.433L400.306 331.428C399.724 331.962 398.972 333.078 398.583 333.854C398.001 335.092 397.928 335.48 398.05 336.863C398.147 338.391 399.141 340.987 399.966 342.006C401.907 343.947 406.05 344.7 408.143 345.063C409.162 345.087 411.03 345.184 412.291 345.257C413.553 345.306 415.591 345.281 416.78 345.184C417.993 345.063 421.414 345.063 424.422 345.184C430.9 345.451 433.617 345.5 438.009 345.427C439.804 345.403 443.589 345.427 446.379 345.524C453.949 345.767 454.216 345.742 456.496 345.184C458.827 344.589 462.039 344.802 463.92 343.122C465.344 341.817 467.073 338.785 467.632 336.96C468.627 333.757 467.584 330.021 464.745 326.527C463.92 325.484 461.979 324.368 460.499 324.028C460.014 323.931 459.747 323.737 459.796 323.519C460.16 322.039 460.111 319.831 459.723 318.545C459.213 316.871 458.194 314.785 457.345 313.644C456.787 312.916 455.235 311.63 454.094 311C453.318 310.563 451.353 310.369 450.237 310.636L449.218 310.854L448.926 309.859C448.417 308.04 447.374 306.244 446.136 305.031C444.753 303.697 444.268 303.406 441.939 302.557C440.022 301.877 439.076 301.829 437.523 302.363ZM442.449 304.134C444.899 305.056 446.622 307.069 447.641 310.102L448.15 311.606L447.422 312.14C446.5 312.819 445.821 314.226 446.209 314.615C446.452 314.857 446.646 314.76 447.18 314.178C447.544 313.79 448.344 313.11 448.975 312.674C449.945 312.019 450.309 311.897 451.547 311.897C452.687 311.897 453.172 312.019 453.876 312.504C454.361 312.844 454.822 313.11 454.895 313.11C455.259 313.11 456.593 314.882 457.321 316.337C458.534 318.715 458.922 320.413 458.631 322.136C458.51 322.912 458.364 323.64 458.291 323.761C458.219 323.858 457.661 324.028 457.054 324.101C455.768 324.295 454.895 324.708 453.949 325.605C453.415 326.115 453.318 326.333 453.56 326.6C453.949 327.085 454.361 327.012 455.162 326.357C456.666 325.096 459.844 324.95 461.955 326.042C463.605 326.915 465.764 330.336 466.322 333.029C466.565 334.218 466.434 335.735 465.9 337.7C465.556 338.929 463.92 342.21 462.75 342.6C461.184 343.122 459.966 343.316 458.85 343.462C457.733 343.583 456.132 343.874 455.283 344.068C454.07 344.36 452.857 344.408 449.703 344.287C445.239 344.141 440.022 344.093 433.884 344.141C431.676 344.165 428.692 344.068 427.212 343.947C419.779 343.204 408.274 345.066 404.697 342.95C401.349 341.907 401.131 341.594 400.16 339.701C399.457 338.27 399.336 337.785 399.311 336.305C399.311 334.364 399.845 333.199 401.179 332.253L401.907 331.719L402.829 332.253C403.897 332.835 405.498 332.957 405.498 332.423C405.498 332.229 405.134 331.962 404.697 331.816C402.926 331.234 401.883 329.099 402.223 326.721C402.514 324.489 405.377 320.923 407.293 320.34C408.167 320.074 408.264 320.098 408.628 320.607C409.55 321.917 410.035 322.403 410.302 322.233C410.472 322.136 410.375 321.675 409.986 320.801C409.671 320.122 409.283 318.739 409.113 317.769C408.846 316.216 408.87 315.876 409.234 315.148C409.768 314.032 412.146 311.072 412.922 310.563C415.106 309.132 418.842 309.18 419.206 310.636C419.4 311.436 420.007 312.14 420.492 312.14C420.71 312.14 420.783 311.994 420.662 311.703C420.322 310.854 420.249 309.544 420.516 308.574C420.856 307.312 423.015 304.959 424.058 304.74C424.471 304.643 425.199 304.425 425.708 304.231C426.897 303.794 429.299 303.794 430.415 304.255C430.876 304.449 431.434 304.619 431.628 304.619C431.822 304.619 432.307 304.861 432.744 305.153C433.423 305.638 433.52 305.832 433.448 306.608C433.35 307.846 433.908 307.821 434.491 306.584C435.777 303.697 438.882 302.751 442.449 304.134Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M433.084 316.652C432.987 316.749 432.914 317.162 432.914 317.574C432.89 318.982 432.113 320.267 430.9 320.825C429.42 321.529 427.698 321.723 426.363 321.335C424.689 320.874 424.495 320.85 424.18 321.238C423.937 321.529 424.034 321.65 424.762 322.014C425.247 322.233 425.635 322.572 425.635 322.742C425.635 323.373 424.932 324.44 424.446 324.586C423.452 324.829 420.152 324.586 419.4 324.174C417.993 323.47 417.289 323.907 418.333 324.853C419.036 325.484 418.599 326.43 417.216 327.303C415.906 328.128 414.62 328.201 413.383 327.57C412.461 327.085 412.291 327.085 412.316 327.594C412.316 328.322 413.674 329.196 414.96 329.317C415.931 329.414 416.343 329.317 417.216 328.808C418.43 328.104 419.812 326.624 419.812 326.066C419.812 325.823 419.958 325.751 420.249 325.823C420.492 325.92 421.414 325.993 422.263 325.993C424.592 326.042 426.606 324.853 426.606 323.494C426.606 323.058 426.751 322.985 429.129 322.572C430.924 322.281 432.914 321.165 433.375 320.243C434.03 318.933 433.787 315.973 433.084 316.652Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M431.943 328.516C431.458 329.099 431.385 330.627 431.798 331.404C431.992 331.792 432.113 332.18 432.065 332.277C432.016 332.35 431.531 332.447 430.973 332.471C429.517 332.568 427.576 331.865 426.897 331.04C426.218 330.215 425.878 330.142 425.878 330.821C425.878 331.622 426.606 332.495 427.673 333.078C428.474 333.49 429.129 333.587 430.924 333.636C432.671 333.66 433.302 333.757 433.69 334.072C434.539 334.8 435.922 335.383 437.184 335.552C438.179 335.674 438.64 335.601 439.416 335.213C440.265 334.776 440.435 334.752 440.678 335.067C440.847 335.261 441.09 335.431 441.211 335.431C441.333 335.431 441.842 335.722 442.303 336.086C443.104 336.693 443.371 336.765 445.02 336.741C447.665 336.693 450.867 335.674 450.867 334.873C450.867 334.727 451.037 334.436 451.256 334.194C451.474 333.951 451.571 333.636 451.474 333.514C451.256 333.126 450.625 333.199 450.479 333.611C450.164 334.436 447.107 335.649 445.166 335.698C444.632 335.722 443.807 335.577 443.322 335.358C442.158 334.873 440.581 333.442 440.192 332.52C439.901 331.816 439.95 330.336 440.289 329.535C440.605 328.856 439.828 329.026 439.246 329.754C438.64 330.53 438.591 331.695 439.101 332.932C439.295 333.393 439.464 333.83 439.464 333.878C439.464 334.121 437.475 334.436 436.771 334.315C434.394 333.854 432.89 332.131 432.72 329.657C432.623 328.104 432.453 327.886 431.943 328.516Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M690.75 471.458H707.375L734.062 471.895L743.688 471.02L748.062 469.27L751.125 462.708V459.645L747.188 453.52L743.25 451.333V448.708L741.938 442.583L737.562 438.645H732.75L731.438 435.145L727.938 431.208L722.688 429.895L718.312 432.083L711.312 430.333L706.5 432.083L703.438 436.458L700.812 436.02L696.438 436.895L692.938 441.708L692.062 445.645L685.938 452.208V457.458L682.875 461.395L683.75 467.958L690.75 471.458Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M721.523 429.363C720.213 429.823 718.612 430.794 718.612 431.134C718.612 431.522 718.151 431.425 716.695 430.745C714.536 429.702 712.765 429.387 710.945 429.678C708.446 430.09 706.724 430.842 705.632 432.007C704.322 433.39 704.225 433.536 703.691 434.652L703.23 435.646L701.58 435.404C700.222 435.234 699.615 435.282 698.305 435.622C696.946 435.986 696.485 436.253 695.466 437.32C693.986 438.849 693.137 439.916 692.385 441.202C691.924 441.979 691.803 442.537 691.803 443.968C691.803 445.715 691.754 445.788 691.172 445.958C689.789 446.321 688.236 447.656 686.878 449.645C685.155 452.144 684.67 453.964 685.107 456.22L685.325 457.433L684.306 458.428C683.724 458.962 682.972 460.078 682.583 460.854C682.001 462.092 681.928 462.48 682.05 463.863C682.147 465.391 683.141 467.987 683.966 469.006C685.907 470.947 690.05 471.7 692.143 472.063C693.162 472.087 695.03 472.184 696.291 472.257C697.553 472.306 699.591 472.281 700.78 472.184C701.993 472.063 705.414 472.063 708.422 472.184C714.9 472.451 717.617 472.5 722.009 472.427C723.804 472.403 727.589 472.427 730.379 472.524C737.949 472.767 738.216 472.742 740.496 472.184C742.827 471.589 746.039 471.802 747.92 470.122C749.344 468.817 751.073 465.785 751.632 463.96C752.627 460.757 751.584 457.021 748.745 453.527C747.92 452.484 745.979 451.368 744.499 451.028C744.014 450.931 743.747 450.737 743.796 450.519C744.16 449.039 744.111 446.831 743.723 445.545C743.213 443.871 742.194 441.785 741.345 440.644C740.787 439.916 739.235 438.63 738.094 438C737.318 437.563 735.353 437.369 734.237 437.636L733.218 437.854L732.926 436.859C732.417 435.04 731.374 433.244 730.136 432.031C728.753 430.697 728.268 430.406 725.939 429.557C724.022 428.877 723.076 428.829 721.523 429.363ZM726.449 431.134C728.899 432.056 730.622 434.069 731.641 437.102L732.15 438.606L731.422 439.14C730.5 439.819 729.821 441.226 730.209 441.615C730.452 441.857 730.646 441.76 731.18 441.178C731.544 440.79 732.344 440.11 732.975 439.674C733.945 439.019 734.309 438.897 735.547 438.897C736.687 438.897 737.172 439.019 737.876 439.504C738.361 439.844 738.822 440.11 738.895 440.11C739.259 440.11 740.593 441.882 741.321 443.337C742.534 445.715 742.922 447.413 742.631 449.136C742.51 449.912 742.364 450.64 742.291 450.761C742.219 450.858 741.661 451.028 741.054 451.101C739.768 451.295 738.895 451.708 737.949 452.605C737.415 453.115 737.318 453.333 737.56 453.6C737.949 454.085 738.361 454.012 739.162 453.357C740.666 452.096 743.844 451.95 745.955 453.042C747.605 453.915 749.764 457.336 750.322 460.029C750.565 461.218 750.434 462.735 749.9 464.7C749.556 465.929 747.92 469.21 746.75 469.6C745.184 470.122 743.966 470.316 742.85 470.462C741.733 470.583 740.132 470.874 739.283 471.068C738.07 471.36 736.857 471.408 733.703 471.287C729.239 471.141 724.022 471.093 717.884 471.141C715.676 471.165 712.692 471.068 711.212 470.947C703.779 470.204 692.274 472.066 688.697 469.95C685.349 468.907 685.131 468.594 684.16 466.701C683.457 465.27 683.336 464.785 683.311 463.305C683.311 461.364 683.845 460.199 685.179 459.253L685.907 458.719L686.829 459.253C687.897 459.835 689.498 459.957 689.498 459.423C689.498 459.229 689.134 458.962 688.697 458.816C686.926 458.234 685.883 456.099 686.223 453.721C686.514 451.489 689.377 447.923 691.293 447.34C692.167 447.074 692.264 447.098 692.628 447.607C693.55 448.917 694.035 449.403 694.302 449.233C694.472 449.136 694.375 448.675 693.986 447.801C693.671 447.122 693.283 445.739 693.113 444.769C692.846 443.216 692.87 442.876 693.234 442.148C693.768 441.032 696.146 438.072 696.922 437.563C699.106 436.132 702.842 436.18 703.206 437.636C703.4 438.436 704.007 439.14 704.492 439.14C704.71 439.14 704.783 438.994 704.662 438.703C704.322 437.854 704.249 436.544 704.516 435.574C704.856 434.312 707.015 431.959 708.058 431.74C708.471 431.643 709.199 431.425 709.708 431.231C710.897 430.794 713.299 430.794 714.415 431.255C714.876 431.449 715.434 431.619 715.628 431.619C715.822 431.619 716.307 431.861 716.744 432.153C717.423 432.638 717.52 432.832 717.448 433.608C717.35 434.846 717.908 434.821 718.491 433.584C719.777 430.697 722.882 429.751 726.449 431.134Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M717.084 443.652C716.987 443.749 716.914 444.162 716.914 444.574C716.89 445.982 716.113 447.267 714.9 447.825C713.42 448.529 711.698 448.723 710.363 448.335C708.689 447.874 708.495 447.85 708.18 448.238C707.937 448.529 708.034 448.65 708.762 449.014C709.247 449.233 709.635 449.572 709.635 449.742C709.635 450.373 708.932 451.44 708.446 451.586C707.452 451.829 704.152 451.586 703.4 451.174C701.993 450.47 701.289 450.907 702.333 451.853C703.036 452.484 702.599 453.43 701.216 454.303C699.906 455.128 698.62 455.201 697.383 454.57C696.461 454.085 696.291 454.085 696.316 454.594C696.316 455.322 697.674 456.196 698.96 456.317C699.931 456.414 700.343 456.317 701.216 455.808C702.43 455.104 703.812 453.624 703.812 453.066C703.812 452.823 703.958 452.751 704.249 452.823C704.492 452.92 705.414 452.993 706.263 452.993C708.592 453.042 710.606 451.853 710.606 450.494C710.606 450.058 710.751 449.985 713.129 449.572C714.924 449.281 716.914 448.165 717.375 447.243C718.03 445.933 717.787 442.973 717.084 443.652Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M715.943 455.516C715.458 456.099 715.385 457.627 715.798 458.404C715.992 458.792 716.113 459.18 716.065 459.277C716.016 459.35 715.531 459.447 714.973 459.471C713.517 459.568 711.576 458.865 710.897 458.04C710.218 457.215 709.878 457.142 709.878 457.821C709.878 458.622 710.606 459.495 711.673 460.078C712.474 460.49 713.129 460.587 714.924 460.636C716.671 460.66 717.302 460.757 717.69 461.072C718.539 461.8 719.922 462.383 721.184 462.552C722.179 462.674 722.64 462.601 723.416 462.213C724.265 461.776 724.435 461.752 724.678 462.067C724.847 462.261 725.09 462.431 725.211 462.431C725.333 462.431 725.842 462.722 726.303 463.086C727.104 463.693 727.371 463.765 729.02 463.741C731.665 463.693 734.867 462.674 734.867 461.873C734.867 461.727 735.037 461.436 735.256 461.194C735.474 460.951 735.571 460.636 735.474 460.514C735.256 460.126 734.625 460.199 734.479 460.611C734.164 461.436 731.107 462.649 729.166 462.698C728.632 462.722 727.807 462.577 727.322 462.358C726.158 461.873 724.581 460.442 724.192 459.52C723.901 458.816 723.95 457.336 724.289 456.535C724.605 455.856 723.828 456.026 723.246 456.754C722.64 457.53 722.591 458.695 723.101 459.932C723.295 460.393 723.464 460.83 723.464 460.878C723.464 461.121 721.475 461.436 720.771 461.315C718.394 460.854 716.89 459.131 716.72 456.657C716.623 455.104 716.453 454.886 715.943 455.516Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M78.6726 277.015V261.86L79.9355 260.597L88.7761 261.229L95.7222 258.071L106.457 261.229L113.403 258.071V267.543L117.824 292.171L107.72 294.696L76.1467 290.908L78.6726 277.015Z"
+            , Attributes.fill "#D8A46A"
+            ]
+            []
+        , path
+            [ Attributes.d "M62.8859 261.229H71.095L78.0411 259.966L85.6187 261.229L96.3536 258.071L105.194 261.229L115.298 257.44L128.558 260.597L134.242 256.809L150.028 262.492L160.763 256.177L170.235 259.966L178.444 258.071L182.233 251.757L180.339 244.811L166.446 230.287L144.977 217.026L131.716 206.923L119.086 191.136L120.981 187.347L126.033 184.19L130.453 187.979L136.768 191.136L143.082 189.873L147.502 183.558L155.08 189.873H161.395L167.709 187.347L168.972 179.138L166.446 172.823L134.242 148.828L117.824 141.25L115.298 134.935H121.612L127.296 131.778L137.399 135.567L144.977 131.147L153.186 134.304H156.974L162.658 131.778L164.552 127.989L158.869 119.78L151.291 114.097L124.77 88.2068L104.563 70.5257L100.142 68.6313L90.6704 73.0516L62.8859 100.205L35.7328 118.517L31.944 123.569L30.6811 135.567L34.4699 138.724L42.0475 133.672L52.151 138.724L59.7286 134.304H62.8859L67.9376 137.461H71.7264L77.4096 134.304L78.0411 137.461L70.4635 145.039L52.7824 152.616L33.8384 170.929L30.0496 176.612V186.084L35.1014 188.61L46.4678 180.401L48.9936 186.084L52.7824 189.242L63.5174 184.821L71.095 189.242L78.6726 186.716L79.304 190.504L72.9894 199.976L24.9979 239.127L14.2629 253.02V257.44L21.2091 260.597L35.1014 258.071L42.0475 262.492L54.6768 257.44L62.8859 261.229Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M97.7268 68.1597C95.1901 68.8054 91.9154 70.6964 88.8253 73.3714C87.1649 74.8473 84.7204 76.9228 83.3829 77.9836C82.0454 79.0905 80.9846 80.1513 80.9846 80.3819C80.9385 80.5664 78.125 83.5643 74.712 86.9773C71.2529 90.3903 68.1166 93.6649 67.7477 94.3106C67.3326 94.9102 66.6869 95.4176 66.364 95.4176C65.995 95.4176 65.7183 95.6482 65.7183 95.8788C65.7183 96.8012 55.0642 105.564 53.9573 105.564C53.7728 105.564 52.2508 106.441 50.5904 107.548C48.8839 108.654 46.3472 110.13 44.9636 110.868C38.4604 114.327 33.3409 118.94 31.5883 122.86C30.1585 126.135 29.1899 131.346 29.5589 134.021C29.7895 136.051 30.1124 136.696 31.4038 137.85C32.4185 138.726 33.5254 139.233 34.4017 139.233C36.1543 139.233 39.06 137.757 40.2591 136.235C41.735 134.39 44.1334 134.621 46.5778 136.881C50.1753 140.202 53.4961 140.248 57.0474 137.112C58.016 136.235 59.3535 135.451 60.0453 135.267C60.7833 135.128 61.5674 134.944 61.8902 134.852C62.1669 134.759 63.1355 135.174 63.9657 135.774C64.7959 136.374 65.9489 137.25 66.5024 137.665C68.8085 139.325 72.5443 138.772 76.2341 136.189C77.2026 135.451 77.2487 135.497 77.2487 136.512C77.2487 138.311 68.5317 146.151 66.5024 146.151C66.1795 146.151 65.3955 146.428 64.7498 146.797C64.0579 147.12 62.3975 147.812 61.06 148.227C57.278 149.472 51.5128 152.516 48.5149 154.776C42.6113 159.342 31.0809 172.072 29.7895 175.439C27.1145 182.495 28.6826 188.491 33.387 189.275C34.9551 189.552 35.5086 189.367 37.538 187.938C38.8294 187.015 40.0747 186.277 40.3053 186.277C40.582 186.277 41.6428 185.263 42.7497 183.971C44.6407 181.803 46.3472 180.973 46.3472 182.219C46.3472 183.279 49.0684 188.168 50.1292 189.045C51.8818 190.52 55.2948 190.059 59.2613 187.753C64.2885 184.848 64.0118 184.848 66.1795 187.707C67.7477 189.829 72.4982 191.305 73.3284 189.967C73.4668 189.69 74.0663 189.506 74.6198 189.506C75.1733 189.506 76.0496 189.183 76.5108 188.814C77.0181 188.445 77.5716 188.122 77.8022 188.122C78.4018 188.122 78.2173 190.336 77.4793 192.089C76.7875 193.749 72.4982 199.468 71.7141 199.745C71.5296 199.837 70.3305 200.852 69.0852 202.005C67.886 203.158 66.5485 204.311 66.0873 204.541C65.6722 204.772 64.3347 205.925 63.0433 207.078C61.798 208.231 60.4604 209.292 60.1376 209.43C58.9845 209.892 52.2508 214.919 49.1606 217.594C47.5002 219.07 44.2717 221.653 41.9656 223.405C39.7057 225.158 37.6302 226.864 37.3535 227.187C37.1229 227.464 36.0621 228.386 35.0474 229.17C34.0327 229.955 31.9111 231.846 30.3891 233.321C28.821 234.797 26.0537 237.288 24.2088 238.856C18.0285 244.206 12.909 251.862 13.0012 255.598C13.0473 259.334 18.213 262.286 23.7937 261.778C25.1774 261.64 27.6679 260.994 29.3283 260.303C34.0327 258.319 34.6323 258.319 36.5694 260.21C38.2759 261.871 41.6889 263.439 42.7958 263.07C43.0726 262.978 43.995 262.793 44.7791 262.701C46.4856 262.424 49.4374 261.133 50.6365 260.118C51.0977 259.749 52.2047 259.196 53.081 258.873C54.5107 258.365 55.0181 258.412 56.9091 259.196C58.0621 259.703 59.7686 260.625 60.6449 261.179C64.8881 264.038 77.132 260.902 77.132 260.902C78.1415 264.06 78.4619 273.503 77.132 278.059C75.9801 282.006 75.5152 287.75 74.8838 291.539C84.3558 294.065 93.1963 294.697 101.693 295.309C109.614 295.88 115.298 295.309 118.455 293.434C119.958 292.541 114.7 269.795 114.035 266.912C113.403 262.644 115.255 257.074 117.192 258.596C118.114 259.334 124.8 261.732 127.152 261.64C129.92 261.456 130.15 261.363 131.765 259.519C133.748 257.212 134.762 257.12 138.129 259.057C147.308 264.269 151.412 264.454 156.486 259.887C158.884 257.72 160.867 257.074 162.528 257.997C163.173 258.365 165.111 259.288 166.771 260.026C169.446 261.225 170.046 261.363 171.844 260.948C175.857 260.118 178.855 258.919 179.685 257.766C180.146 257.12 180.7 256.382 180.884 256.152C183.467 252.831 183.651 249.833 181.622 245.313C180.469 242.776 177.886 239.594 172.674 234.29C169.815 231.338 160.683 224.743 154.825 221.422C152.473 220.038 149.521 218.24 148.23 217.363C146.939 216.487 145.693 215.795 145.463 215.795C144.494 215.795 135.823 209.476 132.918 206.617C129.551 203.388 125.354 198.223 121.802 193.057C119.819 190.198 119.727 189.921 120.557 189.598C121.064 189.414 122.079 188.399 122.863 187.292C124.892 184.525 125.999 184.663 129.597 188.076C132.871 191.212 135.039 192.043 139.098 191.674C142.742 191.351 144.264 190.428 145.924 187.43L147.4 184.848L149.983 187.2C153.488 190.428 155.102 191.028 159.345 190.751C168.339 190.152 170.691 187.476 169.769 178.759C169.169 173.363 167.37 171.196 157.27 163.908C156.532 163.401 154.918 162.156 153.626 161.141C141.588 151.64 135.916 148.089 127.521 144.814C119.773 141.77 118.712 140.94 117.144 137.25L116.498 135.728L119.404 135.82C121.895 135.866 122.494 135.728 124.108 134.575C126.737 132.638 126.922 132.592 128.582 133.376C135.685 136.743 139.052 136.835 142.603 133.699C144.217 132.269 145.186 132.177 147.584 133.283C154.687 136.466 158.377 136.374 162.62 132.914C166.31 129.917 166.31 128.118 162.666 122.768C160.544 119.678 158.192 117.418 154.964 115.204C148.322 110.776 135.039 98.5538 131.211 93.3421C127.844 88.7761 114.792 76.2771 110.18 73.1869C108.658 72.1722 107.043 70.9731 106.536 70.5119C104.599 68.7131 100.31 67.5601 97.7268 68.1597ZM102.939 70.6502C109.995 74.6167 123.278 86.5622 129.92 94.8641C134.578 100.722 147.215 112.344 154.18 117.233C157.362 119.447 159.484 121.661 161.698 125.12C163.773 128.256 163.865 128.948 162.528 130.655C160.083 133.745 154.595 134.437 150.075 132.223C145.97 130.193 144.863 130.101 142.603 131.715C138.867 134.39 137.76 134.805 135.639 134.16C133.84 133.606 130.473 132.223 128.813 131.346C127.475 130.655 126.83 130.839 124.293 132.592C121.848 134.252 121.802 134.252 118.435 133.975C115.668 133.699 115.022 133.791 114.792 134.344C114.284 135.59 116.083 139.787 117.928 141.816C119.496 143.522 120.695 144.168 126.507 146.428C130.243 147.904 133.609 149.334 133.978 149.611C134.347 149.887 136.008 150.902 137.668 151.917C139.329 152.885 142.419 155.053 144.586 156.713C146.754 158.374 151.735 162.156 155.656 165.107C165.618 172.671 165.848 172.856 166.909 175.208C167.601 176.776 167.832 178.298 167.878 181.527C167.878 185.309 167.786 185.862 166.817 186.877C165.618 188.122 162.066 189.045 158.238 189.045C155.471 189.045 153.165 187.707 150.259 184.479C148.414 182.403 148.368 182.403 147.215 183.187C146.57 183.602 145.463 184.94 144.725 186.139C143.157 188.906 142.511 189.367 140.02 189.783C137.807 190.105 133.287 189.275 132.733 188.445C132.503 188.122 131.303 186.923 129.966 185.678C126.599 182.634 125.077 182.634 121.987 185.862C119.819 188.122 119.681 188.214 117.882 187.892C116.821 187.707 115.991 187.753 115.991 187.938C115.991 188.583 117.513 189.967 118.205 189.967C118.62 189.967 118.804 190.105 118.62 190.244C117.697 191.166 122.586 198.453 128.444 204.91C133.333 210.307 136.331 212.521 148.046 219.485C159.253 226.173 160.913 227.233 165.295 230.6C169.815 234.105 177.563 241.854 179.316 244.667C181.207 247.665 181.76 250.11 181.069 252.139C179.454 256.751 176.41 258.827 171.337 258.919C169.261 258.919 168.155 258.596 165.387 257.166C161.006 254.906 159.622 255.045 155.84 258.273C153.257 260.441 151.09 261.456 148.83 261.456C147.077 261.456 142.88 259.749 139.098 257.535C137.115 256.382 134.993 255.46 134.347 255.46C133.517 255.46 132.41 256.198 130.842 257.72C128.628 259.98 128.536 260.026 126.322 259.795C125.077 259.657 123.509 259.103 122.817 258.596C119.621 257.72 118.455 256.808 115.929 256.521C114.624 256.567 112.578 256.89 110.918 257.904C108.289 259.611 107.643 259.795 105.475 259.749C103.815 259.703 102.339 259.288 100.863 258.458C97.5423 256.613 95.4207 256.521 92.9301 258.089C90.0706 259.934 87.9951 260.579 86.058 260.256C84.2131 259.934 82.4614 259.749 80.567 259.196C79.4619 258.873 77.3626 258.965 72.8672 259.749C71.6219 260.395 69.8693 260.764 67.5632 260.902C64.5191 261.041 63.9196 260.948 62.4898 259.98C61.6135 259.426 59.8609 258.412 58.6156 257.812C55.756 256.428 53.3577 256.705 49.299 258.965C47.1774 260.164 45.5631 260.672 43.626 260.856C41.0893 261.087 40.8587 261.041 39.1522 259.519C35.1396 255.967 34.8629 255.921 29.7434 258.365C27.2528 259.519 26.192 259.795 23.2864 259.795C19.1815 259.841 17.1061 258.873 15.6763 256.29L14.8 254.63L15.9069 252.185C17.2905 249.233 21.3493 244.022 24.4855 241.162C26.5149 239.317 32.6952 233.69 37.8147 228.986C38.8294 228.064 41.3199 225.988 43.3032 224.42C45.3325 222.852 48.561 220.223 50.452 218.562C54.1879 215.334 57.1858 213.028 57.6009 213.028C58.2466 213.028 69.8231 203.711 73.3745 200.298C76.3724 197.439 79.1397 193.242 79.6471 190.751C80.2005 188.076 79.8777 185.816 78.9091 185.816C78.5401 185.816 77.0642 186.416 75.6345 187.2C71.5758 189.321 69.9615 188.952 66.5024 184.986C65.7644 184.202 64.7036 183.51 64.1502 183.51C63.6428 183.51 61.429 184.571 59.2613 185.816C54.3263 188.722 52.5275 188.86 50.7288 186.554C50.0831 185.678 49.0684 183.787 48.4688 182.265C47.5002 179.728 47.3158 179.59 45.9321 179.636C44.8252 179.728 43.7183 180.42 41.2738 182.772C37.3074 186.508 34.6784 187.938 33.1564 187.246C30.8042 186.185 29.8818 181.711 31.0809 177.191C31.5883 175.254 33.8482 171.98 36.5233 169.212C48.1921 157.082 49.8524 155.56 54.6491 152.977C56.3095 152.055 58.8001 150.948 60.1837 150.533C66.364 148.55 72.2676 145.229 74.9426 142.277C75.819 141.263 76.8336 140.202 77.1565 139.879C78.0789 138.91 79.0936 136.143 78.8169 135.359C78.6324 134.898 78.7707 134.621 79.232 134.621C79.9699 134.621 80.6156 133.422 80.2466 132.73C79.9238 132.269 76.5108 133.514 74.9426 134.759C73.4668 135.866 70.9301 136.927 69.6848 136.927C69.1774 136.927 67.7938 136.189 66.6869 135.313C63.1355 132.499 60.5066 132.546 56.2172 135.497C52.4814 138.08 51.0055 138.034 47.8231 135.359C43.995 132.084 41.2738 132.084 38.1375 135.451C37.0306 136.65 36.3849 136.927 34.8168 136.927C33.0642 136.927 32.8797 136.789 32.1878 135.221C30.8042 131.808 32.4646 124.705 35.5547 120.923C37.5841 118.478 41.5044 115.342 44.5946 113.682C45.7937 113.036 48.1921 111.606 49.8986 110.499C51.6051 109.392 54.0034 107.87 55.1564 107.132C57.1858 105.841 59.3535 104.088 64.5191 99.5685C65.8106 98.4155 70.2844 93.8956 74.4353 89.514C78.5863 85.1324 82.2299 81.3966 82.5527 81.2121C82.8756 81.0276 84.6743 79.4595 86.5192 77.6607C90.3473 74.0632 92.1922 72.6796 95.2362 71.1576C97.5884 69.9584 101.324 69.7278 102.939 70.6502ZM114.594 278.279C114.854 279.449 117.682 290.844 115.929 292.171C108.07 294.995 104.563 293.453 95.6974 293.003C91.7309 292.68 78.654 290.927 77.3626 290.097C76.1467 288.382 80.567 273.227 79.8993 268.466C80.0032 266.284 78.6726 260.256 82.4614 261.86C83.6144 261.952 90.039 262.701 93.7603 259.749C95.8358 258.365 96.297 258.412 99.4333 260.026C104.184 262.563 107.491 262.563 112.241 259.519C111.509 266.281 113.139 271.803 114.594 278.279Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M97.5423 82.1807C97.5423 83.1031 99.5717 84.8096 100.679 84.8096C101.97 84.8096 102.431 83.9794 101.37 83.5643C100.909 83.4259 99.9867 82.8725 99.2949 82.4113C97.8651 81.4427 97.5423 81.3966 97.5423 82.1807Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M113.777 92.5124C113.408 92.6508 113.593 93.1581 114.423 94.1728C115.115 95.003 115.945 96.3405 116.314 97.2168C117.098 99.0156 118.159 98.5543 117.651 96.5711C117.282 95.0952 114.561 92.2357 113.777 92.5124Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M89.8861 95.9714C88.6869 97.2628 88.1796 98.6465 88.8714 98.6465C89.1481 98.6465 89.6093 98.2775 89.9322 97.8624C90.3012 97.3551 91.4081 96.9861 92.9762 96.8016C94.775 96.6632 95.4668 96.3865 95.4668 95.8792C95.4668 95.3718 94.8211 95.1412 93.1607 95.049C91.2236 94.9567 90.6701 95.0951 89.8861 95.9714Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M124.754 105.057C124.754 105.749 128.121 110.592 128.813 110.869C130.15 111.376 129.874 110.684 127.521 107.686C125.123 104.642 124.754 104.273 124.754 105.057Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M68.9007 106.026C67.7938 106.671 66.5485 108.747 66.9175 109.3C67.102 109.623 67.7015 109.346 68.4395 108.609C69.2697 107.778 70.3305 107.363 71.7141 107.225C73.1439 107.133 73.8357 106.81 73.928 106.302C74.0663 105.703 73.6512 105.565 71.8525 105.565C70.6533 105.565 69.3158 105.795 68.9007 106.026Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M96.0203 107.133C95.5591 108.286 96.1126 109.162 97.6346 109.669C99.5256 110.315 101.37 110.315 102.062 109.623C103.077 108.608 102.662 108.332 100.31 108.332C98.6031 108.332 97.8191 108.101 97.1734 107.363C96.3893 106.579 96.2509 106.533 96.0203 107.133Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M110.871 116.265C109.626 117.602 108.612 119.078 108.612 119.493C108.612 120.646 109.396 120.508 110.041 119.263C110.364 118.709 111.471 117.464 112.578 116.449C114.423 114.789 114.792 113.866 113.593 113.866C113.316 113.866 112.071 114.973 110.871 116.265Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M142.05 118.018C141.542 118.894 144.725 121.431 147.492 122.353C148.922 122.86 150.259 123.091 150.398 122.953C151.09 122.261 150.029 121.385 147.815 120.831C146.477 120.508 144.725 119.632 143.895 118.848C142.926 118.018 142.234 117.695 142.05 118.018Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M83.9363 119.724C82.5526 121.2 81.2151 123.506 81.5841 123.875C81.9069 124.198 85.9657 119.77 86.0118 119.032C86.0118 118.11 85.2277 118.386 83.9363 119.724Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M67.5632 121.061C67.5632 124.059 69.6387 127.195 70.8379 125.996C71.1607 125.673 70.9301 124.935 70.146 123.782C69.5003 122.814 68.9469 121.43 68.9469 120.738C68.9469 119.862 68.7163 119.401 68.2551 119.401C67.7477 119.401 67.5632 119.908 67.5632 121.061Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M126.691 121.015C125.031 121.753 125.077 122.906 126.737 122.353C128.305 121.799 129.551 122.076 131.718 123.321C133.978 124.567 135.362 124.797 135.362 123.875C135.362 123.229 130.012 120.324 128.859 120.324C128.49 120.37 127.521 120.646 126.691 121.015Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M53.6806 121.569C53.4039 123.229 54.6492 125.397 55.8483 125.397C57.0475 125.397 56.9552 124.475 55.71 122.86C54.4647 121.292 53.7729 120.877 53.6806 121.569Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M92.9301 129.317C92.9301 130.194 93.3913 130.655 94.775 131.393C97.1272 132.592 99.5255 132.638 99.2949 131.485C99.2027 131.07 98.6492 130.655 98.0035 130.563C96.2048 130.332 94.406 129.548 94.1293 128.81C93.7142 127.749 92.9301 128.072 92.9301 129.317Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M96.3431 149.011C96.4815 149.841 97.081 151.179 97.6806 152.009C98.7875 153.624 101.878 155.607 102.616 155.146C103.446 154.638 103.077 153.992 101.463 153.347C100.356 152.886 99.4794 151.963 98.4647 150.118C96.8043 147.213 95.8819 146.751 96.3431 149.011Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M83.3367 148.734C81.5841 149.934 81.0768 151.64 81.3535 155.007C81.4457 156.298 82.322 155.976 82.322 154.684C82.322 153.024 83.7057 149.841 84.4436 149.841C84.8126 149.841 85.0893 149.426 85.0893 148.919C85.0893 147.812 84.7204 147.766 83.3367 148.734Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M121.664 155.238C124.754 158.42 125.446 159.343 125.861 161.003C125.999 161.741 126.461 162.294 126.83 162.294C127.66 162.294 127.752 160.772 126.968 159.389C126.045 157.544 120.926 152.609 120.004 152.609C119.266 152.609 119.681 153.208 121.664 155.238Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M59.0307 163.124C57.278 164.416 56.3095 169.028 57.6009 170.089C58.1082 170.504 58.2927 170.181 58.5233 168.428C58.6617 167.183 59.2151 165.523 59.7225 164.693C60.2298 163.862 60.6449 163.078 60.6449 162.986C60.6449 162.617 59.538 162.709 59.0307 163.124Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M71.2529 163.678C71.2529 166.906 75.9574 172.21 77.7561 171.011C78.3096 170.596 78.2634 170.458 77.5255 169.997C75.081 168.475 73.6513 166.768 73.0978 164.831C72.4982 162.709 71.2529 161.971 71.2529 163.678Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M141.081 167.368C140.666 168.382 139.651 169.812 138.775 170.596C137.899 171.334 137.207 172.303 137.207 172.672C137.207 173.271 137.576 173.133 139.006 172.118C141.035 170.689 142.004 169.259 142.511 166.999C142.972 164.877 141.958 165.108 141.081 167.368Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M93.7603 168.982C92.3305 169.766 90.624 172.349 90.624 173.779C90.624 175.301 91.2236 174.932 92.4689 172.533C93.3452 170.919 93.9909 170.227 95.2362 169.858C96.1125 169.581 96.8966 169.12 96.9888 168.797C97.2194 168.059 95.2362 168.198 93.7603 168.982Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M43.7643 169.766C43.257 170.55 47.0851 173.917 48.3304 173.732C49.4373 173.594 50.0369 171.98 49.0222 171.98C48.6532 171.98 47.408 171.38 46.2088 170.596C44.779 169.72 43.9488 169.443 43.7643 169.766Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M111.655 172.349C111.194 174.055 110.549 175.9 110.18 176.454C109.257 177.929 110.364 178.437 111.425 177.007C112.809 175.116 113.777 170.089 112.809 169.489C112.578 169.351 112.071 170.642 111.655 172.349Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M155.056 172.718C154.641 173.41 155.978 178.437 156.855 179.406C157.731 180.374 158.884 180.559 158.884 179.775C158.884 179.498 158.377 178.668 157.731 177.884C157.085 177.146 156.578 176.269 156.578 175.9C156.578 174.886 155.333 172.303 155.056 172.718Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M98.0035 191.12C98.0035 191.905 101.048 196.609 102.201 197.531C104.23 199.238 107.689 199.699 107.689 198.223C107.689 197.993 107.136 197.808 106.398 197.808C104.691 197.808 103.492 196.886 101.001 193.657C99.1566 191.259 98.0035 190.29 98.0035 191.12Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M103.538 212.89C104.599 214.089 105.844 215.98 106.352 217.041C107.366 219.255 108.15 219.623 108.15 217.871C108.15 215.795 104.138 210.768 102.477 210.722C101.785 210.722 102.016 211.183 103.538 212.89Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M120.603 213.582C120.603 213.674 120.511 215.703 120.419 218.102C120.234 223.175 120.003 224.466 118.712 226.957C117.79 228.802 117.79 229.54 118.712 228.94C120.142 228.064 121.941 222.16 121.987 218.286C121.987 215.842 121.526 213.49 121.018 213.49C120.788 213.49 120.603 213.536 120.603 213.582Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M71.7142 215.15C71.7142 215.334 72.8672 216.856 74.2509 218.517C75.6345 220.177 77.0182 221.837 77.2949 222.16C77.9867 223.037 78.8169 222.16 78.4479 220.961C78.079 219.9 72.9595 214.873 72.2215 214.873C71.9448 214.873 71.7142 215.011 71.7142 215.15Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M89.3787 216.764C89.7016 219.07 91.4542 221.1 94.2215 222.345C97.1272 223.636 98.3725 222.483 95.6052 221.053C92.8379 219.67 90.7163 217.64 90.3934 216.257C89.9322 214.135 89.0559 214.55 89.3787 216.764Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M63.6429 226.588C63.4584 227.787 63.5506 229.309 63.8735 230.278C64.5192 232.215 66.8714 234.336 68.1628 234.152C69.4081 233.967 69.6848 232.999 68.624 232.676C66.3179 231.892 65.4877 230.693 65.2571 227.741C64.9804 224.282 64.058 223.636 63.6429 226.588Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M139.974 231.846C139.974 232.03 140.897 232.999 142.05 233.921C143.203 234.89 144.54 236.504 145.048 237.519C146.108 239.594 147.169 239.963 146.662 238.072C146.155 236.043 144.586 234.336 141.266 232.261C140.528 231.799 139.974 231.615 139.974 231.846Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M48.6072 238.257C47.3158 241.762 44.7329 244.16 41.5505 244.806C40.8126 244.991 40.1208 245.36 39.9824 245.682C39.4289 247.343 44.0411 246.513 46.3472 244.529C48.2382 242.961 50.0369 240.102 50.0369 238.672C50.0369 237.012 49.2067 236.735 48.6072 238.257Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M107.274 240.332C106.305 242.592 105.66 246.697 106.259 246.697C106.49 246.697 106.951 245.59 107.228 244.252C107.551 242.961 108.104 241.301 108.427 240.609C109.211 239.133 109.257 238.395 108.565 238.395C108.335 238.395 107.735 239.271 107.274 240.332Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M91.4081 239.641C91.2236 239.779 91.0853 240.194 91.0853 240.563C91.0853 242.039 89.0559 245.36 87.58 246.282C86.058 247.204 85.4584 248.542 86.5654 248.542C87.4878 248.542 90.1628 246.236 91.2698 244.483C92.6073 242.316 93.253 239.318 92.3306 239.318C92.0077 239.318 91.5465 239.456 91.4081 239.641Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M162.159 241.716C161.836 242.546 161.052 244.022 160.406 244.991C159.253 246.835 159.253 247.712 160.452 246.743C161.098 246.19 162.62 243.192 163.22 241.255C163.727 239.687 162.897 240.056 162.159 241.716Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M122.54 243.561C122.679 243.884 123.601 244.575 124.616 245.129C126.046 245.867 126.922 246.051 128.259 245.821C130.519 245.452 130.842 244.068 128.628 244.299C127.844 244.391 126.322 244.114 125.169 243.745C122.725 242.869 122.31 242.823 122.54 243.561Z"
+            , Attributes.fill "#302525"
+            ]
+            []
+        , path
+            [ Attributes.d "M786.9 339.109L785.85 339.465L780.95 347.285L776.4 356.883C776.4 356.883 776.588 357.238 777.8 357.238C779.012 357.238 779.2 356.883 779.2 356.883L782.7 347.641L786.9 339.109Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M773.6 337.332L770.1 356.883C770.1 356.883 771.15 357.238 772.2 357.238C773.25 357.238 774.3 356.883 774.3 356.883L773.95 354.395V347.285L774.3 336.977L773.6 337.332Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M763.8 335.91L762.4 338.043L761.7 345.863L763.8 356.883C763.8 356.883 764.5 357.238 765.2 357.238C765.9 357.238 766.6 356.883 766.6 356.883L764.5 350.484L763.1 343.375L763.8 335.91Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M776.657 356.607C782.648 342.696 786.721 338.284 787.457 338.04C788.194 337.796 781.566 348.301 779.255 356.607"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M766.371 356.607C760.796 342.892 764.505 335.893 763.953 335.17C763.402 334.448 759.397 344.506 763.953 356.607"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M774.086 356.607C773.229 353.706 774.657 333.973 774.657 333.103C774.657 332.232 770.086 356.607 770.086 356.607"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M169.525 278.477L168.287 278.9L162.512 288.225L157.15 299.668C157.15 299.668 157.371 300.092 158.8 300.092C160.229 300.092 160.45 299.668 160.45 299.668L164.575 288.648L169.525 278.477Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M153.85 276.357L149.725 299.668C149.725 299.668 150.962 300.092 152.2 300.092C153.437 300.092 154.675 299.668 154.675 299.668L154.262 296.701V288.225L154.675 275.934L153.85 276.357Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M142.3 274.662L140.65 277.205L139.825 286.529L142.3 299.668C142.3 299.668 143.125 300.092 143.95 300.092C144.775 300.092 145.6 299.668 145.6 299.668L143.125 292.039L141.475 283.562L142.3 274.662Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M157.453 299.339C164.514 282.753 169.314 277.493 170.182 277.201C171.05 276.91 163.239 289.435 160.515 299.339"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M145.331 299.339C138.759 282.987 143.131 274.642 142.481 273.781C141.831 272.919 137.111 284.911 142.481 299.339"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M154.422 299.339C153.412 295.879 155.096 272.353 155.096 271.315C155.096 270.277 149.708 299.339 149.708 299.339"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M49.2749 277.016L48.4124 277.316L44.3874 283.934L40.6499 292.055C40.6499 292.055 40.8042 292.355 41.7999 292.355C42.7956 292.355 42.9499 292.055 42.9499 292.055L45.8249 284.234L49.2749 277.016Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M38.35 275.512L35.475 292.055C35.475 292.055 36.3375 292.355 37.2 292.355C38.0625 292.355 38.925 292.055 38.925 292.055L38.6375 289.949V283.934L38.925 275.211L38.35 275.512Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M30.3 274.309L29.15 276.113L28.575 282.73L30.3 292.055C30.3 292.055 30.875 292.355 31.45 292.355C32.025 292.355 32.6 292.055 32.6 292.055L30.875 286.641L29.725 280.625L30.3 274.309Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M40.8612 291.821C45.7824 280.05 49.128 276.317 49.7329 276.11C50.3378 275.904 44.8938 284.793 42.9954 291.821"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M32.4122 291.821C27.8323 280.217 30.8793 274.294 30.426 273.683C29.9728 273.071 26.6831 281.582 30.426 291.821"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M38.749 291.821C38.0449 289.366 39.2184 272.669 39.2184 271.933C39.2184 271.196 35.4633 291.821 35.4633 291.821"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M383.275 298.016L382.412 298.316L378.387 304.934L374.65 313.055C374.65 313.055 374.804 313.355 375.8 313.355C376.796 313.355 376.95 313.055 376.95 313.055L379.825 305.234L383.275 298.016Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M372.35 296.512L369.475 313.055C369.475 313.055 370.337 313.355 371.2 313.355C372.062 313.355 372.925 313.055 372.925 313.055L372.637 310.949V304.934L372.925 296.211L372.35 296.512Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M364.3 295.309L363.15 297.113L362.575 303.73L364.3 313.055C364.3 313.055 364.875 313.355 365.45 313.355C366.025 313.355 366.6 313.055 366.6 313.055L364.875 307.641L363.725 301.625L364.3 295.309Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M374.861 312.821C379.782 301.05 383.128 297.317 383.733 297.11C384.338 296.904 378.894 305.793 376.995 312.821"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M366.412 312.821C361.832 301.217 364.879 295.294 364.426 294.683C363.973 294.071 360.683 302.582 364.426 312.821"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M372.749 312.821C372.045 310.366 373.218 293.669 373.218 292.933C373.218 292.196 369.463 312.821 369.463 312.821"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M848.275 449.016L847.412 449.316L843.387 455.934L839.65 464.055C839.65 464.055 839.804 464.355 840.8 464.355C841.796 464.355 841.95 464.055 841.95 464.055L844.825 456.234L848.275 449.016Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M837.35 447.512L834.475 464.055C834.475 464.055 835.337 464.355 836.2 464.355C837.062 464.355 837.925 464.055 837.925 464.055L837.637 461.949V455.934L837.925 447.211L837.35 447.512Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M829.3 446.309L828.15 448.113L827.575 454.73L829.3 464.055C829.3 464.055 829.875 464.355 830.45 464.355C831.025 464.355 831.6 464.055 831.6 464.055L829.875 458.641L828.725 452.625L829.3 446.309Z"
+            , Attributes.fill "#4C8943"
+            ]
+            []
+        , path
+            [ Attributes.d "M839.861 463.821C844.782 452.05 848.128 448.317 848.733 448.11C849.338 447.904 843.894 456.793 841.995 463.821"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M831.412 463.821C826.832 452.217 829.879 446.294 829.426 445.683C828.973 445.071 825.683 453.582 829.426 463.821"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M837.749 463.821C837.045 461.366 838.218 444.669 838.218 443.933C838.218 443.196 834.463 463.821 834.463 463.821"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M924.753 347.555C924.694 347.602 924.659 347.674 924.659 347.75V348.625V349.384L922.264 351.401C921.923 351.688 921.906 352.206 922.227 352.515L922.593 352.868C922.87 353.134 923.303 353.148 923.596 352.901L926.091 350.8H927.818C927.875 350.8 927.93 350.781 927.975 350.745L929.713 349.351C930.066 349.068 930.09 348.539 929.764 348.225L927.581 346.125C927.309 345.863 926.886 345.844 926.592 346.08L924.753 347.555Z"
+            , Attributes.fill "#448CD4"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "0.5"
+            , Attributes.strokeLinejoin "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M923.043 412.12C923.113 412.146 923.191 412.14 923.255 412.102L924.23 411.54L925.105 411.035L929.033 412.395C929.446 412.538 929.893 412.299 930.004 411.877L930.237 410.991C930.336 410.612 930.127 410.22 929.757 410.091L925.736 408.699L924.646 406.812C924.617 406.762 924.572 406.723 924.517 406.703L921.723 405.659C921.307 405.504 920.848 405.742 920.735 406.171L919.691 410.148C919.593 410.521 919.794 410.907 920.154 411.041L923.043 412.12Z"
+            , Attributes.fill "#E93F3F"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "0.5"
+            , Attributes.strokeLinejoin "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M973.571 418.125C973.594 418.196 973.648 418.252 973.718 418.279L974.768 418.683L975.712 419.045L977.125 422.955C977.273 423.365 977.74 423.563 978.138 423.383L978.973 423.007C979.331 422.846 979.504 422.437 979.371 422.068L977.924 418.067L978.706 416.033C978.727 415.978 978.728 415.919 978.71 415.864L977.763 413.035C977.622 412.614 977.149 412.407 976.744 412.589L972.995 414.279C972.644 414.437 972.47 414.836 972.592 415.201L973.571 418.125Z"
+            , Attributes.fill "#70AE61"
+            , Attributes.stroke "#302525"
+            , Attributes.strokeWidth "0.5"
+            , Attributes.strokeLinejoin "round"
+            ]
+            []
+        ]
+    , Svg.defs []
+        [ Svg.clipPath
+            [ Attributes.id "clip0_1001_555"
+            ]
+            [ Svg.rect
+                [ Attributes.width "1024"
+                , Attributes.height "512"
                 , Attributes.fill "white"
                 ]
                 []
