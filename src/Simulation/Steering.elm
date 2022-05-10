@@ -92,7 +92,7 @@ seekAndFaceTarget alignProps =
                 rawAngular =
                     AngularAcceleration.inRadiansPerSecondSquared angularSteering
             in
-            Acceleration.metersPerSecondSquared (0 - rawAngular * 2)
+            Acceleration.metersPerSecondSquared (-rawAngular * 2)
     in
     { linear = alignSteering.angular |> Maybe.map accelerationForRotation
     , angular = alignSteering.angular

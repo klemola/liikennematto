@@ -55,11 +55,6 @@ updateTraffic { updateQueue, seed, world, delta } =
 
         activeCar :: queue ->
             let
-                otherCars =
-                    world.carPositionLookup
-                        |> QuadTree.neighborsWithin nearbyTrafficRadius activeCar.boundingBox
-                        |> List.filter (\car -> car.id /= activeCar.id)
-
                 fsmUpdateContext =
                     { currentPosition = activeCar.position
                     , route = activeCar.route
@@ -86,6 +81,12 @@ updateTraffic { updateQueue, seed, world, delta } =
                             ( carAfterDespawn world carWithUpdatedFSM, seed )
 
                         _ ->
+                            let
+                                otherCars =
+                                    world.carPositionLookup
+                                        |> QuadTree.neighborsWithin nearbyTrafficRadius activeCar.boundingBox
+                                        |> List.filter (\car -> car.id /= activeCar.id)
+                            in
                             carWithUpdatedFSM
                                 |> Pathfinding.updateRoute world delta seed
                                 |> applyRound world otherCars
@@ -246,22 +247,22 @@ carAfterDespawn world car =
 
 moveCarToHome : World -> Car -> ( Lot, ParkingSpot ) -> Car
 moveCarToHome world car ( home, parkingSpot ) =
-    let
-        homeNode =
-            car.homeLotId |> Maybe.andThen (RoadNetwork.findLotExitNodeByLotId world.roadNetwork)
-
-        parking =
-            { lotId = home.id
-            , parkingSpotId = parkingSpot.id
-            , waitTimer = initialParkingWaitTimer
-            , lockAvailable = False
-            }
-
-        ( nextFSM, _ ) =
-            FSM.reset car.fsm
-    in
-    case homeNode of
+    case
+        car.homeLotId
+            |> Maybe.andThen (RoadNetwork.findLotExitNodeByLotId world.roadNetwork)
+    of
         Just nodeCtx ->
+            let
+                parking =
+                    { lotId = home.id
+                    , parkingSpotId = parkingSpot.id
+                    , waitTimer = initialParkingWaitTimer
+                    , lockAvailable = False
+                    }
+
+                ( nextFSM, _ ) =
+                    FSM.reset car.fsm
+            in
             { car
                 | fsm = nextFSM
                 , position = parkingSpot.position

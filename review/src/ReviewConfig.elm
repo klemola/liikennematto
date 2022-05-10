@@ -44,8 +44,8 @@ config =
     -- , NoMissingTypeAnnotation.rule
     --     |> Rule.ignoreErrorsForDirectories [ "tests/" ]
     -- , NoMissingTypeExpose.rule
-    -- , NoSimpleLetBody.rule
-    -- , NoPrematureLetComputation.rule
+    , NoSimpleLetBody.rule
+    , NoPrematureLetComputation.rule
     , NoUnused.CustomTypeConstructors.rule []
     , NoUnused.CustomTypeConstructorArgs.rule
     , NoUnused.Dependencies.rule
@@ -54,5 +54,5 @@ config =
     , NoUnused.Parameters.rule
     , NoUnused.Patterns.rule
     , NoUnused.Variables.rule
-    -- , Simplify.rule Simplify.defaults
+    , Simplify.rule Simplify.defaults
     ]
