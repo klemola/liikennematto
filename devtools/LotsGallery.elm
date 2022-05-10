@@ -4,15 +4,15 @@ import Circle2d
 import Color exposing (Color)
 import CubicSpline2d exposing (CubicSpline2d)
 import Data.Colors as Colors
-import Data.Lots
+import Data.Lots exposing (NewLot)
 import Geometry.Svg as Svg
-import Length exposing (Length)
-import Model.Cell
-import Model.Geometry exposing (LMCubicSpline2d, LMPoint2d)
+import Length
+import Model.Cell as Cell
+import Model.Geometry exposing (LMCubicSpline2d, LMPoint2d, OrthogonalDirection(..))
 import Model.Lot exposing (Lot, ParkingSpot)
-import Model.RenderCache as RenderCache
+import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Tilemap as Tilemap
-import Model.World as World
+import Model.World as World exposing (World)
 import Pixels
 import Point2d exposing (Point2d)
 import Polyline2d
@@ -23,48 +23,60 @@ import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 
 
+gallerySpotWidth : Int
+gallerySpotWidth =
+    6
+
+
+tilemapConfig : { horizontalCellsAmount : Int, verticalCellsAmount : Int }
+tilemapConfig =
+    { horizontalCellsAmount = gallerySpotWidth
+    , verticalCellsAmount =
+        Data.Lots.allLots
+            |> List.map lotHeightCells
+            |> List.map ((+) 1)
+            |> List.sum
+    }
+
+
+world : World
+world =
+    World.empty tilemapConfig
+
+
+renderCache : RenderCache
+renderCache =
+    RenderCache.new world
+
+
+tilemapHeight : Length.Length
+tilemapHeight =
+    Tilemap.dimensions world.tilemap |> .height
+
+
+tilemapWidthStr : String
+tilemapWidthStr =
+    String.fromFloat renderCache.tilemapWidthPixels
+
+
+tilemapHeightStr : String
+tilemapHeightStr =
+    String.fromFloat renderCache.tilemapHeightPixels
+
+
 main : Svg msg
 main =
     let
-        tilemapConfig =
-            { horizontalCellsAmount = 20
-            , verticalCellsAmount = 4
+        acc =
+            { lots = []
+            , baseY = 0
+            , id = 1
             }
-
-        world =
-            World.empty tilemapConfig
-
-        renderCache =
-            RenderCache.new world
-
-        tilemapHeight =
-            Tilemap.dimensions world.tilemap |> .height
-
-        tilemapWidthStr =
-            String.fromFloat renderCache.tilemapWidthPixels
-
-        tilemapHeightStr =
-            String.fromFloat renderCache.tilemapHeightPixels
     in
     Data.Lots.allLots
-        |> List.indexedMap
-            (\id newLot ->
-                let
-                    id1Indexed =
-                        id + 1
-
-                    x =
-                        if id == 1 then
-                            3
-
-                        else
-                            id1Indexed + 2
-                in
-                Model.Cell.fromCoordinates tilemapConfig ( x, 3 )
-                    |> Maybe.map (Model.Lot.build id newLot)
-            )
-        |> List.filterMap identity
-        |> List.map (renderLotDebug tilemapHeight renderCache)
+        |> List.foldl buildLot acc
+        |> .lots
+        |> List.map renderLotDebug
         |> Svg.svg
             [ Attributes.width tilemapWidthStr
             , Attributes.height tilemapHeightStr
@@ -73,17 +85,55 @@ main =
             ]
 
 
-renderLotDebug : Length -> RenderCache.RenderCache -> Lot -> Svg msg
-renderLotDebug tilemapHeight renderCache lot =
+buildLot :
+    NewLot
+    -> { lots : List Lot, baseY : Int, id : Int }
+    -> { lots : List Lot, baseY : Int, id : Int }
+buildLot newLot acc =
+    let
+        y =
+            acc.baseY + lotHeightCells newLot + 1
+
+        x =
+            case newLot.drivewayExitDirection of
+                Right ->
+                    gallerySpotWidth
+
+                _ ->
+                    1
+    in
+    case
+        Cell.fromCoordinates tilemapConfig ( x, y )
+            |> Maybe.map (Model.Lot.build acc.id newLot)
+    of
+        Just lot ->
+            { lots = lot :: acc.lots
+            , baseY = y
+            , id = acc.id + 1
+            }
+
+        Nothing ->
+            acc
+
+
+lotHeightCells : NewLot -> Int
+lotHeightCells newLot =
+    Cell.size
+        |> Quantity.ratio newLot.height
+        |> floor
+
+
+renderLotDebug : Lot -> Svg msg
+renderLotDebug lot =
     Svg.g []
         [ Render.renderLot renderCache.tilemapHeightPixels lot
         , Svg.g []
-            (renderParkingSpotPaths tilemapHeight lot.parkingSpots)
+            (renderParkingSpotPaths lot.parkingSpots)
         ]
 
 
-renderParkingSpotPaths : Length -> List ParkingSpot -> List (Svg msg)
-renderParkingSpotPaths tilemapHeight parkingSpots =
+renderParkingSpotPaths : List ParkingSpot -> List (Svg msg)
+renderParkingSpotPaths parkingSpots =
     parkingSpots
         |> List.indexedMap
             (\idx parkingSpot ->
@@ -105,7 +155,7 @@ renderParkingSpotPaths tilemapHeight parkingSpots =
                             _ ->
                                 Color.rgba 0 0 0 opacity
                 in
-                parkingSpot.pathToLotExit |> List.map (flipSplineYCoordinate tilemapHeight >> cubicSpline color)
+                parkingSpot.pathToLotExit |> List.map (flipSplineYCoordinate >> cubicSpline color)
             )
         |> List.concat
 
@@ -114,29 +164,26 @@ type SVGCoordinates
     = SVGCoordinates -- Y down instead of up
 
 
-flipSplineYCoordinate : Length -> LMCubicSpline2d -> CubicSpline2d Length.Meters SVGCoordinates
-flipSplineYCoordinate tilemapHeight spline =
+flipSplineYCoordinate : LMCubicSpline2d -> CubicSpline2d Length.Meters SVGCoordinates
+flipSplineYCoordinate spline =
     let
-        flipFn =
-            flipPointYCoordinate tilemapHeight
-
         cp1 =
-            CubicSpline2d.firstControlPoint spline |> flipFn
+            CubicSpline2d.firstControlPoint spline |> flipPointYCoordinate
 
         cp2 =
-            CubicSpline2d.secondControlPoint spline |> flipFn
+            CubicSpline2d.secondControlPoint spline |> flipPointYCoordinate
 
         cp3 =
-            CubicSpline2d.thirdControlPoint spline |> flipFn
+            CubicSpline2d.thirdControlPoint spline |> flipPointYCoordinate
 
         cp4 =
-            CubicSpline2d.fourthControlPoint spline |> flipFn
+            CubicSpline2d.fourthControlPoint spline |> flipPointYCoordinate
     in
     CubicSpline2d.fromControlPoints cp1 cp2 cp3 cp4
 
 
-flipPointYCoordinate : Length -> LMPoint2d -> Point2d Length.Meters SVGCoordinates
-flipPointYCoordinate tilemapHeight originalPoint =
+flipPointYCoordinate : LMPoint2d -> Point2d Length.Meters SVGCoordinates
+flipPointYCoordinate originalPoint =
     let
         newY =
             tilemapHeight |> Quantity.minus (Point2d.yCoordinate originalPoint)
