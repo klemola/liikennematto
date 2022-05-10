@@ -11,7 +11,6 @@ import Model.Liikennematto
     exposing
         ( Liikennematto
         , SimulationState(..)
-        , Tool(..)
         )
 import Model.Tilemap as Tilemap
 import Model.TrafficLight exposing (TrafficLight)

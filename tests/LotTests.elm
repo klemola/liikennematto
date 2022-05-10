@@ -2,14 +2,12 @@ module LotTests exposing (suite)
 
 import Data.Lots
     exposing
-        ( LotKind(..)
-        , residentialSingle1
+        ( residentialSingle1
         , school
         )
 import Data.Worlds exposing (lotTestWorld)
 import Expect
 import Model.Cell as Cell
-import Model.Geometry exposing (OrthogonalDirection(..))
 import Model.Lot as Lot exposing (Lot)
 import Model.Tilemap as Tilemap
 import Test exposing (Test, describe, test)

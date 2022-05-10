@@ -4,7 +4,6 @@ module Model.Tilemap exposing
     , addAnchor
     , addTile
     , anchorAt
-    , boundingBox
     , canBuildRoadAt
     , config
     , dimensions
@@ -36,7 +35,7 @@ import Model.Cell as Cell exposing (Cell, CellCoordinates)
 import Model.Entity exposing (Id)
 import Model.Geometry
     exposing
-        ( DiagonalDirection(..)
+        ( DiagonalDirection
         , LMBoundingBox2d
         , LMQuadTree
         , OrthogonalDirection(..)
@@ -243,11 +242,6 @@ dimensions (Tilemap tilemapContents) =
     { width = tilemapContents.width
     , height = tilemapContents.height
     }
-
-
-boundingBox : Tilemap -> LMBoundingBox2d
-boundingBox (Tilemap tilemapContents) =
-    tilemapContents.boundingBox
 
 
 updateCell : Cell -> Tile -> Tilemap -> Tilemap

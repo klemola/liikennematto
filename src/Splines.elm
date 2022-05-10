@@ -19,7 +19,6 @@ import Model.Geometry
         , LMFrame2d
         , LMPoint2d
         , LMPoint2dLocal
-        , OrthogonalDirection(..)
         )
 import Model.RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Point2d exposing (Point2d)

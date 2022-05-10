@@ -1,6 +1,5 @@
 module Simulation.Steering exposing
     ( Steering
-    , accelerateToZeroOverDistance
     , align
     , applyCollisionEffects
     , break
