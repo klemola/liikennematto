@@ -67,14 +67,15 @@ attemptBuildLot world seed newLot =
 
         ( shuffledAnchors, _ ) =
             Random.step (Random.List.shuffle anchorOptions) seed
-
-        nextLotId =
-            Entity.nextId world.lots
     in
     shuffledAnchors
         |> List.head
         |> Maybe.map
             (\anchor ->
+                let
+                    nextLotId =
+                        Entity.nextId world.lots
+                in
                 ( Lot.build nextLotId newLot anchor, anchor )
             )
 

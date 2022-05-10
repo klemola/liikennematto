@@ -370,14 +370,14 @@ chooseConnectionCell :
     -> Cell
     -> Cell
 chooseConnectionCell tilemap tile direction startConnectionKind baseCell =
-    let
-        tilemapConfig =
-            Tilemap.config tilemap
-    in
     if startConnectionKind /= LaneConnector then
         baseCell
 
     else
+        let
+            tilemapConfig =
+                Tilemap.config tilemap
+        in
         case Cell.nextOrthogonalCell tilemapConfig direction baseCell of
             Just nextCell ->
                 if
@@ -602,14 +602,13 @@ setupTrafficControl currentTrafficLights roadNetwork =
 
 updateNodeTrafficControl : TrafficLights -> RNNodeContext -> ( RoadNetwork, TrafficLights ) -> ( RoadNetwork, TrafficLights )
 updateNodeTrafficControl currentTrafficLights nodeCtx ( roadNetwork, nextTrafficLights ) =
-    let
-        connection =
-            nodeCtx.node.label
-    in
     case IntDict.size nodeCtx.outgoing of
         -- Four-way intersection (or crossroads)
         3 ->
             let
+                connection =
+                    nodeCtx.node.label
+
                 trafficLight =
                     currentTrafficLights
                         |> Dict.find (\_ existingTrafficLight -> existingTrafficLight.position == connection.position)

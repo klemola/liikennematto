@@ -137,11 +137,11 @@ update msg model =
 
 tileActionsToCmds : List Tile.Action -> List (Cmd Message)
 tileActionsToCmds =
-    List.filterMap
+    List.map
         (\action ->
             case action of
                 Tile.PlayAudio sound ->
-                    Just (playAudio sound)
+                    playAudio sound
         )
 
 

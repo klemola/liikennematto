@@ -164,7 +164,7 @@ renderTile tilemapHeightPixels cell tileKind animation =
                     Animation.toStyleString tileAnimation
 
                 tileStyles =
-                    String.join ""
+                    String.concat
                         [ tileAnimationProperties tileAnimation ( x, yAdjusted )
                         , animationStyleString
                         ]
