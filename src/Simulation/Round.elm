@@ -29,7 +29,8 @@ import Point2d
 import Polygon2d
 import Quantity
 import Random
-import Simulation.Steering as Steering
+import Simulation.Steering as Steering exposing (Steering)
+import Speed
 import Triangle2d
 
 
@@ -82,6 +83,16 @@ yieldReactionDistance =
     Length.meters 5
 
 
+trafficControlStopDistance : Length
+trafficControlStopDistance =
+    Length.meters 4
+
+
+parkingRadius : Length
+parkingRadius =
+    Length.meters 10
+
+
 
 --
 -- Main logic
@@ -104,20 +115,46 @@ toResults round =
 
 checkRules : Round -> Round
 checkRules round =
-    case ruleToApply round of
-        Just rule ->
-            applyRule round rule
+    let
+        { activeCar } =
+            round
+
+        nextCar =
+            case ruleToApply round of
+                Just ReactToCollision ->
+                    -- Bounce the car back on impact
+                    { activeCar
+                        | acceleration = Quantity.zero
+                        , velocity = Speed.metersPerSecond -10
+                    }
+
+                Just otherRule ->
+                    otherRule
+                        |> applyRule round
+                        |> applySteering activeCar
+
+                Nothing ->
+                    -- cancel the effects of previously applied rules
+                    if
+                        Car.isPathfinding round.activeCar
+                            && (Car.isStoppedOrWaiting round.activeCar || Car.isBreaking round.activeCar)
+                    then
+                        Steering.accelerate |> applySteering round.activeCar
+
+                    else
+                        activeCar
+    in
+    { round | activeCar = nextCar }
+
+
+applySteering : Car -> Steering -> Car
+applySteering car steering =
+    case steering.linear of
+        Just acceleration ->
+            { car | acceleration = acceleration }
 
         Nothing ->
-            -- cancel the effects of previously applied rules
-            if
-                Car.isPathfinding round.activeCar
-                    && (Car.isStoppedOrWaiting round.activeCar || Car.isBreaking round.activeCar)
-            then
-                applyCarAction Steering.startMoving round
-
-            else
-                round
+            car
 
 
 ruleToApply : Round -> Maybe Rule
@@ -130,31 +167,51 @@ ruleToApply round =
         ]
 
 
-applyRule : Round -> Rule -> Round
+applyRule : Round -> Rule -> Steering
 applyRule round rule =
+    let
+        { make, position, velocity, localPath } =
+            round.activeCar
+    in
     case rule of
         AvoidCollision distanceToCollision ->
-            applyCarAction (Steering.break distanceToCollision) round
+            let
+                collisionMargin =
+                    make.length |> Quantity.multiplyBy 1.5
+
+                targetDistance =
+                    distanceToCollision
+                        |> Quantity.minus collisionMargin
+                        |> Quantity.max Quantity.zero
+            in
+            Steering.stopAtDistance
+                targetDistance
+                Quantity.zero
+                velocity
 
         ReactToCollision ->
-            applyCarAction Steering.applyCollisionEffects round
+            Steering.noSteering
 
         StopAtTrafficControl distanceFromTrafficControl ->
-            applyCarAction (Steering.stopAtTrafficControl distanceFromTrafficControl) round
+            Steering.stopAtDistance
+                distanceFromTrafficControl
+                trafficControlStopDistance
+                velocity
 
         SlowDownAtTrafficControl ->
-            applyCarAction (Steering.slowDown (Steering.maxVelocity |> Quantity.half)) round
+            Steering.slowDown
+                velocity
+                (Steering.maxVelocity |> Quantity.half)
 
         StopAtParkingSpot ->
-            applyCarAction Steering.stopAtPathEnd round
+            Steering.stopAtPathEnd
+                position
+                velocity
+                localPath
+                parkingRadius
 
         StayParked ->
-            applyCarAction Steering.stop round
-
-
-applyCarAction : (Car -> Car) -> Round -> Round
-applyCarAction action round =
-    { round | activeCar = action round.activeCar }
+            Steering.stop
 
 
 
