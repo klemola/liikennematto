@@ -22,11 +22,11 @@ import Maybe.Extra
 import Quantity
 import Simulation.Round as Round
     exposing
-        ( RoundResults
+        ( Round
         , Rule(..)
         , checkTrafficControl
         )
-import Simulation.Steering as Steering
+import Simulation.Steering exposing (Steering)
 import Test exposing (Test, describe, test)
 
 
@@ -35,6 +35,21 @@ checkCollisionRules round =
         [ \() -> Round.checkForwardCollision round
         , \() -> Round.checkPathCollision round
         ]
+
+
+avoidingCollision : (Round -> Maybe Rule) -> Round -> Bool
+avoidingCollision check round =
+    case check round of
+        Just (AvoidCollision _) ->
+            True
+
+        _ ->
+            False
+
+
+getLinearAcceleration : Steering -> Acceleration
+getLinearAcceleration steering =
+    steering.linear |> Maybe.withDefault Quantity.zero
 
 
 suite : Test
@@ -46,9 +61,17 @@ suite =
             , test "allow movement if there will be no collision (intersection)"
                 (\_ -> Expect.equal (checkCollisionRules noCollisionSetupIntersection) Nothing)
             , test "disallow movement if it will cause a collision (paths intersect)"
-                (\_ -> Expect.equal (Round.checkPathCollision collisionSetupPathsIntersect) (Just (AvoidCollision (Length.meters 9.199999999999989))))
+                (\_ ->
+                    Expect.true
+                        "Expected collision avoidance"
+                        (avoidingCollision Round.checkPathCollision collisionSetupPathsIntersect)
+                )
             , test "disallow movement if it will cause a collision (near collision)"
-                (\_ -> Expect.equal (Round.checkForwardCollision collisionSetupNearCollision) (Just (AvoidCollision (Length.meters 4.313351365237916))))
+                (\_ ->
+                    Expect.true
+                        "Expected collision avoidance"
+                        (avoidingCollision Round.checkForwardCollision collisionSetupNearCollision)
+                )
             , test "recover when a collision occurs"
                 (\_ -> Expect.equal (Round.checkForwardCollision collisionSetupCollided) (Just ReactToCollision))
             ]
@@ -68,23 +91,24 @@ suite =
             , test "slow down before a yield sign"
                 (\_ -> Expect.equal (checkTrafficControl yieldSlowDownSetup) (Just SlowDownAtTrafficControl))
             ]
-        , describe "Playing the round"
+        , describe "Checking round rules"
             [ test "can prevent car movement"
                 (\_ ->
-                    Expect.equal
+                    Expect.true
+                        "Expected deceleration"
                         (collisionSetupNearCollision
-                            |> Round.play
-                            |> getCarAcceleration
+                            |> Round.checkRules
+                            |> getLinearAcceleration
+                            |> Quantity.lessThanZero
                         )
-                        Steering.maxDeceleration
                 )
             , test "can stop the car at traffic lights"
                 (\_ ->
                     Expect.true
                         "Expected deceleration"
                         (redTrafficLightsSetup
-                            |> Round.play
-                            |> getCarAcceleration
+                            |> Round.checkRules
+                            |> getLinearAcceleration
                             |> Quantity.lessThanZero
                         )
                 )
@@ -93,15 +117,10 @@ suite =
                     Expect.true
                         "Expected deceleration"
                         (yieldWithPriorityTrafficSetup1
-                            |> Round.play
-                            |> getCarAcceleration
+                            |> Round.checkRules
+                            |> getLinearAcceleration
                             |> Quantity.lessThanZero
                         )
                 )
             ]
         ]
-
-
-getCarAcceleration : RoundResults -> Acceleration
-getCarAcceleration { car } =
-    car.acceleration

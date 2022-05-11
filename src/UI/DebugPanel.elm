@@ -1,6 +1,5 @@
 module UI.DebugPanel exposing (update, view)
 
-import Acceleration exposing (Acceleration)
 import Dict
 import Element exposing (Element)
 import Element.Background as Background
@@ -174,7 +173,6 @@ carStateView car =
         , Element.column [ Element.spacing whitespace.tight ]
             [ Element.text (pointToString car.position)
             , Element.text (speedToString car.velocity)
-            , Element.text (accelerationToString car.acceleration)
             , Element.text (Car.statusDescription car)
             ]
         ]
@@ -189,17 +187,6 @@ speedToString speed =
                 |> String.fromFloat
     in
     "Speed: " ++ speedValue ++ " m/s"
-
-
-accelerationToString : Acceleration -> String
-accelerationToString acceleration =
-    let
-        accelerationValue =
-            acceleration
-                |> Quantity.unwrap
-                |> String.fromFloat
-    in
-    "Acceleration: " ++ accelerationValue ++ " m/s²"
 
 
 pointToString : LMPoint2d -> String

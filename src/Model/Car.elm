@@ -8,7 +8,6 @@ module Model.Car exposing
     , adjustedShape
     , build
     , fieldOfView
-    , isBreaking
     , isDriving
     , isParked
     , isPathfinding
@@ -26,7 +25,6 @@ module Model.Car exposing
     , withVelocity
     )
 
-import Acceleration exposing (Acceleration)
 import Angle exposing (Angle)
 import AngularSpeed exposing (AngularSpeed)
 import Axis2d
@@ -63,7 +61,6 @@ type alias Car =
     , orientation : Angle
     , velocity : Speed
     , rotation : AngularSpeed
-    , acceleration : Acceleration
     , shape : LMShape2d
     , boundingBox : LMBoundingBox2d
     , route : Route
@@ -78,7 +75,6 @@ type alias NewCar =
     , orientation : Angle
     , velocity : Speed
     , rotation : AngularSpeed
-    , acceleration : Acceleration
     , homeLotId : Maybe Int
     }
 
@@ -320,7 +316,6 @@ new kind =
     , orientation = Quantity.zero
     , velocity = Quantity.zero
     , rotation = Quantity.zero
-    , acceleration = Quantity.zero
     , make = kind
     , homeLotId = Nothing
     }
@@ -362,7 +357,6 @@ build id newCar =
     , orientation = newCar.orientation
     , velocity = newCar.velocity
     , rotation = newCar.rotation
-    , acceleration = newCar.acceleration
     , shape = shape
     , boundingBox = boundingBox
     , route = Route.unrouted
@@ -380,11 +374,6 @@ build id newCar =
 isStoppedOrWaiting : Car -> Bool
 isStoppedOrWaiting car =
     car.velocity |> Quantity.lessThan (Speed.metersPerSecond 0.01)
-
-
-isBreaking : Car -> Bool
-isBreaking car =
-    car.acceleration |> Quantity.lessThan Quantity.zero
 
 
 isPathfinding : Car -> Bool

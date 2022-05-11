@@ -38,11 +38,6 @@ import Simulation.Traffic as Traffic
 import Speed exposing (Speed)
 
 
-seed : Random.Seed
-seed =
-    Random.initialSeed 42
-
-
 connectedRoadsSetup : Round
 connectedRoadsSetup =
     let
@@ -59,7 +54,7 @@ connectedRoadsSetup =
             world
                 |> World.setCar car
     in
-    Round worldWithCars car otherCars seed
+    Round worldWithCars car otherCars
 
 
 collisionSetupPathsIntersect : Round
@@ -85,7 +80,7 @@ collisionSetupPathsIntersect =
                 |> World.setCar car
                 |> World.setCar otherCar
     in
-    Round worldWithCars car otherCars seed
+    Round worldWithCars car otherCars
 
 
 collisionSetupNearCollision : Round
@@ -111,7 +106,7 @@ collisionSetupNearCollision =
                 |> World.setCar car
                 |> World.setCar otherCar
     in
-    Round worldWithCars car otherCars seed
+    Round worldWithCars car otherCars
 
 
 collisionSetupCollided : Round
@@ -137,7 +132,7 @@ collisionSetupCollided =
                 |> World.setCar car
                 |> World.setCar otherCar
     in
-    Round worldWithCars car otherCars seed
+    Round worldWithCars car otherCars
 
 
 noCollisionSetupDifferentLanes : Round
@@ -161,7 +156,7 @@ noCollisionSetupDifferentLanes =
                 |> World.setCar car
                 |> World.setCar otherCar
     in
-    Round worldWithCars car otherCars seed
+    Round worldWithCars car otherCars
 
 
 noCollisionSetupIntersection : Round
@@ -185,7 +180,7 @@ noCollisionSetupIntersection =
                 |> World.setCar car
                 |> World.setCar otherCar
     in
-    Round worldWithCars car otherCars seed
+    Round worldWithCars car otherCars
 
 
 redTrafficLightsSetup : Round
@@ -205,7 +200,7 @@ redTrafficLightsSetup =
             world
                 |> World.setCar car
     in
-    Round worldWithCars car otherCars seed
+    Round worldWithCars car otherCars
 
 
 greenTrafficLightsSetup : Round
@@ -225,7 +220,7 @@ greenTrafficLightsSetup =
             world
                 |> World.setCar car
     in
-    Round worldWithCars car otherCars seed
+    Round worldWithCars car otherCars
 
 
 yieldWithPriorityTrafficSetup1 : Round
@@ -249,7 +244,7 @@ yieldWithPriorityTrafficSetup1 =
                 |> World.setCar car
                 |> World.setCar otherCar
     in
-    Round worldWithCars car otherCars seed
+    Round worldWithCars car otherCars
 
 
 yieldWithPriorityTrafficSetup2 : Round
@@ -273,7 +268,7 @@ yieldWithPriorityTrafficSetup2 =
                 |> World.setCar car
                 |> World.setCar otherCar
     in
-    Round worldWithCars car otherCars seed
+    Round worldWithCars car otherCars
 
 
 yieldWithoutPriorityTrafficSetup : Round
@@ -289,7 +284,7 @@ yieldWithoutPriorityTrafficSetup =
             world
                 |> World.setCar car
     in
-    Round worldWithCars car [] seed
+    Round worldWithCars car []
 
 
 yieldSlowDownSetup : Round
@@ -309,7 +304,7 @@ yieldSlowDownSetup =
             world
                 |> World.setCar car
     in
-    Round worldWithCars car otherCars seed
+    Round worldWithCars car otherCars
 
 
 largeWorldSetup : Int -> Round
@@ -323,7 +318,7 @@ largeWorldSetup carsAmount =
     in
     case Dict.values worldWithCars.cars of
         x :: xs ->
-            Round worldWithCars x xs seed
+            Round worldWithCars x xs
 
         [] ->
             -- Dummy value, should never get here
