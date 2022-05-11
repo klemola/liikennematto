@@ -28,7 +28,7 @@ import Quantity
 import Random
 import Simulation.Pathfinding as Pathfinding
 import Simulation.Round as Round
-import Simulation.Steering as Steering
+import Simulation.Steering as Steering exposing (Steering)
 
 
 nearbyTrafficRadius : Length
@@ -67,6 +67,20 @@ updateTraffic { updateQueue, seed, world, delta } =
                 carWithUpdatedFSM =
                     { activeCar | fsm = nextFSM }
 
+                otherCars =
+                    world.carPositionLookup
+                        |> QuadTree.neighborsWithin nearbyTrafficRadius activeCar.boundingBox
+                        |> List.filter (\car -> car.id /= activeCar.id)
+
+                round =
+                    { world = world
+                    , otherCars = otherCars
+                    , activeCar = activeCar
+                    }
+
+                steering =
+                    Round.checkRules round
+
                 ( carAfterSteeringAndPathfinding, nextSeed ) =
                     case FSM.toCurrentState nextFSM of
                         Car.Despawning ->
@@ -80,20 +94,13 @@ updateTraffic { updateQueue, seed, world, delta } =
                             ( carAfterDespawn world carWithUpdatedFSM, seed )
 
                         _ ->
-                            let
-                                otherCars =
-                                    world.carPositionLookup
-                                        |> QuadTree.neighborsWithin nearbyTrafficRadius activeCar.boundingBox
-                                        |> List.filter (\car -> car.id /= activeCar.id)
-                            in
                             carWithUpdatedFSM
                                 |> Pathfinding.updateRoute world delta seed
-                                |> applyRound world otherCars
                                 |> Tuple.mapFirst Just
 
                 nextWorld =
                     carAfterSteeringAndPathfinding
-                        |> Maybe.map (updateCar delta)
+                        |> Maybe.map (updateCar delta steering)
                         |> Maybe.map (\car -> World.setCar car world)
                         |> Maybe.withDefaultLazy (\_ -> World.removeCar activeCar.id world)
                         -- The car might already be deleted, but the actions still need to be applied (using the car data on FSM update)
@@ -105,22 +112,6 @@ updateTraffic { updateQueue, seed, world, delta } =
                 , world = nextWorld
                 , delta = delta
                 }
-
-
-applyRound : World -> List Car -> ( Car, Random.Seed ) -> ( Car, Random.Seed )
-applyRound world otherCars ( activeCar, seed ) =
-    let
-        round =
-            { world = world
-            , otherCars = otherCars
-            , activeCar = activeCar
-            , seed = seed
-            }
-
-        roundResults =
-            Round.play round
-    in
-    ( roundResults.car, roundResults.seed )
 
 
 applyActions : List Car.Action -> Car -> World -> World
@@ -179,13 +170,9 @@ applyAction car action world =
             world
 
 
-updateCar : Duration -> Car -> Car
-updateCar delta car =
+updateCar : Duration -> Steering -> Car -> Car
+updateCar delta steering car =
     let
-        steering =
-            -- TODO: implement proper path following steering to use for movement
-            Steering.noSteering
-
         carTravelDirection =
             Direction2d.fromAngle car.orientation
 
@@ -211,9 +198,14 @@ updateCar delta car =
                     car.orientation
 
         nextVelocity =
-            car.velocity
-                |> Quantity.plus (car.acceleration |> Quantity.for delta)
-                |> Quantity.clamp Quantity.zero Steering.maxVelocity
+            case steering.linear of
+                Just acceleration ->
+                    car.velocity
+                        |> Quantity.plus (acceleration |> Quantity.for delta)
+                        |> Quantity.clamp Quantity.zero Steering.maxVelocity
+
+                Nothing ->
+                    car.velocity
 
         nextRotation =
             case steering.angular of
@@ -267,7 +259,6 @@ moveCarToHome world car ( home, parkingSpot ) =
                 , position = parkingSpot.position
                 , orientation = Lot.parkingSpotOrientation home
                 , velocity = Quantity.zero
-                , acceleration = Steering.maxAcceleration
             }
                 |> Pathfinding.setupParking parking
                 |> Pathfinding.createRouteToLotExit nodeCtx parkingSpot.pathToLotExit

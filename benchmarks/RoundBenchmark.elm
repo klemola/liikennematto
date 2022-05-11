@@ -15,13 +15,13 @@ suite =
     describe "Round performance"
         [ describe "Round fixtures in action"
             [ benchmark "collision: paths intersect" <|
-                \_ -> Round.play Rounds.collisionSetupPathsIntersect
+                \_ -> Round.checkRules Rounds.collisionSetupPathsIntersect
             , benchmark "collision: near collision" <|
-                \_ -> Round.play Rounds.collisionSetupNearCollision
+                \_ -> Round.checkRules Rounds.collisionSetupNearCollision
             , benchmark "collision: no collision" <|
-                \_ -> Round.play Rounds.noCollisionSetupDifferentLanes
+                \_ -> Round.checkRules Rounds.noCollisionSetupDifferentLanes
             , benchmark "traffic lights: red" <|
-                \_ -> Round.play Rounds.redTrafficLightsSetup
+                \_ -> Round.checkRules Rounds.redTrafficLightsSetup
             ]
         , describe "Large map"
             [ -- Due to random generation, the amount of cars in play might be smaller (can't place cars too close to another)
@@ -30,7 +30,7 @@ suite =
                 |> List.map
                     (\round ->
                         ( Dict.size round.world.cars |> String.fromInt
-                        , \_ -> Round.play round
+                        , \_ -> Round.checkRules round
                         )
                     )
                 |> scale "cars amount - not optimized"
@@ -40,7 +40,7 @@ suite =
                 |> List.map
                     (\round ->
                         ( Dict.size round.world.cars |> String.fromInt
-                        , \_ -> Round.play round
+                        , \_ -> Round.checkRules round
                         )
                     )
                 |> scale "cars amount - with quadtree"

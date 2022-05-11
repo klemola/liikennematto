@@ -2,10 +2,8 @@ module Simulation.Steering exposing
     ( Steering
     , accelerate
     , align
-    , maxAcceleration
-    , maxDeceleration
     , maxVelocity
-    , noSteering
+    , none
     , seekAndFaceTarget
     , slowDown
     , stop
@@ -63,8 +61,8 @@ maxRotation =
     AngularSpeed.radiansPerSecond 1
 
 
-noSteering : Steering
-noSteering =
+none : Steering
+none =
     { linear = Nothing
     , angular = Nothing
     }
@@ -140,7 +138,7 @@ align { currentRotation, currentOrientation, targetOrientation } =
             Quantity.abs rotation
     in
     if rotationSize |> Quantity.lessThan targetRadius then
-        noSteering
+        none
 
     else
         let

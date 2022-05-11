@@ -1,11 +1,10 @@
 module Simulation.Round exposing
     ( Round
-    , RoundResults
     , Rule(..)
     , checkForwardCollision
     , checkPathCollision
+    , checkRules
     , checkTrafficControl
-    , play
     )
 
 import Angle
@@ -28,9 +27,7 @@ import Model.World exposing (World)
 import Point2d
 import Polygon2d
 import Quantity
-import Random
 import Simulation.Steering as Steering exposing (Steering)
-import Speed
 import Triangle2d
 
 
@@ -38,13 +35,6 @@ type alias Round =
     { world : World
     , activeCar : Car
     , otherCars : List Car
-    , seed : Random.Seed
-    }
-
-
-type alias RoundResults =
-    { car : Car
-    , seed : Random.Seed
     }
 
 
@@ -95,83 +85,44 @@ parkingRadius =
 
 
 --
--- Main logic
+-- Check rules
 --
 
 
-play : Round -> RoundResults
-play round =
-    round
-        |> checkRules
-        |> toResults
-
-
-toResults : Round -> RoundResults
-toResults round =
-    { car = round.activeCar
-    , seed = round.seed
-    }
-
-
-checkRules : Round -> Round
+checkRules : Round -> Steering
 checkRules round =
     let
-        { activeCar } =
-            round
-
-        nextCar =
-            case ruleToApply round of
-                Just ReactToCollision ->
-                    -- Bounce the car back on impact
-                    { activeCar
-                        | acceleration = Quantity.zero
-                        , velocity = Speed.metersPerSecond -10
-                    }
-
-                Just otherRule ->
-                    otherRule
-                        |> applyRule round
-                        |> applySteering activeCar
-
-                Nothing ->
-                    -- cancel the effects of previously applied rules
-                    if
-                        Car.isPathfinding round.activeCar
-                            && (Car.isStoppedOrWaiting round.activeCar || Car.isBreaking round.activeCar)
-                    then
-                        Steering.accelerate |> applySteering round.activeCar
-
-                    else
-                        activeCar
+        activeRule =
+            Maybe.Extra.orListLazy
+                [ \() -> checkForwardCollision round
+                , \() -> checkParking round
+                , \() -> checkTrafficControl round
+                , \() -> checkPathCollision round
+                ]
     in
-    { round | activeCar = nextCar }
-
-
-applySteering : Car -> Steering -> Car
-applySteering car steering =
-    case steering.linear of
-        Just acceleration ->
-            { car | acceleration = acceleration }
+    case activeRule of
+        Just rule ->
+            applyRule round.activeCar rule
 
         Nothing ->
-            car
+            -- cancel the effects of previously applied rules
+            if
+                Car.isPathfinding round.activeCar
+                    && (Car.isStoppedOrWaiting round.activeCar
+                            || (round.activeCar.velocity |> Quantity.lessThan Steering.maxVelocity)
+                       )
+            then
+                Steering.accelerate
+
+            else
+                Steering.none
 
 
-ruleToApply : Round -> Maybe Rule
-ruleToApply round =
-    Maybe.Extra.orListLazy
-        [ \() -> checkForwardCollision round
-        , \() -> checkParking round
-        , \() -> checkTrafficControl round
-        , \() -> checkPathCollision round
-        ]
-
-
-applyRule : Round -> Rule -> Steering
-applyRule round rule =
+applyRule : Car -> Rule -> Steering
+applyRule activeCar rule =
     let
         { make, position, velocity, localPath } =
-            round.activeCar
+            activeCar
     in
     case rule of
         AvoidCollision distanceToCollision ->
@@ -190,7 +141,7 @@ applyRule round rule =
                 velocity
 
         ReactToCollision ->
-            Steering.noSteering
+            Steering.stop
 
         StopAtTrafficControl distanceFromTrafficControl ->
             Steering.stopAtDistance
