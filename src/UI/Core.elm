@@ -1,4 +1,15 @@
-module UI.Core exposing (..)
+module UI.Core exposing
+    ( ControlButtonSize(..)
+    , UiDimensions
+    , borderRadius
+    , borderSize
+    , colors
+    , controlButton
+    , icon
+    , link
+    , uiDimensions
+    , whitespace
+    )
 
 import Data.Colors as Colors exposing (uiCompat)
 import Element exposing (Element)

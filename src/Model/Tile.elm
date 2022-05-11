@@ -1,6 +1,8 @@
 module Model.Tile exposing
     ( Action(..)
+    , OrthogonalNeighbors
     , Tile
+    , TileFSM
     , TileKind
     , TileOperation(..)
     , TileState(..)

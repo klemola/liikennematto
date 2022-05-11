@@ -1,6 +1,7 @@
 module Model.Tilemap exposing
     ( Tilemap
     , TilemapConfig
+    , TilemapUpdateResult
     , addAnchor
     , addTile
     , anchorAt

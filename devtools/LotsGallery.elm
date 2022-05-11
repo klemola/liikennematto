@@ -1,4 +1,4 @@
-module LotsGallery exposing (..)
+module LotsGallery exposing (main)
 
 import Circle2d
 import Color exposing (Color)

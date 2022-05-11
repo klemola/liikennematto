@@ -27,7 +27,7 @@ import Simulation.Round as Round
         , checkTrafficControl
         )
 import Simulation.Steering as Steering
-import Test exposing (..)
+import Test exposing (Test, describe, test)
 
 
 checkCollisionRules round =

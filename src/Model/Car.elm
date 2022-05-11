@@ -1,7 +1,10 @@
 module Model.Car exposing
     ( Action(..)
     , Car
+    , CarFSM
     , CarState(..)
+    , NewCar
+    , UpdateContext
     , adjustedShape
     , build
     , fieldOfView
