@@ -42,7 +42,10 @@ devtools:
 	elm make devtools/RenderFixture.elm --output build/render_fixture.html
 	elm make devtools/LotsGallery.elm --output build/lots_debug.html
 
+review:
+	elm-review --fix
+
 stats:
 	cloc --exclude-dir=Data,assets src
 
-.PHONY: build check dev serve test benchmark devtools stats
+.PHONY: build check dev serve test benchmark devtools review stats
