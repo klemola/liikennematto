@@ -1,5 +1,6 @@
 module Model.Geometry exposing
     ( DiagonalDirection(..)
+    , GlobalCoordinates
     , LMBoundingBox2d
     , LMCubicSpline2d
     , LMCubicSpline2dLocal
@@ -13,6 +14,7 @@ module Model.Geometry exposing
     , LMQuadTree
     , LMShape2d
     , LMTriangle2d
+    , LocalCoordinates
     , OrthogonalDirection(..)
     , crossOrthogonalDirection
     , diagonalDirections

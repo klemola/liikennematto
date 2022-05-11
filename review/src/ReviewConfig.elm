@@ -39,11 +39,11 @@ config =
     , NoDebug.Log.rule
     , NoDebug.TodoOrToString.rule
         |> Rule.ignoreErrorsForDirectories [ "tests/" ]
-    -- , NoExposingEverything.rule
-    -- , NoImportingEverything.rule []
-    -- , NoMissingTypeAnnotation.rule
-    --     |> Rule.ignoreErrorsForDirectories [ "tests/" ]
-    -- , NoMissingTypeExpose.rule
+    , NoExposingEverything.rule
+    , NoImportingEverything.rule []
+    , NoMissingTypeAnnotation.rule
+        |> Rule.ignoreErrorsForDirectories [ "tests/" ]
+    , NoMissingTypeExpose.rule
     , NoSimpleLetBody.rule
     , NoPrematureLetComputation.rule
     , NoUnused.CustomTypeConstructors.rule []

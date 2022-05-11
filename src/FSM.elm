@@ -2,6 +2,7 @@ module FSM exposing
     ( FSM
     , State
     , StateId
+    , Transition
     , TransitionTrigger(..)
     , createState
     , createStateId

@@ -1,5 +1,6 @@
 module Render exposing
-    ( renderLot
+    ( DebugLayers
+    , renderLot
     , tileSizePixels
     , view
     )

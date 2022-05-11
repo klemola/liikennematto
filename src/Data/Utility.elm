@@ -1,4 +1,4 @@
-module Data.Utility exposing (tilemapFromCoordinates, worldFromTilemap)
+module Data.Utility exposing (AnchorDef, tilemapFromCoordinates, worldFromTilemap)
 
 import Data.Defaults as Defaults
 import Model.Cell as Cell

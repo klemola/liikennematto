@@ -1,5 +1,6 @@
 module Model.Lookup exposing
     ( CarPositionLookup
+    , RNLookupTreeEntry
     , RoadNetworkLookup
     , carPositionLookup
     , roadNetworkLookup
@@ -30,10 +31,10 @@ type alias CarPositionLookup =
 
 
 type alias RoadNetworkLookup =
-    LMQuadTree LookupTreeEntry
+    LMQuadTree RNLookupTreeEntry
 
 
-type alias LookupTreeEntry =
+type alias RNLookupTreeEntry =
     { id : Int, position : LMPoint2d, boundingBox : LMBoundingBox2d }
 
 

@@ -1,5 +1,6 @@
 module Model.RenderCache exposing
     ( RenderCache
+    , TilePresentation
     , TilemapPresentation
     , new
     , refreshTilemapCache
