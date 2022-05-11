@@ -1,18 +1,16 @@
 module Simulation.Steering exposing
     ( Steering
+    , accelerate
     , align
-    , applyCollisionEffects
-    , break
     , maxAcceleration
     , maxDeceleration
     , maxVelocity
     , noSteering
     , seekAndFaceTarget
     , slowDown
-    , startMoving
     , stop
+    , stopAtDistance
     , stopAtPathEnd
-    , stopAtTrafficControl
     )
 
 import Acceleration exposing (Acceleration)
@@ -21,11 +19,23 @@ import AngularAcceleration exposing (AngularAcceleration)
 import AngularSpeed exposing (AngularSpeed)
 import Duration
 import Length exposing (Length)
-import Model.Car exposing (Car)
+import Model.Geometry exposing (LMPoint2d, LMPolyline2d)
 import Point2d
 import Polyline2d
 import Quantity exposing (Quantity(..))
 import Speed exposing (Speed)
+
+
+type alias Steering =
+    { linear : Maybe Acceleration
+    , angular : Maybe AngularAcceleration
+    }
+
+
+
+--
+-- Constants
+--
 
 
 maxVelocity : Speed
@@ -53,27 +63,31 @@ maxRotation =
     AngularSpeed.radiansPerSecond 1
 
 
-trafficControlStopDistance : Length
-trafficControlStopDistance =
-    Length.meters 4
-
-
-parkingRadius : Length
-parkingRadius =
-    Length.meters 10
-
-
-type alias Steering =
-    { linear : Maybe Acceleration
-    , angular : Maybe AngularAcceleration
-    }
-
-
 noSteering : Steering
 noSteering =
     { linear = Nothing
     , angular = Nothing
     }
+
+
+accelerate : Steering
+accelerate =
+    { linear = Just maxAcceleration
+    , angular = Nothing
+    }
+
+
+stop : Steering
+stop =
+    { linear = Just maxDeceleration
+    , angular = Nothing
+    }
+
+
+
+--
+-- Steering behaviors
+--
 
 
 seekAndFaceTarget :
@@ -158,10 +172,81 @@ align { currentRotation, currentOrientation, targetOrientation } =
         }
 
 
+slowDown : Speed -> Speed -> Steering
+slowDown currentVelocity targetVelocity =
+    { linear = Just <| reachTargetVelocity currentVelocity targetVelocity
+    , angular = Nothing
+    }
+
+
+stopAtDistance : Length -> Length -> Speed -> Steering
+stopAtDistance distanceFromTarget threshold velocity =
+    let
+        nextAcceleration =
+            if velocity == Quantity.zero then
+                maxDeceleration
+
+            else
+                distanceFromTarget
+                    |> Quantity.minus threshold
+                    |> Quantity.max Quantity.zero
+                    |> accelerateToZeroOverDistance velocity
+                    |> Quantity.clamp maxDeceleration Quantity.zero
+    in
+    { linear = Just nextAcceleration
+    , angular = Nothing
+    }
+
+
+stopAtPathEnd : LMPoint2d -> Speed -> LMPolyline2d -> Length -> Steering
+stopAtPathEnd position velocity localPath stopRadius =
+    let
+        target =
+            -- Room for improvement: this is slow. Try to cache the endpoint of the path or just use the spline instead
+            localPath
+                |> Polyline2d.vertices
+                |> List.reverse
+                |> List.head
+
+        nextAcceleration =
+            case target of
+                Just endPoint ->
+                    let
+                        distanceToParkingSpot =
+                            Point2d.distanceFrom position endPoint
+                    in
+                    if distanceToParkingSpot |> Quantity.lessThanOrEqualTo stopRadius then
+                        Quantity.max
+                            maxDeceleration
+                            (accelerateToZeroOverDistance
+                                velocity
+                                distanceToParkingSpot
+                            )
+
+                    else
+                        reachTargetVelocity velocity (Quantity.half maxVelocity)
+
+                Nothing ->
+                    maxDeceleration
+    in
+    { linear = Just nextAcceleration
+    , angular = Nothing
+    }
+
+
 
 --
 -- Utility
 --
+
+
+reachTargetVelocity : Speed -> Speed -> Acceleration
+reachTargetVelocity currentVelocity targetVelocity =
+    if currentVelocity |> Quantity.greaterThan targetVelocity then
+        Acceleration.metersPerSecondSquared -5
+
+    else
+        maxAcceleration
 
 
 accelerateToZeroOverDistance : Speed -> Length -> Acceleration
@@ -185,110 +270,3 @@ accelerateToZeroOverDistance (Quantity currentSpeed) (Quantity distanceFromTarge
                 (finalSpeed * finalSpeed - currentSpeed * currentSpeed) / (2 * distanceFromTarget)
         in
         Quantity acceleration
-
-
-
---
--- Imported from Car.elm
---
-
-
-stopAtTrafficControl : Length -> Car -> Car
-stopAtTrafficControl distanceFromTrafficControl car =
-    let
-        nextAcceleration =
-            if car.velocity == Quantity.zero then
-                maxDeceleration
-
-            else
-                distanceFromTrafficControl
-                    |> Quantity.minus trafficControlStopDistance
-                    |> Quantity.max Quantity.zero
-                    |> accelerateToZeroOverDistance car.velocity
-                    |> Quantity.clamp maxDeceleration Quantity.zero
-    in
-    { car | acceleration = nextAcceleration }
-
-
-startMoving : Car -> Car
-startMoving car =
-    { car | acceleration = maxAcceleration }
-
-
-break : Length -> Car -> Car
-break breakDistance car =
-    let
-        collisionMargin =
-            car.make.length |> Quantity.multiplyBy 1.5
-
-        targetDistance =
-            breakDistance
-                |> Quantity.minus collisionMargin
-                |> Quantity.max Quantity.zero
-
-        nextAcceleration =
-            Quantity.max maxDeceleration (accelerateToZeroOverDistance car.velocity targetDistance)
-    in
-    { car | acceleration = nextAcceleration }
-
-
-slowDown : Speed -> Car -> Car
-slowDown targetVelocity car =
-    { car | acceleration = reachTargetVelocity car.velocity targetVelocity }
-
-
-stop : Car -> Car
-stop car =
-    { car | acceleration = maxDeceleration }
-
-
-stopAtPathEnd : Car -> Car
-stopAtPathEnd car =
-    let
-        target =
-            -- Room for improvement: this is slow. Try to cache the endpoint of the path or just use the spline instead
-            car.localPath
-                |> Polyline2d.vertices
-                |> List.reverse
-                |> List.head
-
-        nextAcceleration =
-            case target of
-                Just endPoint ->
-                    let
-                        distanceToParkingSpot =
-                            Point2d.distanceFrom car.position endPoint
-                    in
-                    if distanceToParkingSpot |> Quantity.lessThanOrEqualTo parkingRadius then
-                        Quantity.max
-                            maxDeceleration
-                            (accelerateToZeroOverDistance
-                                car.velocity
-                                distanceToParkingSpot
-                            )
-
-                    else
-                        reachTargetVelocity car.velocity (Quantity.half maxVelocity)
-
-                Nothing ->
-                    maxDeceleration
-    in
-    { car | acceleration = nextAcceleration }
-
-
-applyCollisionEffects : Car -> Car
-applyCollisionEffects car =
-    -- Bounce the car back on impact
-    { car
-        | acceleration = Quantity.zero
-        , velocity = Speed.metersPerSecond -10
-    }
-
-
-reachTargetVelocity : Speed -> Speed -> Acceleration
-reachTargetVelocity currentVelocity targetVelocity =
-    if currentVelocity |> Quantity.greaterThan targetVelocity then
-        Acceleration.metersPerSecondSquared -5
-
-    else
-        maxAcceleration

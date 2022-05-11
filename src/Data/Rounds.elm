@@ -357,7 +357,6 @@ buildCar option position orientation velocity =
         |> Car.withOrientation orientation
         |> Car.withVelocity velocity
         |> Car.build id
-        |> Steering.startMoving
 
 
 routeCarByDestination : World -> LMPoint2d -> Car -> Car

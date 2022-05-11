@@ -71,7 +71,6 @@ updateTraffic { updateQueue, seed, world, delta } =
                     case FSM.toCurrentState nextFSM of
                         Car.Despawning ->
                             ( carWithUpdatedFSM
-                                |> Steering.stop
                                 |> Pathfinding.clearRoute
                                 |> Just
                             , seed
@@ -348,7 +347,6 @@ createCar carId lot make homeNode parkingSpot =
         |> Car.build carId
         |> Pathfinding.setupParking parking
         |> Pathfinding.createRouteToLotExit homeNode parkingSpot.pathToLotExit
-        |> Steering.startMoving
 
 
 
@@ -377,7 +375,6 @@ spawnCar seed world =
                             |> Car.withOrientation (Direction2d.toAngle nodeCtx.node.label.direction)
                             |> Car.build id
                             |> Pathfinding.setupRoute world seedAfterRandomNode nodeCtx
-                            |> Tuple.mapFirst Steering.startMoving
                 in
                 ( World.setCar car world
                 , seedAfterRouteInit
