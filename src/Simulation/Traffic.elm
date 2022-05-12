@@ -202,7 +202,7 @@ updateCar delta steering car =
                 Just acceleration ->
                     car.velocity
                         |> Quantity.plus (acceleration |> Quantity.for delta)
-                        |> Quantity.clamp Quantity.zero Steering.maxVelocity
+                        |> Steering.clampVelocity
 
                 Nothing ->
                     car.velocity

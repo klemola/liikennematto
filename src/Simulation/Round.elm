@@ -106,12 +106,7 @@ checkRules round =
 
         Nothing ->
             -- cancel the effects of previously applied rules
-            if
-                Car.isPathfinding round.activeCar
-                    && (Car.isStoppedOrWaiting round.activeCar
-                            || (round.activeCar.velocity |> Quantity.lessThan Steering.maxVelocity)
-                       )
-            then
+            if Car.isPathfinding round.activeCar then
                 Steering.accelerate
 
             else
@@ -131,17 +126,19 @@ applyRule activeCar rule =
                     make.length |> Quantity.multiplyBy 1.5
 
                 targetDistance =
-                    distanceToCollision
-                        |> Quantity.minus collisionMargin
-                        |> Quantity.max Quantity.zero
+                    distanceToCollision |> Quantity.minus collisionMargin
             in
-            Steering.stopAtDistance
-                targetDistance
-                Quantity.zero
-                velocity
+            if targetDistance |> Quantity.greaterThanZero then
+                Steering.stopAtDistance
+                    targetDistance
+                    Quantity.zero
+                    velocity
+
+            else
+                Steering.stop velocity
 
         ReactToCollision ->
-            Steering.stop
+            Steering.reactToCollision
 
         StopAtTrafficControl distanceFromTrafficControl ->
             Steering.stopAtDistance
@@ -150,9 +147,7 @@ applyRule activeCar rule =
                 velocity
 
         SlowDownAtTrafficControl ->
-            Steering.slowDown
-                velocity
-                (Steering.maxVelocity |> Quantity.half)
+            Steering.goSlow velocity
 
         StopAtParkingSpot ->
             Steering.stopAtPathEnd
@@ -162,7 +157,7 @@ applyRule activeCar rule =
                 parkingRadius
 
         StayParked ->
-            Steering.stop
+            Steering.stop velocity
 
 
 
@@ -325,6 +320,7 @@ pathCollisionWith fieldOfViewTriangle activeCar otherCar =
 intersectionPointWithSpeedTakenIntoAccount : Car -> Car -> LMPoint2d -> Maybe LMPoint2d
 intersectionPointWithSpeedTakenIntoAccount car otherCar intersectionPoint =
     if
+        -- TODO: check if the time comparison makes sense with negative time (negative velocity)
         car
             |> Car.secondsTo intersectionPoint
             |> Quantity.greaterThan (otherCar |> Car.secondsTo intersectionPoint)
