@@ -14,7 +14,6 @@ module Model.Car exposing
     , isStoppedOrWaiting
     , new
     , rightSideOfFieldOfView
-    , secondsTo
     , statusDescription
     , triggerDespawn
     , triggerParking
@@ -404,15 +403,6 @@ isDriving car =
             FSM.toCurrentState car.fsm
     in
     currentState == Driving
-
-
-secondsTo : LMPoint2d -> Car -> Quantity Float Duration.Seconds
-secondsTo target car =
-    let
-        distanceFromTarget =
-            Point2d.distanceFrom car.position target
-    in
-    distanceFromTarget |> Quantity.at_ car.velocity
 
 
 

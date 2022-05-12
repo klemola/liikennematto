@@ -13,7 +13,7 @@ import Direction2d
 import FSM
 import Length exposing (Length)
 import LineSegment2d
-import Maybe.Extra
+import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car, CarState(..))
 import Model.Geometry
     exposing
@@ -93,7 +93,7 @@ checkRules : Round -> Steering
 checkRules round =
     let
         activeRule =
-            Maybe.Extra.orListLazy
+            Maybe.orListLazy
                 [ \() -> checkForwardCollision round
                 , \() -> checkParking round
                 , \() -> checkTrafficControl round
@@ -190,12 +190,16 @@ checkForwardCollision { activeCar, otherCars } =
 
 checkPathCollision : Round -> Maybe Rule
 checkPathCollision { activeCar, otherCars } =
-    let
-        checkArea =
-            Car.rightSideOfFieldOfView activeCar
-    in
-    distanceToClosestCollisionPoint activeCar otherCars (pathCollisionWith checkArea activeCar)
-        |> Maybe.map AvoidCollision
+    if Car.isStoppedOrWaiting activeCar then
+        Nothing
+
+    else
+        let
+            checkArea =
+                Car.rightSideOfFieldOfView activeCar
+        in
+        distanceToClosestCollisionPoint activeCar otherCars (pathCollisionWith checkArea activeCar)
+            |> Maybe.map AvoidCollision
 
 
 checkTrafficControl : Round -> Maybe Rule
@@ -313,22 +317,8 @@ pathCollisionWith fieldOfViewTriangle activeCar otherCar =
         Nothing
 
     else
+        -- Room for improvement: project the cars w.rt their velocity and see if they will later collide
         pathsIntersectAt fieldOfViewTriangle activeCar otherCar
-            |> Maybe.andThen (intersectionPointWithSpeedTakenIntoAccount activeCar otherCar)
-
-
-intersectionPointWithSpeedTakenIntoAccount : Car -> Car -> LMPoint2d -> Maybe LMPoint2d
-intersectionPointWithSpeedTakenIntoAccount car otherCar intersectionPoint =
-    if
-        -- TODO: check if the time comparison makes sense with negative time (negative velocity)
-        car
-            |> Car.secondsTo intersectionPoint
-            |> Quantity.greaterThan (otherCar |> Car.secondsTo intersectionPoint)
-    then
-        Just intersectionPoint
-
-    else
-        Nothing
 
 
 distanceToClosestCollisionPoint : Car -> List Car -> (Car -> Maybe LMPoint2d) -> Maybe Length
