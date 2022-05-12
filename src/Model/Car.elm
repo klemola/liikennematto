@@ -373,7 +373,9 @@ build id newCar =
 
 isStoppedOrWaiting : Car -> Bool
 isStoppedOrWaiting car =
-    car.velocity |> Quantity.lessThan (Speed.metersPerSecond 0.01)
+    car.velocity
+        |> Quantity.abs
+        |> Quantity.lessThan (Speed.metersPerSecond 0.01)
 
 
 isPathfinding : Car -> Bool

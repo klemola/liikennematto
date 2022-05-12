@@ -2,10 +2,12 @@ module Simulation.Steering exposing
     ( Steering
     , accelerate
     , align
+    , clampVelocity
+    , goSlow
     , maxVelocity
     , none
+    , reactToCollision
     , seekAndFaceTarget
-    , slowDown
     , stop
     , stopAtDistance
     , stopAtPathEnd
@@ -36,6 +38,11 @@ type alias Steering =
 --
 
 
+minVelocity : Speed
+minVelocity =
+    Speed.metersPerSecond -5
+
+
 maxVelocity : Speed
 maxVelocity =
     Speed.metersPerSecond 11.1
@@ -59,27 +66,6 @@ maxAngularAcceleration =
 maxRotation : AngularSpeed
 maxRotation =
     AngularSpeed.radiansPerSecond 1
-
-
-none : Steering
-none =
-    { linear = Nothing
-    , angular = Nothing
-    }
-
-
-accelerate : Steering
-accelerate =
-    { linear = Just maxAcceleration
-    , angular = Nothing
-    }
-
-
-stop : Steering
-stop =
-    { linear = Just maxDeceleration
-    , angular = Nothing
-    }
 
 
 
@@ -170,26 +156,51 @@ align { currentRotation, currentOrientation, targetOrientation } =
         }
 
 
-slowDown : Speed -> Speed -> Steering
-slowDown currentVelocity targetVelocity =
-    { linear = Just <| reachTargetVelocity currentVelocity targetVelocity
+none : Steering
+none =
+    { linear = Nothing
+    , angular = Nothing
+    }
+
+
+accelerate : Steering
+accelerate =
+    { linear = Just maxAcceleration
+    , angular = Nothing
+    }
+
+
+goSlow : Speed -> Steering
+goSlow currentVelocity =
+    { linear = Just <| reachTargetVelocity currentVelocity (Quantity.half maxVelocity)
+    , angular = Nothing
+    }
+
+
+reactToCollision : Steering
+reactToCollision =
+    -- Start reversing in opposite direction (of velocity)
+    -- Similar to applying force from infront of the car
+    { linear = Just maxDeceleration
+    , angular = Nothing
+    }
+
+
+stop : Speed -> Steering
+stop currentVelocity =
+    { linear = Just <| reachTargetVelocity currentVelocity Quantity.zero
     , angular = Nothing
     }
 
 
 stopAtDistance : Length -> Length -> Speed -> Steering
-stopAtDistance distanceFromTarget threshold velocity =
+stopAtDistance distanceFromTarget threshold currentVelocity =
     let
         nextAcceleration =
-            if velocity == Quantity.zero then
-                maxDeceleration
-
-            else
-                distanceFromTarget
-                    |> Quantity.minus threshold
-                    |> Quantity.max Quantity.zero
-                    |> accelerateToZeroOverDistance velocity
-                    |> Quantity.clamp maxDeceleration Quantity.zero
+            distanceFromTarget
+                |> Quantity.minus threshold
+                |> Quantity.max Quantity.zero
+                |> accelerateToZeroOverDistance currentVelocity
     in
     { linear = Just nextAcceleration
     , angular = Nothing
@@ -238,25 +249,49 @@ stopAtPathEnd position velocity localPath stopRadius =
 --
 
 
+clampVelocity : Speed -> Speed
+clampVelocity nextVelocity =
+    nextVelocity |> Quantity.clamp minVelocity maxVelocity
+
+
 reachTargetVelocity : Speed -> Speed -> Acceleration
 reachTargetVelocity currentVelocity targetVelocity =
-    if currentVelocity |> Quantity.greaterThan targetVelocity then
-        Acceleration.metersPerSecondSquared -5
+    let
+        acceleration =
+            if
+                Quantity.difference currentVelocity targetVelocity
+                    |> Quantity.abs
+                    |> Quantity.lessThan (Speed.metersPerSecond 0.1)
+            then
+                -- With floating point precision the velocity is rarely exactly zero.
+                -- With absolute comparison to target speed and a very low acceleration the
+                -- car will hover just above and below zero, appearing to be still
+                Acceleration.metersPerSecondSquared 0.1
+
+            else
+                maxAcceleration
+    in
+    if currentVelocity |> Quantity.lessThan targetVelocity then
+        acceleration
 
     else
-        maxAcceleration
+        Quantity.negate acceleration
 
 
 accelerateToZeroOverDistance : Speed -> Length -> Acceleration
-accelerateToZeroOverDistance (Quantity currentSpeed) (Quantity distanceFromTarget) =
+accelerateToZeroOverDistance currentVelocity (Quantity distanceFromTarget) =
     if distanceFromTarget < 0.5 then
-        maxDeceleration
+        -- Very close to the target; try to reach zero velocity
+        reachTargetVelocity currentVelocity Quantity.zero
 
     else
         let
+            (Quantity currentSpeed) =
+                currentVelocity
+
             finalSpeed =
                 if currentSpeed < 0.1 then
-                    -- (Nearly) stopped before reaching the target; accelerate to move towards the target
+                    -- (Nearly) stopped or reversing before reaching the target; accelerate to move towards the target
                     Speed.inMetersPerSecond maxVelocity * 0.75
 
                 else
