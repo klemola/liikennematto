@@ -1,5 +1,8 @@
 module Simulation.Traffic exposing
-    ( addLotResident
+    ( Rule(..)
+    , RuleSetup
+    , addLotResident
+    , checkRules
     , rerouteCarsIfNeeded
     , spawnCar
     , updateTraffic
@@ -15,20 +18,52 @@ import Duration exposing (Duration)
 import FSM
 import Length exposing (Length)
 import Maybe.Extra as Maybe
-import Model.Car as Car exposing (Car)
+import Model.Car as Car exposing (Car, CarState(..))
 import Model.Entity as Entity exposing (Id)
+import Model.Geometry exposing (LMPoint2d)
 import Model.Lookup exposing (carPositionLookup)
 import Model.Lot as Lot exposing (Lot, ParkingSpot)
-import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext)
+import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext, TrafficControl(..))
+import Model.TrafficLight as TrafficLight exposing (TrafficLight)
 import Model.World as World exposing (World)
 import Point2d
 import Polyline2d
 import QuadTree
 import Quantity
 import Random
+import Simulation.Collision as Collision
 import Simulation.Pathfinding as Pathfinding
-import Simulation.Round as Round
 import Simulation.Steering as Steering exposing (Steering)
+
+
+maxCarCollisionTestDistance : Length
+maxCarCollisionTestDistance =
+    Length.meters 16
+
+
+trafficLightReactionDistance : Length
+trafficLightReactionDistance =
+    Length.meters 32
+
+
+yieldSlowDownDistance : Length
+yieldSlowDownDistance =
+    Length.meters 16
+
+
+yieldReactionDistance : Length
+yieldReactionDistance =
+    Length.meters 5
+
+
+trafficControlStopDistance : Length
+trafficControlStopDistance =
+    Length.meters 4
+
+
+parkingRadius : Length
+parkingRadius =
+    Length.meters 10
 
 
 nearbyTrafficRadius : Length
@@ -72,14 +107,12 @@ updateTraffic { updateQueue, seed, world, delta } =
                         |> QuadTree.neighborsWithin nearbyTrafficRadius activeCar.boundingBox
                         |> List.filter (\car -> car.id /= activeCar.id)
 
-                round =
-                    { world = world
-                    , otherCars = otherCars
-                    , activeCar = activeCar
-                    }
-
                 steering =
-                    Round.checkRules round
+                    checkRules
+                        { world = world
+                        , otherCars = otherCars
+                        , activeCar = activeCar
+                        }
 
                 ( carAfterSteeringAndPathfinding, nextSeed ) =
                     case FSM.toCurrentState nextFSM of
@@ -395,3 +428,212 @@ validateSpawnConditions world nodeCtx =
 
     else
         Nothing
+
+
+
+--
+-- Rules
+--
+
+
+type alias RuleSetup =
+    { world : World
+    , activeCar : Car
+    , otherCars : List Car
+    }
+
+
+type Rule
+    = AvoidCollision Length
+    | ReactToCollision
+    | StopAtTrafficControl Length
+    | SlowDownAtTrafficControl
+    | StopAtParkingSpot
+    | StayParked
+
+
+checkRules : RuleSetup -> Steering
+checkRules setup =
+    let
+        activeRule =
+            Maybe.orListLazy
+                [ \() -> checkForwardCollision setup
+                , \() -> checkParking setup
+                , \() -> checkTrafficControl setup
+                , \() -> checkPathCollision setup
+                ]
+    in
+    case activeRule of
+        Just rule ->
+            applyRule setup.activeCar rule
+
+        Nothing ->
+            -- cancel the effects of previously applied rules
+            if Car.isPathfinding setup.activeCar then
+                Steering.accelerate
+
+            else
+                Steering.none
+
+
+applyRule : Car -> Rule -> Steering
+applyRule activeCar rule =
+    let
+        { make, position, velocity, localPath } =
+            activeCar
+    in
+    case rule of
+        AvoidCollision distanceToCollision ->
+            let
+                collisionMargin =
+                    make.length |> Quantity.multiplyBy 1.5
+
+                targetDistance =
+                    distanceToCollision |> Quantity.minus collisionMargin
+            in
+            if targetDistance |> Quantity.greaterThanZero then
+                Steering.stopAtDistance
+                    targetDistance
+                    Quantity.zero
+                    velocity
+
+            else
+                Steering.stop velocity
+
+        ReactToCollision ->
+            Steering.reactToCollision
+
+        StopAtTrafficControl distanceFromTrafficControl ->
+            Steering.stopAtDistance
+                distanceFromTrafficControl
+                trafficControlStopDistance
+                velocity
+
+        SlowDownAtTrafficControl ->
+            Steering.goSlow velocity
+
+        StopAtParkingSpot ->
+            Steering.stopAtPathEnd
+                position
+                velocity
+                localPath
+                parkingRadius
+
+        StayParked ->
+            Steering.stop velocity
+
+
+
+-- Rule definitions
+
+
+checkForwardCollision : RuleSetup -> Maybe Rule
+checkForwardCollision { activeCar, otherCars } =
+    let
+        carFrontBumberDistance =
+            activeCar.make.length
+                |> Quantity.half
+                |> Quantity.plus (Length.meters 0.1)
+
+        ray =
+            Collision.toRay activeCar maxCarCollisionTestDistance
+    in
+    Collision.distanceToClosestCollisionPoint
+        activeCar
+        otherCars
+        (Collision.forwardCollisionWith ray activeCar)
+        |> Maybe.map
+            (\collisionDistance ->
+                if collisionDistance |> Quantity.lessThanOrEqualTo carFrontBumberDistance then
+                    ReactToCollision
+
+                else
+                    AvoidCollision collisionDistance
+            )
+
+
+checkPathCollision : RuleSetup -> Maybe Rule
+checkPathCollision { activeCar, otherCars } =
+    if Car.isStoppedOrWaiting activeCar then
+        Nothing
+
+    else
+        let
+            checkArea =
+                Car.rightSideOfFieldOfView activeCar
+        in
+        Collision.distanceToClosestCollisionPoint
+            activeCar
+            otherCars
+            (Collision.pathCollisionWith checkArea activeCar)
+            |> Maybe.map AvoidCollision
+
+
+checkTrafficControl : RuleSetup -> Maybe Rule
+checkTrafficControl setup =
+    setup.activeCar.route.connections
+        |> List.head
+        |> Maybe.andThen
+            (\{ node } ->
+                case node.label.trafficControl of
+                    Signal id ->
+                        Dict.get id setup.world.trafficLights |> Maybe.andThen (checkTrafficLights setup)
+
+                    Yield ->
+                        checkYield setup node.label.position
+
+                    None ->
+                        Nothing
+            )
+
+
+checkTrafficLights : RuleSetup -> TrafficLight -> Maybe Rule
+checkTrafficLights setup trafficLight =
+    let
+        distanceFromTrafficLight =
+            Point2d.distanceFrom setup.activeCar.position trafficLight.position
+
+        carShouldReact =
+            distanceFromTrafficLight |> Quantity.lessThanOrEqualTo trafficLightReactionDistance
+    in
+    if TrafficLight.shouldStopTraffic trafficLight && carShouldReact then
+        Just (StopAtTrafficControl distanceFromTrafficLight)
+
+    else
+        Nothing
+
+
+checkYield : RuleSetup -> LMPoint2d -> Maybe Rule
+checkYield { activeCar, otherCars } signPosition =
+    let
+        checkArea =
+            Car.fieldOfView activeCar
+
+        distanceFromYieldSign =
+            Point2d.distanceFrom activeCar.position signPosition
+    in
+    if distanceFromYieldSign |> Quantity.lessThanOrEqualTo yieldReactionDistance then
+        Collision.distanceToClosestCollisionPoint
+            activeCar
+            otherCars
+            (Collision.pathsIntersectAt checkArea activeCar)
+            |> Maybe.map (always (StopAtTrafficControl distanceFromYieldSign))
+
+    else if distanceFromYieldSign |> Quantity.lessThanOrEqualTo yieldSlowDownDistance then
+        Just SlowDownAtTrafficControl
+
+    else
+        Nothing
+
+
+checkParking : RuleSetup -> Maybe Rule
+checkParking { activeCar } =
+    case FSM.toCurrentState activeCar.fsm of
+        Parking ->
+            Just StopAtParkingSpot
+
+        Parked ->
+            Just StayParked
+
+        _ ->
+            Nothing

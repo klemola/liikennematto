@@ -36,7 +36,7 @@ test:
 benchmark:
 	mkdir -p "build/benchmarks"
 	elm make benchmarks/RoadNetworkBenchmark.elm --optimize --output build/benchmarks/road_network.html
-	elm make benchmarks/RoundBenchmark.elm --optimize --output build/benchmarks/round.html
+	elm make benchmarks/TrafficBenchmark.elm --optimize --output build/benchmarks/traffic.html
 
 devtools:
 	elm make devtools/RenderFixture.elm --output build/render_fixture.html

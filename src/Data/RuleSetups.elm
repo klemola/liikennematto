@@ -1,4 +1,4 @@
-module Data.Rounds exposing
+module Data.RuleSetups exposing
     ( collisionSetupCollided
     , collisionSetupNearCollision
     , collisionSetupPathsIntersect
@@ -32,13 +32,12 @@ import Point2d
 import Quantity
 import Random
 import Simulation.Pathfinding as Pathfinding
-import Simulation.Round exposing (Round)
 import Simulation.Steering as Steering
-import Simulation.Traffic as Traffic
+import Simulation.Traffic as Traffic exposing (RuleSetup)
 import Speed exposing (Speed)
 
 
-connectedRoadsSetup : Round
+connectedRoadsSetup : RuleSetup
 connectedRoadsSetup =
     let
         world =
@@ -54,10 +53,10 @@ connectedRoadsSetup =
             world
                 |> World.setCar car
     in
-    Round worldWithCars car otherCars
+    RuleSetup worldWithCars car otherCars
 
 
-collisionSetupPathsIntersect : Round
+collisionSetupPathsIntersect : RuleSetup
 collisionSetupPathsIntersect =
     let
         world =
@@ -80,10 +79,10 @@ collisionSetupPathsIntersect =
                 |> World.setCar car
                 |> World.setCar otherCar
     in
-    Round worldWithCars car otherCars
+    RuleSetup worldWithCars car otherCars
 
 
-collisionSetupNearCollision : Round
+collisionSetupNearCollision : RuleSetup
 collisionSetupNearCollision =
     let
         world =
@@ -106,10 +105,10 @@ collisionSetupNearCollision =
                 |> World.setCar car
                 |> World.setCar otherCar
     in
-    Round worldWithCars car otherCars
+    RuleSetup worldWithCars car otherCars
 
 
-collisionSetupCollided : Round
+collisionSetupCollided : RuleSetup
 collisionSetupCollided =
     let
         world =
@@ -132,10 +131,10 @@ collisionSetupCollided =
                 |> World.setCar car
                 |> World.setCar otherCar
     in
-    Round worldWithCars car otherCars
+    RuleSetup worldWithCars car otherCars
 
 
-noCollisionSetupDifferentLanes : Round
+noCollisionSetupDifferentLanes : RuleSetup
 noCollisionSetupDifferentLanes =
     let
         world =
@@ -156,10 +155,10 @@ noCollisionSetupDifferentLanes =
                 |> World.setCar car
                 |> World.setCar otherCar
     in
-    Round worldWithCars car otherCars
+    RuleSetup worldWithCars car otherCars
 
 
-noCollisionSetupIntersection : Round
+noCollisionSetupIntersection : RuleSetup
 noCollisionSetupIntersection =
     let
         world =
@@ -180,10 +179,10 @@ noCollisionSetupIntersection =
                 |> World.setCar car
                 |> World.setCar otherCar
     in
-    Round worldWithCars car otherCars
+    RuleSetup worldWithCars car otherCars
 
 
-redTrafficLightsSetup : Round
+redTrafficLightsSetup : RuleSetup
 redTrafficLightsSetup =
     let
         world =
@@ -200,10 +199,10 @@ redTrafficLightsSetup =
             world
                 |> World.setCar car
     in
-    Round worldWithCars car otherCars
+    RuleSetup worldWithCars car otherCars
 
 
-greenTrafficLightsSetup : Round
+greenTrafficLightsSetup : RuleSetup
 greenTrafficLightsSetup =
     let
         world =
@@ -220,10 +219,10 @@ greenTrafficLightsSetup =
             world
                 |> World.setCar car
     in
-    Round worldWithCars car otherCars
+    RuleSetup worldWithCars car otherCars
 
 
-yieldWithPriorityTrafficSetup1 : Round
+yieldWithPriorityTrafficSetup1 : RuleSetup
 yieldWithPriorityTrafficSetup1 =
     let
         world =
@@ -244,10 +243,10 @@ yieldWithPriorityTrafficSetup1 =
                 |> World.setCar car
                 |> World.setCar otherCar
     in
-    Round worldWithCars car otherCars
+    RuleSetup worldWithCars car otherCars
 
 
-yieldWithPriorityTrafficSetup2 : Round
+yieldWithPriorityTrafficSetup2 : RuleSetup
 yieldWithPriorityTrafficSetup2 =
     let
         world =
@@ -268,10 +267,10 @@ yieldWithPriorityTrafficSetup2 =
                 |> World.setCar car
                 |> World.setCar otherCar
     in
-    Round worldWithCars car otherCars
+    RuleSetup worldWithCars car otherCars
 
 
-yieldWithoutPriorityTrafficSetup : Round
+yieldWithoutPriorityTrafficSetup : RuleSetup
 yieldWithoutPriorityTrafficSetup =
     let
         world =
@@ -284,17 +283,17 @@ yieldWithoutPriorityTrafficSetup =
             world
                 |> World.setCar car
     in
-    Round worldWithCars car []
+    RuleSetup worldWithCars car []
 
 
-yieldSlowDownSetup : Round
+yieldSlowDownSetup : RuleSetup
 yieldSlowDownSetup =
     let
         world =
             worldWithThreeWayIntersection
 
         car =
-            buildCar CarA1 (Point2d.meters 24 118) (Angle.degrees 0) Quantity.zero
+            buildCar CarA1 (Point2d.meters 24 118) (Angle.degrees 0) Steering.maxVelocity
                 |> routeCarByDestination world (Point2d.meters 32 118)
 
         otherCars =
@@ -304,10 +303,10 @@ yieldSlowDownSetup =
             world
                 |> World.setCar car
     in
-    Round worldWithCars car otherCars
+    RuleSetup worldWithCars car otherCars
 
 
-largeWorldSetup : Int -> Round
+largeWorldSetup : Int -> RuleSetup
 largeWorldSetup carsAmount =
     let
         world =
@@ -318,7 +317,7 @@ largeWorldSetup carsAmount =
     in
     case Dict.values worldWithCars.cars of
         x :: xs ->
-            Round worldWithCars x xs
+            RuleSetup worldWithCars x xs
 
         [] ->
             -- Dummy value, should never get here
