@@ -1,7 +1,7 @@
-module RoundTests exposing (suite)
+module TrafficTests exposing (suite)
 
 import Acceleration exposing (Acceleration)
-import Data.Rounds
+import Data.RuleSetups
     exposing
         ( collisionSetupCollided
         , collisionSetupNearCollision
@@ -17,34 +17,10 @@ import Data.Rounds
         , yieldWithoutPriorityTrafficSetup
         )
 import Expect
-import Length
-import Maybe.Extra
 import Quantity
-import Simulation.Round as Round
-    exposing
-        ( Round
-        , Rule(..)
-        , checkTrafficControl
-        )
-import Simulation.Steering exposing (Steering)
+import Simulation.Steering as Steering exposing (Steering)
+import Simulation.Traffic as Traffic
 import Test exposing (Test, describe, test)
-
-
-checkCollisionRules round =
-    Maybe.Extra.orListLazy
-        [ \() -> Round.checkForwardCollision round
-        , \() -> Round.checkPathCollision round
-        ]
-
-
-avoidingCollision : (Round -> Maybe Rule) -> Round -> Bool
-avoidingCollision check round =
-    case check round of
-        Just (AvoidCollision _) ->
-            True
-
-        _ ->
-            False
 
 
 getLinearAcceleration : Steering -> Acceleration
@@ -57,47 +33,55 @@ suite =
     describe "Round"
         [ describe "Collision rules"
             [ test "allow movement if there will be no collision (straight road, different lanes)"
-                (\_ -> Expect.equal (checkCollisionRules noCollisionSetupDifferentLanes) Nothing)
+                (\_ -> Expect.equal (Traffic.checkRules noCollisionSetupDifferentLanes) Steering.none)
             , test "allow movement if there will be no collision (intersection)"
-                (\_ -> Expect.equal (checkCollisionRules noCollisionSetupIntersection) Nothing)
+                (\_ -> Expect.equal (Traffic.checkRules noCollisionSetupIntersection) Steering.none)
             , test "disallow movement if it will cause a collision (paths intersect)"
                 (\_ ->
                     Expect.true
                         "Expected collision avoidance"
-                        (avoidingCollision Round.checkPathCollision collisionSetupPathsIntersect)
+                        (collisionSetupPathsIntersect
+                            |> Traffic.checkRules
+                            |> getLinearAcceleration
+                            |> Quantity.lessThanZero
+                        )
                 )
             , test "disallow movement if it will cause a collision (near collision)"
                 (\_ ->
                     Expect.true
                         "Expected collision avoidance"
-                        (avoidingCollision Round.checkForwardCollision collisionSetupNearCollision)
+                        (collisionSetupNearCollision
+                            |> Traffic.checkRules
+                            |> getLinearAcceleration
+                            |> Quantity.lessThanZero
+                        )
                 )
             , test "recover when a collision occurs"
-                (\_ -> Expect.equal (Round.checkForwardCollision collisionSetupCollided) (Just ReactToCollision))
+                (\_ -> Expect.equal (Traffic.checkRules collisionSetupCollided) Steering.reactToCollision)
             ]
         , describe "Intersection rules"
             [ test "allow movement if the car is not facing a intersection"
-                (\_ -> Expect.equal (checkTrafficControl connectedRoadsSetup) Nothing)
+                (\_ -> Expect.equal (Traffic.checkRules connectedRoadsSetup) Steering.none)
             , test "allow movement if traffic lights are green"
-                (\_ -> Expect.equal (checkTrafficControl greenTrafficLightsSetup) Nothing)
+                (\_ ->
+                    Expect.true
+                        "Expected zero to positive acceleration"
+                        (greenTrafficLightsSetup
+                            |> Traffic.checkRules
+                            |> getLinearAcceleration
+                            |> Quantity.greaterThanOrEqualToZero
+                        )
+                )
             , test "allow movement if there's no need to yield at sign"
-                (\_ -> Expect.equal (checkTrafficControl yieldWithoutPriorityTrafficSetup) Nothing)
-            , test "disallow movement if traffic lights are not green"
-                (\_ -> Expect.equal (checkTrafficControl redTrafficLightsSetup) (Just (StopAtTrafficControl (Length.meters 8))))
-            , test "disallow movement if the car has to yield at sign - 1"
-                (\_ -> Expect.equal (checkTrafficControl yieldWithPriorityTrafficSetup1) (Just (StopAtTrafficControl (Length.meters 4))))
-            , test "disallow movement if the car has to yield at sign - 2"
-                (\_ -> Expect.equal (checkTrafficControl yieldWithPriorityTrafficSetup2) (Just (StopAtTrafficControl (Length.meters 4))))
-            , test "slow down before a yield sign"
-                (\_ -> Expect.equal (checkTrafficControl yieldSlowDownSetup) (Just SlowDownAtTrafficControl))
+                (\_ -> Expect.equal (Traffic.checkRules yieldWithoutPriorityTrafficSetup) Steering.none)
             ]
-        , describe "Checking round rules"
+        , describe "Checking traffic rules"
             [ test "can prevent car movement"
                 (\_ ->
                     Expect.true
                         "Expected deceleration"
                         (collisionSetupNearCollision
-                            |> Round.checkRules
+                            |> Traffic.checkRules
                             |> getLinearAcceleration
                             |> Quantity.lessThanZero
                         )
@@ -107,17 +91,37 @@ suite =
                     Expect.true
                         "Expected deceleration"
                         (redTrafficLightsSetup
-                            |> Round.checkRules
+                            |> Traffic.checkRules
                             |> getLinearAcceleration
                             |> Quantity.lessThanZero
                         )
                 )
-            , test "can make the car yield"
+            , test "can make the car yield, setup 1"
                 (\_ ->
                     Expect.true
                         "Expected deceleration"
                         (yieldWithPriorityTrafficSetup1
-                            |> Round.checkRules
+                            |> Traffic.checkRules
+                            |> getLinearAcceleration
+                            |> Quantity.lessThanZero
+                        )
+                )
+            , test "can make the car yield, setup 2"
+                (\_ ->
+                    Expect.true
+                        "Expected deceleration"
+                        (yieldWithPriorityTrafficSetup2
+                            |> Traffic.checkRules
+                            |> getLinearAcceleration
+                            |> Quantity.lessThanZero
+                        )
+                )
+            , test "can make the car slow down before a yield sign"
+                (\_ ->
+                    Expect.true
+                        "Expected deceleration"
+                        (yieldSlowDownSetup
+                            |> Traffic.checkRules
                             |> getLinearAcceleration
                             |> Quantity.lessThanZero
                         )

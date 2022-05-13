@@ -1,6 +1,6 @@
 module RenderFixture exposing (main)
 
-import Data.Rounds as Rounds
+import Data.RuleSetups as RuleSetups
 import Html exposing (Html)
 import Model.RenderCache as RenderCache
 import Render
@@ -10,7 +10,7 @@ main : Html msg
 main =
     let
         world =
-            Rounds.collisionSetupCollided.world
+            RuleSetups.collisionSetupCollided.world
     in
     Render.view
         world
