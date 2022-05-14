@@ -181,7 +181,7 @@ reactToCollision : Steering
 reactToCollision =
     -- Start reversing in opposite direction (of velocity)
     -- Similar to applying force from infront of the car
-    { linear = Just maxDeceleration
+    { linear = Just (maxDeceleration |> Quantity.multiplyBy 15)
     , angular = Nothing
     }
 

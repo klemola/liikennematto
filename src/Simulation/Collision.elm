@@ -93,9 +93,16 @@ toRay car distance =
         origin =
             car.position
 
-        direction =
+        carDirection =
             Direction2d.fromAngle car.orientation
+
+        directionOfVelocity =
+            if Quantity.lessThanZero car.velocity then
+                Direction2d.reverse carDirection
+
+            else
+                carDirection
     in
     LineSegment2d.from
         origin
-        (origin |> Point2d.translateIn direction distance)
+        (origin |> Point2d.translateIn directionOfVelocity distance)
