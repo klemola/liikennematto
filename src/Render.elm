@@ -1,5 +1,6 @@
 module Render exposing
     ( DebugLayers
+    , renderCar
     , renderLot
     , tileSizePixels
     , view
