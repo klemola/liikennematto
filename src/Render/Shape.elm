@@ -1,4 +1,4 @@
-module Render.Shape exposing (cubicSpline)
+module Render.Shape exposing (circle, cubicSpline)
 
 import Circle2d
 import Color exposing (Color)
@@ -89,3 +89,20 @@ flipPointYCoordinate renderAreaHeight originalPoint =
     Point2d.xy
         (Point2d.xCoordinate originalPoint)
         newY
+
+
+circle : Color -> Length.Length -> LMPoint2d -> Length.Length -> Svg msg
+circle color renderAreaHeight centerPoint radius =
+    let
+        centerPointInSVGCoords =
+            centerPoint
+                |> flipPointYCoordinate renderAreaHeight
+                |> Point2d.at Render.Conversion.pixelsToMetersRatio
+
+        radiusPixels =
+            radius |> Quantity.at Render.Conversion.pixelsToMetersRatio
+    in
+    Svg.circle2d
+        [ Attributes.fill (Color.toCssString color)
+        ]
+        (Circle2d.atPoint centerPointInSVGCoords radiusPixels)

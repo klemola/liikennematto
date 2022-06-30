@@ -41,6 +41,7 @@ benchmark:
 devtools:
 	elm make devtools/RenderFixture.elm --output build/render_fixture.html
 	elm make devtools/LotsGallery.elm --output build/lots_debug.html
+	elm make devtools/PathfindingVisualization.elm --output build/pathfinding_visualization.html
 
 review:
 	elm-review --fix

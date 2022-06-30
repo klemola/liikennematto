@@ -1,7 +1,9 @@
 module Splines exposing
-    ( LotSplineProperties
+    ( CurveKind(..)
+    , LotSplineProperties
     , PathParameters
     , asGlobalSpline
+    , curveSpline
     , lotEntrySpline
     , lotExitSpline
     , toNode
