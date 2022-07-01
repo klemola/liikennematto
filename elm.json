@@ -1,6 +1,10 @@
 {
     "type": "application",
-    "source-directories": ["src", "benchmarks", "devtools"],
+    "source-directories": [
+        "src",
+        "benchmarks",
+        "devtools"
+    ],
     "elm-version": "0.19.1",
     "dependencies": {
         "direct": {
@@ -22,7 +26,8 @@
             "ianmackenzie/elm-geometry": "3.9.1",
             "ianmackenzie/elm-geometry-svg": "3.0.0",
             "ianmackenzie/elm-units": "2.9.0",
-            "mdgriffith/elm-ui": "1.1.7"
+            "mdgriffith/elm-ui": "1.1.7",
+            "myrho/elm-round": "1.0.4"
         },
         "indirect": {
             "BrianHicks/elm-trend": "2.1.3",

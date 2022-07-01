@@ -6,6 +6,7 @@ module Splines exposing
     , curveSpline
     , lotEntrySpline
     , lotExitSpline
+    , straightSpline
     , toNode
     )
 
