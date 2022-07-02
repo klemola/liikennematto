@@ -371,7 +371,7 @@ isStoppedOrWaiting : Car -> Bool
 isStoppedOrWaiting car =
     car.velocity
         |> Quantity.abs
-        |> Quantity.lessThan (Speed.metersPerSecond 0.01)
+        |> Quantity.lessThan (Speed.metersPerSecond 0.1)
 
 
 isPathfinding : Car -> Bool
