@@ -33,6 +33,7 @@ import Random
 import Simulation.Collision as Collision
 import Simulation.Pathfinding as Pathfinding
 import Simulation.Steering as Steering exposing (Steering)
+import Speed
 
 
 maxCarCollisionTestDistance : Length
@@ -462,7 +463,8 @@ checkRules setup =
                 [ \() -> checkForwardCollision setup
                 , \() -> checkParking setup
                 , \() -> checkTrafficControl setup
-                , \() -> checkPathCollision setup
+
+                -- , \() -> checkPathCollision setup
                 ]
     in
     case activeRule of
@@ -489,18 +491,11 @@ applyRule activeCar rule =
             let
                 collisionMargin =
                     make.length |> Quantity.multiplyBy 1.5
-
-                targetDistance =
-                    distanceToCollision |> Quantity.minus collisionMargin
             in
-            if targetDistance |> Quantity.greaterThanZero then
-                Steering.stopAtDistance
-                    targetDistance
-                    Quantity.zero
-                    velocity
-
-            else
-                Steering.stop velocity
+            Steering.stopAtDistance
+                distanceToCollision
+                collisionMargin
+                velocity
 
         ReactToCollision ->
             Steering.reactToCollision
@@ -532,11 +527,6 @@ applyRule activeCar rule =
 checkForwardCollision : RuleSetup -> Maybe Rule
 checkForwardCollision { activeCar, otherCars } =
     let
-        carFrontBumberDistance =
-            activeCar.make.length
-                |> Quantity.half
-                |> Quantity.plus (Length.meters 0.1)
-
         ray =
             Collision.toRay activeCar maxCarCollisionTestDistance
     in
@@ -546,7 +536,13 @@ checkForwardCollision { activeCar, otherCars } =
         (Collision.forwardCollisionWith ray activeCar)
         |> Maybe.map
             (\collisionDistance ->
-                if collisionDistance |> Quantity.lessThanOrEqualTo carFrontBumberDistance then
+                let
+                    carBumperDistance =
+                        activeCar.make.length
+                            |> Quantity.half
+                            |> Quantity.plus (Length.meters 0.1)
+                in
+                if collisionDistance |> Quantity.lessThanOrEqualTo carBumperDistance then
                     ReactToCollision
 
                 else
@@ -556,7 +552,10 @@ checkForwardCollision { activeCar, otherCars } =
 
 checkPathCollision : RuleSetup -> Maybe Rule
 checkPathCollision { activeCar, otherCars } =
-    if Car.isStoppedOrWaiting activeCar then
+    if
+        -- The car should be moving forward by a significant amount before path collision checks are enabled
+        activeCar.velocity |> Quantity.lessThan (Speed.metersPerSecond 0.1)
+    then
         Nothing
 
     else
