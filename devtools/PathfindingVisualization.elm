@@ -13,15 +13,35 @@ import Length
 import Model.Car as Car exposing (Car)
 import Model.Geometry exposing (GlobalCoordinates, LMCubicSpline2d, LMDirection2d, LMPoint2d)
 import Point2d
+import Polyline2d
+import Quantity
 import Render
 import Render.Conversion exposing (toPixelsValue)
 import Render.Shape
 import Round
+import Simulation.Steering as Steering
+import Speed exposing (Speed)
 import Splines
 import Svg
 import Svg.Attributes as Attributes
 import Svg.Lazy
 import Vector2d
+
+
+type alias Path =
+    { splines : Array SplineMeta
+    , currentSplineIdx : Int
+    , currentSpline : Maybe SplineMeta
+    , parameter : Float
+    , pointOnSpline : LMPoint2d
+    , tangentDirection : LMDirection2d
+    }
+
+
+type alias SplineMeta =
+    { spline : Nondegenerate Length.Meters GlobalCoordinates
+    , length : Length.Length
+    }
 
 
 renderArea : Length.Length
@@ -39,15 +59,6 @@ renderAreaHeightStr =
     String.fromFloat (toPixelsValue renderArea)
 
 
-initialStart : LMPoint2d
-initialStart =
-    Point2d.fromMeters { x = 2, y = 2 }
-
-
-initialTangentDirection =
-    Direction2d.positiveX
-
-
 nodes : List ( LMPoint2d, LMDirection2d )
 nodes =
     [ ( Point2d.fromMeters { x = 30, y = 20 }, Direction2d.positiveY )
@@ -60,22 +71,42 @@ nodes =
     ]
 
 
-path : Array (Nondegenerate Length.Meters GlobalCoordinates)
-path =
-    pathHelper
-        initialStart
-        initialTangentDirection
-        nodes
-        Array.empty
+initialStart : LMPoint2d
+initialStart =
+    Point2d.fromMeters { x = 2, y = 2 }
 
 
-pathHelper :
+initialTangentDirection : LMDirection2d
+initialTangentDirection =
+    Direction2d.positiveX
+
+
+initialPath : Path
+initialPath =
+    let
+        splines =
+            createPath
+                initialStart
+                initialTangentDirection
+                nodes
+                Array.empty
+    in
+    { splines = splines
+    , currentSplineIdx = 0
+    , currentSpline = Array.get 0 splines
+    , parameter = 0
+    , pointOnSpline = initialStart
+    , tangentDirection = initialTangentDirection
+    }
+
+
+createPath :
     LMPoint2d
     -> LMDirection2d
     -> List ( LMPoint2d, LMDirection2d )
-    -> Array (Nondegenerate Length.Meters GlobalCoordinates)
-    -> Array (Nondegenerate Length.Meters GlobalCoordinates)
-pathHelper start startTangentDirection others acc =
+    -> Array SplineMeta
+    -> Array SplineMeta
+createPath start startTangentDirection others acc =
     case others of
         ( end, endTangentDirection ) :: xs ->
             let
@@ -92,13 +123,22 @@ pathHelper start startTangentDirection others acc =
 
                 nextAcc =
                     case CubicSpline2d.nondegenerate spline of
-                        Ok ngSpline ->
-                            Array.push ngSpline acc
+                        Ok ndSpline ->
+                            let
+                                length =
+                                    splineLengthALP ndSpline
+
+                                splineProps =
+                                    { spline = ndSpline
+                                    , length = length
+                                    }
+                            in
+                            Array.push splineProps acc
 
                         Err _ ->
                             acc
             in
-            pathHelper
+            createPath
                 end
                 endTangentDirection
                 xs
@@ -120,13 +160,44 @@ parallel p1 p2 =
     p1v.x == p2v.x || p1v.y == p2v.y
 
 
+splineLength : Nondegenerate Length.Meters GlobalCoordinates -> Length.Length
+splineLength ndSpline =
+    let
+        spline =
+            CubicSpline2d.fromNondegenerate ndSpline
+
+        segments =
+            CubicSpline2d.segments 16 spline
+    in
+    Polyline2d.length segments
+
+
+splineLengthALP : Nondegenerate Length.Meters GlobalCoordinates -> Length.Length
+splineLengthALP ndSpline =
+    ndSpline
+        |> CubicSpline2d.arcLengthParameterized { maxError = Length.meters 0.1 }
+        |> CubicSpline2d.arcLength
+
+
 type alias Model =
-    { path : Array (Nondegenerate Length.Meters GlobalCoordinates)
-    , currentNodeIdx : Int
-    , parameter : Float
-    , pointOnSpline : LMPoint2d
-    , tangentDirection : LMDirection2d
+    { path : Path
     , car : Car
+    }
+
+
+initialCar : Car
+initialCar =
+    Car.new testCar
+        |> Car.withPosition initialStart
+        |> Car.withOrientation (Direction2d.toAngle initialTangentDirection)
+        |> Car.withVelocity Steering.maxVelocity
+        |> Car.build 1
+
+
+initialModel : Model
+initialModel =
+    { path = initialPath
+    , car = initialCar
     }
 
 
@@ -136,22 +207,6 @@ type Msg
 
 main : Program () Model Msg
 main =
-    let
-        car =
-            Car.new testCar
-                |> Car.withPosition initialStart
-                |> Car.withOrientation (Direction2d.toAngle initialTangentDirection)
-                |> Car.build 1
-
-        initialModel =
-            { path = path
-            , currentNodeIdx = 0
-            , parameter = 0
-            , pointOnSpline = initialStart
-            , tangentDirection = initialTangentDirection
-            , car = car
-            }
-    in
     Browser.element
         { init = \_ -> ( initialModel, Cmd.none )
         , update = update
@@ -165,52 +220,80 @@ update msg model =
     case msg of
         AnimationFrameReceived delta ->
             let
-                ( nodeIdx, nextParameter ) =
-                    if model.parameter >= 1.0 then
-                        -- Start from the beginning of next spline
-                        ( model.currentNodeIdx + 1
-                        , 0
-                        )
+                ( splineIdx, splineMeta ) =
+                    if model.path.parameter >= 1.0 then
+                        let
+                            nextSplineIdx =
+                                model.path.currentSplineIdx + 1
+                        in
+                        ( nextSplineIdx, Array.get nextSplineIdx model.path.splines )
 
                     else
-                        -- Sample current spline
-                        ( model.currentNodeIdx
-                        , model.parameter + (Duration.inMilliseconds delta / 4000)
-                        )
+                        ( model.path.currentSplineIdx, model.path.currentSpline )
 
-                ( nextPointOnSpline, nextTangentDirection ) =
-                    case Array.get nodeIdx model.path of
-                        Just validSpline ->
-                            sample nextParameter validSpline
+                nextPath =
+                    case splineMeta of
+                        Just meta ->
+                            updatePath model.path model.car.velocity delta splineIdx meta
 
-                        _ ->
-                            ( initialStart, initialTangentDirection )
+                        Nothing ->
+                            initialPath
 
                 car =
                     model.car
 
                 nextCar =
                     { car
-                        | position = nextPointOnSpline
-                        , orientation = Direction2d.toAngle nextTangentDirection
+                        | position = nextPath.pointOnSpline
+                        , orientation = Direction2d.toAngle nextPath.tangentDirection
                     }
             in
-            ( { model
-                | parameter = nextParameter
-                , currentNodeIdx = nodeIdx
-                , pointOnSpline = nextPointOnSpline
-                , tangentDirection = nextTangentDirection
-                , car = nextCar
+            ( { path = nextPath
+              , car = nextCar
               }
             , Cmd.none
             )
 
 
+updatePath : Path -> Speed -> Duration -> Int -> SplineMeta -> Path
+updatePath path velocity delta splineIdx splineMeta =
+    let
+        nextParameter =
+            if splineIdx /= path.currentSplineIdx then
+                0
+
+            else
+                updateParameter velocity delta splineMeta.length path.parameter
+
+        ( nextPointOnSpline, nextTangentDirection ) =
+            sample nextParameter splineMeta.spline
+    in
+    { splines = path.splines
+    , parameter = nextParameter
+    , currentSplineIdx = splineIdx
+    , currentSpline = Just splineMeta
+    , pointOnSpline = nextPointOnSpline
+    , tangentDirection = nextTangentDirection
+    }
+
+
+updateParameter : Speed -> Duration -> Length.Length -> Float -> Float
+updateParameter velocity delta length parameter =
+    let
+        deltaMeters =
+            velocity |> Quantity.for delta
+
+        parameterDelta =
+            Quantity.ratio deltaMeters length
+    in
+    parameter + parameterDelta
+
+
 sample : Float -> Nondegenerate Length.Meters GlobalCoordinates -> ( LMPoint2d, LMDirection2d )
-sample parameter ngSpline =
+sample parameter ndSpline =
     let
         spline =
-            CubicSpline2d.fromNondegenerate ngSpline
+            CubicSpline2d.fromNondegenerate ndSpline
 
         shouldSampleLinear =
             (CubicSpline2d.startDerivative spline == Vector2d.zero)
@@ -222,7 +305,7 @@ sample parameter ngSpline =
         sampleLinear parameter spline
 
     else
-        CubicSpline2d.sample ngSpline parameter
+        CubicSpline2d.sample ndSpline parameter
 
 
 sampleLinear : Float -> LMCubicSpline2d -> ( LMPoint2d, LMDirection2d )
@@ -251,16 +334,16 @@ view model =
             , Attributes.viewBox <| "0 0 " ++ renderAreaWidthStr ++ " " ++ renderAreaHeightStr
             , Attributes.style <| "background-color: " ++ Colors.lightGreenCSS ++ ";"
             ]
-            [ Svg.Lazy.lazy renderPath model.path
-            , Render.Shape.circle Colors.gray1 renderArea model.pointOnSpline (Length.meters 1)
+            [ Svg.Lazy.lazy renderPath model.path.splines
+            , Render.Shape.circle Colors.gray1 renderArea model.path.pointOnSpline (Length.meters 1)
             , Render.renderCar (Render.Conversion.toPixelsValue renderArea) model.car
             ]
         , Html.div []
-            [ Html.pre [] [ Html.text ("Parameter " ++ Round.round 2 model.parameter) ]
+            [ Html.pre [] [ Html.text ("Parameter " ++ Round.round 2 model.path.parameter) ]
             , Html.pre []
                 [ Html.text
                     (debugVector
-                        (model.pointOnSpline
+                        (model.path.pointOnSpline
                             |> Point2d.toMeters
                             |> Vector2d.fromUnitless
                         )
@@ -269,25 +352,26 @@ view model =
                 ]
             , Html.pre []
                 [ Html.text
-                    (debugVector (model.tangentDirection |> Direction2d.toVector) "Tangent direction")
+                    (debugVector (model.path.tangentDirection |> Direction2d.toVector) "Tangent direction")
                 ]
             ]
         ]
 
 
-renderPath : Array (Nondegenerate Length.Meters GlobalCoordinates) -> Svg.Svg Msg
+renderPath : Array SplineMeta -> Svg.Svg Msg
 renderPath =
     Array.map
-        (\ndSpline ->
+        (\splineMeta ->
             Render.Shape.cubicSpline
                 Colors.gray6
                 renderArea
-                (CubicSpline2d.fromNondegenerate ndSpline)
+                (CubicSpline2d.fromNondegenerate splineMeta.spline)
         )
         >> Array.toList
         >> Svg.g []
 
 
+debugVector : Vector2d.Vector2d Quantity.Unitless GlobalCoordinates -> String -> String
 debugVector vector label =
     let
         { x, y } =
