@@ -10,7 +10,6 @@ module Model.Geometry exposing
     , LMLineSegment2d
     , LMPoint2d
     , LMPoint2dLocal
-    , LMPolyline2d
     , LMQuadTree
     , LMShape2d
     , LMTriangle2d
@@ -35,7 +34,6 @@ import Length
 import LineSegment2d exposing (LineSegment2d)
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
-import Polyline2d exposing (Polyline2d)
 import QuadTree exposing (QuadTree)
 import Triangle2d exposing (Triangle2d)
 
@@ -74,10 +72,6 @@ type alias LMCubicSpline2d =
 
 type alias LMCubicSpline2dLocal =
     CubicSpline2d Length.Meters LocalCoordinates
-
-
-type alias LMPolyline2d =
-    Polyline2d Length.Meters GlobalCoordinates
 
 
 type alias LMLineSegment2d =

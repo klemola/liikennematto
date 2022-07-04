@@ -1,12 +1,12 @@
-module Render.Shape exposing (circle, cubicSpline)
+module Render.Shape exposing (circle, cubicSpline, cubicSplineDebug)
 
 import Circle2d
 import Color exposing (Color)
 import CubicSpline2d exposing (CubicSpline2d)
+import Data.Colors as Colors
 import Geometry.Svg as Svg
 import Length
 import Model.Geometry exposing (LMCubicSpline2d, LMPoint2d)
-import Pixels
 import Point2d exposing (Point2d)
 import Polyline2d
 import Quantity
@@ -27,23 +27,40 @@ cubicSpline color renderAreaHeight spline =
 
         splinePixels =
             CubicSpline2d.at Render.Conversion.pixelsToMetersRatio splineInSVGCoords
-
-        cssColor =
-            Color.toCssString color
-
-        controlPoints =
-            [ CubicSpline2d.firstControlPoint splinePixels
-            , CubicSpline2d.secondControlPoint splinePixels
-            , CubicSpline2d.thirdControlPoint splinePixels
-            , CubicSpline2d.fourthControlPoint splinePixels
-            ]
-
-        drawPoint point =
-            Svg.circle2d [] <|
-                Circle2d.withRadius (Pixels.pixels 2) point
     in
     Svg.g
-        [ Attributes.stroke cssColor
+        [ Attributes.stroke (Color.toCssString color)
+        ]
+        [ Svg.cubicSpline2d
+            [ Attributes.strokeWidth "4"
+            , Attributes.strokeLinecap "round"
+            , Attributes.stroke (Color.toCssString color)
+            , Attributes.fill "none"
+            ]
+            splinePixels
+        , circle Colors.gray5 renderAreaHeight (Length.meters 0.5) (CubicSpline2d.startPoint spline)
+        , circle Colors.gray5 renderAreaHeight (Length.meters 0.5) (CubicSpline2d.endPoint spline)
+        ]
+
+
+cubicSplineDebug : Color -> Length.Length -> LMCubicSpline2d -> Svg msg
+cubicSplineDebug color renderAreaHeight spline =
+    let
+        splineInSVGCoords =
+            flipSplineYCoordinate renderAreaHeight spline
+
+        splinePixels =
+            CubicSpline2d.at Render.Conversion.pixelsToMetersRatio splineInSVGCoords
+
+        controlPoints =
+            [ CubicSpline2d.firstControlPoint spline
+            , CubicSpline2d.secondControlPoint spline
+            , CubicSpline2d.thirdControlPoint spline
+            , CubicSpline2d.fourthControlPoint spline
+            ]
+    in
+    Svg.g
+        [ Attributes.stroke (Color.toCssString color)
         ]
         [ Svg.cubicSpline2d
             [ Attributes.strokeWidth "4"
@@ -56,10 +73,40 @@ cubicSpline color renderAreaHeight spline =
             , Attributes.fill "none"
             , Attributes.strokeDasharray "6 6"
             ]
-            (Polyline2d.fromVertices controlPoints)
+            (Polyline2d.fromVertices
+                (controlPoints
+                    |> List.map
+                        (flipPointYCoordinate renderAreaHeight
+                            >> Point2d.at Render.Conversion.pixelsToMetersRatio
+                        )
+                )
+            )
         , Svg.g [ Attributes.fill "rgba(255, 255, 255, 0.5)" ]
-            (List.map drawPoint controlPoints)
+            (List.map (circle Colors.gray5 renderAreaHeight (Length.meters 0.5)) controlPoints)
         ]
+
+
+circle : Color -> Length.Length -> Length.Length -> LMPoint2d -> Svg msg
+circle color renderAreaHeight radius centerPoint =
+    let
+        centerPointInSVGCoords =
+            centerPoint
+                |> flipPointYCoordinate renderAreaHeight
+                |> Point2d.at Render.Conversion.pixelsToMetersRatio
+
+        radiusPixels =
+            radius |> Quantity.at Render.Conversion.pixelsToMetersRatio
+    in
+    Svg.circle2d
+        [ Attributes.fill (Color.toCssString color)
+        ]
+        (Circle2d.atPoint centerPointInSVGCoords radiusPixels)
+
+
+
+--
+-- Conversion
+--
 
 
 flipSplineYCoordinate : Length.Length -> LMCubicSpline2d -> CubicSpline2d Length.Meters SVGCoordinates
@@ -89,20 +136,3 @@ flipPointYCoordinate renderAreaHeight originalPoint =
     Point2d.xy
         (Point2d.xCoordinate originalPoint)
         newY
-
-
-circle : Color -> Length.Length -> LMPoint2d -> Length.Length -> Svg msg
-circle color renderAreaHeight centerPoint radius =
-    let
-        centerPointInSVGCoords =
-            centerPoint
-                |> flipPointYCoordinate renderAreaHeight
-                |> Point2d.at Render.Conversion.pixelsToMetersRatio
-
-        radiusPixels =
-            radius |> Quantity.at Render.Conversion.pixelsToMetersRatio
-    in
-    Svg.circle2d
-        [ Attributes.fill (Color.toCssString color)
-        ]
-        (Circle2d.atPoint centerPointInSVGCoords radiusPixels)

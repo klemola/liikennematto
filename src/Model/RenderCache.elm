@@ -7,6 +7,7 @@ module Model.RenderCache exposing
     )
 
 import FSM
+import Length
 import Model.Animation as Animation exposing (Animation)
 import Model.Cell exposing (Cell)
 import Model.Geometry exposing (OrthogonalDirection, oppositeOrthogonalDirection)
@@ -20,6 +21,7 @@ type alias RenderCache =
     { tilemap : TilemapPresentation
     , tilemapWidthPixels : Float
     , tilemapHeightPixels : Float
+    , tilemapHeight : Length.Length
     }
 
 
@@ -47,6 +49,7 @@ new { tilemap } =
     , tilemapWidthPixels =
         tilemapWidthPixels
     , tilemapHeightPixels = tilemapHeigthPixels
+    , tilemapHeight = tilemapDimensions.height
     }
 
 

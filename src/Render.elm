@@ -36,14 +36,15 @@ import Model.RoadNetwork
         , RoadNetwork
         , TrafficControl(..)
         )
+import Model.Route as Route
 import Model.Tile exposing (TileKind)
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
 import Model.World exposing (World)
 import Point2d
 import Polygon2d
-import Polyline2d
 import Quantity
 import Render.Conversion exposing (pixelsToMetersRatio, toPixelsValue)
+import Render.Shape
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Svg.Keyed
@@ -128,7 +129,7 @@ view { cars, lots, roadNetwork, trafficLights } cache debugLayers =
          , Svg.Lazy.lazy (renderTrafficLights cache.tilemapHeightPixels) trafficLights
          , Svg.Lazy.lazy (renderTrafficSigns cache.tilemapHeightPixels) roadNetwork
          ]
-            ++ renderDebugLayers cache.tilemapHeightPixels debugLayers cars roadNetwork
+            ++ renderDebugLayers cache debugLayers cars roadNetwork
         )
 
 
@@ -559,19 +560,19 @@ renderYieldSign tilemapHeightPixels node =
 --
 
 
-renderDebugLayers : Float -> DebugLayers -> Dict Int Car -> RoadNetwork -> List (Svg msg)
-renderDebugLayers tilemapHeightPixels { showRoadNetwork, showCarDebugVisuals } cars roadNetwork =
+renderDebugLayers : RenderCache -> DebugLayers -> Dict Int Car -> RoadNetwork -> List (Svg msg)
+renderDebugLayers cache { showRoadNetwork, showCarDebugVisuals } cars roadNetwork =
     let
         carsLayer =
             if showCarDebugVisuals then
-                Just (renderCarsDebug tilemapHeightPixels cars)
+                Just (renderCarsDebug cache cars)
 
             else
                 Nothing
 
         roadNetworkLayer =
             if showRoadNetwork then
-                Just (renderRoadNetwork tilemapHeightPixels roadNetwork)
+                Just (renderRoadNetwork cache.tilemapHeightPixels roadNetwork)
 
             else
                 Nothing
@@ -692,39 +693,36 @@ renderRoadNetwork tilemapHeightPixels roadNetwork =
         ]
 
 
-renderCarsDebug : Float -> Dict Int Car -> Svg msg
-renderCarsDebug tilemapHeightPixels cars =
+renderCarsDebug : RenderCache -> Dict Int Car -> Svg msg
+renderCarsDebug cache cars =
     cars
         |> Dict.foldl
             (\_ car acc ->
-                ( "CarDebug-" ++ String.fromInt car.id, renderCarDebug tilemapHeightPixels car ) :: acc
+                ( "CarDebug-" ++ String.fromInt car.id, renderCarDebug cache car ) :: acc
             )
             []
         |> Svg.Keyed.node "g" []
 
 
-renderCarDebug : Float -> Car -> Svg msg
-renderCarDebug tilemapHeightPixels car =
+renderCarDebug : RenderCache -> Car -> Svg msg
+renderCarDebug cache car =
     Svg.g []
-        [ renderCarFieldOfView tilemapHeightPixels car
-        , renderCarCollisionDetection tilemapHeightPixels car
-        , renderCarPath tilemapHeightPixels car
+        [ renderCarFieldOfView cache.tilemapHeightPixels car
+        , renderCarCollisionDetection cache.tilemapHeightPixels car
+        , renderCarPath cache.tilemapHeight car
         ]
 
 
-renderCarPath : Float -> Car -> Svg msg
-renderCarPath tilemapHeightPixels car =
-    let
-        points =
-            toPointsString tilemapHeightPixels (Polyline2d.vertices car.localPath)
-    in
-    Svg.polyline
-        [ Attributes.stroke <| Color.toCssString Colors.red
-        , Attributes.strokeWidth <| "2"
-        , Attributes.points <| points
-        , Attributes.fill "none"
-        ]
-        []
+renderCarPath : Length -> Car -> Svg msg
+renderCarPath tilemapHeight car =
+    case car.route of
+        Route.Routed meta ->
+            meta.path
+                |> List.map (Render.Shape.cubicSpline Colors.red tilemapHeight)
+                |> Svg.g []
+
+        _ ->
+            nothing
 
 
 renderCarCollisionDetection : Float -> Car -> Svg msg
