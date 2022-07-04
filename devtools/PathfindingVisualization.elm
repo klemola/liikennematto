@@ -335,7 +335,7 @@ view model =
             , Attributes.style <| "background-color: " ++ Colors.lightGreenCSS ++ ";"
             ]
             [ Svg.Lazy.lazy renderPath model.path.splines
-            , Render.Shape.circle Colors.gray1 renderArea model.path.pointOnSpline (Length.meters 1)
+            , Render.Shape.circle Colors.gray1 renderArea (Length.meters 1) model.path.pointOnSpline
             , Render.renderCar (Render.Conversion.toPixelsValue renderArea) model.car
             ]
         , Html.div []
@@ -362,7 +362,7 @@ renderPath : Array SplineMeta -> Svg.Svg Msg
 renderPath =
     Array.map
         (\splineMeta ->
-            Render.Shape.cubicSpline
+            Render.Shape.cubicSplineDebug
                 Colors.gray6
                 renderArea
                 (CubicSpline2d.fromNondegenerate splineMeta.spline)

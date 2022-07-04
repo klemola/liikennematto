@@ -19,9 +19,9 @@ import AngularAcceleration exposing (AngularAcceleration)
 import AngularSpeed exposing (AngularSpeed)
 import Duration
 import Length exposing (Length)
-import Model.Geometry exposing (LMPoint2d, LMPolyline2d)
+import Model.Geometry exposing (LMPoint2d)
+import Model.Route as Route exposing (Route)
 import Point2d
-import Polyline2d
 import Quantity exposing (Quantity(..))
 import Speed exposing (Speed)
 
@@ -207,15 +207,11 @@ stopAtDistance distanceFromTarget threshold currentVelocity =
     }
 
 
-stopAtPathEnd : LMPoint2d -> Speed -> LMPolyline2d -> Length -> Steering
-stopAtPathEnd position velocity localPath stopRadius =
+stopAtPathEnd : LMPoint2d -> Speed -> Route -> Length -> Steering
+stopAtPathEnd position velocity route stopRadius =
     let
         target =
-            -- Room for improvement: this is slow. Try to cache the endpoint of the path or just use the spline instead
-            localPath
-                |> Polyline2d.vertices
-                |> List.reverse
-                |> List.head
+            Route.endPoint route
 
         nextAcceleration =
             case target of

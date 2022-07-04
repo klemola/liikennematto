@@ -9,7 +9,6 @@ module Simulation.Traffic exposing
     )
 
 import BoundingBox2d
-import Common
 import Data.Cars exposing (CarMake, testCar)
 import Data.Lots
 import Dict
@@ -24,10 +23,10 @@ import Model.Geometry exposing (LMPoint2d)
 import Model.Lookup exposing (carPositionLookup)
 import Model.Lot as Lot exposing (Lot, ParkingSpot)
 import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext, TrafficControl(..))
+import Model.Route as Route
 import Model.TrafficLight as TrafficLight exposing (TrafficLight)
 import Model.World as World exposing (World)
 import Point2d
-import Polyline2d
 import QuadTree
 import Quantity
 import Random
@@ -93,7 +92,6 @@ updateTraffic { updateQueue, seed, world, delta } =
                 fsmUpdateContext =
                     { currentPosition = activeCar.position
                     , route = activeCar.route
-                    , localPath = activeCar.localPath
                     }
 
                 ( nextFSM, actions ) =
@@ -127,9 +125,11 @@ updateTraffic { updateQueue, seed, world, delta } =
                             ( carAfterDespawn world carWithUpdatedFSM, seed )
 
                         _ ->
-                            carWithUpdatedFSM
-                                |> Pathfinding.updateRoute world delta seed
-                                |> Tuple.mapFirst Just
+                            let
+                                ( route, seedAfterRouteUpdate ) =
+                                    Pathfinding.updateRoute world delta seed carWithUpdatedFSM
+                            in
+                            ( Just { carWithUpdatedFSM | route = route }, seedAfterRouteUpdate )
 
                 nextWorld =
                     carAfterSteeringAndPathfinding
@@ -157,7 +157,7 @@ applyActions actions car world =
 applyAction : Car -> Car.Action -> World -> World
 applyAction car action world =
     case
-        car.route.parking
+        Route.parking car.route
             |> Maybe.andThen
                 (\{ lotId, parkingSpotId } ->
                     Dict.get lotId world.lots
@@ -216,19 +216,8 @@ updateCar delta steering car =
                     (car.velocity |> Quantity.for delta)
 
         nextOrientation =
-            case Polyline2d.vertices car.localPath of
-                nextPointOnPath :: _ ->
-                    -- Temporarily check if the point of path is behind the car
-                    -- Not required once the localPath is a spline
-                    if nextPointOnPath |> Common.isInTheNormalPlaneOf carTravelDirection car.position then
-                        Common.angleToTarget car.position nextPointOnPath
-                            |> Maybe.withDefault car.orientation
-
-                    else
-                        car.orientation
-
-                [] ->
-                    car.orientation
+            -- TODO: use route path tangent direction
+            car.orientation
 
         nextVelocity =
             case steering.linear of
@@ -293,8 +282,7 @@ moveCarToHome world car ( home, parkingSpot ) =
                 , orientation = Lot.parkingSpotOrientation home
                 , velocity = Quantity.zero
             }
-                |> Pathfinding.setupParking parking
-                |> Pathfinding.createRouteToLotExit nodeCtx parkingSpot.pathToLotExit
+                |> Pathfinding.resetCarAtLot parking nodeCtx parkingSpot
 
         _ ->
             car
@@ -369,8 +357,7 @@ createCar carId lot make homeNode parkingSpot =
         |> Car.withPosition parkingSpot.position
         |> Car.withOrientation (Lot.parkingSpotOrientation lot)
         |> Car.build carId
-        |> Pathfinding.setupParking parking
-        |> Pathfinding.createRouteToLotExit homeNode parkingSpot.pathToLotExit
+        |> Pathfinding.resetCarAtLot parking homeNode parkingSpot
 
 
 
@@ -479,7 +466,7 @@ checkRules setup =
 applyRule : Car -> Rule -> Steering
 applyRule activeCar rule =
     let
-        { make, position, velocity, localPath } =
+        { make, position, velocity } =
             activeCar
     in
     case rule of
@@ -516,7 +503,7 @@ applyRule activeCar rule =
             Steering.stopAtPathEnd
                 position
                 velocity
-                localPath
+                activeCar.route
                 parkingRadius
 
         StayParked ->
@@ -571,8 +558,7 @@ checkPathCollision { activeCar, otherCars } =
 
 checkTrafficControl : RuleSetup -> Maybe Rule
 checkTrafficControl setup =
-    setup.activeCar.route.connections
-        |> List.head
+    Route.nextNode setup.activeCar.route
         |> Maybe.andThen
             (\{ node } ->
                 case node.label.trafficControl of

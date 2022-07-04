@@ -24,14 +24,15 @@ import Data.Worlds
         , worldWithThreeWayIntersection
         )
 import Dict
+import Direction2d
 import Model.Car as Car exposing (Car)
 import Model.Geometry exposing (LMPoint2d)
 import Model.RoadNetwork as RoadNetwork
+import Model.Route as Route
 import Model.World as World exposing (World)
 import Point2d
 import Quantity
 import Random
-import Simulation.Pathfinding as Pathfinding
 import Simulation.Steering as Steering
 import Simulation.Traffic as Traffic exposing (RuleSetup)
 import Speed exposing (Speed)
@@ -361,7 +362,14 @@ routeCarByDestination world position car =
     in
     case destination of
         Just nodeCtx ->
-            Pathfinding.createRouteToNode nodeCtx car
+            { car
+                | route =
+                    Route.fromNode
+                        nodeCtx
+                        car.position
+                        (Direction2d.fromAngle car.orientation)
+                        Nothing
+            }
 
         Nothing ->
             car

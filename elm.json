@@ -19,6 +19,7 @@
             "elm-community/dict-extra": "2.4.0",
             "elm-community/graph": "6.0.0",
             "elm-community/intdict": "3.0.0",
+            "elm-community/list-extra": "8.5.2",
             "elm-community/maybe-extra": "5.3.0",
             "elm-community/random-extra": "3.1.0",
             "elm-explorations/benchmark": "1.0.2",
