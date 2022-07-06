@@ -45,7 +45,7 @@ update msg model =
                 cars =
                     Dict.values world.cars
 
-                ( nextWorld, nextSeed ) =
+                nextWorld =
                     Traffic.updateTraffic
                         { updateQueue = cars
                         , seed = model.seed
@@ -53,10 +53,7 @@ update msg model =
                         , delta = delta
                         }
             in
-            ( { model
-                | seed = nextSeed
-                , world = nextWorld
-              }
+            ( { model | world = nextWorld }
             , Cmd.none
             )
 

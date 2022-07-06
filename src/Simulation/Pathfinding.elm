@@ -7,10 +7,12 @@ module Simulation.Pathfinding exposing
     , updateRoute
     )
 
+import Array
 import BoundingBox2d
 import Dict
 import Direction2d
 import Duration exposing (Duration)
+import Length
 import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car)
 import Model.Geometry exposing (orthogonalDirectionToLmDirection)
@@ -22,13 +24,16 @@ import QuadTree
 import Quantity
 import Random
 import Random.List
+import Speed exposing (Speed)
 
 
 setupRoute : World -> Random.Seed -> RNNodeContext -> Car -> ( Car, Random.Seed )
 setupRoute world seed nodeCtx car =
-    nodeCtx
-        |> generateRouteFromConnection world car seed
-        |> Maybe.withDefault ( Car.triggerDespawn car, seed )
+    let
+        ( route, nextSeed ) =
+            generateRouteFromConnection world car seed nodeCtx
+    in
+    ( { car | route = route }, nextSeed )
 
 
 clearRoute : Car -> Car
@@ -49,8 +54,12 @@ resetCarAtLot parking nodeCtx parkingSpot car =
 
 leaveLot : World -> Car -> Car
 leaveLot world car =
-    case Route.parking car.route of
-        Just parking ->
+    let
+        fallback =
+            { car | route = Route.Unrouted }
+    in
+    case car.route of
+        Route.Parked parking ->
             Dict.get parking.lotId world.lots
                 |> Maybe.andThen
                     (\lot ->
@@ -73,10 +82,10 @@ leaveLot world car =
                                     }
                                 )
                     )
-                |> Maybe.withDefault car
+                |> Maybe.withDefault fallback
 
-        Nothing ->
-            car
+        _ ->
+            fallback
 
 
 updateRoute : World -> Duration -> Random.Seed -> Car -> ( Route, Random.Seed )
@@ -86,22 +95,44 @@ updateRoute world delta seed car =
             ( car.route, seed )
 
         Route.Parked p ->
-            ( Route.Parked (updateParking delta world car p), seed )
+            let
+                nextParking =
+                    updateParking delta world car p
+            in
+            ( Route.Parked nextParking, seed )
 
         Route.Routed meta ->
             let
-                parking =
-                    meta.parking |> Maybe.map (updateParking delta world car)
+                nextMeta =
+                    updateRouteMeta car.velocity delta meta
             in
-            -- Update the parameter and if the parameter is 1.0 then move to the next node (or generate new)
-            -- case currentNodeCtx.node.label.kind of
-            --     -- ..unless the current node is the lot where the car has parked.
-            --     LotEntry _ ->
-            --         ( updatedCar, seed )
-            --     otherKind ->
-            --         generateRouteFromConnection world adjustedCar seed currentNodeCtx
-            --             |> Maybe.withDefault ( Car.triggerDespawn adjustedCar, seed )
-            ( Route.Routed { meta | parking = parking }, seed )
+            case nextMeta.currentSpline of
+                Just _ ->
+                    let
+                        nextParking =
+                            nextMeta.parking |> Maybe.map (updateParking delta world car)
+                    in
+                    ( Route.Routed { nextMeta | parking = nextParking }
+                    , seed
+                    )
+
+                Nothing ->
+                    case List.head nextMeta.connections of
+                        Just currentNodeCtx ->
+                            case currentNodeCtx.node.label.kind of
+                                LotEntry _ ->
+                                    -- TODO: parking should not be wrapped in Maybe here
+                                    ( meta.parking
+                                        |> Maybe.map Route.Parked
+                                        |> Maybe.withDefault Route.Unrouted
+                                    , seed
+                                    )
+
+                                _ ->
+                                    generateRouteFromConnection world car seed currentNodeCtx
+
+                        Nothing ->
+                            ( Route.Unrouted, seed )
 
 
 updateParking : Duration -> World -> Car -> Route.Parking -> Route.Parking
@@ -138,7 +169,52 @@ updateTimer delta timer =
         Just nextDuration
 
 
-generateRouteFromConnection : World -> Car -> Random.Seed -> RNNodeContext -> Maybe ( Car, Random.Seed )
+updateRouteMeta : Speed -> Duration -> Route.RouteMeta -> Route.RouteMeta
+updateRouteMeta velocity delta meta =
+    let
+        ( nextSplineIdx, nextSplineMeta, nextParameter ) =
+            if meta.parameter >= 0.99 then
+                let
+                    idxPlusOne =
+                        meta.currentSplineIdx + 1
+                in
+                ( idxPlusOne
+                , Array.get idxPlusOne meta.path
+                  -- if the parameter overflows (e.g. it is 1.05), add the remainder to the next spline's parameter
+                , max 0 (meta.parameter - 1)
+                )
+
+            else
+                ( meta.currentSplineIdx
+                , meta.currentSpline
+                , case meta.currentSpline of
+                    Just spline ->
+                        updateParameter velocity delta spline.length meta.parameter
+
+                    Nothing ->
+                        meta.parameter
+                )
+    in
+    { meta
+        | parameter = nextParameter
+        , currentSplineIdx = nextSplineIdx
+        , currentSpline = nextSplineMeta
+    }
+
+
+updateParameter : Speed -> Duration -> Length.Length -> Float -> Float
+updateParameter velocity delta length parameter =
+    let
+        deltaMeters =
+            velocity |> Quantity.for delta
+
+        parameterDelta =
+            Quantity.ratio deltaMeters length
+    in
+    parameter + parameterDelta
+
+
+generateRouteFromConnection : World -> Car -> Random.Seed -> RNNodeContext -> ( Route, Random.Seed )
 generateRouteFromConnection world car seed currentNodeCtx =
     let
         randomConnectionGenerator =
@@ -147,12 +223,12 @@ generateRouteFromConnection world car seed currentNodeCtx =
         ( connection, nextSeed ) =
             Random.step randomConnectionGenerator seed
     in
-    Maybe.map
-        (\nextNodeCtx ->
+    case connection of
+        Just nextNodeCtx ->
             case nextNodeCtx.node.label.kind of
                 LotEntry lotId ->
                     let
-                        nextCar =
+                        route =
                             Dict.get lotId world.lots
                                 |> Maybe.andThen (Lot.findFreeParkingSpot car.id)
                                 |> Maybe.map
@@ -170,34 +246,29 @@ generateRouteFromConnection world car seed currentNodeCtx =
                                                 , waitTimer = Just waitTimer
                                                 , lockAvailable = True
                                                 }
-
-                                            route =
-                                                Route.fromParkingSpot
-                                                    nextNodeCtx
-                                                    car.position
-                                                    (Direction2d.fromAngle car.orientation)
-                                                    parking
-                                                    parkingSpot.pathFromLotEntry
                                         in
-                                        Car.triggerParking car route
+                                        Route.fromParkingSpot
+                                            nextNodeCtx
+                                            car.position
+                                            (Direction2d.fromAngle car.orientation)
+                                            parking
+                                            parkingSpot.pathFromLotEntry
                                     )
-                                |> Maybe.withDefault (Car.triggerDespawn car)
+                                |> Maybe.withDefault Route.Unrouted
                     in
-                    ( nextCar, nextSeed )
+                    ( route, nextSeed )
 
                 _ ->
-                    ( { car
-                        | route =
-                            Route.fromNode
-                                nextNodeCtx
-                                car.position
-                                (Direction2d.fromAngle car.orientation)
-                                (Route.parking car.route)
-                      }
+                    ( Route.fromNode
+                        nextNodeCtx
+                        car.position
+                        currentNodeCtx.node.label.direction
+                        (Route.parking car.route)
                     , nextSeed
                     )
-        )
-        connection
+
+        Nothing ->
+            ( Route.Unrouted, seed )
 
 
 chooseRandomOutgoingConnection : World -> Car -> RNNodeContext -> Random.Generator (Maybe RNNodeContext)

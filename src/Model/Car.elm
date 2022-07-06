@@ -42,6 +42,7 @@ import Model.Geometry
         , LMShape2d
         , LMTriangle2d
         )
+import Model.RoadNetwork exposing (ConnectionKind(..))
 import Model.Route as Route exposing (Route)
 import Point2d
 import Polygon2d
@@ -187,13 +188,12 @@ unparking =
 
 unparkingCompleted : UpdateContext -> CarState -> Bool
 unparkingCompleted { route } _ =
-    Route.parking route == Nothing
+    case Route.nextNode route of
+        Just nodeCtx ->
+            nodeCtx.node.label.kind == LaneConnector
 
-
-
--- currentPosition
---     |> Point2d.distanceFrom nodeCtx.node.label.position
---     |> Quantity.lessThanOrEqualTo (Length.meters 0.5)
+        Nothing ->
+            False
 
 
 driving : FSM.State CarState Action UpdateContext
@@ -298,6 +298,7 @@ triggerDespawn car =
     in
     { car
         | fsm = nextFSM
+        , route = Route.Unrouted
     }
 
 
@@ -486,13 +487,13 @@ statusDescription car =
             "Parked"
 
         Unparking ->
-            "Unparking"
+            "Unparking" ++ " " ++ Route.description car.route
 
         Driving ->
             "Driving" ++ " " ++ Route.description car.route
 
         Parking ->
-            "Parking"
+            "Parking" ++ " " ++ Route.description car.route
 
         Despawning ->
             "Despawning"

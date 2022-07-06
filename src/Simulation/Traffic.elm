@@ -62,7 +62,7 @@ trafficControlStopDistance =
 
 parkingRadius : Length
 parkingRadius =
-    Length.meters 10
+    Length.meters 8
 
 
 nearbyTrafficRadius : Length
@@ -81,11 +81,11 @@ updateTraffic :
     , world : World
     , delta : Duration
     }
-    -> ( World, Random.Seed )
+    -> World
 updateTraffic { updateQueue, seed, world, delta } =
     case updateQueue of
         [] ->
-            ( { world | carPositionLookup = carPositionLookup world.tilemap world.cars }, seed )
+            { world | carPositionLookup = carPositionLookup world.tilemap world.cars }
 
         activeCar :: queue ->
             let
@@ -112,36 +112,30 @@ updateTraffic { updateQueue, seed, world, delta } =
                         , activeCar = activeCar
                         }
 
-                ( carAfterSteeringAndPathfinding, nextSeed ) =
+                carAfterRouteUpdate =
                     case FSM.toCurrentState nextFSM of
                         Car.Despawning ->
-                            ( carWithUpdatedFSM
-                                |> Pathfinding.clearRoute
-                                |> Just
-                            , seed
-                            )
+                            -- Route update would just trigger despawn again, skip it
+                            Just carWithUpdatedFSM
 
                         Car.Despawned ->
-                            ( carAfterDespawn world carWithUpdatedFSM, seed )
+                            -- Route update not required, the car will be despawned after this update cycle
+                            carAfterDespawn world carWithUpdatedFSM
 
                         _ ->
-                            let
-                                ( route, seedAfterRouteUpdate ) =
-                                    Pathfinding.updateRoute world delta seed carWithUpdatedFSM
-                            in
-                            ( Just { carWithUpdatedFSM | route = route }, seedAfterRouteUpdate )
+                            Just (updateRoute world delta seed carWithUpdatedFSM)
 
                 nextWorld =
-                    carAfterSteeringAndPathfinding
-                        |> Maybe.map (updateCar delta steering)
-                        |> Maybe.map (\car -> World.setCar car world)
+                    carAfterRouteUpdate
+                        |> Maybe.map (applySteering delta steering)
+                        |> Maybe.map (\updatedCar -> World.setCar updatedCar world)
                         |> Maybe.withDefaultLazy (\_ -> World.removeCar activeCar.id world)
                         -- The car might already be deleted, but the actions still need to be applied (using the car data on FSM update)
                         |> applyActions actions carWithUpdatedFSM
             in
             updateTraffic
                 { updateQueue = queue
-                , seed = nextSeed
+                , seed = seed
                 , world = nextWorld
                 , delta = delta
                 }
@@ -197,27 +191,23 @@ applyAction car action world =
                                 |> Lot.releaseParkingLock car.id
                                 |> Lot.unreserveParkingSpot parkingSpotId
                     in
-                    world |> World.setLot nextLot
+                    world
+                        |> World.setLot nextLot
+                        |> World.setCar { car | route = Route.clearParking car.route }
 
         Nothing ->
             world
 
 
-updateCar : Duration -> Steering -> Car -> Car
-updateCar delta steering car =
+applySteering : Duration -> Steering -> Car -> Car
+applySteering delta steering car =
     let
-        carTravelDirection =
-            Direction2d.fromAngle car.orientation
-
-        nextPosition =
-            car.position
-                |> Point2d.translateIn
-                    carTravelDirection
-                    (car.velocity |> Quantity.for delta)
+        ( pointOnSpline, tangentDirection ) =
+            Route.sample car.route
+                |> Maybe.withDefault ( car.position, Direction2d.fromAngle car.orientation )
 
         nextOrientation =
-            -- TODO: use route path tangent direction
-            car.orientation
+            Direction2d.toAngle tangentDirection
 
         nextVelocity =
             case steering.linear of
@@ -238,16 +228,44 @@ updateCar delta steering car =
                     Quantity.zero
 
         ( nextShape, nextBoundingBox ) =
-            Car.adjustedShape car.make nextPosition nextOrientation
+            Car.adjustedShape car.make pointOnSpline nextOrientation
     in
     { car
-        | position = nextPosition
+        | position = pointOnSpline
         , orientation = nextOrientation
         , velocity = nextVelocity
         , rotation = nextRotation
         , shape = nextShape
         , boundingBox = nextBoundingBox
     }
+
+
+updateRoute : World -> Duration -> Random.Seed -> Car -> Car
+updateRoute world delta seed car =
+    let
+        ( nextRoute, _ ) =
+            Pathfinding.updateRoute world delta seed car
+    in
+    case nextRoute of
+        Route.Unrouted ->
+            Car.triggerDespawn car
+
+        Route.Parked _ ->
+            { car | route = nextRoute }
+
+        Route.Routed _ ->
+            let
+                parkingChanged =
+                    Route.parking car.route == Nothing && Route.parking nextRoute /= Nothing
+
+                routedCar =
+                    if parkingChanged then
+                        Car.triggerParking car nextRoute
+
+                    else
+                        { car | route = nextRoute }
+            in
+            routedCar
 
 
 carAfterDespawn : World -> Car -> Maybe Car

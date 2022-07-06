@@ -266,7 +266,7 @@ updatePath path velocity delta splineIdx splineMeta =
                 updateParameter velocity delta splineMeta.length path.parameter
 
         ( nextPointOnSpline, nextTangentDirection ) =
-            sample nextParameter splineMeta.spline
+            CubicSpline2d.sample splineMeta.spline nextParameter
     in
     { splines = path.splines
     , parameter = nextParameter
@@ -287,42 +287,6 @@ updateParameter velocity delta length parameter =
             Quantity.ratio deltaMeters length
     in
     parameter + parameterDelta
-
-
-sample : Float -> Nondegenerate Length.Meters GlobalCoordinates -> ( LMPoint2d, LMDirection2d )
-sample parameter ndSpline =
-    let
-        spline =
-            CubicSpline2d.fromNondegenerate ndSpline
-
-        shouldSampleLinear =
-            (CubicSpline2d.startDerivative spline == Vector2d.zero)
-                && (CubicSpline2d.endDerivative spline == Vector2d.zero)
-    in
-    if shouldSampleLinear then
-        -- A straight cubic bezier curve (zero start and end derivative) should be sampled linearly
-        -- to avoid weird behavior near the start and end points
-        sampleLinear parameter spline
-
-    else
-        CubicSpline2d.sample ndSpline parameter
-
-
-sampleLinear : Float -> LMCubicSpline2d -> ( LMPoint2d, LMDirection2d )
-sampleLinear parameter spline =
-    let
-        cp1 =
-            CubicSpline2d.firstControlPoint spline
-
-        cp4 =
-            CubicSpline2d.fourthControlPoint spline
-    in
-    ( Point2d.interpolateFrom
-        cp1
-        cp4
-        parameter
-    , Direction2d.from cp1 cp4 |> Maybe.withDefault Direction2d.positiveX
-    )
 
 
 view : Model -> Html Msg
