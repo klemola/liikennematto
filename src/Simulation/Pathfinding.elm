@@ -250,7 +250,7 @@ generateRouteFromConnection world car seed currentNodeCtx =
                                         Route.fromParkingSpot
                                             nextNodeCtx
                                             car.position
-                                            (Direction2d.fromAngle car.orientation)
+                                            currentNodeCtx.node.label.direction
                                             parking
                                             parkingSpot.pathFromLotEntry
                                     )

@@ -11,7 +11,7 @@ import Duration exposing (Duration)
 import Html exposing (Html)
 import Length
 import Model.Car as Car exposing (Car)
-import Model.Geometry exposing (GlobalCoordinates, LMCubicSpline2d, LMDirection2d, LMPoint2d)
+import Model.Geometry exposing (GlobalCoordinates, LMDirection2d, LMPoint2d)
 import Point2d
 import Polyline2d
 import Quantity
@@ -116,7 +116,6 @@ createPath start startTangentDirection others acc =
 
                     else
                         Splines.curveSpline
-                            Splines.Natural
                             start
                             end
                             startTangentDirection

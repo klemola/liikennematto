@@ -12,7 +12,7 @@ import Model.Tilemap as Tilemap
 import Model.World as World exposing (World)
 import Quantity
 import Render
-import Render.Shape exposing (cubicSpline)
+import Render.Shape
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 
@@ -149,6 +149,6 @@ renderParkingSpotPaths parkingSpots =
                             _ ->
                                 Color.rgba 0 0 0 opacity
                 in
-                parkingSpot.pathToLotExit |> List.map (cubicSpline color tilemapHeight)
+                parkingSpot.pathToLotExit |> List.map (Render.Shape.cubicSplineDebug color tilemapHeight)
             )
         |> List.concat
