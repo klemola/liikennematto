@@ -208,31 +208,29 @@ stopAtDistance distanceFromTarget threshold currentVelocity =
 
 
 stopAtPathEnd : LMPoint2d -> Speed -> Route -> Length -> Steering
-stopAtPathEnd position velocity route stopRadius =
+stopAtPathEnd currentPosition velocity route stopRadius =
     let
-        target =
-            Route.endPoint route
+        distanceToParkingSpot =
+            Point2d.distanceFrom
+                (Route.endPoint route |> Maybe.withDefault currentPosition)
+                currentPosition
 
         nextAcceleration =
-            case target of
-                Just endPoint ->
-                    let
-                        distanceToParkingSpot =
-                            Point2d.distanceFrom position endPoint
-                    in
-                    if distanceToParkingSpot |> Quantity.lessThanOrEqualTo stopRadius then
+            if distanceToParkingSpot |> Quantity.lessThanOrEqualTo stopRadius then
+                case Route.distanceToPathEnd route of
+                    Just distanceRemaining ->
                         Quantity.max
                             maxDeceleration
                             (accelerateToZeroOverDistance
                                 velocity
-                                distanceToParkingSpot
+                                distanceRemaining
                             )
 
-                    else
-                        reachTargetVelocity velocity (Quantity.half maxVelocity)
+                    Nothing ->
+                        maxDeceleration
 
-                Nothing ->
-                    maxDeceleration
+            else
+                reachTargetVelocity velocity (Quantity.half maxVelocity)
     in
     { linear = Just nextAcceleration
     , angular = Nothing
@@ -276,7 +274,7 @@ reachTargetVelocity currentVelocity targetVelocity =
 
 accelerateToZeroOverDistance : Speed -> Length -> Acceleration
 accelerateToZeroOverDistance currentVelocity (Quantity distanceFromTarget) =
-    if distanceFromTarget < 0.5 then
+    if distanceFromTarget < 0.05 then
         -- Very close to the target; try to reach zero velocity
         reachTargetVelocity currentVelocity Quantity.zero
 

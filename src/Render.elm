@@ -715,14 +715,11 @@ renderCarDebug cache car =
 
 renderCarPath : Length -> Car -> Svg msg
 renderCarPath tilemapHeight car =
-    case car.route of
-        Route.Routed meta ->
-            meta.path
-                |> List.map (Render.Shape.cubicSpline Colors.red tilemapHeight)
-                |> Svg.g []
-
-        _ ->
-            nothing
+    Svg.g []
+        (car.route
+            |> Route.splinesToList
+            |> List.map (Render.Shape.cubicSpline Colors.red tilemapHeight)
+        )
 
 
 renderCarCollisionDetection : Float -> Car -> Svg msg

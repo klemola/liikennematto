@@ -28,7 +28,6 @@ import Model.Geometry
 import Model.RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Point2d exposing (Point2d)
 import Quantity
-import Vector2d
 
 
 uTurnDistance : Length
@@ -82,7 +81,20 @@ uTurnSpline origin target direction =
 
 straightSpline : Point2d Length.Meters a -> Point2d Length.Meters a -> CubicSpline2d Length.Meters a
 straightSpline origin target =
-    CubicSpline2d.fromEndpoints origin Vector2d.zero target Vector2d.zero
+    let
+        distance =
+            Point2d.distanceFrom origin target
+
+        direction =
+            Direction2d.from origin target |> Maybe.withDefault Direction2d.positiveX
+
+        cp1 =
+            Point2d.translateIn direction (distance |> Quantity.multiplyBy 0.33) origin
+
+        cp2 =
+            Point2d.translateIn direction (distance |> Quantity.multiplyBy 0.66) origin
+    in
+    CubicSpline2d.fromControlPoints origin cp1 cp2 target
 
 
 sameDirectionSpline : Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> CubicSpline2d Length.Meters a
