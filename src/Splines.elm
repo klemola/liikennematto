@@ -1,6 +1,5 @@
 module Splines exposing
-    ( CurveKind(..)
-    , LotSplineProperties
+    ( LotSplineProperties
     , PathParameters
     , asGlobalSpline
     , curveSpline
@@ -64,79 +63,77 @@ toNode { direction, origin } { node } =
         straightSpline origin target
 
     else
-        curveSpline Natural origin target direction
+        curveSpline origin target direction
 
 
 uTurnSpline : Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> CubicSpline2d Length.Meters a
 uTurnSpline origin target direction =
     let
-        startHandleCp =
+        cp1 =
             Point2d.translateIn direction uTurnDistance origin
 
-        endHandleCp =
+        cp2 =
             Point2d.translateIn direction uTurnDistance target
     in
-    CubicSpline2d.fromControlPoints origin startHandleCp endHandleCp target
+    CubicSpline2d.fromControlPoints origin cp1 cp2 target
 
 
 straightSpline : Point2d Length.Meters a -> Point2d Length.Meters a -> CubicSpline2d Length.Meters a
 straightSpline origin target =
     let
-        distance =
-            Point2d.distanceFrom origin target
-
-        direction =
-            Direction2d.from origin target |> Maybe.withDefault Direction2d.positiveX
-
         cp1 =
-            Point2d.translateIn direction (distance |> Quantity.multiplyBy 0.33) origin
+            Point2d.interpolateFrom origin target (1 / 3)
 
         cp2 =
-            Point2d.translateIn direction (distance |> Quantity.multiplyBy 0.66) origin
+            Point2d.interpolateFrom origin target (2 / 3)
     in
     CubicSpline2d.fromControlPoints origin cp1 cp2 target
 
 
-sameDirectionSpline : Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> CubicSpline2d Length.Meters a
-sameDirectionSpline origin target direction =
+mirroredSpline : Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> CubicSpline2d Length.Meters a
+mirroredSpline origin target direction =
     let
         distanceToTarget =
             Point2d.distanceFrom origin target
 
-        magnitude =
-            Quantity.half distanceToTarget
+        yDifference =
+            distanceToTarget
+                |> Quantity.multiplyBy
+                    (origin
+                        |> Common.angleFromDirection direction target
+                        |> Angle.sin
+                        |> abs
+                    )
 
-        startHandleCp =
+        differenceOffset =
+            yDifference |> Quantity.multiplyBy 0.2
+
+        magnitude =
+            distanceToTarget
+                |> Quantity.multiplyBy 0.33
+                |> Quantity.plus differenceOffset
+
+        cp1 =
             origin |> Point2d.translateIn direction magnitude
 
-        endHandleCp =
+        cp2 =
             target |> Point2d.translateIn (Direction2d.reverse direction) magnitude
     in
-    CubicSpline2d.fromControlPoints origin startHandleCp endHandleCp target
+    CubicSpline2d.fromControlPoints origin cp1 cp2 target
 
 
-type CurveKind
-    = Natural
-    | Geometric
-
-
-curveSpline : CurveKind -> Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> CubicSpline2d Length.Meters a
-curveSpline kind origin target direction =
+curveSpline : Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> CubicSpline2d Length.Meters a
+curveSpline origin target direction =
     let
         rightAnglePos =
             Common.rightAnglePosition origin target direction
 
-        ( startHandleCp, endHandleCp ) =
-            case kind of
-                Natural ->
-                    ( Point2d.midpoint origin rightAnglePos
-                    , Point2d.midpoint rightAnglePos target
-                    )
-
-                Geometric ->
-                    ( rightAnglePos, rightAnglePos )
+        ( cp1, cp2 ) =
+            ( Point2d.midpoint origin rightAnglePos
+            , Point2d.midpoint rightAnglePos target
+            )
     in
-    CubicSpline2d.fromControlPoints origin startHandleCp endHandleCp target
+    CubicSpline2d.fromControlPoints origin cp1 cp2 target
 
 
 type alias LotSplineProperties =
@@ -156,14 +153,22 @@ lotEntrySpline { parkingSpotPosition, lotEntryPosition, parkingSpotExitDirection
             drivewayExitDirection |> Direction2d.reverse
     in
     if parkingSkipsParkingLane parkingLaneStartPosition parkingSpotPosition drivewayExitDirection then
-        [ curveSpline Geometric lotEntryPosition parkingSpotPosition startDirection ]
+        [ curveSpline lotEntryPosition parkingSpotPosition startDirection ]
 
     else if parkingSpotExitDirection == drivewayExitDirection then
-        [ sameDirectionSpline lotEntryPosition parkingSpotPosition startDirection ]
+        [ mirroredSpline lotEntryPosition parkingSpotPosition startDirection ]
 
     else
-        [ sameDirectionSpline lotEntryPosition parkingLaneStartPosition startDirection
-        , curveSpline Geometric parkingLaneStartPosition parkingSpotPosition startDirection
+        let
+            parkingSpotSplineStart =
+                parkingSpotSplineStartPosition
+                    parkingLaneStartPosition
+                    parkingSpotPosition
+                    startDirection
+        in
+        [ mirroredSpline lotEntryPosition parkingLaneStartPosition startDirection
+        , straightSpline parkingLaneStartPosition parkingSpotSplineStart
+        , curveSpline parkingSpotSplineStart parkingSpotPosition startDirection
         ]
 
 
@@ -174,15 +179,42 @@ lotExitSpline { parkingSpotPosition, lotExitPosition, parkingSpotExitDirection, 
             parkingSpotExitDirection
     in
     if parkingSkipsParkingLane parkingLaneStartPosition parkingSpotPosition drivewayExitDirection then
-        [ curveSpline Geometric parkingSpotPosition lotExitPosition startDirection ]
+        [ curveSpline parkingSpotPosition lotExitPosition startDirection ]
 
     else if parkingSpotExitDirection == drivewayExitDirection then
-        [ sameDirectionSpline parkingSpotPosition lotExitPosition startDirection ]
+        [ mirroredSpline parkingSpotPosition lotExitPosition startDirection ]
 
     else
-        [ curveSpline Geometric parkingSpotPosition parkingLaneStartPosition startDirection
-        , sameDirectionSpline parkingLaneStartPosition lotExitPosition drivewayExitDirection
+        let
+            parkingSpotSplineStart =
+                parkingSpotSplineStartPosition
+                    parkingLaneStartPosition
+                    parkingSpotPosition
+                    (drivewayExitDirection |> Direction2d.reverse)
+        in
+        [ curveSpline parkingSpotPosition parkingSpotSplineStart startDirection
+        , straightSpline parkingSpotSplineStart parkingLaneStartPosition
+        , mirroredSpline parkingLaneStartPosition lotExitPosition drivewayExitDirection
         ]
+
+
+parkingSpotSplineStartPosition : Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> Point2d Length.Meters a
+parkingSpotSplineStartPosition parkingLaneStartPosition parkingSpotPosition startDirection =
+    let
+        xDiff =
+            Point2d.xCoordinate parkingLaneStartPosition
+                |> Quantity.minus (Point2d.xCoordinate parkingSpotPosition)
+                |> Quantity.abs
+
+        yDiff =
+            Point2d.yCoordinate parkingLaneStartPosition
+                |> Quantity.minus (Point2d.yCoordinate parkingSpotPosition)
+                |> Quantity.abs
+
+        distanceToParkingSpotSplineStart =
+            xDiff |> Quantity.minus yDiff
+    in
+    parkingLaneStartPosition |> Point2d.translateIn startDirection distanceToParkingSpotSplineStart
 
 
 parkingSkipsParkingLane : Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> Bool

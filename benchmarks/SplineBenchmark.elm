@@ -12,7 +12,7 @@ import Splines
 
 testSpline : CubicSpline2d.CubicSpline2d Length.Meters coordinates
 testSpline =
-    Splines.curveSpline Splines.Natural Point2d.origin (Point2d.meters 10 10) Direction2d.positiveX
+    Splines.curveSpline Point2d.origin (Point2d.meters 10 10) Direction2d.positiveX
 
 
 testNdSpline : Result (Point2d.Point2d Length.Meters coordinates) (CubicSpline2d.Nondegenerate Length.Meters coordinates)
