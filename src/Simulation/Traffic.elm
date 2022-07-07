@@ -257,15 +257,12 @@ updateRoute world delta seed car =
             let
                 parkingChanged =
                     Route.parking car.route == Nothing && Route.parking nextRoute /= Nothing
-
-                routedCar =
-                    if parkingChanged then
-                        Car.triggerParking car nextRoute
-
-                    else
-                        { car | route = nextRoute }
             in
-            routedCar
+            if parkingChanged then
+                Car.triggerParking car nextRoute
+
+            else
+                { car | route = nextRoute }
 
 
 carAfterDespawn : World -> Car -> Maybe Car

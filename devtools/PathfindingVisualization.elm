@@ -3,7 +3,7 @@ module PathfindingVisualization exposing (main)
 import Array exposing (Array)
 import Browser
 import Browser.Events as Events
-import CubicSpline2d exposing (Nondegenerate)
+import CubicSpline2d exposing (ArcLengthParameterized, Nondegenerate)
 import Data.Cars exposing (testCar)
 import Data.Colors as Colors
 import Direction2d
@@ -13,7 +13,6 @@ import Length
 import Model.Car as Car exposing (Car)
 import Model.Geometry exposing (GlobalCoordinates, LMDirection2d, LMPoint2d)
 import Point2d
-import Polyline2d
 import Quantity
 import Render
 import Render.Conversion exposing (toPixelsValue)
@@ -32,14 +31,14 @@ type alias Path =
     { splines : Array SplineMeta
     , currentSplineIdx : Int
     , currentSpline : Maybe SplineMeta
-    , parameter : Float
+    , parameter : Length.Length
     , pointOnSpline : LMPoint2d
     , tangentDirection : LMDirection2d
     }
 
 
 type alias SplineMeta =
-    { spline : Nondegenerate Length.Meters GlobalCoordinates
+    { spline : ArcLengthParameterized Length.Meters GlobalCoordinates
     , length : Length.Length
     }
 
@@ -94,7 +93,7 @@ initialPath =
     { splines = splines
     , currentSplineIdx = 0
     , currentSpline = Array.get 0 splines
-    , parameter = 0
+    , parameter = Quantity.zero
     , pointOnSpline = initialStart
     , tangentDirection = initialTangentDirection
     }
@@ -115,10 +114,11 @@ createPath start startTangentDirection others acc =
                         Splines.straightSpline start end
 
                     else
-                        Splines.curveSpline
+                        Splines.customCurveSpline
                             start
                             end
                             startTangentDirection
+                            0.8
 
                 nextAcc =
                     case CubicSpline2d.nondegenerate spline of
@@ -128,7 +128,7 @@ createPath start startTangentDirection others acc =
                                     splineLengthALP ndSpline
 
                                 splineProps =
-                                    { spline = ndSpline
+                                    { spline = CubicSpline2d.arcLengthParameterized { maxError = Length.meters 0.1 } ndSpline
                                     , length = length
                                     }
                             in
@@ -157,18 +157,6 @@ parallel p1 p2 =
             Point2d.toMeters p2
     in
     p1v.x == p2v.x || p1v.y == p2v.y
-
-
-splineLength : Nondegenerate Length.Meters GlobalCoordinates -> Length.Length
-splineLength ndSpline =
-    let
-        spline =
-            CubicSpline2d.fromNondegenerate ndSpline
-
-        segments =
-            CubicSpline2d.segments 16 spline
-    in
-    Polyline2d.length segments
 
 
 splineLengthALP : Nondegenerate Length.Meters GlobalCoordinates -> Length.Length
@@ -220,7 +208,14 @@ update msg model =
         AnimationFrameReceived delta ->
             let
                 ( splineIdx, splineMeta ) =
-                    if model.path.parameter >= 1.0 then
+                    if
+                        model.path.parameter
+                            |> Quantity.greaterThanOrEqualTo
+                                (model.path.currentSpline
+                                    |> Maybe.map .length
+                                    |> Maybe.withDefault Quantity.zero
+                                )
+                    then
                         let
                             nextSplineIdx =
                                 model.path.currentSplineIdx + 1
@@ -259,13 +254,13 @@ updatePath path velocity delta splineIdx splineMeta =
     let
         nextParameter =
             if splineIdx /= path.currentSplineIdx then
-                0
+                Quantity.zero
 
             else
-                updateParameter velocity delta splineMeta.length path.parameter
+                updateParameter velocity delta path.parameter
 
         ( nextPointOnSpline, nextTangentDirection ) =
-            CubicSpline2d.sample splineMeta.spline nextParameter
+            CubicSpline2d.sampleAlong splineMeta.spline nextParameter
     in
     { splines = path.splines
     , parameter = nextParameter
@@ -276,16 +271,13 @@ updatePath path velocity delta splineIdx splineMeta =
     }
 
 
-updateParameter : Speed -> Duration -> Length.Length -> Float -> Float
-updateParameter velocity delta length parameter =
+updateParameter : Speed -> Duration -> Length.Length -> Length.Length
+updateParameter velocity delta parameter =
     let
         deltaMeters =
             velocity |> Quantity.for delta
-
-        parameterDelta =
-            Quantity.ratio deltaMeters length
     in
-    parameter + parameterDelta
+    parameter |> Quantity.plus deltaMeters
 
 
 view : Model -> Html Msg
@@ -302,7 +294,7 @@ view model =
             , Render.renderCar (Render.Conversion.toPixelsValue renderArea) model.car
             ]
         , Html.div []
-            [ Html.pre [] [ Html.text ("Parameter " ++ Round.round 2 model.path.parameter) ]
+            [ Html.pre [] [ Html.text ("Parameter " ++ Round.round 2 (Length.inMeters model.path.parameter)) ]
             , Html.pre []
                 [ Html.text
                     (debugVector
@@ -328,7 +320,7 @@ renderPath =
             Render.Shape.cubicSplineDebug
                 Colors.gray6
                 renderArea
-                (CubicSpline2d.fromNondegenerate splineMeta.spline)
+                (CubicSpline2d.fromArcLengthParameterized splineMeta.spline)
         )
         >> Array.toList
         >> Svg.g []

@@ -2,6 +2,7 @@ module Model.Route exposing
     ( Parking
     , Route(..)
     , RouteMeta
+    , SplineMeta
     , clearParking
     , description
     , distanceToPathEnd
@@ -18,7 +19,7 @@ module Model.Route exposing
     )
 
 import Array exposing (Array)
-import CubicSpline2d exposing (Nondegenerate)
+import CubicSpline2d exposing (ArcLengthParameterized)
 import Duration exposing (Duration)
 import Length
 import List.Extra as List
@@ -49,15 +50,13 @@ type alias RouteMeta =
     , endPoint : LMPoint2d
     , currentSplineIdx : Int
     , currentSpline : Maybe SplineMeta
-
-    -- The spline sampling parameter, between 0 and 1.0 (% of spline)
-    , parameter : Float
+    , parameter : Length.Length
     , parking : Maybe Parking
     }
 
 
 type alias SplineMeta =
-    { spline : Nondegenerate Length.Meters GlobalCoordinates
+    { spline : ArcLengthParameterized Length.Meters GlobalCoordinates
     , length : Length.Length
     }
 
@@ -68,6 +67,11 @@ type alias Parking =
     , waitTimer : Maybe Duration
     , lockAvailable : Bool
     }
+
+
+maxALPError : Length.Length
+maxALPError =
+    Length.meters 0.1
 
 
 isRouted : Route -> Bool
@@ -163,18 +167,22 @@ distanceToPathEnd route =
             Nothing
 
 
-distanceToSplineEnd : SplineMeta -> Float -> Length.Length
+distanceToSplineEnd : SplineMeta -> Length.Length -> Length.Length
 distanceToSplineEnd splineMeta parameter =
     let
         spline =
-            CubicSpline2d.fromNondegenerate splineMeta.spline
+            CubicSpline2d.fromArcLengthParameterized splineMeta.spline
 
         ( _, remaining ) =
-            CubicSpline2d.splitAt parameter spline
+            CubicSpline2d.splitAt
+                (Quantity.ratio parameter splineMeta.length)
+                spline
     in
     case CubicSpline2d.nondegenerate remaining of
         Ok ndSpline ->
-            splineLength ndSpline
+            ndSpline
+                |> CubicSpline2d.arcLengthParameterized { maxError = maxALPError }
+                |> CubicSpline2d.arcLength
 
         _ ->
             Quantity.zero
@@ -248,7 +256,7 @@ buildRoute nodeCtx splines parkingValue =
                         |> Maybe.withDefault (CubicSpline2d.endPoint first)
                 , currentSplineIdx = 0
                 , currentSpline = Array.get 0 path
-                , parameter = 0
+                , parameter = Quantity.zero
                 , parking = parkingValue
                 }
 
@@ -265,12 +273,14 @@ createPath remainingSplines acc =
                     case CubicSpline2d.nondegenerate current of
                         Ok ndSpline ->
                             let
-                                length =
-                                    splineLength ndSpline
+                                alpSpline =
+                                    CubicSpline2d.arcLengthParameterized
+                                        { maxError = maxALPError }
+                                        ndSpline
 
                                 splineProps =
-                                    { spline = ndSpline
-                                    , length = length
+                                    { spline = alpSpline
+                                    , length = CubicSpline2d.arcLength alpSpline
                                     }
                             in
                             Array.push splineProps acc
@@ -286,19 +296,12 @@ createPath remainingSplines acc =
             acc
 
 
-splineLength : Nondegenerate Length.Meters GlobalCoordinates -> Length.Length
-splineLength ndSpline =
-    ndSpline
-        |> CubicSpline2d.arcLengthParameterized { maxError = Length.meters 0.1 }
-        |> CubicSpline2d.arcLength
-
-
 splinesToList : Route -> List LMCubicSpline2d
 splinesToList route =
     case route of
         Routed meta ->
             Array.foldl
-                (\splineMeta acc -> CubicSpline2d.fromNondegenerate splineMeta.spline :: acc)
+                (\splineMeta acc -> CubicSpline2d.fromArcLengthParameterized splineMeta.spline :: acc)
                 []
                 meta.path
 
@@ -310,7 +313,7 @@ sample : Route -> Maybe ( LMPoint2d, LMDirection2d )
 sample route =
     case route of
         Routed meta ->
-            meta.currentSpline |> Maybe.map (\{ spline } -> CubicSpline2d.sample spline meta.parameter)
+            meta.currentSpline |> Maybe.map (\{ spline } -> CubicSpline2d.sampleAlong spline meta.parameter)
 
         _ ->
             Nothing

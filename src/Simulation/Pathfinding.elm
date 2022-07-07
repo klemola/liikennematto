@@ -1,6 +1,5 @@
 module Simulation.Pathfinding exposing
-    ( clearRoute
-    , leaveLot
+    ( leaveLot
     , resetCarAtLot
     , restoreRoute
     , setupRoute
@@ -34,11 +33,6 @@ setupRoute world seed nodeCtx car =
             generateRouteFromConnection world car seed nodeCtx
     in
     ( { car | route = route }, nextSeed )
-
-
-clearRoute : Car -> Car
-clearRoute car =
-    { car | route = Route.Unrouted }
 
 
 resetCarAtLot : Route.Parking -> RNNodeContext -> Lot.ParkingSpot -> Car -> Car
@@ -172,27 +166,29 @@ updateTimer delta timer =
 updateRouteMeta : Speed -> Duration -> Route.RouteMeta -> Route.RouteMeta
 updateRouteMeta velocity delta meta =
     let
+        currentSplineLength =
+            meta.currentSpline
+                |> Maybe.map .length
+                |> Maybe.withDefault Quantity.zero
+
         ( nextSplineIdx, nextSplineMeta, nextParameter ) =
-            if meta.parameter >= 0.99 then
+            if Quantity.ratio meta.parameter currentSplineLength >= 0.99 then
                 let
                     idxPlusOne =
                         meta.currentSplineIdx + 1
                 in
                 ( idxPlusOne
                 , Array.get idxPlusOne meta.path
-                  -- if the parameter overflows (e.g. it is 1.05), add the remainder to the next spline's parameter
-                , max 0 (meta.parameter - 1)
+                  -- if the parameter overflows (more than the spline length), add the remainder to the next spline's parameter
+                , meta.parameter
+                    |> Quantity.minus currentSplineLength
+                    |> Quantity.max Quantity.zero
                 )
 
             else
                 ( meta.currentSplineIdx
                 , meta.currentSpline
-                , case meta.currentSpline of
-                    Just spline ->
-                        updateParameter velocity delta spline.length meta.parameter
-
-                    Nothing ->
-                        meta.parameter
+                , updateParameter velocity delta meta.parameter
                 )
     in
     { meta
@@ -202,16 +198,13 @@ updateRouteMeta velocity delta meta =
     }
 
 
-updateParameter : Speed -> Duration -> Length.Length -> Float -> Float
-updateParameter velocity delta length parameter =
+updateParameter : Speed -> Duration -> Length.Length -> Length.Length
+updateParameter velocity delta parameter =
     let
         deltaMeters =
             velocity |> Quantity.for delta
-
-        parameterDelta =
-            Quantity.ratio deltaMeters length
     in
-    parameter + parameterDelta
+    parameter |> Quantity.plus deltaMeters
 
 
 generateRouteFromConnection : World -> Car -> Random.Seed -> RNNodeContext -> ( Route, Random.Seed )
