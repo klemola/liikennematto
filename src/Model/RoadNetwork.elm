@@ -1,5 +1,6 @@
 module Model.RoadNetwork exposing
     ( Connection
+    , ConnectionEnvironment(..)
     , ConnectionKind(..)
     , Lane
     , RNNodeContext
@@ -20,7 +21,6 @@ import Graph.DOT
 import Model.Cell exposing (Cell)
 import Model.Entity exposing (Id)
 import Model.Geometry exposing (LMDirection2d, LMPoint2d)
-import Model.Tile exposing (Tile)
 import Random
 import Random.Extra
 
@@ -38,7 +38,7 @@ type alias Connection =
     , position : LMPoint2d
     , direction : LMDirection2d
     , cell : Cell
-    , tile : Tile
+    , environment : ConnectionEnvironment
     , trafficControl : TrafficControl
     }
 
@@ -49,6 +49,11 @@ type ConnectionKind
     | DeadendExit
     | LotEntry Id
     | LotExit Id
+
+
+type ConnectionEnvironment
+    = Road
+    | Intersection
 
 
 type TrafficControl
