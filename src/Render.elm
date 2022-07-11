@@ -717,7 +717,7 @@ renderCarPath : Length -> Car -> Svg msg
 renderCarPath tilemapHeight car =
     Svg.g []
         (car.route
-            |> Route.splinesToList
+            |> Route.pathToList
             |> List.map (Render.Shape.cubicSpline Colors.red tilemapHeight)
         )
 

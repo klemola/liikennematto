@@ -14,8 +14,8 @@ module Model.Route exposing
     , isRouted
     , nextNode
     , parking
+    , pathToList
     , sample
-    , splinesToList
     )
 
 import Array exposing (Array)
@@ -127,47 +127,78 @@ endPoint route =
             Nothing
 
 
+pathToList : Route -> List LMCubicSpline2d
+pathToList route =
+    case route of
+        Routed meta ->
+            pathRemaining meta |> .splines
+
+        _ ->
+            []
+
+
 distanceToPathEnd : Route -> Maybe Length.Length
 distanceToPathEnd route =
     case route of
         Routed meta ->
             let
-                remainingSplines =
-                    Array.slice meta.currentSplineIdx (Array.length meta.path) meta.path
-
-                initialAcc =
-                    { length = Quantity.zero
-                    , remainingIndices = Array.length remainingSplines
-                    }
-
-                distance =
-                    Array.foldl
-                        (\splineMeta acc ->
-                            let
-                                isCurrentSpline =
-                                    acc == initialAcc
-
-                                length =
-                                    if isCurrentSpline then
-                                        distanceToSplineEnd splineMeta meta.parameter
-
-                                    else
-                                        splineMeta.length
-                            in
-                            { length = length
-                            , remainingIndices = acc.remainingIndices - 1
-                            }
-                        )
-                        initialAcc
-                        remainingSplines
+                remaining =
+                    pathRemaining meta
             in
-            Just distance.length
+            Just remaining.length
 
         _ ->
             Nothing
 
 
-distanceToSplineEnd : SplineMeta -> Length.Length -> Length.Length
+type alias PathRemaining =
+    { length : Length.Length
+    , splines : List LMCubicSpline2d
+    }
+
+
+pathRemaining : RouteMeta -> PathRemaining
+pathRemaining meta =
+    let
+        remainingSplines =
+            Array.slice meta.currentSplineIdx (Array.length meta.path) meta.path
+
+        initialAcc =
+            { length = Quantity.zero
+            , remainingIndices = Array.length remainingSplines
+            , splines = []
+            }
+
+        result =
+            Array.foldl
+                (\splineMeta acc ->
+                    let
+                        isCurrentSpline =
+                            acc == initialAcc
+
+                        ( length, remainingSpline ) =
+                            if isCurrentSpline then
+                                distanceToSplineEnd splineMeta meta.parameter
+
+                            else
+                                ( splineMeta.length
+                                , CubicSpline2d.fromArcLengthParameterized splineMeta.spline
+                                )
+                    in
+                    { length = length
+                    , remainingIndices = acc.remainingIndices - 1
+                    , splines = remainingSpline :: acc.splines
+                    }
+                )
+                initialAcc
+                remainingSplines
+    in
+    { length = result.length
+    , splines = result.splines
+    }
+
+
+distanceToSplineEnd : SplineMeta -> Length.Length -> ( Length.Length, LMCubicSpline2d )
 distanceToSplineEnd splineMeta parameter =
     let
         spline =
@@ -177,15 +208,18 @@ distanceToSplineEnd splineMeta parameter =
             CubicSpline2d.splitAt
                 (Quantity.ratio parameter splineMeta.length)
                 spline
-    in
-    case CubicSpline2d.nondegenerate remaining of
-        Ok ndSpline ->
-            ndSpline
-                |> CubicSpline2d.arcLengthParameterized { maxError = maxALPError }
-                |> CubicSpline2d.arcLength
 
-        _ ->
-            Quantity.zero
+        distance =
+            case CubicSpline2d.nondegenerate remaining of
+                Ok ndSpline ->
+                    ndSpline
+                        |> CubicSpline2d.arcLengthParameterized { maxError = maxALPError }
+                        |> CubicSpline2d.arcLength
+
+                _ ->
+                    Quantity.zero
+    in
+    ( distance, remaining )
 
 
 nextNode : Route -> Maybe RNNodeContext
@@ -294,19 +328,6 @@ createPath remainingSplines acc =
 
         [] ->
             acc
-
-
-splinesToList : Route -> List LMCubicSpline2d
-splinesToList route =
-    case route of
-        Routed meta ->
-            Array.foldl
-                (\splineMeta acc -> CubicSpline2d.fromArcLengthParameterized splineMeta.spline :: acc)
-                []
-                meta.path
-
-        _ ->
-            []
 
 
 sample : Route -> Maybe ( LMPoint2d, LMDirection2d )
