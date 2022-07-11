@@ -13,6 +13,7 @@ import Model.RoadNetwork as RoadNetwork
 import Point2d
 import Quantity
 import Render.Conversion exposing (pixelsToMetersRatio)
+import Round
 import Speed exposing (Speed)
 import UI.Core
     exposing
@@ -184,7 +185,7 @@ speedToString speed =
         speedValue =
             speed
                 |> Quantity.unwrap
-                |> String.fromFloat
+                |> Round.round 2
     in
     "Speed: " ++ speedValue ++ " m/s"
 

@@ -347,7 +347,7 @@ description route =
             "Unrouted"
 
         Parked _ ->
-            "Waiting for route"
+            "Parked"
 
         Routed meta ->
             case meta.connections of
