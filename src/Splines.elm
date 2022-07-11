@@ -3,7 +3,6 @@ module Splines exposing
     , PathParameters
     , asGlobalSpline
     , curveSpline
-    , customCurveSpline
     , lotEntrySpline
     , lotExitSpline
     , straightSpline
@@ -25,7 +24,7 @@ import Model.Geometry
         , LMPoint2d
         , LMPoint2dLocal
         )
-import Model.RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
+import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Point2d exposing (Point2d)
 import Quantity
 
@@ -64,7 +63,15 @@ toNode { direction, origin } { node } =
         straightSpline origin target
 
     else
-        curveSpline origin target direction
+        let
+            parameter =
+                if node.label.environment == RoadNetwork.Intersection then
+                    0.75
+
+                else
+                    0.5
+        in
+        curveSpline origin target direction parameter
 
 
 uTurnSpline : Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> CubicSpline2d Length.Meters a
@@ -123,29 +130,15 @@ mirroredSpline origin target direction =
     CubicSpline2d.fromControlPoints origin cp1 cp2 target
 
 
-curveSpline : Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> CubicSpline2d Length.Meters a
-curveSpline origin target direction =
+curveSpline : Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> Float -> CubicSpline2d Length.Meters a
+curveSpline origin target direction parameter =
     let
         rightAnglePos =
             Common.rightAnglePosition origin target direction
 
         ( cp1, cp2 ) =
-            ( Point2d.midpoint origin rightAnglePos
-            , Point2d.midpoint rightAnglePos target
-            )
-    in
-    CubicSpline2d.fromControlPoints origin cp1 cp2 target
-
-
-customCurveSpline : Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> Float -> CubicSpline2d Length.Meters a
-customCurveSpline origin target direction distance =
-    let
-        rightAnglePos =
-            Common.rightAnglePosition origin target direction
-
-        ( cp1, cp2 ) =
-            ( Point2d.interpolateFrom origin rightAnglePos distance
-            , Point2d.interpolateFrom target rightAnglePos distance
+            ( Point2d.interpolateFrom origin rightAnglePos parameter
+            , Point2d.interpolateFrom target rightAnglePos parameter
             )
     in
     CubicSpline2d.fromControlPoints origin cp1 cp2 target
@@ -168,14 +161,14 @@ lotEntrySpline { parkingSpotPosition, lotEntryPosition, parkingSpotExitDirection
             drivewayExitDirection |> Direction2d.reverse
     in
     if parkingSkipsParkingLane parkingLaneStartPosition parkingSpotPosition drivewayExitDirection then
-        [ curveSpline lotEntryPosition parkingSpotPosition startDirection ]
+        [ curveSpline lotEntryPosition parkingSpotPosition startDirection 0.6 ]
 
     else if parkingSpotExitDirection == drivewayExitDirection then
         [ mirroredSpline lotEntryPosition parkingSpotPosition startDirection ]
 
     else if parkingSpotCloseToParkingLaneStart lotEntryPosition parkingSpotPosition then
         [ mirroredSpline lotEntryPosition parkingLaneStartPosition startDirection
-        , customCurveSpline parkingLaneStartPosition parkingSpotPosition startDirection 0.8
+        , curveSpline parkingLaneStartPosition parkingSpotPosition startDirection 0.8
         ]
 
     else
@@ -188,7 +181,7 @@ lotEntrySpline { parkingSpotPosition, lotEntryPosition, parkingSpotExitDirection
         in
         [ mirroredSpline lotEntryPosition parkingLaneStartPosition startDirection
         , straightSpline parkingLaneStartPosition parkingSpotSplineStart
-        , customCurveSpline parkingSpotSplineStart parkingSpotPosition startDirection 0.7
+        , curveSpline parkingSpotSplineStart parkingSpotPosition startDirection 0.7
         ]
 
 
@@ -199,13 +192,13 @@ lotExitSpline { parkingSpotPosition, lotExitPosition, parkingSpotExitDirection, 
             parkingSpotExitDirection
     in
     if parkingSkipsParkingLane parkingLaneStartPosition parkingSpotPosition drivewayExitDirection then
-        [ curveSpline parkingSpotPosition lotExitPosition startDirection ]
+        [ curveSpline parkingSpotPosition lotExitPosition startDirection 0.6 ]
 
     else if parkingSpotExitDirection == drivewayExitDirection then
         [ mirroredSpline parkingSpotPosition lotExitPosition startDirection ]
 
     else if parkingSpotCloseToParkingLaneStart lotExitPosition parkingSpotPosition then
-        [ customCurveSpline parkingSpotPosition parkingLaneStartPosition startDirection 0.8
+        [ curveSpline parkingSpotPosition parkingLaneStartPosition startDirection 0.8
         , mirroredSpline parkingLaneStartPosition lotExitPosition drivewayExitDirection
         ]
 
@@ -217,7 +210,7 @@ lotExitSpline { parkingSpotPosition, lotExitPosition, parkingSpotExitDirection, 
                     parkingSpotPosition
                     (drivewayExitDirection |> Direction2d.reverse)
         in
-        [ customCurveSpline parkingSpotPosition parkingSpotSplineStart startDirection 0.7
+        [ curveSpline parkingSpotPosition parkingSpotSplineStart startDirection 0.7
         , straightSpline parkingSpotSplineStart parkingLaneStartPosition
         , mirroredSpline parkingLaneStartPosition lotExitPosition drivewayExitDirection
         ]

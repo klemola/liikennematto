@@ -114,7 +114,7 @@ createPath start startTangentDirection others acc =
                         Splines.straightSpline start end
 
                     else
-                        Splines.customCurveSpline
+                        Splines.curveSpline
                             start
                             end
                             startTangentDirection

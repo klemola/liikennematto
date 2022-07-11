@@ -221,7 +221,7 @@ toConnections tilemap cell tile =
             |> List.concatMap
                 (oppositeOrthogonalDirection
                     >> orthogonalDirectionToLmDirection
-                    >> deadendConnections cell tile
+                    >> deadendConnections cell
                 )
 
     else
@@ -229,8 +229,8 @@ toConnections tilemap cell tile =
             |> List.concatMap (connectionsByTileEntryDirection tilemap cell tile)
 
 
-deadendConnections : Cell -> Tile -> LMDirection2d -> List Connection
-deadendConnections cell tile trafficDirection =
+deadendConnections : Cell -> LMDirection2d -> List Connection
+deadendConnections cell trafficDirection =
     let
         ( entryPosition, exitPosition ) =
             laneCenterPositionsByDirection cell trafficDirection
@@ -240,7 +240,7 @@ deadendConnections cell tile trafficDirection =
             , position = entryPosition
             , direction = trafficDirection
             , cell = cell
-            , tile = tile
+            , environment = RoadNetwork.Road
             , trafficControl = None
             }
 
@@ -249,7 +249,7 @@ deadendConnections cell tile trafficDirection =
             , position = exitPosition
             , direction = Direction2d.reverse trafficDirection
             , cell = cell
-            , tile = tile
+            , environment = RoadNetwork.Road
             , trafficControl = None
             }
     in
@@ -312,19 +312,26 @@ connectionsByTileEntryDirection tilemap cell tile direction =
 
         startConnectionCell =
             chooseConnectionCell tilemap tile direction startConnectionKind cell
+
+        environment =
+            if Tile.isIntersection tile || Tile.isLotEntry tile then
+                RoadNetwork.Intersection
+
+            else
+                RoadNetwork.Road
     in
     [ { kind = startConnectionKind
       , position = origin |> Point2d.translateBy (startOffset |> Vector2d.plus extraOffset)
       , direction = startDirection
       , cell = startConnectionCell
-      , tile = tile
+      , environment = environment
       , trafficControl = None
       }
     , { kind = endConnectionKind
       , position = origin |> Point2d.translateBy (endOffset |> Vector2d.plus extraOffset)
       , direction = endDirection
       , cell = cell
-      , tile = tile
+      , environment = environment
       , trafficControl = None
       }
     ]
