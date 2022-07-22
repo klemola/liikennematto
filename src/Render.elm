@@ -45,6 +45,7 @@ import Polygon2d
 import Quantity
 import Render.Conversion exposing (pixelsToMetersRatio, toPixelsValue)
 import Render.Shape
+import Simulation.Collision as Collision
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Svg.Keyed
@@ -708,8 +709,8 @@ renderCarDebug : RenderCache -> Car -> Svg msg
 renderCarDebug cache car =
     Svg.g []
         [ renderCarFieldOfView cache.tilemapHeightPixels car
-        , renderCarCollisionDetection cache.tilemapHeightPixels car
         , renderCarPath cache.tilemapHeight car
+        , renderCarCollisionDetection cache car
         ]
 
 
@@ -718,22 +719,35 @@ renderCarPath tilemapHeight car =
     Svg.g []
         (car.route
             |> Route.pathToList
-            |> List.map (Render.Shape.cubicSpline Colors.red tilemapHeight)
+            |> List.map
+                (Render.Shape.cubicSpline
+                    (Colors.red |> Colors.withAlpha 0.75)
+                    tilemapHeight
+                )
         )
 
 
-renderCarCollisionDetection : Float -> Car -> Svg msg
-renderCarCollisionDetection tilemapHeightPixels car =
+renderCarCollisionDetection : RenderCache -> Car -> Svg msg
+renderCarCollisionDetection cache car =
     let
         points =
-            Polygon2d.outerLoop car.shape |> toPointsString tilemapHeightPixels
+            Polygon2d.outerLoop car.shape |> toPointsString cache.tilemapHeightPixels
+
+        ray =
+            Collision.pathRay car (Length.meters 16)
     in
-    Svg.polygon
-        [ Attributes.points points
-        , Attributes.fill <| Color.toCssString Colors.red
-        , Attributes.opacity "0.5"
+    Svg.g []
+        [ Svg.polygon
+            [ Attributes.points points
+            , Attributes.fill Colors.redCSS
+            , Attributes.opacity "0.5"
+            ]
+            []
+        , Render.Shape.line
+            (Colors.darkBlue |> Colors.withAlpha 0.5)
+            cache.tilemapHeight
+            ray
         ]
-        []
 
 
 renderCarFieldOfView : Float -> Car -> Svg msg
@@ -750,8 +764,8 @@ renderCarFieldOfView tilemapHeightPixels car =
     in
     Svg.polygon
         [ Attributes.points points
-        , Attributes.fill <| Color.toCssString Colors.darkBlue
-        , Attributes.opacity "0.3"
+        , Attributes.fill Colors.gray6CSS
+        , Attributes.opacity "0.2"
         ]
         []
 

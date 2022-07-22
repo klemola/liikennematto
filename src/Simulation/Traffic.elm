@@ -528,7 +528,7 @@ checkForwardCollision : RuleSetup -> Maybe Rule
 checkForwardCollision { activeCar, otherCars } =
     let
         ray =
-            Collision.toRay activeCar maxCarCollisionTestDistance
+            Collision.pathRay activeCar maxCarCollisionTestDistance
     in
     Collision.distanceToClosestCollisionPoint
         activeCar
