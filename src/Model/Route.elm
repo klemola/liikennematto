@@ -16,12 +16,13 @@ module Model.Route exposing
     , parking
     , pathToList
     , sample
+    , sampleAhead
     )
 
 import Array exposing (Array)
 import CubicSpline2d exposing (ArcLengthParameterized)
 import Duration exposing (Duration)
-import Length
+import Length exposing (Length)
 import List.Extra as List
 import Model.Entity exposing (Id)
 import Model.Geometry
@@ -50,14 +51,14 @@ type alias RouteMeta =
     , endPoint : LMPoint2d
     , currentSplineIdx : Int
     , currentSpline : Maybe SplineMeta
-    , parameter : Length.Length
+    , parameter : Length
     , parking : Maybe Parking
     }
 
 
 type alias SplineMeta =
     { spline : ArcLengthParameterized Length.Meters GlobalCoordinates
-    , length : Length.Length
+    , length : Length
     }
 
 
@@ -69,7 +70,7 @@ type alias Parking =
     }
 
 
-maxALPError : Length.Length
+maxALPError : Length
 maxALPError =
     Length.meters 0.1
 
@@ -137,7 +138,7 @@ pathToList route =
             []
 
 
-distanceToPathEnd : Route -> Maybe Length.Length
+distanceToPathEnd : Route -> Maybe Length
 distanceToPathEnd route =
     case route of
         Routed meta ->
@@ -152,7 +153,7 @@ distanceToPathEnd route =
 
 
 type alias PathRemaining =
-    { length : Length.Length
+    { length : Length
     , splines : List LMCubicSpline2d
     }
 
@@ -198,7 +199,7 @@ pathRemaining meta =
     }
 
 
-distanceToSplineEnd : SplineMeta -> Length.Length -> ( Length.Length, LMCubicSpline2d )
+distanceToSplineEnd : SplineMeta -> Length -> ( Length, LMCubicSpline2d )
 distanceToSplineEnd splineMeta parameter =
     let
         spline =
@@ -334,10 +335,43 @@ sample : Route -> Maybe ( LMPoint2d, LMDirection2d )
 sample route =
     case route of
         Routed meta ->
-            meta.currentSpline |> Maybe.map (\{ spline } -> CubicSpline2d.sampleAlong spline meta.parameter)
+            meta.currentSpline
+                |> Maybe.map (\{ spline } -> CubicSpline2d.sampleAlong spline meta.parameter)
 
         _ ->
             Nothing
+
+
+sampleAhead : Route -> Length -> Maybe ( LMPoint2d, LMDirection2d )
+sampleAhead route lookAheadAmount =
+    case route of
+        Routed meta ->
+            meta.currentSpline |> Maybe.map (sampleAheadWithRouteMeta meta lookAheadAmount)
+
+        _ ->
+            Nothing
+
+
+sampleAheadWithRouteMeta : RouteMeta -> Length -> SplineMeta -> ( LMPoint2d, LMDirection2d )
+sampleAheadWithRouteMeta routeMeta lookAheadAmount currentSplineMeta =
+    let
+        parameterWithLookAhead =
+            routeMeta.parameter |> Quantity.plus lookAheadAmount
+    in
+    if parameterWithLookAhead |> Quantity.lessThanOrEqualTo currentSplineMeta.length then
+        CubicSpline2d.sampleAlong currentSplineMeta.spline parameterWithLookAhead
+
+    else
+        -- The parameter overflowed (is greater than the current spline length).
+        -- Sample the next spline instead
+        case Array.get (routeMeta.currentSplineIdx + 1) routeMeta.path of
+            Just nextSplineMeta ->
+                CubicSpline2d.sampleAlong
+                    nextSplineMeta.spline
+                    (parameterWithLookAhead |> Quantity.minus currentSplineMeta.length)
+
+            Nothing ->
+                CubicSpline2d.sampleAlong currentSplineMeta.spline currentSplineMeta.length
 
 
 description : Route -> String

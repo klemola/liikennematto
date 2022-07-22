@@ -1,4 +1,4 @@
-module Render.Shape exposing (circle, cubicSpline, cubicSplineDebug)
+module Render.Shape exposing (circle, cubicSpline, cubicSplineDebug, line)
 
 import Circle2d
 import Color exposing (Color)
@@ -6,7 +6,8 @@ import CubicSpline2d exposing (CubicSpline2d)
 import Data.Colors as Colors
 import Geometry.Svg as Svg
 import Length
-import Model.Geometry exposing (LMCubicSpline2d, LMPoint2d)
+import LineSegment2d
+import Model.Geometry exposing (LMCubicSpline2d, LMLineSegment2d, LMPoint2d)
 import Point2d exposing (Point2d)
 import Polyline2d
 import Quantity
@@ -101,6 +102,26 @@ circle color renderAreaHeight radius centerPoint =
         [ Attributes.fill (Color.toCssString color)
         ]
         (Circle2d.atPoint centerPointInSVGCoords radiusPixels)
+
+
+line : Color -> Length.Length -> LMLineSegment2d -> Svg msg
+line color renderAreaHeight lineSegment =
+    let
+        rayInSVGCoords =
+            LineSegment2d.fromEndpoints
+                ( LineSegment2d.startPoint lineSegment
+                    |> flipPointYCoordinate renderAreaHeight
+                    |> Point2d.at Render.Conversion.pixelsToMetersRatio
+                , LineSegment2d.endPoint lineSegment
+                    |> flipPointYCoordinate renderAreaHeight
+                    |> Point2d.at Render.Conversion.pixelsToMetersRatio
+                )
+    in
+    Svg.lineSegment2d
+        [ Attributes.stroke (Color.toCssString color)
+        , Attributes.strokeWidth "4"
+        ]
+        rayInSVGCoords
 
 
 

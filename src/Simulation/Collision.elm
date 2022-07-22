@@ -2,8 +2,8 @@ module Simulation.Collision exposing
     ( distanceToClosestCollisionPoint
     , forwardCollisionWith
     , pathCollisionWith
+    , pathRay
     , pathsIntersectAt
-    , toRay
     )
 
 import Angle
@@ -13,24 +13,29 @@ import LineSegment2d
 import Model.Car as Car exposing (Car)
 import Model.Geometry
     exposing
-        ( LMLineSegment2d
+        ( LMDirection2d
+        , LMLineSegment2d
         , LMPoint2d
         , LMTriangle2d
         )
+import Model.Route as Route
 import Point2d
 import Polygon2d
 import Quantity
+import Speed
 import Triangle2d
+
+
+maxSimilarDirectionDifference : Angle.Angle
+maxSimilarDirectionDifference =
+    Angle.radians 0.1
 
 
 forwardCollisionWith : LMLineSegment2d -> Car -> Car -> Maybe LMPoint2d
 forwardCollisionWith ray activeCar otherCar =
     let
-        maxOrientationDifference =
-            Angle.degrees 5
-
         headingRoughlyInTheSameDirection =
-            Quantity.equalWithin maxOrientationDifference activeCar.orientation otherCar.orientation
+            Quantity.equalWithin maxSimilarDirectionDifference activeCar.orientation otherCar.orientation
 
         canCatchUp =
             otherCar.velocity |> Quantity.lessThan activeCar.velocity
@@ -80,15 +85,15 @@ pathsIntersectAt : LMTriangle2d -> Car -> Car -> Maybe LMPoint2d
 pathsIntersectAt checkArea car otherCar =
     if Triangle2d.contains otherCar.position checkArea then
         LineSegment2d.intersectionPoint
-            (toRay car Car.viewDistance)
-            (toRay otherCar Car.viewDistance)
+            (velocityRay car Car.viewDistance)
+            (velocityRay otherCar Car.viewDistance)
 
     else
         Nothing
 
 
-toRay : Car -> Length -> LMLineSegment2d
-toRay car distance =
+velocityRay : Car -> Length -> LMLineSegment2d
+velocityRay car distance =
     let
         origin =
             car.position
@@ -103,6 +108,58 @@ toRay car distance =
             else
                 carDirection
     in
+    buildRay
+        origin
+        directionOfVelocity
+        distance
+
+
+pathRay : Car -> Length -> LMLineSegment2d
+pathRay car maxDistance =
+    let
+        origin =
+            car.position
+
+        carDirection =
+            Direction2d.fromAngle car.orientation
+
+        direction =
+            -- If the car is reversing significantly, the ray should be behind the car
+            if car.velocity |> Quantity.lessThan (Speed.metersPerSecond -0.5) then
+                Direction2d.reverse carDirection
+
+            else
+                let
+                    lookAhead =
+                        Length.meters 4
+                in
+                case Route.sampleAhead car.route lookAhead of
+                    Just ( _, tangentDirection ) ->
+                        tangentDirection
+
+                    Nothing ->
+                        carDirection
+
+        distance =
+            if
+                Direction2d.equalWithin
+                    maxSimilarDirectionDifference
+                    carDirection
+                    direction
+            then
+                maxDistance
+
+            else
+                Quantity.half maxDistance
+    in
+    buildRay
+        origin
+        direction
+        distance
+
+
+buildRay : LMPoint2d -> LMDirection2d -> Length -> LMLineSegment2d
+buildRay origin direction distance =
     LineSegment2d.from
         origin
-        (origin |> Point2d.translateIn directionOfVelocity distance)
+        (origin |> Point2d.translateIn direction distance)

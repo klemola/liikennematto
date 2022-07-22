@@ -9,6 +9,15 @@ uiCompat color =
     Color.toRgba color |> Element.fromRgb
 
 
+withAlpha : Float -> Color.Color -> Color.Color
+withAlpha alpha color =
+    let
+        rgba =
+            Color.toRgba color
+    in
+    Color.fromRgba { rgba | alpha = alpha }
+
+
 gray1 : Color.Color
 gray1 =
     Color.rgb255 48 37 37
