@@ -33,12 +33,6 @@ import Random
 import Simulation.Collision as Collision
 import Simulation.Pathfinding as Pathfinding
 import Simulation.Steering as Steering exposing (Steering)
-import Speed
-
-
-maxCarCollisionTestDistance : Length
-maxCarCollisionTestDistance =
-    Length.meters 16
 
 
 trafficLightReactionDistance : Length
@@ -460,11 +454,9 @@ checkRules setup =
     let
         activeRule =
             Maybe.orListLazy
-                [ \() -> checkForwardCollision setup
+                [ \() -> checkCollision setup
                 , \() -> checkParking setup
                 , \() -> checkTrafficControl setup
-
-                -- , \() -> checkPathCollision setup
                 ]
     in
     case activeRule of
@@ -524,16 +516,14 @@ applyRule activeCar rule =
 -- Rule definitions
 
 
-checkForwardCollision : RuleSetup -> Maybe Rule
-checkForwardCollision { activeCar, otherCars } =
-    let
-        ray =
-            Collision.pathRay activeCar maxCarCollisionTestDistance
-    in
-    Collision.distanceToClosestCollisionPoint
-        activeCar
-        otherCars
-        (Collision.forwardCollisionWith ray activeCar)
+checkCollision : RuleSetup -> Maybe Rule
+checkCollision { activeCar, otherCars } =
+    otherCars
+        |> List.filterMap
+            (Collision.checkFutureCollision activeCar
+                >> Maybe.map (Point2d.distanceFrom activeCar.position)
+            )
+        |> Quantity.minimum
         |> Maybe.map
             (\collisionDistance ->
                 let
@@ -548,26 +538,6 @@ checkForwardCollision { activeCar, otherCars } =
                 else
                     AvoidCollision collisionDistance
             )
-
-
-checkPathCollision : RuleSetup -> Maybe Rule
-checkPathCollision { activeCar, otherCars } =
-    if
-        -- The car should be moving forward by a significant amount before path collision checks are enabled
-        activeCar.velocity |> Quantity.lessThan (Speed.metersPerSecond 0.1)
-    then
-        Nothing
-
-    else
-        let
-            checkArea =
-                Car.rightSideOfFieldOfView activeCar
-        in
-        Collision.distanceToClosestCollisionPoint
-            activeCar
-            otherCars
-            (Collision.pathCollisionWith checkArea activeCar)
-            |> Maybe.map AvoidCollision
 
 
 checkTrafficControl : RuleSetup -> Maybe Rule
@@ -612,12 +582,11 @@ checkYield { activeCar, otherCars } signPosition =
         distanceFromYieldSign =
             Point2d.distanceFrom activeCar.position signPosition
     in
-    if distanceFromYieldSign |> Quantity.lessThanOrEqualTo yieldReactionDistance then
-        Collision.distanceToClosestCollisionPoint
-            activeCar
-            otherCars
-            (Collision.pathsIntersectAt checkArea activeCar)
-            |> Maybe.map (always (StopAtTrafficControl distanceFromYieldSign))
+    if
+        (distanceFromYieldSign |> Quantity.lessThanOrEqualTo yieldReactionDistance)
+            && List.any (Collision.pathsIntersect checkArea activeCar) otherCars
+    then
+        Just (StopAtTrafficControl distanceFromYieldSign)
 
     else if distanceFromYieldSign |> Quantity.lessThanOrEqualTo yieldSlowDownDistance then
         Just SlowDownAtTrafficControl

@@ -1,21 +1,27 @@
 module Simulation.Collision exposing
-    ( distanceToClosestCollisionPoint
-    , forwardCollisionWith
-    , pathCollisionWith
+    ( checkFutureCollision
+    , fieldOfViewCheck
+    , maxCarCollisionTestDistance
     , pathRay
-    , pathsIntersectAt
+    , pathsIntersect
+    , rightSideFOV
     )
 
-import Angle
+import Angle exposing (Angle)
+import Arc2d
+import Common
 import Direction2d
 import Length exposing (Length)
 import LineSegment2d
+import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car)
 import Model.Geometry
     exposing
-        ( LMDirection2d
+        ( LMArc2d
+        , LMDirection2d
         , LMLineSegment2d
         , LMPoint2d
+        , LMShape2d
         , LMTriangle2d
         )
 import Model.Route as Route
@@ -26,59 +32,137 @@ import Speed
 import Triangle2d
 
 
-maxSimilarDirectionDifference : Angle.Angle
+maxCarCollisionTestDistance : Length
+maxCarCollisionTestDistance =
+    Length.meters 12
+
+
+pathLookAheadDistance : Length
+pathLookAheadDistance =
+    Length.meters 3.2
+
+
+maxSimilarDirectionDifference : Angle
 maxSimilarDirectionDifference =
     Angle.radians 0.1
 
 
-forwardCollisionWith : LMLineSegment2d -> Car -> Car -> Maybe LMPoint2d
-forwardCollisionWith ray activeCar otherCar =
-    let
-        headingRoughlyInTheSameDirection =
-            Quantity.equalWithin maxSimilarDirectionDifference activeCar.orientation otherCar.orientation
+fovRadius : Angle
+fovRadius =
+    Angle.degrees 90
 
-        canCatchUp =
-            otherCar.velocity |> Quantity.lessThan activeCar.velocity
-    in
-    -- Avoid stuttering movement when the car is behind another and aligned
-    if headingRoughlyInTheSameDirection && not canCatchUp then
+
+checkFutureCollision : Car -> Car -> Maybe LMPoint2d
+checkFutureCollision activeCar otherCar =
+    if
+        let
+            headingRoughlyInTheSameDirection =
+                Quantity.equalWithin maxSimilarDirectionDifference activeCar.orientation otherCar.orientation
+
+            canCatchUp =
+                otherCar.velocity |> Quantity.lessThan activeCar.velocity
+        in
+        -- Avoid stuttering movement when the car is behind another and aligned
+        (headingRoughlyInTheSameDirection && not canCatchUp)
+            -- Ignore collision detection when parked (assume zero velocity)
+            || Car.isParked activeCar
+    then
         Nothing
 
     else
-        Polygon2d.edges otherCar.shape
-            |> List.filterMap (LineSegment2d.intersectionPoint ray)
-            |> List.sortWith
-                (\pt1 pt2 ->
-                    Quantity.compare
-                        (Point2d.distanceFrom activeCar.position pt1)
-                        (Point2d.distanceFrom activeCar.position pt2)
-                )
-            |> List.head
+        let
+            ray =
+                pathRay activeCar maxCarCollisionTestDistance
+        in
+        Maybe.orLazy
+            (rayCollisionAt activeCar.position otherCar.shape ray)
+            -- No ray collision, check FOV
+            (\_ ->
+                if shouldCheckFov activeCar otherCar then
+                    fieldOfViewCheck otherCar.position (rightSideFOV ray)
+
+                else
+                    Nothing
+            )
 
 
-pathCollisionWith : LMTriangle2d -> Car -> Car -> Maybe LMPoint2d
-pathCollisionWith fieldOfViewTriangle activeCar otherCar =
+rayCollisionAt : LMPoint2d -> LMShape2d -> LMLineSegment2d -> Maybe LMPoint2d
+rayCollisionAt origin shape ray =
+    Polygon2d.edges shape
+        |> List.filterMap (LineSegment2d.intersectionPoint ray)
+        |> List.sortWith
+            (\pt1 pt2 ->
+                Quantity.compare
+                    (Point2d.distanceFrom origin pt1)
+                    (Point2d.distanceFrom origin pt2)
+            )
+        |> List.head
+
+
+shouldCheckFov : Car -> Car -> Bool
+shouldCheckFov activeCar otherCar =
+    Car.shouldWatchTraffic activeCar
+        && not (Car.isStoppedOrWaiting otherCar)
+        && (activeCar.position
+                |> Common.isInTheNormalPlaneOf
+                    (Direction2d.fromAngle otherCar.orientation)
+                    otherCar.position
+           )
+
+
+fieldOfViewCheck : LMPoint2d -> LMArc2d -> Maybe LMPoint2d
+fieldOfViewCheck target fieldOfView =
     let
-        maxOrientationDifference =
-            Angle.degrees 10
+        origin =
+            Arc2d.centerPoint fieldOfView
 
-        headingRoughlyInTheSameDirection =
-            Quantity.equalWithin maxOrientationDifference activeCar.orientation otherCar.orientation
+        directionToTarget =
+            Direction2d.from origin target
+
+        directionToArcMidPoint =
+            Direction2d.from origin (Arc2d.midpoint fieldOfView)
     in
-    -- Avoid false positives for cars that are roughly aligned & optimize by ignoring stationary cars
-    if Car.isStoppedOrWaiting otherCar || headingRoughlyInTheSameDirection then
-        Nothing
+    Maybe.andThen2
+        (\targetDirection arcMidPointDirection ->
+            let
+                distanceToTarget =
+                    Point2d.distanceFrom origin target
+            in
+            if distanceToTarget |> Quantity.greaterThan (Arc2d.radius fieldOfView) then
+                Nothing
 
-    else
-        -- Room for improvement: project the cars w.rt their velocity and see if they will later collide
-        pathsIntersectAt fieldOfViewTriangle activeCar otherCar
+            else if Direction2d.equalWithin (Quantity.half fovRadius) targetDirection arcMidPointDirection then
+                Just
+                    -- The midpoint between origin and target
+                    -- TODO: check if this a valid heuristic
+                    (Point2d.translateIn
+                        targetDirection
+                        (Quantity.half distanceToTarget)
+                        origin
+                    )
+
+            else
+                Nothing
+        )
+        directionToTarget
+        directionToArcMidPoint
 
 
-distanceToClosestCollisionPoint : Car -> List Car -> (Car -> Maybe LMPoint2d) -> Maybe Length
-distanceToClosestCollisionPoint activeCar carsToCheck predicate =
-    carsToCheck
-        |> List.filterMap (predicate >> Maybe.map (Point2d.distanceFrom activeCar.position))
-        |> Quantity.minimum
+rightSideFOV : LMLineSegment2d -> LMArc2d
+rightSideFOV ray =
+    LineSegment2d.endPoint ray
+        |> Arc2d.sweptAround (LineSegment2d.startPoint ray)
+            (Quantity.negate fovRadius)
+
+
+pathsIntersect : LMTriangle2d -> Car -> Car -> Bool
+pathsIntersect checkArea car otherCar =
+    case pathsIntersectAt checkArea car otherCar of
+        Just _ ->
+            True
+
+        Nothing ->
+            False
 
 
 pathsIntersectAt : LMTriangle2d -> Car -> Car -> Maybe LMPoint2d
@@ -129,11 +213,7 @@ pathRay car maxDistance =
                 Direction2d.reverse carDirection
 
             else
-                let
-                    lookAhead =
-                        Length.meters 4
-                in
-                case Route.sampleAhead car.route lookAhead of
+                case Route.sampleAhead car.route pathLookAheadDistance of
                     Just ( _, tangentDirection ) ->
                         tangentDirection
 
@@ -150,7 +230,7 @@ pathRay car maxDistance =
                 maxDistance
 
             else
-                Quantity.half maxDistance
+                Quantity.multiplyBy 0.6 maxDistance
     in
     buildRay
         origin

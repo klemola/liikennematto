@@ -1,5 +1,13 @@
-module Render.Shape exposing (circle, cubicSpline, cubicSplineDebug, line)
+module Render.Shape exposing
+    ( arc
+    , circle
+    , cubicSpline
+    , cubicSplineDebug
+    , line
+    )
 
+import Arc2d
+import Axis2d
 import Circle2d
 import Color exposing (Color)
 import CubicSpline2d exposing (CubicSpline2d)
@@ -7,7 +15,7 @@ import Data.Colors as Colors
 import Geometry.Svg as Svg
 import Length
 import LineSegment2d
-import Model.Geometry exposing (LMCubicSpline2d, LMLineSegment2d, LMPoint2d)
+import Model.Geometry exposing (LMArc2d, LMCubicSpline2d, LMLineSegment2d, LMPoint2d)
 import Point2d exposing (Point2d)
 import Polyline2d
 import Quantity
@@ -122,6 +130,33 @@ line color renderAreaHeight lineSegment =
         , Attributes.strokeWidth "4"
         ]
         rayInSVGCoords
+
+
+arc : Color -> Length.Length -> LMArc2d -> Svg msg
+arc color renderAreaHeight theArc =
+    let
+        start =
+            Arc2d.startPoint theArc
+                |> flipPointYCoordinate renderAreaHeight
+                |> Point2d.at Render.Conversion.pixelsToMetersRatio
+
+        center =
+            Arc2d.centerPoint theArc
+                |> flipPointYCoordinate renderAreaHeight
+                |> Point2d.at Render.Conversion.pixelsToMetersRatio
+
+        arcInSVGCoords =
+            start
+                |> Arc2d.sweptAround
+                    center
+                    (Arc2d.sweptAngle (theArc |> Arc2d.mirrorAcross Axis2d.x))
+    in
+    Svg.arc2d
+        [ Attributes.stroke (Color.toCssString color)
+        , Attributes.strokeWidth "4"
+        , Attributes.fill "none"
+        ]
+        arcInSVGCoords
 
 
 

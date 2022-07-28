@@ -19,7 +19,7 @@ import Html exposing (Html)
 import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Animation as Animation exposing (Animation)
-import Model.Car as Car exposing (Car)
+import Model.Car exposing (Car)
 import Model.Cell as Cell exposing (Cell)
 import Model.Entity exposing (Id)
 import Model.Geometry
@@ -50,7 +50,6 @@ import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Svg.Keyed
 import Svg.Lazy
-import Triangle2d
 
 
 type alias DebugLayers =
@@ -708,7 +707,7 @@ renderCarsDebug cache cars =
 renderCarDebug : RenderCache -> Car -> Svg msg
 renderCarDebug cache car =
     Svg.g []
-        [ renderCarFieldOfView cache.tilemapHeightPixels car
+        [ renderCarFieldOfView cache car
         , renderCarPath cache.tilemapHeight car
         , renderCarCollisionDetection cache car
         ]
@@ -734,7 +733,7 @@ renderCarCollisionDetection cache car =
             Polygon2d.outerLoop car.shape |> toPointsString cache.tilemapHeightPixels
 
         ray =
-            Collision.pathRay car (Length.meters 16)
+            Collision.pathRay car Collision.maxCarCollisionTestDistance
     in
     Svg.g []
         [ Svg.polygon
@@ -750,24 +749,12 @@ renderCarCollisionDetection cache car =
         ]
 
 
-renderCarFieldOfView : Float -> Car -> Svg msg
-renderCarFieldOfView tilemapHeightPixels car =
-    let
-        triangle =
-            Car.fieldOfView car
-
-        ( p1, p2, p3 ) =
-            Triangle2d.vertices triangle
-
-        points =
-            toPointsString tilemapHeightPixels [ p1, p2, p3 ]
-    in
-    Svg.polygon
-        [ Attributes.points points
-        , Attributes.fill Colors.gray6CSS
-        , Attributes.opacity "0.2"
-        ]
-        []
+renderCarFieldOfView : RenderCache -> Car -> Svg msg
+renderCarFieldOfView cache car =
+    Render.Shape.arc
+        (Colors.gray6 |> Colors.withAlpha 0.2)
+        cache.tilemapHeight
+        (Collision.rightSideFOV (Collision.pathRay car Collision.maxCarCollisionTestDistance))
 
 
 toPointsString : Float -> List LMPoint2d -> String

@@ -1,6 +1,7 @@
 module Model.Geometry exposing
     ( DiagonalDirection(..)
     , GlobalCoordinates
+    , LMArc2d
     , LMBoundingBox2d
     , LMCubicSpline2d
     , LMCubicSpline2dLocal
@@ -26,6 +27,7 @@ module Model.Geometry exposing
     , up
     )
 
+import Arc2d exposing (Arc2d)
 import BoundingBox2d exposing (BoundingBox2d)
 import CubicSpline2d exposing (CubicSpline2d)
 import Direction2d exposing (Direction2d)
@@ -84,6 +86,10 @@ type alias LMShape2d =
 
 type alias LMTriangle2d =
     Triangle2d Length.Meters GlobalCoordinates
+
+
+type alias LMArc2d =
+    Arc2d Length.Meters GlobalCoordinates
 
 
 type alias LMFrame2d =
