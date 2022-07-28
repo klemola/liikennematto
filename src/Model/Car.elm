@@ -13,6 +13,7 @@ module Model.Car exposing
     , isStoppedOrWaiting
     , new
     , rightSideOfFieldOfView
+    , shouldWatchTraffic
     , statusDescription
     , triggerDespawn
     , triggerParking
@@ -386,11 +387,12 @@ isPathfinding car =
 
 isParked : Car -> Bool
 isParked car =
-    let
-        currentState =
-            FSM.toCurrentState car.fsm
-    in
-    currentState == Parked
+    FSM.toCurrentState car.fsm == Parked
+
+
+shouldWatchTraffic : Car -> Bool
+shouldWatchTraffic car =
+    FSM.toCurrentState car.fsm == Driving
 
 
 

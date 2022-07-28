@@ -10,7 +10,7 @@ main : Html msg
 main =
     let
         world =
-            RuleSetups.collisionSetupCollided.world
+            RuleSetups.collisionSetupPathsIntersect.world
     in
     Render.view
         world

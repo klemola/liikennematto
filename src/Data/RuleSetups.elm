@@ -68,7 +68,7 @@ collisionSetupPathsIntersect =
                 |> routeCarByDestination world (Point2d.meters 26 144)
 
         otherCar =
-            buildCar CarB2 (Point2d.meters 32 138) (Angle.degrees 180) Steering.maxVelocity
+            buildCar CarB2 (Point2d.meters 30 138) (Angle.degrees 180) Steering.maxVelocity
                 |> routeCarByDestination world (Point2d.meters 16 138)
 
         otherCars =
