@@ -8,7 +8,9 @@ module Simulation.Traffic exposing
     , updateTraffic
     )
 
+import Angle
 import BoundingBox2d
+import Common
 import Data.Cars exposing (CarMake, testCar)
 import Data.Lots
 import Dict
@@ -441,8 +443,8 @@ type alias RuleSetup =
 
 
 type Rule
-    = AvoidCollision Length
-    | ReactToCollision
+    = AvoidCollision Length Bool
+    | WaitForOtherCar
     | StopAtTrafficControl Length
     | SlowDownAtTrafficControl
     | StopAtParkingSpot
@@ -479,18 +481,28 @@ applyRule activeCar rule =
             activeCar
     in
     case rule of
-        AvoidCollision distanceToCollision ->
+        AvoidCollision distanceToCollision collisionBehindCar ->
             let
-                collisionMargin =
-                    make.length |> Quantity.multiplyBy 1.5
+                carBumperDistance =
+                    activeCar.make.length
+                        |> Quantity.half
+                        |> Quantity.plus (Length.meters 0.1)
             in
-            Steering.stopAtDistance
-                distanceToCollision
-                collisionMargin
-                velocity
+            if distanceToCollision |> Quantity.lessThanOrEqualTo carBumperDistance then
+                if collisionBehindCar then
+                    Steering.stop velocity
 
-        ReactToCollision ->
-            Steering.reactToCollision
+                else
+                    Steering.reactToCollision
+
+            else
+                Steering.stopAtDistance
+                    distanceToCollision
+                    (make.length |> Quantity.multiplyBy 1.5)
+                    velocity
+
+        WaitForOtherCar ->
+            Steering.stop velocity
 
         StopAtTrafficControl distanceFromTrafficControl ->
             Steering.stopAtDistance
@@ -518,26 +530,51 @@ applyRule activeCar rule =
 
 checkCollision : RuleSetup -> Maybe Rule
 checkCollision { activeCar, otherCars } =
-    otherCars
-        |> List.filterMap
-            (Collision.checkFutureCollision activeCar
-                >> Maybe.map (Point2d.distanceFrom activeCar.position)
-            )
-        |> Quantity.minimum
-        |> Maybe.map
-            (\collisionDistance ->
-                let
-                    carBumperDistance =
-                        activeCar.make.length
-                            |> Quantity.half
-                            |> Quantity.plus (Length.meters 0.1)
-                in
-                if collisionDistance |> Quantity.lessThanOrEqualTo carBumperDistance then
-                    ReactToCollision
+    List.foldl
+        (\otherCar currentRule ->
+            let
+                collisionResult =
+                    Collision.checkFutureCollision activeCar otherCar
+            in
+            case collisionResult of
+                Collision.PotentialCollision pointOfCollision ->
+                    let
+                        distanceToCollision =
+                            Point2d.distanceFrom activeCar.position pointOfCollision
 
-                else
-                    AvoidCollision collisionDistance
-            )
+                        collisionBehindCar =
+                            pointOfCollision
+                                |> Common.isInTheNormalPlaneOf
+                                    (Direction2d.fromAngle activeCar.orientation)
+                                    activeCar.position
+                                |> not
+
+                        collisionRule =
+                            AvoidCollision distanceToCollision collisionBehindCar
+                    in
+                    case currentRule of
+                        Just (AvoidCollision smallestCollisionDistanceValue _) ->
+                            if distanceToCollision |> Quantity.lessThan smallestCollisionDistanceValue then
+                                -- Replace previous smallest value
+                                Just collisionRule
+
+                            else
+                                -- Keep the old value
+                                currentRule
+
+                        _ ->
+                            Just collisionRule
+
+                Collision.Caution ->
+                    Maybe.orLazy
+                        currentRule
+                        (\_ -> Just WaitForOtherCar)
+
+                Collision.NoCollision ->
+                    currentRule
+        )
+        Nothing
+        otherCars
 
 
 checkTrafficControl : RuleSetup -> Maybe Rule
