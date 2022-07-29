@@ -245,7 +245,7 @@ stopAtPathEnd currentPosition velocity route stopRadius =
 
 clampVelocity : Speed -> Speed
 clampVelocity nextVelocity =
-    nextVelocity |> Quantity.clamp minVelocity maxVelocity
+    Quantity.clamp minVelocity maxVelocity nextVelocity
 
 
 reachTargetVelocity : Speed -> Speed -> Acceleration
@@ -286,7 +286,7 @@ accelerateToZeroOverDistance currentVelocity (Quantity distanceFromTarget) =
             finalSpeed =
                 if currentSpeed < 0.1 then
                     -- (Nearly) stopped or reversing before reaching the target; accelerate to move towards the target
-                    Speed.inMetersPerSecond maxVelocity * 0.75
+                    Speed.inMetersPerSecond maxVelocity * 0.1
 
                 else
                     -- Already in motion; try to achieve optimal deceleration

@@ -1,5 +1,6 @@
 module Simulation.Collision exposing
-    ( checkFutureCollision
+    ( CollisionCheckResult(..)
+    , checkFutureCollision
     , fieldOfViewCheck
     , maxCarCollisionTestDistance
     , pathRay
@@ -13,7 +14,6 @@ import Common
 import Direction2d
 import Length exposing (Length)
 import LineSegment2d
-import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car)
 import Model.Geometry
     exposing
@@ -30,6 +30,12 @@ import Polygon2d
 import Quantity
 import Speed
 import Triangle2d
+
+
+type CollisionCheckResult
+    = PotentialCollision LMPoint2d
+    | Caution
+    | NoCollision
 
 
 maxCarCollisionTestDistance : Length
@@ -52,38 +58,27 @@ fovRadius =
     Angle.degrees 90
 
 
-checkFutureCollision : Car -> Car -> Maybe LMPoint2d
+checkFutureCollision : Car -> Car -> CollisionCheckResult
 checkFutureCollision activeCar otherCar =
-    if
-        let
-            headingRoughlyInTheSameDirection =
-                Quantity.equalWithin maxSimilarDirectionDifference activeCar.orientation otherCar.orientation
-
-            canCatchUp =
-                otherCar.velocity |> Quantity.lessThan activeCar.velocity
-        in
-        -- Avoid stuttering movement when the car is behind another and aligned
-        (headingRoughlyInTheSameDirection && not canCatchUp)
-            -- Ignore collision detection when parked (assume zero velocity)
-            || Car.isParked activeCar
-    then
-        Nothing
+    if Car.isParked activeCar then
+        NoCollision
 
     else
         let
             ray =
                 pathRay activeCar maxCarCollisionTestDistance
         in
-        Maybe.orLazy
-            (rayCollisionAt activeCar.position otherCar.shape ray)
-            -- No ray collision, check FOV
-            (\_ ->
-                if shouldCheckFov activeCar otherCar then
-                    fieldOfViewCheck otherCar.position (rightSideFOV ray)
+        case rayCollisionAt activeCar.position otherCar.shape ray of
+            Just collisionPoint ->
+                PotentialCollision collisionPoint
+
+            Nothing ->
+                -- No ray collision, check FOV
+                if shouldCheckFov activeCar otherCar && fieldOfViewCheck otherCar.position (rightSideFOV ray) then
+                    Caution
 
                 else
-                    Nothing
-            )
+                    NoCollision
 
 
 rayCollisionAt : LMPoint2d -> LMShape2d -> LMLineSegment2d -> Maybe LMPoint2d
@@ -102,7 +97,8 @@ rayCollisionAt origin shape ray =
 shouldCheckFov : Car -> Car -> Bool
 shouldCheckFov activeCar otherCar =
     Car.shouldWatchTraffic activeCar
-        && not (Car.isStoppedOrWaiting otherCar)
+        && (activeCar.velocity |> Quantity.greaterThanZero)
+        && (otherCar.velocity |> Quantity.greaterThan (Quantity.half activeCar.velocity))
         && (activeCar.position
                 |> Common.isInTheNormalPlaneOf
                     (Direction2d.fromAngle otherCar.orientation)
@@ -110,7 +106,7 @@ shouldCheckFov activeCar otherCar =
            )
 
 
-fieldOfViewCheck : LMPoint2d -> LMArc2d -> Maybe LMPoint2d
+fieldOfViewCheck : LMPoint2d -> LMArc2d -> Bool
 fieldOfViewCheck target fieldOfView =
     let
         origin =
@@ -122,30 +118,18 @@ fieldOfViewCheck target fieldOfView =
         directionToArcMidPoint =
             Direction2d.from origin (Arc2d.midpoint fieldOfView)
     in
-    Maybe.andThen2
+    Maybe.map2
         (\targetDirection arcMidPointDirection ->
             let
                 distanceToTarget =
                     Point2d.distanceFrom origin target
             in
-            if distanceToTarget |> Quantity.greaterThan (Arc2d.radius fieldOfView) then
-                Nothing
-
-            else if Direction2d.equalWithin (Quantity.half fovRadius) targetDirection arcMidPointDirection then
-                Just
-                    -- The midpoint between origin and target
-                    -- TODO: check if this a valid heuristic
-                    (Point2d.translateIn
-                        targetDirection
-                        (Quantity.half distanceToTarget)
-                        origin
-                    )
-
-            else
-                Nothing
+            (distanceToTarget |> Quantity.greaterThan (Arc2d.radius fieldOfView))
+                && Direction2d.equalWithin (Quantity.half fovRadius) targetDirection arcMidPointDirection
         )
         directionToTarget
         directionToArcMidPoint
+        |> Maybe.withDefault False
 
 
 rightSideFOV : LMLineSegment2d -> LMArc2d
