@@ -74,7 +74,7 @@ checkFutureCollision activeCar otherCar =
 
             Nothing ->
                 -- No ray collision, check FOV
-                if shouldCheckFov activeCar otherCar && fieldOfViewCheck otherCar.position (rightSideFOV ray) then
+                if shouldCheckFov activeCar otherCar && fieldOfViewCheck (rightSideFOV ray) otherCar.position then
                     Caution
 
                 else
@@ -106,8 +106,8 @@ shouldCheckFov activeCar otherCar =
            )
 
 
-fieldOfViewCheck : LMPoint2d -> LMArc2d -> Bool
-fieldOfViewCheck target fieldOfView =
+fieldOfViewCheck : LMArc2d -> LMPoint2d -> Bool
+fieldOfViewCheck fieldOfView target =
     let
         origin =
             Arc2d.centerPoint fieldOfView
@@ -124,7 +124,7 @@ fieldOfViewCheck target fieldOfView =
                 distanceToTarget =
                     Point2d.distanceFrom origin target
             in
-            (distanceToTarget |> Quantity.greaterThan (Arc2d.radius fieldOfView))
+            (distanceToTarget |> Quantity.lessThanOrEqualTo (Arc2d.radius fieldOfView))
                 && Direction2d.equalWithin (Quantity.half fovRadius) targetDirection arcMidPointDirection
         )
         directionToTarget
