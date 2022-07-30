@@ -8,7 +8,6 @@ module Simulation.Traffic exposing
     , updateTraffic
     )
 
-import Angle
 import BoundingBox2d
 import Common
 import Data.Cars exposing (CarMake, testCar)
