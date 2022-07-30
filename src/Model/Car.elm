@@ -12,7 +12,6 @@ module Model.Car exposing
     , isPathfinding
     , isStoppedOrWaiting
     , new
-    , rightSideOfFieldOfView
     , shouldWatchTraffic
     , statusDescription
     , triggerDespawn
