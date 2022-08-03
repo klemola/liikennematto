@@ -9,6 +9,7 @@ import Message exposing (Message(..))
 import Model.Liikennematto as Liikennematto exposing (Liikennematto, SimulationState(..))
 import Random
 import Render
+import Render.Debug
 import Simulation.Simulation as Simulation
 import Subscriptions exposing (subscriptions)
 import Task
@@ -128,13 +129,22 @@ render model =
 
             else
                 Element.clip
+
+        renderDebug =
+            if debugLayers.showRoadNetwork || debugLayers.showCarDebugVisuals then
+                Render.Debug.view model.world model.renderCache debugLayers
+                    |> Element.html
+
+            else
+                Element.none
     in
-    Render.view model.world model.renderCache debugLayers
+    Render.view model.world model.renderCache
         |> Element.html
         -- render + overlay
         |> Element.el
             [ Element.width (Element.px renderWidth)
             , Element.height (Element.px renderHeight)
+            , Element.inFront renderDebug
             , Element.inFront (UI.Editor.overlay model.world model.tool)
             ]
         -- overflow wrapper
