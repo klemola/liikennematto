@@ -11,8 +11,7 @@ build:
 
 	@echo ">> Copying files"
 	cp -r ./src/assets ./build
-	# create preload links for all assets and insert them to the index.html file
-	ls ./build/assets | awk '{print "<link rel=\"preload\" as=\"image\" href=\"/assets/"$$0"\" />"}' | sed -e '/^.*replaceme/{r /dev/stdin' -e 'd;}' ./src/index.template.html > ./build/index.html
+	cp ./src/index.template.html ./build/index.html
 
 	@echo ">> Creating an archive"
 	cd build && zip -rq matto.zip ./* -x "liikennematto.js" "liikennematto-debug.js"
