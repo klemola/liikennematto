@@ -1,11 +1,14 @@
 module Simulation.Steering exposing
     ( Steering
     , accelerate
+    , accelerateToZeroOverDistance
     , align
     , clampVelocity
     , goSlow
+    , maxDeceleration
     , maxVelocity
     , none
+    , reachTargetVelocity
     , reactToCollision
     , seekAndFaceTarget
     , stop
@@ -219,12 +222,9 @@ stopAtPathEnd currentPosition velocity route stopRadius =
             if distanceToParkingSpot |> Quantity.lessThanOrEqualTo stopRadius then
                 case Route.distanceToPathEnd route of
                     Just distanceRemaining ->
-                        Quantity.max
-                            maxDeceleration
-                            (accelerateToZeroOverDistance
-                                velocity
-                                distanceRemaining
-                            )
+                        accelerateToZeroOverDistance
+                            velocity
+                            distanceRemaining
 
                     Nothing ->
                         maxDeceleration
@@ -280,12 +280,12 @@ accelerateToZeroOverDistance currentVelocity (Quantity distanceFromTarget) =
 
     else
         let
-            (Quantity currentSpeed) =
+            (Quantity startingSpeed) =
                 currentVelocity
 
             finalSpeed =
-                if currentSpeed < 0.1 then
-                    -- (Nearly) stopped or reversing before reaching the target; accelerate to move towards the target
+                if abs startingSpeed < 0.1 then
+                    -- (Nearly) stopped before reaching the target; accelerate to move towards the target
                     Speed.inMetersPerSecond maxVelocity * 0.1
 
                 else
@@ -293,7 +293,10 @@ accelerateToZeroOverDistance currentVelocity (Quantity distanceFromTarget) =
                     0
 
             -- Linear acceleration (or deceleration) for a distance from a starting speed to final speed
+            -- Original formula: a = (Vf*Vf - Vi*Vi)/(2 * d)
+            -- (where Vf = final speed, Vi = starting speed, d = distance, and the result a is acceleration)
+            -- ...but with `abs` on the starting speed to handle negative velocity
             acceleration =
-                (finalSpeed * finalSpeed - currentSpeed * currentSpeed) / (2 * distanceFromTarget)
+                (finalSpeed * finalSpeed - startingSpeed * abs startingSpeed) / (2 * distanceFromTarget)
         in
-        Quantity acceleration
+        Quantity acceleration |> Quantity.clamp maxDeceleration maxAcceleration
