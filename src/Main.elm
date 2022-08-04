@@ -13,6 +13,7 @@ import Render.Debug
 import Simulation.Simulation as Simulation
 import Subscriptions exposing (subscriptions)
 import Task
+import Time
 import UI.Core exposing (borderRadius)
 import UI.Editor
 import UI.UI as UI
@@ -37,6 +38,7 @@ initCmd seed =
     Cmd.batch
         [ -- simulate a screen resize
           Task.perform (\{ viewport } -> ResizeWindow (round viewport.width) (round viewport.height)) getViewport
+        , Task.perform ResetSeed Time.now
         , Simulation.initCmd seed
         ]
 
@@ -77,6 +79,11 @@ updateBase msg model =
                             Element.Landscape
                     }
               }
+            , Cmd.none
+            )
+
+        ResetSeed posix ->
+            ( { model | seed = Random.initialSeed (Time.posixToMillis posix) }
             , Cmd.none
             )
 

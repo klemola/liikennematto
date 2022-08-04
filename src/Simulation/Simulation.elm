@@ -53,7 +53,13 @@ update msg model =
                         , delta = delta
                         }
             in
-            ( { model | world = nextWorld }
+            ( { model
+                | world = nextWorld
+                , seed =
+                    -- Make sure that the seed is stepped often so that deeply nested functions don't have to return new seeds
+                    Random.step (Random.int 0 42) model.seed
+                        |> Tuple.second
+              }
             , Cmd.none
             )
 
