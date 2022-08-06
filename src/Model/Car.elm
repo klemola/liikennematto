@@ -186,13 +186,16 @@ unparking =
 
 
 unparkingCompleted : UpdateContext -> CarState -> Bool
-unparkingCompleted { route } _ =
-    case Route.nextNode route of
-        Just nodeCtx ->
-            nodeCtx.node.label.kind == LaneConnector
+unparkingCompleted { route, currentPosition } _ =
+    case Route.startNode route of
+        Just startNode ->
+            Point2d.equalWithin
+                (Length.meters 0.1)
+                startNode.node.label.position
+                currentPosition
 
         Nothing ->
-            False
+            True
 
 
 driving : FSM.State CarState Action UpdateContext

@@ -16,13 +16,12 @@ import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car)
 import Model.Geometry exposing (orthogonalDirectionToLmDirection)
 import Model.Lot as Lot
-import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
+import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext, RoadNetwork)
 import Model.Route as Route exposing (Route)
 import Model.World exposing (World)
 import QuadTree
 import Quantity
 import Random
-import Random.List
 import Speed exposing (Speed)
 
 
@@ -30,24 +29,26 @@ setupRoute : World -> Random.Seed -> RNNodeContext -> Car -> ( Car, Random.Seed 
 setupRoute world seed nodeCtx car =
     let
         ( route, nextSeed ) =
-            generateRouteFromConnection world car seed nodeCtx
+            Route.randomFromNode seed world.lots world.roadNetwork nodeCtx
     in
     ( { car | route = route }, nextSeed )
 
 
-resetCarAtLot : Route.Parking -> RNNodeContext -> Lot.ParkingSpot -> Car -> Car
-resetCarAtLot parking nodeCtx parkingSpot car =
+resetCarAtLot : Random.Seed -> Route.Parking -> World -> RNNodeContext -> Car -> Car
+resetCarAtLot seed parking world nodeCtx car =
     { car
         | route =
-            Route.fromLotExit
+            Route.randomFromParkedAtLot
+                seed
                 parking
+                world.lots
+                world.roadNetwork
                 nodeCtx
-                parkingSpot
     }
 
 
-leaveLot : World -> Car -> Car
-leaveLot world car =
+leaveLot : Random.Seed -> World -> Car -> Car
+leaveLot seed world car =
     let
         fallback =
             { car | route = Route.Unrouted }
@@ -58,13 +59,12 @@ leaveLot world car =
                 |> Maybe.andThen
                     (\lot ->
                         let
-                            parkingSpot =
-                                Lot.parkingSpotById lot parking.parkingSpotId
-
                             lotExitNode =
                                 RoadNetwork.findLotExitNodeByLotId world.roadNetwork parking.lotId
                         in
-                        Maybe.map2 (Route.fromLotExit parking) lotExitNode parkingSpot
+                        lotExitNode
+                            |> Maybe.map
+                                (Route.randomFromParkedAtLot seed parking world.lots world.roadNetwork)
                             |> Maybe.map
                                 (\route ->
                                     { car
@@ -82,18 +82,18 @@ leaveLot world car =
             fallback
 
 
-updateRoute : World -> Duration -> Random.Seed -> Car -> ( Route, Random.Seed )
-updateRoute world delta seed car =
+updateRoute : World -> Duration -> Car -> Route
+updateRoute world delta car =
     case car.route of
         Route.Unrouted ->
-            ( car.route, seed )
+            car.route
 
         Route.Parked p ->
             let
                 nextParking =
                     updateParking delta world car p
             in
-            ( Route.Parked nextParking, seed )
+            Route.Parked nextParking
 
         Route.Routed meta ->
             let
@@ -106,27 +106,18 @@ updateRoute world delta seed car =
                         nextParking =
                             nextMeta.parking |> Maybe.map (updateParking delta world car)
                     in
-                    ( Route.Routed { nextMeta | parking = nextParking }
-                    , seed
-                    )
+                    Route.Routed { nextMeta | parking = nextParking }
 
                 Nothing ->
-                    case List.head nextMeta.connections of
-                        Just currentNodeCtx ->
-                            case currentNodeCtx.node.label.kind of
-                                LotEntry _ ->
-                                    -- TODO: parking should not be wrapped in Maybe here
-                                    ( meta.parking
-                                        |> Maybe.map Route.Parked
-                                        |> Maybe.withDefault Route.Unrouted
-                                    , seed
-                                    )
+                    case nextMeta.endNode.node.label.kind of
+                        LotEntry _ ->
+                            -- TODO: parking should not be wrapped in Maybe here
+                            meta.parking
+                                |> Maybe.map Route.Parked
+                                |> Maybe.withDefault Route.Unrouted
 
-                                _ ->
-                                    generateRouteFromConnection world car seed currentNodeCtx
-
-                        Nothing ->
-                            ( Route.Unrouted, seed )
+                        _ ->
+                            Route.Unrouted
 
 
 updateParking : Duration -> World -> Car -> Route.Parking -> Route.Parking
@@ -207,109 +198,26 @@ updateParameter velocity delta parameter =
     parameter |> Quantity.plus deltaMeters
 
 
-generateRouteFromConnection : World -> Car -> Random.Seed -> RNNodeContext -> ( Route, Random.Seed )
-generateRouteFromConnection world car seed currentNodeCtx =
-    let
-        randomConnectionGenerator =
-            chooseRandomOutgoingConnection world car currentNodeCtx
-
-        ( connection, nextSeed ) =
-            Random.step randomConnectionGenerator seed
-    in
-    case connection of
-        Just nextNodeCtx ->
-            case nextNodeCtx.node.label.kind of
-                LotEntry lotId ->
-                    let
-                        route =
-                            Dict.get lotId world.lots
-                                |> Maybe.andThen (Lot.findFreeParkingSpot car.id)
-                                |> Maybe.map
-                                    (\parkingSpot ->
-                                        let
-                                            timerGenerator =
-                                                Random.float 1500 30000 |> Random.map Duration.milliseconds
-
-                                            ( waitTimer, _ ) =
-                                                Random.step timerGenerator seed
-
-                                            parking =
-                                                { lotId = lotId
-                                                , parkingSpotId = parkingSpot.id
-                                                , waitTimer = Just waitTimer
-                                                , lockAvailable = True
-                                                }
-                                        in
-                                        Route.fromParkingSpot
-                                            nextNodeCtx
-                                            car.position
-                                            currentNodeCtx.node.label.direction
-                                            parking
-                                            parkingSpot.pathFromLotEntry
-                                    )
-                                |> Maybe.withDefault Route.Unrouted
-                    in
-                    ( route, nextSeed )
-
-                _ ->
-                    ( Route.fromNode
-                        nextNodeCtx
-                        car.position
-                        currentNodeCtx.node.label.direction
-                        (Route.parking car.route)
-                    , nextSeed
-                    )
-
-        Nothing ->
-            ( Route.Unrouted, seed )
-
-
-chooseRandomOutgoingConnection : World -> Car -> RNNodeContext -> Random.Generator (Maybe RNNodeContext)
-chooseRandomOutgoingConnection world car nodeCtx =
-    RoadNetwork.getOutgoingConnections nodeCtx
-        |> List.filterMap (RoadNetwork.findNodeByNodeId world.roadNetwork >> Maybe.andThen (discardInvalidConnections world car))
-        |> Random.List.choose
-        |> Random.map Tuple.first
-
-
-discardInvalidConnections : World -> Car -> RNNodeContext -> Maybe RNNodeContext
-discardInvalidConnections world car nodeCtx =
-    case nodeCtx.node.label.kind of
-        LotEntry lotId ->
-            world.lots
-                |> Dict.get lotId
-                -- Given that a lot is found, continue only if the car has a home (e.g. the car is not a test car)
-                -- Will be enabled once there are enough lots with residents
-                -- |> Maybe.next car.homeLotId
-                |> Maybe.filter (Lot.parkingAllowed car.id)
-                |> Maybe.map (always nodeCtx)
-
-        LotExit _ ->
-            Nothing
-
-        _ ->
-            Just nodeCtx
-
-
 restoreRoute : World -> Car -> Car
 restoreRoute world car =
     if Car.isPathfinding car then
-        case
-            Route.nextNode car.route
-                |> Maybe.andThen (findNodeReplacement world)
-                |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
-        of
-            Just nodeCtxResult ->
-                { car
-                    | route =
-                        Route.fromNode nodeCtxResult
-                            car.position
-                            (Direction2d.fromAngle car.orientation)
-                            (Route.parking car.route)
-                }
-
-            Nothing ->
-                Car.triggerDespawn car
+        car
+        -- TODO!!!
+        -- case
+        --     Route.nextNode car.route
+        --         |> Maybe.andThen (findNodeReplacement world)
+        --         |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
+        -- of
+        --     Just nodeCtxResult ->
+        --         { car
+        --             | route =
+        --                 Route.fromNode nodeCtxResult
+        --                     car.position
+        --                     (Direction2d.fromAngle car.orientation)
+        --                     (Route.parking car.route)
+        --         }
+        --     Nothing ->
+        --         Car.triggerDespawn car
 
     else
         car

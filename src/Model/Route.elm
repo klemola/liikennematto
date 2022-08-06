@@ -7,20 +7,21 @@ module Model.Route exposing
     , description
     , distanceToPathEnd
     , endPoint
-    , fromLotExit
-    , fromNode
-    , fromParkingSpot
     , isParked
     , isRouted
-    , nextNode
     , parking
     , pathToList
+    , randomFromNode
+    , randomFromParkedAtLot
     , sample
     , sampleAhead
+    , startNode
+    , trafficControl
     )
 
 import Array exposing (Array)
 import CubicSpline2d exposing (ArcLengthParameterized)
+import Dict exposing (Dict)
 import Duration exposing (Duration)
 import Length exposing (Length)
 import List.Extra as List
@@ -32,9 +33,17 @@ import Model.Geometry
         , LMDirection2d
         , LMPoint2d
         )
-import Model.Lot exposing (ParkingSpot)
-import Model.RoadNetwork exposing (RNNodeContext)
+import Model.Lot as Lot exposing (Lot, ParkingSpot)
+import Model.RoadNetwork as RoadNetwork
+    exposing
+        ( ConnectionEnvironment(..)
+        , RNNodeContext
+        , RoadNetwork
+        , TrafficControl
+        )
 import Quantity
+import Random
+import Random.List
 import Splines
 
 
@@ -45,10 +54,11 @@ type Route
 
 
 type alias RouteMeta =
-    { connections : List RNNodeContext
-    , path : Array SplineMeta
+    { startNode : RNNodeContext
+    , endNode : RNNodeContext
     , startPoint : LMPoint2d
     , endPoint : LMPoint2d
+    , path : Array SplineMeta
     , currentSplineIdx : Int
     , currentSpline : Maybe SplineMeta
     , parameter : Length
@@ -95,6 +105,16 @@ isParked route =
             False
 
 
+startNode : Route -> Maybe RNNodeContext
+startNode route =
+    case route of
+        Routed meta ->
+            Just meta.startNode
+
+        _ ->
+            Nothing
+
+
 parking : Route -> Maybe Parking
 parking route =
     case route of
@@ -126,6 +146,12 @@ endPoint route =
 
         _ ->
             Nothing
+
+
+trafficControl : Route -> Maybe ( TrafficControl, LMPoint2d )
+trafficControl route =
+    -- TODO!!
+    Nothing
 
 
 pathToList : Route -> List LMCubicSpline2d
@@ -223,77 +249,123 @@ distanceToSplineEnd splineMeta parameter =
     ( distance, remaining )
 
 
-nextNode : Route -> Maybe RNNodeContext
-nextNode route =
-    case route of
-        Routed meta ->
-            List.head meta.connections
-
-        _ ->
-            Nothing
-
-
-fromNode : RNNodeContext -> LMPoint2d -> LMDirection2d -> Maybe Parking -> Route
-fromNode nodeCtx origin direction parkingValue =
+randomFromNode : Random.Seed -> Dict Id Lot -> RoadNetwork -> RNNodeContext -> ( Route, Random.Seed )
+randomFromNode seed lots roadNetwork nodeCtx =
     let
-        spline =
-            Splines.toNode
-                { origin = origin
-                , direction = direction
-                }
-                nodeCtx
+        ( nodes, nextSeed ) =
+            randomConnectionsFromNode seed 10 roadNetwork nodeCtx [ nodeCtx ]
     in
-    buildRoute nodeCtx [ spline ] parkingValue
+    ( buildRoute lots nodeCtx nodes Nothing, nextSeed )
 
 
-fromParkingSpot : RNNodeContext -> LMPoint2d -> LMDirection2d -> Parking -> List LMCubicSpline2d -> Route
-fromParkingSpot nodeCtx origin direction parkingValue pathFromLotEntry =
+randomFromParkedAtLot : Random.Seed -> Parking -> Dict Id Lot -> RoadNetwork -> RNNodeContext -> Route
+randomFromParkedAtLot seed parkingValue lots roadNetwork nodeCtx =
     let
-        pathToLotEntry =
-            Splines.toNode
-                { origin = origin
-                , direction = direction
-                }
-                nodeCtx
-
-        path =
-            pathToLotEntry :: pathFromLotEntry
+        ( nodes, _ ) =
+            randomConnectionsFromNode seed 10 roadNetwork nodeCtx [ nodeCtx ]
     in
-    buildRoute nodeCtx path (Just parkingValue)
+    buildRoute lots nodeCtx nodes (Just parkingValue)
 
 
-fromLotExit : Parking -> RNNodeContext -> ParkingSpot -> Route
-fromLotExit parkingValue nodeCtx parkingSpot =
-    buildRoute nodeCtx parkingSpot.pathToLotExit (Just parkingValue)
+randomConnectionsFromNode : Random.Seed -> Int -> RoadNetwork -> RNNodeContext -> List RNNodeContext -> ( List RNNodeContext, Random.Seed )
+randomConnectionsFromNode seed maxConnections roadNetwork currentNodeCtx nodes =
+    if maxConnections == 0 then
+        ( nodes, seed )
+
+    else
+        let
+            randomConnectionGenerator =
+                chooseRandomOutgoingConnection roadNetwork currentNodeCtx
+
+            ( connection, nextSeed ) =
+                Random.step randomConnectionGenerator seed
+        in
+        case connection of
+            Nothing ->
+                ( nodes, nextSeed )
+
+            Just node ->
+                randomConnectionsFromNode nextSeed (maxConnections - 1) roadNetwork node (nodes ++ [ node ])
 
 
-buildRoute : RNNodeContext -> List LMCubicSpline2d -> Maybe Parking -> Route
-buildRoute nodeCtx splines parkingValue =
-    case splines of
-        [] ->
-            Unrouted
+chooseRandomOutgoingConnection : RoadNetwork -> RNNodeContext -> Random.Generator (Maybe RNNodeContext)
+chooseRandomOutgoingConnection roadNetwork nodeCtx =
+    RoadNetwork.getOutgoingConnections nodeCtx
+        |> List.filterMap (RoadNetwork.findNodeByNodeId roadNetwork)
+        |> Random.List.choose
+        |> Random.map Tuple.first
 
-        first :: rest ->
+
+buildRoute : Dict Id Lot -> RNNodeContext -> List RNNodeContext -> Maybe Parking -> Route
+buildRoute lots startNodeValue nodes parkingValue =
+    let
+        nodeSplines =
+            nodesToSplines
+                startNodeValue
+                (List.tail nodes |> Maybe.withDefault [])
+                []
+    in
+    Maybe.map3
+        (\end currentSpline otherSplines ->
             let
-                startPoint =
-                    CubicSpline2d.startPoint first
+                parkingSpot =
+                    parkingValue |> Maybe.andThen (parkingToParkingSpot lots)
+
+                splines =
+                    case parkingSpot of
+                        Just spot ->
+                            List.append spot.pathToLotExit nodeSplines
+
+                        Nothing ->
+                            nodeSplines
 
                 path =
                     createPath splines Array.empty
             in
             Routed
-                { connections = [ nodeCtx ]
-                , path = path
-                , startPoint = startPoint
+                { startNode = startNodeValue
+                , endNode = end
+                , startPoint = CubicSpline2d.startPoint currentSpline
                 , endPoint =
-                    List.last rest
+                    List.last otherSplines
                         |> Maybe.map CubicSpline2d.endPoint
-                        |> Maybe.withDefault (CubicSpline2d.endPoint first)
+                        |> Maybe.withDefault (CubicSpline2d.endPoint currentSpline)
+                , path = path
                 , currentSplineIdx = 0
                 , currentSpline = Array.get 0 path
                 , parameter = Quantity.zero
                 , parking = parkingValue
                 }
+        )
+        (List.last nodes)
+        (List.head nodeSplines)
+        (List.tail nodeSplines)
+        |> Maybe.withDefault Unrouted
+
+
+nodesToSplines : RNNodeContext -> List RNNodeContext -> List LMCubicSpline2d -> List LMCubicSpline2d
+nodesToSplines last remaining splines =
+    case remaining of
+        [] ->
+            splines
+
+        current :: others ->
+            let
+                spline =
+                    Splines.toNode
+                        { origin = last.node.label.position
+                        , direction = last.node.label.direction
+                        }
+                        current
+            in
+            nodesToSplines current others (splines ++ [ spline ])
+
+
+parkingToParkingSpot : Dict Id Lot -> Parking -> Maybe ParkingSpot
+parkingToParkingSpot lots { lotId, parkingSpotId } =
+    lots
+        |> Dict.get lotId
+        |> Maybe.andThen (\lot -> Lot.parkingSpotById lot parkingSpotId)
 
 
 createPath :
@@ -384,13 +456,8 @@ description route =
             "Parked"
 
         Routed meta ->
-            case meta.connections of
-                target :: _ ->
-                    String.concat
-                        [ "Routed (target node:"
-                        , String.fromInt target.node.id
-                        , ")"
-                        ]
-
-                _ ->
-                    "Routed (no connections)"
+            String.concat
+                [ "Routed (end node:"
+                , String.fromInt meta.endNode.node.id
+                , ")"
+                ]
