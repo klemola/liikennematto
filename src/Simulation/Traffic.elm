@@ -23,7 +23,11 @@ import Model.Entity as Entity exposing (Id)
 import Model.Geometry exposing (LMPoint2d)
 import Model.Lookup exposing (carPositionLookup)
 import Model.Lot as Lot exposing (Lot, ParkingSpot)
-import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext, TrafficControl(..))
+import Model.RoadNetwork as RoadNetwork
+    exposing
+        ( RNNodeContext
+        , TrafficControl(..)
+        )
 import Model.Route as Route
 import Model.TrafficLight as TrafficLight exposing (TrafficLight)
 import Model.World as World exposing (World)
@@ -116,10 +120,10 @@ updateTraffic { updateQueue, seed, world, delta } =
 
                         Car.Despawned ->
                             -- Route update not required, the car will be despawned after this update cycle
-                            carAfterDespawn world carWithUpdatedFSM
+                            carAfterDespawn seed world carWithUpdatedFSM
 
                         _ ->
-                            Just (updateRoute world delta seed carWithUpdatedFSM)
+                            Just (updateRoute world delta carWithUpdatedFSM)
 
                 nextWorld =
                     carAfterRouteUpdate
@@ -127,7 +131,7 @@ updateTraffic { updateQueue, seed, world, delta } =
                         |> Maybe.map (\updatedCar -> World.setCar updatedCar world)
                         |> Maybe.withDefaultLazy (\_ -> World.removeCar activeCar.id world)
                         -- The car might already be deleted, but the actions still need to be applied (using the car data on FSM update)
-                        |> applyActions actions carWithUpdatedFSM
+                        |> applyActions seed actions carWithUpdatedFSM
             in
             updateTraffic
                 { updateQueue = queue
@@ -137,15 +141,15 @@ updateTraffic { updateQueue, seed, world, delta } =
                 }
 
 
-applyActions : List Car.Action -> Car -> World -> World
-applyActions actions car world =
-    List.foldl (applyAction car)
+applyActions : Random.Seed -> List Car.Action -> Car -> World -> World
+applyActions seed actions car world =
+    List.foldl (applyAction seed car)
         world
         actions
 
 
-applyAction : Car -> Car.Action -> World -> World
-applyAction car action world =
+applyAction : Random.Seed -> Car -> Car.Action -> World -> World
+applyAction seed car action world =
     case
         Route.parking car.route
             |> Maybe.andThen
@@ -165,7 +169,7 @@ applyAction car action world =
 
                 Car.TriggerParkingCompletedEffects ->
                     world
-                        |> World.setCar (car |> Pathfinding.leaveLot world)
+                        |> World.setCar (car |> Pathfinding.leaveLot seed world)
                         |> World.setLot (Lot.releaseParkingLock car.id lot)
 
                 Car.TriggerUnparkingStartEffects ->
@@ -236,11 +240,11 @@ applySteering delta steering car =
     }
 
 
-updateRoute : World -> Duration -> Random.Seed -> Car -> Car
-updateRoute world delta seed car =
+updateRoute : World -> Duration -> Car -> Car
+updateRoute world delta car =
     let
-        ( nextRoute, _ ) =
-            Pathfinding.updateRoute world delta seed car
+        nextRoute =
+            Pathfinding.updateRoute world delta car
     in
     case nextRoute of
         Route.Unrouted ->
@@ -261,16 +265,16 @@ updateRoute world delta seed car =
                 { car | route = nextRoute }
 
 
-carAfterDespawn : World -> Car -> Maybe Car
-carAfterDespawn world car =
+carAfterDespawn : Random.Seed -> World -> Car -> Maybe Car
+carAfterDespawn seed world car =
     car.homeLotId
         |> Maybe.andThen (\lotId -> Dict.get lotId world.lots)
         |> Maybe.andThen (\lot -> Lot.findFreeParkingSpot car.id lot |> Maybe.map (Tuple.pair lot))
-        |> Maybe.map (moveCarToHome world car)
+        |> Maybe.map (moveCarToHome seed world car)
 
 
-moveCarToHome : World -> Car -> ( Lot, ParkingSpot ) -> Car
-moveCarToHome world car ( home, parkingSpot ) =
+moveCarToHome : Random.Seed -> World -> Car -> ( Lot, ParkingSpot ) -> Car
+moveCarToHome seed world car ( home, parkingSpot ) =
     case
         car.homeLotId
             |> Maybe.andThen (RoadNetwork.findLotExitNodeByLotId world.roadNetwork)
@@ -293,7 +297,7 @@ moveCarToHome world car ( home, parkingSpot ) =
                 , orientation = Lot.parkingSpotOrientation home
                 , velocity = Quantity.zero
             }
-                |> Pathfinding.resetCarAtLot parking nodeCtx parkingSpot
+                |> Pathfinding.resetCarAtLot seed parking world nodeCtx
 
         _ ->
             car
@@ -346,15 +350,21 @@ createResident world carId lot homeNode make parkingSpot =
             Lot.updateParkingSpot parkingSpot lot
 
         car =
-            createCar carId lotWithClaimedParkingSpot make homeNode parkingSpot
+            createCar
+                carId
+                lotWithClaimedParkingSpot
+                make
+                world
+                homeNode
+                parkingSpot
     in
     world
         |> World.setCar car
         |> World.setLot lotWithClaimedParkingSpot
 
 
-createCar : Id -> Lot -> CarMake -> RNNodeContext -> ParkingSpot -> Car
-createCar carId lot make homeNode parkingSpot =
+createCar : Id -> Lot -> CarMake -> World -> RNNodeContext -> ParkingSpot -> Car
+createCar carId lot make world homeNode parkingSpot =
     let
         parking =
             { lotId = lot.id
@@ -368,7 +378,7 @@ createCar carId lot make homeNode parkingSpot =
         |> Car.withPosition parkingSpot.position
         |> Car.withOrientation (Lot.parkingSpotOrientation lot)
         |> Car.build carId
-        |> Pathfinding.resetCarAtLot parking homeNode parkingSpot
+        |> Pathfinding.resetCarAtLot (Random.initialSeed (carId + lot.id)) parking world homeNode
 
 
 
@@ -578,15 +588,15 @@ checkCollision { activeCar, otherCars } =
 
 checkTrafficControl : RuleSetup -> Maybe Rule
 checkTrafficControl setup =
-    Route.nextNode setup.activeCar.route
+    Route.trafficControl setup.activeCar.route
         |> Maybe.andThen
-            (\{ node } ->
-                case node.label.trafficControl of
+            (\( trafficControl, position ) ->
+                case trafficControl of
                     Signal id ->
                         Dict.get id setup.world.trafficLights |> Maybe.andThen (checkTrafficLights setup)
 
                     Yield ->
-                        checkYield setup node.label.position
+                        checkYield setup position
 
                     None ->
                         Nothing

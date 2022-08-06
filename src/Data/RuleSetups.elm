@@ -362,14 +362,15 @@ routeCarByDestination world position car =
     in
     case destination of
         Just nodeCtx ->
-            { car
-                | route =
-                    Route.fromNode
+            let
+                ( route, _ ) =
+                    Route.randomFromNode
+                        (Random.initialSeed 666)
+                        world.lots
+                        world.roadNetwork
                         nodeCtx
-                        car.position
-                        (Direction2d.fromAngle car.orientation)
-                        Nothing
-            }
+            in
+            { car | route = route }
 
         Nothing ->
             car
