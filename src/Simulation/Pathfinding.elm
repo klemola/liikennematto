@@ -1,22 +1,19 @@
 module Simulation.Pathfinding exposing
-    ( leaveLot
+    ( carAfterRouteUpdate
     , resetCarAtLot
     , restoreRoute
     , setupRoute
-    , updateRoute
     )
 
 import Array
 import BoundingBox2d
 import Dict
-import Direction2d
 import Duration exposing (Duration)
 import Length
 import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car)
-import Model.Geometry exposing (orthogonalDirectionToLmDirection)
-import Model.Lot as Lot
-import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext, RoadNetwork)
+import Model.Lot as Lot exposing (ParkingReservation)
+import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Model.Route as Route exposing (Route)
 import Model.World exposing (World)
 import QuadTree
@@ -34,111 +31,148 @@ setupRoute world seed nodeCtx car =
     ( { car | route = route }, nextSeed )
 
 
-resetCarAtLot : Random.Seed -> Route.Parking -> World -> RNNodeContext -> Car -> Car
-resetCarAtLot seed parking world nodeCtx car =
+resetCarAtLot : Random.Seed -> ParkingReservation -> World -> RNNodeContext -> Car -> Car
+resetCarAtLot seed parkingReservation world nodeCtx car =
     { car
         | route =
             Route.randomFromParkedAtLot
                 seed
-                parking
+                parkingReservation
                 world.lots
                 world.roadNetwork
                 nodeCtx
     }
 
 
-leaveLot : Random.Seed -> World -> Car -> Car
-leaveLot seed world car =
+generateRouteFromParkingSpot : Random.Seed -> World -> ParkingReservation -> Route
+generateRouteFromParkingSpot seed world parkingReservation =
     let
-        fallback =
-            { car | route = Route.Unrouted }
+        lotExitNode =
+            RoadNetwork.findLotExitNodeByLotId world.roadNetwork parkingReservation.lotId
     in
-    case car.route of
-        Route.Parked parking ->
-            Dict.get parking.lotId world.lots
-                |> Maybe.andThen
-                    (\lot ->
-                        let
-                            lotExitNode =
-                                RoadNetwork.findLotExitNodeByLotId world.roadNetwork parking.lotId
-                        in
-                        lotExitNode
-                            |> Maybe.map
-                                (Route.randomFromParkedAtLot seed parking world.lots world.roadNetwork)
-                            |> Maybe.map
-                                (\route ->
-                                    { car
-                                        | orientation =
-                                            lot.parkingSpotExitDirection
-                                                |> orthogonalDirectionToLmDirection
-                                                |> Direction2d.toAngle
-                                        , route = route
-                                    }
-                                )
-                    )
-                |> Maybe.withDefault fallback
-
-        _ ->
-            fallback
+    lotExitNode
+        |> Maybe.map
+            (Route.randomFromParkedAtLot seed
+                parkingReservation
+                world.lots
+                world.roadNetwork
+            )
+        |> Maybe.withDefault Route.initialRoute
 
 
-updateRoute : World -> Duration -> Car -> Route
-updateRoute world delta car =
-    case car.route of
-        Route.Unrouted ->
-            car.route
+type RouteUpdateResult
+    = BeginRoute
+    | ReachEndNode RNNodeContext Route
+    | ArrivedAtDestination
+    | Updated Route
 
-        Route.Parked p ->
+
+carAfterRouteUpdate : Random.Seed -> World -> Duration -> Car -> Car
+carAfterRouteUpdate seed world delta car =
+    case updateRoute delta car of
+        Updated nextRoute ->
+            { car | route = nextRoute }
+
+        BeginRoute ->
             let
-                nextParking =
-                    updateParking delta world car p
-            in
-            Route.Parked nextParking
+                route =
+                    case car.parkingReservation of
+                        Just parkingReservation ->
+                            let
+                                parkingLockSet =
+                                    world.lots
+                                        |> Dict.get parkingReservation.lotId
+                                        |> Maybe.map Lot.hasParkingLockSet
+                                        |> Maybe.withDefault False
+                            in
+                            if not parkingLockSet then
+                                generateRouteFromParkingSpot seed world parkingReservation
 
-        Route.Routed meta ->
+                            else
+                                Route.initialRoute
+
+                        Nothing ->
+                            Route.initialRoute
+            in
+            { car | route = route }
+
+        ReachEndNode nodeCtx nextRoute ->
+            case
+                nodeCtx.node.label.kind
+            of
+                LotEntry lotId ->
+                    world.lots
+                        |> Dict.get lotId
+                        |> Maybe.andThen (Lot.attemptParking car.id)
+                        |> Maybe.map
+                            (\parkingSpot ->
+                                let
+                                    parkingReservation =
+                                        { lotId = lotId
+                                        , parkingSpotId = parkingSpot.id
+                                        }
+
+                                    newRoute =
+                                        Route.arriveToDestination parkingReservation world.lots
+                                in
+                                Car.triggerParking car parkingReservation newRoute
+                            )
+                        |> Maybe.withDefaultLazy (\_ -> Car.triggerWaitingForParking car nextRoute)
+
+                _ ->
+                    -- TODO
+                    car
+
+        ArrivedAtDestination ->
             let
-                nextMeta =
-                    updateRouteMeta car.velocity delta meta
-            in
-            case nextMeta.currentSpline of
-                Just _ ->
-                    let
-                        nextParking =
-                            nextMeta.parking |> Maybe.map (updateParking delta world car)
-                    in
-                    Route.Routed { nextMeta | parking = nextParking }
+                timerGenerator =
+                    Random.float 1500 30000 |> Random.map Duration.milliseconds
 
+                ( waitTimer, _ ) =
+                    Random.step timerGenerator seed
+            in
+            { car | route = Route.Unrouted (Just waitTimer) }
+
+
+updateRoute : Duration -> Car -> RouteUpdateResult
+updateRoute delta car =
+    case car.route of
+        Route.Unrouted timer ->
+            let
+                nextTimer =
+                    timer |> Maybe.andThen (updateTimer delta)
+            in
+            case nextTimer of
                 Nothing ->
-                    case nextMeta.endNode.node.label.kind of
-                        LotEntry _ ->
-                            -- TODO: parking should not be wrapped in Maybe here
-                            meta.parking
-                                |> Maybe.map Route.Parked
-                                |> Maybe.withDefault Route.Unrouted
+                    BeginRoute
 
-                        _ ->
-                            Route.Unrouted
+                _ ->
+                    Updated (Route.Unrouted nextTimer)
 
+        Route.Routed routeMeta ->
+            let
+                nextPath =
+                    updatePath car.velocity delta routeMeta.path
 
-updateParking : Duration -> World -> Car -> Route.Parking -> Route.Parking
-updateParking delta world car parking =
-    let
-        nextTimer =
-            if Car.isParked car then
-                parking.waitTimer |> Maybe.andThen (updateTimer delta)
+                nextRoute =
+                    Route.Routed { routeMeta | path = nextPath }
+            in
+            if nextPath.finished then
+                ReachEndNode routeMeta.endNode nextRoute
 
             else
-                parking.waitTimer
+                Updated nextRoute
 
-        lockAvailable =
-            Dict.get parking.lotId world.lots
-                |> Maybe.map (Lot.hasParkingLockSet >> not)
-                |> Maybe.withDefault False
-    in
-    { parking
-        | waitTimer = nextTimer
-        , lockAvailable = lockAvailable
-    }
+        Route.ArrivingToDestination path ->
+            let
+                nextPath =
+                    updatePath car.velocity delta path
+            in
+            if nextPath.finished then
+                ArrivedAtDestination
+
+            else
+                Updated (Route.ArrivingToDestination nextPath)
 
 
 updateTimer : Duration -> Duration -> Maybe Duration
@@ -154,38 +188,39 @@ updateTimer delta timer =
         Just nextDuration
 
 
-updateRouteMeta : Speed -> Duration -> Route.RouteMeta -> Route.RouteMeta
-updateRouteMeta velocity delta meta =
+updatePath : Speed -> Duration -> Route.Path -> Route.Path
+updatePath velocity delta path =
     let
         currentSplineLength =
-            meta.currentSpline
+            path.currentSpline
                 |> Maybe.map .length
                 |> Maybe.withDefault Quantity.zero
 
         ( nextSplineIdx, nextSplineMeta, nextParameter ) =
-            if Quantity.ratio meta.parameter currentSplineLength >= 0.99 then
+            if Quantity.ratio path.parameter currentSplineLength >= 0.99 then
                 let
                     idxPlusOne =
-                        meta.currentSplineIdx + 1
+                        path.currentSplineIdx + 1
                 in
                 ( idxPlusOne
-                , Array.get idxPlusOne meta.path
+                , Array.get idxPlusOne path.splines
                   -- if the parameter overflows (more than the spline length), add the remainder to the next spline's parameter
-                , meta.parameter
+                , path.parameter
                     |> Quantity.minus currentSplineLength
                     |> Quantity.max Quantity.zero
                 )
 
             else
-                ( meta.currentSplineIdx
-                , meta.currentSpline
-                , updateParameter velocity delta meta.parameter
+                ( path.currentSplineIdx
+                , path.currentSpline
+                , updateParameter velocity delta path.parameter
                 )
     in
-    { meta
+    { path
         | parameter = nextParameter
         , currentSplineIdx = nextSplineIdx
         , currentSpline = nextSplineMeta
+        , finished = nextSplineMeta == Nothing
     }
 
 

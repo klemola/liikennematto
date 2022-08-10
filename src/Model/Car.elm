@@ -16,6 +16,7 @@ module Model.Car exposing
     , statusDescription
     , triggerDespawn
     , triggerParking
+    , triggerWaitingForParking
     , viewDistance
     , withHome
     , withOrientation
@@ -41,7 +42,7 @@ import Model.Geometry
         , LMShape2d
         , LMTriangle2d
         )
-import Model.RoadNetwork exposing (ConnectionKind(..))
+import Model.Lot exposing (ParkingReservation)
 import Model.Route as Route exposing (Route)
 import Point2d
 import Polygon2d
@@ -62,6 +63,7 @@ type alias Car =
     , boundingBox : LMBoundingBox2d
     , route : Route
     , homeLotId : Maybe Int
+    , parkingReservation : Maybe ParkingReservation
     }
 
 
@@ -110,6 +112,7 @@ type CarState
     = Parked
     | Unparking
     | Driving
+    | WaitingForParkingSpot
     | Parking
     | Despawning
     | Despawned
@@ -155,14 +158,7 @@ parked =
 
 readyForUnparking : UpdateContext -> CarState -> Bool
 readyForUnparking { route } _ =
-    case Route.parking route of
-        Just { lockAvailable, waitTimer } ->
-            lockAvailable
-                && (waitTimer == Nothing)
-                && Route.isRouted route
-
-        Nothing ->
-            False
+    Route.isRouted route
 
 
 unparking : FSM.State CarState Action UpdateContext
@@ -209,6 +205,10 @@ driving =
                 []
                 FSM.Direct
             , FSM.createTransition
+                (\_ -> waitingForParkingSpot)
+                []
+                FSM.Direct
+            , FSM.createTransition
                 (\_ -> despawning)
                 []
                 FSM.Direct
@@ -216,6 +216,31 @@ driving =
         , entryActions = []
         , exitActions = []
         }
+
+
+waitingForParkingSpot : FSM.State CarState Action UpdateContext
+waitingForParkingSpot =
+    FSM.createState
+        { id = FSM.createStateId "car-waitingForParkingSpot"
+        , kind = WaitingForParkingSpot
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> despawning)
+                []
+                FSM.Direct
+            , FSM.createTransition
+                (\_ -> parking)
+                []
+                (FSM.Condition parkingSpotFound)
+            ]
+        , entryActions = []
+        , exitActions = []
+        }
+
+
+parkingSpotFound : UpdateContext -> CarState -> Bool
+parkingSpotFound { route } _ =
+    Route.isArrivingToDestination route
 
 
 parking : FSM.State CarState Action UpdateContext
@@ -240,7 +265,7 @@ parking =
 
 parkingCompleted : UpdateContext -> CarState -> Bool
 parkingCompleted { route } _ =
-    Route.isParked route
+    Route.isWaitingForRoute route
 
 
 despawning : FSM.State CarState Action UpdateContext
@@ -284,10 +309,19 @@ initializeFSM newCar =
     FSM.initialize initialState
 
 
-triggerParking : Car -> Route -> Car
-triggerParking car route =
+triggerParking : Car -> ParkingReservation -> Route -> Car
+triggerParking car parkingReservation route =
     { car
         | fsm = car.fsm |> FSM.transitionOnNextUpdate (FSM.getId parking)
+        , parkingReservation = Just parkingReservation
+        , route = route
+    }
+
+
+triggerWaitingForParking : Car -> Route -> Car
+triggerWaitingForParking car route =
+    { car
+        | fsm = car.fsm |> FSM.transitionOnNextUpdate (FSM.getId waitingForParkingSpot)
         , route = route
     }
 
@@ -298,10 +332,7 @@ triggerDespawn car =
         nextFSM =
             car.fsm |> FSM.transitionOnNextUpdate (FSM.getId despawning)
     in
-    { car
-        | fsm = nextFSM
-        , route = Route.Unrouted
-    }
+    { car | fsm = nextFSM }
 
 
 
@@ -359,8 +390,9 @@ build id newCar =
     , rotation = newCar.rotation
     , shape = shape
     , boundingBox = boundingBox
-    , route = Route.Unrouted
+    , route = Route.initialRoute
     , homeLotId = newCar.homeLotId
+    , parkingReservation = Nothing
     }
 
 
@@ -476,21 +508,31 @@ adjustedShape make nextPosition nextOrientation =
 
 statusDescription : Car -> String
 statusDescription car =
-    case FSM.toCurrentState car.fsm of
-        Parked ->
-            "Parked"
+    let
+        state =
+            case FSM.toCurrentState car.fsm of
+                Parked ->
+                    "Parked"
 
-        Unparking ->
-            "Unparking" ++ " " ++ Route.description car.route
+                Unparking ->
+                    "Unparking"
 
-        Driving ->
-            "Driving" ++ " " ++ Route.description car.route
+                Driving ->
+                    "Driving"
 
-        Parking ->
-            "Parking" ++ " " ++ Route.description car.route
+                WaitingForParkingSpot ->
+                    "Waiting for parking spot"
 
-        Despawning ->
-            "Despawning"
+                Parking ->
+                    "Parking"
 
-        Despawned ->
-            "Despawned"
+                Despawning ->
+                    "Despawning"
+
+                Despawned ->
+                    "Despawned"
+    in
+    String.join " "
+        [ state
+        , Route.description car.route
+        ]

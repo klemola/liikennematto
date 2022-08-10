@@ -1,15 +1,16 @@
 module Model.Route exposing
-    ( Parking
+    ( Path
     , Route(..)
     , RouteMeta
     , SplineMeta
-    , clearParking
+    , arriveToDestination
     , description
     , distanceToPathEnd
     , endPoint
-    , isParked
+    , initialRoute
+    , isArrivingToDestination
     , isRouted
-    , parking
+    , isWaitingForRoute
     , pathToList
     , randomFromNode
     , randomFromParkedAtLot
@@ -33,36 +34,46 @@ import Model.Geometry
         , LMDirection2d
         , LMPoint2d
         )
-import Model.Lot as Lot exposing (Lot, ParkingSpot)
+import Model.Lot as Lot
+    exposing
+        ( Lot
+        , ParkingReservation
+        , ParkingSpot
+        )
 import Model.RoadNetwork as RoadNetwork
     exposing
-        ( ConnectionEnvironment(..)
-        , RNNodeContext
+        ( RNNodeContext
         , RoadNetwork
         , TrafficControl
         )
 import Quantity
 import Random
 import Random.List
+import Round
 import Splines
 
 
 type Route
-    = Unrouted
-    | Parked Parking
+    = Unrouted (Maybe Duration)
     | Routed RouteMeta
+    | ArrivingToDestination Path
 
 
 type alias RouteMeta =
     { startNode : RNNodeContext
     , endNode : RNNodeContext
-    , startPoint : LMPoint2d
-    , endPoint : LMPoint2d
-    , path : Array SplineMeta
+    , path : Path
+    }
+
+
+type alias Path =
+    { splines : Array SplineMeta
     , currentSplineIdx : Int
     , currentSpline : Maybe SplineMeta
     , parameter : Length
-    , parking : Maybe Parking
+    , startPoint : LMPoint2d
+    , endPoint : LMPoint2d
+    , finished : Bool
     }
 
 
@@ -72,17 +83,36 @@ type alias SplineMeta =
     }
 
 
-type alias Parking =
-    { lotId : Id
-    , parkingSpotId : Id
-    , waitTimer : Maybe Duration
-    , lockAvailable : Bool
-    }
-
-
 maxALPError : Length
 maxALPError =
     Length.meters 0.1
+
+
+initialParkingWaitTimer : Maybe Duration
+initialParkingWaitTimer =
+    Just (Duration.milliseconds 1500)
+
+
+initialRoute : Route
+initialRoute =
+    Unrouted initialParkingWaitTimer
+
+
+
+--
+-- Queries
+--
+
+
+isWaitingForRoute : Route -> Bool
+isWaitingForRoute route =
+    case route of
+        -- Still waiting until a new route is built
+        Unrouted (Just _) ->
+            True
+
+        _ ->
+            False
 
 
 isRouted : Route -> Bool
@@ -95,10 +125,10 @@ isRouted route =
             False
 
 
-isParked : Route -> Bool
-isParked route =
+isArrivingToDestination : Route -> Bool
+isArrivingToDestination route =
     case route of
-        Parked _ ->
+        ArrivingToDestination _ ->
             True
 
         _ ->
@@ -115,37 +145,9 @@ startNode route =
             Nothing
 
 
-parking : Route -> Maybe Parking
-parking route =
-    case route of
-        Unrouted ->
-            Nothing
-
-        Parked p ->
-            Just p
-
-        Routed meta ->
-            meta.parking
-
-
-clearParking : Route -> Route
-clearParking route =
-    case route of
-        Routed meta ->
-            Routed { meta | parking = Nothing }
-
-        _ ->
-            route
-
-
 endPoint : Route -> Maybe LMPoint2d
 endPoint route =
-    case route of
-        Routed meta ->
-            Just meta.endPoint
-
-        _ ->
-            Nothing
+    toPath route |> Maybe.map .endPoint
 
 
 trafficControl : Route -> Maybe ( TrafficControl, LMPoint2d )
@@ -156,23 +158,32 @@ trafficControl route =
 
 pathToList : Route -> List LMCubicSpline2d
 pathToList route =
+    toPath route
+        |> Maybe.map (pathRemaining >> .splines)
+        |> Maybe.withDefault []
+
+
+toPath : Route -> Maybe Path
+toPath route =
     case route of
-        Routed meta ->
-            pathRemaining meta |> .splines
+        Routed routeMeta ->
+            Just routeMeta.path
+
+        ArrivingToDestination path ->
+            Just path
 
         _ ->
-            []
+            Nothing
 
 
 distanceToPathEnd : Route -> Maybe Length
 distanceToPathEnd route =
     case route of
-        Routed meta ->
-            let
-                remaining =
-                    pathRemaining meta
-            in
-            Just remaining.length
+        Routed routeMeta ->
+            Just (pathRemaining routeMeta.path |> .length)
+
+        ArrivingToDestination path ->
+            Just (pathRemaining path |> .length)
 
         _ ->
             Nothing
@@ -184,11 +195,11 @@ type alias PathRemaining =
     }
 
 
-pathRemaining : RouteMeta -> PathRemaining
-pathRemaining meta =
+pathRemaining : Path -> PathRemaining
+pathRemaining path =
     let
         remainingSplines =
-            Array.slice meta.currentSplineIdx (Array.length meta.path) meta.path
+            Array.slice path.currentSplineIdx (Array.length path.splines) path.splines
 
         initialAcc =
             { length = Quantity.zero
@@ -205,7 +216,7 @@ pathRemaining meta =
 
                         ( length, remainingSpline ) =
                             if isCurrentSpline then
-                                distanceToSplineEnd splineMeta meta.parameter
+                                distanceToSplineEnd splineMeta path.parameter
 
                             else
                                 ( splineMeta.length
@@ -249,6 +260,12 @@ distanceToSplineEnd splineMeta parameter =
     ( distance, remaining )
 
 
+
+--
+-- Constructors
+--
+
+
 randomFromNode : Random.Seed -> Dict Id Lot -> RoadNetwork -> RNNodeContext -> ( Route, Random.Seed )
 randomFromNode seed lots roadNetwork nodeCtx =
     let
@@ -258,13 +275,23 @@ randomFromNode seed lots roadNetwork nodeCtx =
     ( buildRoute lots nodeCtx nodes Nothing, nextSeed )
 
 
-randomFromParkedAtLot : Random.Seed -> Parking -> Dict Id Lot -> RoadNetwork -> RNNodeContext -> Route
+randomFromParkedAtLot : Random.Seed -> ParkingReservation -> Dict Id Lot -> RoadNetwork -> RNNodeContext -> Route
 randomFromParkedAtLot seed parkingValue lots roadNetwork nodeCtx =
     let
         ( nodes, _ ) =
             randomConnectionsFromNode seed 10 roadNetwork nodeCtx [ nodeCtx ]
     in
     buildRoute lots nodeCtx nodes (Just parkingValue)
+
+
+arriveToDestination : ParkingReservation -> Dict Id Lot -> Route
+arriveToDestination parkingReservation lots =
+    parkingReservation
+        |> parkingSpotFromReservation lots
+        |> Maybe.map .pathFromLotEntry
+        |> Maybe.andThen createPath
+        |> Maybe.map ArrivingToDestination
+        |> Maybe.withDefault initialRoute
 
 
 randomConnectionsFromNode : Random.Seed -> Int -> RoadNetwork -> RNNodeContext -> List RNNodeContext -> ( List RNNodeContext, Random.Seed )
@@ -296,51 +323,37 @@ chooseRandomOutgoingConnection roadNetwork nodeCtx =
         |> Random.map Tuple.first
 
 
-buildRoute : Dict Id Lot -> RNNodeContext -> List RNNodeContext -> Maybe Parking -> Route
-buildRoute lots startNodeValue nodes parkingValue =
+buildRoute : Dict Id Lot -> RNNodeContext -> List RNNodeContext -> Maybe ParkingReservation -> Route
+buildRoute lots startNodeValue nodes parkingReservation =
     let
         nodeSplines =
             nodesToSplines
                 startNodeValue
                 (List.tail nodes |> Maybe.withDefault [])
                 []
+
+        parkingSpot =
+            parkingReservation |> Maybe.andThen (parkingSpotFromReservation lots)
+
+        splines =
+            case parkingSpot of
+                Just spot ->
+                    List.append spot.pathToLotExit nodeSplines
+
+                Nothing ->
+                    nodeSplines
     in
-    Maybe.map3
-        (\end currentSpline otherSplines ->
-            let
-                parkingSpot =
-                    parkingValue |> Maybe.andThen (parkingToParkingSpot lots)
-
-                splines =
-                    case parkingSpot of
-                        Just spot ->
-                            List.append spot.pathToLotExit nodeSplines
-
-                        Nothing ->
-                            nodeSplines
-
-                path =
-                    createPath splines Array.empty
-            in
+    Maybe.map2
+        (\path end ->
             Routed
                 { startNode = startNodeValue
                 , endNode = end
-                , startPoint = CubicSpline2d.startPoint currentSpline
-                , endPoint =
-                    List.last otherSplines
-                        |> Maybe.map CubicSpline2d.endPoint
-                        |> Maybe.withDefault (CubicSpline2d.endPoint currentSpline)
                 , path = path
-                , currentSplineIdx = 0
-                , currentSpline = Array.get 0 path
-                , parameter = Quantity.zero
-                , parking = parkingValue
                 }
         )
+        (createPath splines)
         (List.last nodes)
-        (List.head nodeSplines)
-        (List.tail nodeSplines)
-        |> Maybe.withDefault Unrouted
+        |> Maybe.withDefault initialRoute
 
 
 nodesToSplines : RNNodeContext -> List RNNodeContext -> List LMCubicSpline2d -> List LMCubicSpline2d
@@ -361,8 +374,8 @@ nodesToSplines last remaining splines =
             nodesToSplines current others (splines ++ [ spline ])
 
 
-parkingToParkingSpot : Dict Id Lot -> Parking -> Maybe ParkingSpot
-parkingToParkingSpot lots { lotId, parkingSpotId } =
+parkingSpotFromReservation : Dict Id Lot -> ParkingReservation -> Maybe ParkingSpot
+parkingSpotFromReservation lots { lotId, parkingSpotId } =
     lots
         |> Dict.get lotId
         |> Maybe.andThen (\lot -> Lot.parkingSpotById lot parkingSpotId)
@@ -370,9 +383,35 @@ parkingToParkingSpot lots { lotId, parkingSpotId } =
 
 createPath :
     List LMCubicSpline2d
-    -> Array SplineMeta
-    -> Array SplineMeta
-createPath remainingSplines acc =
+    -> Maybe Path
+createPath splines =
+    let
+        pathSplines =
+            toPathSplines splines Array.empty
+    in
+    Maybe.map2
+        (\firstSpline lastSpline ->
+            { splines = pathSplines
+            , currentSplineIdx = 0
+            , currentSpline = Just firstSpline
+            , parameter = Quantity.zero
+            , startPoint =
+                firstSpline.spline
+                    |> CubicSpline2d.fromArcLengthParameterized
+                    |> CubicSpline2d.startPoint
+            , endPoint =
+                lastSpline.spline
+                    |> CubicSpline2d.fromArcLengthParameterized
+                    |> CubicSpline2d.endPoint
+            , finished = False
+            }
+        )
+        (Array.get 0 pathSplines)
+        (Array.get (Array.length pathSplines - 1) pathSplines)
+
+
+toPathSplines : List LMCubicSpline2d -> Array SplineMeta -> Array SplineMeta
+toPathSplines remainingSplines acc =
     case remainingSplines of
         current :: rest ->
             let
@@ -395,7 +434,7 @@ createPath remainingSplines acc =
                         Err _ ->
                             acc
             in
-            createPath
+            toPathSplines
                 rest
                 nextAcc
 
@@ -403,12 +442,18 @@ createPath remainingSplines acc =
             acc
 
 
+
+--
+-- Sample a route
+--
+
+
 sample : Route -> Maybe ( LMPoint2d, LMDirection2d )
 sample route =
-    case route of
-        Routed meta ->
-            meta.currentSpline
-                |> Maybe.map (\{ spline } -> CubicSpline2d.sampleAlong spline meta.parameter)
+    case toPath route of
+        Just path ->
+            path.currentSpline
+                |> Maybe.map (\{ spline } -> CubicSpline2d.sampleAlong spline path.parameter)
 
         _ ->
             Nothing
@@ -416,19 +461,19 @@ sample route =
 
 sampleAhead : Route -> Length -> Maybe ( LMPoint2d, LMDirection2d )
 sampleAhead route lookAheadAmount =
-    case route of
-        Routed meta ->
-            meta.currentSpline |> Maybe.map (sampleAheadWithRouteMeta meta lookAheadAmount)
+    case toPath route of
+        Just path ->
+            path.currentSpline |> Maybe.map (sampleAheadWithPath path lookAheadAmount)
 
         _ ->
             Nothing
 
 
-sampleAheadWithRouteMeta : RouteMeta -> Length -> SplineMeta -> ( LMPoint2d, LMDirection2d )
-sampleAheadWithRouteMeta routeMeta lookAheadAmount currentSplineMeta =
+sampleAheadWithPath : Path -> Length -> SplineMeta -> ( LMPoint2d, LMDirection2d )
+sampleAheadWithPath path lookAheadAmount currentSplineMeta =
     let
         parameterWithLookAhead =
-            routeMeta.parameter |> Quantity.plus lookAheadAmount
+            path.parameter |> Quantity.plus lookAheadAmount
     in
     if parameterWithLookAhead |> Quantity.lessThanOrEqualTo currentSplineMeta.length then
         CubicSpline2d.sampleAlong currentSplineMeta.spline parameterWithLookAhead
@@ -436,7 +481,7 @@ sampleAheadWithRouteMeta routeMeta lookAheadAmount currentSplineMeta =
     else
         -- The parameter overflowed (is greater than the current spline length).
         -- Sample the next spline instead
-        case Array.get (routeMeta.currentSplineIdx + 1) routeMeta.path of
+        case Array.get (path.currentSplineIdx + 1) path.splines of
             Just nextSplineMeta ->
                 CubicSpline2d.sampleAlong
                     nextSplineMeta.spline
@@ -446,18 +491,33 @@ sampleAheadWithRouteMeta routeMeta lookAheadAmount currentSplineMeta =
                 CubicSpline2d.sampleAlong currentSplineMeta.spline currentSplineMeta.length
 
 
+
+--
+-- Utility
+--
+
+
 description : Route -> String
 description route =
     case route of
-        Unrouted ->
-            "Unrouted"
+        Unrouted timer ->
+            case timer of
+                Just activeTimer ->
+                    String.concat
+                        [ "Unrouted for "
+                        , Duration.inSeconds activeTimer |> Round.round 2
+                        , "s"
+                        ]
 
-        Parked _ ->
-            "Parked"
+                Nothing ->
+                    "Unrouted"
 
-        Routed meta ->
+        Routed routeMeta ->
             String.concat
                 [ "Routed (end node:"
-                , String.fromInt meta.endNode.node.id
+                , String.fromInt routeMeta.endNode.node.id
                 , ")"
                 ]
+
+        ArrivingToDestination _ ->
+            "Arriving"
