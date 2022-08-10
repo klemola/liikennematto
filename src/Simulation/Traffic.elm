@@ -384,7 +384,7 @@ spawnCar seed world =
                             |> Car.withPosition nodeCtx.node.label.position
                             |> Car.withOrientation (Direction2d.toAngle nodeCtx.node.label.direction)
                             |> Car.build id
-                            |> Pathfinding.setupRoute world seedAfterRandomNode nodeCtx
+                            |> Pathfinding.setupRoute seedAfterRandomNode world nodeCtx
                 in
                 ( World.setCar car world
                 , seedAfterRouteInit
