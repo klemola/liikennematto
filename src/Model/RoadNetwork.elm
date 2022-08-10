@@ -126,7 +126,15 @@ getRandomNode roadNetwork seed =
     let
         randomNodeGenerator =
             roadNetwork
-                |> Graph.nodeIds
+                |> Graph.nodes
+                |> List.filterMap
+                    (\node ->
+                        if node.label.kind == LaneConnector then
+                            Just node.id
+
+                        else
+                            Nothing
+                    )
                 |> Random.Extra.sample
                 |> Random.map (Maybe.andThen (findNodeByNodeId roadNetwork))
     in
