@@ -1,14 +1,15 @@
 module Model.Lot exposing
     ( Lot
+    , ParkingReservation
     , ParkingSpot
     , acquireParkingLock
+    , attemptParking
     , build
     , claimParkingSpot
     , constructionSite
     , findFreeParkingSpot
     , hasParkingLockSet
     , inBounds
-    , parkingAllowed
     , parkingSpotById
     , parkingSpotOrientation
     , releaseParkingLock
@@ -23,7 +24,6 @@ import Common
 import Data.Lots exposing (LotKind, NewLot)
 import Direction2d
 import Length exposing (Length)
-import Maybe.Extra as Maybe
 import Model.Cell as Cell exposing (Cell)
 import Model.Entity exposing (Id)
 import Model.Geometry
@@ -129,10 +129,13 @@ inBounds cell lot =
 --
 
 
-parkingAllowed : Id -> Lot -> Bool
-parkingAllowed carId lot =
-    not (hasParkingLockSet lot)
-        && (findFreeParkingSpot carId lot |> Maybe.isJust)
+attemptParking : Id -> Lot -> Maybe ParkingSpot
+attemptParking carId lot =
+    if hasParkingLockSet lot then
+        Nothing
+
+    else
+        findFreeParkingSpot carId lot
 
 
 
@@ -183,6 +186,12 @@ type alias ParkingSpot =
     , pathToLotExit : List LMCubicSpline2d
     , owner : Maybe Id
     , reservedBy : Maybe Id
+    }
+
+
+type alias ParkingReservation =
+    { lotId : Id
+    , parkingSpotId : Id
     }
 
 

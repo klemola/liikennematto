@@ -20,7 +20,7 @@ import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car, CarState(..))
 import Model.Entity as Entity exposing (Id)
-import Model.Geometry exposing (LMPoint2d)
+import Model.Geometry exposing (LMPoint2d, orthogonalDirectionToLmDirection)
 import Model.Lookup exposing (carPositionLookup)
 import Model.Lot as Lot exposing (Lot, ParkingSpot)
 import Model.RoadNetwork as RoadNetwork
@@ -68,11 +68,6 @@ parkingRadius =
 nearbyTrafficRadius : Length
 nearbyTrafficRadius =
     Length.meters 16
-
-
-initialParkingWaitTimer : Maybe Duration
-initialParkingWaitTimer =
-    Just (Duration.milliseconds 1500)
 
 
 updateTraffic :
@@ -123,7 +118,7 @@ updateTraffic { updateQueue, seed, world, delta } =
                             carAfterDespawn seed world carWithUpdatedFSM
 
                         _ ->
-                            Just (updateRoute world delta carWithUpdatedFSM)
+                            Just (Pathfinding.carAfterRouteUpdate seed world delta carWithUpdatedFSM)
 
                 nextWorld =
                     carAfterRouteUpdate
@@ -131,7 +126,7 @@ updateTraffic { updateQueue, seed, world, delta } =
                         |> Maybe.map (\updatedCar -> World.setCar updatedCar world)
                         |> Maybe.withDefaultLazy (\_ -> World.removeCar activeCar.id world)
                         -- The car might already be deleted, but the actions still need to be applied (using the car data on FSM update)
-                        |> applyActions seed actions carWithUpdatedFSM
+                        |> applyActions actions carWithUpdatedFSM
             in
             updateTraffic
                 { updateQueue = queue
@@ -141,17 +136,17 @@ updateTraffic { updateQueue, seed, world, delta } =
                 }
 
 
-applyActions : Random.Seed -> List Car.Action -> Car -> World -> World
-applyActions seed actions car world =
-    List.foldl (applyAction seed car)
+applyActions : List Car.Action -> Car -> World -> World
+applyActions actions car world =
+    List.foldl (applyAction car)
         world
         actions
 
 
-applyAction : Random.Seed -> Car -> Car.Action -> World -> World
-applyAction seed car action world =
+applyAction : Car -> Car.Action -> World -> World
+applyAction car action world =
     case
-        Route.parking car.route
+        car.parkingReservation
             |> Maybe.andThen
                 (\{ lotId, parkingSpotId } ->
                     Dict.get lotId world.lots
@@ -168,9 +163,18 @@ applyAction seed car action world =
                         |> Maybe.withDefault world
 
                 Car.TriggerParkingCompletedEffects ->
+                    let
+                        carWithUnparkingOrientation =
+                            { car
+                                | orientation =
+                                    lot.parkingSpotExitDirection
+                                        |> orthogonalDirectionToLmDirection
+                                        |> Direction2d.toAngle
+                            }
+                    in
                     world
-                        |> World.setCar (car |> Pathfinding.leaveLot seed world)
-                        |> World.setLot (Lot.releaseParkingLock car.id lot)
+                        |> World.setCar carWithUnparkingOrientation
+                        |> World.setLot (Lot.releaseParkingLock carWithUnparkingOrientation.id lot)
 
                 Car.TriggerUnparkingStartEffects ->
                     case Lot.acquireParkingLock car.id lot of
@@ -191,9 +195,7 @@ applyAction seed car action world =
                                 |> Lot.releaseParkingLock car.id
                                 |> Lot.unreserveParkingSpot parkingSpotId
                     in
-                    world
-                        |> World.setLot nextLot
-                        |> World.setCar { car | route = Route.clearParking car.route }
+                    World.setLot nextLot world
 
         Nothing ->
             world
@@ -240,31 +242,6 @@ applySteering delta steering car =
     }
 
 
-updateRoute : World -> Duration -> Car -> Car
-updateRoute world delta car =
-    let
-        nextRoute =
-            Pathfinding.updateRoute world delta car
-    in
-    case nextRoute of
-        Route.Unrouted ->
-            Car.triggerDespawn car
-
-        Route.Parked _ ->
-            { car | route = nextRoute }
-
-        Route.Routed _ ->
-            let
-                parkingChanged =
-                    Route.parking car.route == Nothing && Route.parking nextRoute /= Nothing
-            in
-            if parkingChanged then
-                Car.triggerParking car nextRoute
-
-            else
-                { car | route = nextRoute }
-
-
 carAfterDespawn : Random.Seed -> World -> Car -> Maybe Car
 carAfterDespawn seed world car =
     car.homeLotId
@@ -281,11 +258,9 @@ moveCarToHome seed world car ( home, parkingSpot ) =
     of
         Just nodeCtx ->
             let
-                parking =
+                parkingReservation =
                     { lotId = home.id
                     , parkingSpotId = parkingSpot.id
-                    , waitTimer = initialParkingWaitTimer
-                    , lockAvailable = False
                     }
 
                 ( nextFSM, _ ) =
@@ -296,8 +271,9 @@ moveCarToHome seed world car ( home, parkingSpot ) =
                 , position = parkingSpot.position
                 , orientation = Lot.parkingSpotOrientation home
                 , velocity = Quantity.zero
+                , parkingReservation = Just parkingReservation
             }
-                |> Pathfinding.resetCarAtLot seed parking world nodeCtx
+                |> Pathfinding.resetCarAtLot seed parkingReservation world nodeCtx
 
         _ ->
             car
@@ -366,11 +342,9 @@ createResident world carId lot homeNode make parkingSpot =
 createCar : Id -> Lot -> CarMake -> World -> RNNodeContext -> ParkingSpot -> Car
 createCar carId lot make world homeNode parkingSpot =
     let
-        parking =
+        parkingReservation =
             { lotId = lot.id
             , parkingSpotId = parkingSpot.id
-            , waitTimer = initialParkingWaitTimer
-            , lockAvailable = False
             }
     in
     Car.new make
@@ -378,7 +352,11 @@ createCar carId lot make world homeNode parkingSpot =
         |> Car.withPosition parkingSpot.position
         |> Car.withOrientation (Lot.parkingSpotOrientation lot)
         |> Car.build carId
-        |> Pathfinding.resetCarAtLot (Random.initialSeed (carId + lot.id)) parking world homeNode
+        |> Pathfinding.resetCarAtLot
+            (Random.initialSeed (carId + lot.id))
+            parkingReservation
+            world
+            homeNode
 
 
 
