@@ -22,8 +22,8 @@ import Random
 import Speed exposing (Speed)
 
 
-setupRoute : World -> Random.Seed -> RNNodeContext -> Car -> ( Car, Random.Seed )
-setupRoute world seed nodeCtx car =
+setupRoute : Random.Seed -> World -> RNNodeContext -> Car -> ( Car, Random.Seed )
+setupRoute seed world nodeCtx car =
     let
         ( route, nextSeed ) =
             Route.randomFromNode seed world.lots world.roadNetwork nodeCtx
@@ -120,8 +120,7 @@ carAfterRouteUpdate seed world delta car =
                         |> Maybe.withDefaultLazy (\_ -> Car.triggerWaitingForParking car nextRoute)
 
                 _ ->
-                    -- TODO
-                    car
+                    setupRoute seed world nodeCtx car |> Tuple.first
 
         ArrivedAtDestination ->
             let
