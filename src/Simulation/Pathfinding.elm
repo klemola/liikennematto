@@ -2,6 +2,7 @@ module Simulation.Pathfinding exposing
     ( carAfterRouteUpdate
     , resetCarAtLot
     , restoreRoute
+    , routeTrafficControl
     , setupRoute
     )
 
@@ -12,8 +13,16 @@ import Duration exposing (Duration)
 import Length
 import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car)
+import Model.Geometry exposing (LMPoint2d)
+import Model.Lookup as Lookup
 import Model.Lot as Lot exposing (ParkingReservation)
-import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
+import Model.RoadNetwork as RoadNetwork
+    exposing
+        ( ConnectionKind(..)
+        , RNNodeContext
+        , RoadNetwork
+        , TrafficControl
+        )
 import Model.Route as Route exposing (Route)
 import Model.World exposing (World)
 import QuadTree
@@ -26,7 +35,7 @@ setupRoute : Random.Seed -> World -> RNNodeContext -> Car -> ( Car, Random.Seed 
 setupRoute seed world nodeCtx car =
     let
         ( route, nextSeed ) =
-            Route.randomFromNode seed world.lots world.roadNetwork nodeCtx
+            Route.randomFromNode seed 10 world.lots world.roadNetwork nodeCtx
     in
     ( { car | route = route }, nextSeed )
 
@@ -37,6 +46,7 @@ resetCarAtLot seed parkingReservation world nodeCtx car =
         | route =
             Route.randomFromParkedAtLot
                 seed
+                10
                 parkingReservation
                 world.lots
                 world.roadNetwork
@@ -52,7 +62,9 @@ generateRouteFromParkingSpot seed world parkingReservation =
     in
     lotExitNode
         |> Maybe.map
-            (Route.randomFromParkedAtLot seed
+            (Route.randomFromParkedAtLot
+                seed
+                10
                 parkingReservation
                 world.lots
                 world.roadNetwork
@@ -230,6 +242,32 @@ updateParameter velocity delta parameter =
             velocity |> Quantity.for delta
     in
     parameter |> Quantity.plus deltaMeters
+
+
+routeTrafficControl : RoadNetwork -> Lookup.RoadNetworkLookup -> Route -> Maybe ( TrafficControl, LMPoint2d )
+routeTrafficControl roadNetwork roadNetworkLookup route =
+    route
+        |> Route.splineEndPoint
+        |> Maybe.andThen
+            (\splineEndPoint ->
+                roadNetworkLookup
+                    |> QuadTree.neighborsWithin
+                        (Length.meters 1)
+                        (BoundingBox2d.singleton splineEndPoint)
+                    |> List.filterMap
+                        (\{ id, position } ->
+                            RoadNetwork.findNodeByNodeId roadNetwork id
+                                |> Maybe.map
+                                    (\nodeCtx ->
+                                        let
+                                            trafficControlResult =
+                                                RoadNetwork.trafficControl nodeCtx
+                                        in
+                                        ( trafficControlResult, position )
+                                    )
+                        )
+                    |> List.head
+            )
 
 
 restoreRoute : World -> Car -> Car

@@ -241,7 +241,7 @@ deadendConnections cell trafficDirection =
             , direction = trafficDirection
             , cell = cell
             , environment = RoadNetwork.Road
-            , trafficControl = None
+            , trafficControl = NoTrafficControl
             }
 
         exitConnection =
@@ -250,7 +250,7 @@ deadendConnections cell trafficDirection =
             , direction = Direction2d.reverse trafficDirection
             , cell = cell
             , environment = RoadNetwork.Road
-            , trafficControl = None
+            , trafficControl = NoTrafficControl
             }
     in
     [ entryConnection
@@ -325,14 +325,14 @@ connectionsByTileEntryDirection tilemap cell tile direction =
       , direction = startDirection
       , cell = startConnectionCell
       , environment = environment
-      , trafficControl = None
+      , trafficControl = NoTrafficControl
       }
     , { kind = endConnectionKind
       , position = origin |> Point2d.translateBy (endOffset |> Vector2d.plus extraOffset)
       , direction = endDirection
       , cell = cell
       , environment = environment
-      , trafficControl = None
+      , trafficControl = NoTrafficControl
       }
     ]
 
@@ -631,7 +631,7 @@ updateNodeTrafficControl currentTrafficLights nodeCtx ( roadNetwork, nextTraffic
             let
                 nextNodeCtx =
                     if nodeCtx |> isOnPriorityRoad roadNetwork then
-                        nodeCtx |> setTrafficControl None
+                        nodeCtx |> setTrafficControl NoTrafficControl
 
                     else
                         -- orphan road node
@@ -643,7 +643,7 @@ updateNodeTrafficControl currentTrafficLights nodeCtx ( roadNetwork, nextTraffic
 
         -- Not an intersection (assuming max four ways)
         _ ->
-            ( Graph.insert (nodeCtx |> setTrafficControl None) roadNetwork
+            ( Graph.insert (nodeCtx |> setTrafficControl NoTrafficControl) roadNetwork
             , nextTrafficLights
             )
 

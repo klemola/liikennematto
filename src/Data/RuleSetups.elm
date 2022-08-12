@@ -24,7 +24,6 @@ import Data.Worlds
         , worldWithThreeWayIntersection
         )
 import Dict
-import Direction2d
 import Model.Car as Car exposing (Car)
 import Model.Geometry exposing (LMPoint2d)
 import Model.RoadNetwork as RoadNetwork
@@ -60,6 +59,7 @@ connectedRoadsSetup =
 collisionSetupPathsIntersect : RuleSetup
 collisionSetupPathsIntersect =
     let
+        -- TODO: Fix. the route cannot be random and it should start from where the car is (adjust parameter)
         world =
             worldWithFourWayIntersection
 
@@ -191,7 +191,7 @@ redTrafficLightsSetup =
 
         car =
             buildCar CarA1 (Point2d.meters 26 120) (Angle.degrees 90) Steering.maxVelocity
-                |> routeCarByDestination world (Point2d.meters 26 128)
+                |> routeCarByDestination world (Point2d.meters 26 120)
 
         otherCars =
             []
@@ -210,8 +210,8 @@ greenTrafficLightsSetup =
             worldWithFourWayIntersection
 
         car =
-            buildCar CarA1 (Point2d.meters 9.4 134) (Angle.degrees 0) Steering.maxVelocity
-                |> routeCarByDestination world (Point2d.meters 16 134)
+            buildCar CarA1 (Point2d.meters 8 134) (Angle.degrees 0) Steering.maxVelocity
+                |> routeCarByDestination world (Point2d.meters 8 134)
 
         otherCars =
             []
@@ -231,7 +231,7 @@ yieldWithPriorityTrafficSetup1 =
 
         car =
             buildCar CarA1 (Point2d.meters 28 118) (Angle.degrees 0) Quantity.zero
-                |> routeCarByDestination world (Point2d.meters 32 118)
+                |> routeCarByDestination world (Point2d.meters 8 118)
 
         otherCar =
             buildCar CarB2 (Point2d.meters 42 108.4) (Angle.degrees 90) Steering.maxVelocity
@@ -255,7 +255,7 @@ yieldWithPriorityTrafficSetup2 =
 
         car =
             buildCar CarA1 (Point2d.meters 28 118) (Angle.degrees 0) Quantity.zero
-                |> routeCarByDestination world (Point2d.meters 32 118)
+                |> routeCarByDestination world (Point2d.meters 8 118)
 
         otherCar =
             buildCar CarB2 (Point2d.meters 38 128.4) (Angle.degrees 270) Steering.maxVelocity
@@ -295,7 +295,7 @@ yieldSlowDownSetup =
 
         car =
             buildCar CarA1 (Point2d.meters 24 118) (Angle.degrees 0) Steering.maxVelocity
-                |> routeCarByDestination world (Point2d.meters 32 118)
+                |> routeCarByDestination world (Point2d.meters 8 118)
 
         otherCars =
             []
@@ -366,6 +366,7 @@ routeCarByDestination world position car =
                 ( route, _ ) =
                     Route.randomFromNode
                         (Random.initialSeed 666)
+                        2
                         world.lots
                         world.roadNetwork
                         nodeCtx
