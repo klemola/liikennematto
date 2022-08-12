@@ -16,8 +16,8 @@ module Model.Route exposing
     , randomFromParkedAtLot
     , sample
     , sampleAhead
+    , splineEndPoint
     , startNode
-    , trafficControl
     )
 
 import Array exposing (Array)
@@ -44,7 +44,6 @@ import Model.RoadNetwork as RoadNetwork
     exposing
         ( RNNodeContext
         , RoadNetwork
-        , TrafficControl
         )
 import Quantity
 import Random
@@ -80,6 +79,7 @@ type alias Path =
 type alias SplineMeta =
     { spline : ArcLengthParameterized Length.Meters GlobalCoordinates
     , length : Length
+    , endPoint : LMPoint2d
     }
 
 
@@ -150,10 +150,11 @@ endPoint route =
     toPath route |> Maybe.map .endPoint
 
 
-trafficControl : Route -> Maybe ( TrafficControl, LMPoint2d )
-trafficControl route =
-    -- TODO!!
-    Nothing
+splineEndPoint : Route -> Maybe LMPoint2d
+splineEndPoint route =
+    toPath route
+        |> Maybe.andThen .currentSpline
+        |> Maybe.map .endPoint
 
 
 pathToList : Route -> List LMCubicSpline2d
@@ -268,20 +269,20 @@ distanceToSplineEnd splineMeta parameter =
 --
 
 
-randomFromNode : Random.Seed -> Dict Id Lot -> RoadNetwork -> RNNodeContext -> ( Route, Random.Seed )
-randomFromNode seed lots roadNetwork nodeCtx =
+randomFromNode : Random.Seed -> Int -> Dict Id Lot -> RoadNetwork -> RNNodeContext -> ( Route, Random.Seed )
+randomFromNode seed maxConnections lots roadNetwork nodeCtx =
     let
         ( nodes, nextSeed ) =
-            randomConnectionsFromNode seed 10 roadNetwork nodeCtx [ nodeCtx ]
+            randomConnectionsFromNode seed maxConnections roadNetwork nodeCtx [ nodeCtx ]
     in
     ( buildRoute lots nodeCtx nodes Nothing, nextSeed )
 
 
-randomFromParkedAtLot : Random.Seed -> ParkingReservation -> Dict Id Lot -> RoadNetwork -> RNNodeContext -> Route
-randomFromParkedAtLot seed parkingValue lots roadNetwork nodeCtx =
+randomFromParkedAtLot : Random.Seed -> Int -> ParkingReservation -> Dict Id Lot -> RoadNetwork -> RNNodeContext -> Route
+randomFromParkedAtLot seed maxConnections parkingValue lots roadNetwork nodeCtx =
     let
         ( nodes, _ ) =
-            randomConnectionsFromNode seed 10 roadNetwork nodeCtx [ nodeCtx ]
+            randomConnectionsFromNode seed maxConnections roadNetwork nodeCtx [ nodeCtx ]
     in
     buildRoute lots nodeCtx nodes (Just parkingValue)
 
@@ -429,6 +430,7 @@ toPathSplines remainingSplines acc =
                                 splineProps =
                                     { spline = alpSpline
                                     , length = CubicSpline2d.arcLength alpSpline
+                                    , endPoint = CubicSpline2d.endPoint current
                                     }
                             in
                             Array.push splineProps acc

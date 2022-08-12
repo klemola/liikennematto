@@ -86,6 +86,7 @@ createRoute world =
             (\origin ->
                 Route.randomFromNode
                     seed
+                    10
                     world.lots
                     world.roadNetwork
                     origin

@@ -14,6 +14,7 @@ module Model.RoadNetwork exposing
     , getRandomNode
     , size
     , toDotString
+    , trafficControl
     )
 
 import Graph exposing (Graph, NodeContext, NodeId)
@@ -59,7 +60,7 @@ type ConnectionEnvironment
 type TrafficControl
     = Signal Id
     | Yield
-    | None
+    | NoTrafficControl
 
 
 type alias Lane =
@@ -144,6 +145,11 @@ getRandomNode roadNetwork seed =
 getOutgoingConnections : RNNodeContext -> List NodeId
 getOutgoingConnections nodeCtx =
     Graph.alongOutgoingEdges nodeCtx
+
+
+trafficControl : RNNodeContext -> TrafficControl
+trafficControl nodeCtx =
+    nodeCtx.node.label.trafficControl
 
 
 
