@@ -178,6 +178,8 @@ toPath route =
 
 distanceToPathEnd : Route -> Maybe Length
 distanceToPathEnd route =
+    -- Room for improvement: cache the total path length and calculate the remaining length
+    -- by subtracting parameter from total on every update
     case route of
         Routed routeMeta ->
             Just (pathRemaining routeMeta.path |> .length)
@@ -223,7 +225,7 @@ pathRemaining path =
                                 , CubicSpline2d.fromArcLengthParameterized splineMeta.spline
                                 )
                     in
-                    { length = length
+                    { length = acc.length |> Quantity.plus length
                     , remainingIndices = acc.remainingIndices - 1
                     , splines = remainingSpline :: acc.splines
                     }

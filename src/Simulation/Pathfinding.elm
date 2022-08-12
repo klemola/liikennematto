@@ -234,7 +234,7 @@ updateParameter velocity delta parameter =
 
 restoreRoute : World -> Car -> Car
 restoreRoute world car =
-    if Car.isPathfinding car then
+    if Route.isRouted car.route then
         car
         -- TODO!!!
         -- case

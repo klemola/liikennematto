@@ -38,6 +38,7 @@ import Random
 import Simulation.Collision as Collision
 import Simulation.Pathfinding as Pathfinding
 import Simulation.Steering as Steering exposing (Steering)
+import Speed
 
 
 trafficLightReactionDistance : Length
@@ -68,6 +69,11 @@ parkingRadius =
 nearbyTrafficRadius : Length
 nearbyTrafficRadius =
     Length.meters 16
+
+
+routeEndSlowRadius : Length
+routeEndSlowRadius =
+    Length.meters 15
 
 
 updateTraffic :
@@ -434,6 +440,8 @@ type Rule
     | WaitForOtherCar
     | StopAtTrafficControl Length
     | SlowDownAtTrafficControl
+    | SlowDownNearRouteEnd
+    | WaitForParkingSpot
     | StopAtParkingSpot
     | StayParked
 
@@ -446,6 +454,7 @@ checkRules setup =
                 [ \() -> checkCollision setup
                 , \() -> checkParking setup
                 , \() -> checkTrafficControl setup
+                , \() -> checkRoute setup
                 ]
     in
     case activeRule of
@@ -454,7 +463,7 @@ checkRules setup =
 
         Nothing ->
             -- cancel the effects of previously applied rules
-            if Car.isPathfinding setup.activeCar then
+            if Route.isRouted setup.activeCar.route then
                 Steering.accelerate
 
             else
@@ -498,7 +507,15 @@ applyRule activeCar rule =
                 velocity
 
         SlowDownAtTrafficControl ->
-            Steering.goSlow velocity
+            Steering.goSlow velocity Nothing
+
+        SlowDownNearRouteEnd ->
+            Steering.goSlow
+                velocity
+                (Just <| Speed.metersPerSecond 3.5)
+
+        WaitForParkingSpot ->
+            Steering.stop velocity
 
         StopAtParkingSpot ->
             Steering.stopAtPathEnd
@@ -622,6 +639,9 @@ checkYield { activeCar, otherCars } signPosition =
 checkParking : RuleSetup -> Maybe Rule
 checkParking { activeCar } =
     case FSM.toCurrentState activeCar.fsm of
+        WaitingForParkingSpot ->
+            Just WaitForParkingSpot
+
         Parking ->
             Just StopAtParkingSpot
 
@@ -630,3 +650,16 @@ checkParking { activeCar } =
 
         _ ->
             Nothing
+
+
+checkRoute : RuleSetup -> Maybe Rule
+checkRoute { activeCar } =
+    Route.distanceToPathEnd activeCar.route
+        |> Maybe.andThen
+            (\distanceToPathEnd ->
+                if distanceToPathEnd |> Quantity.lessThanOrEqualTo routeEndSlowRadius then
+                    Just SlowDownNearRouteEnd
+
+                else
+                    Nothing
+            )
