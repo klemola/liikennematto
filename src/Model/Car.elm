@@ -9,7 +9,6 @@ module Model.Car exposing
     , build
     , fieldOfView
     , isParked
-    , isPathfinding
     , isStoppedOrWaiting
     , new
     , shouldWatchTraffic
@@ -407,16 +406,6 @@ isStoppedOrWaiting car =
     car.velocity
         |> Quantity.abs
         |> Quantity.lessThan (Speed.metersPerSecond 0.1)
-
-
-isPathfinding : Car -> Bool
-isPathfinding car =
-    let
-        currentState =
-            FSM.toCurrentState car.fsm
-    in
-    Route.isRouted car.route
-        && (currentState == Driving || currentState == Parking || currentState == Unparking)
 
 
 isParked : Car -> Bool

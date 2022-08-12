@@ -173,9 +173,13 @@ accelerate =
     }
 
 
-goSlow : Speed -> Steering
-goSlow currentVelocity =
-    { linear = Just <| reachTargetVelocity currentVelocity (Quantity.half maxVelocity)
+goSlow : Speed -> Maybe Speed -> Steering
+goSlow currentVelocity targetVelocity =
+    { linear =
+        targetVelocity
+            |> Maybe.withDefault (Quantity.half maxVelocity)
+            |> reachTargetVelocity currentVelocity
+            |> Just
     , angular = Nothing
     }
 
