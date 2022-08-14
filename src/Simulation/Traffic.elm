@@ -583,16 +583,16 @@ checkCollision { activeCar, otherCars } =
 
 checkTrafficControl : RuleSetup -> Maybe Rule
 checkTrafficControl setup =
-    let
-        { roadNetwork, roadNetworkLookup, trafficLights } =
-            setup.world
-    in
     setup.activeCar.route
-        |> Pathfinding.routeTrafficControl roadNetwork roadNetworkLookup
+        |> Pathfinding.routeTrafficControl setup.world
         |> Maybe.andThen
             (\( trafficControl, position ) ->
                 case trafficControl of
                     Signal id ->
+                        let
+                            { trafficLights } =
+                                setup.world
+                        in
                         Dict.get id trafficLights |> Maybe.andThen (checkTrafficLights setup)
 
                     Yield ->

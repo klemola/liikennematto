@@ -11,9 +11,10 @@ module Model.Route exposing
     , isArrivingToDestination
     , isRouted
     , isWaitingForRoute
-    , pathToList
+    , pathToSplines
     , randomFromNode
     , randomFromParkedAtLot
+    , remainingNodePositions
     , sample
     , sampleAhead
     , splineEndPoint
@@ -157,10 +158,22 @@ splineEndPoint route =
         |> Maybe.map .endPoint
 
 
-pathToList : Route -> List LMCubicSpline2d
-pathToList route =
+pathToSplines : Route -> List LMCubicSpline2d
+pathToSplines route =
     toPath route
         |> Maybe.map (pathRemaining >> .splines)
+        |> Maybe.withDefault []
+
+
+remainingNodePositions : Route -> List LMPoint2d
+remainingNodePositions route =
+    toPath route
+        |> Maybe.map remainingSplines
+        |> Maybe.map
+            (Array.foldl
+                (\splineMeta acc -> acc ++ [ splineMeta.endPoint ])
+                []
+            )
         |> Maybe.withDefault []
 
 
@@ -201,12 +214,12 @@ type alias PathRemaining =
 pathRemaining : Path -> PathRemaining
 pathRemaining path =
     let
-        remainingSplines =
-            Array.slice path.currentSplineIdx (Array.length path.splines) path.splines
+        remaining =
+            remainingSplines path
 
         initialAcc =
             { length = Quantity.zero
-            , remainingIndices = Array.length remainingSplines
+            , remainingIndices = Array.length remaining
             , splines = []
             }
 
@@ -232,11 +245,16 @@ pathRemaining path =
                     }
                 )
                 initialAcc
-                remainingSplines
+                remaining
     in
     { length = result.length
     , splines = result.splines
     }
+
+
+remainingSplines : Path -> Array SplineMeta
+remainingSplines path =
+    Array.slice path.currentSplineIdx (Array.length path.splines) path.splines
 
 
 distanceToSplineEnd : SplineMeta -> Length -> ( Length, LMCubicSpline2d )
@@ -414,8 +432,8 @@ createPath splines =
 
 
 toPathSplines : List LMCubicSpline2d -> Array SplineMeta -> Array SplineMeta
-toPathSplines remainingSplines acc =
-    case remainingSplines of
+toPathSplines remaining acc =
+    case remaining of
         current :: rest ->
             let
                 nextAcc =

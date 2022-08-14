@@ -4,6 +4,7 @@ module Simulation.Pathfinding exposing
     , restoreRoute
     , routeTrafficControl
     , setupRoute
+    , validateRoute
     )
 
 import Array
@@ -14,13 +15,11 @@ import Length
 import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car)
 import Model.Geometry exposing (LMPoint2d)
-import Model.Lookup as Lookup
 import Model.Lot as Lot exposing (ParkingReservation)
 import Model.RoadNetwork as RoadNetwork
     exposing
         ( ConnectionKind(..)
         , RNNodeContext
-        , RoadNetwork
         , TrafficControl
         )
 import Model.Route as Route exposing (Route)
@@ -244,76 +243,86 @@ updateParameter velocity delta parameter =
     parameter |> Quantity.plus deltaMeters
 
 
-routeTrafficControl : RoadNetwork -> Lookup.RoadNetworkLookup -> Route -> Maybe ( TrafficControl, LMPoint2d )
-routeTrafficControl roadNetwork roadNetworkLookup route =
+routeTrafficControl : World -> Route -> Maybe ( TrafficControl, LMPoint2d )
+routeTrafficControl world route =
     route
         |> Route.splineEndPoint
-        |> Maybe.andThen
-            (\splineEndPoint ->
-                roadNetworkLookup
-                    |> QuadTree.neighborsWithin
-                        (Length.meters 1)
-                        (BoundingBox2d.singleton splineEndPoint)
-                    |> List.filterMap
-                        (\{ id, position } ->
-                            RoadNetwork.findNodeByNodeId roadNetwork id
-                                |> Maybe.map
-                                    (\nodeCtx ->
-                                        let
-                                            trafficControlResult =
-                                                RoadNetwork.trafficControl nodeCtx
-                                        in
-                                        ( trafficControlResult, position )
-                                    )
-                        )
-                    |> List.head
+        |> Maybe.andThen (findNodeByPosition world)
+        |> Maybe.map
+            (\nodeCtx ->
+                let
+                    trafficControlResult =
+                        RoadNetwork.trafficControl nodeCtx
+                in
+                ( trafficControlResult, nodeCtx.node.label.position )
             )
 
 
 restoreRoute : World -> Car -> Car
 restoreRoute world car =
     if Route.isRouted car.route then
-        car
-        -- TODO!!!
-        -- case
-        --     Route.nextNode car.route
-        --         |> Maybe.andThen (findNodeReplacement world)
-        --         |> Maybe.andThen (RoadNetwork.findNodeByNodeId world.roadNetwork)
-        -- of
-        --     Just nodeCtxResult ->
-        --         { car
-        --             | route =
-        --                 Route.fromNode nodeCtxResult
-        --                     car.position
-        --                     (Direction2d.fromAngle car.orientation)
-        --                     (Route.parking car.route)
-        --         }
-        --     Nothing ->
-        --         Car.triggerDespawn car
+        case validateRoute world car.route of
+            Ok _ ->
+                car
+
+            Err _ ->
+                Car.triggerDespawn car
 
     else
         car
 
 
-findNodeReplacement : World -> RNNodeContext -> Maybe Int
-findNodeReplacement { roadNetworkLookup } target =
-    -- Tries to find a node in the lookup tree that could replace the reference node.
-    -- Useful in maintaning route after the road network has been updated.
-    let
-        targetPosition =
-            target.node.label.position
+validateRoute : World -> Route -> Result String Route
+validateRoute world route =
+    validateRouteHelper world Nothing (Route.remainingNodePositions route)
+        |> Result.map (always route)
 
-        positionMatches =
-            roadNetworkLookup
-                |> QuadTree.findIntersecting
-                    { id = target.node.id
-                    , position = targetPosition
-                    , boundingBox = BoundingBox2d.singleton targetPosition
-                    }
-    in
-    case positionMatches of
-        match :: _ ->
-            Just match.id
 
+validateRouteHelper : World -> Maybe RNNodeContext -> List LMPoint2d -> Result String ()
+validateRouteHelper world previousNodeCtx remainingEndPoints =
+    case remainingEndPoints of
         [] ->
-            Nothing
+            Ok ()
+
+        endPoint :: others ->
+            case findNodeByPosition world endPoint of
+                Just currentNodeCtx ->
+                    if
+                        previousNodeCtx
+                            |> Maybe.map (isDisconnectedFrom currentNodeCtx)
+                            |> Maybe.withDefault False
+                    then
+                        Err "Invalid route: found a disconnected pair of nodes"
+
+                    else
+                        validateRouteHelper world (Just currentNodeCtx) others
+
+                Nothing ->
+                    let
+                        nodeId =
+                            case previousNodeCtx of
+                                Just nodeCtx ->
+                                    String.fromInt nodeCtx.node.id
+
+                                Nothing ->
+                                    "none"
+                    in
+                    Err (String.join " " [ "Last matching node id:", nodeId ])
+
+
+isDisconnectedFrom : RNNodeContext -> RNNodeContext -> Bool
+isDisconnectedFrom currentNodeCtx previousNodeCtx =
+    previousNodeCtx
+        |> RoadNetwork.getOutgoingConnections
+        |> List.member currentNodeCtx.node.id
+        |> not
+
+
+findNodeByPosition : World -> LMPoint2d -> Maybe RNNodeContext
+findNodeByPosition { roadNetworkLookup, roadNetwork } nodePosition =
+    roadNetworkLookup
+        |> QuadTree.neighborsWithin
+            (Length.meters 1)
+            (BoundingBox2d.singleton nodePosition)
+        |> List.head
+        |> Maybe.andThen (.id >> RoadNetwork.findNodeByNodeId roadNetwork)
