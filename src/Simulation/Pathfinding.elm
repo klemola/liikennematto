@@ -34,7 +34,7 @@ setupRoute : Random.Seed -> World -> RNNodeContext -> Car -> ( Car, Random.Seed 
 setupRoute seed world nodeCtx car =
     let
         ( route, nextSeed ) =
-            Route.randomFromNode seed 10 world.lots world.roadNetwork nodeCtx
+            Route.randomFromNode seed 10 world.roadNetwork nodeCtx
     in
     ( { car | route = route }, nextSeed )
 
@@ -265,24 +265,34 @@ restoreRoute world car =
             Ok _ ->
                 car
 
-            Err _ ->
-                Car.triggerDespawn car
+            Err ( _, validNodes ) ->
+                Maybe.andThen2
+                    (Route.fromPartialRoute car.route)
+                    (List.head validNodes)
+                    (List.tail validNodes)
+                    |> Maybe.map (\nextRoute -> { car | route = nextRoute })
+                    |> Maybe.withDefaultLazy (\_ -> Car.triggerDespawn car)
 
     else
         car
 
 
-validateRoute : World -> Route -> Result String Route
+validateRoute : World -> Route -> Result ( String, List RNNodeContext ) Route
 validateRoute world route =
-    validateRouteHelper world Nothing (Route.remainingNodePositions route)
+    validateRouteHelper world Nothing (Route.remainingNodePositions route) []
         |> Result.map (always route)
 
 
-validateRouteHelper : World -> Maybe RNNodeContext -> List LMPoint2d -> Result String ()
-validateRouteHelper world previousNodeCtx remainingEndPoints =
+validateRouteHelper :
+    World
+    -> Maybe RNNodeContext
+    -> List LMPoint2d
+    -> List RNNodeContext
+    -> Result ( String, List RNNodeContext ) (List RNNodeContext)
+validateRouteHelper world previousNodeCtx remainingEndPoints validNodes =
     case remainingEndPoints of
         [] ->
-            Ok ()
+            Ok validNodes
 
         endPoint :: others ->
             case findNodeByPosition world endPoint of
@@ -292,10 +302,17 @@ validateRouteHelper world previousNodeCtx remainingEndPoints =
                             |> Maybe.map (isDisconnectedFrom currentNodeCtx)
                             |> Maybe.withDefault False
                     then
-                        Err "Invalid route: found a disconnected pair of nodes"
+                        Err
+                            ( "Invalid route: found a disconnected pair of nodes"
+                            , validNodes
+                            )
 
                     else
-                        validateRouteHelper world (Just currentNodeCtx) others
+                        validateRouteHelper
+                            world
+                            (Just currentNodeCtx)
+                            others
+                            (validNodes ++ [ currentNodeCtx ])
 
                 Nothing ->
                     let
@@ -307,7 +324,13 @@ validateRouteHelper world previousNodeCtx remainingEndPoints =
                                 Nothing ->
                                     "none"
                     in
-                    Err (String.join " " [ "Last matching node id:", nodeId ])
+                    Err
+                        ( String.join " "
+                            [ "Invalid route: node not found. Last matching node id:"
+                            , nodeId
+                            ]
+                        , validNodes
+                        )
 
 
 isDisconnectedFrom : RNNodeContext -> RNNodeContext -> Bool

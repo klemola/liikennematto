@@ -7,6 +7,7 @@ module Model.Route exposing
     , description
     , distanceToPathEnd
     , endPoint
+    , fromPartialRoute
     , initialRoute
     , isArrivingToDestination
     , isRouted
@@ -287,22 +288,52 @@ distanceToSplineEnd splineMeta parameter =
 --
 
 
-randomFromNode : Random.Seed -> Int -> Dict Id Lot -> RoadNetwork -> RNNodeContext -> ( Route, Random.Seed )
-randomFromNode seed maxConnections lots roadNetwork nodeCtx =
+randomFromNode : Random.Seed -> Int -> RoadNetwork -> RNNodeContext -> ( Route, Random.Seed )
+randomFromNode seed maxConnections roadNetwork nodeCtx =
     let
         ( nodes, nextSeed ) =
-            randomConnectionsFromNode seed maxConnections roadNetwork nodeCtx [ nodeCtx ]
+            randomConnectionsFromNode seed maxConnections roadNetwork nodeCtx []
     in
-    ( buildRoute lots nodeCtx nodes Nothing, nextSeed )
+    ( buildRoute nodeCtx nodes [], nextSeed )
 
 
 randomFromParkedAtLot : Random.Seed -> Int -> ParkingReservation -> Dict Id Lot -> RoadNetwork -> RNNodeContext -> Route
-randomFromParkedAtLot seed maxConnections parkingValue lots roadNetwork nodeCtx =
+randomFromParkedAtLot seed maxConnections parkingReservation lots roadNetwork nodeCtx =
     let
         ( nodes, _ ) =
-            randomConnectionsFromNode seed maxConnections roadNetwork nodeCtx [ nodeCtx ]
+            randomConnectionsFromNode seed maxConnections roadNetwork nodeCtx []
+
+        parkingSpot =
+            parkingSpotFromReservation lots parkingReservation
+
+        initialSplines =
+            case parkingSpot of
+                Just spot ->
+                    spot.pathToLotExit
+
+                Nothing ->
+                    []
     in
-    buildRoute lots nodeCtx nodes (Just parkingValue)
+    buildRoute nodeCtx nodes initialSplines
+
+
+fromPartialRoute : Route -> RNNodeContext -> List RNNodeContext -> Maybe Route
+fromPartialRoute currentRoute nextNode others =
+    currentRoute
+        |> toPath
+        |> Maybe.andThen
+            (\path ->
+                path.currentSpline
+                    |> Maybe.map (Tuple.pair path.parameter)
+            )
+        |> Maybe.map
+            (\( parameter, currentSpline ) ->
+                let
+                    initialSplines =
+                        distanceToSplineEnd currentSpline parameter |> Tuple.second |> List.singleton
+                in
+                buildRoute nextNode others initialSplines
+            )
 
 
 arriveToDestination : ParkingReservation -> Dict Id Lot -> Route
@@ -344,25 +375,17 @@ chooseRandomOutgoingConnection roadNetwork nodeCtx =
         |> Random.map Tuple.first
 
 
-buildRoute : Dict Id Lot -> RNNodeContext -> List RNNodeContext -> Maybe ParkingReservation -> Route
-buildRoute lots startNodeValue nodes parkingReservation =
+buildRoute : RNNodeContext -> List RNNodeContext -> List LMCubicSpline2d -> Route
+buildRoute startNodeValue nodes initialSplines =
     let
         nodeSplines =
             nodesToSplines
                 startNodeValue
-                (List.tail nodes |> Maybe.withDefault [])
+                nodes
                 []
 
-        parkingSpot =
-            parkingReservation |> Maybe.andThen (parkingSpotFromReservation lots)
-
         splines =
-            case parkingSpot of
-                Just spot ->
-                    List.append spot.pathToLotExit nodeSplines
-
-                Nothing ->
-                    nodeSplines
+            initialSplines ++ nodeSplines
     in
     Maybe.map2
         (\path end ->
