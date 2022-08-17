@@ -87,7 +87,6 @@ createRoute world =
                 Route.randomFromNode
                     seed
                     10
-                    world.lots
                     world.roadNetwork
                     origin
                     |> Tuple.first

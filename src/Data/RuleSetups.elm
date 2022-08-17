@@ -367,7 +367,6 @@ routeCarByDestination world position car =
                     Route.randomFromNode
                         (Random.initialSeed 666)
                         2
-                        world.lots
                         world.roadNetwork
                         nodeCtx
             in
