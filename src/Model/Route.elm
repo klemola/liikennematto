@@ -1,11 +1,13 @@
 module Model.Route exposing
-    ( Path
+    ( Destination(..)
+    , Path
     , Route(..)
     , RouteMeta
     , SplineMeta
-    , arriveToDestination
+    , arriveToParkingSpot
     , description
     , distanceToPathEnd
+    , endNode
     , endPoint
     , fromPartialRoute
     , initialRoute
@@ -20,6 +22,8 @@ module Model.Route exposing
     , sampleAhead
     , splineEndPoint
     , startNode
+    , stopAtSplineEnd
+    , updateEndNode
     )
 
 import Array exposing (Array)
@@ -57,7 +61,12 @@ import Splines
 type Route
     = Unrouted (Maybe Duration)
     | Routed RouteMeta
-    | ArrivingToDestination Path
+    | ArrivingToDestination Destination Path
+
+
+type Destination
+    = LotParkingSpot
+    | RoadNetworkNode
 
 
 type alias RouteMeta =
@@ -130,7 +139,7 @@ isRouted route =
 isArrivingToDestination : Route -> Bool
 isArrivingToDestination route =
     case route of
-        ArrivingToDestination _ ->
+        ArrivingToDestination _ _ ->
             True
 
         _ ->
@@ -142,6 +151,16 @@ startNode route =
     case route of
         Routed meta ->
             Just meta.startNode
+
+        _ ->
+            Nothing
+
+
+endNode : Route -> Maybe RNNodeContext
+endNode route =
+    case route of
+        Routed meta ->
+            Just meta.endNode
 
         _ ->
             Nothing
@@ -184,7 +203,7 @@ toPath route =
         Routed routeMeta ->
             Just routeMeta.path
 
-        ArrivingToDestination path ->
+        ArrivingToDestination _ path ->
             Just path
 
         _ ->
@@ -199,11 +218,32 @@ distanceToPathEnd route =
         Routed routeMeta ->
             Just (pathRemaining routeMeta.path |> .length)
 
-        ArrivingToDestination path ->
+        ArrivingToDestination _ path ->
             Just (pathRemaining path |> .length)
 
         _ ->
             Nothing
+
+
+pathFromCurrentSpline : Path -> Maybe Path
+pathFromCurrentSpline currentPath =
+    currentPath.currentSpline
+        |> Maybe.map
+            (\currentSpline ->
+                let
+                    currentSplineAsCubicSpline2d =
+                        currentSpline.spline
+                            |> CubicSpline2d.fromArcLengthParameterized
+                in
+                { splines = Array.empty |> Array.push currentSpline
+                , currentSplineIdx = 0
+                , currentSpline = currentPath.currentSpline
+                , parameter = currentPath.parameter
+                , startPoint = CubicSpline2d.startPoint currentSplineAsCubicSpline2d
+                , endPoint = CubicSpline2d.endPoint currentSplineAsCubicSpline2d
+                , finished = False
+                }
+            )
 
 
 type alias PathRemaining =
@@ -336,14 +376,37 @@ fromPartialRoute currentRoute nextNode others =
             )
 
 
-arriveToDestination : ParkingReservation -> Dict Id Lot -> Route
-arriveToDestination parkingReservation lots =
+stopAtSplineEnd : Route -> Route
+stopAtSplineEnd route =
+    route
+        |> toPath
+        |> Maybe.andThen pathFromCurrentSpline
+        |> Maybe.map (ArrivingToDestination RoadNetworkNode)
+        |> Maybe.withDefault initialRoute
+
+
+arriveToParkingSpot : ParkingReservation -> Dict Id Lot -> Route
+arriveToParkingSpot parkingReservation lots =
     parkingReservation
         |> parkingSpotFromReservation lots
         |> Maybe.map .pathFromLotEntry
         |> Maybe.andThen createPath
-        |> Maybe.map ArrivingToDestination
+        |> Maybe.map (ArrivingToDestination LotParkingSpot)
         |> Maybe.withDefault initialRoute
+
+
+updateEndNode : RNNodeContext -> Route -> Route
+updateEndNode newEndNode route =
+    case route of
+        Routed routeMeta ->
+            let
+                nextMeta =
+                    { routeMeta | endNode = newEndNode }
+            in
+            Routed nextMeta
+
+        _ ->
+            route
 
 
 randomConnectionsFromNode : Random.Seed -> Int -> RoadNetwork -> RNNodeContext -> List RNNodeContext -> ( List RNNodeContext, Random.Seed )
@@ -564,5 +627,14 @@ description route =
                 , ")"
                 ]
 
-        ArrivingToDestination _ ->
-            "Arriving"
+        ArrivingToDestination destinationKind _ ->
+            let
+                destinationKindDescription =
+                    case destinationKind of
+                        LotParkingSpot ->
+                            "parking spot"
+
+                        RoadNetworkNode ->
+                            "node"
+            in
+            "Arriving to " ++ destinationKindDescription

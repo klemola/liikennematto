@@ -27,6 +27,7 @@ import Model.World exposing (World)
 import QuadTree
 import Quantity
 import Random
+import Result.Extra as Result
 import Speed exposing (Speed)
 
 
@@ -74,7 +75,8 @@ generateRouteFromParkingSpot seed world parkingReservation =
 type RouteUpdateResult
     = BeginRoute
     | ReachEndNode RNNodeContext Route
-    | ArrivedAtDestination
+    | ArrivedAtParkingSpot
+    | ArrivedAtNode
     | Updated Route
 
 
@@ -124,7 +126,7 @@ carAfterRouteUpdate seed world delta car =
                                         }
 
                                     newRoute =
-                                        Route.arriveToDestination parkingReservation world.lots
+                                        Route.arriveToParkingSpot parkingReservation world.lots
                                 in
                                 Car.triggerParking car parkingReservation newRoute
                             )
@@ -133,7 +135,7 @@ carAfterRouteUpdate seed world delta car =
                 _ ->
                     setupRoute seed world nodeCtx car |> Tuple.first
 
-        ArrivedAtDestination ->
+        ArrivedAtParkingSpot ->
             let
                 timerGenerator =
                     Random.float 1500 30000 |> Random.map Duration.milliseconds
@@ -142,6 +144,9 @@ carAfterRouteUpdate seed world delta car =
                     Random.step timerGenerator seed
             in
             { car | route = Route.Unrouted (Just waitTimer) }
+
+        ArrivedAtNode ->
+            Car.triggerDespawn car
 
 
 updateRoute : Duration -> Car -> RouteUpdateResult
@@ -173,16 +178,21 @@ updateRoute delta car =
             else
                 Updated nextRoute
 
-        Route.ArrivingToDestination path ->
+        Route.ArrivingToDestination destination path ->
             let
                 nextPath =
                     updatePath car.velocity delta path
             in
             if nextPath.finished then
-                ArrivedAtDestination
+                case destination of
+                    Route.LotParkingSpot ->
+                        ArrivedAtParkingSpot
+
+                    Route.RoadNetworkNode ->
+                        ArrivedAtNode
 
             else
-                Updated (Route.ArrivingToDestination nextPath)
+                Updated (Route.ArrivingToDestination destination nextPath)
 
 
 updateTimer : Duration -> Duration -> Maybe Duration
@@ -261,20 +271,49 @@ routeTrafficControl world route =
 restoreRoute : World -> Car -> Car
 restoreRoute world car =
     if Route.isRouted car.route then
-        case validateRoute world car.route of
-            Ok _ ->
-                car
-
-            Err ( _, validNodes ) ->
-                Maybe.andThen2
-                    (Route.fromPartialRoute car.route)
-                    (List.head validNodes)
-                    (List.tail validNodes)
-                    |> Maybe.map (\nextRoute -> { car | route = nextRoute })
-                    |> Maybe.withDefaultLazy (\_ -> Car.triggerDespawn car)
+        let
+            nextRoute =
+                validateEndNode world car.route
+                    |> Result.map (\endNode -> Route.updateEndNode endNode car.route)
+                    |> Result.map
+                        (\routeWithValidEndNode ->
+                            validateRoute world routeWithValidEndNode
+                                |> Result.extract
+                                    (\( _, validNodes ) ->
+                                        Maybe.andThen2
+                                            (Route.fromPartialRoute car.route)
+                                            (List.head validNodes)
+                                            (List.tail validNodes)
+                                            |> Maybe.withDefaultLazy
+                                                (\_ ->
+                                                    Route.stopAtSplineEnd routeWithValidEndNode
+                                                )
+                                    )
+                        )
+                    |> Result.withDefault (Route.stopAtSplineEnd car.route)
+        in
+        { car | route = nextRoute }
 
     else
         car
+
+
+validateEndNode : World -> Route -> Result String RNNodeContext
+validateEndNode world route =
+    Route.endNode route
+        |> Maybe.andThen
+            (\endNode ->
+                findNodeByPosition world endNode.node.label.position
+                    |> Maybe.map
+                        (\nodeByPosition ->
+                            if nodeByPosition.node.label.kind == endNode.node.label.kind then
+                                Ok nodeByPosition
+
+                            else
+                                Err "Invalid end node"
+                        )
+            )
+        |> Maybe.withDefault (Err "End node not found")
 
 
 validateRoute : World -> Route -> Result ( String, List RNNodeContext ) Route
