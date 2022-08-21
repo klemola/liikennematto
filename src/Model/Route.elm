@@ -376,23 +376,21 @@ fromPartialRoute currentRoute nextNode others =
             )
 
 
-stopAtSplineEnd : Route -> Route
+stopAtSplineEnd : Route -> Maybe Route
 stopAtSplineEnd route =
     route
         |> toPath
         |> Maybe.andThen pathFromCurrentSpline
         |> Maybe.map (ArrivingToDestination RoadNetworkNode)
-        |> Maybe.withDefault initialRoute
 
 
-arriveToParkingSpot : ParkingReservation -> Dict Id Lot -> Route
+arriveToParkingSpot : ParkingReservation -> Dict Id Lot -> Maybe Route
 arriveToParkingSpot parkingReservation lots =
     parkingReservation
         |> parkingSpotFromReservation lots
         |> Maybe.map .pathFromLotEntry
         |> Maybe.andThen createPath
         |> Maybe.map (ArrivingToDestination LotParkingSpot)
-        |> Maybe.withDefault initialRoute
 
 
 updateEndNode : RNNodeContext -> Route -> Route
