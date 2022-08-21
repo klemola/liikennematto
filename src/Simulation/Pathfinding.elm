@@ -124,11 +124,13 @@ carAfterRouteUpdate seed world delta car =
                                         { lotId = lotId
                                         , parkingSpotId = parkingSpot.id
                                         }
-
-                                    newRoute =
-                                        Route.arriveToParkingSpot parkingReservation world.lots
                                 in
-                                Car.triggerParking car parkingReservation newRoute
+                                case Route.arriveToParkingSpot parkingReservation world.lots of
+                                    Just newRoute ->
+                                        Car.triggerParking car parkingReservation newRoute
+
+                                    Nothing ->
+                                        Car.triggerDespawn car
                             )
                         |> Maybe.withDefaultLazy (\_ -> Car.triggerWaitingForParking car nextRoute)
 
@@ -272,27 +274,31 @@ restoreRoute : World -> Car -> Car
 restoreRoute world car =
     if Route.isRouted car.route then
         let
-            nextRoute =
+            validationResult =
                 validateEndNode world car.route
                     |> Result.map (\endNode -> Route.updateEndNode endNode car.route)
                     |> Result.map
                         (\routeWithValidEndNode ->
                             validateRoute world routeWithValidEndNode
+                                -- Create a Maybe value of the valid route
+                                |> Result.map Just
+                                -- Try to recover from a partially invalid route
                                 |> Result.extract
                                     (\( _, validNodes ) ->
                                         Maybe.andThen2
                                             (Route.fromPartialRoute car.route)
                                             (List.head validNodes)
                                             (List.tail validNodes)
-                                            |> Maybe.withDefaultLazy
-                                                (\_ ->
-                                                    Route.stopAtSplineEnd routeWithValidEndNode
-                                                )
                                     )
                         )
                     |> Result.withDefault (Route.stopAtSplineEnd car.route)
         in
-        { car | route = nextRoute }
+        case validationResult of
+            Just nextRoute ->
+                { car | route = nextRoute }
+
+            Nothing ->
+                Car.triggerDespawn car
 
     else
         car
