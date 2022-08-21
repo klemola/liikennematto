@@ -59,12 +59,12 @@ suite =
                         sampleAhead =
                             Route.sampleAhead route lookAhead |> Maybe.map Tuple.first
                     in
-                    case ( Route.startNode route, sample, sampleAhead ) of
-                        ( Just origin, Just pointOnSpline, Just pointOnNextSpline ) ->
+                    case ( Route.startNodePosition route, sample, sampleAhead ) of
+                        ( Just startNodePosition, Just pointOnSpline, Just pointOnNextSpline ) ->
                             Expect.true
                                 "Expected sample ahead to provide a point further from origin"
-                                (Point2d.distanceFrom origin.node.label.position pointOnNextSpline
-                                    |> Quantity.minus (Point2d.distanceFrom origin.node.label.position pointOnSpline)
+                                (Point2d.distanceFrom startNodePosition pointOnNextSpline
+                                    |> Quantity.minus (Point2d.distanceFrom startNodePosition pointOnSpline)
                                     |> Quantity.greaterThan (Quantity.half lookAhead)
                                 )
 

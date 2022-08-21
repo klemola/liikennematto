@@ -21,7 +21,7 @@ module Model.Route exposing
     , sample
     , sampleAhead
     , splineEndPoint
-    , startNode
+    , startNodePosition
     , stopAtSplineEnd
     , updateEndNode
     )
@@ -70,7 +70,7 @@ type Destination
 
 
 type alias RouteMeta =
-    { startNode : RNNodeContext
+    { startNodePosition : LMPoint2d
     , endNode : RNNodeContext
     , path : Path
     }
@@ -146,11 +146,11 @@ isArrivingToDestination route =
             False
 
 
-startNode : Route -> Maybe RNNodeContext
-startNode route =
+startNodePosition : Route -> Maybe LMPoint2d
+startNodePosition route =
     case route of
         Routed meta ->
-            Just meta.startNode
+            Just meta.startNodePosition
 
         _ ->
             Nothing
@@ -451,7 +451,7 @@ buildRoute startNodeValue nodes initialSplines =
     Maybe.map2
         (\path end ->
             Routed
-                { startNode = startNodeValue
+                { startNodePosition = startNodeValue.node.label.position
                 , endNode = end
                 , path = path
                 }

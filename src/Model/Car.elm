@@ -182,15 +182,14 @@ unparking =
 
 unparkingCompleted : UpdateContext -> CarState -> Bool
 unparkingCompleted { route, currentPosition } _ =
-    case Route.startNode route of
-        Just startNode ->
-            Point2d.equalWithin
+    route
+        |> Route.startNodePosition
+        |> Maybe.map
+            (Point2d.equalWithin
                 (Length.meters 0.1)
-                startNode.node.label.position
                 currentPosition
-
-        Nothing ->
-            True
+            )
+        |> Maybe.withDefault True
 
 
 driving : FSM.State CarState Action UpdateContext
