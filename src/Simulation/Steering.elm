@@ -278,29 +278,24 @@ reachTargetVelocity currentVelocity targetVelocity =
 
 accelerateToZeroOverDistance : Speed -> Length -> Acceleration
 accelerateToZeroOverDistance currentVelocity (Quantity distanceFromTarget) =
-    if distanceFromTarget < 0.05 then
-        -- Very close to the target; try to reach zero velocity
-        reachTargetVelocity currentVelocity Quantity.zero
+    let
+        (Quantity startingSpeed) =
+            currentVelocity
 
-    else
-        let
-            (Quantity startingSpeed) =
-                currentVelocity
+        finalSpeed =
+            if distanceFromTarget > 1 && abs startingSpeed < 1 then
+                -- (Nearly) stopped before reaching the target; accelerate to move towards the target
+                Speed.inMetersPerSecond maxVelocity * 0.5
 
-            finalSpeed =
-                if abs startingSpeed < 0.1 then
-                    -- (Nearly) stopped before reaching the target; accelerate to move towards the target
-                    Speed.inMetersPerSecond maxVelocity * 0.1
+            else
+                -- Already in motion; try to achieve optimal deceleration
+                0
 
-                else
-                    -- Already in motion; try to achieve optimal deceleration
-                    0
-
-            -- Linear acceleration (or deceleration) for a distance from a starting speed to final speed
-            -- Original formula: a = (Vf*Vf - Vi*Vi)/(2 * d)
-            -- (where Vf = final speed, Vi = starting speed, d = distance, and the result a is acceleration)
-            -- ...but with `abs` on the starting speed to handle negative velocity
-            acceleration =
-                (finalSpeed * finalSpeed - startingSpeed * abs startingSpeed) / (2 * distanceFromTarget)
-        in
-        Quantity acceleration |> Quantity.clamp maxDeceleration maxAcceleration
+        -- Linear acceleration (or deceleration) for a distance from a starting speed to final speed
+        -- Original formula: a = (Vf*Vf - Vi*Vi)/(2 * d)
+        -- (where Vf = final speed, Vi = starting speed, d = distance, and the result a is acceleration)
+        -- ...but with `abs` on the starting speed to handle negative velocity
+        acceleration =
+            (finalSpeed * finalSpeed - startingSpeed * abs startingSpeed) / (2 * distanceFromTarget)
+    in
+    Quantity acceleration |> Quantity.clamp maxDeceleration maxAcceleration
