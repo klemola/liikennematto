@@ -73,7 +73,7 @@ suite =
                         )
                 )
             , test "allow movement if there's no need to yield at sign"
-                (\_ -> Expect.equal (Traffic.checkRules yieldWithoutPriorityTrafficSetup) Steering.none)
+                (\_ -> Expect.equal (Traffic.checkRules yieldWithoutPriorityTrafficSetup) Steering.accelerate)
             ]
         , describe "Checking traffic rules"
             [ test "can prevent car movement"

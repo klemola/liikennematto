@@ -9,6 +9,7 @@ module Model.Route exposing
     , distanceToPathEnd
     , endNode
     , endPoint
+    , fromNodesAndParameter
     , fromPartialRoute
     , initialRoute
     , isArrivingToDestination
@@ -376,6 +377,14 @@ fromPartialRoute currentRoute nextNode others =
             )
 
 
+{-| A low level constructor for tests
+-}
+fromNodesAndParameter : RNNodeContext -> List RNNodeContext -> Length -> Route
+fromNodesAndParameter startNode otherNodes parameter =
+    buildRoute startNode otherNodes []
+        |> setParameter parameter
+
+
 stopAtSplineEnd : Route -> Maybe Route
 stopAtSplineEnd route =
     route
@@ -402,6 +411,26 @@ updateEndNode newEndNode route =
                     { routeMeta | endNode = newEndNode }
             in
             Routed nextMeta
+
+        _ ->
+            route
+
+
+setParameter : Length -> Route -> Route
+setParameter parameter route =
+    case route of
+        Routed meta ->
+            let
+                path =
+                    meta.path
+
+                nextPath =
+                    { path | parameter = parameter }
+            in
+            Routed { meta | path = nextPath }
+
+        ArrivingToDestination destination path ->
+            ArrivingToDestination destination { path | parameter = parameter }
 
         _ ->
             route
