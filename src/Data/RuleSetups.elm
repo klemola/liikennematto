@@ -24,13 +24,14 @@ import Data.Worlds
         , worldWithThreeWayIntersection
         )
 import Dict
+import Duration
+import Length exposing (Length)
 import Model.Car as Car exposing (Car)
 import Model.Geometry exposing (LMPoint2d)
-import Model.RoadNetwork as RoadNetwork
+import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext)
 import Model.Route as Route
 import Model.World as World exposing (World)
 import Point2d
-import Quantity
 import Random
 import Simulation.Steering as Steering
 import Simulation.Traffic as Traffic exposing (RuleSetup)
@@ -59,28 +60,51 @@ connectedRoadsSetup =
 collisionSetupPathsIntersect : RuleSetup
 collisionSetupPathsIntersect =
     let
-        -- TODO: Fix. the route cannot be random and it should start from where the car is (adjust parameter)
         world =
             worldWithFourWayIntersection
 
         car =
-            buildCar CarA1 (Point2d.meters 20.4 133.4) (Angle.degrees 30) Steering.maxVelocity
-                |> routeCarByDestination world (Point2d.meters 26 144)
+            buildCar CarA1 (Point2d.meters 16 134) (Angle.degrees 0) Steering.maxVelocity
+
+        routedCar =
+            case
+                positionsToNodes world
+                    [ Point2d.meters 16 134
+                    , Point2d.meters 26 144
+                    ]
+            of
+                Just ( startNode, otherNodes ) ->
+                    car |> routeCarByNodes startNode otherNodes (Length.meters 4)
+
+                Nothing ->
+                    car
 
         otherCar =
-            buildCar CarB2 (Point2d.meters 30 138) (Angle.degrees 180) Steering.maxVelocity
-                |> routeCarByDestination world (Point2d.meters 16 138)
+            buildCar CarB2 (Point2d.meters 32 138) (Angle.degrees 180) Steering.maxVelocity
+
+        routedOtherCar =
+            case
+                positionsToNodes world
+                    [ Point2d.meters 32 138
+                    , Point2d.meters 16 138
+                    ]
+            of
+                Just ( startNode, otherNodes ) ->
+                    otherCar |> routeCarByNodes startNode otherNodes (Length.meters 4)
+
+                Nothing ->
+                    otherCar
 
         otherCars =
-            [ otherCar
+            [ routedOtherCar
             ]
 
         worldWithCars =
             world
-                |> World.setCar car
-                |> World.setCar otherCar
+                |> World.setCar routedCar
+                |> World.setCar routedOtherCar
     in
-    RuleSetup worldWithCars car otherCars
+    RuleSetup worldWithCars routedCar otherCars
 
 
 collisionSetupNearCollision : RuleSetup
@@ -90,23 +114,47 @@ collisionSetupNearCollision =
             worldWithFourWayIntersection
 
         car =
-            buildCar CarA1 (Point2d.meters 22 133.8) (Angle.degrees 45) Steering.maxVelocity
-                |> routeCarByDestination world (Point2d.meters 26 144)
+            buildCar CarA1 (Point2d.meters 16 134) (Angle.degrees 0) Steering.maxVelocity
+
+        routedCar =
+            case
+                positionsToNodes world
+                    [ Point2d.meters 16 134
+                    , Point2d.meters 26 144
+                    ]
+            of
+                Just ( startNode, otherNodes ) ->
+                    car |> routeCarByNodes startNode otherNodes (Length.meters 6)
+
+                Nothing ->
+                    car
 
         otherCar =
-            buildCar CarB2 (Point2d.meters 26 138) (Angle.degrees 180) Steering.maxVelocity
-                |> routeCarByDestination world (Point2d.meters 16 138)
+            buildCar CarB2 (Point2d.meters 32 138) (Angle.degrees 180) Steering.maxVelocity
+
+        routedOtherCar =
+            case
+                positionsToNodes world
+                    [ Point2d.meters 32 138
+                    , Point2d.meters 16 138
+                    ]
+            of
+                Just ( startNode, otherNodes ) ->
+                    otherCar |> routeCarByNodes startNode otherNodes (Length.meters 6)
+
+                Nothing ->
+                    otherCar
 
         otherCars =
-            [ otherCar
+            [ routedOtherCar
             ]
 
         worldWithCars =
             world
-                |> World.setCar car
-                |> World.setCar otherCar
+                |> World.setCar routedCar
+                |> World.setCar routedOtherCar
     in
-    RuleSetup worldWithCars car otherCars
+    RuleSetup worldWithCars routedCar otherCars
 
 
 collisionSetupCollided : RuleSetup
@@ -116,23 +164,47 @@ collisionSetupCollided =
             worldWithFourWayIntersection
 
         car =
-            buildCar CarA1 (Point2d.meters 26 134.6) (Angle.degrees 90) Steering.maxVelocity
-                |> routeCarByDestination world (Point2d.meters 26 144)
+            buildCar CarA1 (Point2d.meters 16 134) (Angle.degrees 0) Steering.maxVelocity
+
+        routedCar =
+            case
+                positionsToNodes world
+                    [ Point2d.meters 16 134
+                    , Point2d.meters 26 144
+                    ]
+            of
+                Just ( startNode, otherNodes ) ->
+                    car |> routeCarByNodes startNode otherNodes (Length.meters 7)
+
+                Nothing ->
+                    car
 
         otherCar =
-            buildCar CarB2 (Point2d.meters 25.2 138) (Angle.degrees 180) Steering.maxVelocity
-                |> routeCarByDestination world (Point2d.meters 16 138)
+            buildCar CarB2 (Point2d.meters 32 138) (Angle.degrees 180) Steering.maxVelocity
+
+        routedOtherCar =
+            case
+                positionsToNodes world
+                    [ Point2d.meters 32 138
+                    , Point2d.meters 16 138
+                    ]
+            of
+                Just ( startNode, otherNodes ) ->
+                    otherCar |> routeCarByNodes startNode otherNodes (Length.meters 6.5)
+
+                Nothing ->
+                    otherCar
 
         otherCars =
-            [ otherCar
+            [ routedOtherCar
             ]
 
         worldWithCars =
             world
-                |> World.setCar car
-                |> World.setCar otherCar
+                |> World.setCar routedCar
+                |> World.setCar routedOtherCar
     in
-    RuleSetup worldWithCars car otherCars
+    RuleSetup worldWithCars routedCar otherCars
 
 
 noCollisionSetupDifferentLanes : RuleSetup
@@ -230,8 +302,20 @@ yieldWithPriorityTrafficSetup1 =
             worldWithThreeWayIntersection
 
         car =
-            buildCar CarA1 (Point2d.meters 28 118) (Angle.degrees 0) Quantity.zero
-                |> routeCarByDestination world (Point2d.meters 8 118)
+            buildCar CarA1 (Point2d.meters 8 118) (Angle.degrees 0) Steering.maxVelocity
+
+        routedCar =
+            case
+                positionsToNodes world
+                    [ Point2d.meters 8 118
+                    , Point2d.meters 32 118
+                    ]
+            of
+                Just ( startNode, otherNodes ) ->
+                    car |> routeCarByNodes startNode otherNodes (Length.meters 22)
+
+                Nothing ->
+                    car
 
         otherCar =
             buildCar CarB2 (Point2d.meters 42 108.4) (Angle.degrees 90) Steering.maxVelocity
@@ -241,10 +325,10 @@ yieldWithPriorityTrafficSetup1 =
 
         worldWithCars =
             world
-                |> World.setCar car
+                |> World.setCar routedCar
                 |> World.setCar otherCar
     in
-    RuleSetup worldWithCars car otherCars
+    RuleSetup worldWithCars routedCar otherCars
 
 
 yieldWithPriorityTrafficSetup2 : RuleSetup
@@ -254,8 +338,20 @@ yieldWithPriorityTrafficSetup2 =
             worldWithThreeWayIntersection
 
         car =
-            buildCar CarA1 (Point2d.meters 28 118) (Angle.degrees 0) Quantity.zero
-                |> routeCarByDestination world (Point2d.meters 8 118)
+            buildCar CarA1 (Point2d.meters 8 118) (Angle.degrees 0) Steering.maxVelocity
+
+        routedCar =
+            case
+                positionsToNodes world
+                    [ Point2d.meters 8 118
+                    , Point2d.meters 32 118
+                    ]
+            of
+                Just ( startNode, otherNodes ) ->
+                    car |> routeCarByNodes startNode otherNodes (Length.meters 22)
+
+                Nothing ->
+                    car
 
         otherCar =
             buildCar CarB2 (Point2d.meters 38 128.4) (Angle.degrees 270) Steering.maxVelocity
@@ -265,10 +361,10 @@ yieldWithPriorityTrafficSetup2 =
 
         worldWithCars =
             world
-                |> World.setCar car
+                |> World.setCar routedCar
                 |> World.setCar otherCar
     in
-    RuleSetup worldWithCars car otherCars
+    RuleSetup worldWithCars routedCar otherCars
 
 
 yieldWithoutPriorityTrafficSetup : RuleSetup
@@ -278,13 +374,29 @@ yieldWithoutPriorityTrafficSetup =
             worldWithThreeWayIntersection
 
         car =
-            buildCar CarA1 (Point2d.meters 28 118) (Angle.degrees 0) Quantity.zero
+            buildCar CarA1 (Point2d.meters 8 118) (Angle.degrees 0) (Speed.metersPerSecond 0)
+
+        routedCar =
+            case
+                positionsToNodes world
+                    [ Point2d.meters 8 118
+                    , Point2d.meters 32 118
+                    ]
+            of
+                Just ( startNode, otherNodes ) ->
+                    car |> routeCarByNodes startNode otherNodes (Length.meters 20)
+
+                Nothing ->
+                    car
+
+        otherCars =
+            []
 
         worldWithCars =
             world
-                |> World.setCar car
+                |> World.setCar routedCar
     in
-    RuleSetup worldWithCars car []
+    RuleSetup worldWithCars routedCar otherCars
 
 
 yieldSlowDownSetup : RuleSetup
@@ -294,17 +406,29 @@ yieldSlowDownSetup =
             worldWithThreeWayIntersection
 
         car =
-            buildCar CarA1 (Point2d.meters 24 118) (Angle.degrees 0) Steering.maxVelocity
-                |> routeCarByDestination world (Point2d.meters 8 118)
+            buildCar CarA1 (Point2d.meters 8 118) (Angle.degrees 0) Steering.maxVelocity
+
+        routedCar =
+            case
+                positionsToNodes world
+                    [ Point2d.meters 8 118
+                    , Point2d.meters 32 118
+                    ]
+            of
+                Just ( startNode, otherNodes ) ->
+                    car |> routeCarByNodes startNode otherNodes (Length.meters 18)
+
+                Nothing ->
+                    car
 
         otherCars =
             []
 
         worldWithCars =
             world
-                |> World.setCar car
+                |> World.setCar routedCar
     in
-    RuleSetup worldWithCars car otherCars
+    RuleSetup worldWithCars routedCar otherCars
 
 
 largeWorldSetup : Int -> RuleSetup
@@ -371,9 +495,36 @@ routeCarByDestination world position car =
                         nodeCtx
             in
             { car | route = route }
+                |> Traffic.applySteering (Duration.milliseconds 16) Steering.none
 
         Nothing ->
             car
+
+
+positionsToNodes : World -> List LMPoint2d -> Maybe ( RNNodeContext, List RNNodeContext )
+positionsToNodes world nodePositions =
+    case
+        nodePositions
+            |> List.filterMap (RoadNetwork.findNodeByPosition world.roadNetwork)
+    of
+        firstNode :: others ->
+            Just ( firstNode, others )
+
+        _ ->
+            Nothing
+
+
+routeCarByNodes : RNNodeContext -> List RNNodeContext -> Length -> Car -> Car
+routeCarByNodes node others parameter car =
+    let
+        route =
+            Route.fromNodesAndParameter
+                node
+                others
+                parameter
+    in
+    { car | route = route }
+        |> Traffic.applySteering (Duration.milliseconds 16) Steering.none
 
 
 spawnCars : Int -> World -> Random.Seed -> World

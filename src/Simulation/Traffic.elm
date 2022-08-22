@@ -2,6 +2,7 @@ module Simulation.Traffic exposing
     ( Rule(..)
     , RuleSetup
     , addLotResident
+    , applySteering
     , checkRules
     , rerouteCarsIfNeeded
     , spawnCar
