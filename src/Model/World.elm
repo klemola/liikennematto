@@ -1,6 +1,7 @@
 module Model.World exposing
     ( World
     , empty
+    , findNodeByPosition
     , hasLot
     , isEmptyArea
     , removeCar
@@ -9,13 +10,15 @@ module Model.World exposing
     , setLot
     )
 
+import BoundingBox2d
 import Common
 import Dict exposing (Dict)
 import Graph
+import Length
 import Model.Car as Car exposing (Car)
 import Model.Cell exposing (Cell)
 import Model.Entity exposing (Id)
-import Model.Geometry exposing (LMBoundingBox2d)
+import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
 import Model.Lookup
     exposing
         ( CarPositionLookup
@@ -24,9 +27,10 @@ import Model.Lookup
         , roadNetworkLookup
         )
 import Model.Lot as Lot exposing (Lot)
-import Model.RoadNetwork as RoadNetwork exposing (RoadNetwork)
+import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext, RoadNetwork)
 import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.TrafficLight exposing (TrafficLights)
+import QuadTree
 import Set
 
 
@@ -79,6 +83,16 @@ isEmptyArea testAreaBB world =
                 |> List.any (Common.boundingBoxOverlaps testAreaBB)
     in
     Tilemap.inBounds world.tilemap testAreaBB && not lotOverlap && not tilemapOverlap
+
+
+findNodeByPosition : World -> LMPoint2d -> Maybe RNNodeContext
+findNodeByPosition { roadNetworkLookup, roadNetwork } nodePosition =
+    roadNetworkLookup
+        |> QuadTree.neighborsWithin
+            (Length.meters 1)
+            (BoundingBox2d.singleton nodePosition)
+        |> List.head
+        |> Maybe.andThen (.id >> RoadNetwork.findNodeByNodeId roadNetwork)
 
 
 
