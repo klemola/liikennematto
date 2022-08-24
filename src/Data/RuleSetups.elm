@@ -8,6 +8,7 @@ module Data.RuleSetups exposing
     , noCollisionSetupDifferentLanes
     , noCollisionSetupIntersection
     , redTrafficLightsSetup
+    , routeVisualizationSetup
     , yieldSlowDownSetup
     , yieldWithPriorityTrafficSetup1
     , yieldWithPriorityTrafficSetup2
@@ -447,6 +448,22 @@ largeWorldSetup carsAmount =
         [] ->
             -- Dummy value, should never get here
             connectedRoadsSetup
+
+
+routeVisualizationSetup : RuleSetup
+routeVisualizationSetup =
+    let
+        world =
+            largeWorld
+
+        car =
+            buildCar CarA1 (Point2d.meters 8 6) (Angle.degrees 0) Steering.maxVelocity
+
+        worldWithCars =
+            world
+                |> World.setCar car
+    in
+    RuleSetup worldWithCars car []
 
 
 

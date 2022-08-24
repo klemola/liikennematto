@@ -1,4 +1,9 @@
-module Render.Conversion exposing (pixelsToMetersRatio, pointToPixels, toPixelsValue)
+module Render.Conversion exposing
+    ( pixelsToMetersRatio
+    , pointToPixels
+    , toMetersValue
+    , toPixelsValue
+    )
 
 import Length exposing (Length)
 import Model.Geometry exposing (LMPoint2d)
@@ -24,3 +29,10 @@ pointToPixels point =
     point
         |> Point2d.at pixelsToMetersRatio
         |> Point2d.toPixels
+
+
+toMetersValue : Float -> Length
+toMetersValue pixels =
+    pixels
+        |> Pixels.pixels
+        |> Quantity.at_ pixelsToMetersRatio

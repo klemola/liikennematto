@@ -8,7 +8,6 @@ module Simulation.Pathfinding exposing
     )
 
 import Array
-import BoundingBox2d
 import Dict
 import Duration exposing (Duration)
 import Length
@@ -23,8 +22,7 @@ import Model.RoadNetwork as RoadNetwork
         , TrafficControl
         )
 import Model.Route as Route exposing (Route)
-import Model.World exposing (World)
-import QuadTree
+import Model.World as World exposing (World)
 import Quantity
 import Random
 import Result.Extra as Result
@@ -259,7 +257,7 @@ routeTrafficControl : World -> Route -> Maybe ( TrafficControl, LMPoint2d )
 routeTrafficControl world route =
     route
         |> Route.splineEndPoint
-        |> Maybe.andThen (findNodeByPosition world)
+        |> Maybe.andThen (World.findNodeByPosition world)
         |> Maybe.map
             (\nodeCtx ->
                 let
@@ -309,7 +307,7 @@ validateEndNode world route =
     Route.endNode route
         |> Maybe.andThen
             (\endNode ->
-                findNodeByPosition world endNode.node.label.position
+                World.findNodeByPosition world endNode.node.label.position
                     |> Maybe.map
                         (\nodeByPosition ->
                             if nodeByPosition.node.label.kind == endNode.node.label.kind then
@@ -340,7 +338,7 @@ validateRouteHelper world previousNodeCtx remainingEndPoints validNodes =
             Ok validNodes
 
         endPoint :: others ->
-            case findNodeByPosition world endPoint of
+            case World.findNodeByPosition world endPoint of
                 Just currentNodeCtx ->
                     if
                         previousNodeCtx
@@ -384,13 +382,3 @@ isDisconnectedFrom currentNodeCtx previousNodeCtx =
         |> RoadNetwork.getOutgoingConnections
         |> List.member currentNodeCtx.node.id
         |> not
-
-
-findNodeByPosition : World -> LMPoint2d -> Maybe RNNodeContext
-findNodeByPosition { roadNetworkLookup, roadNetwork } nodePosition =
-    roadNetworkLookup
-        |> QuadTree.neighborsWithin
-            (Length.meters 1)
-            (BoundingBox2d.singleton nodePosition)
-        |> List.head
-        |> Maybe.andThen (.id >> RoadNetwork.findNodeByNodeId roadNetwork)

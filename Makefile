@@ -47,6 +47,6 @@ review:
 	elm-review --fix
 
 stats:
-	cloc --exclude-dir=Data,assets src
+	cloc --exclude-dir=Data,Vendor,assets src
 
 .PHONY: build check dev serve test benchmark devtools review stats
