@@ -8,6 +8,7 @@ import Html exposing (Html)
 import Html.Events.Extra.Mouse as MouseEvents
 import Maybe.Extra as Maybe
 import Model.Car exposing (Car)
+import Model.Geometry exposing (LMPoint2d)
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Route as Route
 import Model.World as World exposing (World)
@@ -22,6 +23,13 @@ type alias Model =
     { world : World
     , activeCar : Car
     , cache : RenderCache
+    , clicked : Maybe Clicked
+    }
+
+
+type alias Clicked =
+    { position : LMPoint2d
+    , nodeId : Maybe Int
     }
 
 
@@ -34,6 +42,7 @@ initialModel =
     { world = ruleSetup.world
     , activeCar = ruleSetup.activeCar
     , cache = RenderCache.new ruleSetup.world
+    , clicked = Nothing
     }
 
 
@@ -62,23 +71,21 @@ update msg model =
                 ( offsetX, offsetY ) =
                     event.offsetPos
 
-                clickMeters =
+                clickWorldPosition =
                     Point2d.xy
                         (Render.Conversion.toMetersValue offsetX)
                         (model.cache.tilemapHeight |> Quantity.minus (Render.Conversion.toMetersValue offsetY))
+
+                clicked =
+                    { position = clickWorldPosition
+                    , nodeId = selectedNode |> Maybe.map (.node >> .id)
+                    }
 
                 carNode =
                     World.findNodeByPosition world activeCar.position
 
                 selectedNode =
-                    World.findNodeByPosition world clickMeters
-
-                _ =
-                    Debug.log "world clicked"
-                        ( clickMeters
-                        , carNode |> Maybe.map (.node >> .id)
-                        , selectedNode |> Maybe.map (.node >> .id)
-                        )
+                    World.findNodeByPosition world clickWorldPosition
 
                 nextRoute =
                     Maybe.andThen2
@@ -89,13 +96,9 @@ update msg model =
                         selectedNode
                         |> Maybe.map
                             (\( start, nodes ) ->
-                                let
-                                    _ =
-                                        Debug.log "nodes" ( List.map (.node >> .id) nodes, List.length nodes )
-                                in
                                 Route.fromNodesAndParameter start nodes Quantity.zero
                             )
-                        |> Maybe.withDefault (Debug.log "no path found" Route.initialRoute)
+                        |> Maybe.withDefault Route.initialRoute
 
                 nextCar =
                     { activeCar | route = nextRoute }
@@ -103,7 +106,13 @@ update msg model =
                 nextWorld =
                     World.setCar nextCar world
             in
-            ( { model | world = nextWorld, activeCar = nextCar }, Cmd.none )
+            ( { model
+                | world = nextWorld
+                , activeCar = nextCar
+                , clicked = Just clicked
+              }
+            , Cmd.none
+            )
 
 
 view : Model -> Html Msg
@@ -122,19 +131,29 @@ view model =
             Render.Debug.view
                 world
                 model.cache
-                { showRoadNetwork = False, showCarDebugVisuals = True }
+                { showRoadNetwork = True, showCarDebugVisuals = True }
                 |> Element.html
     in
-    Html.div [ MouseEvents.onClick WorldClicked ]
-        [ Render.view world model.cache
-            |> Element.html
-            |> Element.el
-                [ Element.width (Element.px renderWidth)
-                , Element.height (Element.px renderHeight)
-                , Element.inFront renderDebug
-                ]
-            |> Element.layout
-                [ Element.width Element.fill
-                , Element.height Element.fill
-                ]
+    Html.div []
+        [ Html.div [ MouseEvents.onClick WorldClicked ]
+            [ Render.view world model.cache
+                |> Element.html
+                |> Element.el
+                    [ Element.width (Element.px renderWidth)
+                    , Element.height (Element.px renderHeight)
+                    , Element.inFront renderDebug
+                    ]
+                |> Element.layout
+                    [ Element.width Element.fill
+                    , Element.height Element.fill
+                    ]
+            ]
+        , Html.pre []
+            (case model.clicked |> Maybe.andThen .nodeId of
+                Just nodeId ->
+                    [ Html.text ("Node id: " ++ String.fromInt nodeId) ]
+
+                Nothing ->
+                    []
+            )
         ]
