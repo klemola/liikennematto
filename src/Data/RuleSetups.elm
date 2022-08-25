@@ -19,7 +19,8 @@ import Angle exposing (Angle)
 import Data.Cars exposing (testCar)
 import Data.Worlds
     exposing
-        ( largeWorld
+        ( disconnectedWorld
+        , largeWorld
         , simpleWorld
         , worldWithFourWayIntersection
         , worldWithThreeWayIntersection
@@ -454,7 +455,7 @@ routeVisualizationSetup : RuleSetup
 routeVisualizationSetup =
     let
         world =
-            largeWorld
+            disconnectedWorld
 
         car =
             buildCar CarA1 (Point2d.meters 8 6) (Angle.degrees 0) Steering.maxVelocity

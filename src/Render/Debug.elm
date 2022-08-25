@@ -119,14 +119,14 @@ renderRoadNetwork tilemapHeightPixels roadNetwork =
                                 [ Attributes.r <| String.fromFloat radius
                                 , Attributes.cx <| String.fromFloat nodeXY.x
                                 , Attributes.cy <| String.fromFloat (tilemapHeightPixels - nodeXY.y)
-                                , Attributes.fill <| Color.toCssString <| nodeColor kind
+                                , Attributes.fill <| Color.toCssString <| Colors.withAlpha 0.5 <| nodeColor kind
                                 ]
                                 []
                             , Svg.circle
                                 [ Attributes.r <| String.fromFloat (radius / 3)
                                 , Attributes.cx <| String.fromFloat helperXY.x
                                 , Attributes.cy <| String.fromFloat (tilemapHeightPixels - helperXY.y)
-                                , Attributes.fill Colors.gray4CSS
+                                , Attributes.fill <| Color.toCssString <| Colors.withAlpha 0.75 Colors.gray4
                                 ]
                                 []
                             ]
@@ -165,7 +165,7 @@ renderRoadNetwork tilemapHeightPixels roadNetwork =
                                 in
                                 ( "Edge-" ++ String.fromInt fromNodeCtx.node.id ++ String.fromInt toNodeCtx.node.id
                                 , Svg.path
-                                    [ Attributes.stroke <| Color.toCssString Colors.orange
+                                    [ Attributes.stroke <| Color.toCssString <| Colors.withAlpha 0.35 Colors.orange
                                     , Attributes.strokeWidth <| "2"
                                     , Attributes.d <| "M " ++ fromStr ++ " L " ++ toStr
                                     ]

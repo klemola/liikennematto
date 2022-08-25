@@ -37,11 +37,13 @@ benchmark:
 	elm make benchmarks/RoadNetworkBenchmark.elm --optimize --output build/benchmarks/road_network.html
 	elm make benchmarks/TrafficBenchmark.elm --optimize --output build/benchmarks/traffic.html
 	elm make benchmarks/SplineBenchmark.elm --optimize --output build/benchmarks/splines.html
+	elm make benchmarks/PathfindingAndRouteBenchmark.elm --optimize --output build/benchmarks/pathfinding_route.html
 
 devtools:
 	elm make devtools/RenderFixture.elm --output build/render_fixture.html
 	elm make devtools/LotsGallery.elm --output build/lots_debug.html
 	elm make devtools/PathfindingVisualization.elm --output build/pathfinding_visualization.html
+	elm make devtools/RouteVisualization.elm --output build/route_visualization.html
 
 review:
 	elm-review --fix
