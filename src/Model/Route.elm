@@ -112,6 +112,232 @@ initialRoute =
 
 
 --
+-- Construct a route
+--
+
+
+fromPartialRoute : Route -> RNNodeContext -> List RNNodeContext -> Maybe Route
+fromPartialRoute currentRoute nextNode others =
+    currentRoute
+        |> toPath
+        |> Maybe.andThen
+            (\path ->
+                path.currentSpline
+                    |> Maybe.map (Tuple.pair path.parameter)
+            )
+        |> Maybe.map
+            (\( parameter, currentSpline ) ->
+                let
+                    initialSplines =
+                        distanceToSplineEnd currentSpline parameter |> Tuple.second |> List.singleton
+                in
+                buildRoute nextNode others initialSplines
+            )
+
+
+{-| A low level constructor for tests
+-}
+fromNodesAndParameter : RNNodeContext -> List RNNodeContext -> Length -> Route
+fromNodesAndParameter startNode otherNodes parameter =
+    buildRoute startNode otherNodes []
+        |> setParameter parameter
+
+
+stopAtSplineEnd : Route -> Maybe Route
+stopAtSplineEnd route =
+    route
+        |> toPath
+        |> Maybe.andThen pathFromCurrentSpline
+        |> Maybe.map (ArrivingToDestination RoadNetworkNode)
+
+
+arriveToParkingSpot : ParkingReservation -> Dict Id Lot -> Maybe Route
+arriveToParkingSpot parkingReservation lots =
+    parkingReservation
+        |> parkingSpotFromReservation lots
+        |> Maybe.map .pathFromLotEntry
+        |> Maybe.andThen createPath
+        |> Maybe.map (ArrivingToDestination LotParkingSpot)
+
+
+buildRoute : RNNodeContext -> List RNNodeContext -> List LMCubicSpline2d -> Route
+buildRoute startNodeValue nodes initialSplines =
+    let
+        nodeSplines =
+            nodesToSplines
+                startNodeValue
+                nodes
+                []
+
+        splines =
+            initialSplines ++ nodeSplines
+    in
+    Maybe.map2
+        (\path end ->
+            Routed
+                { startNodePosition = startNodeValue.node.label.position
+                , endNode = end
+                , path = path
+                }
+        )
+        (createPath splines)
+        (List.last nodes)
+        |> Maybe.withDefault initialRoute
+
+
+nodesToSplines : RNNodeContext -> List RNNodeContext -> List LMCubicSpline2d -> List LMCubicSpline2d
+nodesToSplines last remaining splines =
+    case remaining of
+        [] ->
+            splines
+
+        current :: others ->
+            let
+                spline =
+                    Splines.toNode
+                        { origin = last.node.label.position
+                        , direction = last.node.label.direction
+                        }
+                        current
+            in
+            nodesToSplines current others (splines ++ [ spline ])
+
+
+createPath :
+    List LMCubicSpline2d
+    -> Maybe Path
+createPath splines =
+    let
+        pathSplines =
+            toPathSplines splines Array.empty
+    in
+    Maybe.map2
+        (\firstSpline lastSpline ->
+            { splines = pathSplines
+            , currentSplineIdx = 0
+            , currentSpline = Just firstSpline
+            , parameter = Quantity.zero
+            , startPoint =
+                firstSpline.spline
+                    |> CubicSpline2d.fromArcLengthParameterized
+                    |> CubicSpline2d.startPoint
+            , endPoint =
+                lastSpline.spline
+                    |> CubicSpline2d.fromArcLengthParameterized
+                    |> CubicSpline2d.endPoint
+            , finished = False
+            }
+        )
+        (Array.get 0 pathSplines)
+        (Array.get (Array.length pathSplines - 1) pathSplines)
+
+
+toPathSplines : List LMCubicSpline2d -> Array SplineMeta -> Array SplineMeta
+toPathSplines remaining acc =
+    case remaining of
+        current :: rest ->
+            let
+                nextAcc =
+                    case CubicSpline2d.nondegenerate current of
+                        Ok ndSpline ->
+                            let
+                                alpSpline =
+                                    CubicSpline2d.arcLengthParameterized
+                                        { maxError = maxALPError }
+                                        ndSpline
+
+                                splineProps =
+                                    { spline = alpSpline
+                                    , length = CubicSpline2d.arcLength alpSpline
+                                    , endPoint = CubicSpline2d.endPoint current
+                                    }
+                            in
+                            Array.push splineProps acc
+
+                        Err _ ->
+                            acc
+            in
+            toPathSplines
+                rest
+                nextAcc
+
+        [] ->
+            acc
+
+
+parkingSpotFromReservation : Dict Id Lot -> ParkingReservation -> Maybe ParkingSpot
+parkingSpotFromReservation lots { lotId, parkingSpotId } =
+    lots
+        |> Dict.get lotId
+        |> Maybe.andThen (\lot -> Lot.parkingSpotById lot parkingSpotId)
+
+
+
+--
+-- Random routes
+--
+
+
+randomFromNode : Random.Seed -> Int -> RoadNetwork -> RNNodeContext -> ( Route, Random.Seed )
+randomFromNode seed maxConnections roadNetwork nodeCtx =
+    let
+        ( nodes, nextSeed ) =
+            randomConnectionsFromNode seed maxConnections roadNetwork nodeCtx []
+    in
+    ( buildRoute nodeCtx nodes [], nextSeed )
+
+
+randomFromParkedAtLot : Random.Seed -> Int -> ParkingReservation -> Dict Id Lot -> RoadNetwork -> RNNodeContext -> Route
+randomFromParkedAtLot seed maxConnections parkingReservation lots roadNetwork nodeCtx =
+    let
+        ( nodes, _ ) =
+            randomConnectionsFromNode seed maxConnections roadNetwork nodeCtx []
+
+        parkingSpot =
+            parkingSpotFromReservation lots parkingReservation
+
+        initialSplines =
+            case parkingSpot of
+                Just spot ->
+                    spot.pathToLotExit
+
+                Nothing ->
+                    []
+    in
+    buildRoute nodeCtx nodes initialSplines
+
+
+randomConnectionsFromNode : Random.Seed -> Int -> RoadNetwork -> RNNodeContext -> List RNNodeContext -> ( List RNNodeContext, Random.Seed )
+randomConnectionsFromNode seed maxConnections roadNetwork currentNodeCtx nodes =
+    if maxConnections == 0 then
+        ( nodes, seed )
+
+    else
+        let
+            randomConnectionGenerator =
+                chooseRandomOutgoingConnection roadNetwork currentNodeCtx
+
+            ( connection, nextSeed ) =
+                Random.step randomConnectionGenerator seed
+        in
+        case connection of
+            Nothing ->
+                ( nodes, nextSeed )
+
+            Just node ->
+                randomConnectionsFromNode nextSeed (maxConnections - 1) roadNetwork node (nodes ++ [ node ])
+
+
+chooseRandomOutgoingConnection : RoadNetwork -> RNNodeContext -> Random.Generator (Maybe RNNodeContext)
+chooseRandomOutgoingConnection roadNetwork nodeCtx =
+    RoadNetwork.getOutgoingConnections nodeCtx
+        |> List.filterMap (RoadNetwork.findNodeByNodeId roadNetwork)
+        |> Random.List.choose
+        |> Random.map Tuple.first
+
+
+
+--
 -- Queries
 --
 
@@ -325,95 +551,8 @@ distanceToSplineEnd splineMeta parameter =
 
 
 --
--- Constructors
+-- Update
 --
-
-
-randomFromNode : Random.Seed -> Int -> RoadNetwork -> RNNodeContext -> ( Route, Random.Seed )
-randomFromNode seed maxConnections roadNetwork nodeCtx =
-    let
-        ( nodes, nextSeed ) =
-            randomConnectionsFromNode seed maxConnections roadNetwork nodeCtx []
-    in
-    ( buildRoute nodeCtx nodes [], nextSeed )
-
-
-randomFromParkedAtLot : Random.Seed -> Int -> ParkingReservation -> Dict Id Lot -> RoadNetwork -> RNNodeContext -> Route
-randomFromParkedAtLot seed maxConnections parkingReservation lots roadNetwork nodeCtx =
-    let
-        ( nodes, _ ) =
-            randomConnectionsFromNode seed maxConnections roadNetwork nodeCtx []
-
-        parkingSpot =
-            parkingSpotFromReservation lots parkingReservation
-
-        initialSplines =
-            case parkingSpot of
-                Just spot ->
-                    spot.pathToLotExit
-
-                Nothing ->
-                    []
-    in
-    buildRoute nodeCtx nodes initialSplines
-
-
-fromPartialRoute : Route -> RNNodeContext -> List RNNodeContext -> Maybe Route
-fromPartialRoute currentRoute nextNode others =
-    currentRoute
-        |> toPath
-        |> Maybe.andThen
-            (\path ->
-                path.currentSpline
-                    |> Maybe.map (Tuple.pair path.parameter)
-            )
-        |> Maybe.map
-            (\( parameter, currentSpline ) ->
-                let
-                    initialSplines =
-                        distanceToSplineEnd currentSpline parameter |> Tuple.second |> List.singleton
-                in
-                buildRoute nextNode others initialSplines
-            )
-
-
-{-| A low level constructor for tests
--}
-fromNodesAndParameter : RNNodeContext -> List RNNodeContext -> Length -> Route
-fromNodesAndParameter startNode otherNodes parameter =
-    buildRoute startNode otherNodes []
-        |> setParameter parameter
-
-
-stopAtSplineEnd : Route -> Maybe Route
-stopAtSplineEnd route =
-    route
-        |> toPath
-        |> Maybe.andThen pathFromCurrentSpline
-        |> Maybe.map (ArrivingToDestination RoadNetworkNode)
-
-
-arriveToParkingSpot : ParkingReservation -> Dict Id Lot -> Maybe Route
-arriveToParkingSpot parkingReservation lots =
-    parkingReservation
-        |> parkingSpotFromReservation lots
-        |> Maybe.map .pathFromLotEntry
-        |> Maybe.andThen createPath
-        |> Maybe.map (ArrivingToDestination LotParkingSpot)
-
-
-updateEndNode : RNNodeContext -> Route -> Route
-updateEndNode newEndNode route =
-    case route of
-        Routed routeMeta ->
-            let
-                nextMeta =
-                    { routeMeta | endNode = newEndNode }
-            in
-            Routed nextMeta
-
-        _ ->
-            route
 
 
 setParameter : Length -> Route -> Route
@@ -436,145 +575,18 @@ setParameter parameter route =
             route
 
 
-randomConnectionsFromNode : Random.Seed -> Int -> RoadNetwork -> RNNodeContext -> List RNNodeContext -> ( List RNNodeContext, Random.Seed )
-randomConnectionsFromNode seed maxConnections roadNetwork currentNodeCtx nodes =
-    if maxConnections == 0 then
-        ( nodes, seed )
-
-    else
-        let
-            randomConnectionGenerator =
-                chooseRandomOutgoingConnection roadNetwork currentNodeCtx
-
-            ( connection, nextSeed ) =
-                Random.step randomConnectionGenerator seed
-        in
-        case connection of
-            Nothing ->
-                ( nodes, nextSeed )
-
-            Just node ->
-                randomConnectionsFromNode nextSeed (maxConnections - 1) roadNetwork node (nodes ++ [ node ])
-
-
-chooseRandomOutgoingConnection : RoadNetwork -> RNNodeContext -> Random.Generator (Maybe RNNodeContext)
-chooseRandomOutgoingConnection roadNetwork nodeCtx =
-    RoadNetwork.getOutgoingConnections nodeCtx
-        |> List.filterMap (RoadNetwork.findNodeByNodeId roadNetwork)
-        |> Random.List.choose
-        |> Random.map Tuple.first
-
-
-buildRoute : RNNodeContext -> List RNNodeContext -> List LMCubicSpline2d -> Route
-buildRoute startNodeValue nodes initialSplines =
-    let
-        nodeSplines =
-            nodesToSplines
-                startNodeValue
-                nodes
-                []
-
-        splines =
-            initialSplines ++ nodeSplines
-    in
-    Maybe.map2
-        (\path end ->
-            Routed
-                { startNodePosition = startNodeValue.node.label.position
-                , endNode = end
-                , path = path
-                }
-        )
-        (createPath splines)
-        (List.last nodes)
-        |> Maybe.withDefault initialRoute
-
-
-nodesToSplines : RNNodeContext -> List RNNodeContext -> List LMCubicSpline2d -> List LMCubicSpline2d
-nodesToSplines last remaining splines =
-    case remaining of
-        [] ->
-            splines
-
-        current :: others ->
+updateEndNode : RNNodeContext -> Route -> Route
+updateEndNode newEndNode route =
+    case route of
+        Routed routeMeta ->
             let
-                spline =
-                    Splines.toNode
-                        { origin = last.node.label.position
-                        , direction = last.node.label.direction
-                        }
-                        current
+                nextMeta =
+                    { routeMeta | endNode = newEndNode }
             in
-            nodesToSplines current others (splines ++ [ spline ])
+            Routed nextMeta
 
-
-parkingSpotFromReservation : Dict Id Lot -> ParkingReservation -> Maybe ParkingSpot
-parkingSpotFromReservation lots { lotId, parkingSpotId } =
-    lots
-        |> Dict.get lotId
-        |> Maybe.andThen (\lot -> Lot.parkingSpotById lot parkingSpotId)
-
-
-createPath :
-    List LMCubicSpline2d
-    -> Maybe Path
-createPath splines =
-    let
-        pathSplines =
-            toPathSplines splines Array.empty
-    in
-    Maybe.map2
-        (\firstSpline lastSpline ->
-            { splines = pathSplines
-            , currentSplineIdx = 0
-            , currentSpline = Just firstSpline
-            , parameter = Quantity.zero
-            , startPoint =
-                firstSpline.spline
-                    |> CubicSpline2d.fromArcLengthParameterized
-                    |> CubicSpline2d.startPoint
-            , endPoint =
-                lastSpline.spline
-                    |> CubicSpline2d.fromArcLengthParameterized
-                    |> CubicSpline2d.endPoint
-            , finished = False
-            }
-        )
-        (Array.get 0 pathSplines)
-        (Array.get (Array.length pathSplines - 1) pathSplines)
-
-
-toPathSplines : List LMCubicSpline2d -> Array SplineMeta -> Array SplineMeta
-toPathSplines remaining acc =
-    case remaining of
-        current :: rest ->
-            let
-                nextAcc =
-                    case CubicSpline2d.nondegenerate current of
-                        Ok ndSpline ->
-                            let
-                                alpSpline =
-                                    CubicSpline2d.arcLengthParameterized
-                                        { maxError = maxALPError }
-                                        ndSpline
-
-                                splineProps =
-                                    { spline = alpSpline
-                                    , length = CubicSpline2d.arcLength alpSpline
-                                    , endPoint = CubicSpline2d.endPoint current
-                                    }
-                            in
-                            Array.push splineProps acc
-
-                        Err _ ->
-                            acc
-            in
-            toPathSplines
-                rest
-                nextAcc
-
-        [] ->
-            acc
+        _ ->
+            route
 
 
 
