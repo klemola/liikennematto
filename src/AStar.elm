@@ -1,4 +1,4 @@
-module AStar exposing (findPath)
+module AStar exposing (Path, findPath)
 
 import Dict exposing (Dict)
 import Length
