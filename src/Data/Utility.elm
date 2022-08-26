@@ -1,9 +1,15 @@
-module Data.Utility exposing (AnchorDef, tilemapFromCoordinates, worldFromTilemap)
+module Data.Utility exposing
+    ( AnchorDef
+    , getStartAndEndNode
+    , tilemapFromCoordinates
+    , worldFromTilemap
+    )
 
 import Data.Defaults as Defaults
 import Model.Cell as Cell
 import Model.Entity exposing (Id)
 import Model.Geometry exposing (OrthogonalDirection)
+import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext)
 import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.World as World exposing (World)
 import Simulation.Infrastructure as Infrastructure
@@ -53,3 +59,15 @@ addAnchors tilemap anchorDefs =
 worldFromTilemap : Tilemap -> World
 worldFromTilemap tilemap =
     World.empty tilemapConfig |> Infrastructure.createRoadNetwork tilemap
+
+
+getStartAndEndNode : World -> Int -> Int -> Maybe ( RNNodeContext, RNNodeContext )
+getStartAndEndNode world startId endId =
+    let
+        start =
+            RoadNetwork.findNodeByNodeId world.roadNetwork startId
+
+        end =
+            RoadNetwork.findNodeByNodeId world.roadNetwork endId
+    in
+    Maybe.map2 Tuple.pair start end
