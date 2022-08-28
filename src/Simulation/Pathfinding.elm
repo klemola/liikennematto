@@ -1,9 +1,9 @@
 module Simulation.Pathfinding exposing
     ( carAfterRouteUpdate
-    , resetCarAtLot
+    , generateRouteFromNode
+    , generateRouteFromParkingSpot
     , restoreRoute
     , routeTrafficControl
-    , setupRoute
     , validateRoute
     )
 
@@ -13,11 +13,13 @@ import Duration exposing (Duration)
 import Length
 import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car)
+import Model.Entity exposing (Id)
 import Model.Geometry exposing (LMPoint2d)
 import Model.Lot as Lot exposing (ParkingReservation)
 import Model.RoadNetwork as RoadNetwork
     exposing
         ( ConnectionKind(..)
+        , RNNode
         , RNNodeContext
         , TrafficControl
         )
@@ -29,45 +31,87 @@ import Result.Extra as Result
 import Speed exposing (Speed)
 
 
-setupRoute : Random.Seed -> World -> RNNodeContext -> Car -> ( Car, Random.Seed )
-setupRoute seed world nodeCtx car =
-    let
-        ( route, nextSeed ) =
-            Route.randomFromNode seed 10 world.roadNetwork nodeCtx
-    in
-    ( { car | route = route }, nextSeed )
-
-
-resetCarAtLot : Random.Seed -> ParkingReservation -> World -> RNNodeContext -> Car -> Car
-resetCarAtLot seed parkingReservation world nodeCtx car =
-    { car
-        | route =
-            Route.randomFromParkedAtLot
-                seed
-                10
-                parkingReservation
-                world.lots
-                world.roadNetwork
-                nodeCtx
-    }
-
-
-generateRouteFromParkingSpot : Random.Seed -> World -> ParkingReservation -> Route
-generateRouteFromParkingSpot seed world parkingReservation =
-    let
-        lotExitNode =
-            RoadNetwork.findLotExitNodeByLotId world.roadNetwork parkingReservation.lotId
-    in
-    lotExitNode
-        |> Maybe.map
-            (Route.randomFromParkedAtLot
-                seed
-                10
-                parkingReservation
-                world.lots
-                world.roadNetwork
+generateRouteFromNode : Random.Seed -> World -> Id -> RNNodeContext -> Route
+generateRouteFromNode seed world carId startNodeCtx =
+    findRandomDestinationNode seed world carId startNodeCtx
+        -- Seed discarded
+        |> Tuple.first
+        |> Maybe.map (Tuple.pair startNodeCtx)
+        |> Maybe.andThen
+            (\( start, end ) ->
+                Route.fromStartAndEndNodes world.roadNetwork start end
             )
         |> Maybe.withDefault Route.initialRoute
+
+
+generateRouteFromParkingSpot : Random.Seed -> World -> Id -> ParkingReservation -> Route
+generateRouteFromParkingSpot seed world carId parkingReservation =
+    parkingReservation.lotId
+        |> RoadNetwork.findLotExitNodeByLotId world.roadNetwork
+        |> Maybe.andThen
+            (\startNode ->
+                findRandomDestinationNode seed world carId startNode
+                    -- Seed discarded
+                    |> Tuple.first
+                    |> Maybe.map (Tuple.pair startNode)
+            )
+        |> Maybe.andThen
+            (\( start, end ) ->
+                Route.fromParkedAtLot
+                    parkingReservation
+                    world.lots
+                    world.roadNetwork
+                    start
+                    end
+            )
+        -- Will trigger another generate route attempt
+        |> Maybe.withDefault Route.initialRoute
+
+
+findRandomDestinationNode : Random.Seed -> World -> Id -> RNNodeContext -> ( Maybe RNNodeContext, Random.Seed )
+findRandomDestinationNode seed world carId startNodeCtx =
+    let
+        ( chance, seedAfterRandomFloat ) =
+            Random.step (Random.float 0 1) seed
+
+        lookingForLot =
+            chance > 0.65 && Dict.size world.lots >= 2
+
+        matchPredicate =
+            randomNodeMatchPredicate lookingForLot world carId startNodeCtx
+    in
+    RoadNetwork.getRandomNode world.roadNetwork seedAfterRandomFloat matchPredicate
+
+
+randomNodeMatchPredicate : Bool -> World -> Id -> RNNodeContext -> RNNode -> Bool
+randomNodeMatchPredicate lookingForLot world carId startNodeCtx endNode =
+    if lookingForLot then
+        case endNode.label.kind of
+            LotEntry lotEntryId ->
+                let
+                    isDifferentLot =
+                        case startNodeCtx.node.label.kind of
+                            LotExit lotExitId ->
+                                lotExitId /= lotEntryId
+
+                            _ ->
+                                True
+
+                    parkingPermitted =
+                        case Dict.get lotEntryId world.lots of
+                            Just lot ->
+                                Lot.parkingPermitted carId lot
+
+                            Nothing ->
+                                False
+                in
+                isDifferentLot && parkingPermitted
+
+            _ ->
+                False
+
+    else
+        endNode.label.kind == LaneConnector
 
 
 type RouteUpdateResult
@@ -97,7 +141,7 @@ carAfterRouteUpdate seed world delta car =
                                         |> Maybe.withDefault False
                             in
                             if not parkingLockSet then
-                                generateRouteFromParkingSpot seed world parkingReservation
+                                generateRouteFromParkingSpot seed world car.id parkingReservation
 
                             else
                                 Route.initialRoute
@@ -133,7 +177,7 @@ carAfterRouteUpdate seed world delta car =
                         |> Maybe.withDefaultLazy (\_ -> Car.triggerWaitingForParking car nextRoute)
 
                 _ ->
-                    setupRoute seed world nodeCtx car |> Tuple.first
+                    { car | route = generateRouteFromNode seed world car.id nodeCtx }
 
         ArrivedAtParkingSpot ->
             let

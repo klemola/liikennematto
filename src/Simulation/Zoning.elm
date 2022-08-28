@@ -129,7 +129,7 @@ addLot world ( lot, anchor ) =
                 }
            )
         |> Infrastructure.connectLotToRoadNetwork
-        |> Traffic.addLotResident lot.id lot
+        |> Traffic.addLotResident lot
 
 
 removeInvalidLots : List Cell -> World -> World

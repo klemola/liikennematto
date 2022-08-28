@@ -10,14 +10,15 @@ module Model.Route exposing
     , endNode
     , endPoint
     , fromNodesAndParameter
+    , fromParkedAtLot
     , fromPartialRoute
+    , fromStartAndEndNodes
     , initialRoute
     , isArrivingToDestination
     , isRouted
     , isWaitingForRoute
     , pathToSplines
     , randomFromNode
-    , randomFromParkedAtLot
     , remainingNodePositions
     , sample
     , sampleAhead
@@ -27,6 +28,7 @@ module Model.Route exposing
     , updateEndNode
     )
 
+import AStar
 import Array exposing (Array)
 import CubicSpline2d exposing (ArcLengthParameterized)
 import Dict exposing (Dict)
@@ -114,6 +116,30 @@ initialRoute =
 --
 -- Construct a route
 --
+
+
+fromParkedAtLot : ParkingReservation -> Dict Id Lot -> RoadNetwork -> RNNodeContext -> RNNodeContext -> Maybe Route
+fromParkedAtLot parkingReservation lots roadNetwork startNodeCtx endNodeCtx =
+    parkingSpotFromReservation lots parkingReservation
+        |> Maybe.andThen
+            (\spot ->
+                roadNetwork
+                    |> AStar.findPath startNodeCtx endNodeCtx
+                    |> Maybe.map
+                        (\( _, pathNodes ) ->
+                            buildRoute startNodeCtx pathNodes spot.pathToLotExit
+                        )
+            )
+
+
+fromStartAndEndNodes : RoadNetwork -> RNNodeContext -> RNNodeContext -> Maybe Route
+fromStartAndEndNodes roadNetwork startNodeCtx endNodeCtx =
+    roadNetwork
+        |> AStar.findPath startNodeCtx endNodeCtx
+        |> Maybe.map
+            (\( _, pathNodes ) ->
+                buildRoute startNodeCtx pathNodes []
+            )
 
 
 fromPartialRoute : Route -> RNNodeContext -> List RNNodeContext -> Maybe Route
@@ -285,26 +311,6 @@ randomFromNode seed maxConnections roadNetwork nodeCtx =
             randomConnectionsFromNode seed maxConnections roadNetwork nodeCtx []
     in
     ( buildRoute nodeCtx nodes [], nextSeed )
-
-
-randomFromParkedAtLot : Random.Seed -> Int -> ParkingReservation -> Dict Id Lot -> RoadNetwork -> RNNodeContext -> Route
-randomFromParkedAtLot seed maxConnections parkingReservation lots roadNetwork nodeCtx =
-    let
-        ( nodes, _ ) =
-            randomConnectionsFromNode seed maxConnections roadNetwork nodeCtx []
-
-        parkingSpot =
-            parkingSpotFromReservation lots parkingReservation
-
-        initialSplines =
-            case parkingSpot of
-                Just spot ->
-                    spot.pathToLotExit
-
-                Nothing ->
-                    []
-    in
-    buildRoute nodeCtx nodes initialSplines
 
 
 randomConnectionsFromNode : Random.Seed -> Int -> RoadNetwork -> RNNodeContext -> List RNNodeContext -> ( List RNNodeContext, Random.Seed )

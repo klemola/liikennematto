@@ -10,6 +10,7 @@ module Model.Lot exposing
     , findFreeParkingSpot
     , hasParkingLockSet
     , inBounds
+    , parkingPermitted
     , parkingSpotById
     , parkingSpotOrientation
     , releaseParkingLock
@@ -232,6 +233,16 @@ parkingSpotOrientation lot =
         |> Direction2d.toAngle
 
 
+parkingPermitted : Id -> Lot -> Bool
+parkingPermitted carId lot =
+    case lot.parkingSpots of
+        [] ->
+            False
+
+        parkingSpots ->
+            parkingSpots |> List.any (\spot -> spot.owner == Nothing || spot.owner == Just carId)
+
+
 findFreeParkingSpot : Id -> Lot -> Maybe ParkingSpot
 findFreeParkingSpot carId lot =
     findFreeParkingSpotHelper carId lot.parkingSpots
@@ -262,6 +273,7 @@ findFreeParkingSpotHelper carId spots =
 
 claimParkingSpot : Id -> Lot -> Maybe ParkingSpot
 claimParkingSpot carId lot =
+    -- Claims the first parking spot (none will be reserved when the lot has just been created)
     findFreeParkingSpot carId lot |> Maybe.map (\parkingSpot -> { parkingSpot | owner = Just carId })
 
 
