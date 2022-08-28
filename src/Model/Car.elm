@@ -370,8 +370,8 @@ withVelocity velocity car =
     { car | velocity = velocity }
 
 
-build : Int -> NewCar -> Car
-build id newCar =
+build : Int -> Maybe Route -> NewCar -> Car
+build id route newCar =
     let
         ( shape, boundingBox ) =
             adjustedShape newCar.make newCar.position newCar.orientation
@@ -388,7 +388,7 @@ build id newCar =
     , rotation = newCar.rotation
     , shape = shape
     , boundingBox = boundingBox
-    , route = Route.initialRoute
+    , route = route |> Maybe.withDefault Route.initialRoute
     , homeLotId = newCar.homeLotId
     , parkingReservation = Nothing
     }

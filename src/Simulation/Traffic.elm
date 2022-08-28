@@ -261,9 +261,8 @@ moveCarToHome : Random.Seed -> World -> Car -> ( Lot, ParkingSpot ) -> Car
 moveCarToHome seed world car ( home, parkingSpot ) =
     case
         car.homeLotId
-            |> Maybe.andThen (RoadNetwork.findLotExitNodeByLotId world.roadNetwork)
     of
-        Just nodeCtx ->
+        Just _ ->
             let
                 parkingReservation =
                     { lotId = home.id
@@ -279,8 +278,8 @@ moveCarToHome seed world car ( home, parkingSpot ) =
                 , orientation = Lot.parkingSpotOrientation home
                 , velocity = Quantity.zero
                 , parkingReservation = Just parkingReservation
+                , route = Pathfinding.generateRouteFromParkingSpot seed world car.id parkingReservation
             }
-                |> Pathfinding.resetCarAtLot seed parkingReservation world nodeCtx
 
         _ ->
             car
@@ -301,16 +300,11 @@ rerouteCarsIfNeeded world =
 --
 
 
-addLotResident : Id -> Lot -> World -> World
-addLotResident lotId lot world =
+addLotResident : Lot -> World -> World
+addLotResident lot world =
     let
         carId =
             Entity.nextId world.cars
-
-        -- Room for improvement: create the route and path after a resident is spawned so that
-        -- a resident can be added before the road network is updated
-        homeNode =
-            RoadNetwork.findLotExitNodeByLotId world.roadNetwork lotId
 
         carMake =
             Data.Lots.resident lot.kind
@@ -318,16 +312,15 @@ addLotResident lotId lot world =
         parkingSpot =
             Lot.claimParkingSpot carId lot
     in
-    Maybe.map3
+    Maybe.map2
         (createResident world carId lot)
-        homeNode
         carMake
         parkingSpot
         |> Maybe.withDefault world
 
 
-createResident : World -> Id -> Lot -> RNNodeContext -> CarMake -> ParkingSpot -> World
-createResident world carId lot homeNode make parkingSpot =
+createResident : World -> Id -> Lot -> CarMake -> ParkingSpot -> World
+createResident world carId lot make parkingSpot =
     let
         lotWithClaimedParkingSpot =
             Lot.updateParkingSpot parkingSpot lot
@@ -338,7 +331,6 @@ createResident world carId lot homeNode make parkingSpot =
                 lotWithClaimedParkingSpot
                 make
                 world
-                homeNode
                 parkingSpot
     in
     world
@@ -346,24 +338,26 @@ createResident world carId lot homeNode make parkingSpot =
         |> World.setLot lotWithClaimedParkingSpot
 
 
-createCar : Id -> Lot -> CarMake -> World -> RNNodeContext -> ParkingSpot -> Car
-createCar carId lot make world homeNode parkingSpot =
+createCar : Id -> Lot -> CarMake -> World -> ParkingSpot -> Car
+createCar carId lot make world parkingSpot =
     let
         parkingReservation =
             { lotId = lot.id
             , parkingSpotId = parkingSpot.id
             }
+
+        route =
+            Pathfinding.generateRouteFromParkingSpot
+                (Random.initialSeed (carId + lot.id))
+                world
+                carId
+                parkingReservation
     in
     Car.new make
         |> Car.withHome lot.id
         |> Car.withPosition parkingSpot.position
         |> Car.withOrientation (Lot.parkingSpotOrientation lot)
-        |> Car.build carId
-        |> Pathfinding.resetCarAtLot
-            (Random.initialSeed (carId + lot.id))
-            parkingReservation
-            world
-            homeNode
+        |> Car.build carId (Just route)
 
 
 
@@ -376,7 +370,9 @@ spawnCar : Random.Seed -> World -> ( World, Random.Seed, Maybe Entity.Id )
 spawnCar seed world =
     let
         ( maybeRandomNodeCtx, seedAfterRandomNode ) =
-            RoadNetwork.getRandomNode world.roadNetwork seed
+            RoadNetwork.getRandomNode world.roadNetwork
+                seed
+                (\node -> node.label.kind == RoadNetwork.LaneConnector)
     in
     maybeRandomNodeCtx
         |> Maybe.andThen (validateSpawnConditions world)
@@ -386,15 +382,17 @@ spawnCar seed world =
                     id =
                         Entity.nextId world.cars
 
-                    ( car, seedAfterRouteInit ) =
+                    route =
+                        Pathfinding.generateRouteFromNode seedAfterRandomNode world id nodeCtx
+
+                    car =
                         Car.new testCar
                             |> Car.withPosition nodeCtx.node.label.position
                             |> Car.withOrientation (Direction2d.toAngle nodeCtx.node.label.direction)
-                            |> Car.build id
-                            |> Pathfinding.setupRoute seedAfterRandomNode world nodeCtx
+                            |> Car.build id (Just route)
                 in
                 ( World.setCar car world
-                , seedAfterRouteInit
+                , seedAfterRandomNode
                 , Just id
                 )
             )

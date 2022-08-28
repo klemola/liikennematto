@@ -3,6 +3,7 @@ module Model.RoadNetwork exposing
     , ConnectionEnvironment(..)
     , ConnectionKind(..)
     , Lane
+    , RNNode
     , RNNodeContext
     , RoadNetwork
     , TrafficControl(..)
@@ -32,6 +33,10 @@ type alias RoadNetwork =
 
 type alias RNNodeContext =
     NodeContext Connection Lane
+
+
+type alias RNNode =
+    Graph.Node Connection
 
 
 type alias Connection =
@@ -122,15 +127,15 @@ findNodeByPosition roadNetwork position =
         |> Maybe.andThen (\matchId -> Graph.get matchId roadNetwork)
 
 
-getRandomNode : RoadNetwork -> Random.Seed -> ( Maybe RNNodeContext, Random.Seed )
-getRandomNode roadNetwork seed =
+getRandomNode : RoadNetwork -> Random.Seed -> (RNNode -> Bool) -> ( Maybe RNNodeContext, Random.Seed )
+getRandomNode roadNetwork seed predicate =
     let
         randomNodeGenerator =
             roadNetwork
                 |> Graph.nodes
                 |> List.filterMap
                     (\node ->
-                        if node.label.kind == LaneConnector then
+                        if predicate node then
                             Just node.id
 
                         else
