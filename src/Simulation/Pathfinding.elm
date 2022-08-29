@@ -4,12 +4,12 @@ module Simulation.Pathfinding exposing
     , generateRouteFromParkingSpot
     , restoreRoute
     , routeTrafficControl
-    , validateRoute
     )
 
 import Array
 import Dict
 import Duration exposing (Duration)
+import Html.Attributes exposing (start)
 import Length
 import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car)
@@ -316,34 +316,31 @@ restoreRoute : World -> Car -> Car
 restoreRoute world car =
     if Route.isRouted car.route then
         let
-            validationResult =
-                validateEndNode world car.route
-                    |> Result.map (\endNode -> Route.updateEndNode endNode car.route)
-                    |> Result.map
-                        (\routeWithValidEndNode ->
-                            validateRoute world routeWithValidEndNode
-                                -- Create a Maybe value of the valid route
-                                |> Result.map Just
-                                -- Try to recover from a partially invalid route
-                                |> Result.extract
-                                    (\( _, validNodes ) ->
-                                        Maybe.andThen2
-                                            (Route.fromPartialRoute car.route)
-                                            (List.head validNodes)
-                                            (List.tail validNodes)
-                                    )
-                        )
-                    |> Result.withDefault (Route.stopAtSplineEnd car.route)
-        in
-        case validationResult of
-            Just nextRoute ->
-                { car | route = nextRoute }
+            startNodeValidation =
+                Route.splineEndPoint car.route
+                    |> Result.fromMaybe "Spline end point not found"
+                    |> Result.andThen (validateNodeByPosition world)
 
-            Nothing ->
-                Car.triggerDespawn car
+            endNodeValidation =
+                validateEndNode world car.route
+        in
+        Result.map2 Tuple.pair startNodeValidation endNodeValidation
+            |> Result.toMaybe
+            |> Maybe.andThen
+                (\( startNodeCtx, endNodeCtx ) ->
+                    Route.reroute car.route world.roadNetwork startNodeCtx endNodeCtx
+                )
+            |> Maybe.map (\validatedRoute -> { car | route = validatedRoute })
+            |> Maybe.withDefaultLazy (\_ -> Car.triggerDespawn car)
 
     else
         car
+
+
+validateNodeByPosition : World -> LMPoint2d -> Result String RNNodeContext
+validateNodeByPosition world position =
+    World.findNodeByPosition world position
+        |> Result.fromMaybe "Invalid end node"
 
 
 validateEndNode : World -> Route -> Result String RNNodeContext
@@ -362,67 +359,3 @@ validateEndNode world route =
                         )
             )
         |> Maybe.withDefault (Err "End node not found")
-
-
-validateRoute : World -> Route -> Result ( String, List RNNodeContext ) Route
-validateRoute world route =
-    validateRouteHelper world Nothing (Route.remainingNodePositions route) []
-        |> Result.map (always route)
-
-
-validateRouteHelper :
-    World
-    -> Maybe RNNodeContext
-    -> List LMPoint2d
-    -> List RNNodeContext
-    -> Result ( String, List RNNodeContext ) (List RNNodeContext)
-validateRouteHelper world previousNodeCtx remainingEndPoints validNodes =
-    case remainingEndPoints of
-        [] ->
-            Ok validNodes
-
-        endPoint :: others ->
-            case World.findNodeByPosition world endPoint of
-                Just currentNodeCtx ->
-                    if
-                        previousNodeCtx
-                            |> Maybe.map (isDisconnectedFrom currentNodeCtx)
-                            |> Maybe.withDefault False
-                    then
-                        Err
-                            ( "Invalid route: found a disconnected pair of nodes"
-                            , validNodes
-                            )
-
-                    else
-                        validateRouteHelper
-                            world
-                            (Just currentNodeCtx)
-                            others
-                            (validNodes ++ [ currentNodeCtx ])
-
-                Nothing ->
-                    let
-                        nodeId =
-                            case previousNodeCtx of
-                                Just nodeCtx ->
-                                    String.fromInt nodeCtx.node.id
-
-                                Nothing ->
-                                    "none"
-                    in
-                    Err
-                        ( String.join " "
-                            [ "Invalid route: node not found. Last matching node id:"
-                            , nodeId
-                            ]
-                        , validNodes
-                        )
-
-
-isDisconnectedFrom : RNNodeContext -> RNNodeContext -> Bool
-isDisconnectedFrom currentNodeCtx previousNodeCtx =
-    previousNodeCtx
-        |> RoadNetwork.getOutgoingConnections
-        |> List.member currentNodeCtx.node.id
-        |> not

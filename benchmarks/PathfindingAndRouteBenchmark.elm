@@ -5,6 +5,7 @@ import Benchmark exposing (Benchmark, benchmark, describe)
 import Benchmark.Runner exposing (BenchmarkProgram, program)
 import Data.RuleSetups
 import Data.Utility exposing (getStartAndEndNode)
+import Dict
 import Simulation.Pathfinding as Pathfinding
 
 
@@ -12,16 +13,26 @@ suite : Benchmark
 suite =
     describe "Routes and pathfinding"
         [ describe "Pathfinding"
-            [ describe "validateRoute"
-                [ benchmark "routed" <|
+            [ describe "restoreRoute"
+                [ benchmark "one car" <|
                     let
                         setup =
-                            Data.RuleSetups.largeWorldSetup 1
+                            Data.RuleSetups.largeWorldSetup 5
 
                         car =
                             setup.activeCar
                     in
-                    \_ -> Pathfinding.validateRoute setup.world car.route
+                    \_ -> Pathfinding.restoreRoute setup.world car
+                , benchmark "multiple cars (n=5)" <|
+                    let
+                        setup =
+                            Data.RuleSetups.largeWorldSetup 5
+                    in
+                    \_ ->
+                        Dict.foldl
+                            (\_ car _ -> Pathfinding.restoreRoute setup.world car)
+                            setup.activeCar
+                            setup.world.cars
                 ]
             ]
         , describe "A*"
