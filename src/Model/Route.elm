@@ -20,6 +20,7 @@ module Model.Route exposing
     , pathToSplines
     , randomFromNode
     , remainingNodePositions
+    , reroute
     , sample
     , sampleAhead
     , splineEndPoint
@@ -134,16 +135,41 @@ fromParkedAtLot parkingReservation lots roadNetwork startNodeCtx endNodeCtx =
 
 fromStartAndEndNodes : RoadNetwork -> RNNodeContext -> RNNodeContext -> Maybe Route
 fromStartAndEndNodes roadNetwork startNodeCtx endNodeCtx =
-    roadNetwork
-        |> AStar.findPath startNodeCtx endNodeCtx
-        |> Maybe.map
-            (\( _, pathNodes ) ->
-                buildRoute startNodeCtx pathNodes []
-            )
+    if startNodeCtx.node.id == endNodeCtx.node.id then
+        Nothing
+
+    else
+        roadNetwork
+            |> AStar.findPath startNodeCtx endNodeCtx
+            |> Maybe.map
+                (\( _, pathNodes ) ->
+                    buildRoute startNodeCtx pathNodes []
+                )
+
+
+reroute : Route -> RoadNetwork -> RNNodeContext -> RNNodeContext -> Maybe Route
+reroute currentRoute roadNetwork nextNodeCtx endNodeCtx =
+    if nextNodeCtx.node.id == endNodeCtx.node.id then
+        Nothing
+
+    else
+        let
+            nextPathNodes =
+                AStar.findPath nextNodeCtx endNodeCtx roadNetwork |> Maybe.map Tuple.second
+
+            initialSplines =
+                toPath currentRoute
+                    |> Maybe.andThen
+                        (\path ->
+                            path.currentSpline |> Maybe.map (currentSplineRemaining path.parameter)
+                        )
+                    |> Maybe.map List.singleton
+        in
+        Maybe.map2 (buildRoute nextNodeCtx) nextPathNodes initialSplines
 
 
 fromPartialRoute : Route -> RNNodeContext -> List RNNodeContext -> Maybe Route
-fromPartialRoute currentRoute nextNode others =
+fromPartialRoute currentRoute nextNodeCtx others =
     currentRoute
         |> toPath
         |> Maybe.andThen
@@ -157,7 +183,7 @@ fromPartialRoute currentRoute nextNode others =
                     initialSplines =
                         distanceToSplineEnd currentSpline parameter |> Tuple.second |> List.singleton
                 in
-                buildRoute nextNode others initialSplines
+                buildRoute nextNodeCtx others initialSplines
             )
 
 
@@ -534,13 +560,8 @@ remainingSplines path =
 distanceToSplineEnd : SplineMeta -> Length -> ( Length, LMCubicSpline2d )
 distanceToSplineEnd splineMeta parameter =
     let
-        spline =
-            CubicSpline2d.fromArcLengthParameterized splineMeta.spline
-
-        ( _, remaining ) =
-            CubicSpline2d.splitAt
-                (Quantity.ratio parameter splineMeta.length)
-                spline
+        remaining =
+            currentSplineRemaining parameter splineMeta
 
         distance =
             case CubicSpline2d.nondegenerate remaining of
@@ -553,6 +574,20 @@ distanceToSplineEnd splineMeta parameter =
                     Quantity.zero
     in
     ( distance, remaining )
+
+
+currentSplineRemaining : Length -> SplineMeta -> LMCubicSpline2d
+currentSplineRemaining parameter splineMeta =
+    let
+        spline =
+            CubicSpline2d.fromArcLengthParameterized splineMeta.spline
+
+        ( _, remaining ) =
+            CubicSpline2d.splitAt
+                (Quantity.ratio parameter splineMeta.length)
+                spline
+    in
+    remaining
 
 
 

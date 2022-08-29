@@ -330,7 +330,10 @@ triggerDespawn car =
         nextFSM =
             car.fsm |> FSM.transitionOnNextUpdate (FSM.getId despawning)
     in
-    { car | fsm = nextFSM }
+    { car
+        | fsm = nextFSM
+        , route = Route.stopAtSplineEnd car.route |> Maybe.withDefault car.route
+    }
 
 
 

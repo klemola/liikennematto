@@ -440,7 +440,7 @@ largeWorldSetup carsAmount =
             largeWorld
 
         worldWithCars =
-            spawnCars carsAmount world (Random.initialSeed 224)
+            spawnCars carsAmount world (Random.initialSeed 888)
     in
     case Dict.values worldWithCars.cars of
         x :: xs ->
