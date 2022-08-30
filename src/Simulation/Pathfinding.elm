@@ -10,7 +10,7 @@ import Array
 import Dict
 import Duration exposing (Duration)
 import Html.Attributes exposing (start)
-import Length
+import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car)
 import Model.Entity exposing (Id)
@@ -25,10 +25,16 @@ import Model.RoadNetwork as RoadNetwork
         )
 import Model.Route as Route exposing (Route)
 import Model.World as World exposing (World)
+import Point2d
 import Quantity
 import Random
 import Result.Extra as Result
 import Speed exposing (Speed)
+
+
+minRouteEndNodeDistance : Length
+minRouteEndNodeDistance =
+    Length.meters 100
 
 
 generateRouteFromNode : Random.Seed -> World -> Id -> RNNodeContext -> Route
@@ -41,7 +47,10 @@ generateRouteFromNode seed world carId startNodeCtx =
             (\( start, end ) ->
                 Route.fromStartAndEndNodes world.roadNetwork start end
             )
-        |> Maybe.withDefault Route.initialRoute
+        |> Maybe.withDefaultLazy
+            (\_ ->
+                Route.randomFromNode seed 10 world.roadNetwork startNodeCtx
+            )
 
 
 generateRouteFromParkingSpot : Random.Seed -> World -> Id -> ParkingReservation -> Route
@@ -111,7 +120,12 @@ randomNodeMatchPredicate lookingForLot world carId startNodeCtx endNode =
                 False
 
     else
-        endNode.label.kind == LaneConnector
+        (endNode.label.kind == LaneConnector)
+            && (Point2d.distanceFrom
+                    startNodeCtx.node.label.position
+                    endNode.label.position
+                    |> Quantity.greaterThanOrEqualTo minRouteEndNodeDistance
+               )
 
 
 type RouteUpdateResult
@@ -131,23 +145,23 @@ carAfterRouteUpdate seed world delta car =
         BeginRoute ->
             let
                 route =
-                    case car.parkingReservation of
-                        Just parkingReservation ->
-                            let
-                                parkingLockSet =
-                                    world.lots
-                                        |> Dict.get parkingReservation.lotId
-                                        |> Maybe.map Lot.hasParkingLockSet
-                                        |> Maybe.withDefault False
-                            in
-                            if not parkingLockSet then
-                                generateRouteFromParkingSpot seed world car.id parkingReservation
+                    car.parkingReservation
+                        |> Maybe.andThen
+                            (\parkingReservation ->
+                                let
+                                    parkingLockSet =
+                                        world.lots
+                                            |> Dict.get parkingReservation.lotId
+                                            |> Maybe.map Lot.hasParkingLockSet
+                                            |> Maybe.withDefault False
+                                in
+                                if not parkingLockSet then
+                                    Just (generateRouteFromParkingSpot seed world car.id parkingReservation)
 
-                            else
-                                Route.initialRoute
-
-                        Nothing ->
-                            Route.initialRoute
+                                else
+                                    Nothing
+                            )
+                        |> Maybe.withDefault Route.initialRoute
             in
             { car | route = route }
 
@@ -340,7 +354,7 @@ restoreRoute world car =
 validateNodeByPosition : World -> LMPoint2d -> Result String RNNodeContext
 validateNodeByPosition world position =
     World.findNodeByPosition world position
-        |> Result.fromMaybe "Invalid end node"
+        |> Result.fromMaybe "Node not found"
 
 
 validateEndNode : World -> Route -> Result String RNNodeContext
