@@ -494,7 +494,7 @@ buildCar option position orientation velocity =
         |> Car.withOrientation orientation
         |> Car.withVelocity velocity
         -- TODO: combine routeCarByDestination with buildCar for easier setup
-        |> Car.build id Nothing
+        |> Car.build id Nothing Nothing
 
 
 routeCarByDestination : World -> LMPoint2d -> Car -> Car
@@ -506,7 +506,7 @@ routeCarByDestination world position car =
     case destination of
         Just nodeCtx ->
             let
-                ( route, _ ) =
+                route =
                     Route.randomFromNode
                         (Random.initialSeed 666)
                         2

@@ -357,7 +357,7 @@ createCar carId lot make world parkingSpot =
         |> Car.withHome lot.id
         |> Car.withPosition parkingSpot.position
         |> Car.withOrientation (Lot.parkingSpotOrientation lot)
-        |> Car.build carId (Just route)
+        |> Car.build carId (Just route) (Just parkingReservation)
 
 
 
@@ -389,7 +389,7 @@ spawnCar seed world =
                         Car.new testCar
                             |> Car.withPosition nodeCtx.node.label.position
                             |> Car.withOrientation (Direction2d.toAngle nodeCtx.node.label.direction)
-                            |> Car.build id (Just route)
+                            |> Car.build id (Just route) Nothing
                 in
                 ( World.setCar car world
                 , seedAfterRandomNode

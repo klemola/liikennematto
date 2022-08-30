@@ -178,7 +178,7 @@ initialCar =
         |> Car.withPosition initialStart
         |> Car.withOrientation (Direction2d.toAngle initialTangentDirection)
         |> Car.withVelocity Steering.maxVelocity
-        |> Car.build 1 Nothing
+        |> Car.build 1 Nothing Nothing
 
 
 initialModel : Model

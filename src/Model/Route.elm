@@ -330,13 +330,13 @@ parkingSpotFromReservation lots { lotId, parkingSpotId } =
 --
 
 
-randomFromNode : Random.Seed -> Int -> RoadNetwork -> RNNodeContext -> ( Route, Random.Seed )
+randomFromNode : Random.Seed -> Int -> RoadNetwork -> RNNodeContext -> Route
 randomFromNode seed maxConnections roadNetwork nodeCtx =
     let
-        ( nodes, nextSeed ) =
+        ( nodes, _ ) =
             randomConnectionsFromNode seed maxConnections roadNetwork nodeCtx []
     in
-    ( buildRoute nodeCtx nodes [], nextSeed )
+    buildRoute nodeCtx nodes []
 
 
 randomConnectionsFromNode : Random.Seed -> Int -> RoadNetwork -> RNNodeContext -> List RNNodeContext -> ( List RNNodeContext, Random.Seed )
@@ -363,9 +363,26 @@ randomConnectionsFromNode seed maxConnections roadNetwork currentNodeCtx nodes =
 chooseRandomOutgoingConnection : RoadNetwork -> RNNodeContext -> Random.Generator (Maybe RNNodeContext)
 chooseRandomOutgoingConnection roadNetwork nodeCtx =
     RoadNetwork.getOutgoingConnections nodeCtx
-        |> List.filterMap (RoadNetwork.findNodeByNodeId roadNetwork)
+        |> List.filterMap
+            (\outgoingNodeCtx ->
+                RoadNetwork.findNodeByNodeId roadNetwork outgoingNodeCtx
+                    |> Maybe.andThen discardLotNode
+            )
         |> Random.List.choose
         |> Random.map Tuple.first
+
+
+discardLotNode : RNNodeContext -> Maybe RNNodeContext
+discardLotNode nodeCtx =
+    case nodeCtx.node.label.kind of
+        RoadNetwork.LotEntry _ ->
+            Nothing
+
+        RoadNetwork.LotExit _ ->
+            Nothing
+
+        _ ->
+            Just nodeCtx
 
 
 
