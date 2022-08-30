@@ -11,7 +11,6 @@ module Model.Route exposing
     , endPoint
     , fromNodesAndParameter
     , fromParkedAtLot
-    , fromPartialRoute
     , fromStartAndEndNodes
     , initialRoute
     , isArrivingToDestination
@@ -19,14 +18,12 @@ module Model.Route exposing
     , isWaitingForRoute
     , pathToSplines
     , randomFromNode
-    , remainingNodePositions
     , reroute
     , sample
     , sampleAhead
     , splineEndPoint
     , startNodePosition
     , stopAtSplineEnd
-    , updateEndNode
     )
 
 import AStar
@@ -166,25 +163,6 @@ reroute currentRoute roadNetwork nextNodeCtx endNodeCtx =
                     |> Maybe.map List.singleton
         in
         Maybe.map2 (buildRoute nextNodeCtx) nextPathNodes initialSplines
-
-
-fromPartialRoute : Route -> RNNodeContext -> List RNNodeContext -> Maybe Route
-fromPartialRoute currentRoute nextNodeCtx others =
-    currentRoute
-        |> toPath
-        |> Maybe.andThen
-            (\path ->
-                path.currentSpline
-                    |> Maybe.map (Tuple.pair path.parameter)
-            )
-        |> Maybe.map
-            (\( parameter, currentSpline ) ->
-                let
-                    initialSplines =
-                        distanceToSplineEnd currentSpline parameter |> Tuple.second |> List.singleton
-                in
-                buildRoute nextNodeCtx others initialSplines
-            )
 
 
 {-| A low level constructor for tests
@@ -461,18 +439,6 @@ pathToSplines route =
         |> Maybe.withDefault []
 
 
-remainingNodePositions : Route -> List LMPoint2d
-remainingNodePositions route =
-    toPath route
-        |> Maybe.map remainingSplines
-        |> Maybe.map
-            (Array.foldl
-                (\splineMeta acc -> acc ++ [ splineMeta.endPoint ])
-                []
-            )
-        |> Maybe.withDefault []
-
-
 toPath : Route -> Maybe Path
 toPath route =
     case route of
@@ -628,20 +594,6 @@ setParameter parameter route =
 
         ArrivingToDestination destination path ->
             ArrivingToDestination destination { path | parameter = parameter }
-
-        _ ->
-            route
-
-
-updateEndNode : RNNodeContext -> Route -> Route
-updateEndNode newEndNode route =
-    case route of
-        Routed routeMeta ->
-            let
-                nextMeta =
-                    { routeMeta | endNode = newEndNode }
-            in
-            Routed nextMeta
 
         _ ->
             route
