@@ -59,13 +59,13 @@ findPathHelper goal graph memory =
 
         ( popped, nextFrontier ) =
             PriorityQueue.pop frontier
-
-        memoryWithUpdatedFrontier =
-            { memory | frontier = nextFrontier }
     in
     Maybe.andThen
         (\current ->
             let
+                memoryWithUpdatedFrontier =
+                    { memory | frontier = nextFrontier }
+
                 { nodeCtx } =
                     current
             in

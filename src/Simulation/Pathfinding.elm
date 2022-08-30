@@ -9,7 +9,6 @@ module Simulation.Pathfinding exposing
 import Array
 import Dict
 import Duration exposing (Duration)
-import Html.Attributes exposing (start)
 import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car)
@@ -28,7 +27,6 @@ import Model.World as World exposing (World)
 import Point2d
 import Quantity
 import Random
-import Result.Extra as Result
 import Speed exposing (Speed)
 
 
