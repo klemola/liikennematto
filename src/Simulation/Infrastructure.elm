@@ -418,7 +418,13 @@ hasConnectionsInMultipleDirections tile =
 
 connect : Node Connection -> Node Connection -> Edge Lane
 connect current match =
-    Edge current.id match.id ()
+    Edge
+        current.id
+        match.id
+        (Point2d.distanceFrom
+            current.label.position
+            match.label.position
+        )
 
 
 createLanes : List (Node Connection) -> List (Edge Lane)
@@ -590,7 +596,7 @@ connectDeadendEntryWithExit : Node Connection -> Maybe (Edge Lane)
 connectDeadendEntryWithExit entry =
     -- an assumption about node creation order (implied ID) is a cheap way to create the edge
     -- Room for improvement: really try to find a node that is at the expected Position
-    Just { from = entry.id, to = entry.id + 1, label = () }
+    Just { from = entry.id, to = entry.id + 1, label = Cell.size |> Quantity.half }
 
 
 
@@ -652,7 +658,7 @@ isOnPriorityRoad : RoadNetwork -> RNNodeContext -> Bool
 isOnPriorityRoad roadNetwork nodeCtx =
     let
         otherNodeCtxs =
-            RoadNetwork.getOutgoingConnections nodeCtx
+            RoadNetwork.getOutgoingConnectionIds nodeCtx
                 |> List.filterMap (\nodeId -> Graph.get nodeId roadNetwork)
     in
     List.any (.node >> isParallel nodeCtx.node) otherNodeCtxs

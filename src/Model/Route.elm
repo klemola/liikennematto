@@ -340,7 +340,7 @@ randomConnectionsFromNode seed maxConnections roadNetwork currentNodeCtx nodes =
 
 chooseRandomOutgoingConnection : RoadNetwork -> RNNodeContext -> Random.Generator (Maybe RNNodeContext)
 chooseRandomOutgoingConnection roadNetwork nodeCtx =
-    RoadNetwork.getOutgoingConnections nodeCtx
+    RoadNetwork.getOutgoingConnectionIds nodeCtx
         |> List.filterMap
             (\outgoingNodeCtx ->
                 RoadNetwork.findNodeByNodeId roadNetwork outgoingNodeCtx
