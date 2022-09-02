@@ -11,7 +11,8 @@ module Model.RoadNetwork exposing
     , findLotExitNodeByLotId
     , findNodeByNodeId
     , findNodeByPosition
-    , getOutgoingConnections
+    , getOutgoingConnectionIds
+    , getOutgoingConnectionsAndCosts
     , getRandomNode
     , size
     , toDotString
@@ -20,6 +21,8 @@ module Model.RoadNetwork exposing
 
 import Graph exposing (Graph, NodeContext, NodeId)
 import Graph.DOT
+import IntDict
+import Length exposing (Length)
 import Model.Cell exposing (Cell)
 import Model.Entity exposing (Id)
 import Model.Geometry exposing (LMDirection2d, LMPoint2d)
@@ -69,7 +72,7 @@ type TrafficControl
 
 
 type alias Lane =
-    ()
+    Length
 
 
 empty : RoadNetwork
@@ -147,9 +150,24 @@ getRandomNode roadNetwork seed predicate =
     Random.step randomNodeGenerator seed
 
 
-getOutgoingConnections : RNNodeContext -> List NodeId
-getOutgoingConnections nodeCtx =
+getOutgoingConnectionIds : RNNodeContext -> List NodeId
+getOutgoingConnectionIds nodeCtx =
     Graph.alongOutgoingEdges nodeCtx
+
+
+getOutgoingConnectionsAndCosts : RoadNetwork -> RNNodeContext -> List ( RNNodeContext, Length )
+getOutgoingConnectionsAndCosts roadNetwork nodeCtx =
+    IntDict.foldl
+        (\k lane acc ->
+            case findNodeByNodeId roadNetwork k of
+                Just connection ->
+                    ( connection, lane ) :: acc
+
+                Nothing ->
+                    acc
+        )
+        []
+        nodeCtx.outgoing
 
 
 trafficControl : RNNodeContext -> TrafficControl

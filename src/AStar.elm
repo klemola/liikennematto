@@ -1,7 +1,7 @@
 module AStar exposing (Path, findPath)
 
 import Dict exposing (Dict)
-import Length
+import Length exposing (Length)
 import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext, RoadNetwork)
 import Point2d
 import Vendor.PriorityQueue as PriorityQueue exposing (PriorityQueue)
@@ -25,7 +25,7 @@ type alias PriorityQueueEntry =
 
 
 findPath : RNNodeContext -> RNNodeContext -> RoadNetwork -> Maybe ( RNNodeContext, Path )
-findPath start goal graph =
+findPath start goal roadNetwork =
     let
         priorityFn =
             .cost
@@ -42,7 +42,7 @@ findPath start goal graph =
     in
     findPathHelper
         goal
-        graph
+        roadNetwork
         { frontier = frontier
         , cameFrom = cameFrom
         , costSoFar = costSoFar
@@ -52,7 +52,7 @@ findPath start goal graph =
 
 
 findPathHelper : RNNodeContext -> RoadNetwork -> Memory -> Maybe Path
-findPathHelper goal graph memory =
+findPathHelper goal roadNetwork memory =
     let
         { frontier } =
             memory
@@ -74,25 +74,24 @@ findPathHelper goal graph memory =
 
             else
                 case
-                    nodeCtx
-                        |> RoadNetwork.getOutgoingConnections
-                        |> List.filterMap (RoadNetwork.findNodeByNodeId graph)
+                    RoadNetwork.getOutgoingConnectionsAndCosts roadNetwork nodeCtx
                 of
                     [] ->
-                        findPathHelper goal graph memoryWithUpdatedFrontier
+                        findPathHelper goal roadNetwork memoryWithUpdatedFrontier
 
-                    neighbor :: otherNeighbors ->
+                    ( neighbor, distanceToNeighbor ) :: otherNeighbors ->
                         let
                             nextMemory =
                                 processNeighbors
                                     { current = nodeCtx
                                     , next = neighbor
                                     , goal = goal
+                                    , distanceToNext = distanceToNeighbor
                                     }
                                     otherNeighbors
                                     memoryWithUpdatedFrontier
                         in
-                        findPathHelper goal graph nextMemory
+                        findPathHelper goal roadNetwork nextMemory
         )
         popped
 
@@ -101,17 +100,20 @@ processNeighbors :
     { current : RNNodeContext
     , next : RNNodeContext
     , goal : RNNodeContext
+    , distanceToNext : Length
     }
-    -> List RNNodeContext
+    -> List ( RNNodeContext, Length )
     -> Memory
     -> Memory
-processNeighbors { current, next, goal } otherNeighbors memory =
+processNeighbors { current, next, goal, distanceToNext } otherNeighbors memory =
     let
         { costSoFar, frontier, cameFrom } =
             memory
 
         cost =
-            1
+            -- We want longer distances between nodes to be preferred, so an inverse ratio is required.
+            -- Float would be ideal, but PriorityQueue only supports Int for priority. Otherwise we would divide 1 by the distance.
+            floor (10000 / Length.inMeters distanceToNext)
 
         newCost =
             costSoFar
@@ -146,11 +148,12 @@ processNeighbors { current, next, goal } otherNeighbors memory =
             -- all neighbors processed
             nextMemory
 
-        nextNeighbor :: rest ->
+        ( nextNeighbor, distanceToNeighbor ) :: rest ->
             processNeighbors
                 { current = current
                 , next = nextNeighbor
                 , goal = goal
+                , distanceToNext = distanceToNeighbor
                 }
                 rest
                 nextMemory
