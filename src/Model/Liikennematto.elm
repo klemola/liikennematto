@@ -1,13 +1,12 @@
 module Model.Liikennematto exposing
-    ( CarSpawnQueue
-    , Liikennematto
+    ( Liikennematto
+    , Screen
     , SimulationState(..)
-    , Tool(..)
     , new
     )
 
-import Data.Worlds exposing (defaultWorld)
 import Element
+import Model.Editor as Editor exposing (Editor)
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.World exposing (World)
 import Random
@@ -18,9 +17,8 @@ type alias Liikennematto =
     , screen : Screen
     , seed : Random.Seed
     , simulation : SimulationState
+    , editor : Editor
     , renderCache : RenderCache
-    , tool : Tool
-    , carSpawnQueue : CarSpawnQueue
     , showDebugPanel : Bool
     , showRoadNetwork : Bool
     , showCarDebugVisuals : Bool
@@ -33,10 +31,6 @@ type SimulationState
     | Paused
 
 
-type alias CarSpawnQueue =
-    Int
-
-
 type alias Screen =
     { width : Int
     , height : Int
@@ -44,21 +38,14 @@ type alias Screen =
     }
 
 
-type Tool
-    = SmartConstruction
-    | Bulldozer
-    | Dynamite
-    | None
-
-
 initialSeed : Random.Seed
 initialSeed =
     Random.initialSeed 666
 
 
-new : Liikennematto
-new =
-    { world = defaultWorld
+new : World -> Liikennematto
+new world =
+    { world = world
     , screen =
         { width = 375
         , height = 667
@@ -66,9 +53,8 @@ new =
         }
     , seed = initialSeed
     , simulation = Running
-    , renderCache = RenderCache.new defaultWorld
-    , tool = SmartConstruction
-    , carSpawnQueue = 0
+    , editor = Editor.new
+    , renderCache = RenderCache.new world
     , showDebugPanel = False
     , showRoadNetwork = False
     , showCarDebugVisuals = False

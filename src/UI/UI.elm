@@ -6,15 +6,10 @@ import Element.Border as Border
 import Element.Font as Font
 import Html exposing (Html)
 import Message exposing (Message(..))
-import Model.Liikennematto exposing (CarSpawnQueue, Liikennematto, SimulationState(..))
+import Model.Liikennematto exposing (Liikennematto, SimulationState(..))
 import UI.Core exposing (ControlButtonSize(..), borderRadius, colors, controlButton, link, uiDimensions, whitespace)
 import UI.DebugPanel as DebugPanel
 import UI.Editor as Editor
-
-
-maxCarSpawnQueueSize : Int
-maxCarSpawnQueueSize =
-    5
 
 
 update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
@@ -76,7 +71,7 @@ controls model =
         , Border.solid
         , Border.color colors.heavyBorder
         ]
-        [ Editor.toolbar model.tool controlButtonSize
+        [ Editor.toolbar model.editor controlButtonSize
         , spacer
         , Element.row
             [ Element.spacing whitespace.tight
@@ -88,7 +83,7 @@ controls model =
                 , disabled = False
                 , size = controlButtonSize
                 }
-            , carSpawnControl model.carSpawnQueue controlButtonSize
+            , Editor.carSpawnControl model.editor controlButtonSize
             , simulationControl model.simulation controlButtonSize
             ]
         ]
@@ -110,21 +105,6 @@ simulationControl simulation controlButtonSize =
         , onPress = msg
         , selected = selected
         , disabled = False
-        , size = controlButtonSize
-        }
-
-
-carSpawnControl : CarSpawnQueue -> ControlButtonSize -> Element Message
-carSpawnControl carSpawnQueue controlButtonSize =
-    let
-        disabled =
-            carSpawnQueue >= maxCarSpawnQueueSize
-    in
-    controlButton
-        { label = Element.text "🚗"
-        , onPress = SpawnTestCar
-        , selected = False
-        , disabled = disabled
         , size = controlButtonSize
         }
 

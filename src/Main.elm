@@ -3,6 +3,7 @@ module Main exposing (main)
 import Browser
 import Browser.Dom exposing (getViewport)
 import Browser.Events as Events
+import Data.Worlds exposing (defaultWorld)
 import Element exposing (Element)
 import Element.Border as Border
 import Message exposing (Message(..))
@@ -23,7 +24,7 @@ main : Program () Liikennematto Message
 main =
     let
         initialModel =
-            Liikennematto.new
+            Liikennematto.new defaultWorld
     in
     Browser.document
         { init = \() -> ( initialModel, initCmd initialModel.seed )
@@ -152,7 +153,7 @@ render model =
             [ Element.width (Element.px renderWidth)
             , Element.height (Element.px renderHeight)
             , Element.inFront renderDebug
-            , Element.inFront (UI.Editor.overlay model.world model.tool)
+            , Element.inFront (UI.Editor.overlay model.world model.editor)
             ]
         -- overflow wrapper
         |> Element.el
