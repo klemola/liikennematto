@@ -95,24 +95,6 @@ update msg model =
             , generateEnvironmentAfterDelay nextSeed
             )
 
-        CheckQueues ->
-            let
-                ( nextWorld, nextCarSpawnQueue, nextSeed ) =
-                    dequeueCarSpawn model.carSpawnQueue model.seed model.world
-            in
-            ( { model
-                | carSpawnQueue = nextCarSpawnQueue
-                , world = nextWorld
-                , seed = nextSeed
-              }
-            , Cmd.none
-            )
-
-        SpawnTestCar ->
-            ( { model | carSpawnQueue = model.carSpawnQueue + 1 }
-            , Cmd.none
-            )
-
         _ ->
             ( model, Cmd.none )
 
@@ -169,31 +151,3 @@ attemptGenerateLot world seed simulation =
 
     else
         Zoning.generateLot world seed
-
-
-
---
--- Queues
---
-
-
-dequeueCarSpawn : Int -> Random.Seed -> World -> ( World, Int, Random.Seed )
-dequeueCarSpawn queue seed world =
-    let
-        canSpawnCar =
-            queue > 0
-    in
-    if canSpawnCar then
-        let
-            ( nextWorld, nextSeed, newCarId ) =
-                Traffic.spawnCar seed world
-        in
-        case newCarId of
-            Just _ ->
-                ( nextWorld, queue - 1, nextSeed )
-
-            Nothing ->
-                ( nextWorld, queue, nextSeed )
-
-    else
-        ( world, queue, seed )

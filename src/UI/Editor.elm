@@ -1,5 +1,6 @@
 port module UI.Editor exposing
-    ( overlay
+    ( carSpawnControl
+    , overlay
     , toolbar
     , update
     )
@@ -12,12 +13,15 @@ import Element.Events as Events
 import Maybe.Extra as Maybe
 import Message exposing (Message(..))
 import Model.Cell as Cell exposing (Cell)
-import Model.Liikennematto exposing (Liikennematto, Tool(..))
+import Model.Editor as Editor exposing (Editor, Tool(..))
+import Model.Liikennematto exposing (Liikennematto)
 import Model.RenderCache as RenderCache exposing (refreshTilemapCache)
 import Model.Tile as Tile
 import Model.Tilemap as Tilemap
 import Model.World as World exposing (World)
+import Random
 import Render
+import Simulation.Traffic as Traffic
 import Task
 import UI.Core
     exposing
@@ -41,14 +45,17 @@ update msg model =
     case msg of
         SelectTool tool ->
             let
-                nextTool =
-                    if model.tool == tool then
-                        None
+                nextEditor =
+                    model.editor
+                        |> Editor.activateTool
+                            (if model.editor.tool == tool then
+                                None
 
-                    else
-                        tool
+                             else
+                                tool
+                            )
             in
-            ( { model | tool = nextTool }, Cmd.none )
+            ( { model | editor = nextEditor }, Cmd.none )
 
         AddTile cell ->
             let
@@ -117,17 +124,48 @@ update msg model =
 
         ResetWorld ->
             let
-                world =
+                nextWorld =
                     World.empty
                         { horizontalCellsAmount = Defaults.horizontalCellsAmount
                         , verticalCellsAmount = Defaults.verticalCellsAmount
                         }
+
+                nextEditor =
+                    Editor.activateTool SmartConstruction model.editor
             in
             ( { model
-                | tool = SmartConstruction
-                , world = world
-                , renderCache = RenderCache.new world
+                | editor = nextEditor
+                , world = nextWorld
+                , renderCache = RenderCache.new nextWorld
               }
+            , Cmd.none
+            )
+
+        CheckQueues ->
+            let
+                { carSpawnQueue } =
+                    model.editor
+
+                ( nextWorld, nextCarSpawnQueue, nextSeed ) =
+                    dequeueCarSpawn carSpawnQueue model.seed model.world
+
+                nextEditor =
+                    Editor.setCarSpawnQueue nextCarSpawnQueue model.editor
+            in
+            ( { model
+                | world = nextWorld
+                , seed = nextSeed
+                , editor = nextEditor
+              }
+            , Cmd.none
+            )
+
+        SpawnTestCar ->
+            let
+                nextEditor =
+                    Editor.setCarSpawnQueue (model.editor.carSpawnQueue + 1) model.editor
+            in
+            ( { model | editor = nextEditor }
             , Cmd.none
             )
 
@@ -145,13 +183,38 @@ tileActionsToCmds =
         )
 
 
+dequeueCarSpawn : Int -> Random.Seed -> World -> ( World, Int, Random.Seed )
+dequeueCarSpawn queue seed world =
+    let
+        canSpawnCar =
+            queue > 0
+    in
+    if canSpawnCar then
+        let
+            ( nextWorld, nextSeed, newCarId ) =
+                Traffic.spawnCar seed world
+        in
+        case newCarId of
+            Just _ ->
+                ( nextWorld, queue - 1, nextSeed )
+
+            Nothing ->
+                ( nextWorld, queue, nextSeed )
+
+    else
+        ( world, queue, seed )
+
+
 
 -- Views
 
 
-overlay : World -> Tool -> Element Message
-overlay world tool =
+overlay : World -> Editor -> Element Message
+overlay world editor =
     let
+        { tool } =
+            editor
+
         size =
             Render.tileSizePixels
                 |> floor
@@ -325,15 +388,15 @@ tileHighlight { world, selectedTool, cell } =
             Nothing
 
 
-toolbar : Tool -> ControlButtonSize -> Element Message
-toolbar tool controlButtonSize =
+toolbar : Editor -> ControlButtonSize -> Element Message
+toolbar editor controlButtonSize =
     Element.row
         [ Element.spacing whitespace.tight
         , Element.alignLeft
         ]
-        [ toolbarButton tool SmartConstruction controlButtonSize
-        , toolbarButton tool Bulldozer controlButtonSize
-        , toolbarButton tool Dynamite controlButtonSize
+        [ toolbarButton editor.tool SmartConstruction controlButtonSize
+        , toolbarButton editor.tool Bulldozer controlButtonSize
+        , toolbarButton editor.tool Dynamite controlButtonSize
         ]
 
 
@@ -359,5 +422,20 @@ toolbarButton selectedTool tool controlButtonSize =
         , onPress = SelectTool tool
         , selected = selectedTool == tool
         , disabled = False
+        , size = controlButtonSize
+        }
+
+
+carSpawnControl : Editor -> ControlButtonSize -> Element Message
+carSpawnControl editor controlButtonSize =
+    let
+        disabled =
+            editor.carSpawnQueue >= Editor.maxQueuedCars
+    in
+    controlButton
+        { label = Element.text "🚗"
+        , onPress = SpawnTestCar
+        , selected = False
+        , disabled = disabled
         , size = controlButtonSize
         }
