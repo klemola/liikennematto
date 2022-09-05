@@ -7,6 +7,7 @@ module Model.Cell exposing
     , centerPoint
     , coordinates
     , fromCoordinates
+    , fromCoordinatesSet
     , nextOrthogonalCell
     , quadrantNeighbors
     , size
@@ -25,6 +26,7 @@ import Model.Geometry
         )
 import Point2d
 import Quantity exposing (negativeInfinity)
+import Set exposing (Set)
 import Vector2d
 
 
@@ -102,6 +104,21 @@ fromCoordinates constraints cellCoordinates =
 
     else
         Nothing
+
+
+fromCoordinatesSet : Constraints a -> Set CellCoordinates -> List Cell
+fromCoordinatesSet constraints set =
+    Set.foldl
+        (\coords acc ->
+            case fromCoordinates constraints coords of
+                Just cell ->
+                    cell :: acc
+
+                Nothing ->
+                    acc
+        )
+        []
+        set
 
 
 nextOrthogonalCell : Constraints a -> OrthogonalDirection -> Cell -> Maybe Cell

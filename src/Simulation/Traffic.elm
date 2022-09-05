@@ -81,10 +81,11 @@ updateTraffic :
     { updateQueue : List Car
     , seed : Random.Seed
     , world : World
+    , roadNetworkStale : Bool
     , delta : Duration
     }
     -> World
-updateTraffic { updateQueue, seed, world, delta } =
+updateTraffic { updateQueue, seed, world, delta, roadNetworkStale } =
     case updateQueue of
         [] ->
             { world | carPositionLookup = carPositionLookup world.tilemap world.cars }
@@ -125,7 +126,14 @@ updateTraffic { updateQueue, seed, world, delta } =
                             carAfterDespawn seed world carWithUpdatedFSM
 
                         _ ->
-                            Just (Pathfinding.carAfterRouteUpdate seed world delta carWithUpdatedFSM)
+                            Just
+                                (Pathfinding.carAfterRouteUpdate
+                                    seed
+                                    world
+                                    roadNetworkStale
+                                    delta
+                                    carWithUpdatedFSM
+                                )
 
                 nextWorld =
                     carAfterRouteUpdate
@@ -139,6 +147,7 @@ updateTraffic { updateQueue, seed, world, delta } =
                 { updateQueue = queue
                 , seed = seed
                 , world = nextWorld
+                , roadNetworkStale = roadNetworkStale
                 , delta = delta
                 }
 
