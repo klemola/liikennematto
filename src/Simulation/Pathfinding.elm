@@ -134,8 +134,8 @@ type RouteUpdateResult
     | Updated Route
 
 
-carAfterRouteUpdate : Random.Seed -> World -> Duration -> Car -> Car
-carAfterRouteUpdate seed world delta car =
+carAfterRouteUpdate : Random.Seed -> World -> Bool -> Duration -> Car -> Car
+carAfterRouteUpdate seed world roadNetworkStale delta car =
     case updateRoute delta car of
         Updated nextRoute ->
             { car | route = nextRoute }
@@ -153,11 +153,11 @@ carAfterRouteUpdate seed world delta car =
                                             |> Maybe.map Lot.hasParkingLockSet
                                             |> Maybe.withDefault False
                                 in
-                                if not parkingLockSet then
-                                    Just (generateRouteFromParkingSpot seed world car.id parkingReservation)
+                                if parkingLockSet || roadNetworkStale then
+                                    Nothing
 
                                 else
-                                    Nothing
+                                    Just (generateRouteFromParkingSpot seed world car.id parkingReservation)
                             )
                         |> Maybe.withDefault Route.initialRoute
             in

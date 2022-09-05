@@ -7,6 +7,7 @@ import Dict
 import Duration
 import FSM
 import Message exposing (Message(..))
+import Model.Editor as Editor
 import Model.Liikennematto
     exposing
         ( Liikennematto
@@ -49,6 +50,7 @@ update msg model =
                     Traffic.updateTraffic
                         { updateQueue = cars
                         , seed = model.seed
+                        , roadNetworkStale = Editor.hasPendingTilemapChange model.editor
                         , world = world
                         , delta = delta
                         }
@@ -144,8 +146,9 @@ attemptGenerateLot : World -> Random.Seed -> SimulationState -> ( World, Random.
 attemptGenerateLot world seed simulation =
     let
         largeEnoughRoadNetwork =
-            Tilemap.size world.tilemap > 4 * max 1 (Dict.size world.lots + 1)
+            Tilemap.size world.tilemap > 4 * (Dict.size world.lots + 1)
     in
+    -- TODO: require Nothing for pendingTilemapChange?
     if simulation == Paused || not largeEnoughRoadNetwork then
         ( world, seed )
 

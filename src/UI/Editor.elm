@@ -7,6 +7,7 @@ port module UI.Editor exposing
 
 import CustomEvent
 import Data.Defaults as Defaults
+import Duration exposing (Duration)
 import Element exposing (Color, Element)
 import Element.Border as Border
 import Element.Events as Events
@@ -17,8 +18,9 @@ import Model.Editor as Editor exposing (Editor, Tool(..))
 import Model.Liikennematto exposing (Liikennematto)
 import Model.RenderCache as RenderCache exposing (refreshTilemapCache)
 import Model.Tile as Tile
-import Model.Tilemap as Tilemap
+import Model.Tilemap as Tilemap exposing (TilemapUpdateResult)
 import Model.World as World exposing (World)
+import Quantity
 import Random
 import Render
 import Simulation.Traffic as Traffic
@@ -95,7 +97,7 @@ update msg model =
 
         UpdateTilemap delta ->
             let
-                { world } =
+                { world, renderCache } =
                     model
 
                 tilemapUpdateResult =
@@ -104,20 +106,20 @@ update msg model =
                 nextWorld =
                     { world | tilemap = tilemapUpdateResult.tilemap }
 
-                ( nextRenderCache, tilemapChangedEffects ) =
+                nextRenderCache =
                     if List.isEmpty tilemapUpdateResult.changedCells then
-                        ( model.renderCache, Cmd.none )
+                        renderCache
 
                     else
-                        ( refreshTilemapCache tilemapUpdateResult.tilemap model.renderCache
-                        , tilemapUpdateResult.changedCells
-                            |> Task.succeed
-                            |> Task.perform TilemapChanged
-                        )
+                        refreshTilemapCache tilemapUpdateResult.tilemap renderCache
+
+                ( nextEditor, tilemapChangedEffects ) =
+                    resolveTilemapUpdate delta tilemapUpdateResult model
             in
             ( { model
                 | world = nextWorld
                 , renderCache = nextRenderCache
+                , editor = nextEditor
               }
             , Cmd.batch (tilemapChangedEffects :: tileActionsToCmds tilemapUpdateResult.actions)
             )
@@ -181,6 +183,58 @@ tileActionsToCmds =
                 Tile.PlayAudio sound ->
                     playAudio sound
         )
+
+
+resolveTilemapUpdate : Duration -> TilemapUpdateResult -> Liikennematto -> ( Editor, Cmd Message )
+resolveTilemapUpdate delta tilemapUpdateResult model =
+    let
+        { editor } =
+            model
+    in
+    case editor.pendingTilemapChange of
+        Nothing ->
+            let
+                nextEditor =
+                    if List.isEmpty tilemapUpdateResult.changedCells then
+                        editor
+
+                    else
+                        Editor.createPendingTilemapChange tilemapUpdateResult.changedCells editor
+            in
+            ( nextEditor
+            , Cmd.none
+            )
+
+        Just pendingTilemapChange ->
+            let
+                ( changeTimer, currentChangedCells ) =
+                    pendingTilemapChange
+
+                nextTimer =
+                    if not (List.isEmpty tilemapUpdateResult.changedCells) then
+                        -- The tilemap changed during the delay, reset it (AKA debounce)
+                        Editor.minTilemapChangeFrequency
+
+                    else
+                        changeTimer
+                            |> Quantity.minus delta
+                            |> Quantity.max Quantity.zero
+
+                nextChangedCells =
+                    Editor.combineChangedCells tilemapUpdateResult.changedCells currentChangedCells
+            in
+            if Quantity.lessThanOrEqualToZero nextTimer then
+                ( { editor | pendingTilemapChange = Nothing }
+                , nextChangedCells
+                    |> Cell.fromCoordinatesSet (Tilemap.config model.world.tilemap)
+                    |> Task.succeed
+                    |> Task.perform TilemapChanged
+                )
+
+            else
+                ( { editor | pendingTilemapChange = Just ( nextTimer, nextChangedCells ) }
+                , Cmd.none
+                )
 
 
 dequeueCarSpawn : Int -> Random.Seed -> World -> ( World, Int, Random.Seed )
