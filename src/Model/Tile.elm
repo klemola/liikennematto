@@ -166,6 +166,10 @@ changing =
                 (\_ -> built)
                 []
                 (FSM.Condition (\_ state -> state == Changing))
+            , FSM.createTransition
+                (\_ -> changing)
+                []
+                FSM.Direct
             ]
         , entryActions = []
         , exitActions = []
@@ -250,7 +254,8 @@ chooseTileKind =
 -}
 fiveBitBitmask : OrthogonalNeighbors -> Bool -> Int
 fiveBitBitmask { up, left, right, down } terrainModifier =
-    (1 * boolToBinary up)
+    -- 1 * up
+    boolToBinary up
         + (2 * boolToBinary left)
         + (4 * boolToBinary right)
         + (8 * boolToBinary down)
