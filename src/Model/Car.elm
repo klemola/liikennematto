@@ -7,7 +7,6 @@ module Model.Car exposing
     , UpdateContext
     , adjustedShape
     , build
-    , fieldOfView
     , isParked
     , new
     , shouldWatchTraffic
@@ -15,7 +14,6 @@ module Model.Car exposing
     , triggerDespawn
     , triggerParking
     , triggerWaitingForParking
-    , viewDistance
     , withHome
     , withOrientation
     , withPosition
@@ -24,29 +22,25 @@ module Model.Car exposing
 
 import Angle exposing (Angle)
 import AngularSpeed exposing (AngularSpeed)
-import Axis2d
 import BoundingBox2d
 import Data.Cars exposing (CarMake)
-import Direction2d
 import Duration exposing (Duration)
 import FSM exposing (FSM)
 import Frame2d
-import Length exposing (Length)
+import Length
 import Model.Entity exposing (Id)
 import Model.Geometry
     exposing
         ( LMBoundingBox2d
         , LMPoint2d
         , LMShape2d
-        , LMTriangle2d
         )
 import Model.Lot exposing (ParkingReservation)
 import Model.Route as Route exposing (Route)
 import Point2d
 import Polygon2d
-import Quantity exposing (Quantity, Rate)
+import Quantity
 import Speed exposing (Speed)
-import Triangle2d
 
 
 type alias Car =
@@ -73,27 +67,6 @@ type alias NewCar =
     , rotation : AngularSpeed
     , homeLotId : Maybe Int
     }
-
-
-
---
--- Constants
---
-
-
-viewDistance : Length
-viewDistance =
-    Length.meters 24
-
-
-maxFieldOfView : Angle
-maxFieldOfView =
-    Angle.degrees 120
-
-
-speedToFieldOfViewReduction : Quantity Float (Rate Speed.MetersPerSecond Angle.Radians)
-speedToFieldOfViewReduction =
-    Speed.metersPerSecond 2 |> Quantity.per (Angle.degrees 10)
 
 
 
@@ -416,56 +389,6 @@ shouldWatchTraffic car =
 --
 -- Logic helpers
 --
-
-
-fieldOfView : Car -> LMTriangle2d
-fieldOfView car =
-    let
-        ( p1, _, p3 ) =
-            Triangle2d.vertices (rightSideOfFieldOfView car)
-
-        axis =
-            Axis2d.through
-                car.position
-                (Direction2d.fromAngle car.orientation)
-    in
-    Triangle2d.fromVertices ( p1, p3 |> Point2d.mirrorAcross axis, p3 )
-
-
-rightSideOfFieldOfView : Car -> LMTriangle2d
-rightSideOfFieldOfView car =
-    let
-        direction =
-            Direction2d.fromAngle car.orientation
-
-        viewOffset =
-            car.make.length |> Quantity.multiplyBy 0.25
-
-        origin =
-            car.position |> Point2d.translateIn direction viewOffset
-
-        limitFront =
-            car.position |> Point2d.translateIn direction viewDistance
-
-        fieldOfViewReduction =
-            car.velocity |> Quantity.at_ speedToFieldOfViewReduction
-
-        currentFOV =
-            maxFieldOfView |> Quantity.minus fieldOfViewReduction
-
-        angle =
-            Quantity.half currentFOV |> Quantity.negate
-
-        distanceRight =
-            viewDistance |> Quantity.divideBy (Angle.cos angle)
-
-        limitRight =
-            car.position
-                |> Point2d.translateIn
-                    (Direction2d.rotateBy angle direction)
-                    distanceRight
-    in
-    Triangle2d.from origin limitFront limitRight
 
 
 adjustedShape : CarMake -> LMPoint2d -> Angle -> ( LMShape2d, LMBoundingBox2d )

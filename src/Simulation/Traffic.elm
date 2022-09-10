@@ -21,7 +21,7 @@ import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car, CarState(..))
 import Model.Entity as Entity exposing (Id)
-import Model.Geometry exposing (LMPoint2d, orthogonalDirectionToLmDirection)
+import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d, orthogonalDirectionToLmDirection)
 import Model.Lookup exposing (carPositionLookup)
 import Model.Lot as Lot exposing (Lot, ParkingSpot)
 import Model.RoadNetwork as RoadNetwork
@@ -603,8 +603,8 @@ checkTrafficControl setup =
                         in
                         Dict.get id trafficLights |> Maybe.andThen (checkTrafficLights setup)
 
-                    Yield ->
-                        checkYield setup position
+                    Yield yieldCheckArea ->
+                        checkYield setup position yieldCheckArea
 
                     NoTrafficControl ->
                         Nothing
@@ -627,18 +627,15 @@ checkTrafficLights setup trafficLight =
         Nothing
 
 
-checkYield : RuleSetup -> LMPoint2d -> Maybe Rule
-checkYield { activeCar, otherCars } signPosition =
+checkYield : RuleSetup -> LMPoint2d -> LMBoundingBox2d -> Maybe Rule
+checkYield { activeCar, otherCars } signPosition checkArea =
     let
-        checkArea =
-            Car.fieldOfView activeCar
-
         distanceFromYieldSign =
             Point2d.distanceFrom activeCar.position signPosition
     in
     if
         (distanceFromYieldSign |> Quantity.lessThanOrEqualTo yieldReactionDistance)
-            && List.any (Collision.pathsIntersect checkArea activeCar) otherCars
+            && List.any (hasPriority checkArea) otherCars
     then
         Just (StopAtTrafficControl distanceFromYieldSign)
 
@@ -647,6 +644,25 @@ checkYield { activeCar, otherCars } signPosition =
 
     else
         Nothing
+
+
+hasPriority : LMBoundingBox2d -> Car -> Bool
+hasPriority yieldCheckArea otherCar =
+    let
+        centerPoint =
+            BoundingBox2d.centerPoint yieldCheckArea
+
+        isInYieldCheckArea =
+            BoundingBox2d.contains otherCar.position yieldCheckArea
+    in
+    isInYieldCheckArea
+        && -- If the center point of the yield check area is in any way visible to the car,
+           -- it must be heading to the intersection - it has priority
+           (centerPoint
+                |> Common.isInTheNormalPlaneOf
+                    (Direction2d.fromAngle otherCar.orientation)
+                    otherCar.position
+           )
 
 
 checkParking : RuleSetup -> Maybe Rule
