@@ -86,18 +86,7 @@ toRoadConnectionPosition laneOffset drivewayExitDirection lotWidth lotHeight =
 
 resident : LotKind -> Maybe CarMake
 resident kind =
-    case kind of
-        ResidentialSingle1 ->
-            Just sedan
-
-        ResidentialRow1 ->
-            Just sedan
-
-        School ->
-            Just sedan
-
-        Cafe ->
-            Just sedan
+    Just sedan
 
 
 lotAsset : LotKind -> List (Svg msg)

@@ -111,13 +111,6 @@ align { currentRotation, currentOrientation, targetOrientation } =
         targetRadius =
             Angle.radians 0.017
 
-        slowRadius =
-            Angle.radians 0.3
-
-        -- The time over which to achieve target speed
-        timeToTarget =
-            Duration.seconds 0.1
-
         rotation =
             targetOrientation
                 |> Quantity.minus currentOrientation
@@ -131,6 +124,13 @@ align { currentRotation, currentOrientation, targetOrientation } =
 
     else
         let
+            -- The time over which to achieve target speed
+            timeToTarget =
+                Duration.seconds 0.1
+
+            slowRadius =
+                Angle.radians 0.3
+
             targetRotation : AngularSpeed
             targetRotation =
                 if rotationSize |> Quantity.greaterThan slowRadius then

@@ -1,4 +1,4 @@
-module PathfindingVisualization exposing (main)
+module PathfindingVisualization exposing (Model, Msg, Path, SplineMeta, main)
 
 import Array exposing (Array)
 import Browser

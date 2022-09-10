@@ -76,14 +76,15 @@ fromCoordinates constraints cellCoordinates =
             && isValidCoordinate y constraints.verticalCellsAmount
     then
         let
-            xMultiplier =
-                (x - 1) |> toFloat
-
-            yMultiplier =
-                (constraints.verticalCellsAmount - y) |> toFloat
-
             bottomLeftCornerPoint =
                 if x > 0 && y > 0 then
+                    let
+                        yMultiplier =
+                            (constraints.verticalCellsAmount - y) |> toFloat
+
+                        xMultiplier =
+                            (x - 1) |> toFloat
+                    in
                     Point2d.xy
                         (size |> Quantity.multiplyBy xMultiplier)
                         (size |> Quantity.multiplyBy yMultiplier)

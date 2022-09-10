@@ -50,28 +50,30 @@ toNode { direction, origin } { node } =
     let
         target =
             node.label.position
-
-        angleDegreesToTarget =
-            origin
-                |> Common.angleFromDirection direction target
-                |> Quantity.abs
     in
     if node.label.kind == DeadendExit then
         uTurnSpline origin target direction
 
-    else if angleDegreesToTarget |> Quantity.lessThan (Angle.radians 0.1) then
-        straightSpline origin target
-
     else
         let
-            parameter =
-                if node.label.environment == RoadNetwork.Intersection then
-                    0.75
-
-                else
-                    0.5
+            angleDegreesToTarget =
+                origin
+                    |> Common.angleFromDirection direction target
+                    |> Quantity.abs
         in
-        curveSpline origin target direction parameter
+        if angleDegreesToTarget |> Quantity.lessThan (Angle.radians 0.1) then
+            straightSpline origin target
+
+        else
+            let
+                parameter =
+                    if node.label.environment == RoadNetwork.Intersection then
+                        0.75
+
+                    else
+                        0.5
+            in
+            curveSpline origin target direction parameter
 
 
 uTurnSpline : Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> CubicSpline2d Length.Meters a

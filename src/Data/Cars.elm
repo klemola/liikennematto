@@ -32,9 +32,7 @@ type CarStyle
 
 carAsset : CarMake -> ( List (Svg msg), String )
 carAsset make =
-    case make.style of
-        Sedan ->
-            ( sedanGraphics, sedanViewBox )
+    ( sedanGraphics, sedanViewBox )
 
 
 sedan : CarMake

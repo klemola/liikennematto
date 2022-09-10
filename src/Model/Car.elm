@@ -9,7 +9,6 @@ module Model.Car exposing
     , build
     , fieldOfView
     , isParked
-    , isStoppedOrWaiting
     , new
     , shouldWatchTraffic
     , statusDescription
@@ -401,13 +400,6 @@ build id route parkingReservation newCar =
 --
 -- Queries
 --
-
-
-isStoppedOrWaiting : Car -> Bool
-isStoppedOrWaiting car =
-    car.velocity
-        |> Quantity.abs
-        |> Quantity.lessThan (Speed.metersPerSecond 0.1)
 
 
 isParked : Car -> Bool

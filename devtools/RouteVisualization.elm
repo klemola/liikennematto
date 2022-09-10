@@ -1,4 +1,4 @@
-module RouteVisualization exposing (main)
+module RouteVisualization exposing (Clicked, Model, Msg, main)
 
 import AStar
 import Browser
