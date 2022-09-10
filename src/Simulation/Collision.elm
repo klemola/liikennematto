@@ -4,7 +4,6 @@ module Simulation.Collision exposing
     , fieldOfViewCheck
     , maxCarCollisionTestDistance
     , pathRay
-    , pathsIntersect
     , rightSideFOV
     )
 
@@ -22,14 +21,12 @@ import Model.Geometry
         , LMLineSegment2d
         , LMPoint2d
         , LMShape2d
-        , LMTriangle2d
         )
 import Model.Route as Route
 import Point2d
 import Polygon2d
 import Quantity
 import Speed
-import Triangle2d
 
 
 type CollisionCheckResult
@@ -137,49 +134,6 @@ rightSideFOV ray =
     LineSegment2d.endPoint ray
         |> Arc2d.sweptAround (LineSegment2d.startPoint ray)
             (Quantity.negate fovRadius)
-
-
-pathsIntersect : LMTriangle2d -> Car -> Car -> Bool
-pathsIntersect checkArea car otherCar =
-    case pathsIntersectAt checkArea car otherCar of
-        Just _ ->
-            True
-
-        Nothing ->
-            False
-
-
-pathsIntersectAt : LMTriangle2d -> Car -> Car -> Maybe LMPoint2d
-pathsIntersectAt checkArea car otherCar =
-    if Triangle2d.contains otherCar.position checkArea then
-        LineSegment2d.intersectionPoint
-            (velocityRay car Car.viewDistance)
-            (velocityRay otherCar Car.viewDistance)
-
-    else
-        Nothing
-
-
-velocityRay : Car -> Length -> LMLineSegment2d
-velocityRay car distance =
-    let
-        origin =
-            car.position
-
-        carDirection =
-            Direction2d.fromAngle car.orientation
-
-        directionOfVelocity =
-            if Quantity.lessThanZero car.velocity then
-                Direction2d.reverse carDirection
-
-            else
-                carDirection
-    in
-    buildRay
-        origin
-        directionOfVelocity
-        distance
 
 
 pathRay : Car -> Length -> LMLineSegment2d

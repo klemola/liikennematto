@@ -13,6 +13,7 @@ import Model.RoadNetwork
     exposing
         ( ConnectionKind(..)
         , RoadNetwork
+        , TrafficControl(..)
         )
 import Model.Route as Route
 import Model.World exposing (World)
@@ -56,7 +57,7 @@ view world cache { showRoadNetwork, showCarDebugVisuals } =
 
         roadNetworkLayer =
             if showRoadNetwork then
-                Just (renderRoadNetwork cache.tilemapHeightPixels world.roadNetwork)
+                Just (renderRoadNetwork cache world.roadNetwork)
 
             else
                 Nothing
@@ -73,8 +74,8 @@ view world cache { showRoadNetwork, showCarDebugVisuals } =
         )
 
 
-renderRoadNetwork : Float -> RoadNetwork -> Svg msg
-renderRoadNetwork tilemapHeightPixels roadNetwork =
+renderRoadNetwork : RenderCache -> RoadNetwork -> Svg msg
+renderRoadNetwork cache roadNetwork =
     let
         nodeColor kind =
             case kind of
@@ -101,7 +102,7 @@ renderRoadNetwork tilemapHeightPixels roadNetwork =
                             radius =
                                 toPixelsValue nodeRadius
 
-                            { position, kind } =
+                            { position, kind, trafficControl } =
                                 nodeCtx.node.label
 
                             nodeXY =
@@ -118,17 +119,23 @@ renderRoadNetwork tilemapHeightPixels roadNetwork =
                             [ Svg.circle
                                 [ Attributes.r <| String.fromFloat radius
                                 , Attributes.cx <| String.fromFloat nodeXY.x
-                                , Attributes.cy <| String.fromFloat (tilemapHeightPixels - nodeXY.y)
+                                , Attributes.cy <| String.fromFloat (cache.tilemapHeightPixels - nodeXY.y)
                                 , Attributes.fill <| Color.toCssString <| Colors.withAlpha 0.5 <| nodeColor kind
                                 ]
                                 []
                             , Svg.circle
                                 [ Attributes.r <| String.fromFloat (radius / 3)
                                 , Attributes.cx <| String.fromFloat helperXY.x
-                                , Attributes.cy <| String.fromFloat (tilemapHeightPixels - helperXY.y)
+                                , Attributes.cy <| String.fromFloat (cache.tilemapHeightPixels - helperXY.y)
                                 , Attributes.fill <| Color.toCssString <| Colors.withAlpha 0.75 Colors.gray4
                                 ]
                                 []
+                            , case trafficControl of
+                                Yield yieldArea ->
+                                    Render.Shape.boundingBox (Colors.withAlpha 0.15 Colors.yellow) cache.tilemapHeight yieldArea
+
+                                _ ->
+                                    Svg.g [] []
                             ]
                         )
                             :: acc
@@ -158,10 +165,10 @@ renderRoadNetwork tilemapHeightPixels roadNetwork =
                                         pointToPixels toNodeCtx.node.label.position
 
                                     fromStr =
-                                        String.fromFloat from.x ++ " " ++ String.fromFloat (tilemapHeightPixels - from.y)
+                                        String.fromFloat from.x ++ " " ++ String.fromFloat (cache.tilemapHeightPixels - from.y)
 
                                     toStr =
-                                        String.fromFloat to.x ++ " " ++ String.fromFloat (tilemapHeightPixels - to.y)
+                                        String.fromFloat to.x ++ " " ++ String.fromFloat (cache.tilemapHeightPixels - to.y)
                                 in
                                 ( "Edge-" ++ String.fromInt fromNodeCtx.node.id ++ String.fromInt toNodeCtx.node.id
                                 , Svg.path

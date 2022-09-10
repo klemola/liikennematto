@@ -25,7 +25,7 @@ import IntDict
 import Length exposing (Length)
 import Model.Cell exposing (Cell)
 import Model.Entity exposing (Id)
-import Model.Geometry exposing (LMDirection2d, LMPoint2d)
+import Model.Geometry exposing (LMBoundingBox2d, LMDirection2d, LMPoint2d)
 import Random
 import Random.Extra
 
@@ -67,7 +67,7 @@ type ConnectionEnvironment
 
 type TrafficControl
     = Signal Id
-    | Yield
+    | Yield LMBoundingBox2d
     | NoTrafficControl
 
 

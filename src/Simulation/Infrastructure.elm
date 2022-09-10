@@ -641,7 +641,14 @@ updateNodeTrafficControl currentTrafficLights nodeCtx ( roadNetwork, nextTraffic
 
                     else
                         -- orphan road node
-                        nodeCtx |> setTrafficControl Yield
+                        nodeCtx
+                            |> setTrafficControl
+                                (Yield
+                                    (yieldCheckArea
+                                        nodeCtx.node.label.position
+                                        nodeCtx.node.label.direction
+                                    )
+                                )
             in
             ( Graph.insert nextNodeCtx roadNetwork
             , nextTrafficLights
@@ -709,6 +716,25 @@ setTrafficControl trafficControl nodeCtx =
             { node | label = nextLabel }
     in
     { nodeCtx | node = nextNode }
+
+
+yieldCheckArea : LMPoint2d -> LMDirection2d -> LMBoundingBox2d
+yieldCheckArea yieldSignPosition centerOfYieldAreaDirection =
+    let
+        bbPoint1 =
+            yieldSignPosition
+                |> Point2d.translateIn
+                    (Direction2d.rotateCounterclockwise centerOfYieldAreaDirection)
+                    (Cell.size |> Quantity.twice)
+
+        bbPoint2 =
+            yieldSignPosition
+                |> Point2d.translateIn centerOfYieldAreaDirection Cell.size
+                |> Point2d.translateIn
+                    (Direction2d.rotateClockwise centerOfYieldAreaDirection)
+                    (Cell.size |> Quantity.twice)
+    in
+    BoundingBox2d.from bbPoint1 bbPoint2
 
 
 

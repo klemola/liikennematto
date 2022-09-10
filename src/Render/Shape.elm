@@ -1,5 +1,6 @@
 module Render.Shape exposing
     ( arc
+    , boundingBox
     , circle
     , cubicSpline
     , cubicSplineDebug
@@ -8,6 +9,7 @@ module Render.Shape exposing
 
 import Arc2d
 import Axis2d
+import BoundingBox2d
 import Circle2d
 import Color exposing (Color)
 import CubicSpline2d exposing (CubicSpline2d)
@@ -15,7 +17,7 @@ import Data.Colors as Colors
 import Geometry.Svg as Svg
 import Length
 import LineSegment2d
-import Model.Geometry exposing (LMArc2d, LMCubicSpline2d, LMLineSegment2d, LMPoint2d)
+import Model.Geometry exposing (LMArc2d, LMBoundingBox2d, LMCubicSpline2d, LMLineSegment2d, LMPoint2d)
 import Point2d exposing (Point2d)
 import Polyline2d
 import Quantity
@@ -157,6 +159,24 @@ arc color renderAreaHeight theArc =
         , Attributes.fill "none"
         ]
         arcInSVGCoords
+
+
+boundingBox : Color -> Length.Length -> LMBoundingBox2d -> Svg msg
+boundingBox color renderAreaHeight bb =
+    let
+        centerPointPixels =
+            BoundingBox2d.centerPoint bb
+                |> flipPointYCoordinate renderAreaHeight
+                |> Point2d.at Render.Conversion.pixelsToMetersRatio
+
+        dimensionsPixels =
+            BoundingBox2d.dimensions bb
+                |> Tuple.mapBoth (Quantity.at Render.Conversion.pixelsToMetersRatio)
+                    (Quantity.at Render.Conversion.pixelsToMetersRatio)
+    in
+    Svg.boundingBox2d
+        [ Attributes.fill (Color.toCssString color) ]
+        (BoundingBox2d.withDimensions dimensionsPixels centerPointPixels)
 
 
 

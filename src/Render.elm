@@ -492,7 +492,7 @@ renderTrafficSigns tilemapHeightPixels roadNetwork =
         |> List.filterMap
             (\node ->
                 case node.label.trafficControl of
-                    Yield ->
+                    Yield _ ->
                         Just
                             ( "Yield-" ++ String.fromInt node.id
                             , renderYieldSign tilemapHeightPixels node
