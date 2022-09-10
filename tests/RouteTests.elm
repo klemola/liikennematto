@@ -105,7 +105,7 @@ suite =
                         Data.RuleSetups.routeVisualizationSetup.world
 
                     nodePair =
-                        getStartAndEndNode world 1 44
+                        getStartAndEndNode world 1 52
                 in
                 \_ ->
                     Expect.equal
