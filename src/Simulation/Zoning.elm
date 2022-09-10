@@ -3,12 +3,12 @@ module Simulation.Zoning exposing (generateLot, removeInvalidLots)
 import Data.Lots exposing (NewLot, allLots)
 import Dict
 import Maybe.Extra as Maybe
-import Model.Cell as Cell exposing (Cell)
+import Model.Cell exposing (Cell)
 import Model.Entity as Entity exposing (Id)
-import Model.Geometry exposing (oppositeOrthogonalDirection, orthogonalDirections)
+import Model.Geometry exposing (oppositeOrthogonalDirection)
 import Model.Lot as Lot exposing (Lot)
 import Model.Tile as Tile
-import Model.Tilemap as Tilemap exposing (TilemapConfig)
+import Model.Tilemap as Tilemap
 import Model.World as World exposing (World)
 import Random
 import Random.List
@@ -47,9 +47,6 @@ generateLot world seed =
 attemptBuildLot : World -> Random.Seed -> NewLot -> Maybe ( Lot, Cell )
 attemptBuildLot world seed newLot =
     let
-        tilemapConfig =
-            Tilemap.config world.tilemap
-
         anchorOptions =
             world.tilemap
                 |> Tilemap.toList
@@ -58,7 +55,7 @@ attemptBuildLot world seed newLot =
                             Tile.isBasicRoad tile
                                 && not (List.member newLot.drivewayExitDirection (Tile.potentialConnections tile))
                         then
-                            validateAnchor tilemapConfig newLot world cell
+                            validateAnchor newLot world cell
 
                         else
                             Nothing
@@ -80,8 +77,8 @@ attemptBuildLot world seed newLot =
             )
 
 
-validateAnchor : TilemapConfig -> NewLot -> World -> Cell -> Maybe Cell
-validateAnchor tilemapConfig newLot world anchor =
+validateAnchor : NewLot -> World -> Cell -> Maybe Cell
+validateAnchor newLot world anchor =
     let
         lotBoundingBox =
             Lot.constructionSite anchor newLot
@@ -89,29 +86,11 @@ validateAnchor tilemapConfig newLot world anchor =
     if
         World.isEmptyArea lotBoundingBox world
             && not (Tilemap.hasAnchor world.tilemap anchor)
-            && isNotAtTheEndOfARoad tilemapConfig world anchor
     then
         Just anchor
 
     else
         Nothing
-
-
-isNotAtTheEndOfARoad : TilemapConfig -> World -> Cell -> Bool
-isNotAtTheEndOfARoad tilemapConfig world anchor =
-    orthogonalDirections
-        |> List.all
-            (\orthogonalDirection ->
-                case
-                    Cell.nextOrthogonalCell tilemapConfig orthogonalDirection anchor
-                        |> Maybe.andThen (Tilemap.tileAt world.tilemap)
-                of
-                    Just neighbor ->
-                        Tile.isBasicRoad neighbor
-
-                    Nothing ->
-                        True
-            )
 
 
 addLot : World -> ( Lot, Cell ) -> World
