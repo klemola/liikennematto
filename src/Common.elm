@@ -14,7 +14,7 @@ import BoundingBox2d
 import Direction2d exposing (Direction2d)
 import Frame2d
 import Length exposing (Length)
-import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
+import Model.Geometry exposing (LMBoundingBox2d, LMFrame2d, LMPoint2d)
 import Point2d exposing (Point2d)
 import Quantity
 import Vector2d
@@ -142,6 +142,7 @@ boundingBoxLowerHalf bb =
         }
 
 
+boundingBoxToFrame : LMBoundingBox2d -> LMFrame2d
 boundingBoxToFrame bb =
     let
         bbExtrema =

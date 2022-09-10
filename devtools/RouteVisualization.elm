@@ -17,6 +17,7 @@ import Quantity
 import Render
 import Render.Conversion
 import Render.Debug
+import Simulation.Traffic exposing (RuleSetup)
 
 
 type alias Model =
@@ -33,6 +34,7 @@ type alias Clicked =
     }
 
 
+ruleSetup : RuleSetup
 ruleSetup =
     RuleSetups.routeVisualizationSetup
 

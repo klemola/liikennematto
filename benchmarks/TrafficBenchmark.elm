@@ -1,6 +1,6 @@
 module TrafficBenchmark exposing (main)
 
-import Benchmark exposing (..)
+import Benchmark exposing (Benchmark, benchmark, describe, scale)
 import Benchmark.Runner exposing (BenchmarkProgram, program)
 import Data.RuleSetups
     exposing

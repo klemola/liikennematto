@@ -85,7 +85,7 @@ toRoadConnectionPosition laneOffset drivewayExitDirection lotWidth lotHeight =
 
 
 resident : LotKind -> Maybe CarMake
-resident kind =
+resident _ =
     Just sedan
 
 

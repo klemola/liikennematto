@@ -1,6 +1,6 @@
 module SplineBenchmark exposing (main)
 
-import Benchmark exposing (..)
+import Benchmark exposing (Benchmark, benchmark, describe, scale)
 import Benchmark.Runner exposing (BenchmarkProgram, program)
 import CubicSpline2d
 import Direction2d
