@@ -44,17 +44,17 @@ import Speed
 
 trafficLightReactionDistance : Length
 trafficLightReactionDistance =
-    Length.meters 32
+    Length.meters 12
 
 
 yieldSlowDownDistance : Length
 yieldSlowDownDistance =
-    Length.meters 16
+    Length.meters 12
 
 
 yieldReactionDistance : Length
 yieldReactionDistance =
-    Length.meters 5
+    Length.meters 4
 
 
 trafficControlStopDistance : Length
