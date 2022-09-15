@@ -158,7 +158,7 @@ unparkingCompleted { route, currentPosition } _ =
         |> Route.startNodePosition
         |> Maybe.map
             (Point2d.equalWithin
-                (Length.meters 0.1)
+                (Length.meters 4.5)
                 currentPosition
             )
         |> Maybe.withDefault True
