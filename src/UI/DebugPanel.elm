@@ -65,7 +65,7 @@ view model =
         [ Element.el
             [ Font.size 16
             , Font.bold
-            , Font.color colors.text
+            , Font.color colors.textInverse
             ]
             (Element.text "Debug")
         , controls model

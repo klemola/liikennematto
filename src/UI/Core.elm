@@ -11,6 +11,7 @@ module UI.Core exposing
     , whitespace
     )
 
+import Color
 import Data.Colors as Colors exposing (uiCompat)
 import Element exposing (Element)
 import Element.Background as Background
@@ -24,6 +25,9 @@ type alias UiDimensions =
     , controlButtonS : Int
     , controlButtonL : Int
     , panel : Int
+    , renderSafeAreaX : Int
+    , renderSafeAreaY : Int
+    , renderOffsetY : Float
     , overlay : Int
     , text : Int
     , smallControlsBreakpoint : Int
@@ -36,6 +40,9 @@ uiDimensions =
     , controlButtonS = 42
     , controlButtonL = 64
     , panel = 256
+    , renderSafeAreaX = 40
+    , renderSafeAreaY = 120
+    , renderOffsetY = 40
     , overlay = 256
     , text = 14
     , smallControlsBreakpoint = 720
@@ -43,8 +50,8 @@ uiDimensions =
 
 
 colors =
-    { mainBackground = uiCompat Colors.gray2
-    , menuBackground = uiCompat Colors.gray1
+    { mainBackground = uiCompat Colors.lightGreen
+    , menuBackground = uiCompat (Colors.withAlpha 0.6 Colors.darkGreen)
     , buttonBackground = uiCompat Colors.gray4
     , listItemBackground = uiCompat Colors.gray2
     , text = uiCompat Colors.gray2
@@ -55,6 +62,7 @@ colors =
     , notAllowed = uiCompat Colors.red
     , target = uiCompat Colors.gray6
     , transparent = Element.rgba255 0 0 0 0
+    , renderBorder = uiCompat Colors.darkGreen
     , lightBorder = uiCompat Colors.gray3
     , heavyBorder = uiCompat Colors.gray3
     }

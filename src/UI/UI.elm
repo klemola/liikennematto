@@ -30,6 +30,7 @@ layout model renderFn =
         [ Background.color colors.mainBackground
         , Element.width Element.fill
         , Element.height Element.fill
+        , Element.scrollbars
         , Element.inFront (controls model)
         , Element.inFront projectInfo
         , Element.inFront (debugPanel model)
