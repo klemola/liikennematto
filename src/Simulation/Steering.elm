@@ -203,11 +203,15 @@ stop currentVelocity =
 stopAtDistance : Length -> Length -> Speed -> Steering
 stopAtDistance distanceFromTarget threshold currentVelocity =
     let
+        stopDistance =
+            distanceFromTarget |> Quantity.minus threshold
+
         nextAcceleration =
-            distanceFromTarget
-                |> Quantity.minus threshold
-                |> Quantity.max Quantity.zero
-                |> accelerateToZeroOverDistance currentVelocity
+            if stopDistance |> Quantity.lessThanOrEqualToZero then
+                reachTargetVelocity currentVelocity Quantity.zero
+
+            else
+                accelerateToZeroOverDistance currentVelocity stopDistance
     in
     { linear = Just nextAcceleration
     , angular = Nothing
@@ -290,12 +294,15 @@ accelerateToZeroOverDistance currentVelocity (Quantity distanceFromTarget) =
             else
                 -- Already in motion; try to achieve optimal deceleration
                 0
+    in
+    if distanceFromTarget == 0 then
+        reachTargetVelocity currentVelocity Quantity.zero
 
+    else
         -- Linear acceleration (or deceleration) for a distance from a starting speed to final speed
         -- Original formula: a = (Vf*Vf - Vi*Vi)/(2 * d)
         -- (where Vf = final speed, Vi = starting speed, d = distance, and the result a is acceleration)
         -- ...but with `abs` on the starting speed to handle negative velocity
-        acceleration =
-            (finalSpeed * finalSpeed - startingSpeed * abs startingSpeed) / (2 * distanceFromTarget)
-    in
-    Quantity acceleration |> Quantity.clamp maxDeceleration maxAcceleration
+        ((finalSpeed * finalSpeed - startingSpeed * abs startingSpeed) / (2 * distanceFromTarget))
+            |> Quantity
+            |> Quantity.clamp maxDeceleration maxAcceleration

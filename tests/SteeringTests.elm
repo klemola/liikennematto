@@ -1,7 +1,7 @@
 module SteeringTests exposing (suite)
 
 import Acceleration
-import Expect
+import Expect exposing (FloatingPointTolerance(..))
 import Length
 import Quantity
 import Simulation.Steering as Steering
@@ -75,7 +75,7 @@ suite =
                     in
                     result
                         |> Acceleration.inMetersPerSecondSquared
-                        |> Expect.within (Expect.Absolute 0.001) -0.1
+                        |> Expect.within (Expect.Absolute 0.01) -0.1
                 )
             ]
         , describe "accelerateToZeroOverDistance"
@@ -144,6 +144,18 @@ suite =
                     result
                         |> Acceleration.inMetersPerSecondSquared
                         |> Expect.greaterThan 0
+                )
+            , test "edge case: with zero distance"
+                (\_ ->
+                    let
+                        result =
+                            Steering.accelerateToZeroOverDistance
+                                (Speed.metersPerSecond 5)
+                                Quantity.zero
+                    in
+                    result
+                        |> Acceleration.inMetersPerSecondSquared
+                        |> Expect.within (Absolute 0.01) -5
                 )
             ]
         ]
