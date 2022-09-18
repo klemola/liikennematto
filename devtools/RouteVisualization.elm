@@ -75,8 +75,17 @@ update msg model =
 
                 clickWorldPosition =
                     Point2d.xy
-                        (Render.Conversion.toMetersValue offsetX)
-                        (model.cache.tilemapHeight |> Quantity.minus (Render.Conversion.toMetersValue offsetY))
+                        (Render.Conversion.toMetersValue
+                            model.cache.pixelsToMetersRatio
+                            offsetX
+                        )
+                        (model.cache.tilemapHeight
+                            |> Quantity.minus
+                                (Render.Conversion.toMetersValue
+                                    model.cache.pixelsToMetersRatio
+                                    offsetY
+                                )
+                        )
 
                 clicked =
                     { position = clickWorldPosition

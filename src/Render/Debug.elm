@@ -100,19 +100,19 @@ renderRoadNetwork cache roadNetwork =
                     (\nodeCtx acc ->
                         let
                             radius =
-                                toPixelsValue nodeRadius
+                                toPixelsValue cache.pixelsToMetersRatio nodeRadius
 
                             { position, kind, trafficControl } =
                                 nodeCtx.node.label
 
                             nodeXY =
-                                pointToPixels position
+                                pointToPixels cache.pixelsToMetersRatio position
 
                             helperPos =
                                 position |> Point2d.translateIn nodeCtx.node.label.direction (Quantity.half nodeRadius)
 
                             helperXY =
-                                pointToPixels helperPos
+                                pointToPixels cache.pixelsToMetersRatio helperPos
                         in
                         ( "Node-" ++ String.fromInt nodeCtx.node.id
                         , Svg.g []
@@ -132,7 +132,7 @@ renderRoadNetwork cache roadNetwork =
                                 []
                             , case trafficControl of
                                 Yield yieldArea ->
-                                    Render.Shape.boundingBox (Colors.withAlpha 0.15 Colors.yellow) cache.tilemapHeight yieldArea
+                                    Render.Shape.boundingBox cache (Colors.withAlpha 0.15 Colors.yellow) yieldArea
 
                                 _ ->
                                     Svg.g [] []
@@ -159,10 +159,10 @@ renderRoadNetwork cache roadNetwork =
                             (\fromNodeCtx toNodeCtx ->
                                 let
                                     from =
-                                        pointToPixels fromNodeCtx.node.label.position
+                                        pointToPixels cache.pixelsToMetersRatio fromNodeCtx.node.label.position
 
                                     to =
-                                        pointToPixels toNodeCtx.node.label.position
+                                        pointToPixels cache.pixelsToMetersRatio toNodeCtx.node.label.position
 
                                     fromStr =
                                         String.fromFloat from.x ++ " " ++ String.fromFloat (cache.tilemapHeightPixels - from.y)
@@ -205,20 +205,20 @@ renderCarDebug : RenderCache -> Car -> Svg msg
 renderCarDebug cache car =
     Svg.g []
         [ renderCarFieldOfView cache car
-        , renderCarPath cache.tilemapHeight car
+        , renderCarPath cache car
         , renderCarCollisionDetection cache car
         ]
 
 
-renderCarPath : Length -> Car -> Svg msg
-renderCarPath tilemapHeight car =
+renderCarPath : RenderCache -> Car -> Svg msg
+renderCarPath cache car =
     Svg.g []
         (car.route
             |> Route.pathToSplines
             |> List.map
                 (Render.Shape.cubicSpline
+                    cache
                     (Colors.red |> Colors.withAlpha 0.75)
-                    tilemapHeight
                 )
         )
 
@@ -227,7 +227,7 @@ renderCarCollisionDetection : RenderCache -> Car -> Svg msg
 renderCarCollisionDetection cache car =
     let
         points =
-            Polygon2d.outerLoop car.shape |> toPointsString cache.tilemapHeightPixels
+            Polygon2d.outerLoop car.shape |> toPointsString cache
 
         ray =
             Collision.pathRay car Collision.maxCarCollisionTestDistance
@@ -240,8 +240,8 @@ renderCarCollisionDetection cache car =
             ]
             []
         , Render.Shape.line
+            cache
             (Colors.darkBlue |> Colors.withAlpha 0.5)
-            cache.tilemapHeight
             ray
         ]
 
@@ -249,21 +249,21 @@ renderCarCollisionDetection cache car =
 renderCarFieldOfView : RenderCache -> Car -> Svg msg
 renderCarFieldOfView cache car =
     Render.Shape.arc
+        cache
         (Colors.gray6 |> Colors.withAlpha 0.2)
-        cache.tilemapHeight
         (Collision.rightSideFOV (Collision.pathRay car Collision.maxCarCollisionTestDistance))
 
 
-toPointsString : Float -> List LMPoint2d -> String
-toPointsString tilemapHeightPixels points =
+toPointsString : RenderCache -> List LMPoint2d -> String
+toPointsString cache points =
     List.foldl
         (\point acc ->
             let
                 { x, y } =
-                    pointToPixels point
+                    pointToPixels cache.pixelsToMetersRatio point
 
                 pointStr =
-                    String.fromFloat x ++ "," ++ String.fromFloat (tilemapHeightPixels - y) ++ " "
+                    String.fromFloat x ++ "," ++ String.fromFloat (cache.tilemapHeightPixels - y) ++ " "
             in
             pointStr ++ acc
         )

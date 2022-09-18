@@ -14,11 +14,14 @@ import Model.Geometry exposing (OrthogonalDirection, oppositeOrthogonalDirection
 import Model.Tile as Tile exposing (Tile, TileKind)
 import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.World exposing (World)
+import Pixels
+import Quantity exposing (Quantity, Rate)
 import Render.Conversion exposing (toPixelsValue)
 
 
 type alias RenderCache =
-    { tilemap : TilemapPresentation
+    { pixelsToMetersRatio : Quantity Float (Rate Pixels.Pixels Length.Meters)
+    , tilemap : TilemapPresentation
     , tilemapWidthPixels : Float
     , tilemapHeightPixels : Float
     , tilemapHeight : Length.Length
@@ -33,6 +36,11 @@ type alias TilePresentation =
     ( Cell, TileKind, Maybe Animation )
 
 
+defaultPixelsToMetersRatio : Quantity Float (Rate Pixels.Pixels Length.Meters)
+defaultPixelsToMetersRatio =
+    Pixels.pixels 6 |> Quantity.per (Length.meters 1)
+
+
 new : World -> RenderCache
 new { tilemap } =
     let
@@ -40,12 +48,13 @@ new { tilemap } =
             Tilemap.dimensions tilemap
 
         tilemapWidthPixels =
-            toPixelsValue tilemapDimensions.width
+            toPixelsValue defaultPixelsToMetersRatio tilemapDimensions.width
 
         tilemapHeigthPixels =
-            toPixelsValue tilemapDimensions.height
+            toPixelsValue defaultPixelsToMetersRatio tilemapDimensions.height
     in
-    { tilemap = toTilemapCache tilemap
+    { pixelsToMetersRatio = defaultPixelsToMetersRatio
+    , tilemap = toTilemapCache tilemap
     , tilemapWidthPixels =
         tilemapWidthPixels
     , tilemapHeightPixels = tilemapHeigthPixels

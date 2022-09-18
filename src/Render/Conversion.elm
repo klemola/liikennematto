@@ -1,6 +1,5 @@
 module Render.Conversion exposing
     ( metersToViewBoxRatio
-    , pixelsToMetersRatio
     , pointToPixels
     , toMetersValue
     , toPixelsValue
@@ -14,18 +13,13 @@ import Point2d
 import Quantity exposing (Quantity, Rate)
 
 
-pixelsToMetersRatio : Quantity Float (Rate Pixels.Pixels Length.Meters)
-pixelsToMetersRatio =
-    Pixels.pixels 6 |> Quantity.per (Length.meters 1)
-
-
 metersToViewBoxRatio : Quantity Float (Rate Length.Meters Pixels.Pixels)
 metersToViewBoxRatio =
     Length.meters 1 |> Quantity.per (Pixels.pixels 16)
 
 
-toPixelsValue : Length -> Float
-toPixelsValue length =
+toPixelsValue : Quantity Float (Rate Pixels.Pixels Length.Meters) -> Length -> Float
+toPixelsValue pixelsToMetersRatio length =
     length
         |> Quantity.at pixelsToMetersRatio
         |> Pixels.inPixels
@@ -38,15 +32,15 @@ toViewBoxValue length =
         |> Pixels.inPixels
 
 
-pointToPixels : LMPoint2d -> { x : Float, y : Float }
-pointToPixels point =
+pointToPixels : Quantity Float (Rate Pixels.Pixels Length.Meters) -> LMPoint2d -> { x : Float, y : Float }
+pointToPixels pixelsToMetersRatio point =
     point
         |> Point2d.at pixelsToMetersRatio
         |> Point2d.toPixels
 
 
-toMetersValue : Float -> Length
-toMetersValue pixels =
+toMetersValue : Quantity Float (Rate Pixels.Pixels Length.Meters) -> Float -> Length
+toMetersValue pixelsToMetersRatio pixels =
     pixels
         |> Pixels.pixels
         |> Quantity.at_ pixelsToMetersRatio

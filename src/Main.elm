@@ -160,7 +160,11 @@ render model =
             , Border.width borderSize.light
             , Border.color colors.renderBorder
             , Element.inFront renderDebug
-            , Element.inFront (UI.Editor.overlay model.world model.editor)
+            , Element.inFront
+                (UI.Editor.overlay model.renderCache
+                    model.world
+                    model.editor
+                )
             ]
         |> Element.el
             [ Element.width (Element.px wrapperWidth)

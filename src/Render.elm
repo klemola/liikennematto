@@ -1,7 +1,6 @@
 module Render exposing
     ( renderCar
     , renderLot
-    , tileSizePixels
     , view
     )
 
@@ -59,11 +58,6 @@ trafficLightDiameter =
     signDiameter
 
 
-tileSizePixels : Float
-tileSizePixels =
-    toPixelsValue Cell.size
-
-
 nothing : Svg msg
 nothing =
     Svg.g [] []
@@ -96,11 +90,11 @@ view { cars, lots, roadNetwork, trafficLights } cache =
         , Attributes.style <| "background-color: " ++ Color.toCssString Colors.lightGreen ++ ";"
         ]
         [ styles
-        , Svg.Lazy.lazy (renderTilemap cache.tilemapHeightPixels) cache.tilemap
-        , Svg.Lazy.lazy (renderLots cache.tilemapHeightPixels) lots
-        , renderCars cache.tilemapHeightPixels cars
-        , Svg.Lazy.lazy (renderTrafficLights cache.tilemapHeightPixels) trafficLights
-        , Svg.Lazy.lazy (renderTrafficSigns cache.tilemapHeightPixels) roadNetwork
+        , Svg.Lazy.lazy (renderTilemap cache) cache.tilemap
+        , Svg.Lazy.lazy (renderLots cache) lots
+        , renderCars cache cars
+        , Svg.Lazy.lazy (renderTrafficLights cache) trafficLights
+        , Svg.Lazy.lazy (renderTrafficSigns cache) roadNetwork
         ]
 
 
@@ -110,26 +104,29 @@ view { cars, lots, roadNetwork, trafficLights } cache =
 --
 
 
-renderTilemap : Float -> TilemapPresentation -> Svg msg
-renderTilemap tilemapHeightPixels tilemap =
+renderTilemap : RenderCache -> TilemapPresentation -> Svg msg
+renderTilemap cache tilemap =
     tilemap
         |> List.map
             (\( cell, tile, animation ) ->
                 ( Cell.toString cell
-                , renderTile tilemapHeightPixels cell tile animation
+                , renderTile cache cell tile animation
                 )
             )
         |> Svg.Keyed.node "g" []
 
 
-renderTile : Float -> Cell -> TileKind -> Maybe Animation -> Svg msg
-renderTile tilemapHeightPixels cell tileKind animation =
+renderTile : RenderCache -> Cell -> TileKind -> Maybe Animation -> Svg msg
+renderTile cache cell tileKind animation =
     let
+        tileSizePixels =
+            toPixelsValue cache.pixelsToMetersRatio Cell.size
+
         { x, y } =
-            Cell.bottomLeftCorner cell |> pointToPixels
+            Cell.bottomLeftCorner cell |> pointToPixels cache.pixelsToMetersRatio
 
         yAdjusted =
-            tilemapHeightPixels - tileSizePixels - y
+            cache.tilemapHeightPixels - tileSizePixels - y
     in
     case animation of
         Just tileAnimation ->
@@ -139,17 +136,27 @@ renderTile tilemapHeightPixels cell tileKind animation =
 
                 tileStyles =
                     String.concat
-                        [ tileAnimationProperties tileAnimation ( x, yAdjusted )
+                        [ tileAnimationProperties
+                            tileSizePixels
+                            tileAnimation
+                            ( x, yAdjusted )
                         , animationStyleString
                         ]
 
                 ( overflowTile, clipStyles ) =
                     tileAnimation.direction
-                        |> Maybe.map (animationOverflowTile x yAdjusted)
+                        |> Maybe.map
+                            (animationOverflowTile
+                                { tileSizePixels = tileSizePixels
+                                , baseX = x
+                                , baseY = yAdjusted
+                                }
+                            )
                         |> Maybe.withDefault ( nothing, "" )
             in
             Svg.g [ Attributes.style clipStyles ]
                 [ tileElement
+                    tileSizePixels
                     { x = x
                     , y = yAdjusted
                     , tileIndex = tileKind
@@ -160,6 +167,7 @@ renderTile tilemapHeightPixels cell tileKind animation =
 
         Nothing ->
             tileElement
+                tileSizePixels
                 { x = x
                 , y = yAdjusted
                 , tileIndex = tileKind
@@ -167,8 +175,15 @@ renderTile tilemapHeightPixels cell tileKind animation =
                 }
 
 
-animationOverflowTile : Float -> Float -> OrthogonalDirection -> ( Svg msg, String )
-animationOverflowTile baseX baseY animationDirection =
+type alias AnimationOverflowProperties =
+    { tileSizePixels : Float
+    , baseX : Float
+    , baseY : Float
+    }
+
+
+animationOverflowTile : AnimationOverflowProperties -> OrthogonalDirection -> ( Svg msg, String )
+animationOverflowTile { tileSizePixels, baseX, baseY } animationDirection =
     let
         clipAmount =
             String.fromFloat tileSizePixels ++ "px"
@@ -211,8 +226,8 @@ animationOverflowTile baseX baseY animationDirection =
     )
 
 
-tileElement : { x : Float, y : Float, tileIndex : Int, tileStyles : String } -> Svg msg
-tileElement { x, y, tileIndex, tileStyles } =
+tileElement : Float -> { x : Float, y : Float, tileIndex : Int, tileStyles : String } -> Svg msg
+tileElement tileSizePixels { x, y, tileIndex, tileStyles } =
     Svg.g
         [ Attributes.style tileStyles
         ]
@@ -227,14 +242,12 @@ tileElement { x, y, tileIndex, tileStyles } =
         ]
 
 
-tileAppearOffset : Float
-tileAppearOffset =
-    toPixelsValue (Cell.size |> Quantity.multiplyBy 0.6)
-
-
-tileAnimationProperties : Animation -> ( Float, Float ) -> String
-tileAnimationProperties animation ( tileX, tileY ) =
+tileAnimationProperties : Float -> Animation -> ( Float, Float ) -> String
+tileAnimationProperties tileSizePixels animation ( tileX, tileY ) =
     let
+        tileAppearOffset =
+            tileSizePixels * 0.6
+
         halfTile =
             tileSizePixels / 2
 
@@ -326,34 +339,34 @@ tileAnimationProperties animation ( tileX, tileY ) =
 --
 
 
-renderCars : Float -> Dict Int Car -> Svg msg
-renderCars tilemapHeightPixels cars =
+renderCars : RenderCache -> Dict Int Car -> Svg msg
+renderCars cache cars =
     cars
         |> Dict.foldl
             (\_ car acc ->
-                ( "Car-" ++ String.fromInt car.id, renderCar tilemapHeightPixels car ) :: acc
+                ( "Car-" ++ String.fromInt car.id, renderCar cache car ) :: acc
             )
             []
         |> Svg.Keyed.node "g" []
 
 
-renderCar : Float -> Car -> Svg msg
-renderCar tilemapHeightPixels car =
+renderCar : RenderCache -> Car -> Svg msg
+renderCar cache car =
     let
         { x, y } =
-            pointToPixels car.position
+            pointToPixels cache.pixelsToMetersRatio car.position
 
         carWidthPixels =
-            toPixelsValue car.make.width
+            toPixelsValue cache.pixelsToMetersRatio car.make.width
 
         carLengthPixels =
-            toPixelsValue car.make.length
+            toPixelsValue cache.pixelsToMetersRatio car.make.length
 
         renderX =
             x - (carLengthPixels / 2)
 
         renderY =
-            tilemapHeightPixels - y - (carWidthPixels / 2)
+            cache.tilemapHeightPixels - y - (carWidthPixels / 2)
 
         rotateVal =
             car.orientation
@@ -363,7 +376,7 @@ renderCar tilemapHeightPixels car =
 
         -- rotate about the center of the car
         rotateStr =
-            "rotate(" ++ rotateVal ++ "," ++ String.fromFloat x ++ "," ++ String.fromFloat (tilemapHeightPixels - y) ++ ")"
+            "rotate(" ++ rotateVal ++ "," ++ String.fromFloat x ++ "," ++ String.fromFloat (cache.tilemapHeightPixels - y) ++ ")"
 
         translateStr =
             "translate(" ++ String.fromFloat renderX ++ " " ++ String.fromFloat renderY ++ ")"
@@ -390,30 +403,30 @@ renderCar tilemapHeightPixels car =
 --
 
 
-renderLots : Float -> Dict Id Lot -> Svg msg
-renderLots tilemapHeightPixels lots =
+renderLots : RenderCache -> Dict Id Lot -> Svg msg
+renderLots cache lots =
     lots
-        |> Dict.foldl (\_ lot acc -> ( "Lot-" ++ String.fromInt lot.id, renderLot tilemapHeightPixels lot ) :: acc) []
+        |> Dict.foldl (\_ lot acc -> ( "Lot-" ++ String.fromInt lot.id, renderLot cache lot ) :: acc) []
         |> Svg.Keyed.node "g" []
 
 
-renderLot : Float -> Lot -> Svg msg
-renderLot tilemapHeightPixels lot =
+renderLot : RenderCache -> Lot -> Svg msg
+renderLot cache lot =
     let
         { x, y } =
-            pointToPixels lot.position
+            pointToPixels cache.pixelsToMetersRatio lot.position
 
         width =
-            toPixelsValue lot.width
+            toPixelsValue cache.pixelsToMetersRatio lot.width
 
         height =
-            toPixelsValue lot.height
+            toPixelsValue cache.pixelsToMetersRatio lot.height
 
         renderX =
             x - width / 2
 
         renderY =
-            tilemapHeightPixels - (height / 2) - y
+            cache.tilemapHeightPixels - (height / 2) - y
 
         translateStr =
             "translate(" ++ String.fromFloat renderX ++ "," ++ String.fromFloat renderY ++ ")"
@@ -451,23 +464,23 @@ renderLot tilemapHeightPixels lot =
 --
 
 
-renderTrafficLights : Float -> TrafficLights -> Svg msg
-renderTrafficLights tilemapHeightPixels trafficLights =
+renderTrafficLights : RenderCache -> TrafficLights -> Svg msg
+renderTrafficLights cache trafficLights =
     trafficLights
-        |> Dict.foldl (\_ tl acc -> ( "TrafficLight-" ++ String.fromInt tl.id, renderTrafficLight tilemapHeightPixels tl ) :: acc) []
+        |> Dict.foldl (\_ tl acc -> ( "TrafficLight-" ++ String.fromInt tl.id, renderTrafficLight cache tl ) :: acc) []
         |> Svg.Keyed.node "g" []
 
 
-renderTrafficLight : Float -> TrafficLight -> Svg msg
-renderTrafficLight tilemapHeightPixels trafficLight =
+renderTrafficLight : RenderCache -> TrafficLight -> Svg msg
+renderTrafficLight cache trafficLight =
     let
         { x, y } =
-            pointToPixels trafficLight.position
+            pointToPixels cache.pixelsToMetersRatio trafficLight.position
 
         radius =
             trafficLightDiameter
                 |> Quantity.half
-                |> toPixelsValue
+                |> toPixelsValue cache.pixelsToMetersRatio
 
         color =
             case TrafficLight.color trafficLight of
@@ -483,7 +496,7 @@ renderTrafficLight tilemapHeightPixels trafficLight =
     Svg.circle
         [ Attributes.r <| String.fromFloat radius
         , Attributes.cx <| String.fromFloat x
-        , Attributes.cy <| String.fromFloat (tilemapHeightPixels - y)
+        , Attributes.cy <| String.fromFloat (cache.tilemapHeightPixels - y)
         , Attributes.fill <| Color.toCssString color
         , Attributes.stroke <| Color.toCssString Colors.gray4
         , Attributes.strokeWidth <| String.fromInt 1
@@ -491,8 +504,8 @@ renderTrafficLight tilemapHeightPixels trafficLight =
         []
 
 
-renderTrafficSigns : Float -> RoadNetwork -> Svg msg
-renderTrafficSigns tilemapHeightPixels roadNetwork =
+renderTrafficSigns : RenderCache -> RoadNetwork -> Svg msg
+renderTrafficSigns cache roadNetwork =
     roadNetwork
         |> Graph.nodes
         |> List.filterMap
@@ -501,7 +514,7 @@ renderTrafficSigns tilemapHeightPixels roadNetwork =
                     Yield _ ->
                         Just
                             ( "Yield-" ++ String.fromInt node.id
-                            , renderYieldSign tilemapHeightPixels node
+                            , renderYieldSign cache node
                             )
 
                     _ ->
@@ -510,14 +523,14 @@ renderTrafficSigns tilemapHeightPixels roadNetwork =
         |> Svg.Keyed.node "g" []
 
 
-renderYieldSign : Float -> Node Connection -> Svg msg
-renderYieldSign tilemapHeightPixels node =
+renderYieldSign : RenderCache -> Node Connection -> Svg msg
+renderYieldSign cache node =
     let
         size =
-            toPixelsValue signDiameter
+            toPixelsValue cache.pixelsToMetersRatio signDiameter
 
         { x, y } =
-            pointToPixels node.label.position
+            pointToPixels cache.pixelsToMetersRatio node.label.position
 
         asset =
             "assets/yield_sign.png"
@@ -525,7 +538,7 @@ renderYieldSign tilemapHeightPixels node =
     Svg.image
         [ Attributes.xlinkHref asset
         , Attributes.x <| String.fromFloat (x - size / 2)
-        , Attributes.y <| String.fromFloat <| tilemapHeightPixels - y - (size / 2)
+        , Attributes.y <| String.fromFloat <| cache.tilemapHeightPixels - y - (size / 2)
         , Attributes.width <| String.fromFloat size
         , Attributes.height <| String.fromFloat size
         ]

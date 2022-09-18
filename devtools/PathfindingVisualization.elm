@@ -12,6 +12,8 @@ import Html exposing (Html)
 import Length
 import Model.Car as Car exposing (Car)
 import Model.Geometry exposing (GlobalCoordinates, LMDirection2d, LMPoint2d)
+import Model.RenderCache as RenderCache
+import Model.World as World
 import Point2d
 import Quantity
 import Render
@@ -43,6 +45,17 @@ type alias SplineMeta =
     }
 
 
+world =
+    World.empty
+        { horizontalCellsAmount = 4
+        , verticalCellsAmount = 4
+        }
+
+
+renderCache =
+    RenderCache.new world
+
+
 renderArea : Length.Length
 renderArea =
     Length.meters 64
@@ -50,12 +63,12 @@ renderArea =
 
 renderAreaWidthStr : String
 renderAreaWidthStr =
-    String.fromFloat (toPixelsValue renderArea)
+    String.fromFloat (toPixelsValue renderCache.pixelsToMetersRatio renderArea)
 
 
 renderAreaHeightStr : String
 renderAreaHeightStr =
-    String.fromFloat (toPixelsValue renderArea)
+    String.fromFloat (toPixelsValue renderCache.pixelsToMetersRatio renderArea)
 
 
 nodes : List ( LMPoint2d, LMDirection2d )
@@ -290,8 +303,8 @@ view model =
             , Attributes.style <| "background-color: " ++ Colors.lightGreenCSS ++ ";"
             ]
             [ Svg.Lazy.lazy renderPath model.path.splines
-            , Render.Shape.circle Colors.gray1 renderArea (Length.meters 1) model.path.pointOnSpline
-            , Render.renderCar (Render.Conversion.toPixelsValue renderArea) model.car
+            , Render.Shape.circle renderCache Colors.gray1 (Length.meters 1) model.path.pointOnSpline
+            , Render.renderCar renderCache model.car
             ]
         , Html.div []
             [ Html.pre [] [ Html.text ("Parameter " ++ Round.round 2 (Length.inMeters model.path.parameter)) ]
@@ -318,8 +331,8 @@ renderPath =
     Array.map
         (\splineMeta ->
             Render.Shape.cubicSplineDebug
+                renderCache
                 Colors.gray6
-                renderArea
                 (CubicSpline2d.fromArcLengthParameterized splineMeta.spline)
         )
         >> Array.toList
