@@ -9,10 +9,10 @@ import Message exposing (Message(..))
 import Model.Car as Car exposing (Car)
 import Model.Geometry exposing (LMPoint2d)
 import Model.Liikennematto exposing (Liikennematto)
+import Model.RenderCache exposing (RenderCache)
 import Model.RoadNetwork as RoadNetwork
 import Point2d
 import Quantity
-import Render.Conversion exposing (pixelsToMetersRatio)
 import Round
 import Speed exposing (Speed)
 import UI.Core
@@ -73,7 +73,7 @@ view model =
             [ Element.spacing whitespace.tight
             , Element.width Element.fill
             ]
-            (Dict.values model.world.cars |> List.map carStateView)
+            (Dict.values model.world.cars |> List.map (carStateView model.renderCache))
         ]
 
 
@@ -155,8 +155,8 @@ dotStringView dotString =
             Element.none
 
 
-carStateView : Car -> Element msg
-carStateView car =
+carStateView : RenderCache -> Car -> Element msg
+carStateView cache car =
     Element.row
         [ Element.width Element.fill
         , Element.padding whitespace.tight
@@ -172,7 +172,7 @@ carStateView car =
         ]
         [ Element.text ("# " ++ String.fromInt car.id)
         , Element.column [ Element.spacing whitespace.tight ]
-            [ Element.text (pointToString car.position)
+            [ Element.text (pointToString cache car.position)
             , Element.text (speedToString car.velocity)
             , Element.text (Car.statusDescription car)
             ]
@@ -190,12 +190,12 @@ speedToString speed =
     "Speed: " ++ speedValue ++ " m/s"
 
 
-pointToString : LMPoint2d -> String
-pointToString point =
+pointToString : RenderCache -> LMPoint2d -> String
+pointToString cache point =
     let
         { x, y } =
             point
-                |> Point2d.at pixelsToMetersRatio
+                |> Point2d.at cache.pixelsToMetersRatio
                 |> Point2d.toPixels
 
         format n =

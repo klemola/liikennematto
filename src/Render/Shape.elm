@@ -18,10 +18,10 @@ import Geometry.Svg as Svg
 import Length
 import LineSegment2d
 import Model.Geometry exposing (LMArc2d, LMBoundingBox2d, LMCubicSpline2d, LMLineSegment2d, LMPoint2d)
+import Model.RenderCache exposing (RenderCache)
 import Point2d exposing (Point2d)
 import Polyline2d
 import Quantity
-import Render.Conversion
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 
@@ -30,14 +30,14 @@ type SVGCoordinates
     = SVGCoordinates -- Y down instead of up
 
 
-cubicSpline : Color -> Length.Length -> LMCubicSpline2d -> Svg msg
-cubicSpline color renderAreaHeight spline =
+cubicSpline : RenderCache -> Color -> LMCubicSpline2d -> Svg msg
+cubicSpline cache color spline =
     let
         splineInSVGCoords =
-            flipSplineYCoordinate renderAreaHeight spline
+            flipSplineYCoordinate cache.tilemapHeight spline
 
         splinePixels =
-            CubicSpline2d.at Render.Conversion.pixelsToMetersRatio splineInSVGCoords
+            CubicSpline2d.at cache.pixelsToMetersRatio splineInSVGCoords
     in
     Svg.g
         [ Attributes.stroke (Color.toCssString color)
@@ -49,19 +49,19 @@ cubicSpline color renderAreaHeight spline =
             , Attributes.fill "none"
             ]
             splinePixels
-        , circle Colors.gray5 renderAreaHeight (Length.meters 0.5) (CubicSpline2d.startPoint spline)
-        , circle Colors.gray5 renderAreaHeight (Length.meters 0.5) (CubicSpline2d.endPoint spline)
+        , circle cache Colors.gray5 (Length.meters 0.5) (CubicSpline2d.startPoint spline)
+        , circle cache Colors.gray5 (Length.meters 0.5) (CubicSpline2d.endPoint spline)
         ]
 
 
-cubicSplineDebug : Color -> Length.Length -> LMCubicSpline2d -> Svg msg
-cubicSplineDebug color renderAreaHeight spline =
+cubicSplineDebug : RenderCache -> Color -> LMCubicSpline2d -> Svg msg
+cubicSplineDebug cache color spline =
     let
         splineInSVGCoords =
-            flipSplineYCoordinate renderAreaHeight spline
+            flipSplineYCoordinate cache.tilemapHeight spline
 
         splinePixels =
-            CubicSpline2d.at Render.Conversion.pixelsToMetersRatio splineInSVGCoords
+            CubicSpline2d.at cache.pixelsToMetersRatio splineInSVGCoords
 
         controlPoints =
             [ CubicSpline2d.firstControlPoint spline
@@ -87,26 +87,26 @@ cubicSplineDebug color renderAreaHeight spline =
             (Polyline2d.fromVertices
                 (controlPoints
                     |> List.map
-                        (flipPointYCoordinate renderAreaHeight
-                            >> Point2d.at Render.Conversion.pixelsToMetersRatio
+                        (flipPointYCoordinate cache.tilemapHeight
+                            >> Point2d.at cache.pixelsToMetersRatio
                         )
                 )
             )
         , Svg.g [ Attributes.fill "rgba(255, 255, 255, 0.5)" ]
-            (List.map (circle Colors.gray5 renderAreaHeight (Length.meters 0.5)) controlPoints)
+            (List.map (circle cache Colors.gray5 (Length.meters 0.5)) controlPoints)
         ]
 
 
-circle : Color -> Length.Length -> Length.Length -> LMPoint2d -> Svg msg
-circle color renderAreaHeight radius centerPoint =
+circle : RenderCache -> Color -> Length.Length -> LMPoint2d -> Svg msg
+circle cache color radius centerPoint =
     let
         centerPointInSVGCoords =
             centerPoint
-                |> flipPointYCoordinate renderAreaHeight
-                |> Point2d.at Render.Conversion.pixelsToMetersRatio
+                |> flipPointYCoordinate cache.tilemapHeight
+                |> Point2d.at cache.pixelsToMetersRatio
 
         radiusPixels =
-            radius |> Quantity.at Render.Conversion.pixelsToMetersRatio
+            radius |> Quantity.at cache.pixelsToMetersRatio
     in
     Svg.circle2d
         [ Attributes.fill (Color.toCssString color)
@@ -114,17 +114,17 @@ circle color renderAreaHeight radius centerPoint =
         (Circle2d.atPoint centerPointInSVGCoords radiusPixels)
 
 
-line : Color -> Length.Length -> LMLineSegment2d -> Svg msg
-line color renderAreaHeight lineSegment =
+line : RenderCache -> Color -> LMLineSegment2d -> Svg msg
+line cache color lineSegment =
     let
         rayInSVGCoords =
             LineSegment2d.fromEndpoints
                 ( LineSegment2d.startPoint lineSegment
-                    |> flipPointYCoordinate renderAreaHeight
-                    |> Point2d.at Render.Conversion.pixelsToMetersRatio
+                    |> flipPointYCoordinate cache.tilemapHeight
+                    |> Point2d.at cache.pixelsToMetersRatio
                 , LineSegment2d.endPoint lineSegment
-                    |> flipPointYCoordinate renderAreaHeight
-                    |> Point2d.at Render.Conversion.pixelsToMetersRatio
+                    |> flipPointYCoordinate cache.tilemapHeight
+                    |> Point2d.at cache.pixelsToMetersRatio
                 )
     in
     Svg.lineSegment2d
@@ -134,18 +134,18 @@ line color renderAreaHeight lineSegment =
         rayInSVGCoords
 
 
-arc : Color -> Length.Length -> LMArc2d -> Svg msg
-arc color renderAreaHeight theArc =
+arc : RenderCache -> Color -> LMArc2d -> Svg msg
+arc cache color theArc =
     let
         start =
             Arc2d.startPoint theArc
-                |> flipPointYCoordinate renderAreaHeight
-                |> Point2d.at Render.Conversion.pixelsToMetersRatio
+                |> flipPointYCoordinate cache.tilemapHeight
+                |> Point2d.at cache.pixelsToMetersRatio
 
         center =
             Arc2d.centerPoint theArc
-                |> flipPointYCoordinate renderAreaHeight
-                |> Point2d.at Render.Conversion.pixelsToMetersRatio
+                |> flipPointYCoordinate cache.tilemapHeight
+                |> Point2d.at cache.pixelsToMetersRatio
 
         arcInSVGCoords =
             start
@@ -161,18 +161,18 @@ arc color renderAreaHeight theArc =
         arcInSVGCoords
 
 
-boundingBox : Color -> Length.Length -> LMBoundingBox2d -> Svg msg
-boundingBox color renderAreaHeight bb =
+boundingBox : RenderCache -> Color -> LMBoundingBox2d -> Svg msg
+boundingBox cache color bb =
     let
         centerPointPixels =
             BoundingBox2d.centerPoint bb
-                |> flipPointYCoordinate renderAreaHeight
-                |> Point2d.at Render.Conversion.pixelsToMetersRatio
+                |> flipPointYCoordinate cache.tilemapHeight
+                |> Point2d.at cache.pixelsToMetersRatio
 
         dimensionsPixels =
             BoundingBox2d.dimensions bb
-                |> Tuple.mapBoth (Quantity.at Render.Conversion.pixelsToMetersRatio)
-                    (Quantity.at Render.Conversion.pixelsToMetersRatio)
+                |> Tuple.mapBoth (Quantity.at cache.pixelsToMetersRatio)
+                    (Quantity.at cache.pixelsToMetersRatio)
     in
     Svg.boundingBox2d
         [ Attributes.fill (Color.toCssString color) ]

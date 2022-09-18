@@ -3,12 +3,10 @@ module LotsGallery exposing (main)
 import Color
 import Data.Colors as Colors
 import Data.Lots exposing (NewLot)
-import Length
 import Model.Cell as Cell
 import Model.Geometry exposing (OrthogonalDirection(..))
 import Model.Lot exposing (Lot, ParkingSpot)
 import Model.RenderCache as RenderCache exposing (RenderCache)
-import Model.Tilemap as Tilemap
 import Model.World as World exposing (World)
 import Quantity
 import Render
@@ -41,11 +39,6 @@ world =
 renderCache : RenderCache
 renderCache =
     RenderCache.new world
-
-
-tilemapHeight : Length.Length
-tilemapHeight =
-    Tilemap.dimensions world.tilemap |> .height
 
 
 tilemapWidthStr : String
@@ -120,7 +113,7 @@ lotHeightCells newLot =
 renderLotDebug : Lot -> Svg msg
 renderLotDebug lot =
     Svg.g []
-        [ Render.renderLot renderCache.tilemapHeightPixels lot
+        [ Render.renderLot renderCache lot
         , Svg.g []
             (renderParkingSpotPaths lot.parkingSpots)
         ]
@@ -149,6 +142,6 @@ renderParkingSpotPaths parkingSpots =
                             _ ->
                                 Color.rgba 0 0 0 opacity
                 in
-                parkingSpot.pathToLotExit |> List.map (Render.Shape.cubicSplineDebug color tilemapHeight)
+                parkingSpot.pathToLotExit |> List.map (Render.Shape.cubicSplineDebug renderCache color)
             )
         |> List.concat

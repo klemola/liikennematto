@@ -16,13 +16,13 @@ import Message exposing (Message(..))
 import Model.Cell as Cell exposing (Cell)
 import Model.Editor as Editor exposing (Editor, Tool(..))
 import Model.Liikennematto exposing (Liikennematto)
-import Model.RenderCache as RenderCache exposing (refreshTilemapCache)
+import Model.RenderCache as RenderCache exposing (RenderCache, refreshTilemapCache)
 import Model.Tile as Tile
 import Model.Tilemap as Tilemap exposing (TilemapUpdateResult)
 import Model.World as World exposing (World)
 import Quantity
 import Random
-import Render
+import Render.Conversion
 import Simulation.Traffic as Traffic
 import Task
 import UI.Core
@@ -263,14 +263,17 @@ dequeueCarSpawn queue seed world =
 -- Views
 
 
-overlay : World -> Editor -> Element Message
-overlay world editor =
+overlay : RenderCache -> World -> Editor -> Element Message
+overlay cache world editor =
     let
         { tool } =
             editor
 
-        size =
-            Render.tileSizePixels
+        tileSizePixels =
+            Render.Conversion.toPixelsValue cache.pixelsToMetersRatio Cell.size
+
+        cellSize =
+            tileSizePixels
                 |> floor
                 |> Element.px
 
@@ -292,6 +295,8 @@ overlay world editor =
                         , cell = cell
                         , world = world
                         , tool = tool
+                        , cellSize = cellSize
+                        , tileSizePixels = tileSizePixels
                         }
 
                 Nothing ->
@@ -317,9 +322,9 @@ overlay world editor =
                     colors.transparent
     in
     Element.el
-        [ Element.mouseOver [ Border.innerGlow highlight Render.tileSizePixels ]
-        , Element.width size
-        , Element.height size
+        [ Element.mouseOver [ Border.innerGlow highlight tileSizePixels ]
+        , Element.width cellSize
+        , Element.height cellSize
         ]
         (Element.column [] rows)
 
@@ -329,26 +334,23 @@ tileOverlay :
     , cell : Cell
     , world : World
     , tool : Tool
+    , tileSizePixels : Float
+    , cellSize : Element.Length
     }
     -> Element Message
-tileOverlay { glowColor, cell, world, tool } =
+tileOverlay { glowColor, cell, world, tool, tileSizePixels, cellSize } =
     let
-        overlaySize =
-            Render.tileSizePixels
-                |> floor
-                |> Element.px
-
         glow =
             glowColor
                 |> Maybe.map
                     (\color ->
-                        [ Border.innerGlow color (Render.tileSizePixels / 10) ]
+                        [ Border.innerGlow color (tileSizePixels / 10) ]
                     )
                 |> Maybe.withDefault []
     in
     Element.el
-        [ Element.width overlaySize
-        , Element.height overlaySize
+        [ Element.width cellSize
+        , Element.height cellSize
         , Element.mouseOver glow
         , Events.onClick (choosePrimaryAction cell tool world)
         , Element.htmlAttribute (CustomEvent.onRightClick <| chooseSecondaryAction cell tool world)
