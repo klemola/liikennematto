@@ -36,7 +36,7 @@ import Model.Tile exposing (TileKind)
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
 import Model.World exposing (World)
 import Quantity
-import Render.Conversion exposing (pointToPixels, toPixelsValue)
+import Render.Conversion exposing (pointToPixels, toPixelsValue, toViewBoxValue)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Svg.Keyed
@@ -403,25 +403,31 @@ renderLot tilemapHeightPixels lot =
         { x, y } =
             pointToPixels lot.position
 
-        renderX =
-            x - width / 2
-
-        renderY =
-            tilemapHeightPixels - (height / 2) - y
-
         width =
             toPixelsValue lot.width
 
         height =
             toPixelsValue lot.height
 
+        renderX =
+            x - width / 2
+
+        renderY =
+            tilemapHeightPixels - (height / 2) - y
+
         translateStr =
-            "translate(" ++ String.fromFloat renderX ++ " " ++ String.fromFloat renderY ++ ")"
+            "translate(" ++ String.fromFloat renderX ++ "," ++ String.fromFloat renderY ++ ")"
+
+        viewBoxWidth =
+            toViewBoxValue lot.width
+
+        viewBoxHeight =
+            toViewBoxValue lot.height
 
         viewBox =
             [ "0 0"
-            , String.fromFloat (width * 2)
-            , String.fromFloat (height * 2)
+            , String.fromFloat viewBoxWidth
+            , String.fromFloat viewBoxHeight
             ]
                 |> String.join " "
 
