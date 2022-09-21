@@ -11,7 +11,6 @@ module UI.Core exposing
     , whitespace
     )
 
-import Color
 import Data.Colors as Colors exposing (uiCompat)
 import Element exposing (Element)
 import Element.Background as Background

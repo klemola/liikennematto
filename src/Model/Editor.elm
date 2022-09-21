@@ -3,6 +3,7 @@ module Model.Editor exposing
     , Editor
     , PendingTilemapChange
     , Tool(..)
+    , ZoomLevel(..)
     , activateTool
     , combineChangedCells
     , createPendingTilemapChange
@@ -11,6 +12,8 @@ module Model.Editor exposing
     , minTilemapChangeFrequency
     , new
     , setCarSpawnQueue
+    , setZoomLevel
+    , zoomLevelToUIValue
     )
 
 import Duration exposing (Duration)
@@ -20,6 +23,7 @@ import Set exposing (Set)
 
 type alias Editor =
     { tool : Tool
+    , zoomLevel : ZoomLevel
     , pendingTilemapChange : Maybe PendingTilemapChange
     , carSpawnQueue : CarSpawnQueue
     }
@@ -30,6 +34,12 @@ type Tool
     | Bulldozer
     | Dynamite
     | None
+
+
+type ZoomLevel
+    = Near
+    | Far
+    | VeryFar
 
 
 type alias PendingTilemapChange =
@@ -53,6 +63,7 @@ maxQueuedCars =
 new : Editor
 new =
     { tool = SmartConstruction
+    , zoomLevel = Far
     , pendingTilemapChange = Nothing
     , carSpawnQueue = 0
     }
@@ -61,6 +72,40 @@ new =
 activateTool : Tool -> Editor -> Editor
 activateTool tool editor =
     { editor | tool = tool }
+
+
+setZoomLevel : Float -> Editor -> Editor
+setZoomLevel level editor =
+    { editor | zoomLevel = uiValueToZoomLevel level }
+
+
+uiValueToZoomLevel : Float -> ZoomLevel
+uiValueToZoomLevel value =
+    case floor value of
+        1 ->
+            VeryFar
+
+        2 ->
+            Far
+
+        3 ->
+            Near
+
+        _ ->
+            Far
+
+
+zoomLevelToUIValue : ZoomLevel -> Float
+zoomLevelToUIValue zoomLevel =
+    case zoomLevel of
+        VeryFar ->
+            1
+
+        Far ->
+            2
+
+        Near ->
+            3
 
 
 setCarSpawnQueue : Int -> Editor -> Editor

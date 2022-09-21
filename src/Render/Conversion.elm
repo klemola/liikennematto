@@ -1,6 +1,5 @@
 module Render.Conversion exposing
-    ( metersToViewBoxRatio
-    , pointToPixels
+    ( pointToPixels
     , toMetersValue
     , toPixelsValue
     , toViewBoxValue

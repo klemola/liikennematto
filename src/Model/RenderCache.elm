@@ -4,12 +4,14 @@ module Model.RenderCache exposing
     , TilemapPresentation
     , new
     , refreshTilemapCache
+    , setPixelsToMetersRatio
     )
 
 import FSM
 import Length
 import Model.Animation as Animation exposing (Animation)
 import Model.Cell exposing (Cell)
+import Model.Editor as Editor
 import Model.Geometry exposing (OrthogonalDirection, oppositeOrthogonalDirection)
 import Model.Tile as Tile exposing (Tile, TileKind)
 import Model.Tilemap as Tilemap exposing (Tilemap)
@@ -24,6 +26,7 @@ type alias RenderCache =
     , tilemap : TilemapPresentation
     , tilemapWidthPixels : Float
     , tilemapHeightPixels : Float
+    , tilemapWidth : Length.Length
     , tilemapHeight : Length.Length
     }
 
@@ -58,7 +61,32 @@ new { tilemap } =
     , tilemapWidthPixels =
         tilemapWidthPixels
     , tilemapHeightPixels = tilemapHeigthPixels
+    , tilemapWidth = tilemapDimensions.width
     , tilemapHeight = tilemapDimensions.height
+    }
+
+
+setPixelsToMetersRatio : Editor.ZoomLevel -> RenderCache -> RenderCache
+setPixelsToMetersRatio zoomLevel cache =
+    let
+        nextPixelsPerMeter =
+            case zoomLevel of
+                Editor.VeryFar ->
+                    4
+
+                Editor.Far ->
+                    6
+
+                Editor.Near ->
+                    8
+
+        nextRatio =
+            Pixels.pixels nextPixelsPerMeter |> Quantity.per (Length.meters 1)
+    in
+    { cache
+        | pixelsToMetersRatio = nextRatio
+        , tilemapWidthPixels = toPixelsValue nextRatio cache.tilemapWidth
+        , tilemapHeightPixels = toPixelsValue nextRatio cache.tilemapHeight
     }
 
 
