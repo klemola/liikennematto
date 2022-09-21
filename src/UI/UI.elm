@@ -87,6 +87,7 @@ controls model =
             , Editor.carSpawnControl model.editor controlButtonSize
             , simulationControl model.simulation controlButtonSize
             ]
+        , Editor.zoomControl model.editor
         ]
 
 

@@ -25,6 +25,7 @@ type Message
     | SpawnTestCar
     | ResetWorld
     | SelectTool Tool
+    | ChangeZoomLevel Float
     | ToggleDebugMode
     | ToggleShowRoadNetwork
     | ToggleShowCarDebugVisuals

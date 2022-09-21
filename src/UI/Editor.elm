@@ -3,14 +3,18 @@ port module UI.Editor exposing
     , overlay
     , toolbar
     , update
+    , zoomControl
     )
 
 import CustomEvent
+import Data.Colors as Colors
 import Data.Defaults as Defaults
 import Duration exposing (Duration)
 import Element exposing (Color, Element)
+import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
+import Element.Input as Input
 import Maybe.Extra as Maybe
 import Message exposing (Message(..))
 import Model.Cell as Cell exposing (Cell)
@@ -28,6 +32,7 @@ import Task
 import UI.Core
     exposing
         ( ControlButtonSize
+        , borderRadius
         , colors
         , controlButton
         , icon
@@ -58,6 +63,21 @@ update msg model =
                             )
             in
             ( { model | editor = nextEditor }, Cmd.none )
+
+        ChangeZoomLevel nextLevel ->
+            let
+                nextEditor =
+                    Editor.setZoomLevel nextLevel model.editor
+
+                nextRenderCache =
+                    RenderCache.setPixelsToMetersRatio nextEditor.zoomLevel model.renderCache
+            in
+            ( { model
+                | editor = nextEditor
+                , renderCache = nextRenderCache
+              }
+            , Cmd.none
+            )
 
         AddTile cell ->
             let
@@ -494,4 +514,38 @@ carSpawnControl editor controlButtonSize =
         , selected = False
         , disabled = disabled
         , size = controlButtonSize
+        }
+
+
+zoomControl : Editor -> Element Message
+zoomControl editor =
+    Input.slider
+        [ Element.height (Element.px 80)
+        , Element.width (Element.px 10)
+        , Element.behindContent
+            (Element.el
+                [ Element.width (Element.px whitespace.regular)
+                , Element.height Element.fill
+                , Element.centerX
+                , Background.color colors.listItemBackground
+                , Border.rounded borderRadius.light
+                ]
+                Element.none
+            )
+        ]
+        { onChange = ChangeZoomLevel
+        , label = Input.labelHidden "Zoom"
+        , min = 1
+        , max = 3
+        , step = Just 1
+        , value = Editor.zoomLevelToUIValue editor.zoomLevel
+        , thumb =
+            Input.thumb
+                [ Element.width (Element.px 20)
+                , Element.height (Element.px 20)
+                , Border.rounded 10
+                , Border.width 0
+                , Border.color (Colors.uiCompat Colors.gray6)
+                , Background.color (Colors.uiCompat Colors.gray6)
+                ]
         }

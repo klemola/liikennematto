@@ -245,9 +245,6 @@ tileElement tileSizePixels { x, y, tileIndex, tileStyles } =
 tileAnimationProperties : Float -> Animation -> ( Float, Float ) -> String
 tileAnimationProperties tileSizePixels animation ( tileX, tileY ) =
     let
-        tileAppearOffset =
-            tileSizePixels * 0.6
-
         halfTile =
             tileSizePixels / 2
 
@@ -266,6 +263,9 @@ tileAnimationProperties tileSizePixels animation ( tileX, tileY ) =
 
                         tileSizeOffsetStr =
                             String.fromFloat tileAppearOffset ++ "px"
+
+                        tileAppearOffset =
+                            tileSizePixels * 0.6
                     in
                     case dir of
                         Up ->
