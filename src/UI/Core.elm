@@ -29,6 +29,7 @@ type alias UiDimensions =
     , renderOffsetY : Float
     , overlay : Int
     , text : Int
+    , slider : Int
     , smallControlsBreakpoint : Int
     }
 
@@ -44,6 +45,7 @@ uiDimensions =
     , renderOffsetY = 40
     , overlay = 256
     , text = 14
+    , slider = 14
     , smallControlsBreakpoint = 720
     }
 
@@ -51,7 +53,7 @@ uiDimensions =
 colors =
     { mainBackground = uiCompat Colors.lightGreen
     , menuBackground = uiCompat (Colors.withAlpha 0.6 Colors.darkGreen)
-    , buttonBackground = uiCompat Colors.gray4
+    , inputBackground = uiCompat Colors.gray5
     , listItemBackground = uiCompat Colors.gray2
     , text = uiCompat Colors.gray2
     , textInverse = uiCompat Colors.gray6
@@ -63,7 +65,7 @@ colors =
     , transparent = Element.rgba255 0 0 0 0
     , renderBorder = uiCompat Colors.darkGreen
     , lightBorder = uiCompat Colors.gray3
-    , heavyBorder = uiCompat Colors.gray3
+    , heavyBorder = uiCompat Colors.gray1
     }
 
 
@@ -121,7 +123,7 @@ controlButton { label, onPress, selected, disabled, size } =
                 1
     in
     Input.button
-        [ Background.color colors.buttonBackground
+        [ Background.color colors.inputBackground
         , Font.size fontSize
         , Font.center
         , Element.width buttonSize

@@ -32,6 +32,7 @@ layout model renderFn =
         , Element.height Element.fill
         , Element.scrollbars
         , Element.inFront (controls model)
+        , Element.inFront (Editor.zoomControl model.editor)
         , Element.inFront projectInfo
         , Element.inFront (debugPanel model)
         ]
@@ -69,8 +70,6 @@ controls model =
             , bottomLeft = 0
             , bottomRight = 0
             }
-        , Border.solid
-        , Border.color colors.heavyBorder
         ]
         [ Editor.toolbar model.editor controlButtonSize
         , spacer
@@ -87,7 +86,6 @@ controls model =
             , Editor.carSpawnControl model.editor controlButtonSize
             , simulationControl model.simulation controlButtonSize
             ]
-        , Editor.zoomControl model.editor
         ]
 
 
@@ -126,7 +124,6 @@ projectInfo =
         [ Element.width Element.shrink
         , Element.padding whitespace.regular
         , Element.spacing whitespace.regular
-        , Element.alignRight
         , Font.family
             [ Font.typeface "Helvetica"
             , Font.typeface "sans-serif"
@@ -136,8 +133,8 @@ projectInfo =
         , Border.roundEach
             { topLeft = 0
             , topRight = 0
-            , bottomRight = 0
-            , bottomLeft = borderRadius.heavy
+            , bottomRight = borderRadius.heavy
+            , bottomLeft = 0
             }
         ]
         [ Element.el [ Font.bold ] (Element.text "Liikennematto")
