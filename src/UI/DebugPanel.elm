@@ -59,6 +59,7 @@ view model =
         , Element.height Element.fill
         , Element.padding whitespace.regular
         , Element.spacing whitespace.tight
+        , Element.alignRight
         , Background.color colors.menuBackground
         , Element.inFront (dotStringView model.roadNetworkDotString)
         ]

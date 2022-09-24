@@ -7,7 +7,6 @@ port module UI.Editor exposing
     )
 
 import CustomEvent
-import Data.Colors as Colors
 import Data.Defaults as Defaults
 import Duration exposing (Duration)
 import Element exposing (Color, Element)
@@ -33,9 +32,11 @@ import UI.Core
     exposing
         ( ControlButtonSize
         , borderRadius
+        , borderSize
         , colors
         , controlButton
         , icon
+        , uiDimensions
         , whitespace
         )
 
@@ -519,33 +520,94 @@ carSpawnControl editor controlButtonSize =
 
 zoomControl : Editor -> Element Message
 zoomControl editor =
-    Input.slider
-        [ Element.height (Element.px 80)
-        , Element.width (Element.px 10)
-        , Element.behindContent
-            (Element.el
-                [ Element.width (Element.px whitespace.regular)
-                , Element.height Element.fill
-                , Element.centerX
-                , Background.color colors.listItemBackground
-                , Border.rounded borderRadius.light
+    let
+        baseWidth =
+            uiDimensions.renderSafeAreaX
+
+        baseHeight =
+            uiDimensions.toolbar * 2
+
+        paddingX =
+            whitespace.regular
+
+        paddingY =
+            whitespace.regular
+
+        sliderWidth =
+            baseWidth - (2 * paddingX)
+
+        sliderHeight =
+            baseHeight - (2 * paddingY)
+
+        thumbWidth =
+            uiDimensions.slider + paddingX
+
+        thumbHeight =
+            uiDimensions.slider
+    in
+    Element.el
+        [ Element.paddingXY paddingX paddingY
+        , Element.width (Element.px baseWidth)
+        , Element.height (Element.px baseHeight)
+        , Element.alignLeft
+        , Element.moveRight whitespace.regular
+        , Element.moveUp whitespace.regular
+        , Element.alignBottom
+        , Background.color colors.menuBackground
+        , Border.rounded borderRadius.light
+        ]
+        (Input.slider
+            [ Element.width (Element.px sliderWidth)
+            , Element.height (Element.px sliderHeight)
+            , Element.behindContent track
+            ]
+            { onChange = ChangeZoomLevel
+            , label = Input.labelHidden "Zoom"
+            , min = 1
+            , max = 3
+            , step = Just 1
+            , value = Editor.zoomLevelToUIValue editor.zoomLevel
+            , thumb =
+                Input.thumb
+                    [ Element.width (Element.px thumbWidth)
+                    , Element.height (Element.px thumbHeight)
+                    , Border.rounded borderSize.light
+                    , Background.color colors.inputBackground
+                    ]
+            }
+        )
+
+
+track : Element Message
+track =
+    let
+        stepGuide =
+            Element.el
+                [ Element.width Element.fill
+                , Element.height (Element.px whitespace.regular)
+                , Background.color colors.inputBackground
                 ]
                 Element.none
+    in
+    Element.el
+        [ Element.width (Element.px uiDimensions.slider)
+        , Element.height Element.fill
+        , Element.centerX
+        , Background.color colors.mainBackground
+        , Border.solid
+        , Border.width borderSize.light
+        , Border.color colors.heavyBorder
+        , Border.rounded borderRadius.light
+        , Element.inFront
+            (Element.column
+                [ Element.height Element.fill
+                , Element.width Element.fill
+                , Element.spaceEvenly
+                ]
+                [ stepGuide
+                , stepGuide
+                , stepGuide
+                ]
             )
         ]
-        { onChange = ChangeZoomLevel
-        , label = Input.labelHidden "Zoom"
-        , min = 1
-        , max = 3
-        , step = Just 1
-        , value = Editor.zoomLevelToUIValue editor.zoomLevel
-        , thumb =
-            Input.thumb
-                [ Element.width (Element.px 20)
-                , Element.height (Element.px 20)
-                , Border.rounded 10
-                , Border.width 0
-                , Border.color (Colors.uiCompat Colors.gray6)
-                , Background.color (Colors.uiCompat Colors.gray6)
-                ]
-        }
+        Element.none
