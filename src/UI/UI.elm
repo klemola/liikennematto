@@ -7,6 +7,7 @@ import Element.Font as Font
 import Html exposing (Html)
 import Message exposing (Message(..))
 import Model.Liikennematto exposing (Liikennematto, SimulationState(..))
+import Model.Screen as Screen
 import UI.Core exposing (ControlButtonSize(..), borderRadius, colors, controlButton, link, uiDimensions, whitespace)
 import UI.DebugPanel as DebugPanel
 import UI.Editor as Editor
@@ -43,7 +44,7 @@ controls : Liikennematto -> Element Message
 controls model =
     let
         controlButtonSize =
-            if min model.screen.width model.screen.height < uiDimensions.smallControlsBreakpoint then
+            if model.screen.category == Screen.SizeSM then
                 CBSmall
 
             else
