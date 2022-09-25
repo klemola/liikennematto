@@ -8,6 +8,7 @@ import Element exposing (Element)
 import Element.Border as Border
 import Message exposing (Message(..))
 import Model.Liikennematto as Liikennematto exposing (Liikennematto, SimulationState(..))
+import Model.Screen as Screen
 import Random
 import Render
 import Render.Debug
@@ -68,18 +69,7 @@ updateBase msg model =
             )
 
         ResizeWindow width height ->
-            ( { model
-                | screen =
-                    { width = width
-                    , height = height
-                    , orientation =
-                        if width < height then
-                            Element.Portrait
-
-                        else
-                            Element.Landscape
-                    }
-              }
+            ( { model | screen = Screen.fromDimensions width height }
             , Cmd.none
             )
 

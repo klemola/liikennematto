@@ -1,13 +1,12 @@
 module Model.Liikennematto exposing
     ( Liikennematto
-    , Screen
     , SimulationState(..)
     , new
     )
 
-import Element
 import Model.Editor as Editor exposing (Editor)
 import Model.RenderCache as RenderCache exposing (RenderCache)
+import Model.Screen as Screen exposing (Screen)
 import Model.World exposing (World)
 import Random
 
@@ -31,13 +30,6 @@ type SimulationState
     | Paused
 
 
-type alias Screen =
-    { width : Int
-    , height : Int
-    , orientation : Element.Orientation
-    }
-
-
 initialSeed : Random.Seed
 initialSeed =
     Random.initialSeed 666
@@ -46,11 +38,7 @@ initialSeed =
 new : World -> Liikennematto
 new world =
     { world = world
-    , screen =
-        { width = 375
-        , height = 667
-        , orientation = Element.Landscape
-        }
+    , screen = Screen.fallback
     , seed = initialSeed
     , simulation = Running
     , editor = Editor.new

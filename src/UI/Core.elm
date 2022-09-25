@@ -30,7 +30,6 @@ type alias UiDimensions =
     , overlay : Int
     , text : Int
     , slider : Int
-    , smallControlsBreakpoint : Int
     }
 
 
@@ -46,7 +45,6 @@ uiDimensions =
     , overlay = 256
     , text = 14
     , slider = 14
-    , smallControlsBreakpoint = 720
     }
 
 
