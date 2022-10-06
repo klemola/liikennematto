@@ -1,5 +1,6 @@
 module Message exposing (Message(..))
 
+import Browser.Dom
 import Browser.Events exposing (Visibility)
 import Duration exposing (Duration)
 import Model.Cell exposing (Cell)
@@ -10,7 +11,8 @@ import Time exposing (Posix)
 
 type Message
     = NoOp
-    | ResizeWindow Int Int
+    | ResizeTriggered
+    | WindowResized Browser.Dom.Viewport
     | VisibilityChanged Visibility
     | ResetSeed Posix
     | AnimationFrameReceived Duration

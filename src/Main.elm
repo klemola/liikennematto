@@ -8,6 +8,7 @@ import Element exposing (Element)
 import Element.Border as Border
 import Message exposing (Message(..))
 import Model.Liikennematto as Liikennematto exposing (Liikennematto, SimulationState(..))
+import Model.RenderCache as RenderCache
 import Model.Screen as Screen
 import Random
 import Render
@@ -39,7 +40,7 @@ initCmd : Random.Seed -> Cmd Message
 initCmd seed =
     Cmd.batch
         [ -- simulate a screen resize
-          Task.perform (\{ viewport } -> ResizeWindow (round viewport.width) (round viewport.height)) getViewport
+          Task.perform WindowResized getViewport
         , Task.perform ResetSeed Time.now
         , Simulation.initCmd seed
         ]
@@ -68,8 +69,15 @@ updateBase msg model =
             , Cmd.none
             )
 
-        ResizeWindow width height ->
-            ( { model | screen = Screen.fromDimensions width height }
+        ResizeTriggered ->
+            ( model, Task.perform WindowResized getViewport )
+
+        WindowResized domViewport ->
+            let
+                nextScreen =
+                    Screen.fromDimensions (round domViewport.viewport.width) (round domViewport.viewport.height)
+            in
+            ( { model | screen = nextScreen }
             , Cmd.none
             )
 
