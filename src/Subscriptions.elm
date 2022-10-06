@@ -26,7 +26,7 @@ subscriptions : Liikennematto -> Sub Message
 subscriptions { simulation } =
     let
         defaultSubs =
-            [ Events.onResize ResizeWindow
+            [ Events.onResize (\_ _ -> ResizeTriggered)
             , Events.onVisibilityChange VisibilityChanged
             , Time.every tilemapUpdateFrequency (always (UpdateTilemap (Duration.milliseconds tilemapUpdateFrequency)))
             ]

@@ -4,6 +4,7 @@ module UI.Core exposing
     , borderRadius
     , borderSize
     , colors
+    , containerId
     , controlButton
     , icon
     , link
@@ -17,6 +18,11 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
+
+
+containerId : String
+containerId =
+    "liikennematto"
 
 
 type alias UiDimensions =

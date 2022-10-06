@@ -5,10 +5,21 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Html exposing (Html)
+import Html.Attributes
 import Message exposing (Message(..))
 import Model.Liikennematto exposing (Liikennematto, SimulationState(..))
 import Model.Screen as Screen
-import UI.Core exposing (ControlButtonSize(..), borderRadius, colors, controlButton, link, uiDimensions, whitespace)
+import UI.Core
+    exposing
+        ( ControlButtonSize(..)
+        , borderRadius
+        , colors
+        , containerId
+        , controlButton
+        , link
+        , uiDimensions
+        , whitespace
+        )
 import UI.DebugPanel as DebugPanel
 import UI.Editor as Editor
 
@@ -36,6 +47,7 @@ layout model renderFn =
         , Element.inFront (Editor.zoomControl model.editor)
         , Element.inFront projectInfo
         , Element.inFront (debugPanel model)
+        , Element.htmlAttribute (Html.Attributes.id containerId)
         ]
         (renderFn model)
 

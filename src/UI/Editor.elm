@@ -6,6 +6,7 @@ port module UI.Editor exposing
     , zoomControl
     )
 
+import Browser.Dom
 import CustomEvent
 import Data.Defaults as Defaults
 import Duration exposing (Duration)
@@ -34,6 +35,7 @@ import UI.Core
         , borderRadius
         , borderSize
         , colors
+        , containerId
         , controlButton
         , icon
         , uiDimensions
@@ -53,15 +55,15 @@ update msg model =
     case msg of
         SelectTool tool ->
             let
-                nextEditor =
-                    model.editor
-                        |> Editor.activateTool
-                            (if model.editor.tool == tool then
-                                None
+                nextTool =
+                    if model.editor.tool == tool then
+                        None
 
-                             else
-                                tool
-                            )
+                    else
+                        tool
+
+                nextEditor =
+                    Editor.activateTool nextTool model.editor
             in
             ( { model | editor = nextEditor }, Cmd.none )
 
@@ -77,7 +79,25 @@ update msg model =
                 | editor = nextEditor
                 , renderCache = nextRenderCache
               }
-            , Cmd.none
+            , Browser.Dom.getViewportOf containerId
+                |> Task.andThen
+                    (\domViewport ->
+                        let
+                            mapSizeChangeX =
+                                nextRenderCache.tilemapWidthPixels - model.renderCache.tilemapWidthPixels
+
+                            mapSizeChangeY =
+                                nextRenderCache.tilemapHeightPixels - model.renderCache.tilemapHeightPixels
+
+                            nextScrollX =
+                                (mapSizeChangeX / 2) + domViewport.viewport.x
+
+                            nextScrollY =
+                                (mapSizeChangeY / 2) + domViewport.viewport.y
+                        in
+                        Browser.Dom.setViewportOf containerId (max nextScrollX 0) (max nextScrollY 0)
+                    )
+                |> Task.attempt (\_ -> NoOp)
             )
 
         AddTile cell ->

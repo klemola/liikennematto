@@ -70,15 +70,7 @@ setPixelsToMetersRatio : Editor.ZoomLevel -> RenderCache -> RenderCache
 setPixelsToMetersRatio zoomLevel cache =
     let
         nextPixelsPerMeter =
-            case zoomLevel of
-                Editor.VeryFar ->
-                    4
-
-                Editor.Far ->
-                    6
-
-                Editor.Near ->
-                    8
+            zoomLevelToPixelsPerMeterValue zoomLevel
 
         nextRatio =
             Pixels.pixels nextPixelsPerMeter |> Quantity.per (Length.meters 1)
@@ -88,6 +80,19 @@ setPixelsToMetersRatio zoomLevel cache =
         , tilemapWidthPixels = toPixelsValue nextRatio cache.tilemapWidth
         , tilemapHeightPixels = toPixelsValue nextRatio cache.tilemapHeight
     }
+
+
+zoomLevelToPixelsPerMeterValue : Editor.ZoomLevel -> Float
+zoomLevelToPixelsPerMeterValue zoomLevel =
+    case zoomLevel of
+        Editor.VeryFar ->
+            4
+
+        Editor.Far ->
+            6
+
+        Editor.Near ->
+            8
 
 
 refreshTilemapCache : Tilemap -> RenderCache -> RenderCache
