@@ -48,6 +48,7 @@ layout model renderFn =
         , Element.inFront projectInfo
         , Element.inFront (debugPanel model)
         , Element.htmlAttribute (Html.Attributes.id containerId)
+        , Element.htmlAttribute (Html.Attributes.style "touch-action" "manipulation")
         ]
         (renderFn model)
 
