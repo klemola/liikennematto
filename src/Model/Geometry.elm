@@ -13,7 +13,6 @@ module Model.Geometry exposing
     , LMPoint2dLocal
     , LMQuadTree
     , LMShape2d
-    , LMTriangle2d
     , LocalCoordinates
     , OrthogonalDirection(..)
     , crossOrthogonalDirection
@@ -37,7 +36,6 @@ import LineSegment2d exposing (LineSegment2d)
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
 import QuadTree exposing (QuadTree)
-import Triangle2d exposing (Triangle2d)
 
 
 type GlobalCoordinates
@@ -82,10 +80,6 @@ type alias LMLineSegment2d =
 
 type alias LMShape2d =
     Polygon2d Length.Meters GlobalCoordinates
-
-
-type alias LMTriangle2d =
-    Triangle2d Length.Meters GlobalCoordinates
 
 
 type alias LMArc2d =

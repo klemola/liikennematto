@@ -8,7 +8,6 @@ import Element exposing (Element)
 import Element.Border as Border
 import Message exposing (Message(..))
 import Model.Liikennematto as Liikennematto exposing (Liikennematto, SimulationState(..))
-import Model.RenderCache as RenderCache
 import Model.Screen as Screen
 import Random
 import Render
