@@ -22,6 +22,7 @@ import UI.Core
         , colors
         , controlButton
         , icon
+        , scrollbarAwareOffsetF
         , uiDimensions
         , whitespace
         )
@@ -59,8 +60,8 @@ view model =
         , Element.padding whitespace.regular
         , Element.spacing whitespace.tight
         , Element.alignRight
-        , Element.moveLeft uiDimensions.scrollbarAwareOffset
-        , Element.moveDown uiDimensions.scrollbarAwareOffset
+        , Element.moveLeft scrollbarAwareOffsetF
+        , Element.moveDown scrollbarAwareOffsetF
         , Background.color colors.menuBackground
         , Border.rounded borderRadius.light
         , Element.inFront (dotStringView model.roadNetworkDotString)
