@@ -33,7 +33,6 @@ type Tool
     = SmartConstruction
     | Bulldozer
     | Dynamite
-    | None
 
 
 type ZoomLevel
