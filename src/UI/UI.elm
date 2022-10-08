@@ -3,7 +3,6 @@ module UI.UI exposing (layout, update)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Font as Font
 import Html exposing (Html)
 import Html.Attributes
 import Message exposing (Message(..))
@@ -16,7 +15,6 @@ import UI.Core
         , colors
         , containerId
         , controlButton
-        , link
         , uiDimensions
         , whitespace
         )
@@ -45,7 +43,6 @@ layout model renderFn =
         , Element.scrollbars
         , Element.inFront (controls model)
         , Element.inFront (Editor.zoomControl model.editor)
-        , Element.inFront projectInfo
         , Element.inFront (debugPanel model)
         , Element.htmlAttribute (Html.Attributes.id containerId)
         , Element.htmlAttribute (Html.Attributes.style "touch-action" "manipulation")
@@ -130,36 +127,3 @@ debugPanel model =
 
     else
         Element.none
-
-
-projectInfo : Element msg
-projectInfo =
-    Element.row
-        [ Element.width Element.shrink
-        , Element.padding whitespace.regular
-        , Element.spacing whitespace.regular
-        , Font.family
-            [ Font.typeface "Helvetica"
-            , Font.typeface "sans-serif"
-            ]
-        , Font.size uiDimensions.text
-        , Background.color colors.textInverse
-        , Border.roundEach
-            { topLeft = 0
-            , topRight = 0
-            , bottomRight = borderRadius.heavy
-            , bottomLeft = 0
-            }
-        ]
-        [ Element.el [ Font.bold ] (Element.text "Liikennematto")
-        , Element.row
-            [ Element.spacing whitespace.tight
-            , Element.alignRight
-            ]
-            [ link "https://github.com/klemola/liikennematto" "GitHub"
-            , Element.text "｜"
-            , link "https://matiasklemola.com/liikennematto-dev-blog-one" "Blog"
-            , Element.text "｜"
-            , link "https://twitter.com/MatiasKlemola" "Twitter"
-            ]
-        ]
