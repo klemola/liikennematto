@@ -7,6 +7,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Message exposing (Message(..))
 import Model.Car as Car exposing (Car)
+import Model.Editor as Editor
 import Model.Geometry exposing (LMPoint2d)
 import Model.Liikennematto exposing (Liikennematto)
 import Model.RenderCache exposing (RenderCache)
@@ -94,18 +95,24 @@ controls model =
             , disabled = False
             }
         , controlButton
-            { label = icon "car_white_1.png"
-            , onPress = ToggleShowCarDebugVisuals
-            , selected = model.showRoadNetwork
-            , disabled = False
-            }
-        , controlButton
             { label = icon "dot_string.png"
             , onPress =
                 RoadNetwork.toDotString model.world.roadNetwork
                     |> ShowDotString
             , selected = False
             , disabled = False
+            }
+        , controlButton
+            { label = icon "car_white_1.png"
+            , onPress = ToggleShowCarDebugVisuals
+            , selected = model.showRoadNetwork
+            , disabled = False
+            }
+        , controlButton
+            { label = Element.text "🚗"
+            , onPress = SpawnTestCar
+            , selected = False
+            , disabled = model.editor.carSpawnQueue >= Editor.maxQueuedCars
             }
         ]
 
