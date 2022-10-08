@@ -7,11 +7,9 @@ import Html exposing (Html)
 import Html.Attributes
 import Message exposing (Message(..))
 import Model.Liikennematto exposing (Liikennematto, SimulationState(..))
-import Model.Screen as Screen
 import UI.Core
     exposing
-        ( ControlButtonSize(..)
-        , borderRadius
+        ( borderRadius
         , colors
         , containerId
         , controlButton
@@ -53,17 +51,10 @@ layout model renderFn =
 controls : Liikennematto -> Element Message
 controls model =
     let
-        controlButtonSize =
-            if model.screen.category == Screen.SizeSM then
-                CBSmall
-
-            else
-                CBLarge
-
         spacer =
             Element.el
                 [ Element.width (Element.px whitespace.tight)
-                , Element.height (Element.px uiDimensions.controlButtonS)
+                , Element.height (Element.px uiDimensions.controlButton)
                 , Background.color colors.mainBackground
                 , Border.rounded borderRadius.heavy
                 ]
@@ -74,15 +65,11 @@ controls model =
         , Element.spacing whitespace.regular
         , Element.alignBottom
         , Element.centerX
+        , Element.moveUp uiDimensions.scrollbarAwareOffset
         , Background.color colors.menuBackground
-        , Border.roundEach
-            { topLeft = borderRadius.heavy
-            , topRight = borderRadius.heavy
-            , bottomLeft = 0
-            , bottomRight = 0
-            }
+        , Border.rounded borderRadius.light
         ]
-        [ Editor.toolbar model.editor controlButtonSize
+        [ Editor.toolbar model.editor
         , spacer
         , Element.row
             [ Element.spacing whitespace.tight
@@ -92,16 +79,15 @@ controls model =
                 , onPress = ToggleDebugMode
                 , selected = model.showDebugPanel
                 , disabled = False
-                , size = controlButtonSize
                 }
-            , Editor.carSpawnControl model.editor controlButtonSize
-            , simulationControl model.simulation controlButtonSize
+            , Editor.carSpawnControl model.editor
+            , simulationControl model.simulation
             ]
         ]
 
 
-simulationControl : SimulationState -> ControlButtonSize -> Element Message
-simulationControl simulation controlButtonSize =
+simulationControl : SimulationState -> Element Message
+simulationControl simulation =
     let
         ( label, selected, msg ) =
             case simulation of
@@ -116,7 +102,6 @@ simulationControl simulation controlButtonSize =
         , onPress = msg
         , selected = selected
         , disabled = False
-        , size = controlButtonSize
         }
 
 

@@ -31,8 +31,7 @@ import Simulation.Traffic as Traffic
 import Task
 import UI.Core
     exposing
-        ( ControlButtonSize
-        , borderRadius
+        ( borderRadius
         , borderSize
         , colors
         , containerId
@@ -485,20 +484,20 @@ tileHighlight { world, selectedTool, cell } =
             Nothing
 
 
-toolbar : Editor -> ControlButtonSize -> Element Message
-toolbar editor controlButtonSize =
+toolbar : Editor -> Element Message
+toolbar editor =
     Element.row
         [ Element.spacing whitespace.tight
         , Element.alignLeft
         ]
-        [ toolbarButton editor.tool SmartConstruction controlButtonSize
-        , toolbarButton editor.tool Bulldozer controlButtonSize
-        , toolbarButton editor.tool Dynamite controlButtonSize
+        [ toolbarButton editor.tool SmartConstruction
+        , toolbarButton editor.tool Bulldozer
+        , toolbarButton editor.tool Dynamite
         ]
 
 
-toolbarButton : Tool -> Tool -> ControlButtonSize -> Element Message
-toolbarButton selectedTool tool controlButtonSize =
+toolbarButton : Tool -> Tool -> Element Message
+toolbarButton selectedTool tool =
     let
         asset =
             case tool of
@@ -519,12 +518,11 @@ toolbarButton selectedTool tool controlButtonSize =
         , onPress = SelectTool tool
         , selected = selectedTool == tool
         , disabled = False
-        , size = controlButtonSize
         }
 
 
-carSpawnControl : Editor -> ControlButtonSize -> Element Message
-carSpawnControl editor controlButtonSize =
+carSpawnControl : Editor -> Element Message
+carSpawnControl editor =
     let
         disabled =
             editor.carSpawnQueue >= Editor.maxQueuedCars
@@ -534,7 +532,6 @@ carSpawnControl editor controlButtonSize =
         , onPress = SpawnTestCar
         , selected = False
         , disabled = disabled
-        , size = controlButtonSize
         }
 
 
@@ -545,7 +542,7 @@ zoomControl editor =
             uiDimensions.renderSafeAreaX
 
         baseHeight =
-            uiDimensions.toolbar * 2
+            uiDimensions.zoomTrackHeight
 
         paddingX =
             whitespace.regular
@@ -560,18 +557,18 @@ zoomControl editor =
             baseHeight - (2 * paddingY)
 
         thumbWidth =
-            uiDimensions.slider + paddingX
+            uiDimensions.zoomTrackWidth + paddingX
 
         thumbHeight =
-            uiDimensions.slider
+            uiDimensions.zoomTrackWidth
     in
     Element.el
         [ Element.paddingXY paddingX paddingY
         , Element.width (Element.px baseWidth)
         , Element.height (Element.px baseHeight)
         , Element.alignLeft
-        , Element.moveRight whitespace.regular
-        , Element.moveUp whitespace.regular
+        , Element.moveRight uiDimensions.scrollbarAwareOffset
+        , Element.moveUp uiDimensions.scrollbarAwareOffset
         , Element.alignBottom
         , Background.color colors.menuBackground
         , Border.rounded borderRadius.light
@@ -610,7 +607,7 @@ track =
                 Element.none
     in
     Element.el
-        [ Element.width (Element.px uiDimensions.slider)
+        [ Element.width (Element.px uiDimensions.zoomTrackWidth)
         , Element.height Element.fill
         , Element.centerX
         , Background.color colors.mainBackground

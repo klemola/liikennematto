@@ -17,8 +17,7 @@ import Round
 import Speed exposing (Speed)
 import UI.Core
     exposing
-        ( ControlButtonSize(..)
-        , borderRadius
+        ( borderRadius
         , borderSize
         , colors
         , controlButton
@@ -56,15 +55,18 @@ view : Liikennematto -> Element Message
 view model =
     Element.column
         [ Element.width (Element.px uiDimensions.panel)
-        , Element.height Element.fill
+        , Element.height (Element.px (model.screen.height - uiDimensions.panelVerticalMargin))
         , Element.padding whitespace.regular
         , Element.spacing whitespace.tight
         , Element.alignRight
+        , Element.moveLeft uiDimensions.scrollbarAwareOffset
+        , Element.moveDown uiDimensions.scrollbarAwareOffset
         , Background.color colors.menuBackground
+        , Border.rounded borderRadius.light
         , Element.inFront (dotStringView model.roadNetworkDotString)
         ]
         [ Element.el
-            [ Font.size 16
+            [ Font.size uiDimensions.text
             , Font.bold
             , Font.color colors.textInverse
             ]
@@ -89,14 +91,12 @@ controls model =
             , onPress = ToggleShowRoadNetwork
             , selected = model.showRoadNetwork
             , disabled = False
-            , size = CBLarge
             }
         , controlButton
             { label = icon "car_white_1.png"
             , onPress = ToggleShowCarDebugVisuals
             , selected = model.showRoadNetwork
             , disabled = False
-            , size = CBLarge
             }
         , controlButton
             { label = icon "dot_string.png"
@@ -105,7 +105,6 @@ controls model =
                     |> ShowDotString
             , selected = False
             , disabled = False
-            , size = CBLarge
             }
         ]
 
@@ -136,8 +135,6 @@ dotStringView dotString =
                             , onPress = HideDotString
                             , selected = False
                             , disabled = False
-                            , size =
-                                CBSmall
                             }
                         )
                     ]
@@ -163,7 +160,7 @@ carStateView cache car =
         , Element.padding whitespace.tight
         , Element.spacing whitespace.regular
         , Element.clipX
-        , Font.color colors.textInverse
+        , Font.color colors.text
         , Font.size 13
         , Background.color colors.listItemBackground
         , Border.solid
