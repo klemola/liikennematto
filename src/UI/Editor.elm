@@ -57,7 +57,7 @@ update msg model =
             let
                 nextTool =
                     if model.editor.tool == tool then
-                        None
+                        SmartConstruction
 
                     else
                         tool
@@ -491,29 +491,13 @@ toolbar editor =
         [ Element.spacing whitespace.tight
         , Element.alignLeft
         ]
-        [ toolbarButton editor.tool SmartConstruction
-        , toolbarButton editor.tool Bulldozer
-        , toolbarButton editor.tool Dynamite
+        [ toolbarButton editor.tool Bulldozer "bulldozer.png"
+        , toolbarButton editor.tool Dynamite "dynamite.png"
         ]
 
 
-toolbarButton : Tool -> Tool -> Element Message
-toolbarButton selectedTool tool =
-    let
-        asset =
-            case tool of
-                SmartConstruction ->
-                    "smart_construction.png"
-
-                Bulldozer ->
-                    "bulldozer.png"
-
-                Dynamite ->
-                    "dynamite.png"
-
-                None ->
-                    "__none__"
-    in
+toolbarButton : Tool -> Tool -> String -> Element Message
+toolbarButton selectedTool tool asset =
     controlButton
         { label = icon asset
         , onPress = SelectTool tool
