@@ -55,11 +55,11 @@ scrollbarAwareOffsetF =
 
 uiDimensions : UiDimensions
 uiDimensions =
-    { controlButton = 48
+    { controlButton = baseSpacing * 3
     , panel = 256
     , panelVerticalMargin = baseSpacing * 2
     , renderSafeAreaX = baseSpacing * 4 + scrollbarAwareOffset
-    , renderSafeAreaY = baseSpacing * 3 + scrollbarAwareOffset + (2 * borderRadius.light)
+    , renderSafeAreaY = baseSpacing * 4 + scrollbarAwareOffset
     , overlay = 256
     , text = 14
     , zoomControlWidth = baseSpacing * 2

@@ -56,8 +56,7 @@ update msg model =
 view : Liikennematto -> Element Message
 view model =
     Element.column
-        [ Element.width (Element.px uiDimensions.panel)
-        , Element.height (Element.px (model.screen.height - uiDimensions.panelVerticalMargin))
+        [ Element.height (Element.px (model.screen.height - uiDimensions.panelVerticalMargin))
         , Element.padding whitespace.regular
         , Element.spacing whitespace.tight
         , Element.alignRight
@@ -89,30 +88,30 @@ controls model =
         , Font.size uiDimensions.text
         ]
         [ controlButton
-            { label = icon "road_network_debug.png"
-            , onPress = ToggleShowRoadNetwork
-            , selected = model.showRoadNetwork
-            , disabled = False
-            }
-        , controlButton
-            { label = icon "dot_string.png"
-            , onPress =
-                RoadNetwork.toDotString model.world.roadNetwork
-                    |> ShowDotString
-            , selected = False
-            , disabled = False
-            }
-        , controlButton
-            { label = icon "car_white_1.png"
+            { label = icon "icon_car_debug.png"
             , onPress = ToggleShowCarDebugVisuals
             , selected = model.showRoadNetwork
             , disabled = False
             }
         , controlButton
-            { label = Element.text "🚗"
+            { label = icon "icon_spawn_car.png"
             , onPress = SpawnTestCar
             , selected = False
             , disabled = model.editor.carSpawnQueue >= Editor.maxQueuedCars
+            }
+        , controlButton
+            { label = icon "icon_road_network_debug.png"
+            , onPress = ToggleShowRoadNetwork
+            , selected = model.showRoadNetwork
+            , disabled = False
+            }
+        , controlButton
+            { label = icon "icon_dot_string.png"
+            , onPress =
+                RoadNetwork.toDotString model.world.roadNetwork
+                    |> ShowDotString
+            , selected = False
+            , disabled = False
             }
         ]
 
