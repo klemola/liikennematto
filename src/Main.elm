@@ -136,6 +136,13 @@ render model =
             else
                 Element.alignLeft
 
+        ( verticalAlignment, renderTopOffset ) =
+            if wrapperHeight < model.screen.height then
+                ( Element.centerY, 0 )
+
+            else
+                ( Element.alignTop, borderRadius.light )
+
         renderDebug =
             if debugLayers.showRoadNetwork || debugLayers.showCarDebugVisuals then
                 Render.Debug.view model.world model.renderCache debugLayers
@@ -150,8 +157,9 @@ render model =
         |> Element.el
             [ Element.width (Element.px renderWidth)
             , Element.height (Element.px renderHeight)
+            , Element.moveDown renderTopOffset
             , Element.centerX
-            , Element.moveDown uiDimensions.renderOffsetY
+            , verticalAlignment
             , Border.solid
             , Border.rounded borderRadius.light
             , Border.width borderSize.light
@@ -167,5 +175,5 @@ render model =
             [ Element.width (Element.px wrapperWidth)
             , Element.height (Element.px wrapperHeight)
             , horizontalAlignment
-            , Element.alignTop
+            , verticalAlignment
             ]

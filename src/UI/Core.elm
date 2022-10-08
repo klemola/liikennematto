@@ -6,6 +6,7 @@ module UI.Core exposing
     , containerId
     , controlButton
     , icon
+    , scrollbarAwareOffsetF
     , uiDimensions
     , whitespace
     )
@@ -31,10 +32,9 @@ type alias UiDimensions =
     , renderSafeAreaY : Int
     , overlay : Int
     , text : Int
+    , zoomControlWidth : Int
     , zoomTrackHeight : Int
     , zoomTrackWidth : Int
-    , renderOffsetY : Float
-    , scrollbarAwareOffset : Float
     }
 
 
@@ -43,19 +43,28 @@ baseSpacing =
     20
 
 
+scrollbarAwareOffset : Int
+scrollbarAwareOffset =
+    baseSpacing
+
+
+scrollbarAwareOffsetF : Float
+scrollbarAwareOffsetF =
+    toFloat scrollbarAwareOffset
+
+
 uiDimensions : UiDimensions
 uiDimensions =
     { controlButton = 48
     , panel = 256
     , panelVerticalMargin = baseSpacing * 2
-    , renderSafeAreaX = baseSpacing * 2
-    , renderSafeAreaY = 128
+    , renderSafeAreaX = baseSpacing * 4 + scrollbarAwareOffset
+    , renderSafeAreaY = baseSpacing * 3 + scrollbarAwareOffset + (2 * borderRadius.light)
     , overlay = 256
     , text = 14
+    , zoomControlWidth = baseSpacing * 2
     , zoomTrackHeight = baseSpacing * 8
     , zoomTrackWidth = 14
-    , renderOffsetY = toFloat (baseSpacing * 2)
-    , scrollbarAwareOffset = toFloat baseSpacing
     }
 
 

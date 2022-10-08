@@ -13,6 +13,7 @@ import UI.Core
         , colors
         , containerId
         , controlButton
+        , scrollbarAwareOffsetF
         , uiDimensions
         , whitespace
         )
@@ -65,7 +66,7 @@ controls model =
         , Element.spacing whitespace.regular
         , Element.alignBottom
         , Element.centerX
-        , Element.moveUp uiDimensions.scrollbarAwareOffset
+        , Element.moveUp scrollbarAwareOffsetF
         , Background.color colors.menuBackground
         , Border.rounded borderRadius.light
         ]

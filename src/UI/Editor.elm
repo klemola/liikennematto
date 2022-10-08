@@ -37,6 +37,7 @@ import UI.Core
         , containerId
         , controlButton
         , icon
+        , scrollbarAwareOffsetF
         , uiDimensions
         , whitespace
         )
@@ -539,7 +540,7 @@ zoomControl : Editor -> Element Message
 zoomControl editor =
     let
         baseWidth =
-            uiDimensions.renderSafeAreaX
+            uiDimensions.zoomControlWidth
 
         baseHeight =
             uiDimensions.zoomTrackHeight
@@ -567,8 +568,8 @@ zoomControl editor =
         , Element.width (Element.px baseWidth)
         , Element.height (Element.px baseHeight)
         , Element.alignLeft
-        , Element.moveRight uiDimensions.scrollbarAwareOffset
-        , Element.moveUp uiDimensions.scrollbarAwareOffset
+        , Element.moveRight scrollbarAwareOffsetF
+        , Element.moveUp scrollbarAwareOffsetF
         , Element.alignBottom
         , Background.color colors.menuBackground
         , Border.rounded borderRadius.light
