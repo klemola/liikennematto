@@ -7,7 +7,6 @@ module UI.Core exposing
     , containerId
     , controlButton
     , icon
-    , link
     , uiDimensions
     , whitespace
     )
@@ -157,13 +156,3 @@ controlButton { label, onPress, selected, disabled, size } =
 icon : String -> Element msg
 icon filename =
     Element.image [ Element.width Element.fill ] { description = "", src = "assets/" ++ filename }
-
-
-link : String -> String -> Element msg
-link url label =
-    Element.newTabLink
-        [ Font.color colors.link
-        ]
-        { url = url
-        , label = Element.text label
-        }
