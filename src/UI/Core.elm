@@ -1,6 +1,5 @@
 module UI.Core exposing
-    ( ControlButtonSize(..)
-    , UiDimensions
+    ( UiDimensions
     , borderRadius
     , borderSize
     , colors
@@ -25,31 +24,38 @@ containerId =
 
 
 type alias UiDimensions =
-    { toolbar : Int
-    , controlButtonS : Int
-    , controlButtonL : Int
+    { controlButton : Int
     , panel : Int
+    , panelVerticalMargin : Int
     , renderSafeAreaX : Int
     , renderSafeAreaY : Int
-    , renderOffsetY : Float
     , overlay : Int
     , text : Int
-    , slider : Int
+    , zoomTrackHeight : Int
+    , zoomTrackWidth : Int
+    , renderOffsetY : Float
+    , scrollbarAwareOffset : Float
     }
+
+
+baseSpacing : Int
+baseSpacing =
+    20
 
 
 uiDimensions : UiDimensions
 uiDimensions =
-    { toolbar = 80
-    , controlButtonS = 42
-    , controlButtonL = 64
+    { controlButton = 48
     , panel = 256
-    , renderSafeAreaX = 40
-    , renderSafeAreaY = 120
-    , renderOffsetY = 40
+    , panelVerticalMargin = baseSpacing * 2
+    , renderSafeAreaX = baseSpacing * 2
+    , renderSafeAreaY = 128
     , overlay = 256
     , text = 14
-    , slider = 14
+    , zoomTrackHeight = baseSpacing * 8
+    , zoomTrackWidth = 14
+    , renderOffsetY = toFloat (baseSpacing * 2)
+    , scrollbarAwareOffset = toFloat baseSpacing
     }
 
 
@@ -57,7 +63,7 @@ colors =
     { mainBackground = uiCompat Colors.lightGreen
     , menuBackground = uiCompat (Colors.withAlpha 0.6 Colors.darkGreen)
     , inputBackground = uiCompat Colors.gray5
-    , listItemBackground = uiCompat Colors.gray2
+    , listItemBackground = uiCompat Colors.gray5
     , text = uiCompat Colors.gray2
     , textInverse = uiCompat Colors.gray6
     , link = uiCompat Colors.darkBlue
@@ -67,7 +73,7 @@ colors =
     , target = uiCompat Colors.gray6
     , transparent = Element.rgba255 0 0 0 0
     , renderBorder = uiCompat Colors.darkGreen
-    , lightBorder = uiCompat Colors.gray3
+    , lightBorder = uiCompat Colors.gray4
     , heavyBorder = uiCompat Colors.gray1
     }
 
@@ -91,32 +97,20 @@ borderRadius =
     }
 
 
-type ControlButtonSize
-    = CBSmall
-    | CBLarge
-
-
 controlButton :
     { label : Element msg
     , onPress : msg
     , selected : Bool
     , disabled : Bool
-    , size : ControlButtonSize
     }
     -> Element msg
-controlButton { label, onPress, selected, disabled, size } =
+controlButton { label, onPress, selected, disabled } =
     let
-        ( buttonSize, fontSize ) =
-            case size of
-                CBSmall ->
-                    ( Element.px (uiDimensions.controlButtonS - (2 * borderSize.light))
-                    , uiDimensions.controlButtonS // 2
-                    )
+        buttonSize =
+            Element.px (uiDimensions.controlButton - (2 * borderSize.light))
 
-                CBLarge ->
-                    ( Element.px (uiDimensions.controlButtonL - (2 * borderSize.light))
-                    , uiDimensions.controlButtonL // 2
-                    )
+        fontSize =
+            uiDimensions.controlButton // 2
 
         alpha =
             if disabled then
