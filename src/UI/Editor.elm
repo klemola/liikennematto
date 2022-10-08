@@ -1,6 +1,5 @@
 port module UI.Editor exposing
-    ( carSpawnControl
-    , overlay
+    ( overlay
     , toolbar
     , update
     , zoomControl
@@ -503,20 +502,6 @@ toolbarButton selectedTool tool asset =
         , onPress = SelectTool tool
         , selected = selectedTool == tool
         , disabled = False
-        }
-
-
-carSpawnControl : Editor -> Element Message
-carSpawnControl editor =
-    let
-        disabled =
-            editor.carSpawnQueue >= Editor.maxQueuedCars
-    in
-    controlButton
-        { label = Element.text "🚗"
-        , onPress = SpawnTestCar
-        , selected = False
-        , disabled = disabled
         }
 
 

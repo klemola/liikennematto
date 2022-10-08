@@ -81,7 +81,6 @@ controls model =
                 , selected = model.showDebugPanel
                 , disabled = False
                 }
-            , Editor.carSpawnControl model.editor
             , simulationControl model.simulation
             ]
         ]
