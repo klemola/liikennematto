@@ -24,6 +24,7 @@ import UI.Core
         , controlButton
         , icon
         , scrollbarAwareOffsetF
+        , smallControlButton
         , uiDimensions
         , whitespace
         )
@@ -66,12 +67,23 @@ view model =
         , Border.rounded borderRadius.light
         , Element.inFront (dotStringView model.roadNetworkDotString)
         ]
-        [ Element.el
-            [ Font.size uiDimensions.text
-            , Font.bold
-            , Font.color colors.textInverse
+        [ Element.row
+            [ Element.width Element.fill ]
+            [ Element.el
+                [ Font.size uiDimensions.text
+                , Font.bold
+                , Font.color colors.textInverse
+                ]
+                (Element.text "Debug")
+            , Element.el [ Element.alignRight ]
+                (smallControlButton
+                    { label = icon "icon_close.png"
+                    , onPress = ToggleDebugMode
+                    , selected = False
+                    , disabled = False
+                    }
+                )
             ]
-            (Element.text "Debug")
         , controls model
         , Element.column
             [ Element.spacing whitespace.tight

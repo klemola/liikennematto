@@ -1,5 +1,6 @@
 module UI.Core exposing
-    ( UiDimensions
+    ( ControlButtonProperties
+    , UiDimensions
     , borderRadius
     , borderSize
     , colors
@@ -7,6 +8,7 @@ module UI.Core exposing
     , controlButton
     , icon
     , scrollbarAwareOffsetF
+    , smallControlButton
     , uiDimensions
     , whitespace
     )
@@ -106,20 +108,45 @@ borderRadius =
     }
 
 
-controlButton :
+type alias ControlButtonProperties msg =
     { label : Element msg
     , onPress : msg
     , selected : Bool
     , disabled : Bool
     }
-    -> Element msg
-controlButton { label, onPress, selected, disabled } =
+
+
+type ControlButtonSize
+    = Large
+    | Small
+
+
+controlButton : ControlButtonProperties msg -> Element msg
+controlButton =
+    buildControlButton Large
+
+
+smallControlButton : ControlButtonProperties msg -> Element msg
+smallControlButton =
+    buildControlButton Small
+
+
+buildControlButton : ControlButtonSize -> ControlButtonProperties msg -> Element msg
+buildControlButton size { label, onPress, selected, disabled } =
     let
+        baseSize =
+            case size of
+                Small ->
+                    uiDimensions.controlButton // 2
+
+                Large ->
+                    uiDimensions.controlButton
+
         buttonSize =
-            Element.px (uiDimensions.controlButton - (2 * borderSize.light))
+            Element.px (baseSize - (2 * borderSize.light))
 
         fontSize =
-            uiDimensions.controlButton // 2
+            baseSize // 2
 
         alpha =
             if disabled then
