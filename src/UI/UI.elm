@@ -51,19 +51,9 @@ layout model renderFn =
 
 controls : Liikennematto -> Element Message
 controls model =
-    let
-        spacer =
-            Element.el
-                [ Element.width (Element.px whitespace.tight)
-                , Element.height (Element.px uiDimensions.controlButton)
-                , Background.color colors.mainBackground
-                , Border.rounded borderRadius.heavy
-                ]
-                Element.none
-    in
     Element.row
         [ Element.padding whitespace.tight
-        , Element.spacing whitespace.regular
+        , Element.spacing whitespace.tight
         , Element.alignBottom
         , Element.centerX
         , Element.moveUp scrollbarAwareOffsetF
@@ -71,7 +61,6 @@ controls model =
         , Border.rounded borderRadius.light
         ]
         [ Editor.toolbar model.editor
-        , spacer
         , Element.row
             [ Element.spacing whitespace.tight
             ]
