@@ -14,7 +14,6 @@ import UI.Core
         , containerId
         , controlButton
         , scrollbarAwareOffsetF
-        , uiDimensions
         , whitespace
         )
 import UI.DebugPanel as DebugPanel
