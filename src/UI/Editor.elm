@@ -45,6 +45,13 @@ import UI.Core
 port playAudio : String -> Cmd msg
 
 
+type OverlayIntent
+    = AddTile
+    | RemoveTile
+    | ResetWorld
+    | NoIntent
+
+
 longTapThreshold : Duration
 longTapThreshold =
     Duration.milliseconds 1200
@@ -59,9 +66,6 @@ update msg model =
     let
         { editor, world, renderCache } =
             model
-
-        tilemapConfig =
-            Tilemap.config world.tilemap
     in
     case msg of
         SelectTool tool ->
@@ -111,36 +115,6 @@ update msg model =
                 |> Task.attempt (\_ -> NoOp)
             )
 
-        AddTile cell ->
-            let
-                ( nextTilemap, tileActions ) =
-                    Tilemap.addTile cell world.tilemap
-
-                nextWorld =
-                    { world | tilemap = nextTilemap }
-            in
-            ( { model
-                | world = nextWorld
-                , renderCache = refreshTilemapCache nextTilemap renderCache
-              }
-            , Cmd.batch (tileActionsToCmds tileActions)
-            )
-
-        RemoveTile cell ->
-            let
-                ( nextTilemap, tileActions ) =
-                    Tilemap.removeTile cell world.tilemap
-
-                nextWorld =
-                    { world | tilemap = nextTilemap }
-            in
-            ( { model
-                | world = nextWorld
-                , renderCache = refreshTilemapCache nextTilemap renderCache
-              }
-            , Cmd.batch (tileActionsToCmds tileActions)
-            )
-
         UpdateTilemap delta ->
             let
                 tilemapUpdateResult =
@@ -165,25 +139,6 @@ update msg model =
                 , editor = nextEditor
               }
             , Cmd.batch (tilemapChangedEffects :: tileActionsToCmds tilemapUpdateResult.actions)
-            )
-
-        ResetWorld ->
-            let
-                nextWorld =
-                    World.empty
-                        { horizontalCellsAmount = Defaults.horizontalCellsAmount
-                        , verticalCellsAmount = Defaults.verticalCellsAmount
-                        }
-
-                nextEditor =
-                    Editor.activateTool SmartConstruction editor
-            in
-            ( { model
-                | editor = nextEditor
-                , world = nextWorld
-                , renderCache = RenderCache.new nextWorld
-              }
-            , Cmd.none
             )
 
         CheckQueues ->
@@ -223,7 +178,7 @@ update msg model =
             case
                 pointerEventToCell
                     renderCache
-                    tilemapConfig
+                    (Tilemap.config world.tilemap)
                     event
             of
                 Just activeCell ->
@@ -251,35 +206,34 @@ update msg model =
 
         OverlayPointerUp event ->
             let
-                validRelease =
-                    releasedNearTriggerPosition
-                        renderCache
-                        tilemapConfig
-                        editor.pointerDownEvent
-                        event
-
-                isLongTap =
-                    case editor.longPressTimer of
-                        Just elapsed ->
-                            validRelease && (elapsed |> Quantity.greaterThanOrEqualTo longTapThreshold)
-
-                        Nothing ->
-                            False
-
-                _ =
-                    Debug.log "isLongTap" isLongTap
+                modelWithEditorUpdate =
+                    { model
+                        | editor =
+                            editor
+                                |> Editor.clearPointerDownEvent
+                                |> Editor.resetLongPressTimer
+                    }
             in
-            ( { model
-                | editor =
-                    editor
-                        |> Editor.clearPointerDownEvent
-                        |> Editor.resetLongPressTimer
-              }
-            , Cmd.none
-            )
+            case editor.activeCell of
+                Just activeCell ->
+                    applyOverlayIntent
+                        (resolvePointerUp event activeCell model)
+                        activeCell
+                        modelWithEditorUpdate
 
-        OverlayRightClick event ->
-            ( model, Cmd.none )
+                Nothing ->
+                    ( modelWithEditorUpdate, Cmd.none )
+
+        OverlayRightClick _ ->
+            case editor.activeCell of
+                Just activeCell ->
+                    applyOverlayIntent
+                        (chooseSecondaryIntent activeCell editor world)
+                        activeCell
+                        model
+
+                Nothing ->
+                    ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -396,8 +350,39 @@ pointerEventToCell cache constraints event =
     Cell.fromCoordinates constraints coordinates
 
 
-releasedNearTriggerPosition : RenderCache -> Tilemap.TilemapConfig -> Maybe Pointer.Event -> Pointer.Event -> Bool
-releasedNearTriggerPosition cache tilemapConfig pointerDownEvent pointerUpEvent =
+resolvePointerUp : Pointer.Event -> Cell -> Liikennematto -> OverlayIntent
+resolvePointerUp event cell model =
+    let
+        { renderCache, editor, world } =
+            model
+
+        validRelease =
+            ponterReleasedNearTriggerPosition
+                renderCache
+                (Tilemap.config world.tilemap)
+                editor.pointerDownEvent
+                event
+
+        isLongTap =
+            case editor.longPressTimer of
+                Just elapsed ->
+                    validRelease && (elapsed |> Quantity.greaterThanOrEqualTo longTapThreshold)
+
+                Nothing ->
+                    False
+    in
+    if isLongTap then
+        chooseSecondaryIntent cell editor world
+
+    else if validRelease then
+        choosePrimaryIntent cell editor world
+
+    else
+        NoIntent
+
+
+ponterReleasedNearTriggerPosition : RenderCache -> Tilemap.TilemapConfig -> Maybe Pointer.Event -> Pointer.Event -> Bool
+ponterReleasedNearTriggerPosition cache tilemapConfig pointerDownEvent pointerUpEvent =
     let
         pointerDownCell =
             pointerDownEvent |> Maybe.andThen (pointerEventToCell cache tilemapConfig)
@@ -409,19 +394,19 @@ releasedNearTriggerPosition cache tilemapConfig pointerDownEvent pointerUpEvent 
         |> Maybe.withDefault False
 
 
-choosePrimaryAction : Cell -> Tool -> World -> Message
-choosePrimaryAction cell tool world =
-    case ( tool, Tilemap.tileAt world.tilemap cell ) of
+choosePrimaryIntent : Cell -> Editor -> World -> OverlayIntent
+choosePrimaryIntent cell editor world =
+    case ( editor.tool, Tilemap.tileAt world.tilemap cell ) of
         ( SmartConstruction, _ ) ->
             let
                 alreadyExists =
                     Tilemap.exists cell world.tilemap
             in
             if not alreadyExists && Tilemap.canBuildRoadAt cell world.tilemap then
-                AddTile cell
+                AddTile
 
             else
-                NoOp
+                NoIntent
 
         ( Bulldozer, Just _ ) ->
             let
@@ -429,34 +414,111 @@ choosePrimaryAction cell tool world =
                     Tilemap.tileAt world.tilemap cell
             in
             if Maybe.unwrap False Tile.isBuilt tile then
-                RemoveTile cell
+                RemoveTile
 
             else
-                NoOp
+                NoIntent
 
         ( Dynamite, _ ) ->
             ResetWorld
 
         _ ->
-            NoOp
+            NoIntent
 
 
-chooseSecondaryAction : Cell -> Tool -> World -> Message
-chooseSecondaryAction cell tool world =
-    case tool of
+chooseSecondaryIntent : Cell -> Editor -> World -> OverlayIntent
+chooseSecondaryIntent cell editor world =
+    case editor.tool of
         SmartConstruction ->
             let
                 tile =
                     Tilemap.tileAt world.tilemap cell
             in
             if Maybe.unwrap False Tile.isBuilt tile then
-                RemoveTile cell
+                RemoveTile
 
             else
-                NoOp
+                NoIntent
 
         _ ->
-            NoOp
+            NoIntent
+
+
+applyOverlayIntent : OverlayIntent -> Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
+applyOverlayIntent intent activeCell model =
+    case intent of
+        AddTile ->
+            addTile activeCell model
+
+        RemoveTile ->
+            removeTile activeCell model
+
+        ResetWorld ->
+            resetWorld model
+
+        NoIntent ->
+            ( model, Cmd.none )
+
+
+addTile : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
+addTile cell model =
+    let
+        { world, renderCache } =
+            model
+
+        ( nextTilemap, tileActions ) =
+            Tilemap.addTile cell world.tilemap
+
+        nextWorld =
+            { world | tilemap = nextTilemap }
+    in
+    ( { model
+        | world = nextWorld
+        , renderCache = refreshTilemapCache nextTilemap renderCache
+      }
+    , Cmd.batch (tileActionsToCmds tileActions)
+    )
+
+
+removeTile : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
+removeTile cell model =
+    let
+        { world, renderCache } =
+            model
+
+        ( nextTilemap, tileActions ) =
+            Tilemap.removeTile cell world.tilemap
+
+        nextWorld =
+            { world | tilemap = nextTilemap }
+    in
+    ( { model
+        | world = nextWorld
+        , renderCache = refreshTilemapCache nextTilemap renderCache
+      }
+    , Cmd.batch (tileActionsToCmds tileActions)
+    )
+
+
+resetWorld : Liikennematto -> ( Liikennematto, Cmd Message )
+resetWorld model =
+    let
+        nextWorld =
+            World.empty
+                { horizontalCellsAmount = Defaults.horizontalCellsAmount
+                , verticalCellsAmount = Defaults.verticalCellsAmount
+                }
+
+        nextEditor =
+            Editor.activateTool SmartConstruction model.editor
+    in
+    ( { model
+        | editor = nextEditor
+        , world = nextWorld
+        , renderCache = RenderCache.new nextWorld
+      }
+    , Cmd.none
+    )
 
 
 
