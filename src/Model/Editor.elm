@@ -4,20 +4,29 @@ module Model.Editor exposing
     , PendingTilemapChange
     , Tool(..)
     , ZoomLevel(..)
+    , activateCell
     , activateTool
+    , advanceLongPressTimer
+    , clearPointerDownEvent
     , combineChangedCells
     , createPendingTilemapChange
+    , deactivateCell
     , hasPendingTilemapChange
     , maxQueuedCars
     , minTilemapChangeFrequency
     , new
+    , resetLongPressTimer
     , setCarSpawnQueue
     , setZoomLevel
+    , startLongPressTimer
+    , storePointerDownEvent
     , zoomLevelToUIValue
     )
 
 import Duration exposing (Duration)
+import Html.Events.Extra.Pointer as Pointer
 import Model.Cell as Cell exposing (Cell, CellCoordinates)
+import Quantity
 import Set exposing (Set)
 
 
@@ -26,6 +35,9 @@ type alias Editor =
     , zoomLevel : ZoomLevel
     , pendingTilemapChange : Maybe PendingTilemapChange
     , carSpawnQueue : CarSpawnQueue
+    , activeCell : Maybe Cell
+    , longPressTimer : Maybe Duration
+    , pointerDownEvent : Maybe Pointer.Event
     }
 
 
@@ -65,6 +77,9 @@ new =
     , zoomLevel = Far
     , pendingTilemapChange = Nothing
     , carSpawnQueue = 0
+    , activeCell = Nothing
+    , longPressTimer = Nothing
+    , pointerDownEvent = Nothing
     }
 
 
@@ -139,3 +154,40 @@ combineChangedCells changedCells currentChanges =
 hasPendingTilemapChange : Editor -> Bool
 hasPendingTilemapChange editor =
     editor.pendingTilemapChange /= Nothing
+
+
+activateCell : Cell -> Editor -> Editor
+activateCell cell editor =
+    { editor | activeCell = Just cell }
+
+
+deactivateCell : Editor -> Editor
+deactivateCell editor =
+    { editor | activeCell = Nothing }
+
+
+storePointerDownEvent : Pointer.Event -> Editor -> Editor
+storePointerDownEvent event editor =
+    { editor | pointerDownEvent = Just event }
+
+
+clearPointerDownEvent : Editor -> Editor
+clearPointerDownEvent editor =
+    { editor | pointerDownEvent = Nothing }
+
+
+startLongPressTimer : Editor -> Editor
+startLongPressTimer editor =
+    { editor | longPressTimer = Just Quantity.zero }
+
+
+resetLongPressTimer : Editor -> Editor
+resetLongPressTimer editor =
+    { editor | longPressTimer = Nothing }
+
+
+advanceLongPressTimer : Duration -> Editor -> Editor
+advanceLongPressTimer delta editor =
+    { editor
+        | longPressTimer = editor.longPressTimer |> Maybe.map (Quantity.plus delta)
+    }

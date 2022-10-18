@@ -166,7 +166,8 @@ render model =
             , Border.color colors.renderBorder
             , Element.inFront renderDebug
             , Element.inFront
-                (UI.Editor.overlay model.renderCache
+                (UI.Editor.overlay
+                    model.renderCache
                     model.world
                     model.editor
                 )
