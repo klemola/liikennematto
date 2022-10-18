@@ -18,8 +18,6 @@ type Message
     | VisibilityChanged Visibility
     | ResetSeed Posix
     | AnimationFrameReceived Duration
-    | AddTile Cell
-    | RemoveTile Cell
     | UpdateTilemap Duration
     | TilemapChanged (List Cell)
     | SetSimulation SimulationState
@@ -27,7 +25,6 @@ type Message
     | GenerateEnvironment
     | CheckQueues
     | SpawnTestCar
-    | ResetWorld
     | SelectTool Tool
     | ChangeZoomLevel Float
     | OverlayPointerMove Pointer.Event
