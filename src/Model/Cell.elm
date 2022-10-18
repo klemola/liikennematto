@@ -8,6 +8,7 @@ module Model.Cell exposing
     , coordinates
     , fromCoordinates
     , fromCoordinatesSet
+    , identical
     , nextOrthogonalCell
     , quadrantNeighbors
     , size
@@ -234,6 +235,11 @@ centerPoint (Cell cellProperties) =
 boundingBox : Cell -> LMBoundingBox2d
 boundingBox (Cell cellProperties) =
     cellProperties.boundingBox
+
+
+identical : Cell -> Cell -> Bool
+identical (Cell cellA) (Cell cellB) =
+    cellA.x == cellB.x && cellA.y == cellB.y
 
 
 toString : Cell -> String

@@ -6,14 +6,14 @@ port module UI.Editor exposing
     )
 
 import Browser.Dom
-import CustomEvent
 import Data.Defaults as Defaults
 import Duration exposing (Duration)
 import Element exposing (Color, Element)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Events as Events
 import Element.Input as Input
+import Html.Events.Extra.Mouse as Mouse
+import Html.Events.Extra.Pointer as Pointer
 import Maybe.Extra as Maybe
 import Message exposing (Message(..))
 import Model.Cell as Cell exposing (Cell)
@@ -45,34 +45,46 @@ import UI.Core
 port playAudio : String -> Cmd msg
 
 
+longTapThreshold : Duration
+longTapThreshold =
+    Duration.milliseconds 1200
+
+
 
 -- Update
 
 
 update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
 update msg model =
+    let
+        { editor, world, renderCache } =
+            model
+
+        tilemapConfig =
+            Tilemap.config world.tilemap
+    in
     case msg of
         SelectTool tool ->
             let
                 nextTool =
-                    if model.editor.tool == tool then
+                    if editor.tool == tool then
                         SmartConstruction
 
                     else
                         tool
 
                 nextEditor =
-                    Editor.activateTool nextTool model.editor
+                    Editor.activateTool nextTool editor
             in
             ( { model | editor = nextEditor }, Cmd.none )
 
         ChangeZoomLevel nextLevel ->
             let
                 nextEditor =
-                    Editor.setZoomLevel nextLevel model.editor
+                    Editor.setZoomLevel nextLevel editor
 
                 nextRenderCache =
-                    RenderCache.setPixelsToMetersRatio nextEditor.zoomLevel model.renderCache
+                    RenderCache.setPixelsToMetersRatio nextEditor.zoomLevel renderCache
             in
             ( { model
                 | editor = nextEditor
@@ -83,10 +95,10 @@ update msg model =
                     (\domViewport ->
                         let
                             mapSizeChangeX =
-                                nextRenderCache.tilemapWidthPixels - model.renderCache.tilemapWidthPixels
+                                nextRenderCache.tilemapWidthPixels - renderCache.tilemapWidthPixels
 
                             mapSizeChangeY =
-                                nextRenderCache.tilemapHeightPixels - model.renderCache.tilemapHeightPixels
+                                nextRenderCache.tilemapHeightPixels - renderCache.tilemapHeightPixels
 
                             nextScrollX =
                                 (mapSizeChangeX / 2) + domViewport.viewport.x
@@ -101,9 +113,6 @@ update msg model =
 
         AddTile cell ->
             let
-                { world } =
-                    model
-
                 ( nextTilemap, tileActions ) =
                     Tilemap.addTile cell world.tilemap
 
@@ -112,34 +121,28 @@ update msg model =
             in
             ( { model
                 | world = nextWorld
-                , renderCache = refreshTilemapCache nextTilemap model.renderCache
+                , renderCache = refreshTilemapCache nextTilemap renderCache
               }
             , Cmd.batch (tileActionsToCmds tileActions)
             )
 
         RemoveTile cell ->
             let
-                { world } =
-                    model
-
                 ( nextTilemap, tileActions ) =
-                    Tilemap.removeTile cell model.world.tilemap
+                    Tilemap.removeTile cell world.tilemap
 
                 nextWorld =
                     { world | tilemap = nextTilemap }
             in
             ( { model
                 | world = nextWorld
-                , renderCache = refreshTilemapCache nextTilemap model.renderCache
+                , renderCache = refreshTilemapCache nextTilemap renderCache
               }
             , Cmd.batch (tileActionsToCmds tileActions)
             )
 
         UpdateTilemap delta ->
             let
-                { world, renderCache } =
-                    model
-
                 tilemapUpdateResult =
                     Tilemap.update delta world.tilemap
 
@@ -173,7 +176,7 @@ update msg model =
                         }
 
                 nextEditor =
-                    Editor.activateTool SmartConstruction model.editor
+                    Editor.activateTool SmartConstruction editor
             in
             ( { model
                 | editor = nextEditor
@@ -186,13 +189,13 @@ update msg model =
         CheckQueues ->
             let
                 { carSpawnQueue } =
-                    model.editor
+                    editor
 
                 ( nextWorld, nextCarSpawnQueue, nextSeed ) =
-                    dequeueCarSpawn carSpawnQueue model.seed model.world
+                    dequeueCarSpawn carSpawnQueue model.seed world
 
                 nextEditor =
-                    Editor.setCarSpawnQueue nextCarSpawnQueue model.editor
+                    Editor.setCarSpawnQueue nextCarSpawnQueue editor
             in
             ( { model
                 | world = nextWorld
@@ -205,11 +208,78 @@ update msg model =
         SpawnTestCar ->
             let
                 nextEditor =
-                    Editor.setCarSpawnQueue (model.editor.carSpawnQueue + 1) model.editor
+                    Editor.setCarSpawnQueue (editor.carSpawnQueue + 1) editor
             in
             ( { model | editor = nextEditor }
             , Cmd.none
             )
+
+        AnimationFrameReceived delta ->
+            ( { model | editor = Editor.advanceLongPressTimer delta editor }
+            , Cmd.none
+            )
+
+        OverlayPointerMove event ->
+            case
+                pointerEventToCell
+                    renderCache
+                    tilemapConfig
+                    event
+            of
+                Just activeCell ->
+                    ( { model | editor = Editor.activateCell activeCell editor }
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        OverlayPointerLeave _ ->
+            ( { model | editor = Editor.deactivateCell editor }
+            , Cmd.none
+            )
+
+        OverlayPointerDown event ->
+            ( { model
+                | editor =
+                    editor
+                        |> Editor.storePointerDownEvent event
+                        |> Editor.startLongPressTimer
+              }
+            , Cmd.none
+            )
+
+        OverlayPointerUp event ->
+            let
+                validRelease =
+                    releasedNearTriggerPosition
+                        renderCache
+                        tilemapConfig
+                        editor.pointerDownEvent
+                        event
+
+                isLongTap =
+                    case editor.longPressTimer of
+                        Just elapsed ->
+                            validRelease && (elapsed |> Quantity.greaterThanOrEqualTo longTapThreshold)
+
+                        Nothing ->
+                            False
+
+                _ =
+                    Debug.log "isLongTap" isLongTap
+            in
+            ( { model
+                | editor =
+                    editor
+                        |> Editor.clearPointerDownEvent
+                        |> Editor.resetLongPressTimer
+              }
+            , Cmd.none
+            )
+
+        OverlayRightClick event ->
+            ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -299,103 +369,44 @@ dequeueCarSpawn queue seed world =
         ( world, queue, seed )
 
 
-
--- Views
-
-
-overlay : RenderCache -> World -> Editor -> Element Message
-overlay cache world editor =
+pointerEventToCell : RenderCache -> Tilemap.TilemapConfig -> Pointer.Event -> Maybe Cell
+pointerEventToCell cache constraints event =
     let
-        { tool } =
-            editor
+        ( overlayX, overlayY ) =
+            event.pointer.offsetPos
 
-        tileSizePixels =
-            Render.Conversion.toPixelsValue cache.pixelsToMetersRatio Cell.size
+        cellMetersValue =
+            Quantity.unwrap Cell.size
 
-        cellSize =
-            tileSizePixels
-                |> floor
-                |> Element.px
+        overlayXMetersValue =
+            overlayX
+                |> Render.Conversion.toMetersValue cache.pixelsToMetersRatio
+                |> Quantity.unwrap
 
-        tilemapConfig =
-            Tilemap.config world.tilemap
+        overlayYMetersValue =
+            overlayY
+                |> Render.Conversion.toMetersValue cache.pixelsToMetersRatio
+                |> Quantity.unwrap
 
-        cellElement x y =
-            case
-                Cell.fromCoordinates tilemapConfig ( x, y )
-            of
-                Just cell ->
-                    tileOverlay
-                        { glowColor =
-                            tileHighlight
-                                { world = world
-                                , selectedTool = tool
-                                , cell = cell
-                                }
-                        , cell = cell
-                        , world = world
-                        , tool = tool
-                        , cellSize = cellSize
-                        , tileSizePixels = tileSizePixels
-                        }
-
-                Nothing ->
-                    Element.none
-
-        rows =
-            List.map
-                (\y ->
-                    Element.row []
-                        (List.map
-                            (\x -> cellElement x y)
-                            (List.range 1 tilemapConfig.verticalCellsAmount)
-                        )
-                )
-                (List.range 1 tilemapConfig.horizontalCellsAmount)
-
-        highlight =
-            case tool of
-                Dynamite ->
-                    colors.danger
-
-                _ ->
-                    colors.transparent
+        coordinates =
+            ( 1 + floor (overlayXMetersValue / cellMetersValue)
+            , 1 + floor (overlayYMetersValue / cellMetersValue)
+            )
     in
-    Element.el
-        [ Element.mouseOver [ Border.innerGlow highlight tileSizePixels ]
-        , Element.width cellSize
-        , Element.height cellSize
-        ]
-        (Element.column [] rows)
+    Cell.fromCoordinates constraints coordinates
 
 
-tileOverlay :
-    { glowColor : Maybe Color
-    , cell : Cell
-    , world : World
-    , tool : Tool
-    , tileSizePixels : Float
-    , cellSize : Element.Length
-    }
-    -> Element Message
-tileOverlay { glowColor, cell, world, tool, tileSizePixels, cellSize } =
+releasedNearTriggerPosition : RenderCache -> Tilemap.TilemapConfig -> Maybe Pointer.Event -> Pointer.Event -> Bool
+releasedNearTriggerPosition cache tilemapConfig pointerDownEvent pointerUpEvent =
     let
-        glow =
-            glowColor
-                |> Maybe.map
-                    (\color ->
-                        [ Border.innerGlow color (tileSizePixels / 10) ]
-                    )
-                |> Maybe.withDefault []
+        pointerDownCell =
+            pointerDownEvent |> Maybe.andThen (pointerEventToCell cache tilemapConfig)
+
+        pointerUpCell =
+            pointerEventToCell cache tilemapConfig pointerUpEvent
     in
-    Element.el
-        [ Element.width cellSize
-        , Element.height cellSize
-        , Element.mouseOver glow
-        , Events.onClick (choosePrimaryAction cell tool world)
-        , Element.htmlAttribute (CustomEvent.onRightClick <| chooseSecondaryAction cell tool world)
-        ]
-        Element.none
+    Maybe.map2 Cell.identical pointerDownCell pointerUpCell
+        |> Maybe.withDefault False
 
 
 choosePrimaryAction : Cell -> Tool -> World -> Message
@@ -448,13 +459,67 @@ chooseSecondaryAction cell tool world =
             NoOp
 
 
-tileHighlight :
-    { world : World
-    , selectedTool : Tool
-    , cell : Cell
-    }
-    -> Maybe Color
-tileHighlight { world, selectedTool, cell } =
+
+-- Views
+
+
+overlay : RenderCache -> World -> Editor -> Element Message
+overlay cache world editor =
+    Element.el
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        , Element.inFront
+            (Element.el
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Element.htmlAttribute (Pointer.onMove OverlayPointerMove)
+                , Element.htmlAttribute (Pointer.onLeave OverlayPointerLeave)
+                , Element.htmlAttribute (Pointer.onDown OverlayPointerDown)
+                , Element.htmlAttribute (Pointer.onUp OverlayPointerUp)
+                , Element.htmlAttribute (Mouse.onContextMenu OverlayRightClick)
+                ]
+                Element.none
+            )
+        ]
+        (case editor.activeCell of
+            Just cell ->
+                cellHighlight cache world editor.tool cell
+
+            Nothing ->
+                Element.none
+        )
+
+
+cellHighlight : RenderCache -> World -> Tool -> Cell -> Element Message
+cellHighlight cache world selectedTool activeCell =
+    let
+        tileSizePixels =
+            Render.Conversion.toPixelsValue cache.pixelsToMetersRatio Cell.size
+
+        ( cellX, cellY ) =
+            Cell.coordinates activeCell
+
+        cellSize =
+            Element.px (floor tileSizePixels)
+    in
+    Element.el
+        [ Element.width cellSize
+        , Element.height cellSize
+        , Element.moveRight (toFloat (cellX - 1) * tileSizePixels)
+        , Element.moveDown (toFloat (cellY - 1) * tileSizePixels)
+        , Border.width borderSize.light
+        , Border.rounded borderRadius.light
+        , Border.solid
+        , Border.color
+            (highlightColor world selectedTool activeCell
+                |> Maybe.withDefault colors.transparent
+            )
+        ]
+        Element.none
+
+
+highlightColor : World -> Tool -> Cell -> Maybe Color
+highlightColor world selectedTool cell =
     case selectedTool of
         Bulldozer ->
             if Tilemap.exists cell world.tilemap then
