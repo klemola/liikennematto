@@ -43,7 +43,7 @@ layout model renderFn =
         , Element.inFront (Editor.zoomControl model.editor)
         , Element.inFront (debugPanel model)
         , Element.htmlAttribute (Html.Attributes.id containerId)
-        , Element.htmlAttribute (Html.Attributes.style "touch-action" "manipulation")
+        , Element.htmlAttribute (Html.Attributes.style "touch-action" "pan-x pan-y")
         ]
         (renderFn model)
 

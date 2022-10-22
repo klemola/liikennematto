@@ -12,6 +12,7 @@ import Element exposing (Color, Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Input as Input
+import Html.Attributes
 import Html.Events.Extra.Mouse as Mouse
 import Html.Events.Extra.Pointer as Pointer
 import Maybe.Extra as Maybe
@@ -66,6 +67,9 @@ update msg model =
     let
         { editor, world, renderCache } =
             model
+
+        tilemapConfig =
+            Tilemap.config world.tilemap
     in
     case msg of
         SelectTool tool ->
@@ -178,7 +182,7 @@ update msg model =
             case
                 pointerEventToCell
                     renderCache
-                    (Tilemap.config world.tilemap)
+                    tilemapConfig
                     event
             of
                 Just activeCell ->
@@ -195,12 +199,11 @@ update msg model =
             )
 
         OverlayPointerDown event ->
-            ( { model
-                | editor =
-                    editor
-                        |> Editor.storePointerDownEvent event
-                        |> Editor.startLongPressTimer
-              }
+            let
+                eventCell =
+                    pointerEventToCell renderCache tilemapConfig event
+            in
+            ( { model | editor = Editor.selectCell event eventCell model.editor }
             , Cmd.none
             )
 
@@ -214,11 +217,20 @@ update msg model =
                                 |> Editor.resetLongPressTimer
                     }
             in
-            case editor.activeCell of
-                Just activeCell ->
+            case pointerEventToCell renderCache tilemapConfig event of
+                Just pointerUpCell ->
+                    let
+                        pointerDownCell =
+                            editor.pointerDownEvent |> Maybe.andThen (pointerEventToCell renderCache tilemapConfig)
+                    in
                     applyOverlayIntent
-                        (resolvePointerUp event activeCell model)
-                        activeCell
+                        (resolvePointerUp
+                            pointerDownCell
+                            pointerUpCell
+                            world
+                            editor
+                        )
+                        pointerUpCell
                         modelWithEditorUpdate
 
                 Nothing ->
@@ -350,18 +362,13 @@ pointerEventToCell cache constraints event =
     Cell.fromCoordinates constraints coordinates
 
 
-resolvePointerUp : Pointer.Event -> Cell -> Liikennematto -> OverlayIntent
-resolvePointerUp event cell model =
+resolvePointerUp : Maybe Cell -> Cell -> World -> Editor -> OverlayIntent
+resolvePointerUp pointerDownCell pointerUpCell world editor =
     let
-        { renderCache, editor, world } =
-            model
-
         validRelease =
-            ponterReleasedNearTriggerPosition
-                renderCache
-                (Tilemap.config world.tilemap)
-                editor.pointerDownEvent
-                event
+            pointerDownCell
+                |> Maybe.map (Cell.identical pointerUpCell)
+                |> Maybe.withDefault False
 
         isLongTap =
             case editor.longPressTimer of
@@ -372,26 +379,13 @@ resolvePointerUp event cell model =
                     False
     in
     if isLongTap then
-        chooseSecondaryIntent cell editor world
+        chooseSecondaryIntent pointerUpCell editor world
 
     else if validRelease then
-        choosePrimaryIntent cell editor world
+        choosePrimaryIntent pointerUpCell editor world
 
     else
         NoIntent
-
-
-ponterReleasedNearTriggerPosition : RenderCache -> Tilemap.TilemapConfig -> Maybe Pointer.Event -> Pointer.Event -> Bool
-ponterReleasedNearTriggerPosition cache tilemapConfig pointerDownEvent pointerUpEvent =
-    let
-        pointerDownCell =
-            pointerDownEvent |> Maybe.andThen (pointerEventToCell cache tilemapConfig)
-
-        pointerUpCell =
-            pointerEventToCell cache tilemapConfig pointerUpEvent
-    in
-    Maybe.map2 Cell.identical pointerDownCell pointerUpCell
-        |> Maybe.withDefault False
 
 
 choosePrimaryIntent : Cell -> Editor -> World -> OverlayIntent
@@ -474,6 +468,7 @@ addTile cell model =
     in
     ( { model
         | world = nextWorld
+        , editor = Editor.activateCell cell model.editor
         , renderCache = refreshTilemapCache nextTilemap renderCache
       }
     , Cmd.batch (tileActionsToCmds tileActions)
@@ -494,6 +489,7 @@ removeTile cell model =
     in
     ( { model
         | world = nextWorld
+        , editor = Editor.activateCell cell model.editor
         , renderCache = refreshTilemapCache nextTilemap renderCache
       }
     , Cmd.batch (tileActionsToCmds tileActions)
@@ -538,6 +534,7 @@ overlay cache world editor =
                 , Element.htmlAttribute (Pointer.onLeave OverlayPointerLeave)
                 , Element.htmlAttribute (Pointer.onDown OverlayPointerDown)
                 , Element.htmlAttribute (Pointer.onUp OverlayPointerUp)
+                , Element.htmlAttribute (Pointer.onCancel (\_ -> NoOp))
                 , Element.htmlAttribute (Mouse.onContextMenu OverlayRightClick)
                 ]
                 Element.none
@@ -545,7 +542,12 @@ overlay cache world editor =
         ]
         (case editor.activeCell of
             Just cell ->
-                cellHighlight cache world editor.tool cell
+                if editor.lastEventDevice == Pointer.MouseType then
+                    cellHighlight cache world editor.tool cell
+
+                else
+                    -- Hide hover decoration for touch devices
+                    Element.none
 
             Nothing ->
                 Element.none
