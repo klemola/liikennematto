@@ -16,9 +16,10 @@ module Model.Editor exposing
     , minTilemapChangeFrequency
     , new
     , resetLongPressTimer
+    , selectCell
     , setCarSpawnQueue
+    , setLastEventDevice
     , setZoomLevel
-    , startLongPressTimer
     , storePointerDownEvent
     , zoomLevelToUIValue
     )
@@ -38,6 +39,7 @@ type alias Editor =
     , activeCell : Maybe Cell
     , longPressTimer : Maybe Duration
     , pointerDownEvent : Maybe Pointer.Event
+    , lastEventDevice : Pointer.DeviceType
     }
 
 
@@ -80,6 +82,7 @@ new =
     , activeCell = Nothing
     , longPressTimer = Nothing
     , pointerDownEvent = Nothing
+    , lastEventDevice = Pointer.MouseType
     }
 
 
@@ -176,11 +179,6 @@ clearPointerDownEvent editor =
     { editor | pointerDownEvent = Nothing }
 
 
-startLongPressTimer : Editor -> Editor
-startLongPressTimer editor =
-    { editor | longPressTimer = Just Quantity.zero }
-
-
 resetLongPressTimer : Editor -> Editor
 resetLongPressTimer editor =
     { editor | longPressTimer = Nothing }
@@ -191,3 +189,30 @@ advanceLongPressTimer delta editor =
     { editor
         | longPressTimer = editor.longPressTimer |> Maybe.map (Quantity.plus delta)
     }
+
+
+setLastEventDevice : Pointer.DeviceType -> Editor -> Editor
+setLastEventDevice deviceType editor =
+    { editor | lastEventDevice = deviceType }
+
+
+selectCell : Pointer.Event -> Maybe Cell -> Editor -> Editor
+selectCell event eventCell initialEditor =
+    initialEditor
+        |> setLastEventDevice event.pointerType
+        |> storePointerDownEvent event
+        |> (\editor ->
+                if event.pointerType == Pointer.TouchType then
+                    { editor | longPressTimer = Just Quantity.zero }
+
+                else
+                    editor
+           )
+        |> (\editor ->
+                case eventCell of
+                    Just selectedCell ->
+                        activateCell selectedCell editor
+
+                    Nothing ->
+                        editor
+           )
