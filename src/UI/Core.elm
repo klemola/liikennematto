@@ -7,7 +7,7 @@ module UI.Core exposing
     , containerId
     , controlButton
     , icon
-    , preventDefaultLongTap
+    , overlayId
     , scrollbarAwareOffsetF
     , smallControlButton
     , uiDimensions
@@ -20,13 +20,16 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
-import Html.Events
-import Json.Decode
 
 
 containerId : String
 containerId =
     "liikennematto"
+
+
+overlayId : String
+overlayId =
+    "lm-overlay"
 
 
 type alias UiDimensions =
@@ -189,17 +192,3 @@ buildControlButton size { label, onPress, selected, disabled } =
 icon : String -> Element msg
 icon filename =
     Element.image [ Element.width Element.fill ] { description = "", src = "assets/" ++ filename }
-
-
-preventDefaultLongTap : msg -> Element.Attribute msg
-preventDefaultLongTap msg =
-    Element.htmlAttribute
-        (Html.Events.custom
-            "touchstart"
-            (Json.Decode.succeed
-                { message = msg
-                , stopPropagation = True
-                , preventDefault = True
-                }
-            )
-        )
