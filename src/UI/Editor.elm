@@ -12,7 +12,6 @@ import Element exposing (Color, Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Input as Input
-import Html.Attributes
 import Html.Events.Extra.Mouse as Mouse
 import Html.Events.Extra.Pointer as Pointer
 import Maybe.Extra as Maybe
@@ -37,6 +36,7 @@ import UI.Core
         , containerId
         , controlButton
         , icon
+        , preventDefaultLongTap
         , scrollbarAwareOffsetF
         , uiDimensions
         , whitespace
@@ -534,8 +534,8 @@ overlay cache world editor =
                 , Element.htmlAttribute (Pointer.onLeave OverlayPointerLeave)
                 , Element.htmlAttribute (Pointer.onDown OverlayPointerDown)
                 , Element.htmlAttribute (Pointer.onUp OverlayPointerUp)
-                , Element.htmlAttribute (Pointer.onCancel (\_ -> NoOp))
                 , Element.htmlAttribute (Mouse.onContextMenu OverlayRightClick)
+                , preventDefaultLongTap NoOp
                 ]
                 Element.none
             )
