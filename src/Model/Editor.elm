@@ -159,7 +159,11 @@ hasPendingTilemapChange editor =
 
 activateCell : Cell -> Editor -> Editor
 activateCell cell editor =
-    { editor | activeCell = Just cell }
+    if editor.activeCell /= Just cell then
+        { editor | activeCell = Just cell }
+
+    else
+        editor
 
 
 deactivateCell : Editor -> Editor
@@ -200,11 +204,11 @@ selectCell event eventCell initialEditor =
         |> setLastEventDevice event.pointerType
         |> storePointerDownEvent event
         |> (\editor ->
-                if event.pointerType == Pointer.TouchType then
-                    { editor | longPressTimer = Just Quantity.zero }
+                if event.pointerType == Pointer.MouseType then
+                    editor
 
                 else
-                    editor
+                    { editor | longPressTimer = Just Quantity.zero }
            )
         |> (\editor ->
                 case eventCell of
