@@ -42,6 +42,7 @@ import UI.Core
         , uiDimensions
         , whitespace
         )
+import UI.TimerIndicator
 
 
 port playAudio : String -> Cmd msg
@@ -56,7 +57,7 @@ type OverlayIntent
 
 longTapThreshold : Duration
 longTapThreshold =
-    Duration.milliseconds 1200
+    Duration.milliseconds 800
 
 
 
@@ -200,13 +201,20 @@ update msg model =
             )
 
         OverlayPointerDown event ->
-            let
-                eventCell =
-                    pointerEventToCell renderCache tilemapConfig event
-            in
-            ( { model | editor = Editor.selectCell event eventCell model.editor }
-            , Cmd.none
-            )
+            case pointerEventToCell renderCache tilemapConfig event of
+                Just eventCell ->
+                    let
+                        cellHasTile =
+                            Tilemap.exists eventCell world.tilemap
+                    in
+                    ( { model | editor = Editor.selectCell event eventCell cellHasTile editor }
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    ( { model | editor = Editor.deactivateCell editor }
+                    , Cmd.none
+                    )
 
         OverlayPointerUp event ->
             let
@@ -547,8 +555,16 @@ overlay cache world editor =
                     cellHighlight cache world editor.tool cell
 
                 else
-                    -- Hide hover decoration for touch devices
-                    Element.none
+                    case editor.longPressTimer of
+                        Just elapsed ->
+                            UI.TimerIndicator.view
+                                cache.pixelsToMetersRatio
+                                (Cell.coordinates cell)
+                                elapsed
+                                longTapThreshold
+
+                        Nothing ->
+                            Element.none
 
             Nothing ->
                 Element.none

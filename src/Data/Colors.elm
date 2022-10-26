@@ -1,6 +1,9 @@
 module Data.Colors exposing
     ( darkBlue
+    , darkBlueCSS
+    , darkBrownCSS
     , darkGreen
+    , darkGreenCSS
     , gray1
     , gray1CSS
     , gray2
@@ -8,21 +11,27 @@ module Data.Colors exposing
     , gray3
     , gray3CSS
     , gray4
+    , gray4CSS
     , gray5
     , gray5CSS
     , gray6
     , gray6CSS
     , lightBlue
+    , lightBlueCSS
     , lightBrown
+    , lightBrownCSS
     , lightGreen
     , lightGreenCSS
     , orange
+    , orangeCSS
     , red
     , redCSS
     , uiCompat
     , withAlpha
     , yellow
+    , yellowCSS
     , yellowGreen
+    , yellowGreenCSS
     )
 
 import Color

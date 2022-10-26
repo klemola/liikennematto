@@ -17,12 +17,12 @@ import Model.Tile as Tile exposing (Tile, TileKind)
 import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.World exposing (World)
 import Pixels
-import Quantity exposing (Quantity, Rate)
-import Render.Conversion exposing (toPixelsValue)
+import Quantity
+import Render.Conversion exposing (PixelsToMetersRatio, defaultPixelsToMetersRatio, toPixelsValue)
 
 
 type alias RenderCache =
-    { pixelsToMetersRatio : Quantity Float (Rate Pixels.Pixels Length.Meters)
+    { pixelsToMetersRatio : PixelsToMetersRatio
     , tilemap : TilemapPresentation
     , tilemapWidthPixels : Float
     , tilemapHeightPixels : Float
@@ -37,11 +37,6 @@ type alias TilemapPresentation =
 
 type alias TilePresentation =
     ( Cell, TileKind, Maybe Animation )
-
-
-defaultPixelsToMetersRatio : Quantity Float (Rate Pixels.Pixels Length.Meters)
-defaultPixelsToMetersRatio =
-    Pixels.pixels 6 |> Quantity.per (Length.meters 1)
 
 
 new : World -> RenderCache
