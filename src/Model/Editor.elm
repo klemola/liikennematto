@@ -198,23 +198,16 @@ setLastEventDevice deviceType editor =
     { editor | lastEventDevice = deviceType }
 
 
-selectCell : Pointer.Event -> Maybe Cell -> Editor -> Editor
-selectCell event eventCell initialEditor =
+selectCell : Pointer.Event -> Cell -> Bool -> Editor -> Editor
+selectCell event eventCell hasTile initialEditor =
     initialEditor
         |> setLastEventDevice event.pointerType
         |> storePointerDownEvent event
+        |> activateCell eventCell
         |> (\editor ->
-                if event.pointerType == Pointer.MouseType then
+                if event.pointerType == Pointer.MouseType || not hasTile then
                     editor
 
                 else
                     { editor | longPressTimer = Just Quantity.zero }
-           )
-        |> (\editor ->
-                case eventCell of
-                    Just selectedCell ->
-                        activateCell selectedCell editor
-
-                    Nothing ->
-                        editor
            )
