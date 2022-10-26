@@ -59,17 +59,22 @@ controls model =
         , Background.color colors.menuBackground
         , Border.rounded borderRadius.light
         ]
-        [ Editor.toolbar model.editor
-        , Element.row
+        [ Element.row
             [ Element.spacing whitespace.tight
             ]
-            [ UI.Core.controlButton
+            [ simulationControl model.simulation
+            , UI.Core.controlButton
+                { label = Element.text "🧨"
+                , onPress = ResetWorld
+                , selected = False
+                , disabled = False
+                }
+            , UI.Core.controlButton
                 { label = Element.text "🐛"
                 , onPress = ToggleDebugMode
                 , selected = model.showDebugPanel
                 , disabled = False
                 }
-            , simulationControl model.simulation
             ]
         ]
 

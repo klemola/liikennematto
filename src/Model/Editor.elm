@@ -2,10 +2,8 @@ module Model.Editor exposing
     ( CarSpawnQueue
     , Editor
     , PendingTilemapChange
-    , Tool(..)
     , ZoomLevel(..)
     , activateCell
-    , activateTool
     , advanceLongPressTimer
     , clearPointerDownEvent
     , combineChangedCells
@@ -31,8 +29,7 @@ import Set exposing (Set)
 
 
 type alias Editor =
-    { tool : Tool
-    , zoomLevel : ZoomLevel
+    { zoomLevel : ZoomLevel
     , pendingTilemapChange : Maybe PendingTilemapChange
     , carSpawnQueue : CarSpawnQueue
     , activeCell : Maybe Cell
@@ -40,12 +37,6 @@ type alias Editor =
     , pointerDownEvent : Maybe Pointer.Event
     , lastEventDevice : Pointer.DeviceType
     }
-
-
-type Tool
-    = SmartConstruction
-    | Bulldozer
-    | Dynamite
 
 
 type ZoomLevel
@@ -74,8 +65,7 @@ maxQueuedCars =
 
 new : Editor
 new =
-    { tool = SmartConstruction
-    , zoomLevel = Far
+    { zoomLevel = Far
     , pendingTilemapChange = Nothing
     , carSpawnQueue = 0
     , activeCell = Nothing
@@ -83,11 +73,6 @@ new =
     , pointerDownEvent = Nothing
     , lastEventDevice = Pointer.MouseType
     }
-
-
-activateTool : Tool -> Editor -> Editor
-activateTool tool editor =
-    { editor | tool = tool }
 
 
 setZoomLevel : Float -> Editor -> Editor

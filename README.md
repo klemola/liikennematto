@@ -25,11 +25,10 @@ _Liikennematto in action! [Live demo](http://apps.butsku.com/liikennematto/)_
 
 ### Map editor
 
--   draw roads of all kind with the smart editor
-    -   **left click / tap** to place a piece of road
-    -   **right click** to remove road from the tile
--   bulldoze (_remove_) tiles [_for touch devices_]
--   blow up the tilemap (_clear it_) with dynamite
+Draw roads of all kind with the smart editor
+
+-   **left click / tap** to place a piece of road
+-   **right click / long tap** to remove road from the tile
 
 #### Restrictions
 
@@ -56,9 +55,7 @@ Read more about the project from [Liikennematto dev blog #1: prototyping traffic
 
 ## Attribution
 
-Thanks to [Kenney](https://kenney.nl/assets) for the free game assets (subset of the "Road Textures" and "Racing Pack" collections).
-
-Icons made by <a href="https://www.flaticon.com/authors/smashicons" title="Smashicons">Smashicons</a> from <a href="https://www.flaticon.com/" title="Flaticon"> www.flaticon.com</a>
+Thanks to [Kenney](https://kenney.nl/assets) for the free game assets used during the development (subset of the "Road Textures" and "Racing Pack" collections).
 
 ## License
 

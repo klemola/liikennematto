@@ -5,7 +5,6 @@ import Browser.Events exposing (Visibility)
 import Duration exposing (Duration)
 import Html.Events.Extra.Pointer as Pointer
 import Model.Cell exposing (Cell)
-import Model.Editor exposing (Tool)
 import Model.Liikennematto exposing (SimulationState)
 import Time exposing (Posix)
 
@@ -24,7 +23,7 @@ type Message
     | GenerateEnvironment
     | CheckQueues
     | SpawnTestCar
-    | SelectTool Tool
+    | ResetWorld
     | ChangeZoomLevel Float
     | OverlayPointerMove Pointer.Event
     | OverlayPointerLeave Pointer.Event

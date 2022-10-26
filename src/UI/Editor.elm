@@ -1,6 +1,5 @@
 port module UI.Editor exposing
     ( overlay
-    , toolbar
     , update
     , zoomControl
     )
@@ -18,7 +17,7 @@ import Html.Events.Extra.Pointer as Pointer
 import Maybe.Extra as Maybe
 import Message exposing (Message(..))
 import Model.Cell as Cell exposing (Cell)
-import Model.Editor as Editor exposing (Editor, Tool(..))
+import Model.Editor as Editor exposing (Editor)
 import Model.Liikennematto exposing (Liikennematto)
 import Model.RenderCache as RenderCache exposing (RenderCache, refreshTilemapCache)
 import Model.Tile as Tile
@@ -35,8 +34,6 @@ import UI.Core
         , borderSize
         , colors
         , containerId
-        , controlButton
-        , icon
         , overlayId
         , scrollbarAwareOffsetF
         , uiDimensions
@@ -51,7 +48,6 @@ port playAudio : String -> Cmd msg
 type OverlayIntent
     = AddTile
     | RemoveTile
-    | ResetWorld
     | NoIntent
 
 
@@ -74,20 +70,6 @@ update msg model =
             Tilemap.config world.tilemap
     in
     case msg of
-        SelectTool tool ->
-            let
-                nextTool =
-                    if editor.tool == tool then
-                        SmartConstruction
-
-                    else
-                        tool
-
-                nextEditor =
-                    Editor.activateTool nextTool editor
-            in
-            ( { model | editor = nextEditor }, Cmd.none )
-
         ChangeZoomLevel nextLevel ->
             let
                 nextEditor =
@@ -172,6 +154,29 @@ update msg model =
                     Editor.setCarSpawnQueue (editor.carSpawnQueue + 1) editor
             in
             ( { model | editor = nextEditor }
+            , Cmd.none
+            )
+
+        ResetWorld ->
+            let
+                nextWorld =
+                    World.empty
+                        { horizontalCellsAmount = Defaults.horizontalCellsAmount
+                        , verticalCellsAmount = Defaults.verticalCellsAmount
+                        }
+
+                baseEditor =
+                    Editor.new
+            in
+            ( { model
+                | editor =
+                    { baseEditor
+                        | lastEventDevice = model.editor.lastEventDevice
+                        , zoomLevel = model.editor.zoomLevel
+                    }
+                , world = nextWorld
+                , renderCache = RenderCache.new nextWorld
+              }
             , Cmd.none
             )
 
@@ -386,63 +391,39 @@ resolvePointerUp pointerDownCell pointerUpCell pointerUpEvent world editor =
                     False
     in
     if isLongTap || isRightClick then
-        chooseSecondaryIntent pointerUpCell editor world
+        chooseSecondaryIntent pointerUpCell world
 
     else if validRelease then
-        choosePrimaryIntent pointerUpCell editor world
+        choosePrimaryIntent pointerUpCell world
 
     else
         NoIntent
 
 
-choosePrimaryIntent : Cell -> Editor -> World -> OverlayIntent
-choosePrimaryIntent cell editor world =
-    case ( editor.tool, Tilemap.tileAt world.tilemap cell ) of
-        ( SmartConstruction, _ ) ->
-            let
-                alreadyExists =
-                    Tilemap.exists cell world.tilemap
-            in
-            if not alreadyExists && Tilemap.canBuildRoadAt cell world.tilemap then
-                AddTile
+choosePrimaryIntent : Cell -> World -> OverlayIntent
+choosePrimaryIntent cell world =
+    let
+        alreadyExists =
+            Tilemap.exists cell world.tilemap
+    in
+    if not alreadyExists && Tilemap.canBuildRoadAt cell world.tilemap then
+        AddTile
 
-            else
-                NoIntent
-
-        ( Bulldozer, Just _ ) ->
-            let
-                tile =
-                    Tilemap.tileAt world.tilemap cell
-            in
-            if Maybe.unwrap False Tile.isBuilt tile then
-                RemoveTile
-
-            else
-                NoIntent
-
-        ( Dynamite, _ ) ->
-            ResetWorld
-
-        _ ->
-            NoIntent
+    else
+        NoIntent
 
 
-chooseSecondaryIntent : Cell -> Editor -> World -> OverlayIntent
-chooseSecondaryIntent cell editor world =
-    case editor.tool of
-        SmartConstruction ->
-            let
-                tile =
-                    Tilemap.tileAt world.tilemap cell
-            in
-            if Maybe.unwrap False Tile.isBuilt tile then
-                RemoveTile
+chooseSecondaryIntent : Cell -> World -> OverlayIntent
+chooseSecondaryIntent cell world =
+    let
+        tile =
+            Tilemap.tileAt world.tilemap cell
+    in
+    if Maybe.unwrap False Tile.isBuilt tile then
+        RemoveTile
 
-            else
-                NoIntent
-
-        _ ->
-            NoIntent
+    else
+        NoIntent
 
 
 applyOverlayIntent : OverlayIntent -> Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
@@ -453,9 +434,6 @@ applyOverlayIntent intent activeCell model =
 
         RemoveTile ->
             removeTile activeCell model
-
-        ResetWorld ->
-            resetWorld model
 
         NoIntent ->
             ( model, Cmd.none )
@@ -503,27 +481,6 @@ removeTile cell model =
     )
 
 
-resetWorld : Liikennematto -> ( Liikennematto, Cmd Message )
-resetWorld model =
-    let
-        nextWorld =
-            World.empty
-                { horizontalCellsAmount = Defaults.horizontalCellsAmount
-                , verticalCellsAmount = Defaults.verticalCellsAmount
-                }
-
-        nextEditor =
-            Editor.activateTool SmartConstruction model.editor
-    in
-    ( { model
-        | editor = nextEditor
-        , world = nextWorld
-        , renderCache = RenderCache.new nextWorld
-      }
-    , Cmd.none
-    )
-
-
 
 -- Views
 
@@ -550,7 +507,7 @@ overlay cache world editor =
         (case editor.activeCell of
             Just cell ->
                 if editor.lastEventDevice == Pointer.MouseType then
-                    cellHighlight cache world editor.tool cell
+                    cellHighlight cache world cell
 
                 else
                     case editor.longPressTimer of
@@ -569,8 +526,8 @@ overlay cache world editor =
         )
 
 
-cellHighlight : RenderCache -> World -> Tool -> Cell -> Element Message
-cellHighlight cache world selectedTool activeCell =
+cellHighlight : RenderCache -> World -> Cell -> Element Message
+cellHighlight cache world activeCell =
     let
         tileSizePixels =
             Render.Conversion.toPixelsValue cache.pixelsToMetersRatio Cell.size
@@ -590,63 +547,30 @@ cellHighlight cache world selectedTool activeCell =
         , Border.rounded borderRadius.light
         , Border.solid
         , Border.color
-            (highlightColor world selectedTool activeCell
+            (highlightColor world activeCell
                 |> Maybe.withDefault colors.transparent
             )
         ]
         Element.none
 
 
-highlightColor : World -> Tool -> Cell -> Maybe Color
-highlightColor world selectedTool cell =
-    case selectedTool of
-        Bulldozer ->
-            if Tilemap.exists cell world.tilemap then
-                Just colors.danger
+highlightColor : World -> Cell -> Maybe Color
+highlightColor world cell =
+    let
+        canBuildHere =
+            Tilemap.canBuildRoadAt cell world.tilemap
 
-            else
-                Nothing
+        mightDestroyLot =
+            World.hasLot cell world
+    in
+    if canBuildHere && mightDestroyLot then
+        Just colors.danger
 
-        SmartConstruction ->
-            let
-                canBuildHere =
-                    Tilemap.canBuildRoadAt cell world.tilemap
+    else if canBuildHere then
+        Just colors.target
 
-                mightDestroyLot =
-                    World.hasLot cell world
-            in
-            if canBuildHere && mightDestroyLot then
-                Just colors.danger
-
-            else if canBuildHere then
-                Just colors.target
-
-            else
-                Just colors.notAllowed
-
-        _ ->
-            Nothing
-
-
-toolbar : Editor -> Element Message
-toolbar editor =
-    Element.row
-        [ Element.spacing whitespace.tight
-        , Element.alignLeft
-        ]
-        [ toolbarButton editor.tool Bulldozer "bulldozer.png"
-        , toolbarButton editor.tool Dynamite "dynamite.png"
-        ]
-
-
-toolbarButton : Tool -> Tool -> String -> Element Message
-toolbarButton selectedTool tool asset =
-    controlButton
-        { label = icon asset
-        , onPress = SelectTool tool
-        , selected = selectedTool == tool
-        , disabled = False
-        }
+    else
+        Just colors.notAllowed
 
 
 zoomControl : Editor -> Element Message
