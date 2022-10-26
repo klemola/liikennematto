@@ -18,6 +18,7 @@ module Model.Editor exposing
     , resetLongPressTimer
     , selectCell
     , setCarSpawnQueue
+    , setLastEventDevice
     , setZoomLevel
     , zoomLevelToUIValue
     )

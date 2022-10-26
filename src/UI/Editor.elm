@@ -195,8 +195,13 @@ update msg model =
                 Nothing ->
                     ( model, Cmd.none )
 
-        OverlayPointerLeave _ ->
-            ( { model | editor = Editor.deactivateCell editor }
+        OverlayPointerLeave event ->
+            ( { model
+                | editor =
+                    editor
+                        |> Editor.setLastEventDevice event.pointerType
+                        |> Editor.deactivateCell
+              }
             , Cmd.none
             )
 
@@ -236,6 +241,7 @@ update msg model =
                         (resolvePointerUp
                             pointerDownCell
                             pointerUpCell
+                            event
                             world
                             editor
                         )
@@ -244,17 +250,6 @@ update msg model =
 
                 Nothing ->
                     ( modelWithEditorUpdate, Cmd.none )
-
-        OverlayRightClick _ ->
-            case editor.activeCell of
-                Just activeCell ->
-                    applyOverlayIntent
-                        (chooseSecondaryIntent activeCell editor world)
-                        activeCell
-                        model
-
-                Nothing ->
-                    ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -371,13 +366,16 @@ pointerEventToCell cache constraints event =
     Cell.fromCoordinates constraints coordinates
 
 
-resolvePointerUp : Maybe Cell -> Cell -> World -> Editor -> OverlayIntent
-resolvePointerUp pointerDownCell pointerUpCell world editor =
+resolvePointerUp : Maybe Cell -> Cell -> Pointer.Event -> World -> Editor -> OverlayIntent
+resolvePointerUp pointerDownCell pointerUpCell pointerUpEvent world editor =
     let
         validRelease =
             pointerDownCell
                 |> Maybe.map (Cell.identical pointerUpCell)
                 |> Maybe.withDefault False
+
+        isRightClick =
+            pointerUpEvent.pointer.button == Mouse.SecondButton
 
         isLongTap =
             case editor.longPressTimer of
@@ -387,7 +385,7 @@ resolvePointerUp pointerDownCell pointerUpCell world editor =
                 Nothing ->
                     False
     in
-    if isLongTap then
+    if isLongTap || isRightClick then
         chooseSecondaryIntent pointerUpCell editor world
 
     else if validRelease then
@@ -544,7 +542,7 @@ overlay cache world editor =
                 , Element.htmlAttribute (Pointer.onLeave OverlayPointerLeave)
                 , Element.htmlAttribute (Pointer.onDown OverlayPointerDown)
                 , Element.htmlAttribute (Pointer.onUp OverlayPointerUp)
-                , Element.htmlAttribute (Mouse.onContextMenu OverlayRightClick)
+                , Element.htmlAttribute (Mouse.onContextMenu (\_ -> NoOp))
                 ]
                 Element.none
             )

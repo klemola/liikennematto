@@ -3,7 +3,6 @@ module Message exposing (Message(..))
 import Browser.Dom
 import Browser.Events exposing (Visibility)
 import Duration exposing (Duration)
-import Html.Events.Extra.Mouse as Mouse
 import Html.Events.Extra.Pointer as Pointer
 import Model.Cell exposing (Cell)
 import Model.Editor exposing (Tool)
@@ -31,7 +30,6 @@ type Message
     | OverlayPointerLeave Pointer.Event
     | OverlayPointerDown Pointer.Event
     | OverlayPointerUp Pointer.Event
-    | OverlayRightClick Mouse.Event
     | ToggleDebugMode
     | ToggleShowRoadNetwork
     | ToggleShowCarDebugVisuals
