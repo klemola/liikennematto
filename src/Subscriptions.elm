@@ -29,6 +29,7 @@ subscriptions { simulation } =
             [ Events.onResize (\_ _ -> ResizeTriggered)
             , Events.onVisibilityChange VisibilityChanged
             , Time.every tilemapUpdateFrequency (always (UpdateTilemap (Duration.milliseconds tilemapUpdateFrequency)))
+            , Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameReceived)
             ]
     in
     if simulation == Paused then
@@ -37,7 +38,7 @@ subscriptions { simulation } =
     else
         Sub.batch
             (defaultSubs
-                ++ [ Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameReceived)
+                ++ [ Events.onAnimationFrameDelta (Duration.milliseconds >> UpdateTraffic)
                    , Time.every environmentUpdateFrequency (always UpdateEnvironment)
                    , Time.every dequeueFrequency (always CheckQueues)
                    ]

@@ -38,7 +38,7 @@ initCmd seed =
 update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
 update msg model =
     case msg of
-        AnimationFrameReceived delta ->
+        UpdateTraffic delta ->
             let
                 { world } =
                     model

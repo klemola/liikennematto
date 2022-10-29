@@ -16,11 +16,12 @@ type Message
     | VisibilityChanged Visibility
     | ResetSeed Posix
     | AnimationFrameReceived Duration
-    | UpdateTilemap Duration
-    | TilemapChanged (List Cell)
     | SetSimulation SimulationState
+    | UpdateTraffic Duration
     | UpdateEnvironment
     | GenerateEnvironment
+    | UpdateTilemap Duration
+    | TilemapChanged (List Cell)
     | CheckQueues
     | SpawnTestCar
     | ResetWorld
