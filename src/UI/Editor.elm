@@ -53,7 +53,12 @@ type OverlayIntent
 
 longTapThreshold : Duration
 longTapThreshold =
-    Duration.milliseconds 800
+    Duration.milliseconds 1500
+
+
+longTapIndicatorShowDelay : Duration
+longTapIndicatorShowDelay =
+    Duration.milliseconds 300
 
 
 
@@ -513,10 +518,11 @@ overlay cache world editor =
                     case editor.longPressTimer of
                         Just elapsed ->
                             UI.TimerIndicator.view
+                                longTapThreshold
+                                longTapIndicatorShowDelay
                                 cache.pixelsToMetersRatio
                                 (Cell.coordinates cell)
                                 elapsed
-                                longTapThreshold
 
                         Nothing ->
                             Element.none
