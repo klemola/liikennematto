@@ -261,6 +261,18 @@ update msg model =
                 Nothing ->
                     ( modelWithEditorUpdate, Cmd.none )
 
+        OverlayPointerCancel event ->
+            ( { model
+                | editor =
+                    editor
+                        |> Editor.clearPointerDownEvent
+                        |> Editor.resetLongPressTimer
+                        |> Editor.deactivateCell
+                        |> Editor.setLastEventDevice event.pointerType
+              }
+            , Cmd.none
+            )
+
         _ ->
             ( model, Cmd.none )
 
@@ -504,6 +516,7 @@ overlay cache world editor =
                 , Element.htmlAttribute (Pointer.onLeave OverlayPointerLeave)
                 , Element.htmlAttribute (Pointer.onDown OverlayPointerDown)
                 , Element.htmlAttribute (Pointer.onUp OverlayPointerUp)
+                , Element.htmlAttribute (Pointer.onCancel OverlayPointerCancel)
                 , Element.htmlAttribute (Mouse.onContextMenu (\_ -> NoOp))
                 ]
                 Element.none

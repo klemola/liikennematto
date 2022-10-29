@@ -30,6 +30,7 @@ type Message
     | OverlayPointerLeave Pointer.Event
     | OverlayPointerDown Pointer.Event
     | OverlayPointerUp Pointer.Event
+    | OverlayPointerCancel Pointer.Event
     | ToggleDebugMode
     | ToggleShowRoadNetwork
     | ToggleShowCarDebugVisuals

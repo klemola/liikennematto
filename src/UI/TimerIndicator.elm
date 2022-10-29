@@ -11,7 +11,7 @@ import Svg.Attributes as Attributes
 
 
 view : Duration -> Duration -> PixelsToMetersRatio -> Cell.CellCoordinates -> Duration -> Element msg
-view timeCompleteAt showDelay pixelsToMetersRatio cellCoordinates timerElapsed =
+view maxTimerValue showDelay pixelsToMetersRatio cellCoordinates timerElapsed =
     let
         renderSize =
             Render.Conversion.toPixelsValue pixelsToMetersRatio Cell.size
@@ -30,7 +30,8 @@ view timeCompleteAt showDelay pixelsToMetersRatio cellCoordinates timerElapsed =
                 |> Quantity.max Quantity.zero
 
         ratio =
-            timeCompleteAt
+            maxTimerValue
+                |> Quantity.minus showDelay
                 |> Quantity.ratio elapsedWithDelay
                 |> min 1
 

@@ -145,11 +145,16 @@ hasPendingTilemapChange editor =
 
 activateCell : Cell -> Editor -> Editor
 activateCell cell editor =
-    if editor.activeCell /= Just cell then
-        { editor | activeCell = Just cell }
+    if
+        -- Cell already active?
+        editor.activeCell
+            |> Maybe.map (Cell.identical cell)
+            |> Maybe.withDefault False
+    then
+        editor
 
     else
-        editor
+        { editor | activeCell = Just cell }
 
 
 deactivateCell : Editor -> Editor
