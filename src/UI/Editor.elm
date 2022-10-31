@@ -27,6 +27,7 @@ import Quantity
 import Random
 import Render.Conversion
 import Simulation.Traffic as Traffic
+import Simulation.Zoning as Zoning
 import Task
 import UI.Core
     exposing
@@ -115,6 +116,7 @@ update msg model =
 
                 nextWorld =
                     { world | tilemap = tilemapUpdateResult.tilemap }
+                        |> Zoning.removeInvalidLots tilemapUpdateResult.changedCells
 
                 nextRenderCache =
                     if List.isEmpty tilemapUpdateResult.changedCells then

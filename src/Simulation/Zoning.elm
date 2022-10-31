@@ -113,30 +113,31 @@ addLot world ( lot, anchor ) =
 
 removeInvalidLots : List Cell -> World -> World
 removeInvalidLots changedCells world =
-    Dict.foldl
-        (validateLot changedCells)
-        world
-        world.lots
-
-
-validateLot : List Cell -> Id -> Lot -> World -> World
-validateLot changedCells lotId lot world =
     let
         changedAnchors =
             List.filterMap
                 (\cell ->
                     Tilemap.anchorAt world.tilemap cell
-                        |> Maybe.map (Tuple.pair cell)
+                        |> Maybe.map (Tuple.mapSecond (always cell))
                 )
                 changedCells
+    in
+    Dict.foldl
+        (validateLot changedCells changedAnchors)
+        world
+        world.lots
 
+
+validateLot : List Cell -> List ( Id, Cell ) -> Id -> Lot -> World -> World
+validateLot changedCells changedAnchors lotId lot world =
+    let
         -- Room for improvement: add a QuadTree lookup for lots and remove lots based on Cell BB overlap
         lotOverlapsWithRoad =
             List.any (\cell -> Lot.inBounds cell lot) changedCells
 
         lotAnchorWasRemoved =
             List.any
-                (\( cell, ( id, _ ) ) ->
+                (\( id, cell ) ->
                     case Tilemap.tileAt world.tilemap cell of
                         Just tile ->
                             if id == lotId then

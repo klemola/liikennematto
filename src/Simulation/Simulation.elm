@@ -68,11 +68,10 @@ update msg model =
         SetSimulation simulation ->
             ( { model | simulation = simulation }, Cmd.none )
 
-        TilemapChanged tilemapChange ->
+        TilemapChanged _ ->
             let
                 nextWorld =
                     model.world
-                        |> Zoning.removeInvalidLots tilemapChange
                         |> Infrastructure.updateRoadNetwork
                         |> Traffic.rerouteCarsIfNeeded
             in
