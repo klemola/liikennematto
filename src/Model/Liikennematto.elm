@@ -18,6 +18,7 @@ type alias Liikennematto =
     , simulation : SimulationState
     , editor : Editor
     , renderCache : RenderCache
+    , dynamicTiles : RenderCache.DynamicTilesPresentation
     , showDebugPanel : Bool
     , showRoadNetwork : Bool
     , showCarDebugVisuals : Bool
@@ -43,6 +44,7 @@ new world =
     , simulation = Running
     , editor = Editor.new
     , renderCache = RenderCache.new world
+    , dynamicTiles = []
     , showDebugPanel = False
     , showRoadNetwork = False
     , showCarDebugVisuals = False

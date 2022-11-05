@@ -27,7 +27,6 @@ import Render.Conversion exposing (PixelsToMetersRatio, defaultPixelsToMetersRat
 type alias RenderCache =
     { pixelsToMetersRatio : PixelsToMetersRatio
     , tilemap : TilemapPresentation
-    , dynamicTiles : DynamicTilesPresentation
     , tilemapWidthPixels : Float
     , tilemapHeightPixels : Float
     , tilemapWidth : Length.Length
@@ -65,7 +64,6 @@ new { tilemap } =
     in
     { pixelsToMetersRatio = defaultPixelsToMetersRatio
     , tilemap = toTilemapCache tilemap
-    , dynamicTiles = []
     , tilemapWidthPixels =
         tilemapWidthPixels
     , tilemapHeightPixels = tilemapHeigthPixels
@@ -108,15 +106,15 @@ setTilemapCache tilemap cache =
     { cache | tilemap = toTilemapCache tilemap }
 
 
-refreshTilemapCache : Tilemap.TilemapUpdateResult -> RenderCache -> RenderCache
+refreshTilemapCache : Tilemap.TilemapUpdateResult -> RenderCache -> ( RenderCache, DynamicTilesPresentation )
 refreshTilemapCache tilemapUpdateResult cache =
     let
-        nextTilemapCache =
+        nextCache =
             if List.isEmpty tilemapUpdateResult.transitionedCells then
-                cache.tilemap
+                cache
 
             else
-                toTilemapCache tilemapUpdateResult.tilemap
+                { cache | tilemap = toTilemapCache tilemapUpdateResult.tilemap }
 
         nextDynamicTiles =
             if List.isEmpty tilemapUpdateResult.dynamicCells then
@@ -127,10 +125,7 @@ refreshTilemapCache tilemapUpdateResult cache =
                     tilemapUpdateResult.tilemap
                     tilemapUpdateResult.dynamicCells
     in
-    { cache
-        | tilemap = nextTilemapCache
-        , dynamicTiles = nextDynamicTiles
-    }
+    ( nextCache, nextDynamicTiles )
 
 
 toTilemapCache : Tilemap -> List StaticTilePresentation

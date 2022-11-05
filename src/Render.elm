@@ -74,8 +74,8 @@ styles =
 --
 
 
-view : World -> RenderCache -> Html msg
-view { cars, lots, roadNetwork, trafficLights } cache =
+view : World -> RenderCache -> DynamicTilesPresentation -> Html msg
+view { cars, lots, roadNetwork, trafficLights } cache dynamicTiles =
     let
         tilemapWidth =
             String.fromFloat cache.tilemapWidthPixels
@@ -90,8 +90,8 @@ view { cars, lots, roadNetwork, trafficLights } cache =
         , Attributes.style <| "background-color: " ++ Color.toCssString Colors.lightGreen ++ ";"
         ]
         [ styles
-        , Svg.Lazy.lazy (renderTilemap cache) cache.tilemap
-        , renderDynamicTiles cache cache.dynamicTiles
+        , Svg.Lazy.lazy renderTilemap cache
+        , renderDynamicTiles cache dynamicTiles
         , Svg.Lazy.lazy (renderLots cache) lots
         , renderCars cache cars
         , Svg.Lazy.lazy (renderTrafficLights cache) trafficLights
@@ -105,9 +105,9 @@ view { cars, lots, roadNetwork, trafficLights } cache =
 --
 
 
-renderTilemap : RenderCache -> TilemapPresentation -> Svg msg
-renderTilemap cache tilemap =
-    tilemap
+renderTilemap : RenderCache -> Svg msg
+renderTilemap cache =
+    cache.tilemap
         |> List.map
             (\( cell, tileKind ) ->
                 ( Cell.toString cell
