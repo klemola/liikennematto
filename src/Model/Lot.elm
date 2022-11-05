@@ -105,7 +105,7 @@ constructionSite anchor { width, height, drivewayExitDirection } =
                     -- Bottom left entry/exit cell
                     Vector2d.xy
                         Quantity.zero
-                        (Quantity.negate Cell.size)
+                        Cell.size
 
                 Left ->
                     -- Bottom left entry/exit cell
