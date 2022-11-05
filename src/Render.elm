@@ -50,12 +50,12 @@ import Svg.Lazy
 
 signDiameter : Length
 signDiameter =
-    Length.meters 2
+    Length.meters 2.4
 
 
 trafficLightDiameter : Length
 trafficLightDiameter =
-    signDiameter
+    Length.meters 2
 
 
 nothing : Svg msg
@@ -529,17 +529,40 @@ renderYieldSign cache node =
         size =
             toPixelsValue cache.pixelsToMetersRatio signDiameter
 
+        sizeStr =
+            String.fromFloat size
+
         { x, y } =
             pointToPixels cache.pixelsToMetersRatio node.label.position
-
-        asset =
-            "assets/yield_sign.png"
     in
-    Svg.image
-        [ Attributes.xlinkHref asset
+    Svg.svg
+        [ Attributes.width sizeStr
+        , Attributes.height sizeStr
+        , Attributes.viewBox <| "0 0 256 226"
+        , Attributes.fill "none"
         , Attributes.x <| String.fromFloat (x - size / 2)
         , Attributes.y <| String.fromFloat <| cache.tilemapHeightPixels - y - (size / 2)
-        , Attributes.width <| String.fromFloat size
-        , Attributes.height <| String.fromFloat size
         ]
-        []
+        [ Svg.path
+            [ Attributes.d "M245 11.0001L11 11L128 215L245 11.0001Z"
+            , Attributes.stroke Colors.yellowDarkerCSS
+            , Attributes.strokeWidth "19.776"
+            , Attributes.strokeLinecap "square"
+            , Attributes.strokeLinejoin "round"
+            ]
+            []
+        , Svg.path
+            [ Attributes.d "M128 212L245 11.0001L11 11L128 212Z"
+            , Attributes.fill Colors.redCSS
+            , Attributes.stroke Colors.redCSS
+            , Attributes.strokeWidth "14.45"
+            , Attributes.strokeLinecap "square"
+            , Attributes.strokeLinejoin "round"
+            ]
+            []
+        , Svg.path
+            [ Attributes.d "M203 34L53 34.0002L128 166L203 34Z"
+            , Attributes.fill Colors.yellowCSS
+            ]
+            []
+        ]
