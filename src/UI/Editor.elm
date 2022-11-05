@@ -118,7 +118,7 @@ update msg model =
                     { world | tilemap = tilemapUpdateResult.tilemap }
                         |> Zoning.removeInvalidLots tilemapUpdateResult.transitionedCells
 
-                nextRenderCache =
+                ( nextRenderCache, dynamicTiles ) =
                     refreshTilemapCache tilemapUpdateResult renderCache
 
                 ( nextEditor, tilemapChangedEffects ) =
@@ -127,6 +127,7 @@ update msg model =
             ( { model
                 | world = nextWorld
                 , renderCache = nextRenderCache
+                , dynamicTiles = dynamicTiles
                 , editor = nextEditor
               }
             , Cmd.batch (tilemapChangedEffects :: tileActionsToCmds tilemapUpdateResult.actions)

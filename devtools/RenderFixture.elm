@@ -30,7 +30,7 @@ main =
                 { showRoadNetwork = False, showCarDebugVisuals = True }
                 |> Element.html
     in
-    Render.view world cache
+    Render.view world cache []
         |> Element.html
         |> Element.el
             [ Element.width (Element.px renderWidth)

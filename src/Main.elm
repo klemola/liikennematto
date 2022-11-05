@@ -151,7 +151,7 @@ render model =
             else
                 Element.none
     in
-    Render.view model.world model.renderCache
+    Render.view model.world model.renderCache model.dynamicTiles
         |> Element.html
         -- render + overlay
         |> Element.el
