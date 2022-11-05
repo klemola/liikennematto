@@ -120,7 +120,7 @@ deadendDown =
         ]
         []
     , path
-        [ Attributes.fill Colors.gray5CSS
+        [ Attributes.fill Colors.gray6CSS
         , Attributes.d "M126 13v25.6h4V13h-4zm0 51.2v25.6h4V64.2h-4z"
         ]
         []
@@ -147,7 +147,7 @@ deadendRight =
         ]
         []
     , path
-        [ Attributes.fill Colors.gray5CSS
+        [ Attributes.fill Colors.gray6CSS
         , Attributes.d "M13 130h25.6v-4H13v4zm51.2 0h25.6v-4H64.2v4z"
         ]
         []
@@ -179,7 +179,7 @@ curveBottomRight =
         ]
         []
     , path
-        [ Attributes.fill Colors.gray5CSS
+        [ Attributes.fill Colors.gray6CSS
         , Attributes.d "M12.31 125.399l.396 3.98a131.715 131.715 0 0025.006-4.967l-1.156-3.83a127.688 127.688 0 01-12.007 2.995 127.496 127.496 0 01-12.239 1.822zM59.387 111.157l1.883 3.529a129.19 129.19 0 0021.19-14.162l-2.54-3.09a125.228 125.228 0 01-20.533 13.723zM97.378 79.954l3.093 2.537a130.779 130.779 0 0014.166-21.19l-3.527-1.888a126.767 126.767 0 01-13.732 20.541zM120.589 36.6l3.826 1.165a129.196 129.196 0 004.987-24.993l-3.981-.392a125.208 125.208 0 01-4.832 24.22z"
         ]
         []
@@ -199,7 +199,7 @@ deadendLeft =
         ]
         []
     , path
-        [ Attributes.fill Colors.gray5CSS
+        [ Attributes.fill Colors.gray6CSS
         , Attributes.d "M243 126h-25.6v4H243v-4zm-51.2 0h-25.6v4h25.6v-4z"
         ]
         []
@@ -231,7 +231,7 @@ curveBottomLeft =
         ]
         []
     , path
-        [ Attributes.fill Colors.gray5CSS
+        [ Attributes.fill Colors.gray6CSS
         , Attributes.d "M130.601 12.31l-3.98.396a131.715 131.715 0 004.967 25.006l3.83-1.156a127.38 127.38 0 01-2.995-12.007 127.496 127.496 0 01-1.822-12.239zM144.843 59.387l-3.529 1.883a129.19 129.19 0 0014.162 21.19l3.09-2.54a125.257 125.257 0 01-13.723-20.533zM176.046 97.378l-2.537 3.093a130.79 130.79 0 0021.189 14.166l1.889-3.527a126.732 126.732 0 01-20.541-13.732zM219.4 120.589l-1.165 3.826a129.196 129.196 0 0024.993 4.987l.392-3.981a125.215 125.215 0 01-24.22-4.832z"
         ]
         []
@@ -251,7 +251,7 @@ regularHorizontal =
         ]
         []
     , path
-        [ Attributes.fill Colors.gray5CSS
+        [ Attributes.fill Colors.gray6CSS
         , Attributes.d "M13 130h25.6v-4H13v4zm51.2 0h25.6v-4H64.2v4zm51.2 0H141v-4h-25.6v4zm51.2 0h25.6v-4h-25.6v4zm51.2 0h25.6v-4h-25.6v4z"
         ]
         []
@@ -278,7 +278,7 @@ intersectionTUp =
         ]
         []
     , path
-        [ Attributes.fill Colors.gray5CSS
+        [ Attributes.fill Colors.gray6CSS
         , Attributes.d "M125 6v32h6V6h-6zm22 0v32h6V6h-6zm22 0v32h6V6h-6zm-66 0v32h6V6h-6zM81 6v32h6V6h-6zm137 125h32v-6h-32v6zm0-22h32v-6h-32v6zm0-22h32v-6h-32v6zm0 66h32v-6h-32v6zm0 22h32v-6h-32v6zM6 131h32v-6H6v6zm0-22h32v-6H6v6zm0-22h32v-6H6v6zm0 66h32v-6H6v6zm0 22h32v-6H6v6z"
         ]
         []
@@ -303,7 +303,7 @@ deadendUp =
         ]
         []
     , path
-        [ Attributes.fill Colors.gray5CSS
+        [ Attributes.fill Colors.gray6CSS
         , Attributes.d "M130 243v-25.6h-4V243h4zm0-51.2v-25.6h-4v25.6h4z"
         ]
         []
@@ -330,7 +330,7 @@ regularVertical =
         ]
         []
     , path
-        [ Attributes.fill Colors.gray5CSS
+        [ Attributes.fill Colors.gray6CSS
         , Attributes.d "M126 13v25.6h4V13h-4zm0 51.2v25.6h4V64.2h-4zm0 51.2V141h4v-25.6h-4zm0 51.2v25.6h4v-25.6h-4zm0 51.2v25.6h4v-25.6h-4z"
         ]
         []
@@ -362,7 +362,7 @@ curveTopRight =
         ]
         []
     , path
-        [ Attributes.fill Colors.gray5CSS
+        [ Attributes.fill Colors.gray6CSS
         , Attributes.d "M125.399 243.69l3.98-.396a131.749 131.749 0 00-4.967-25.005l-3.83 1.155a127.411 127.411 0 012.995 12.007 127.438 127.438 0 011.822 12.239zM111.157 196.613l3.529-1.883a129.17 129.17 0 00-14.162-21.19l-3.09 2.54a125.252 125.252 0 0113.723 20.533zM79.954 158.622l2.537-3.093a130.774 130.774 0 00-21.19-14.166l-1.888 3.527a126.755 126.755 0 0120.541 13.732zM36.6 135.411l1.165-3.826a129.196 129.196 0 00-24.993-4.987l-.392 3.981a125.208 125.208 0 0124.22 4.832z"
         ]
         []
@@ -382,7 +382,7 @@ intersectionTLeft =
         ]
         []
     , path
-        [ Attributes.fill Colors.gray5CSS
+        [ Attributes.fill Colors.gray6CSS
         , Attributes.d "M6 131h32v-6H6v6zm0-22h32v-6H6v6zm0-22h32v-6H6v6zm0 66h32v-6H6v6zm0 22h32v-6H6v6zM131 38V6h-6v32h6zm-22 0V6h-6v32h6zm-22 0V6h-6v32h6zm66 0V6h-6v32h6zm22 0V6h-6v32h6zm-44 212v-32h-6v32h6zm-22 0v-32h-6v32h6zm-22 0v-32h-6v32h6zm66 0v-32h-6v32h6zm22 0v-32h-6v32h6z"
         ]
         []
@@ -412,7 +412,7 @@ curveTopLeft =
         ]
         []
     , path
-        [ Attributes.fill Colors.gray5CSS
+        [ Attributes.fill Colors.gray6CSS
         , Attributes.d "M130.601 243.69l-3.98-.396a131.749 131.749 0 014.967-25.005l3.83 1.155a127.411 127.411 0 00-2.995 12.007 127.438 127.438 0 00-1.822 12.239zM144.843 196.613l-3.529-1.883a129.17 129.17 0 0114.162-21.19l3.09 2.54a125.276 125.276 0 00-13.723 20.533zM176.046 158.622l-2.537-3.093a130.79 130.79 0 0121.189-14.166l1.889 3.527a126.72 126.72 0 00-20.541 13.732zM219.4 135.411l-1.165-3.826a129.196 129.196 0 0124.993-4.987l.392 3.981a125.215 125.215 0 00-24.22 4.832z"
         ]
         []
@@ -432,7 +432,7 @@ intersectionTRight =
         ]
         []
     , path
-        [ Attributes.fill Colors.gray5CSS
+        [ Attributes.fill Colors.gray6CSS
         , Attributes.d "M250 125h-32v6h32v-6zm0 22h-32v6h32v-6zm0 22h-32v6h32v-6zm0-66h-32v6h32v-6zm0-22h-32v6h32v-6zM125 218v32h6v-32h-6zm22 0v32h6v-32h-6zm22 0v32h6v-32h-6zm-66 0v32h6v-32h-6zm-22 0v32h6v-32h-6zM125 6v32h6V6h-6zm22 0v32h6V6h-6zm22 0v32h6V6h-6zm-66 0v32h6V6h-6zM81 6v32h6V6h-6z"
         ]
         []
@@ -457,7 +457,7 @@ intersectionTDown =
         ]
         []
     , path
-        [ Attributes.fill Colors.gray5CSS
+        [ Attributes.fill Colors.gray6CSS
         , Attributes.d "M131 250v-32h-6v32h6zm-22 0v-32h-6v32h6zm-22 0v-32h-6v32h6zm66 0v-32h-6v32h6zm22 0v-32h-6v32h6zM38 125H6v6h32v-6zm0 22H6v6h32v-6zm0 22H6v6h32v-6zm0-66H6v6h32v-6zm0-22H6v6h32v-6zm212 44h-32v6h32v-6zm0 22h-32v6h32v-6zm0 22h-32v6h32v-6zm0-66h-32v6h32v-6zm0-22h-32v6h32v-6z"
         ]
         []
@@ -482,7 +482,7 @@ intersectionCrossroads =
         ]
         []
     , path
-        [ Attributes.fill Colors.gray5CSS
+        [ Attributes.fill Colors.gray6CSS
         , Attributes.d "M125 6v32h6V6h-6zm22 0v32h6V6h-6zm22 0v32h6V6h-6zm-66 0v32h6V6h-6zM81 6v32h6V6h-6zm44 212v32h6v-32h-6zm22 0v32h6v-32h-6zm22 0v32h6v-32h-6zm-66 0v32h6v-32h-6zm-22 0v32h6v-32h-6zm137-87h32v-6h-32v6zm0-22h32v-6h-32v6zm0-22h32v-6h-32v6zm0 66h32v-6h-32v6zm0 22h32v-6h-32v6zM6 131h32v-6H6v6zm0-22h32v-6H6v6zm0-22h32v-6H6v6zm0 66h32v-6H6v6zm0 22h32v-6H6v6z"
         ]
         []
@@ -504,22 +504,22 @@ lotEntryTUp : List (Svg msg)
 lotEntryTUp =
     [ path
         [ Attributes.d "M136 0V16C136 24.8366 143.163 32 152 32H256V224H0V32C8.83656 32 16 24.8366 16 16V0H136Z"
-        , Attributes.fill "#BCA9A9"
+        , Attributes.fill Colors.gray3CSS
         ]
         []
     , path
         [ Attributes.d "M0 68V188H256V68H0Z"
-        , Attributes.fill "#785E5E"
+        , Attributes.fill Colors.gray2CSS
         ]
         []
     , path
         [ Attributes.d "M0 227H256V224H0V227ZM136 0V16H139V0H136ZM152 32H256V29H152V32ZM136 16C136 24.8366 143.163 32 152 32V29C144.82 29 139 23.1797 139 16H136ZM16 16V0H13V16H16ZM13 16C13 23.1797 7.1797 29 0 29V32C8.83656 32 16 24.8366 16 16H13Z"
-        , Attributes.fill "#302525"
+        , Attributes.fill Colors.gray1CSS
         ]
         []
     , path
         [ Attributes.d "M12.8 130.2H38.4V126.2H12.8V130.2ZM64.0001 130.2H89.6001V126.2H64.0001V130.2ZM115.2 130.2H140.8V126.2H115.2V130.2ZM166.4 130.2H192V126.2H166.4V130.2ZM217.6 130.2H243.2V126.2H217.6V130.2Z"
-        , Attributes.fill "#F0F0DD"
+        , Attributes.fill Colors.gray6CSS
         ]
         []
     ]
@@ -529,22 +529,22 @@ lotEntryTLeft : List (Svg msg)
 lotEntryTLeft =
     [ path
         [ Attributes.d "M0 120H16C24.8366 120 32 112.837 32 104L32 0H224L224 256H32C32 247.163 24.8366 240 16 240H0L0 120Z"
-        , Attributes.fill "#BCA9A9"
+        , Attributes.fill Colors.gray3CSS
         ]
         []
     , path
         [ Attributes.d "M68 256H188V0H68L68 256Z"
-        , Attributes.fill "#785E5E"
+        , Attributes.fill Colors.gray2CSS
         ]
         []
     , path
         [ Attributes.d "M227 256L227 0H224L224 256H227ZM0 120H16V117H0L0 120ZM32 104L32 0H29L29 104H32ZM16 120C24.8366 120 32 112.837 32 104H29C29 111.18 23.1797 117 16 117V120ZM16 240H0L0 243H16V240ZM16 243C23.1797 243 29 248.82 29 256H32C32 247.163 24.8366 240 16 240V243Z"
-        , Attributes.fill "#302525"
+        , Attributes.fill Colors.gray1CSS
         ]
         []
     , path
         [ Attributes.d "M130.2 243.2V217.6H126.2V243.2H130.2ZM130.2 192V166.4H126.2V192H130.2ZM130.2 140.8V115.2H126.2L126.2 140.8H130.2ZM130.2 89.5999V63.9999H126.2V89.5999H130.2ZM130.2 38.3999V12.7999H126.2V38.3999H130.2Z"
-        , Attributes.fill "#F0F0DD"
+        , Attributes.fill Colors.gray6CSS
         ]
         []
     ]
@@ -554,22 +554,22 @@ lotEntryTRight : List (Svg msg)
 lotEntryTRight =
     [ path
         [ Attributes.d "M256 120H240C231.163 120 224 112.837 224 104V0H32L32 256H224C224 247.163 231.163 240 240 240H256V120Z"
-        , Attributes.fill "#BCA9A9"
+        , Attributes.fill Colors.gray3CSS
         ]
         []
     , path
         [ Attributes.d "M188 256H68L68 0H188L188 256Z"
-        , Attributes.fill "#785E5E"
+        , Attributes.fill Colors.gray2CSS
         ]
         []
     , path
         [ Attributes.d "M29 256L29 0H32L32 256H29ZM256 120H240V117H256V120ZM224 104V0H227V104H224ZM240 120C231.163 120 224 112.837 224 104H227C227 111.18 232.82 117 240 117V120ZM240 240H256V243H240V240ZM240 243C232.82 243 227 248.82 227 256H224C224 247.163 231.163 240 240 240V243Z"
-        , Attributes.fill "#302525"
+        , Attributes.fill Colors.gray1CSS
         ]
         []
     , path
         [ Attributes.d "M125.8 243.2V217.6H129.8V243.2H125.8ZM125.8 192V166.4H129.8V192H125.8ZM125.8 140.8L125.8 115.2H129.8V140.8H125.8ZM125.8 89.5999V63.9999H129.8V89.5999H125.8ZM125.8 38.3999V12.7999H129.8V38.3999H125.8Z"
-        , Attributes.fill "#F0F0DD"
+        , Attributes.fill Colors.gray6CSS
         ]
         []
     ]
