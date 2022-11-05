@@ -19,7 +19,7 @@ import Message exposing (Message(..))
 import Model.Cell as Cell exposing (Cell)
 import Model.Editor as Editor exposing (Editor)
 import Model.Liikennematto exposing (Liikennematto)
-import Model.RenderCache as RenderCache exposing (RenderCache, refreshTilemapCache)
+import Model.RenderCache as RenderCache exposing (RenderCache, refreshTilemapCache, setTilemapCache)
 import Model.Tile as Tile
 import Model.Tilemap as Tilemap exposing (TilemapUpdateResult)
 import Model.World as World exposing (World)
@@ -116,14 +116,10 @@ update msg model =
 
                 nextWorld =
                     { world | tilemap = tilemapUpdateResult.tilemap }
-                        |> Zoning.removeInvalidLots tilemapUpdateResult.changedCells
+                        |> Zoning.removeInvalidLots tilemapUpdateResult.transitionedCells
 
                 nextRenderCache =
-                    if List.isEmpty tilemapUpdateResult.changedCells then
-                        renderCache
-
-                    else
-                        refreshTilemapCache tilemapUpdateResult.tilemap renderCache
+                    refreshTilemapCache tilemapUpdateResult renderCache
 
                 ( nextEditor, tilemapChangedEffects ) =
                     resolveTilemapUpdate delta tilemapUpdateResult model
@@ -299,11 +295,11 @@ resolveTilemapUpdate delta tilemapUpdateResult model =
         Nothing ->
             let
                 nextEditor =
-                    if List.isEmpty tilemapUpdateResult.changedCells then
+                    if List.isEmpty tilemapUpdateResult.transitionedCells then
                         editor
 
                     else
-                        Editor.createPendingTilemapChange tilemapUpdateResult.changedCells editor
+                        Editor.createPendingTilemapChange tilemapUpdateResult.transitionedCells editor
             in
             ( nextEditor
             , Cmd.none
@@ -315,7 +311,7 @@ resolveTilemapUpdate delta tilemapUpdateResult model =
                     pendingTilemapChange
 
                 nextTimer =
-                    if not (List.isEmpty tilemapUpdateResult.changedCells) then
+                    if not (List.isEmpty tilemapUpdateResult.transitionedCells) then
                         -- The tilemap changed during the delay, reset it (AKA debounce)
                         Editor.minTilemapChangeFrequency
 
@@ -325,7 +321,7 @@ resolveTilemapUpdate delta tilemapUpdateResult model =
                             |> Quantity.max Quantity.zero
 
                 nextChangedCells =
-                    Editor.combineChangedCells tilemapUpdateResult.changedCells currentChangedCells
+                    Editor.combineChangedCells tilemapUpdateResult.transitionedCells currentChangedCells
             in
             if Quantity.lessThanOrEqualToZero nextTimer then
                 ( { editor | pendingTilemapChange = Nothing }
@@ -473,7 +469,7 @@ addTile cell model =
     ( { model
         | world = nextWorld
         , editor = Editor.activateCell cell model.editor
-        , renderCache = refreshTilemapCache nextTilemap renderCache
+        , renderCache = setTilemapCache nextTilemap renderCache
       }
     , Cmd.batch (tileActionsToCmds tileActions)
     )
@@ -494,7 +490,7 @@ removeTile cell model =
     ( { model
         | world = nextWorld
         , editor = Editor.activateCell cell model.editor
-        , renderCache = refreshTilemapCache nextTilemap renderCache
+        , renderCache = setTilemapCache nextTilemap renderCache
       }
     , Cmd.batch (tileActionsToCmds tileActions)
     )

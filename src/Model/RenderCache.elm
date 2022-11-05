@@ -1,10 +1,13 @@
 module Model.RenderCache exposing
-    ( RenderCache
-    , TilePresentation
+    ( DynamicTilePresentation
+    , DynamicTilesPresentation
+    , RenderCache
+    , StaticTilePresentation
     , TilemapPresentation
     , new
     , refreshTilemapCache
     , setPixelsToMetersRatio
+    , setTilemapCache
     )
 
 import FSM
@@ -24,6 +27,7 @@ import Render.Conversion exposing (PixelsToMetersRatio, defaultPixelsToMetersRat
 type alias RenderCache =
     { pixelsToMetersRatio : PixelsToMetersRatio
     , tilemap : TilemapPresentation
+    , dynamicTiles : DynamicTilesPresentation
     , tilemapWidthPixels : Float
     , tilemapHeightPixels : Float
     , tilemapWidth : Length.Length
@@ -32,10 +36,18 @@ type alias RenderCache =
 
 
 type alias TilemapPresentation =
-    List TilePresentation
+    List StaticTilePresentation
 
 
-type alias TilePresentation =
+type alias StaticTilePresentation =
+    ( Cell, TileKind )
+
+
+type alias DynamicTilesPresentation =
+    List DynamicTilePresentation
+
+
+type alias DynamicTilePresentation =
     ( Cell, TileKind, Maybe Animation )
 
 
@@ -53,6 +65,7 @@ new { tilemap } =
     in
     { pixelsToMetersRatio = defaultPixelsToMetersRatio
     , tilemap = toTilemapCache tilemap
+    , dynamicTiles = []
     , tilemapWidthPixels =
         tilemapWidthPixels
     , tilemapHeightPixels = tilemapHeigthPixels
@@ -90,19 +103,55 @@ zoomLevelToPixelsPerMeterValue zoomLevel =
             8
 
 
-refreshTilemapCache : Tilemap -> RenderCache -> RenderCache
-refreshTilemapCache tilemap cache =
+setTilemapCache : Tilemap -> RenderCache -> RenderCache
+setTilemapCache tilemap cache =
     { cache | tilemap = toTilemapCache tilemap }
 
 
-toTilemapCache : Tilemap -> List TilePresentation
+refreshTilemapCache : Tilemap.TilemapUpdateResult -> RenderCache -> RenderCache
+refreshTilemapCache tilemapUpdateResult cache =
+    let
+        nextTilemapCache =
+            if List.isEmpty tilemapUpdateResult.transitionedCells then
+                cache.tilemap
+
+            else
+                toTilemapCache tilemapUpdateResult.tilemap
+
+        nextDynamicTiles =
+            if List.isEmpty tilemapUpdateResult.dynamicCells then
+                []
+
+            else
+                toDynamicTiles
+                    tilemapUpdateResult.tilemap
+                    tilemapUpdateResult.dynamicCells
+    in
+    { cache
+        | tilemap = nextTilemapCache
+        , dynamicTiles = nextDynamicTiles
+    }
+
+
+toTilemapCache : Tilemap -> List StaticTilePresentation
 toTilemapCache tilemap =
-    Tilemap.toList tileMapper tilemap
+    Tilemap.toList tileMapper Tilemap.StaticTiles tilemap
 
 
-tileMapper : Cell -> Tile -> TilePresentation
+tileMapper : Cell -> Tile -> StaticTilePresentation
 tileMapper cell tile =
-    ( cell, tile.kind, tileAnimation tile )
+    ( cell, tile.kind )
+
+
+toDynamicTiles : Tilemap -> List Cell -> DynamicTilesPresentation
+toDynamicTiles tilemap changingCells =
+    changingCells
+        |> List.filterMap
+            (\cell ->
+                Tilemap.tileAt tilemap cell
+                    |> Maybe.map
+                        (\tile -> ( cell, tile.kind, tileAnimation tile ))
+            )
 
 
 tileAnimation : Tile -> Maybe Animation

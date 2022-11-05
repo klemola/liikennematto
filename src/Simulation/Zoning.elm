@@ -60,6 +60,7 @@ attemptBuildLot world seed newLot =
                         else
                             Nothing
                     )
+                    Tilemap.NoFilter
                 |> Maybe.values
 
         ( shuffledAnchors, _ ) =

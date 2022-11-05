@@ -151,7 +151,7 @@ buildRoadNetwork { tilemap, trafficLights } =
                 , nodes = Dict.empty
                 , remainingTiles =
                     tilemap
-                        |> Tilemap.toList Tuple.pair
+                        |> Tilemap.toList Tuple.pair Tilemap.NoFilter
                         |> List.sortBy tilePriority
                 }
                 |> Dict.values

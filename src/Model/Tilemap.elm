@@ -1,5 +1,6 @@
 module Model.Tilemap exposing
-    ( Tilemap
+    ( TileListFilter(..)
+    , Tilemap
     , TilemapConfig
     , TilemapUpdateResult
     , addAnchor
@@ -152,7 +153,7 @@ inBounds (Tilemap tilemap) testBB =
 
 intersects : LMBoundingBox2d -> Tilemap -> Bool
 intersects testBB tilemap =
-    toList (\cell _ -> Cell.boundingBox cell) tilemap
+    toList (\cell _ -> Cell.boundingBox cell) NoFilter tilemap
         |> List.any (Common.boundingBoxOverlaps testBB)
 
 
@@ -177,8 +178,13 @@ hasLowComplexity cell tilemap diagonalDirection =
         |> (\tiles -> List.length tiles < 3)
 
 
-toList : (Cell -> Tile -> a) -> Tilemap -> List a
-toList mapperFn tilemap =
+type TileListFilter
+    = StaticTiles
+    | NoFilter
+
+
+toList : (Cell -> Tile -> a) -> TileListFilter -> Tilemap -> List a
+toList mapperFn listFilter tilemap =
     let
         (Tilemap tilemapContents) =
             tilemap
@@ -197,7 +203,14 @@ toList mapperFn tilemap =
                         case maybeTile of
                             Just tile ->
                                 cellFromIndex tilemap index
-                                    |> Maybe.map (\cell -> mapperFn cell tile :: acc)
+                                    |> Maybe.map
+                                        (\cell ->
+                                            if listFilter == StaticTiles && Tile.isDynamic tile then
+                                                acc
+
+                                            else
+                                                mapperFn cell tile :: acc
+                                        )
                                     |> Maybe.withDefault acc
 
                             Nothing ->
@@ -297,17 +310,21 @@ indexFromCell (Tilemap tilemapContents) cell =
 
 
 type alias TilemapUpdate =
-    { nextCells : Array (Maybe Tile)
+    { nextTiles : Array (Maybe Tile)
     , actions : List Tile.Action
+
+    -- Room for improvement: keep a single list with an union that describes the indices' status
     , emptiedIndices : List Int
-    , changedIndices : List Int
+    , transitionedIndices : List Int
+    , dynamicIndices : List Int
     }
 
 
 type alias TilemapUpdateResult =
     { tilemap : Tilemap
     , actions : List Tile.Action
-    , changedCells : List Cell
+    , transitionedCells : List Cell
+    , dynamicCells : List Cell
     }
 
 
@@ -320,10 +337,11 @@ update delta tilemap =
         cellsUpdate =
             Array.foldl
                 (maybeUpdateTile delta)
-                { nextCells = Array.empty
+                { nextTiles = Array.empty
                 , actions = []
                 , emptiedIndices = []
-                , changedIndices = []
+                , transitionedIndices = []
+                , dynamicIndices = []
                 }
                 currentTilemap.cells
 
@@ -337,17 +355,23 @@ update delta tilemap =
                         Nothing ->
                             acc
                 )
-                (Tilemap { currentTilemap | cells = cellsUpdate.nextCells })
+                (Tilemap { currentTilemap | cells = cellsUpdate.nextTiles })
                 cellsUpdate.emptiedIndices
 
-        changedCells =
-            cellsUpdate.changedIndices
+        transitionedCells =
+            cellsUpdate.transitionedIndices
+                |> List.map (cellFromIndex nextTilemap)
+                |> Maybe.values
+
+        dynamicCells =
+            cellsUpdate.dynamicIndices
                 |> List.map (cellFromIndex nextTilemap)
                 |> Maybe.values
     in
     { tilemap = nextTilemap
     , actions = cellsUpdate.actions
-    , changedCells = changedCells
+    , transitionedCells = transitionedCells
+    , dynamicCells = dynamicCells
     }
 
 
@@ -358,10 +382,11 @@ maybeUpdateTile delta maybeTile tilemapUpdate =
             updateTileFSM delta tile tilemapUpdate
 
         Nothing ->
-            { nextCells = tilemapUpdate.nextCells |> Array.push Nothing
+            { nextTiles = tilemapUpdate.nextTiles |> Array.push Nothing
             , actions = tilemapUpdate.actions
             , emptiedIndices = tilemapUpdate.emptiedIndices
-            , changedIndices = tilemapUpdate.changedIndices
+            , transitionedIndices = tilemapUpdate.transitionedIndices
+            , dynamicIndices = tilemapUpdate.dynamicIndices
             }
 
 
@@ -369,7 +394,7 @@ updateTileFSM : Duration -> Tile -> TilemapUpdate -> TilemapUpdate
 updateTileFSM delta tile tilemapUpdate =
     let
         idx =
-            Array.length tilemapUpdate.nextCells
+            Array.length tilemapUpdate.nextTiles
 
         ( nextFSM, tileActions ) =
             FSM.updateWithoutContext delta tile.fsm
@@ -387,6 +412,9 @@ updateTileFSM delta tile tilemapUpdate =
                     , fsm = nextFSM
                     }
 
+        isDynamic =
+            nextTile |> Maybe.map Tile.isDynamic |> Maybe.withDefault False
+
         nextEmptiedIndices =
             if isRemoved then
                 idx :: tilemapUpdate.emptiedIndices
@@ -394,17 +422,25 @@ updateTileFSM delta tile tilemapUpdate =
             else
                 tilemapUpdate.emptiedIndices
 
-        nextChangedIndices =
+        nextTransitionedIndices =
             if FSM.toCurrentState tile.fsm /= FSM.toCurrentState nextFSM then
-                idx :: tilemapUpdate.changedIndices
+                idx :: tilemapUpdate.transitionedIndices
 
             else
-                tilemapUpdate.changedIndices
+                tilemapUpdate.transitionedIndices
+
+        nextDynamicIndices =
+            if isDynamic then
+                idx :: tilemapUpdate.dynamicIndices
+
+            else
+                tilemapUpdate.dynamicIndices
     in
-    { nextCells = tilemapUpdate.nextCells |> Array.push nextTile
+    { nextTiles = tilemapUpdate.nextTiles |> Array.push nextTile
     , actions = tilemapUpdate.actions ++ tileActions
     , emptiedIndices = nextEmptiedIndices
-    , changedIndices = nextChangedIndices
+    , transitionedIndices = nextTransitionedIndices
+    , dynamicIndices = nextDynamicIndices
     }
 
 
