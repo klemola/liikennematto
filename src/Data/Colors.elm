@@ -32,6 +32,8 @@ module Data.Colors exposing
     , withAlpha
     , yellow
     , yellowCSS
+    , yellowDarker
+    , yellowDarkerCSS
     , yellowGreen
     , yellowGreenCSS
     )
