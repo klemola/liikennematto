@@ -24,7 +24,7 @@ import Model.Geometry
         ( OrthogonalDirection(..)
         )
 import Model.Lot exposing (Lot)
-import Model.RenderCache exposing (RenderCache, TilemapPresentation)
+import Model.RenderCache exposing (DynamicTilesPresentation, RenderCache, TilemapPresentation)
 import Model.RoadNetwork
     exposing
         ( Connection
@@ -91,6 +91,7 @@ view { cars, lots, roadNetwork, trafficLights } cache =
         ]
         [ styles
         , Svg.Lazy.lazy (renderTilemap cache) cache.tilemap
+        , renderDynamicTiles cache cache.dynamicTiles
         , Svg.Lazy.lazy (renderLots cache) lots
         , renderCars cache cars
         , Svg.Lazy.lazy (renderTrafficLights cache) trafficLights
@@ -108,16 +109,16 @@ renderTilemap : RenderCache -> TilemapPresentation -> Svg msg
 renderTilemap cache tilemap =
     tilemap
         |> List.map
-            (\( cell, tile, animation ) ->
+            (\( cell, tileKind ) ->
                 ( Cell.toString cell
-                , renderTile cache cell tile animation
+                , renderTile cache cell tileKind
                 )
             )
         |> Svg.Keyed.node "g" []
 
 
-renderTile : RenderCache -> Cell -> TileKind -> Maybe Animation -> Svg msg
-renderTile cache cell tileKind animation =
+renderTile : RenderCache -> Cell -> TileKind -> Svg msg
+renderTile cache cell tileKind =
     let
         tileSizePixels =
             toPixelsValue cache.pixelsToMetersRatio Cell.size
@@ -128,51 +129,77 @@ renderTile cache cell tileKind animation =
         yAdjusted =
             cache.tilemapHeightPixels - tileSizePixels - y
     in
-    case animation of
-        Just tileAnimation ->
-            let
-                animationStyleString =
-                    Animation.toStyleString tileAnimation
+    tileElement
+        tileSizePixels
+        { x = x
+        , y = yAdjusted
+        , tileIndex = tileKind
+        , tileStyles = ""
+        }
 
-                tileStyles =
-                    String.concat
-                        [ tileAnimationProperties
-                            tileSizePixels
-                            tileAnimation
-                            ( x, yAdjusted )
-                        , animationStyleString
-                        ]
 
-                ( overflowTile, clipStyles ) =
-                    tileAnimation.direction
-                        |> Maybe.map
-                            (animationOverflowTile
-                                { tileSizePixels = tileSizePixels
-                                , baseX = x
-                                , baseY = yAdjusted
-                                }
-                            )
-                        |> Maybe.withDefault ( nothing, "" )
-            in
-            Svg.g [ Attributes.style clipStyles ]
-                [ tileElement
+renderDynamicTiles : RenderCache -> DynamicTilesPresentation -> Svg msg
+renderDynamicTiles cache tiles =
+    tiles
+        |> List.map
+            (\( cell, tileKind, maybeAnimation ) ->
+                ( Cell.toString cell
+                , case maybeAnimation of
+                    Just animation ->
+                        renderAnimatedTile cache cell tileKind animation
+
+                    Nothing ->
+                        renderTile cache cell tileKind
+                )
+            )
+        |> Svg.Keyed.node "g" []
+
+
+renderAnimatedTile : RenderCache -> Cell -> TileKind -> Animation -> Svg msg
+renderAnimatedTile cache cell tileKind animation =
+    let
+        tileSizePixels =
+            toPixelsValue cache.pixelsToMetersRatio Cell.size
+
+        { x, y } =
+            Cell.bottomLeftCorner cell |> pointToPixels cache.pixelsToMetersRatio
+
+        yAdjusted =
+            cache.tilemapHeightPixels - tileSizePixels - y
+
+        animationStyleString =
+            Animation.toStyleString animation
+
+        tileStyles =
+            String.concat
+                [ tileAnimationProperties
                     tileSizePixels
-                    { x = x
-                    , y = yAdjusted
-                    , tileIndex = tileKind
-                    , tileStyles = tileStyles
-                    }
-                , overflowTile
+                    animation
+                    ( x, yAdjusted )
+                , animationStyleString
                 ]
 
-        Nothing ->
-            tileElement
-                tileSizePixels
-                { x = x
-                , y = yAdjusted
-                , tileIndex = tileKind
-                , tileStyles = ""
-                }
+        ( overflowTile, clipStyles ) =
+            animation.direction
+                |> Maybe.map
+                    (animationOverflowTile
+                        { tileSizePixels = tileSizePixels
+                        , baseX = x
+                        , baseY = yAdjusted
+                        }
+                    )
+                |> Maybe.withDefault ( nothing, "" )
+    in
+    Svg.g [ Attributes.style clipStyles ]
+        [ tileElement
+            tileSizePixels
+            { x = x
+            , y = yAdjusted
+            , tileIndex = tileKind
+            , tileStyles = tileStyles
+            }
+        , overflowTile
+        ]
 
 
 type alias AnimationOverflowProperties =

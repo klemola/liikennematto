@@ -12,6 +12,7 @@ module Model.Tile exposing
     , isBuilt
     , isCurve
     , isDeadend
+    , isDynamic
     , isIntersection
     , isLotEntry
     , new
@@ -99,6 +100,15 @@ updateTileKind nextKind tile =
 isBuilt : Tile -> Bool
 isBuilt tile =
     FSM.toCurrentState tile.fsm == Built
+
+
+isDynamic : Tile -> Bool
+isDynamic tile =
+    let
+        currentState =
+            FSM.toCurrentState tile.fsm
+    in
+    currentState == Constructing || currentState == Removing
 
 
 
