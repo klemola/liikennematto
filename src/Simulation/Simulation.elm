@@ -88,7 +88,7 @@ update msg model =
         GenerateEnvironment ->
             let
                 ( nextWorld, nextSeed ) =
-                    attemptGenerateLot model.world model.seed model.simulation
+                    attemptGenerateLot model.world model.editor model.seed model.simulation
 
                 cmds =
                     if Dict.size nextWorld.lots > Dict.size model.world.lots then
@@ -152,14 +152,13 @@ updateTrafficLight trafficLight =
     { trafficLight | fsm = nextFsm }
 
 
-attemptGenerateLot : World -> Random.Seed -> SimulationState -> ( World, Random.Seed )
-attemptGenerateLot world seed simulation =
+attemptGenerateLot : World -> Editor.Editor -> Random.Seed -> SimulationState -> ( World, Random.Seed )
+attemptGenerateLot world editor seed simulation =
     let
         largeEnoughRoadNetwork =
             Tilemap.size world.tilemap > 4 * (Dict.size world.lots + 1)
     in
-    -- TODO: require Nothing for pendingTilemapChange?
-    if simulation == Paused || not largeEnoughRoadNetwork then
+    if simulation == Paused || not largeEnoughRoadNetwork || editor.pendingTilemapChange /= Nothing then
         ( world, seed )
 
     else
