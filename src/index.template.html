@@ -21,7 +21,8 @@
             const AudioContext =
                 window.AudioContext || window.webkitAudioContext;
             const context = new AudioContext();
-            let active_source = null;
+            let soundSource_road = null;
+            let soundSource_lot = null;
             let sounds = {};
 
             // Load the game sounds
@@ -30,31 +31,13 @@
             getBuffer("destroy_road");
             getBuffer("build_lot");
 
-            function stopActiveSource() {
-                if (active_source) {
-                    active_source.onended = null;
-                    active_source.stop(0);
-                }
-            }
-
-            function playSound(soundLabel) {
-                const buffer = sounds[soundLabel];
-                const source = context.createBufferSource();
-
-                if (!buffer) {
-                    return;
+            app.ports.requestAudio.subscribe(function (sound) {
+                if (context.state === "suspended") {
+                    context.resume();
                 }
 
-                stopActiveSource();
-                active_source = source;
-                source.onended = function () {
-                    active_source = null;
-                };
-
-                source.buffer = buffer;
-                source.connect(context.destination);
-                source.start(0);
-            }
+                sound && playSound(sound);
+            });
 
             function getBuffer(soundLabel) {
                 const request = new XMLHttpRequest();
@@ -70,19 +53,42 @@
                 request.send();
             }
 
-            app.ports.requestAudio.subscribe(function (sound) {
-                if (context.state === "suspended") {
-                    context.resume();
+            function playSound(soundLabel) {
+                const buffer = sounds[soundLabel];
+                const source = context.createBufferSource();
+                const isLotSound = soundLabel === "build_lot";
+
+                if (!buffer) {
+                    return;
                 }
 
-                if (active_source) {
-                    active_source.stop();
+                stopAudioSource(
+                    isLotSound ? soundSource_lot : soundSource_road
+                );
+
+                if (isLotSound) {
+                    soundSource_lot = source;
+                    source.onended = function () {
+                        soundSource_lot = null;
+                    };
+                } else {
+                    soundSource_road = source;
+                    source.onended = function () {
+                        soundSource_road = null;
+                    };
                 }
 
-                if (sound) {
-                    playSound(sound);
+                source.buffer = buffer;
+                source.connect(context.destination);
+                source.start(0);
+            }
+
+            function stopAudioSource(source) {
+                if (source) {
+                    source.onended = null;
+                    source.stop(0);
                 }
-            });
+            }
         </script>
     </body>
 </html>

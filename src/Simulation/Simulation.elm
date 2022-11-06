@@ -3,6 +3,7 @@ module Simulation.Simulation exposing
     , update
     )
 
+import Audio
 import Dict
 import Duration
 import FSM
@@ -88,12 +89,22 @@ update msg model =
             let
                 ( nextWorld, nextSeed ) =
                     attemptGenerateLot model.world model.seed model.simulation
+
+                cmds =
+                    if Dict.size nextWorld.lots > Dict.size model.world.lots then
+                        Cmd.batch
+                            [ generateEnvironmentAfterDelay nextSeed
+                            , Audio.playSound Audio.BuildLot
+                            ]
+
+                    else
+                        generateEnvironmentAfterDelay nextSeed
             in
             ( { model
                 | seed = nextSeed
                 , world = nextWorld
               }
-            , generateEnvironmentAfterDelay nextSeed
+            , cmds
             )
 
         _ ->
