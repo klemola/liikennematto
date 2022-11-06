@@ -21,6 +21,10 @@
             const AudioContext =
                 window.AudioContext || window.webkitAudioContext;
             const context = new AudioContext();
+            const roadGainNode = context.createGain();
+            const roadStereoPannerNode = context.createStereoPanner();
+            const lotGainNode = context.createGain();
+            const lotStereoPannerNode = context.createStereoPanner();
             let soundSource_road = null;
             let soundSource_lot = null;
             let sounds = {};
@@ -30,6 +34,18 @@
             getBuffer("build_road_end");
             getBuffer("destroy_road");
             getBuffer("build_lot");
+
+            roadGainNode.gain.value = 0.4;
+            roadStereoPannerNode.pan.value = -0.25;
+            lotGainNode.gain.value = 0.2;
+            lotStereoPannerNode.pan.value = 0.5;
+
+            roadGainNode
+                .connect(roadStereoPannerNode)
+                .connect(context.destination);
+            lotGainNode
+                .connect(lotStereoPannerNode)
+                .connect(context.destination);
 
             app.ports.requestAudio.subscribe(function (sound) {
                 if (context.state === "suspended") {
@@ -68,18 +84,19 @@
 
                 if (isLotSound) {
                     soundSource_lot = source;
+                    soundSource_lot.connect(lotGainNode);
                     source.onended = function () {
                         soundSource_lot = null;
                     };
                 } else {
                     soundSource_road = source;
+                    soundSource_road.connect(roadGainNode);
                     source.onended = function () {
                         soundSource_road = null;
                     };
                 }
 
                 source.buffer = buffer;
-                source.connect(context.destination);
                 source.start(0);
             }
 
