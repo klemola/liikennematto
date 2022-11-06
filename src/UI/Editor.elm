@@ -1,9 +1,10 @@
-port module UI.Editor exposing
+module UI.Editor exposing
     ( overlay
     , update
     , zoomControl
     )
 
+import Audio exposing (playSound)
 import Browser.Dom
 import Data.Defaults as Defaults
 import Duration exposing (Duration)
@@ -41,9 +42,6 @@ import UI.Core
         , whitespace
         )
 import UI.TimerIndicator
-
-
-port playAudio : String -> Cmd msg
 
 
 type OverlayIntent
@@ -282,7 +280,7 @@ tileActionsToCmds =
         (\action ->
             case action of
                 Tile.PlayAudio sound ->
-                    playAudio sound
+                    playSound sound
         )
 
 
