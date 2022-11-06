@@ -18,20 +18,69 @@
         <script>
             var app = Elm.Main.init();
 
-            var sound_a = new Audio("assets/bleep_a.mp3");
-            var sound_b = new Audio("assets/bleep_b.mp3");
+            const AudioContext =
+                window.AudioContext || window.webkitAudioContext;
+            const context = new AudioContext();
+            let active_source = null;
+            let sounds = {};
 
-            app.ports.playAudio.subscribe(function (sound) {
-                sound_a.pause();
-                sound_a.currentTime = 0;
-                sound_b.pause();
-                sound_b.currentTime = 0;
+            // Load the game sounds
+            getBuffer("build_road_start");
+            getBuffer("build_road_end");
+            getBuffer("destroy_road");
+            getBuffer("build_lot");
 
-                if (sound === "A") {
-                    sound_a.play();
+            function stopActiveSource() {
+                if (active_source) {
+                    active_source.onended = null;
+                    active_source.stop(0);
                 }
-                if (sound === "B") {
-                    sound_b.play();
+            }
+
+            function playSound(soundLabel) {
+                const buffer = sounds[soundLabel];
+                const source = context.createBufferSource();
+
+                if (!buffer) {
+                    return;
+                }
+
+                stopActiveSource();
+                active_source = source;
+                source.onended = function () {
+                    active_source = null;
+                };
+
+                source.buffer = buffer;
+                source.connect(context.destination);
+                source.start(0);
+            }
+
+            function getBuffer(soundLabel) {
+                const request = new XMLHttpRequest();
+                const url = "assets/" + soundLabel + ".ogg";
+
+                request.open("GET", url, true);
+                request.responseType = "arraybuffer";
+                request.onload = function (evt) {
+                    context.decodeAudioData(request.response, (buffer) => {
+                        sounds[soundLabel] = buffer;
+                    });
+                };
+                request.send();
+            }
+
+            app.ports.requestAudio.subscribe(function (sound) {
+                if (context.state === "suspended") {
+                    context.resume();
+                }
+
+                if (active_source) {
+                    active_source.stop();
+                }
+
+                if (sound) {
+                    playSound(sound);
                 }
             });
         </script>

@@ -21,6 +21,7 @@ module Model.Tile exposing
     , updateTileKind
     )
 
+import Audio exposing (Sound)
 import Duration exposing (Duration)
 import FSM exposing (FSM, State)
 import Model.Geometry
@@ -53,7 +54,7 @@ type alias TileFSM =
 
 
 type Action
-    = PlayAudio String
+    = PlayAudio Sound
 
 
 type TileState
@@ -130,14 +131,14 @@ constructing =
         , transitions =
             [ FSM.createTransition
                 (\_ -> built)
-                [ PlayAudio "B" ]
+                [ PlayAudio Audio.BuildRoadEnd ]
                 (FSM.Timer transitionTimer)
             , FSM.createTransition
                 (\_ -> changing)
                 []
                 FSM.Direct
             ]
-        , entryActions = [ PlayAudio "A" ]
+        , entryActions = [ PlayAudio Audio.BuildRoadStart ]
         , exitActions = []
         }
 
@@ -197,7 +198,7 @@ removing =
                 []
                 (FSM.Timer transitionTimer)
             ]
-        , entryActions = [ PlayAudio "Bye" ]
+        , entryActions = [ PlayAudio Audio.DestroyRoad ]
         , exitActions = []
         }
 

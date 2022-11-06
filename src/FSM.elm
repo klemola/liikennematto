@@ -296,10 +296,16 @@ transitionTo stateId (FSM fsm) =
             let
                 (Transition trs) =
                     match
+
+                nextState =
+                    trs.targetState ()
+
+                (State stateContents) =
+                    nextState
             in
             Result.Ok
-                ( FSM { fsm | currentState = trs.targetState () }
-                , trs.actions
+                ( FSM { fsm | currentState = nextState }
+                , trs.actions ++ stateContents.entryActions
                 )
 
         Nothing ->
