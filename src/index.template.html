@@ -30,10 +30,13 @@
             let sounds = {};
 
             // Load the game sounds
-            getBuffer("build_road_start");
-            getBuffer("build_road_end");
-            getBuffer("destroy_road");
-            getBuffer("build_lot");
+            Promise.all([
+                getBuffer("init"),
+                getBuffer("build_road_start"),
+                getBuffer("build_road_end"),
+                getBuffer("destroy_road"),
+                getBuffer("build_lot"),
+            ]).then(onAudioInit);
 
             roadGainNode.gain.value = 0.4;
             roadStereoPannerNode.pan.value = -0.25;
@@ -55,18 +58,34 @@
                 sound && playSound(sound);
             });
 
+            function onAudioInit() {
+                document.body.addEventListener(
+                    "pointerenter",
+                    function handler() {
+                        playSound("init");
+                        document.body.removeEventListener(
+                            "pointerenter",
+                            arguments.callee
+                        );
+                    }
+                );
+            }
+
             function getBuffer(soundLabel) {
-                const request = new XMLHttpRequest();
                 const url = "assets/" + soundLabel + ".mp3";
 
-                request.open("GET", url, true);
-                request.responseType = "arraybuffer";
-                request.onload = function (evt) {
-                    context.decodeAudioData(request.response, (buffer) => {
-                        sounds[soundLabel] = buffer;
-                    });
-                };
-                request.send();
+                return fetch(url)
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error(
+                                `Could not load a sound, status = ${response.status}`
+                            );
+                        }
+                        return response.arrayBuffer();
+                    })
+                    .then((buffer) => context.decodeAudioData(buffer))
+                    .then((decoded) => (sounds[soundLabel] = decoded))
+                    .catch((error) => console.log(error));
             }
 
             function playSound(soundLabel) {
