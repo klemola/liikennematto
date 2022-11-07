@@ -6,9 +6,9 @@ module Data.Defaults exposing
 
 horizontalCellsAmount : Int
 horizontalCellsAmount =
-    10
+    12
 
 
 verticalCellsAmount : Int
 verticalCellsAmount =
-    horizontalCellsAmount
+    12

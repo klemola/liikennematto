@@ -24,8 +24,8 @@ type alias AnchorDef =
 
 tilemapConfig : Tilemap.TilemapConfig
 tilemapConfig =
-    { horizontalCellsAmount = Defaults.horizontalCellsAmount
-    , verticalCellsAmount = Defaults.verticalCellsAmount
+    { horizontalCellsAmount = 10
+    , verticalCellsAmount = 10
     }
 
 

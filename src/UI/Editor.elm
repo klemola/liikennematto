@@ -1,5 +1,6 @@
 module UI.Editor exposing
-    ( overlay
+    ( init
+    , overlay
     , update
     , zoomControl
     )
@@ -58,6 +59,42 @@ longTapThreshold =
 longTapIndicatorShowDelay : Duration
 longTapIndicatorShowDelay =
     Duration.milliseconds 300
+
+
+init : Liikennematto -> ( Liikennematto, Cmd Message )
+init model =
+    let
+        tilemapConfig =
+            Tilemap.config model.world.tilemap
+
+        startCell =
+            Cell.fromCoordinates tilemapConfig
+                ( tilemapConfig.horizontalCellsAmount // 2
+                , tilemapConfig.verticalCellsAmount // 2
+                )
+
+        ( modelWithTile, tileCmd ) =
+            case startCell of
+                Just cell ->
+                    addTile cell model
+
+                Nothing ->
+                    ( model, Cmd.none )
+    in
+    ( modelWithTile
+    , Cmd.batch
+        [ Browser.Dom.getViewportOf containerId
+            |> Task.andThen
+                (\domViewport ->
+                    Browser.Dom.setViewportOf
+                        containerId
+                        ((domViewport.scene.width - domViewport.viewport.width) / 2)
+                        ((domViewport.scene.height - domViewport.viewport.height - toFloat uiDimensions.renderSafeAreaY) / 2)
+                )
+            |> Task.attempt (\_ -> NoOp)
+        , tileCmd
+        ]
+    )
 
 
 

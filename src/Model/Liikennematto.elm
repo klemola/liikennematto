@@ -4,10 +4,11 @@ module Model.Liikennematto exposing
     , new
     )
 
+import Data.Defaults exposing (horizontalCellsAmount, verticalCellsAmount)
 import Model.Editor as Editor exposing (Editor)
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Screen as Screen exposing (Screen)
-import Model.World exposing (World)
+import Model.World as World exposing (World)
 import Random
 
 
@@ -36,14 +37,21 @@ initialSeed =
     Random.initialSeed 666
 
 
-new : World -> Liikennematto
-new world =
-    { world = world
+initialWorld =
+    World.empty
+        { horizontalCellsAmount = horizontalCellsAmount
+        , verticalCellsAmount = verticalCellsAmount
+        }
+
+
+new : Liikennematto
+new =
+    { world = initialWorld
     , screen = Screen.fallback
     , seed = initialSeed
     , simulation = Running
     , editor = Editor.new
-    , renderCache = RenderCache.new world
+    , renderCache = RenderCache.new initialWorld
     , dynamicTiles = []
     , showDebugPanel = False
     , showRoadNetwork = False

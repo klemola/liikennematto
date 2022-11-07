@@ -3,7 +3,6 @@ module Main exposing (main)
 import Browser
 import Browser.Dom exposing (getViewport)
 import Browser.Events as Events
-import Data.Worlds exposing (defaultWorld)
 import Element exposing (Element)
 import Element.Border as Border
 import Message exposing (Message(..))
@@ -24,25 +23,24 @@ import UI.UI as UI
 main : Program () Liikennematto Message
 main =
     let
-        initialModel =
-            Liikennematto.new defaultWorld
+        ( initialModel, editorCmd ) =
+            UI.Editor.init Liikennematto.new
+
+        initCmds =
+            Cmd.batch
+                [ -- simulate a screen resize
+                  Task.perform WindowResized getViewport
+                , Task.perform ResetSeed Time.now
+                , Simulation.initCmd initialModel.seed
+                , editorCmd
+                ]
     in
     Browser.document
-        { init = \() -> ( initialModel, initCmd initialModel.seed )
+        { init = \() -> ( initialModel, initCmds )
         , view = view
         , update = update
         , subscriptions = subscriptions
         }
-
-
-initCmd : Random.Seed -> Cmd Message
-initCmd seed =
-    Cmd.batch
-        [ -- simulate a screen resize
-          Task.perform WindowResized getViewport
-        , Task.perform ResetSeed Time.now
-        , Simulation.initCmd seed
-        ]
 
 
 update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
