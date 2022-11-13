@@ -1,57 +1,61 @@
-# Liikennematto
+![liikennematto_itch_cover_wide](https://user-images.githubusercontent.com/1923450/201537010-ece5c730-ebb9-45e9-b0dc-3ed56e4356b0.png)
 
-Liikennematto (_Finnish for a "traffic mat"_) is a prototype traffic simulation with a tiny scale. Inspired by traffic mats that children play with.
+## Build the roads and the town comes to life
 
-![Screenshot](docs/screenshot.png)
+In Liikennematto (Finnish for "traffic mat") the gameplay is simple: you only build the roads. After a short while, lots appear. With the lots come buildings and their residents. The residents drive around the road network you've created and visit other lots.
 
-_Liikennematto in action! [Live demo](http://apps.butsku.com/liikennematto/)_
+https://user-images.githubusercontent.com/1923450/201537214-ddfbad0c-30ee-49e7-9695-f5c8b21e23ff.mp4
+
+### Playful design
+
+Liikennematto is inspired by children's traffic mats. The design of the game follows the traffic mat basics: mixed perspective buildings, plenty of color, clear dark outlines.
+
+Liikennematto is meant for players of all ages and abilities. The UI is free of text and everything's quite large and easy to comprehend.
+
+### Detailed simulation
+
+Cars move and turn smoothly, avoid collision with each other, follow traffic signals and park on lots. Drivers plan their routes ahead and follow them the best they can - rerouting when necessary.
+
+![liikennematto_pathfinding](https://user-images.githubusercontent.com/1923450/201537242-b210f801-4a64-4fcd-9c23-61a12f481f33.png)
+
+🕹️ [Play Liikennematto on itch.io](https://yourmagicisworking.itch.io/liikennematto) 🕹️
 
 ## Features
 
 ### Simulation
 
--   a two-lane road network
+-   a two-lane road network (graph based on the tilemap)
+-   a* pathfinding
 -   collision prevention
 -   signal intersections (traffic lights)
 -   yield sign based intersections
+-   parking
 -   dead end streets
--   prodedural generation of lots and buildings
+-   procedural generation of lots and buildings
 -   debug tools
-    -   pause simulation
     -   spawn cars
-    -   road network visualization
-    -   road network DOT string export
-    -   car debug layers
+    -   show road network visualization
+    -   show car debug layers
 
 ### Map editor
 
 Draw roads of all kind with the smart editor
 
--   **left click / tap** to place a piece of road
--   **right click / long tap** to remove road from the tile
-
-#### Restrictions
-
--   tiles cannot be placed everywhere. In order to avoid awkward road layouts, the editor restricts complexity
--   lots are only placed next to road tiles that have enough distance to intersections, curves and dead ends
-
-## Demo & more information
-
-> Liikennematto works best on a large screen with landscape orientation (iPad, laptops, desktops)
-
-[Live demo (stable)](http://apps.butsku.com/liikennematto/)
-
-[Preview version (often in sync with the master branch)](http://apps.butsku.com/liikennematto/next/)
+-   **left click / tap** to add a road tile
+-   **right click / long tap** to remove a road tile
+-   zoom and pan the map (with touch support)
 
 ---
 
 Read more about the project from [Liikennematto dev blog #1: prototyping traffic simulation with Elm](https://matiasklemola.com/liikennematto-dev-blog-one)
 
-[Part #2](https://matiasklemola.com/liikennematto-devlog-two), [Part #3](https://matiasklemola.com/liikennematto-devlog-three), [Part #4](https://matiasklemola.com/liikennematto-devlog-four)
+[Part #2](https://matiasklemola.com/liikennematto-devlog-two), 
+[Part #3](https://matiasklemola.com/liikennematto-devlog-three), 
+[Part #4](https://matiasklemola.com/liikennematto-devlog-four)
 
 ---
 
-[Follow me on Twitter](https://twitter.com/MatiasKlemola) for updates!
+Follow me on [Twitter](https://twitter.com/MatiasKlemola) or [Mastodon](https://mastodon.gamedev.place/@yourmagicisworking) for updates!
 
 ## Attribution
 
