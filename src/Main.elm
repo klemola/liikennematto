@@ -116,16 +116,16 @@ render model =
             }
 
         renderWidth =
-            floor model.renderCache.tilemapWidthPixels + (borderSize.light * 2)
+            floor model.renderCache.tilemapWidthPixels + (borderSize * 2)
 
         renderHeight =
-            floor model.renderCache.tilemapHeightPixels + (borderSize.light * 2)
+            floor model.renderCache.tilemapHeightPixels + (borderSize * 2)
 
         wrapperWidth =
-            renderWidth + (borderSize.light * 2) + uiDimensions.renderSafeAreaX
+            renderWidth + (borderSize * 2) + uiDimensions.renderSafeAreaX
 
         wrapperHeight =
-            renderHeight + (borderSize.light * 2) + uiDimensions.renderSafeAreaY
+            renderHeight + (borderSize * 2) + uiDimensions.renderSafeAreaY
 
         horizontalAlignment =
             if wrapperWidth < model.screen.width then
@@ -139,7 +139,7 @@ render model =
                 ( Element.centerY, 0 )
 
             else
-                ( Element.alignTop, borderRadius.light )
+                ( Element.alignTop, borderRadius )
 
         renderDebug =
             if debugLayers.showRoadNetwork || debugLayers.showCarDebugVisuals then
@@ -157,10 +157,11 @@ render model =
             , Element.height (Element.px renderHeight)
             , Element.moveDown renderTopOffset
             , Element.centerX
+            , Element.clip
             , verticalAlignment
             , Border.solid
-            , Border.rounded borderRadius.light
-            , Border.width borderSize.light
+            , Border.rounded borderRadius
+            , Border.width borderSize
             , Border.color colors.renderBorder
             , Element.inFront renderDebug
             , Element.inFront

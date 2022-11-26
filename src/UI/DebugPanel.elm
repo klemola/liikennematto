@@ -1,5 +1,6 @@
 module UI.DebugPanel exposing (update, view)
 
+import Data.Icons as Icons
 import Dict
 import Element exposing (Element)
 import Element.Background as Background
@@ -57,14 +58,13 @@ update msg model =
 view : Liikennematto -> Element Message
 view model =
     Element.column
-        [ Element.height (Element.px (model.screen.height - uiDimensions.panelVerticalMargin))
-        , Element.padding whitespace.regular
+        [ Element.padding whitespace.regular
         , Element.spacing whitespace.tight
         , Element.alignRight
         , Element.moveLeft scrollbarAwareOffsetF
         , Element.moveDown scrollbarAwareOffsetF
-        , Background.color colors.menuBackground
-        , Border.rounded borderRadius.light
+        , Background.color colors.menuBackgroundInverse
+        , Border.rounded borderRadius
         , Element.inFront (dotStringView model.roadNetworkDotString)
         ]
         [ Element.row
@@ -77,7 +77,7 @@ view model =
                 (Element.text "Debug")
             , Element.el [ Element.alignRight ]
                 (smallControlButton
-                    { label = icon "icon_close.png"
+                    { label = icon Icons.Close
                     , onPress = ToggleDebugMode
                     , selected = False
                     , disabled = False
@@ -100,25 +100,25 @@ controls model =
         , Font.size uiDimensions.text
         ]
         [ controlButton
-            { label = icon "icon_car_debug.png"
+            { label = icon Icons.ToggleCarDebug
             , onPress = ToggleShowCarDebugVisuals
             , selected = model.showRoadNetwork
             , disabled = False
             }
         , controlButton
-            { label = icon "icon_spawn_car.png"
+            { label = icon Icons.SpawnCar
             , onPress = SpawnTestCar
             , selected = False
             , disabled = model.editor.carSpawnQueue >= Editor.maxQueuedCars
             }
         , controlButton
-            { label = icon "icon_road_network_debug.png"
+            { label = icon Icons.ToggleGraphDebug
             , onPress = ToggleShowRoadNetwork
             , selected = model.showRoadNetwork
             , disabled = False
             }
         , controlButton
-            { label = icon "icon_dot_string.png"
+            { label = icon Icons.ToggleDotString
             , onPress =
                 RoadNetwork.toDotString model.world.roadNetwork
                     |> ShowDotString
@@ -136,7 +136,6 @@ dotStringView dotString =
                 [ Element.width Element.fill
                 , Element.height Element.fill
                 , Element.clipX
-                , Element.scrollbars
                 , Background.color colors.textInverse
                 , Font.color colors.text
                 ]
@@ -149,8 +148,8 @@ dotStringView dotString =
                     ]
                     [ Element.text "DOT string"
                     , Element.el [ Element.alignRight ]
-                        (controlButton
-                            { label = Element.text "❌"
+                        (smallControlButton
+                            { label = icon Icons.Close
                             , onPress = HideDotString
                             , selected = False
                             , disabled = False
@@ -160,7 +159,7 @@ dotStringView dotString =
                 , Element.el
                     [ Element.padding whitespace.tight
                     , Element.width Element.fill
-                    , Element.clip
+                    , Element.height (Element.px (uiDimensions.panel * 2))
                     , Element.scrollbars
                     , Font.size 14
                     , Font.family [ Font.monospace ]
@@ -183,8 +182,8 @@ carStateView cache car =
         , Font.size 13
         , Background.color colors.listItemBackground
         , Border.solid
-        , Border.rounded borderRadius.light
-        , Border.width borderSize.light
+        , Border.rounded borderRadius
+        , Border.width borderSize
         , Border.color colors.listItemBackground
         ]
         [ Element.text ("# " ++ String.fromInt car.id)

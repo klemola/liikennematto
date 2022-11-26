@@ -15,10 +15,10 @@ module UI.Core exposing
     )
 
 import Data.Colors as Colors exposing (uiCompat)
+import Data.Icons exposing (IconKind, chooseIcon)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Font as Font
 import Element.Input as Input
 
 
@@ -35,14 +35,13 @@ overlayId =
 type alias UiDimensions =
     { controlButton : Int
     , panel : Int
-    , panelVerticalMargin : Int
     , renderSafeAreaX : Int
     , renderSafeAreaY : Int
-    , overlay : Int
     , text : Int
     , zoomControlWidth : Int
     , zoomTrackHeight : Int
     , zoomTrackWidth : Int
+    , cellHighlightWidth : Int
     }
 
 
@@ -64,34 +63,34 @@ scrollbarAwareOffsetF =
 uiDimensions : UiDimensions
 uiDimensions =
     { controlButton = baseSpacing * 3
-    , panel = 256
-    , panelVerticalMargin = baseSpacing * 2
+    , panel = 320
     , renderSafeAreaX = baseSpacing * 4 + scrollbarAwareOffset
     , renderSafeAreaY = baseSpacing * 4 + scrollbarAwareOffset
-    , overlay = 256
     , text = 14
-    , zoomControlWidth = baseSpacing * 2
+    , zoomControlWidth = baseSpacing + (whitespace.tight * 2)
     , zoomTrackHeight = baseSpacing * 8
     , zoomTrackWidth = 14
+    , cellHighlightWidth = 3
     }
 
 
 colors =
     { mainBackground = uiCompat Colors.lightGreen
-    , menuBackground = uiCompat (Colors.withAlpha 0.6 Colors.darkGreen)
+    , menuBackground = uiCompat (Colors.withAlpha 0.35 Colors.gray7)
+    , menuBackgroundInverse = uiCompat (Colors.withAlpha 0.35 Colors.gray1)
     , inputBackground = uiCompat Colors.gray6
     , listItemBackground = uiCompat Colors.gray6
     , text = uiCompat Colors.gray2
     , textInverse = uiCompat Colors.gray7
     , link = uiCompat Colors.darkBlue
-    , selected = uiCompat Colors.darkBlue
+    , selected = uiCompat Colors.gray7
     , danger = uiCompat (Colors.withAlpha 0.65 Colors.yellow)
     , notAllowed = uiCompat (Colors.withAlpha 0.65 Colors.red)
     , target = uiCompat (Colors.withAlpha 0.65 Colors.gray7)
     , transparent = Element.rgba255 0 0 0 0
     , renderBorder = uiCompat Colors.darkGreen
-    , lightBorder = uiCompat Colors.gray4
-    , heavyBorder = uiCompat Colors.gray1
+    , border = uiCompat Colors.gray1
+    , zoomTrackBackground = uiCompat Colors.darkBlue
     }
 
 
@@ -103,15 +102,11 @@ whitespace =
 
 
 borderSize =
-    { heavy = 10
-    , light = 3
-    }
+    2
 
 
 borderRadius =
-    { heavy = 5
-    , light = 3
-    }
+    10
 
 
 type alias ControlButtonProperties msg =
@@ -149,10 +144,7 @@ buildControlButton size { label, onPress, selected, disabled } =
                     uiDimensions.controlButton
 
         buttonSize =
-            Element.px (baseSize - (2 * borderSize.light))
-
-        fontSize =
-            baseSize // 2
+            Element.px (baseSize - (2 * borderSize))
 
         alpha =
             if disabled then
@@ -163,20 +155,25 @@ buildControlButton size { label, onPress, selected, disabled } =
     in
     Input.button
         [ Background.color colors.inputBackground
-        , Font.size fontSize
-        , Font.center
         , Element.width buttonSize
         , Element.height buttonSize
         , Element.alpha alpha
-        , Border.width borderSize.light
-        , Border.rounded borderRadius.light
+        , Element.clip
+        , Border.width borderSize
+        , Border.rounded
+            (if size == Small then
+                5
+
+             else
+                borderRadius
+            )
         , Border.solid
         , Border.color
             (if selected then
                 colors.selected
 
              else
-                colors.lightBorder
+                colors.border
             )
         ]
         { onPress =
@@ -189,6 +186,7 @@ buildControlButton size { label, onPress, selected, disabled } =
         }
 
 
-icon : String -> Element msg
-icon filename =
-    Element.image [ Element.width Element.fill ] { description = "", src = "assets/" ++ filename }
+icon : IconKind -> Element msg
+icon kind =
+    chooseIcon kind
+        |> Element.html

@@ -1,5 +1,6 @@
 module UI.UI exposing (layout, update)
 
+import Data.Icons as Icons
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -13,6 +14,7 @@ import UI.Core
         , colors
         , containerId
         , controlButton
+        , icon
         , scrollbarAwareOffsetF
         , whitespace
         )
@@ -34,13 +36,22 @@ update msg model =
 
 layout : Liikennematto -> (Liikennematto -> Element Message) -> Html Message
 layout model renderFn =
-    Element.layout
+    Element.layoutWith
+        { options =
+            [ Element.focusStyle
+                { borderColor = Nothing
+                , backgroundColor = Nothing
+                , shadow =
+                    Nothing
+                }
+            ]
+        }
         [ Background.color colors.mainBackground
         , Element.width Element.fill
         , Element.height Element.fill
         , Element.scrollbars
-        , Element.inFront (controls model)
-        , Element.inFront (Editor.zoomControl model.editor)
+        , Element.inFront (rightControls model)
+        , Element.inFront (leftControls model)
         , Element.inFront (debugPanel model)
         , Element.htmlAttribute (Html.Attributes.id containerId)
         , Element.htmlAttribute (Html.Attributes.style "touch-action" "pan-x pan-y")
@@ -48,29 +59,50 @@ layout model renderFn =
         (renderFn model)
 
 
-controls : Liikennematto -> Element Message
-controls model =
+leftControls : Liikennematto -> Element Message
+leftControls model =
+    Element.row
+        [ Element.spacing whitespace.tight
+        , Element.alignBottom
+        , Element.alignLeft
+        , Element.moveUp scrollbarAwareOffsetF
+        , Element.moveRight scrollbarAwareOffsetF
+        ]
+        [ Editor.zoomControl model.editor
+        , Element.el
+            [ Element.padding whitespace.tight
+            , Element.spacing whitespace.tight
+            , Element.alignBottom
+            , Background.color colors.menuBackground
+            , Border.rounded borderRadius
+            ]
+            (simulationControl model.simulation)
+        ]
+
+
+rightControls : Liikennematto -> Element Message
+rightControls model =
     Element.row
         [ Element.padding whitespace.tight
         , Element.spacing whitespace.tight
         , Element.alignBottom
-        , Element.centerX
+        , Element.alignRight
         , Element.moveUp scrollbarAwareOffsetF
+        , Element.moveLeft scrollbarAwareOffsetF
         , Background.color colors.menuBackground
-        , Border.rounded borderRadius.light
+        , Border.rounded borderRadius
         ]
         [ Element.row
             [ Element.spacing whitespace.tight
             ]
-            [ simulationControl model.simulation
-            , UI.Core.controlButton
-                { label = Element.text "🧨"
+            [ UI.Core.controlButton
+                { label = icon Icons.NewGame
                 , onPress = ResetWorld
                 , selected = False
                 , disabled = False
                 }
             , UI.Core.controlButton
-                { label = Element.text "🐛"
+                { label = icon Icons.ToggleDebug
                 , onPress = ToggleDebugMode
                 , selected = model.showDebugPanel
                 , disabled = False
@@ -82,16 +114,16 @@ controls model =
 simulationControl : SimulationState -> Element Message
 simulationControl simulation =
     let
-        ( label, selected, msg ) =
+        ( iconKind, selected, msg ) =
             case simulation of
                 Running ->
-                    ( "⏸️", False, SetSimulation Paused )
+                    ( Icons.Pause, False, SetSimulation Paused )
 
                 Paused ->
-                    ( "▶️", True, SetSimulation Running )
+                    ( Icons.Resume, True, SetSimulation Running )
     in
     controlButton
-        { label = Element.text label
+        { label = icon iconKind
         , onPress = msg
         , selected = selected
         , disabled = False

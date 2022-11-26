@@ -38,7 +38,6 @@ import UI.Core
         , colors
         , containerId
         , overlayId
-        , scrollbarAwareOffsetF
         , uiDimensions
         , whitespace
         )
@@ -596,8 +595,8 @@ cellHighlight cache world activeCell =
         , Element.height cellSize
         , Element.moveRight (toFloat (cellX - 1) * tileSizePixels)
         , Element.moveDown (toFloat (cellY - 1) * tileSizePixels)
-        , Border.width borderSize.light
-        , Border.rounded borderRadius.light
+        , Border.width uiDimensions.cellHighlightWidth
+        , Border.rounded borderRadius
         , Border.solid
         , Border.color
             (highlightColor world activeCell
@@ -636,10 +635,10 @@ zoomControl editor =
             uiDimensions.zoomTrackHeight
 
         paddingX =
-            whitespace.regular
+            whitespace.tight
 
         paddingY =
-            whitespace.regular
+            whitespace.tight
 
         sliderWidth =
             baseWidth - (2 * paddingX)
@@ -648,7 +647,7 @@ zoomControl editor =
             baseHeight - (2 * paddingY)
 
         thumbWidth =
-            uiDimensions.zoomTrackWidth + paddingX
+            uiDimensions.zoomTrackWidth + (2 * paddingX)
 
         thumbHeight =
             uiDimensions.zoomTrackWidth
@@ -658,11 +657,9 @@ zoomControl editor =
         , Element.width (Element.px baseWidth)
         , Element.height (Element.px baseHeight)
         , Element.alignLeft
-        , Element.moveRight scrollbarAwareOffsetF
-        , Element.moveUp scrollbarAwareOffsetF
         , Element.alignBottom
         , Background.color colors.menuBackground
-        , Border.rounded borderRadius.light
+        , Border.rounded borderRadius
         ]
         (Input.slider
             [ Element.width (Element.px sliderWidth)
@@ -679,7 +676,10 @@ zoomControl editor =
                 Input.thumb
                     [ Element.width (Element.px thumbWidth)
                     , Element.height (Element.px thumbHeight)
-                    , Border.rounded borderSize.light
+                    , Border.rounded borderRadius
+                    , Border.solid
+                    , Border.width borderSize
+                    , Border.color colors.border
                     , Background.color colors.inputBackground
                     ]
             }
@@ -701,11 +701,12 @@ track =
         [ Element.width (Element.px uiDimensions.zoomTrackWidth)
         , Element.height Element.fill
         , Element.centerX
-        , Background.color colors.mainBackground
+        , Element.clip
+        , Background.color colors.zoomTrackBackground
         , Border.solid
-        , Border.width borderSize.light
-        , Border.color colors.heavyBorder
-        , Border.rounded borderRadius.light
+        , Border.width borderSize
+        , Border.color colors.border
+        , Border.rounded borderRadius
         , Element.inFront
             (Element.column
                 [ Element.height Element.fill
