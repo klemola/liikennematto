@@ -10,6 +10,10 @@ import Simulation.Simulation as Simulation
 import UI.Editor as Editor
 
 
+baseModel =
+    Liikennematto.new
+
+
 suite : Benchmark
 suite =
     describe "Game loop"
@@ -23,7 +27,7 @@ suite =
                         Message.UpdateTilemap (Duration.milliseconds 16)
 
                     model =
-                        Liikennematto.new setup.world
+                        { baseModel | world = setup.world }
                 in
                 \_ ->
                     Editor.update msg model
@@ -35,10 +39,10 @@ suite =
                         RuleSetups.largeWorldSetup 1
 
                     msg =
-                        Message.AnimationFrameReceived (Duration.milliseconds 16)
+                        Message.UpdateTraffic (Duration.milliseconds 16)
 
                     model =
-                        Liikennematto.new setup.world
+                        { baseModel | world = setup.world }
                 in
                 \_ ->
                     Simulation.update msg model
@@ -48,10 +52,10 @@ suite =
                         RuleSetups.largeWorldSetup 50
 
                     msg =
-                        Message.AnimationFrameReceived (Duration.milliseconds 16)
+                        Message.UpdateTraffic (Duration.milliseconds 16)
 
                     model =
-                        Liikennematto.new setup.world
+                        { baseModel | world = setup.world }
                 in
                 \_ ->
                     Simulation.update msg model
