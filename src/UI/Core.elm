@@ -1,24 +1,46 @@
 module UI.Core exposing
     ( ControlButtonProperties
-    , UiDimensions
-    , borderRadius
+    , ControlButtonSize(..)
+    , borderRadiusButton
+    , borderRadiusPanel
     , borderSize
-    , colors
+    , cellHighlightWidth
+    , colorBorder
+    , colorDanger
+    , colorListItemBackground
+    , colorMainBackground
+    , colorMenuBackground
+    , colorMenuBackgroundInverse
+    , colorNotAllowed
+    , colorRenderEdge
+    , colorTarget
+    , colorText
+    , colorTextInverse
+    , colorTransparent
+    , colorZoomStepGuide
+    , colorZoomThumbBackground
+    , colorZoomTrackBackground
     , containerId
     , controlButton
-    , icon
     , overlayId
+    , panelSize
+    , renderSafeAreaXSize
+    , renderSafeAreaYSize
     , scrollbarAwareOffsetF
     , smallControlButton
-    , uiDimensions
-    , whitespace
+    , textSize
+    , whitespaceRegular
+    , whitespaceTight
+    , zoomControlWidth
+    , zoomTrackHeight
+    , zoomTrackWidth
     )
 
 import Data.Colors as Colors exposing (uiCompat)
+import Data.Icons exposing (IconKind, chooseIcon)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Font as Font
 import Element.Input as Input
 
 
@@ -32,23 +54,40 @@ overlayId =
     "lm-overlay"
 
 
-type alias UiDimensions =
-    { controlButton : Int
-    , panel : Int
-    , panelVerticalMargin : Int
-    , renderSafeAreaX : Int
-    , renderSafeAreaY : Int
-    , overlay : Int
-    , text : Int
-    , zoomControlWidth : Int
-    , zoomTrackHeight : Int
-    , zoomTrackWidth : Int
-    }
+
+--
+-- Size and spacing
+--
 
 
 baseSpacing : Int
 baseSpacing =
     20
+
+
+whitespaceRegular : Int
+whitespaceRegular =
+    10
+
+
+whitespaceTight : Int
+whitespaceTight =
+    5
+
+
+borderSize : Int
+borderSize =
+    2
+
+
+borderRadiusButton : Int
+borderRadiusButton =
+    10
+
+
+borderRadiusPanel : Int
+borderRadiusPanel =
+    15
 
 
 scrollbarAwareOffset : Int
@@ -61,61 +100,144 @@ scrollbarAwareOffsetF =
     toFloat scrollbarAwareOffset
 
 
-uiDimensions : UiDimensions
-uiDimensions =
-    { controlButton = baseSpacing * 3
-    , panel = 256
-    , panelVerticalMargin = baseSpacing * 2
-    , renderSafeAreaX = baseSpacing * 4 + scrollbarAwareOffset
-    , renderSafeAreaY = baseSpacing * 4 + scrollbarAwareOffset
-    , overlay = 256
-    , text = 14
-    , zoomControlWidth = baseSpacing * 2
-    , zoomTrackHeight = baseSpacing * 8
-    , zoomTrackWidth = 14
-    }
+controlButtonSize : Int
+controlButtonSize =
+    baseSpacing * 3
 
 
-colors =
-    { mainBackground = uiCompat Colors.lightGreen
-    , menuBackground = uiCompat (Colors.withAlpha 0.6 Colors.darkGreen)
-    , inputBackground = uiCompat Colors.gray6
-    , listItemBackground = uiCompat Colors.gray6
-    , text = uiCompat Colors.gray2
-    , textInverse = uiCompat Colors.gray7
-    , link = uiCompat Colors.darkBlue
-    , selected = uiCompat Colors.darkBlue
-    , danger = uiCompat (Colors.withAlpha 0.65 Colors.yellow)
-    , notAllowed = uiCompat (Colors.withAlpha 0.65 Colors.red)
-    , target = uiCompat (Colors.withAlpha 0.65 Colors.gray7)
-    , transparent = Element.rgba255 0 0 0 0
-    , renderBorder = uiCompat Colors.darkGreen
-    , lightBorder = uiCompat Colors.gray4
-    , heavyBorder = uiCompat Colors.gray1
-    }
+panelSize : Int
+panelSize =
+    320
 
 
-whitespace =
-    { regular = 10
-    , spacious = 20
-    , tight = 5
-    }
+renderSafeAreaXSize : Int
+renderSafeAreaXSize =
+    baseSpacing * 4 + scrollbarAwareOffset
 
 
-borderSize =
-    { heavy = 10
-    , light = 3
-    }
+renderSafeAreaYSize : Int
+renderSafeAreaYSize =
+    baseSpacing * 4 + scrollbarAwareOffset
 
 
-borderRadius =
-    { heavy = 5
-    , light = 3
-    }
+textSize : Int
+textSize =
+    14
+
+
+zoomControlWidth : Int
+zoomControlWidth =
+    baseSpacing + (whitespaceTight * 2)
+
+
+zoomTrackHeight : Int
+zoomTrackHeight =
+    baseSpacing * 8
+
+
+zoomTrackWidth : Int
+zoomTrackWidth =
+    14
+
+
+cellHighlightWidth : Int
+cellHighlightWidth =
+    3
+
+
+
+--
+-- UI colors
+--
+
+
+colorMainBackground : Element.Color
+colorMainBackground =
+    uiCompat Colors.lightGreen
+
+
+colorMenuBackground : Element.Color
+colorMenuBackground =
+    uiCompat (Colors.withAlpha 0.35 Colors.gray7)
+
+
+colorMenuBackgroundInverse : Element.Color
+colorMenuBackgroundInverse =
+    uiCompat (Colors.withAlpha 0.35 Colors.gray1)
+
+
+colorListItemBackground : Element.Color
+colorListItemBackground =
+    uiCompat Colors.gray6
+
+
+colorText : Element.Color
+colorText =
+    uiCompat Colors.gray2
+
+
+colorTextInverse : Element.Color
+colorTextInverse =
+    uiCompat Colors.gray7
+
+
+colorSelected : Element.Color
+colorSelected =
+    uiCompat Colors.gray7
+
+
+colorDanger : Element.Color
+colorDanger =
+    uiCompat (Colors.withAlpha 0.65 Colors.yellow)
+
+
+colorNotAllowed : Element.Color
+colorNotAllowed =
+    uiCompat (Colors.withAlpha 0.65 Colors.red)
+
+
+colorTarget : Element.Color
+colorTarget =
+    uiCompat (Colors.withAlpha 0.65 Colors.gray7)
+
+
+colorTransparent =
+    Element.rgba255 0 0 0 0
+
+
+colorRenderEdge : Element.Color
+colorRenderEdge =
+    uiCompat Colors.darkGreen
+
+
+colorBorder : Element.Color
+colorBorder =
+    uiCompat Colors.gray1
+
+
+colorZoomTrackBackground : Element.Color
+colorZoomTrackBackground =
+    uiCompat Colors.darkBlue
+
+
+colorZoomThumbBackground : Element.Color
+colorZoomThumbBackground =
+    uiCompat Colors.gray6
+
+
+colorZoomStepGuide : Element.Color
+colorZoomStepGuide =
+    uiCompat Colors.gray6
+
+
+
+--
+-- Control buttons
+--
 
 
 type alias ControlButtonProperties msg =
-    { label : Element msg
+    { iconKind : IconKind
     , onPress : msg
     , selected : Bool
     , disabled : Bool
@@ -138,21 +260,18 @@ smallControlButton =
 
 
 buildControlButton : ControlButtonSize -> ControlButtonProperties msg -> Element msg
-buildControlButton size { label, onPress, selected, disabled } =
+buildControlButton size { iconKind, onPress, selected, disabled } =
     let
         baseSize =
             case size of
                 Small ->
-                    uiDimensions.controlButton // 2
+                    controlButtonSize // 2
 
                 Large ->
-                    uiDimensions.controlButton
+                    controlButtonSize
 
         buttonSize =
-            Element.px (baseSize - (2 * borderSize.light))
-
-        fontSize =
-            baseSize // 2
+            Element.px (baseSize - (2 * borderSize))
 
         alpha =
             if disabled then
@@ -160,23 +279,35 @@ buildControlButton size { label, onPress, selected, disabled } =
 
             else
                 1
+
+        ( iconHtml, backgroundColor, activeBackgroundColor ) =
+            chooseIcon iconKind
     in
     Input.button
-        [ Background.color colors.inputBackground
-        , Font.size fontSize
-        , Font.center
+        [ Background.color (uiCompat backgroundColor)
         , Element.width buttonSize
         , Element.height buttonSize
         , Element.alpha alpha
-        , Border.width borderSize.light
-        , Border.rounded borderRadius.light
+        , Element.clip
+        , Element.mouseOver
+            [ Background.color (uiCompat activeBackgroundColor) ]
+        , Element.mouseDown
+            [ Background.color (uiCompat activeBackgroundColor) ]
+        , Border.width borderSize
+        , Border.rounded
+            (if size == Small then
+                borderRadiusButton // 2
+
+             else
+                borderRadiusButton
+            )
         , Border.solid
         , Border.color
             (if selected then
-                colors.selected
+                colorSelected
 
              else
-                colors.lightBorder
+                colorBorder
             )
         ]
         { onPress =
@@ -185,10 +316,5 @@ buildControlButton size { label, onPress, selected, disabled } =
 
             else
                 Just onPress
-        , label = label
+        , label = Element.html iconHtml
         }
-
-
-icon : String -> Element msg
-icon filename =
-    Element.image [ Element.width Element.fill ] { description = "", src = "assets/" ++ filename }

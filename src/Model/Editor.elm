@@ -12,6 +12,7 @@ module Model.Editor exposing
     , hasPendingTilemapChange
     , maxQueuedCars
     , minTilemapChangeFrequency
+    , mouseDetected
     , new
     , resetLongPressTimer
     , selectCell
@@ -187,6 +188,11 @@ advanceLongPressTimer delta editor =
 setLastEventDevice : Pointer.DeviceType -> Editor -> Editor
 setLastEventDevice deviceType editor =
     { editor | lastEventDevice = deviceType }
+
+
+mouseDetected : Editor -> Bool
+mouseDetected editor =
+    editor.lastEventDevice == Pointer.MouseType
 
 
 selectCell : Pointer.Event -> Cell -> Bool -> Editor -> Editor
