@@ -24,7 +24,7 @@ import Model.Geometry
         ( OrthogonalDirection(..)
         )
 import Model.Lot exposing (Lot)
-import Model.RenderCache exposing (DynamicTilesPresentation, RenderCache, TilemapPresentation)
+import Model.RenderCache exposing (DynamicTilesPresentation, RenderCache)
 import Model.RoadNetwork
     exposing
         ( Connection

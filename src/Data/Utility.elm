@@ -5,7 +5,6 @@ module Data.Utility exposing
     , worldFromTilemap
     )
 
-import Data.Defaults as Defaults
 import Model.Cell as Cell
 import Model.Entity exposing (Id)
 import Model.Geometry exposing (OrthogonalDirection)
