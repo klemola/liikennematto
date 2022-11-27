@@ -1,4 +1,4 @@
-module UI.UI exposing (layout, update)
+module UI exposing (layout, update)
 
 import Data.Icons as Icons
 import Element exposing (Element)
@@ -11,11 +11,16 @@ import Model.Editor exposing (mouseDetected)
 import Model.Liikennematto exposing (Liikennematto, SimulationState(..))
 import UI.Core
     exposing
-        ( borderRadiusPanel
+        ( borderRadiusButton
+        , borderRadiusPanel
+        , borderSize
         , colorMainBackground
         , colorMenuBackground
+        , colorRenderEdge
         , containerId
         , controlButton
+        , renderSafeAreaXSize
+        , renderSafeAreaYSize
         , scrollbarAwareOffsetF
         , whitespaceTight
         )
@@ -49,8 +54,8 @@ touchLayoutOptions =
     Element.noHover :: baseLayoutOptions
 
 
-layout : Liikennematto -> (Liikennematto -> Element Message) -> Html Message
-layout model renderFn =
+layout : Liikennematto -> Element Message -> Element Message -> Html Message
+layout model render renderDebugLayers =
     Element.layoutWith
         { options =
             if mouseDetected model.editor then
@@ -69,7 +74,65 @@ layout model renderFn =
         , Element.htmlAttribute (Html.Attributes.id containerId)
         , Element.htmlAttribute (Html.Attributes.style "touch-action" "pan-x pan-y")
         ]
-        (renderFn model)
+        (renderWrapper model render renderDebugLayers)
+
+
+renderWrapper : Liikennematto -> Element Message -> Element Message -> Element Message
+renderWrapper model render debugLayers =
+    let
+        renderWidth =
+            floor model.renderCache.tilemapWidthPixels + (borderSize * 2)
+
+        renderHeight =
+            floor model.renderCache.tilemapHeightPixels + (borderSize * 2)
+
+        wrapperWidth =
+            renderWidth + (borderSize * 2) + renderSafeAreaXSize
+
+        wrapperHeight =
+            renderHeight + (borderSize * 2) + renderSafeAreaYSize
+
+        horizontalAlignment =
+            if wrapperWidth < model.screen.width then
+                Element.centerX
+
+            else
+                Element.alignLeft
+
+        ( verticalAlignment, renderTopOffset ) =
+            if wrapperHeight < model.screen.height then
+                ( Element.centerY, 0 )
+
+            else
+                ( Element.alignTop, toFloat borderRadiusButton )
+    in
+    Element.el
+        [ Element.width (Element.px wrapperWidth)
+        , Element.height (Element.px wrapperHeight)
+        , horizontalAlignment
+        , verticalAlignment
+        ]
+        (Element.el
+            [ Element.width (Element.px renderWidth)
+            , Element.height (Element.px renderHeight)
+            , Element.moveDown renderTopOffset
+            , Element.centerX
+            , Element.clip
+            , verticalAlignment
+            , Border.solid
+            , Border.rounded borderRadiusButton
+            , Border.width borderSize
+            , Border.color colorRenderEdge
+            , Element.inFront debugLayers
+            , Element.inFront
+                (Editor.overlay
+                    model.renderCache
+                    model.world
+                    model.editor
+                )
+            ]
+            render
+        )
 
 
 leftControls : Liikennematto -> Element Message

@@ -4,7 +4,6 @@ import Browser
 import Browser.Dom exposing (getViewport)
 import Browser.Events as Events
 import Element exposing (Element)
-import Element.Border as Border
 import Message exposing (Message(..))
 import Model.Liikennematto as Liikennematto exposing (Liikennematto, SimulationState(..))
 import Model.Screen as Screen
@@ -15,16 +14,8 @@ import Simulation.Simulation as Simulation
 import Subscriptions exposing (subscriptions)
 import Task
 import Time
-import UI.Core
-    exposing
-        ( borderRadiusButton
-        , borderSize
-        , colorRenderEdge
-        , renderSafeAreaXSize
-        , renderSafeAreaYSize
-        )
+import UI
 import UI.Editor
-import UI.UI as UI
 
 
 main : Program () Liikennematto Message
@@ -110,77 +101,32 @@ withUpdate updateFn msg ( model, cmds ) =
 view : Liikennematto -> Browser.Document Message
 view model =
     { title = "Liikennematto"
-    , body = [ UI.layout model render ]
+    , body =
+        [ UI.layout
+            model
+            (render model)
+            (renderDebug model)
+        ]
     }
 
 
-render : Liikennematto -> Element Message
+render : Liikennematto -> Element msg
 render model =
+    Render.view model.world model.renderCache model.dynamicTiles
+        |> Element.html
+
+
+renderDebug : Liikennematto -> Element msg
+renderDebug model =
     let
         debugLayers =
             { showRoadNetwork = model.showRoadNetwork
             , showCarDebugVisuals = model.showCarDebugVisuals
             }
-
-        renderWidth =
-            floor model.renderCache.tilemapWidthPixels + (borderSize * 2)
-
-        renderHeight =
-            floor model.renderCache.tilemapHeightPixels + (borderSize * 2)
-
-        wrapperWidth =
-            renderWidth + (borderSize * 2) + renderSafeAreaXSize
-
-        wrapperHeight =
-            renderHeight + (borderSize * 2) + renderSafeAreaYSize
-
-        horizontalAlignment =
-            if wrapperWidth < model.screen.width then
-                Element.centerX
-
-            else
-                Element.alignLeft
-
-        ( verticalAlignment, renderTopOffset ) =
-            if wrapperHeight < model.screen.height then
-                ( Element.centerY, 0 )
-
-            else
-                ( Element.alignTop, toFloat borderRadiusButton )
-
-        renderDebug =
-            if debugLayers.showRoadNetwork || debugLayers.showCarDebugVisuals then
-                Render.Debug.view model.world model.renderCache debugLayers
-                    |> Element.html
-
-            else
-                Element.none
     in
-    Render.view model.world model.renderCache model.dynamicTiles
-        |> Element.html
-        -- render + overlay
-        |> Element.el
-            [ Element.width (Element.px renderWidth)
-            , Element.height (Element.px renderHeight)
-            , Element.moveDown renderTopOffset
-            , Element.centerX
-            , Element.clip
-            , verticalAlignment
-            , Border.solid
-            , Border.rounded borderRadiusButton
-            , Border.width borderSize
-            , Border.color colorRenderEdge
-            , Element.inFront renderDebug
-            , Element.inFront
-                (UI.Editor.overlay
-                    model.renderCache
-                    model.world
-                    model.editor
-                )
-            ]
-        |> Element.el
-            [ Element.width (Element.px wrapperWidth)
-            , Element.height (Element.px wrapperHeight)
-            , horizontalAlignment
-            , verticalAlignment
-            ]
+    if debugLayers.showRoadNetwork || debugLayers.showCarDebugVisuals then
+        Render.Debug.view model.world model.renderCache debugLayers
+            |> Element.html
+
+    else
+        Element.none
