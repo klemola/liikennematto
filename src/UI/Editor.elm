@@ -35,11 +35,21 @@ import UI.Core
     exposing
         ( borderRadiusButton
         , borderSize
-        , colors
+        , cellHighlightWidth
+        , colorBorder
+        , colorMenuBackground
+        , colorTransparent
+        , colorZoomStepGuide
+        , colorZoomThumbBackground
+        , colorZoomTrackBackground
         , containerId
         , overlayId
-        , uiDimensions
-        , whitespace
+        , renderSafeAreaYSize
+        , whitespaceRegular
+        , whitespaceTight
+        , zoomControlWidth
+        , zoomTrackHeight
+        , zoomTrackWidth
         )
 import UI.TimerIndicator
 
@@ -88,7 +98,7 @@ init model =
                     Browser.Dom.setViewportOf
                         containerId
                         ((domViewport.scene.width - domViewport.viewport.width) / 2)
-                        ((domViewport.scene.height - domViewport.viewport.height - toFloat uiDimensions.renderSafeAreaY) / 2)
+                        ((domViewport.scene.height - domViewport.viewport.height - toFloat renderSafeAreaYSize) / 2)
                 )
             |> Task.attempt (\_ -> NoOp)
         , tileCmd
@@ -595,12 +605,12 @@ cellHighlight cache world activeCell =
         , Element.height cellSize
         , Element.moveRight (toFloat (cellX - 1) * tileSizePixels)
         , Element.moveDown (toFloat (cellY - 1) * tileSizePixels)
-        , Border.width uiDimensions.cellHighlightWidth
+        , Border.width cellHighlightWidth
         , Border.rounded borderRadiusButton
         , Border.solid
         , Border.color
             (highlightColor world activeCell
-                |> Maybe.withDefault colors.transparent
+                |> Maybe.withDefault colorTransparent
             )
         ]
         Element.none
@@ -616,29 +626,29 @@ highlightColor world cell =
             World.hasLot cell world
     in
     if canBuildHere && mightDestroyLot then
-        Just colors.danger
+        Just UI.Core.colorDanger
 
     else if canBuildHere then
-        Just colors.target
+        Just UI.Core.colorTarget
 
     else
-        Just colors.notAllowed
+        Just UI.Core.colorNotAllowed
 
 
 zoomControl : Editor -> Element Message
 zoomControl editor =
     let
         baseWidth =
-            uiDimensions.zoomControlWidth
+            zoomControlWidth
 
         baseHeight =
-            uiDimensions.zoomTrackHeight
+            zoomTrackHeight
 
         paddingX =
-            whitespace.tight
+            whitespaceTight
 
         paddingY =
-            whitespace.tight
+            whitespaceTight
 
         sliderWidth =
             baseWidth - (2 * paddingX)
@@ -647,10 +657,10 @@ zoomControl editor =
             baseHeight - (2 * paddingY)
 
         thumbWidth =
-            uiDimensions.zoomTrackWidth + (2 * paddingX)
+            zoomTrackWidth + (2 * paddingX)
 
         thumbHeight =
-            uiDimensions.zoomTrackWidth
+            zoomTrackWidth
     in
     Element.el
         [ Element.paddingXY paddingX paddingY
@@ -658,7 +668,7 @@ zoomControl editor =
         , Element.height (Element.px baseHeight)
         , Element.alignLeft
         , Element.alignBottom
-        , Background.color colors.menuBackground
+        , Background.color colorMenuBackground
         , Border.rounded borderRadiusButton
         ]
         (Input.slider
@@ -676,11 +686,11 @@ zoomControl editor =
                 Input.thumb
                     [ Element.width (Element.px thumbWidth)
                     , Element.height (Element.px thumbHeight)
-                    , Background.color colors.zoomThumbBackground
+                    , Background.color colorZoomThumbBackground
                     , Border.rounded borderRadiusButton
                     , Border.solid
                     , Border.width borderSize
-                    , Border.color colors.border
+                    , Border.color colorBorder
                     ]
             }
         )
@@ -692,20 +702,20 @@ track =
         stepGuide =
             Element.el
                 [ Element.width Element.fill
-                , Element.height (Element.px whitespace.regular)
-                , Background.color colors.zoomStepGuide
+                , Element.height (Element.px whitespaceRegular)
+                , Background.color colorZoomStepGuide
                 ]
                 Element.none
     in
     Element.el
-        [ Element.width (Element.px uiDimensions.zoomTrackWidth)
+        [ Element.width (Element.px zoomTrackWidth)
         , Element.height Element.fill
         , Element.centerX
         , Element.clip
-        , Background.color colors.zoomTrackBackground
+        , Background.color colorZoomTrackBackground
         , Border.solid
         , Border.width borderSize
-        , Border.color colors.border
+        , Border.color colorBorder
         , Border.rounded borderRadiusButton
         , Element.inFront
             (Element.column

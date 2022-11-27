@@ -15,7 +15,14 @@ import Simulation.Simulation as Simulation
 import Subscriptions exposing (subscriptions)
 import Task
 import Time
-import UI.Core exposing (borderRadiusButton, borderSize, colors, uiDimensions)
+import UI.Core
+    exposing
+        ( borderRadiusButton
+        , borderSize
+        , colorRenderEdge
+        , renderSafeAreaXSize
+        , renderSafeAreaYSize
+        )
 import UI.Editor
 import UI.UI as UI
 
@@ -122,10 +129,10 @@ render model =
             floor model.renderCache.tilemapHeightPixels + (borderSize * 2)
 
         wrapperWidth =
-            renderWidth + (borderSize * 2) + uiDimensions.renderSafeAreaX
+            renderWidth + (borderSize * 2) + renderSafeAreaXSize
 
         wrapperHeight =
-            renderHeight + (borderSize * 2) + uiDimensions.renderSafeAreaY
+            renderHeight + (borderSize * 2) + renderSafeAreaYSize
 
         horizontalAlignment =
             if wrapperWidth < model.screen.width then
@@ -139,7 +146,7 @@ render model =
                 ( Element.centerY, 0 )
 
             else
-                ( Element.alignTop, borderRadiusButton )
+                ( Element.alignTop, toFloat borderRadiusButton )
 
         renderDebug =
             if debugLayers.showRoadNetwork || debugLayers.showCarDebugVisuals then
@@ -162,7 +169,7 @@ render model =
             , Border.solid
             , Border.rounded borderRadiusButton
             , Border.width borderSize
-            , Border.color colors.renderBorder
+            , Border.color colorRenderEdge
             , Element.inFront renderDebug
             , Element.inFront
                 (UI.Editor.overlay

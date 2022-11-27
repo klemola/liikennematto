@@ -22,12 +22,17 @@ import UI.Core
         ( borderRadiusButton
         , borderRadiusPanel
         , borderSize
-        , colors
+        , colorListItemBackground
+        , colorMenuBackgroundInverse
+        , colorText
+        , colorTextInverse
         , controlButton
+        , panelSize
         , scrollbarAwareOffsetF
         , smallControlButton
-        , uiDimensions
-        , whitespace
+        , textSize
+        , whitespaceRegular
+        , whitespaceTight
         )
 
 
@@ -58,21 +63,21 @@ update msg model =
 view : Liikennematto -> Element Message
 view model =
     Element.column
-        [ Element.padding whitespace.regular
-        , Element.spacing whitespace.tight
+        [ Element.padding whitespaceRegular
+        , Element.spacing whitespaceTight
         , Element.alignRight
         , Element.moveLeft scrollbarAwareOffsetF
         , Element.moveDown scrollbarAwareOffsetF
-        , Background.color colors.menuBackgroundInverse
+        , Background.color colorMenuBackgroundInverse
         , Border.rounded borderRadiusPanel
         , Element.inFront (dotStringView model.roadNetworkDotString)
         ]
         [ Element.row
             [ Element.width Element.fill ]
             [ Element.el
-                [ Font.size uiDimensions.text
+                [ Font.size textSize
                 , Font.bold
-                , Font.color colors.textInverse
+                , Font.color colorTextInverse
                 ]
                 (Element.text "Debug")
             , Element.el [ Element.alignRight ]
@@ -86,7 +91,7 @@ view model =
             ]
         , controls model
         , Element.column
-            [ Element.spacing whitespace.tight
+            [ Element.spacing whitespaceTight
             , Element.width Element.fill
             ]
             (Dict.values model.world.cars |> List.map (carStateView model.renderCache))
@@ -96,8 +101,8 @@ view model =
 controls : Liikennematto -> Element Message
 controls model =
     Element.row
-        [ Element.spacing whitespace.tight
-        , Font.size uiDimensions.text
+        [ Element.spacing whitespaceTight
+        , Font.size textSize
         ]
         [ controlButton
             { iconKind = Icons.ToggleCarDebug
@@ -136,15 +141,15 @@ dotStringView dotString =
                 [ Element.width Element.fill
                 , Element.height Element.fill
                 , Element.clipX
-                , Background.color colors.textInverse
-                , Font.color colors.text
+                , Background.color colorTextInverse
+                , Font.color colorText
                 ]
                 [ Element.row
-                    [ Element.padding whitespace.tight
+                    [ Element.padding whitespaceTight
                     , Element.width Element.fill
                     , Border.widthEach { top = 0, right = 0, left = 0, bottom = 2 }
                     , Border.solid
-                    , Border.color colors.text
+                    , Border.color colorText
                     ]
                     [ Element.text "DOT string"
                     , Element.el [ Element.alignRight ]
@@ -157,9 +162,9 @@ dotStringView dotString =
                         )
                     ]
                 , Element.el
-                    [ Element.padding whitespace.tight
+                    [ Element.padding whitespaceTight
                     , Element.width Element.fill
-                    , Element.height (Element.px (uiDimensions.panel * 2))
+                    , Element.height (Element.px (panelSize * 2))
                     , Element.scrollbars
                     , Font.size 14
                     , Font.family [ Font.monospace ]
@@ -175,19 +180,19 @@ carStateView : RenderCache -> Car -> Element msg
 carStateView cache car =
     Element.row
         [ Element.width Element.fill
-        , Element.padding whitespace.tight
-        , Element.spacing whitespace.regular
+        , Element.padding whitespaceTight
+        , Element.spacing UI.Core.whitespaceRegular
         , Element.clipX
-        , Font.color colors.text
+        , Font.color colorText
         , Font.size 13
-        , Background.color colors.listItemBackground
+        , Background.color colorListItemBackground
         , Border.solid
         , Border.rounded borderRadiusButton
         , Border.width borderSize
-        , Border.color colors.listItemBackground
+        , Border.color colorListItemBackground
         ]
         [ Element.text ("# " ++ String.fromInt car.id)
-        , Element.column [ Element.spacing whitespace.tight ]
+        , Element.column [ Element.spacing whitespaceTight ]
             [ Element.text (pointToString cache car.position)
             , Element.text (speedToString car.velocity)
             , Element.text (Car.statusDescription car)

@@ -1,17 +1,39 @@
 module UI.Core exposing
     ( ControlButtonProperties
-    , UiDimensions
+    , ControlButtonSize(..)
     , borderRadiusButton
     , borderRadiusPanel
     , borderSize
-    , colors
+    , cellHighlightWidth
+    , colorBorder
+    , colorDanger
+    , colorListItemBackground
+    , colorMainBackground
+    , colorMenuBackground
+    , colorMenuBackgroundInverse
+    , colorNotAllowed
+    , colorRenderEdge
+    , colorTarget
+    , colorText
+    , colorTextInverse
+    , colorTransparent
+    , colorZoomStepGuide
+    , colorZoomThumbBackground
+    , colorZoomTrackBackground
     , containerId
     , controlButton
     , overlayId
+    , panelSize
+    , renderSafeAreaXSize
+    , renderSafeAreaYSize
     , scrollbarAwareOffsetF
     , smallControlButton
-    , uiDimensions
-    , whitespace
+    , textSize
+    , whitespaceRegular
+    , whitespaceTight
+    , zoomControlWidth
+    , zoomTrackHeight
+    , zoomTrackWidth
     )
 
 import Data.Colors as Colors exposing (uiCompat)
@@ -32,22 +54,40 @@ overlayId =
     "lm-overlay"
 
 
-type alias UiDimensions =
-    { controlButton : Int
-    , panel : Int
-    , renderSafeAreaX : Int
-    , renderSafeAreaY : Int
-    , text : Int
-    , zoomControlWidth : Int
-    , zoomTrackHeight : Int
-    , zoomTrackWidth : Int
-    , cellHighlightWidth : Int
-    }
+
+--
+-- Size and spacing
+--
 
 
 baseSpacing : Int
 baseSpacing =
     20
+
+
+whitespaceRegular : Int
+whitespaceRegular =
+    10
+
+
+whitespaceTight : Int
+whitespaceTight =
+    5
+
+
+borderSize : Int
+borderSize =
+    2
+
+
+borderRadiusButton : Int
+borderRadiusButton =
+    10
+
+
+borderRadiusPanel : Int
+borderRadiusPanel =
+    15
 
 
 scrollbarAwareOffset : Int
@@ -60,58 +100,140 @@ scrollbarAwareOffsetF =
     toFloat scrollbarAwareOffset
 
 
-uiDimensions : UiDimensions
-uiDimensions =
-    { controlButton = baseSpacing * 3
-    , panel = 320
-    , renderSafeAreaX = baseSpacing * 4 + scrollbarAwareOffset
-    , renderSafeAreaY = baseSpacing * 4 + scrollbarAwareOffset
-    , text = 14
-    , zoomControlWidth = baseSpacing + (whitespace.tight * 2)
-    , zoomTrackHeight = baseSpacing * 8
-    , zoomTrackWidth = 14
-    , cellHighlightWidth = 3
-    }
+controlButtonSize : Int
+controlButtonSize =
+    baseSpacing * 3
 
 
-colors =
-    { mainBackground = uiCompat Colors.lightGreen
-    , menuBackground = uiCompat (Colors.withAlpha 0.35 Colors.gray7)
-    , menuBackgroundInverse = uiCompat (Colors.withAlpha 0.35 Colors.gray1)
-    , listItemBackground = uiCompat Colors.gray6
-    , text = uiCompat Colors.gray2
-    , textInverse = uiCompat Colors.gray7
-    , link = uiCompat Colors.darkBlue
-    , selected = uiCompat Colors.gray7
-    , danger = uiCompat (Colors.withAlpha 0.65 Colors.yellow)
-    , notAllowed = uiCompat (Colors.withAlpha 0.65 Colors.red)
-    , target = uiCompat (Colors.withAlpha 0.65 Colors.gray7)
-    , transparent = Element.rgba255 0 0 0 0
-    , renderBorder = uiCompat Colors.darkGreen
-    , border = uiCompat Colors.gray1
-    , zoomTrackBackground = uiCompat Colors.darkBlue
-    , zoomThumbBackground = uiCompat Colors.gray6
-    , zoomStepGuide = uiCompat Colors.gray6
-    }
+panelSize : Int
+panelSize =
+    320
 
 
-whitespace =
-    { regular = 10
-    , spacious = 20
-    , tight = 5
-    }
+renderSafeAreaXSize : Int
+renderSafeAreaXSize =
+    baseSpacing * 4 + scrollbarAwareOffset
 
 
-borderSize =
-    2
+renderSafeAreaYSize : Int
+renderSafeAreaYSize =
+    baseSpacing * 4 + scrollbarAwareOffset
 
 
-borderRadiusButton =
-    10
+textSize : Int
+textSize =
+    14
 
 
-borderRadiusPanel =
-    15
+zoomControlWidth : Int
+zoomControlWidth =
+    baseSpacing + (whitespaceTight * 2)
+
+
+zoomTrackHeight : Int
+zoomTrackHeight =
+    baseSpacing * 8
+
+
+zoomTrackWidth : Int
+zoomTrackWidth =
+    14
+
+
+cellHighlightWidth : Int
+cellHighlightWidth =
+    3
+
+
+
+--
+-- UI colors
+--
+
+
+colorMainBackground : Element.Color
+colorMainBackground =
+    uiCompat Colors.lightGreen
+
+
+colorMenuBackground : Element.Color
+colorMenuBackground =
+    uiCompat (Colors.withAlpha 0.35 Colors.gray7)
+
+
+colorMenuBackgroundInverse : Element.Color
+colorMenuBackgroundInverse =
+    uiCompat (Colors.withAlpha 0.35 Colors.gray1)
+
+
+colorListItemBackground : Element.Color
+colorListItemBackground =
+    uiCompat Colors.gray6
+
+
+colorText : Element.Color
+colorText =
+    uiCompat Colors.gray2
+
+
+colorTextInverse : Element.Color
+colorTextInverse =
+    uiCompat Colors.gray7
+
+
+colorSelected : Element.Color
+colorSelected =
+    uiCompat Colors.gray7
+
+
+colorDanger : Element.Color
+colorDanger =
+    uiCompat (Colors.withAlpha 0.65 Colors.yellow)
+
+
+colorNotAllowed : Element.Color
+colorNotAllowed =
+    uiCompat (Colors.withAlpha 0.65 Colors.red)
+
+
+colorTarget : Element.Color
+colorTarget =
+    uiCompat (Colors.withAlpha 0.65 Colors.gray7)
+
+
+colorTransparent =
+    Element.rgba255 0 0 0 0
+
+
+colorRenderEdge : Element.Color
+colorRenderEdge =
+    uiCompat Colors.darkGreen
+
+
+colorBorder : Element.Color
+colorBorder =
+    uiCompat Colors.gray1
+
+
+colorZoomTrackBackground : Element.Color
+colorZoomTrackBackground =
+    uiCompat Colors.darkBlue
+
+
+colorZoomThumbBackground : Element.Color
+colorZoomThumbBackground =
+    uiCompat Colors.gray6
+
+
+colorZoomStepGuide : Element.Color
+colorZoomStepGuide =
+    uiCompat Colors.gray6
+
+
+
+--
+-- Control buttons
+--
 
 
 type alias ControlButtonProperties msg =
@@ -143,10 +265,10 @@ buildControlButton size { iconKind, onPress, selected, disabled } =
         baseSize =
             case size of
                 Small ->
-                    uiDimensions.controlButton // 2
+                    controlButtonSize // 2
 
                 Large ->
-                    uiDimensions.controlButton
+                    controlButtonSize
 
         buttonSize =
             Element.px (baseSize - (2 * borderSize))
@@ -182,10 +304,10 @@ buildControlButton size { iconKind, onPress, selected, disabled } =
         , Border.solid
         , Border.color
             (if selected then
-                colors.selected
+                colorSelected
 
              else
-                colors.border
+                colorBorder
             )
         ]
         { onPress =

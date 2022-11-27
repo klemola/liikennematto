@@ -12,11 +12,12 @@ import Model.Liikennematto exposing (Liikennematto, SimulationState(..))
 import UI.Core
     exposing
         ( borderRadiusPanel
-        , colors
+        , colorMainBackground
+        , colorMenuBackground
         , containerId
         , controlButton
         , scrollbarAwareOffsetF
-        , whitespace
+        , whitespaceTight
         )
 import UI.DebugPanel as DebugPanel
 import UI.Editor as Editor
@@ -58,7 +59,7 @@ layout model renderFn =
             else
                 touchLayoutOptions
         }
-        [ Background.color colors.mainBackground
+        [ Background.color colorMainBackground
         , Element.width Element.fill
         , Element.height Element.fill
         , Element.scrollbars
@@ -74,7 +75,7 @@ layout model renderFn =
 leftControls : Liikennematto -> Element Message
 leftControls model =
     Element.row
-        [ Element.spacing whitespace.tight
+        [ Element.spacing whitespaceTight
         , Element.alignBottom
         , Element.alignLeft
         , Element.moveUp scrollbarAwareOffsetF
@@ -82,10 +83,10 @@ leftControls model =
         ]
         [ Editor.zoomControl model.editor
         , Element.el
-            [ Element.padding whitespace.tight
-            , Element.spacing whitespace.tight
+            [ Element.padding whitespaceTight
+            , Element.spacing whitespaceTight
             , Element.alignBottom
-            , Background.color colors.menuBackground
+            , Background.color colorMenuBackground
             , Border.rounded borderRadiusPanel
             ]
             (simulationControl model.simulation)
@@ -95,17 +96,17 @@ leftControls model =
 rightControls : Liikennematto -> Element Message
 rightControls model =
     Element.row
-        [ Element.padding whitespace.tight
-        , Element.spacing whitespace.tight
+        [ Element.padding whitespaceTight
+        , Element.spacing whitespaceTight
         , Element.alignBottom
         , Element.alignRight
         , Element.moveUp scrollbarAwareOffsetF
         , Element.moveLeft scrollbarAwareOffsetF
-        , Background.color colors.menuBackground
+        , Background.color colorMenuBackground
         , Border.rounded borderRadiusPanel
         ]
         [ Element.row
-            [ Element.spacing whitespace.tight
+            [ Element.spacing whitespaceTight
             ]
             [ UI.Core.controlButton
                 { iconKind = Icons.NewGame
