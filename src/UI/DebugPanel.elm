@@ -19,11 +19,11 @@ import Round
 import Speed exposing (Speed)
 import UI.Core
     exposing
-        ( borderRadius
+        ( borderRadiusButton
+        , borderRadiusPanel
         , borderSize
         , colors
         , controlButton
-        , icon
         , scrollbarAwareOffsetF
         , smallControlButton
         , uiDimensions
@@ -64,7 +64,7 @@ view model =
         , Element.moveLeft scrollbarAwareOffsetF
         , Element.moveDown scrollbarAwareOffsetF
         , Background.color colors.menuBackgroundInverse
-        , Border.rounded borderRadius
+        , Border.rounded borderRadiusPanel
         , Element.inFront (dotStringView model.roadNetworkDotString)
         ]
         [ Element.row
@@ -77,7 +77,7 @@ view model =
                 (Element.text "Debug")
             , Element.el [ Element.alignRight ]
                 (smallControlButton
-                    { label = icon Icons.Close
+                    { iconKind = Icons.Close
                     , onPress = ToggleDebugMode
                     , selected = False
                     , disabled = False
@@ -100,25 +100,25 @@ controls model =
         , Font.size uiDimensions.text
         ]
         [ controlButton
-            { label = icon Icons.ToggleCarDebug
+            { iconKind = Icons.ToggleCarDebug
             , onPress = ToggleShowCarDebugVisuals
-            , selected = model.showRoadNetwork
+            , selected = model.showCarDebugVisuals
             , disabled = False
             }
         , controlButton
-            { label = icon Icons.SpawnCar
+            { iconKind = Icons.SpawnCar
             , onPress = SpawnTestCar
             , selected = False
             , disabled = model.editor.carSpawnQueue >= Editor.maxQueuedCars
             }
         , controlButton
-            { label = icon Icons.ToggleGraphDebug
+            { iconKind = Icons.ToggleGraphDebug
             , onPress = ToggleShowRoadNetwork
             , selected = model.showRoadNetwork
             , disabled = False
             }
         , controlButton
-            { label = icon Icons.ToggleDotString
+            { iconKind = Icons.ToggleDotString
             , onPress =
                 RoadNetwork.toDotString model.world.roadNetwork
                     |> ShowDotString
@@ -149,7 +149,7 @@ dotStringView dotString =
                     [ Element.text "DOT string"
                     , Element.el [ Element.alignRight ]
                         (smallControlButton
-                            { label = icon Icons.Close
+                            { iconKind = Icons.Close
                             , onPress = HideDotString
                             , selected = False
                             , disabled = False
@@ -182,7 +182,7 @@ carStateView cache car =
         , Font.size 13
         , Background.color colors.listItemBackground
         , Border.solid
-        , Border.rounded borderRadius
+        , Border.rounded borderRadiusButton
         , Border.width borderSize
         , Border.color colors.listItemBackground
         ]

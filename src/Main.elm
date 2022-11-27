@@ -15,7 +15,7 @@ import Simulation.Simulation as Simulation
 import Subscriptions exposing (subscriptions)
 import Task
 import Time
-import UI.Core exposing (borderRadius, borderSize, colors, uiDimensions)
+import UI.Core exposing (borderRadiusButton, borderSize, colors, uiDimensions)
 import UI.Editor
 import UI.UI as UI
 
@@ -139,7 +139,7 @@ render model =
                 ( Element.centerY, 0 )
 
             else
-                ( Element.alignTop, borderRadius )
+                ( Element.alignTop, borderRadiusButton )
 
         renderDebug =
             if debugLayers.showRoadNetwork || debugLayers.showCarDebugVisuals then
@@ -160,7 +160,7 @@ render model =
             , Element.clip
             , verticalAlignment
             , Border.solid
-            , Border.rounded borderRadius
+            , Border.rounded borderRadiusButton
             , Border.width borderSize
             , Border.color colors.renderBorder
             , Element.inFront renderDebug

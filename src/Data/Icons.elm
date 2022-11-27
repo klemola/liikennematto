@@ -1,5 +1,6 @@
 module Data.Icons exposing (IconKind(..), chooseIcon)
 
+import Data.Colors as Colors
 import Html exposing (Html)
 import Svg exposing (Svg, path, svg)
 import Svg.Attributes as Attributes
@@ -18,38 +19,38 @@ type IconKind
     | SpawnCar
 
 
-chooseIcon : IconKind -> Html msg
+chooseIcon : IconKind -> ( Html msg, Colors.Color, Colors.Color )
 chooseIcon kind =
     case kind of
         NewGame ->
-            iconNewGame
+            ( iconNewGame, Colors.lightGreen, Colors.lightGreenDarker )
 
         Pause ->
-            iconPause
+            ( iconPause, Colors.darkBlue, Colors.darkBlueDarker )
 
         Resume ->
-            iconResume
+            ( iconResume, Colors.darkBlue, Colors.darkBlueDarker )
 
         Back ->
-            iconBack
+            ( iconBack, Colors.yellow, Colors.yellowDarker )
 
         Close ->
-            iconClose
+            ( iconClose, Colors.gray1, Colors.gray2 )
 
         ToggleDebug ->
-            iconToggleDebug
+            ( iconToggleDebug, Colors.red, Colors.redDarker )
 
         ToggleGraphDebug ->
-            iconToggleGraphDebug
+            ( iconToggleGraphDebug, Colors.gray5, Colors.gray6 )
 
         ToggleDotString ->
-            iconToggleDotString
+            ( iconToggleDotString, Colors.gray1, Colors.gray2 )
 
         ToggleCarDebug ->
-            iconToggleCarDebug
+            ( iconToggleCarDebug, Colors.gray5, Colors.gray6 )
 
         SpawnCar ->
-            iconSpawnCar
+            ( iconSpawnCar, Colors.gray5, Colors.gray6 )
 
 
 iconNewGame : Svg msg
@@ -60,13 +61,7 @@ iconNewGame =
         , Attributes.viewBox "0 0 256 256"
         , Attributes.fill "none"
         ]
-        [ Svg.rect
-            [ Attributes.width "256"
-            , Attributes.height "256"
-            , Attributes.fill "#70AE61"
-            ]
-            []
-        , path
+        [ path
             [ Attributes.d "M207.5 28C207.5 24.4101 204.59 21.5 201 21.5C197.41 21.5 194.5 24.4101 194.5 28V48.5H174C170.41 48.5 167.5 51.4102 167.5 55C167.5 58.5899 170.41 61.5 174 61.5H194.5V82C194.5 85.5899 197.41 88.5 201 88.5C204.59 88.5 207.5 85.5899 207.5 82V61.5H228C231.59 61.5 234.5 58.5899 234.5 55C234.5 51.4102 231.59 48.5 228 48.5H207.5V28Z"
             , Attributes.fill "#F9F9E9"
             , Attributes.stroke "#3D3434"
@@ -191,13 +186,7 @@ iconPause =
         , Attributes.viewBox "0 0 256 256"
         , Attributes.fill "none"
         ]
-        [ Svg.rect
-            [ Attributes.width "256"
-            , Attributes.height "256"
-            , Attributes.fill "#318CE7"
-            ]
-            []
-        , path
+        [ path
             [ Attributes.d "M173.267 21.5C189.271 21.5 202.19 34.1949 202.19 49.7887L202.19 206.211C202.19 221.805 189.271 234.5 173.267 234.5C157.264 234.5 144.345 221.805 144.345 206.211L144.345 49.7887C144.345 34.1949 157.264 21.5 173.267 21.5Z"
             , Attributes.fill "#F9F9E9"
             , Attributes.stroke "#3D3434"
@@ -224,13 +213,7 @@ iconResume =
         , Attributes.viewBox "0 0 256 256"
         , Attributes.fill "none"
         ]
-        [ Svg.rect
-            [ Attributes.width "256"
-            , Attributes.height "256"
-            , Attributes.fill "#318CE7"
-            ]
-            []
-        , path
+        [ path
             [ Attributes.d "M53.5 215.427V40.5871C53.5 25.2431 71.1035 16.5687 83.271 25.9169L194.842 111.636C204.366 118.953 204.501 133.265 195.117 140.761L83.5461 229.882C71.4308 239.559 53.5 230.933 53.5 215.427Z"
             , Attributes.fill "#F9F9E9"
             , Attributes.stroke "#3D3434"
@@ -248,13 +231,7 @@ iconBack =
         , Attributes.viewBox "0 0 256 256"
         , Attributes.fill "none"
         ]
-        [ Svg.rect
-            [ Attributes.width "256"
-            , Attributes.height "256"
-            , Attributes.fill "#EBD252"
-            ]
-            []
-        , path
+        [ path
             [ Attributes.d "M187.052 29.9207C198.163 40.993 198.318 58.7114 187.493 69.499L133.91 122.896C131.361 125.436 131.361 129.564 133.91 132.104L187.493 185.501C198.318 196.289 198.163 214.007 187.052 225.079C175.939 236.154 158.15 236.309 147.322 225.518L71.0629 149.523C64.7302 143.213 60.4799 135.866 60.5002 127.523L60.5002 127.513C60.4692 119.164 65.0126 111.506 71.0616 105.478L147.322 29.4817C158.15 18.691 175.939 18.8457 187.052 29.9207ZM59.0008 127.519L59.0002 127.519L59.0008 127.519Z"
             , Attributes.fill "#F9F9E9"
             , Attributes.stroke "#3D3434"
@@ -273,13 +250,7 @@ iconClose =
         , Attributes.viewBox "0 0 256 256"
         , Attributes.fill "none"
         ]
-        [ Svg.rect
-            [ Attributes.width "256"
-            , Attributes.height "256"
-            , Attributes.fill "#3D3434"
-            ]
-            []
-        , path
+        [ path
             [ Attributes.d "M225.729 30.6933C237.046 42.0094 237.204 60.1212 226.178 71.1477L173.921 123.404C171.383 125.942 171.383 130.058 173.921 132.596L226.178 184.853C237.204 195.879 237.046 213.991 225.729 225.307C214.413 236.623 196.301 236.782 185.275 225.755L133.019 173.499C130.48 170.961 126.365 170.961 123.826 173.499L71.5701 225.755C60.5436 236.782 42.4318 236.623 31.1157 225.307C19.7995 213.991 19.6409 195.879 30.6674 184.853L82.9237 132.596C85.4621 130.058 85.4621 125.942 82.9237 123.404L30.6675 71.1478C19.641 60.1213 19.7996 42.0094 31.1157 30.6933C42.4318 19.3772 60.5436 19.2186 71.5701 30.2451L123.826 82.5013C126.365 85.0397 130.48 85.0397 133.019 82.5013L185.275 30.2451C196.301 19.2186 214.413 19.3772 225.729 30.6933Z"
             , Attributes.fill "#F9F9E9"
             , Attributes.stroke "#3D3434"
@@ -298,13 +269,7 @@ iconToggleDebug =
         , Attributes.viewBox "0 0 256 256"
         , Attributes.fill "none"
         ]
-        [ Svg.rect
-            [ Attributes.width "256"
-            , Attributes.height "256"
-            , Attributes.fill "#E93F3F"
-            ]
-            []
-        , path
+        [ path
             [ Attributes.d "M197.5 145.493C197.5 182.45 166.435 212.5 128 212.5C89.5652 212.5 58.5 182.45 58.5 145.493C58.5 128.662 64.935 113.277 75.5759 101.5H180.424C191.065 113.277 197.5 128.662 197.5 145.493Z"
             , Attributes.fill "#F9F9E9"
             , Attributes.stroke "#3D3434"
@@ -377,13 +342,7 @@ iconToggleGraphDebug =
         , Attributes.viewBox "0 0 256 256"
         , Attributes.fill "none"
         ]
-        [ Svg.rect
-            [ Attributes.width "256"
-            , Attributes.height "256"
-            , Attributes.fill "#F9F9E9"
-            ]
-            []
-        , path
+        [ path
             [ Attributes.fillRule "evenodd"
             , Attributes.clipRule "evenodd"
             , Attributes.d "M215.446 40.5535L40.5537 128L38.0381 122.969L212.931 35.5224L215.446 40.5535Z"
@@ -430,13 +389,7 @@ iconToggleDotString =
         , Attributes.viewBox "0 0 256 256"
         , Attributes.fill "none"
         ]
-        [ Svg.rect
-            [ Attributes.width "256"
-            , Attributes.height "256"
-            , Attributes.fill "#3D3434"
-            ]
-            []
-        , Svg.line
+        [ Svg.line
             [ Attributes.x1 "39.4359"
             , Attributes.y1 "125.764"
             , Attributes.x2 "214.329"
@@ -511,13 +464,7 @@ iconToggleCarDebug =
         , Attributes.viewBox "0 0 256 256"
         , Attributes.fill "none"
         ]
-        [ Svg.rect
-            [ Attributes.width "256"
-            , Attributes.height "256"
-            , Attributes.fill "#F9F9E9"
-            ]
-            []
-        , path
+        [ path
             [ Attributes.d "M122.327 187.302H198.426H222C227.523 187.302 232 182.825 232 177.302V155.995V79.9651V58.6584C232 53.1356 227.523 48.6584 222 48.6584H198.426H126.803"
             , Attributes.stroke "#E68C4D"
             , Attributes.strokeWidth "5"
@@ -580,13 +527,7 @@ iconSpawnCar =
         , Attributes.viewBox "0 0 256 256"
         , Attributes.fill "none"
         ]
-        [ Svg.rect
-            [ Attributes.width "256"
-            , Attributes.height "256"
-            , Attributes.fill "#F9F9E9"
-            ]
-            []
-        , path
+        [ path
             [ Attributes.d "M24 178.876C24 194.259 26.3668 211.444 28.0262 221.602C28.8912 226.897 33.295 230.802 38.6536 231.069C46.6161 231.466 59.1396 231.901 73.3736 231.699C87.6161 231.496 96.5177 229.342 111.329 229.342C129.79 229.342 160.059 231.43 179.762 231.699C192.844 231.877 204.378 231.479 211.944 231.098C217.706 230.809 222.759 227.289 224.727 221.867C228.268 212.113 233.25 195.446 233.25 178.876C233.25 162.305 228.268 145.638 224.727 135.884C222.759 130.462 217.707 126.943 211.945 126.653C204.379 126.271 192.845 125.873 179.762 126.051C160.059 126.32 129.79 128.41 111.329 128.41C96.5177 128.41 87.6161 126.254 73.3736 126.051C59.1391 125.849 46.6152 126.284 38.6528 126.682C33.2946 126.95 28.8913 130.854 28.0263 136.149C26.3669 146.307 24 163.492 24 178.876Z"
             , Attributes.fill "#318CE7"
             , Attributes.stroke "#1978D7"
@@ -627,7 +568,7 @@ iconSpawnCar =
             []
         , path
             [ Attributes.d "M207.5 28C207.5 24.4101 204.59 21.5 201 21.5C197.41 21.5 194.5 24.4101 194.5 28V48.5H174C170.41 48.5 167.5 51.4102 167.5 55C167.5 58.5899 170.41 61.5 174 61.5H194.5V82C194.5 85.5899 197.41 88.5 201 88.5C204.59 88.5 207.5 85.5899 207.5 82V61.5H228C231.59 61.5 234.5 58.5899 234.5 55C234.5 51.4102 231.59 48.5 228 48.5H207.5V28Z"
-            , Attributes.fill "#70AE61"
+            , Attributes.fill "#E58C4D"
             , Attributes.stroke "#3D3434"
             , Attributes.strokeWidth "3"
             , Attributes.strokeLinecap "round"

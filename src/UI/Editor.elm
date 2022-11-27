@@ -33,7 +33,7 @@ import Simulation.Zoning as Zoning
 import Task
 import UI.Core
     exposing
-        ( borderRadius
+        ( borderRadiusButton
         , borderSize
         , colors
         , containerId
@@ -596,7 +596,7 @@ cellHighlight cache world activeCell =
         , Element.moveRight (toFloat (cellX - 1) * tileSizePixels)
         , Element.moveDown (toFloat (cellY - 1) * tileSizePixels)
         , Border.width uiDimensions.cellHighlightWidth
-        , Border.rounded borderRadius
+        , Border.rounded borderRadiusButton
         , Border.solid
         , Border.color
             (highlightColor world activeCell
@@ -659,7 +659,7 @@ zoomControl editor =
         , Element.alignLeft
         , Element.alignBottom
         , Background.color colors.menuBackground
-        , Border.rounded borderRadius
+        , Border.rounded borderRadiusButton
         ]
         (Input.slider
             [ Element.width (Element.px sliderWidth)
@@ -676,7 +676,7 @@ zoomControl editor =
                 Input.thumb
                     [ Element.width (Element.px thumbWidth)
                     , Element.height (Element.px thumbHeight)
-                    , Border.rounded borderRadius
+                    , Border.rounded borderRadiusButton
                     , Border.solid
                     , Border.width borderSize
                     , Border.color colors.border
@@ -706,7 +706,7 @@ track =
         , Border.solid
         , Border.width borderSize
         , Border.color colors.border
-        , Border.rounded borderRadius
+        , Border.rounded borderRadiusButton
         , Element.inFront
             (Element.column
                 [ Element.height Element.fill

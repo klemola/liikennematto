@@ -1,45 +1,11 @@
-module Data.Colors exposing
-    ( darkBlue
-    , darkBlueCSS
-    , darkBrownCSS
-    , darkGreen
-    , darkGreenCSS
-    , gray1
-    , gray1CSS
-    , gray2
-    , gray2CSS
-    , gray3
-    , gray3CSS
-    , gray4
-    , gray4CSS
-    , gray5
-    , gray5CSS
-    , gray6
-    , gray6CSS
-    , gray7
-    , gray7CSS
-    , lightBlue
-    , lightBlueCSS
-    , lightBrown
-    , lightBrownCSS
-    , lightGreen
-    , lightGreenCSS
-    , orange
-    , orangeCSS
-    , red
-    , redCSS
-    , uiCompat
-    , withAlpha
-    , yellow
-    , yellowCSS
-    , yellowDarker
-    , yellowDarkerCSS
-    , yellowGreen
-    , yellowGreenCSS
-    )
+module Data.Colors exposing (..)
 
 import Color
 import Element
+
+
+type alias Color =
+    Color.Color
 
 
 uiCompat : Color.Color -> Element.Color

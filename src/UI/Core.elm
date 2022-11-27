@@ -1,12 +1,12 @@
 module UI.Core exposing
     ( ControlButtonProperties
     , UiDimensions
-    , borderRadius
+    , borderRadiusButton
+    , borderRadiusPanel
     , borderSize
     , colors
     , containerId
     , controlButton
-    , icon
     , overlayId
     , scrollbarAwareOffsetF
     , smallControlButton
@@ -105,12 +105,16 @@ borderSize =
     2
 
 
-borderRadius =
+borderRadiusButton =
     10
 
 
+borderRadiusPanel =
+    15
+
+
 type alias ControlButtonProperties msg =
-    { label : Element msg
+    { iconKind : IconKind
     , onPress : msg
     , selected : Bool
     , disabled : Bool
@@ -133,7 +137,7 @@ smallControlButton =
 
 
 buildControlButton : ControlButtonSize -> ControlButtonProperties msg -> Element msg
-buildControlButton size { label, onPress, selected, disabled } =
+buildControlButton size { iconKind, onPress, selected, disabled } =
     let
         baseSize =
             case size of
@@ -152,20 +156,27 @@ buildControlButton size { label, onPress, selected, disabled } =
 
             else
                 1
+
+        ( iconHtml, backgroundColor, activeBackgroundColor ) =
+            chooseIcon iconKind
     in
     Input.button
-        [ Background.color colors.inputBackground
+        [ Background.color (uiCompat backgroundColor)
         , Element.width buttonSize
         , Element.height buttonSize
         , Element.alpha alpha
         , Element.clip
+        , Element.mouseOver
+            [ Background.color (uiCompat activeBackgroundColor) ]
+        , Element.mouseDown
+            [ Background.color (uiCompat activeBackgroundColor) ]
         , Border.width borderSize
         , Border.rounded
             (if size == Small then
-                5
+                borderRadiusButton // 2
 
              else
-                borderRadius
+                borderRadiusButton
             )
         , Border.solid
         , Border.color
@@ -182,11 +193,5 @@ buildControlButton size { label, onPress, selected, disabled } =
 
             else
                 Just onPress
-        , label = label
+        , label = Element.html iconHtml
         }
-
-
-icon : IconKind -> Element msg
-icon kind =
-    chooseIcon kind
-        |> Element.html

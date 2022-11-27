@@ -7,14 +7,14 @@ import Element.Border as Border
 import Html exposing (Html)
 import Html.Attributes
 import Message exposing (Message(..))
+import Model.Editor exposing (mouseDetected)
 import Model.Liikennematto exposing (Liikennematto, SimulationState(..))
 import UI.Core
     exposing
-        ( borderRadius
+        ( borderRadiusPanel
         , colors
         , containerId
         , controlButton
-        , icon
         , scrollbarAwareOffsetF
         , whitespace
         )
@@ -34,17 +34,29 @@ update msg model =
     ( modelWithEditorChanges, Cmd.batch [ debugCmd, editorCmd ] )
 
 
+baseLayoutOptions =
+    [ Element.focusStyle
+        { borderColor = Nothing
+        , backgroundColor = Nothing
+        , shadow =
+            Nothing
+        }
+    ]
+
+
+touchLayoutOptions =
+    Element.noHover :: baseLayoutOptions
+
+
 layout : Liikennematto -> (Liikennematto -> Element Message) -> Html Message
 layout model renderFn =
     Element.layoutWith
         { options =
-            [ Element.focusStyle
-                { borderColor = Nothing
-                , backgroundColor = Nothing
-                , shadow =
-                    Nothing
-                }
-            ]
+            if mouseDetected model.editor then
+                baseLayoutOptions
+
+            else
+                touchLayoutOptions
         }
         [ Background.color colors.mainBackground
         , Element.width Element.fill
@@ -74,7 +86,7 @@ leftControls model =
             , Element.spacing whitespace.tight
             , Element.alignBottom
             , Background.color colors.menuBackground
-            , Border.rounded borderRadius
+            , Border.rounded borderRadiusPanel
             ]
             (simulationControl model.simulation)
         ]
@@ -90,19 +102,19 @@ rightControls model =
         , Element.moveUp scrollbarAwareOffsetF
         , Element.moveLeft scrollbarAwareOffsetF
         , Background.color colors.menuBackground
-        , Border.rounded borderRadius
+        , Border.rounded borderRadiusPanel
         ]
         [ Element.row
             [ Element.spacing whitespace.tight
             ]
             [ UI.Core.controlButton
-                { label = icon Icons.NewGame
+                { iconKind = Icons.NewGame
                 , onPress = ResetWorld
                 , selected = False
                 , disabled = False
                 }
             , UI.Core.controlButton
-                { label = icon Icons.ToggleDebug
+                { iconKind = Icons.ToggleDebug
                 , onPress = ToggleDebugMode
                 , selected = model.showDebugPanel
                 , disabled = False
@@ -123,7 +135,7 @@ simulationControl simulation =
                     ( Icons.Resume, True, SetSimulation Running )
     in
     controlButton
-        { label = icon iconKind
+        { iconKind = iconKind
         , onPress = msg
         , selected = selected
         , disabled = False
