@@ -676,11 +676,11 @@ zoomControl editor =
                 Input.thumb
                     [ Element.width (Element.px thumbWidth)
                     , Element.height (Element.px thumbHeight)
+                    , Background.color colors.zoomThumbBackground
                     , Border.rounded borderRadiusButton
                     , Border.solid
                     , Border.width borderSize
                     , Border.color colors.border
-                    , Background.color colors.inputBackground
                     ]
             }
         )
@@ -693,7 +693,7 @@ track =
             Element.el
                 [ Element.width Element.fill
                 , Element.height (Element.px whitespace.regular)
-                , Background.color colors.inputBackground
+                , Background.color colors.zoomStepGuide
                 ]
                 Element.none
     in

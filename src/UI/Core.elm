@@ -78,7 +78,6 @@ colors =
     { mainBackground = uiCompat Colors.lightGreen
     , menuBackground = uiCompat (Colors.withAlpha 0.35 Colors.gray7)
     , menuBackgroundInverse = uiCompat (Colors.withAlpha 0.35 Colors.gray1)
-    , inputBackground = uiCompat Colors.gray6
     , listItemBackground = uiCompat Colors.gray6
     , text = uiCompat Colors.gray2
     , textInverse = uiCompat Colors.gray7
@@ -91,6 +90,8 @@ colors =
     , renderBorder = uiCompat Colors.darkGreen
     , border = uiCompat Colors.gray1
     , zoomTrackBackground = uiCompat Colors.darkBlue
+    , zoomThumbBackground = uiCompat Colors.gray6
+    , zoomStepGuide = uiCompat Colors.gray6
     }
 
 
