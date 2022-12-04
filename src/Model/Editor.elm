@@ -10,10 +10,11 @@ module Model.Editor exposing
     , createPendingTilemapChange
     , deactivateCell
     , hasPendingTilemapChange
+    , initial
     , maxQueuedCars
     , minTilemapChangeFrequency
     , mouseDetected
-    , new
+    , reset
     , resetLongPressTimer
     , selectCell
     , setCarSpawnQueue
@@ -64,8 +65,8 @@ maxQueuedCars =
     5
 
 
-new : Editor
-new =
+initial : Editor
+initial =
     { zoomLevel = Far
     , pendingTilemapChange = Nothing
     , carSpawnQueue = 0
@@ -73,6 +74,17 @@ new =
     , longPressTimer = Nothing
     , pointerDownEvent = Nothing
     , lastEventDevice = Pointer.MouseType
+    }
+
+
+reset : Editor -> Editor
+reset editor =
+    { editor
+        | pendingTilemapChange = Nothing
+        , carSpawnQueue = initial.carSpawnQueue
+        , activeCell = initial.activeCell
+        , longPressTimer = initial.longPressTimer
+        , pointerDownEvent = initial.pointerDownEvent
     }
 
 

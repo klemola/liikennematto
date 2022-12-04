@@ -1,7 +1,9 @@
 module Model.Liikennematto exposing
     ( Liikennematto
     , SimulationState(..)
-    , new
+    , fromNewGame
+    , fromPreviousGame
+    , initial
     )
 
 import Data.Defaults exposing (horizontalCellsAmount, verticalCellsAmount)
@@ -14,6 +16,7 @@ import Random
 
 type alias Liikennematto =
     { world : World
+    , previousWorld : Maybe World
     , screen : Screen
     , seed : Random.Seed
     , simulation : SimulationState
@@ -37,6 +40,7 @@ initialSeed =
     Random.initialSeed 666
 
 
+initialWorld : World
 initialWorld =
     World.empty
         { horizontalCellsAmount = horizontalCellsAmount
@@ -44,13 +48,14 @@ initialWorld =
         }
 
 
-new : Liikennematto
-new =
+initial : Liikennematto
+initial =
     { world = initialWorld
+    , previousWorld = Nothing
     , screen = Screen.fallback
     , seed = initialSeed
     , simulation = Running
-    , editor = Editor.new
+    , editor = Editor.initial
     , renderCache = RenderCache.new initialWorld
     , dynamicTiles = []
     , showDebugPanel = False
@@ -58,3 +63,43 @@ new =
     , showCarDebugVisuals = False
     , roadNetworkDotString = Nothing
     }
+
+
+fromNewGame : Maybe World -> Liikennematto -> Liikennematto
+fromNewGame previousWorld model =
+    let
+        nextWorld =
+            World.empty
+                { horizontalCellsAmount = Data.Defaults.horizontalCellsAmount
+                , verticalCellsAmount = Data.Defaults.verticalCellsAmount
+                }
+
+        baseEditor =
+            Editor.initial
+    in
+    { model
+        | editor =
+            { baseEditor
+                | lastEventDevice = model.editor.lastEventDevice
+                , zoomLevel = model.editor.zoomLevel
+            }
+        , world = nextWorld
+        , previousWorld = previousWorld
+        , renderCache = RenderCache.new nextWorld
+        , simulation = Running
+    }
+
+
+fromPreviousGame : Liikennematto -> Liikennematto
+fromPreviousGame model =
+    case model.previousWorld of
+        Just previousWorld ->
+            { model
+                | world = previousWorld
+                , previousWorld = Nothing
+                , editor = Editor.reset model.editor
+                , renderCache = RenderCache.new previousWorld
+            }
+
+        Nothing ->
+            fromNewGame Nothing model

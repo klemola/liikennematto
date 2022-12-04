@@ -7,7 +7,6 @@ module UI.Editor exposing
 
 import Audio exposing (playSound)
 import Browser.Dom
-import Data.Defaults as Defaults
 import Duration exposing (Duration)
 import Element exposing (Color, Element)
 import Element.Background as Background
@@ -202,29 +201,6 @@ update msg model =
                     Editor.setCarSpawnQueue (editor.carSpawnQueue + 1) editor
             in
             ( { model | editor = nextEditor }
-            , Cmd.none
-            )
-
-        ResetWorld ->
-            let
-                nextWorld =
-                    World.empty
-                        { horizontalCellsAmount = Defaults.horizontalCellsAmount
-                        , verticalCellsAmount = Defaults.verticalCellsAmount
-                        }
-
-                baseEditor =
-                    Editor.new
-            in
-            ( { model
-                | editor =
-                    { baseEditor
-                        | lastEventDevice = model.editor.lastEventDevice
-                        , zoomLevel = model.editor.zoomLevel
-                    }
-                , world = nextWorld
-                , renderCache = RenderCache.new nextWorld
-              }
             , Cmd.none
             )
 

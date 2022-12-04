@@ -11,7 +11,7 @@ import UI.Editor as Editor
 
 
 baseModel =
-    Liikennematto.new
+    Liikennematto.initial
 
 
 suite : Benchmark

@@ -24,7 +24,8 @@ type Message
     | TilemapChanged (List Cell)
     | CheckQueues
     | SpawnTestCar
-    | ResetWorld
+    | NewGame
+    | RestoreGame
     | ChangeZoomLevel Float
     | OverlayPointerMove Pointer.Event
     | OverlayPointerLeave Pointer.Event

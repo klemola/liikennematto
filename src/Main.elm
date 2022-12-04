@@ -5,7 +5,11 @@ import Browser.Dom exposing (getViewport)
 import Browser.Events as Events
 import Element exposing (Element)
 import Message exposing (Message(..))
-import Model.Liikennematto as Liikennematto exposing (Liikennematto, SimulationState(..))
+import Model.Liikennematto as Liikennematto
+    exposing
+        ( Liikennematto
+        , SimulationState(..)
+        )
 import Model.Screen as Screen
 import Random
 import Render
@@ -22,7 +26,7 @@ main : Program () Liikennematto Message
 main =
     let
         ( initialModel, editorCmd ) =
-            UI.Editor.init Liikennematto.new
+            UI.Editor.init Liikennematto.initial
 
         initCmds =
             Cmd.batch
@@ -78,6 +82,20 @@ updateBase msg model =
 
         ResetSeed posix ->
             ( { model | seed = Random.initialSeed (Time.posixToMillis posix) }
+            , Cmd.none
+            )
+
+        NewGame ->
+            let
+                previousWorld =
+                    Just (Simulation.worldAfterTilemapChange model.world)
+            in
+            ( Liikennematto.fromNewGame previousWorld model
+            , Cmd.none
+            )
+
+        RestoreGame ->
+            ( Liikennematto.fromPreviousGame model
             , Cmd.none
             )
 

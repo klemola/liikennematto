@@ -1,6 +1,7 @@
 module Simulation.Simulation exposing
     ( initCmd
     , update
+    , worldAfterTilemapChange
     )
 
 import Audio
@@ -70,13 +71,7 @@ update msg model =
             ( { model | simulation = simulation }, Cmd.none )
 
         TilemapChanged _ ->
-            let
-                nextWorld =
-                    model.world
-                        |> Infrastructure.updateRoadNetwork
-                        |> Traffic.rerouteCarsIfNeeded
-            in
-            ( { model | world = nextWorld }
+            ( { model | world = worldAfterTilemapChange model.world }
             , Cmd.none
             )
 
@@ -123,6 +118,13 @@ generateEnvironmentAfterDelay seed =
         |> toFloat
         |> Process.sleep
         |> Task.perform (always GenerateEnvironment)
+
+
+worldAfterTilemapChange : World -> World
+worldAfterTilemapChange world =
+    world
+        |> Infrastructure.updateRoadNetwork
+        |> Traffic.rerouteCarsIfNeeded
 
 
 
