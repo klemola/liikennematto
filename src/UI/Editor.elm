@@ -83,7 +83,7 @@ update msg model =
     in
     case msg of
         GameSetupComplete ->
-            setupStartExperience model
+            startIntro model
 
         ChangeZoomLevel nextLevel ->
             let
@@ -272,8 +272,8 @@ tileActionsToCmds =
         )
 
 
-setupStartExperience : Liikennematto -> ( Liikennematto, Cmd Message )
-setupStartExperience model =
+startIntro : Liikennematto -> ( Liikennematto, Cmd Message )
+startIntro model =
     let
         tilemapConfig =
             Tilemap.config model.world.tilemap

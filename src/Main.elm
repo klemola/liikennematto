@@ -4,14 +4,15 @@ import Browser
 import Browser.Dom exposing (getViewport)
 import Browser.Events as Events
 import Element exposing (Element)
+import FSM
 import Message exposing (Message(..))
 import Model.Liikennematto as Liikennematto
     exposing
-        ( Liikennematto
+        ( GameState(..)
+        , Liikennematto
         , SimulationState(..)
         )
 import Model.Screen as Screen
-import Process
 import Random
 import Render
 import Render.Debug
@@ -33,8 +34,6 @@ main =
                 [ -- simulate a screen resize
                   Task.perform WindowResized getViewport
                 , Task.perform ResetSeed Time.now
-                , Process.sleep 1000
-                    |> Task.perform (always GameSetupComplete)
                 ]
     in
     Browser.document
@@ -85,18 +84,34 @@ updateBase msg model =
             , Cmd.none
             )
 
+        AnimationFrameReceived delta ->
+            let
+                ( nextGameFSM, gameActions ) =
+                    FSM.update delta () model.game
+            in
+            ( { model | game = nextGameFSM }
+            , gameActionsToCmd gameActions
+            )
+
         NewGame ->
             let
                 previousWorld =
                     Just (Simulation.worldAfterTilemapChange model.world)
+
+                ( modelWithTransition, transitionActions ) =
+                    Liikennematto.triggerLoading model
             in
-            ( Liikennematto.fromNewGame previousWorld model
-            , Cmd.none
+            ( Liikennematto.fromNewGame previousWorld modelWithTransition
+            , gameActionsToCmd transitionActions
             )
 
         RestoreGame ->
-            ( Liikennematto.fromPreviousGame model
-            , Cmd.none
+            let
+                ( modelWithTransition, transitionActions ) =
+                    Liikennematto.triggerLoading model
+            in
+            ( Liikennematto.fromPreviousGame modelWithTransition
+            , gameActionsToCmd transitionActions
             )
 
         _ ->
@@ -116,14 +131,44 @@ withUpdate updateFn msg ( model, cmds ) =
     ( nextModel, Cmd.batch [ cmds, cmd ] )
 
 
+gameActionsToCmd : List Liikennematto.GameAction -> Cmd Message
+gameActionsToCmd actions =
+    if List.isEmpty actions then
+        Cmd.none
+
+    else
+        actions
+            |> List.map gameActionToCmd
+            |> Cmd.batch
+
+
+gameActionToCmd : Liikennematto.GameAction -> Cmd Message
+gameActionToCmd action =
+    case action of
+        Liikennematto.StartIntro ->
+            Message.asCmd GameSetupComplete
+
+        Liikennematto.TriggerPostLoadingEffects ->
+            Message.asCmd (SetSimulation Liikennematto.Running)
+
+
 view : Liikennematto -> Browser.Document Message
 view model =
     { title = "Liikennematto"
     , body =
-        [ UI.layout
-            model
-            (render model)
-            (renderDebug model)
+        [ case Liikennematto.currentState model of
+            InGame ->
+                UI.layout
+                    model
+                    (render model)
+                    (renderDebug model)
+
+            Error ->
+                UI.errorScreen
+
+            -- Show the splash screen for both the game init and loading states
+            _ ->
+                UI.splashScreen
         ]
     }
 

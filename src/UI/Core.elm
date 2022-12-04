@@ -13,6 +13,7 @@ module UI.Core exposing
     , colorMenuBackgroundInverse
     , colorNotAllowed
     , colorRenderEdge
+    , colorSplashScreenBackground
     , colorTarget
     , colorText
     , colorTextInverse
@@ -22,6 +23,7 @@ module UI.Core exposing
     , colorZoomTrackBackground
     , containerId
     , controlButton
+    , errorScreenBackground
     , overlayId
     , panelSize
     , renderSafeAreaXSize
@@ -149,6 +151,16 @@ cellHighlightWidth =
 --
 -- UI colors
 --
+
+
+colorSplashScreenBackground : Element.Color
+colorSplashScreenBackground =
+    uiCompat Colors.gray7
+
+
+errorScreenBackground : Element.Color
+errorScreenBackground =
+    uiCompat Colors.red
 
 
 colorMainBackground : Element.Color
