@@ -1,6 +1,5 @@
 module UI.Editor exposing
-    ( init
-    , overlay
+    ( overlay
     , update
     , zoomControl
     )
@@ -69,42 +68,6 @@ longTapIndicatorShowDelay =
     Duration.milliseconds 300
 
 
-init : Liikennematto -> ( Liikennematto, Cmd Message )
-init model =
-    let
-        tilemapConfig =
-            Tilemap.config model.world.tilemap
-
-        startCell =
-            Cell.fromCoordinates tilemapConfig
-                ( tilemapConfig.horizontalCellsAmount // 2
-                , tilemapConfig.verticalCellsAmount // 2
-                )
-
-        ( modelWithTile, tileCmd ) =
-            case startCell of
-                Just cell ->
-                    addTile cell model
-
-                Nothing ->
-                    ( model, Cmd.none )
-    in
-    ( modelWithTile
-    , Cmd.batch
-        [ Browser.Dom.getViewportOf containerId
-            |> Task.andThen
-                (\domViewport ->
-                    Browser.Dom.setViewportOf
-                        containerId
-                        ((domViewport.scene.width - domViewport.viewport.width) / 2)
-                        ((domViewport.scene.height - domViewport.viewport.height - toFloat renderSafeAreaYSize) / 2)
-                )
-            |> Task.attempt (\_ -> NoOp)
-        , tileCmd
-        ]
-    )
-
-
 
 -- Update
 
@@ -119,6 +82,9 @@ update msg model =
             Tilemap.config world.tilemap
     in
     case msg of
+        GameSetupComplete ->
+            setupStartExperience model
+
         ChangeZoomLevel nextLevel ->
             let
                 nextEditor =
@@ -304,6 +270,42 @@ tileActionsToCmds =
                 Tile.PlayAudio sound ->
                     playSound sound
         )
+
+
+setupStartExperience : Liikennematto -> ( Liikennematto, Cmd Message )
+setupStartExperience model =
+    let
+        tilemapConfig =
+            Tilemap.config model.world.tilemap
+
+        startCell =
+            Cell.fromCoordinates tilemapConfig
+                ( tilemapConfig.horizontalCellsAmount // 2
+                , tilemapConfig.verticalCellsAmount // 2
+                )
+
+        ( modelWithTile, tileCmd ) =
+            case startCell of
+                Just cell ->
+                    addTile cell model
+
+                Nothing ->
+                    ( model, Cmd.none )
+    in
+    ( modelWithTile
+    , Cmd.batch
+        [ Browser.Dom.getViewportOf containerId
+            |> Task.andThen
+                (\domViewport ->
+                    Browser.Dom.setViewportOf
+                        containerId
+                        ((domViewport.scene.width - domViewport.viewport.width) / 2)
+                        ((domViewport.scene.height - domViewport.viewport.height - toFloat renderSafeAreaYSize) / 2)
+                )
+            |> Task.attempt (\_ -> NoOp)
+        , tileCmd
+        ]
+    )
 
 
 resolveTilemapUpdate : Duration -> TilemapUpdateResult -> Liikennematto -> ( Editor, Cmd Message )

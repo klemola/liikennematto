@@ -11,6 +11,7 @@ import Model.Liikennematto as Liikennematto
         , SimulationState(..)
         )
 import Model.Screen as Screen
+import Process
 import Random
 import Render
 import Render.Debug
@@ -19,22 +20,21 @@ import Subscriptions exposing (subscriptions)
 import Task
 import Time
 import UI
-import UI.Editor
 
 
 main : Program () Liikennematto Message
 main =
     let
-        ( initialModel, editorCmd ) =
-            UI.Editor.init Liikennematto.initial
+        initialModel =
+            Liikennematto.initial
 
         initCmds =
             Cmd.batch
                 [ -- simulate a screen resize
                   Task.perform WindowResized getViewport
                 , Task.perform ResetSeed Time.now
-                , Simulation.initCmd initialModel.seed
-                , editorCmd
+                , Process.sleep 1000
+                    |> Task.perform (always GameSetupComplete)
                 ]
     in
     Browser.document

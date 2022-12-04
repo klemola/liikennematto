@@ -16,6 +16,9 @@ type Message
     | VisibilityChanged Visibility
     | ResetSeed Posix
     | AnimationFrameReceived Duration
+    | GameSetupComplete
+    | NewGame
+    | RestoreGame
     | SetSimulation SimulationState
     | UpdateTraffic Duration
     | UpdateEnvironment
@@ -24,8 +27,6 @@ type Message
     | TilemapChanged (List Cell)
     | CheckQueues
     | SpawnTestCar
-    | NewGame
-    | RestoreGame
     | ChangeZoomLevel Float
     | OverlayPointerMove Pointer.Event
     | OverlayPointerLeave Pointer.Event

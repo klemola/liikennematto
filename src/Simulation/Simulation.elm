@@ -1,6 +1,5 @@
 module Simulation.Simulation exposing
-    ( initCmd
-    , update
+    ( update
     , worldAfterTilemapChange
     )
 
@@ -26,11 +25,6 @@ import Simulation.Zoning as Zoning
 import Task
 
 
-initCmd : Random.Seed -> Cmd Message
-initCmd seed =
-    generateEnvironmentAfterDelay seed
-
-
 
 --
 -- Core update function and effects
@@ -40,6 +34,9 @@ initCmd seed =
 update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
 update msg model =
     case msg of
+        GameSetupComplete ->
+            ( model, generateEnvironmentAfterDelay model.seed )
+
         UpdateTraffic delta ->
             let
                 { world } =
