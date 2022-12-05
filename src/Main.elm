@@ -21,6 +21,7 @@ import Subscriptions exposing (subscriptions)
 import Task
 import Time
 import UI
+import UI.SplashScreen
 
 
 main : Program () Liikennematto Message
@@ -168,7 +169,7 @@ view model =
 
             -- Show the splash screen for both the game init and loading states
             _ ->
-                UI.splashScreen
+                UI.SplashScreen.splashScreen model.screen
         ]
     }
 

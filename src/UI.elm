@@ -1,4 +1,4 @@
-module UI exposing (errorScreen, layout, splashScreen, update)
+module UI exposing (errorScreen, layout, update)
 
 import Data.Icons as Icons
 import Element exposing (Element)
@@ -18,7 +18,6 @@ import UI.Core
         , colorMainBackground
         , colorMenuBackground
         , colorRenderEdge
-        , colorSplashScreenBackground
         , containerId
         , controlButton
         , errorScreenBackground
@@ -41,17 +40,6 @@ update msg model =
             Editor.update msg modelWithDebugChanges
     in
     ( modelWithEditorChanges, Cmd.batch [ debugCmd, editorCmd ] )
-
-
-splashScreen : Html msg
-splashScreen =
-    Element.layout
-        [ Background.color colorSplashScreenBackground
-        , Element.width Element.fill
-        , Element.height Element.fill
-        , Element.clip
-        ]
-        Element.none
 
 
 errorScreen : Html Message

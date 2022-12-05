@@ -13,7 +13,7 @@ module Model.Liikennematto exposing
     )
 
 import Data.Defaults exposing (horizontalCellsAmount, verticalCellsAmount)
-import Duration
+import Duration exposing (Duration)
 import FSM exposing (FSM)
 import Model.Editor as Editor exposing (Editor)
 import Model.RenderCache as RenderCache exposing (RenderCache)
@@ -70,6 +70,16 @@ type alias GameUpdateContext =
     ()
 
 
+splashScreenTimer : Duration
+splashScreenTimer =
+    Duration.milliseconds 1500
+
+
+loadingTimer : Duration
+loadingTimer =
+    Duration.milliseconds 1000
+
+
 inSplashScreen : FSM.State GameState GameAction GameUpdateContext
 inSplashScreen =
     FSM.createState
@@ -79,7 +89,7 @@ inSplashScreen =
             [ FSM.createTransition
                 (\_ -> inGame)
                 []
-                (FSM.Timer (Duration.milliseconds 1000))
+                (FSM.Timer splashScreenTimer)
             ]
         , entryActions = []
         , exitActions = [ StartIntro ]
@@ -95,7 +105,7 @@ loading =
             [ FSM.createTransition
                 (\_ -> inGame)
                 []
-                (FSM.Timer (Duration.milliseconds 1000))
+                (FSM.Timer loadingTimer)
             ]
         , entryActions = []
         , exitActions = [ TriggerPostLoadingEffects ]
@@ -110,6 +120,10 @@ inGame =
         , transitions =
             [ FSM.createTransition
                 (\_ -> loading)
+                []
+                FSM.Direct
+            , FSM.createTransition
+                (\_ -> error)
                 []
                 FSM.Direct
             ]
