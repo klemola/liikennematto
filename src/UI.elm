@@ -1,4 +1,4 @@
-module UI exposing (errorScreen, layout, update)
+module UI exposing (layout, update)
 
 import Data.Icons as Icons
 import Element exposing (Element)
@@ -20,7 +20,6 @@ import UI.Core
         , colorRenderEdge
         , containerId
         , controlButton
-        , errorScreenBackground
         , renderSafeAreaXSize
         , renderSafeAreaYSize
         , scrollbarAwareOffsetF
@@ -40,17 +39,6 @@ update msg model =
             Editor.update msg modelWithDebugChanges
     in
     ( modelWithEditorChanges, Cmd.batch [ debugCmd, editorCmd ] )
-
-
-errorScreen : Html Message
-errorScreen =
-    Element.layout
-        [ Background.color errorScreenBackground
-        , Element.width Element.fill
-        , Element.height Element.fill
-        , Element.clip
-        ]
-        Element.none
 
 
 baseLayoutOptions =

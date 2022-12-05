@@ -36,6 +36,7 @@ type alias Liikennematto =
     , showRoadNetwork : Bool
     , showCarDebugVisuals : Bool
     , roadNetworkDotString : Maybe String
+    , errorMessage : Maybe String
     }
 
 
@@ -155,16 +156,21 @@ currentState model =
 
 triggerLoading : Liikennematto -> ( Liikennematto, List GameAction )
 triggerLoading model =
-    let
-        ( nextFsm, actions ) =
-            case FSM.transitionTo (FSM.getId loading) model.game of
-                Ok transitionSuccess ->
-                    transitionSuccess
+    case FSM.transitionTo (FSM.getId loading) model.game of
+        Ok ( nextFsm, actions ) ->
+            ( { model | game = nextFsm }, actions )
 
-                Err _ ->
+        Err message ->
+            let
+                ( nextFsm, actions ) =
                     FSM.initialize error
-    in
-    ( { model | game = nextFsm }, actions )
+            in
+            ( { model
+                | game = nextFsm
+                , errorMessage = Just message
+              }
+            , actions
+            )
 
 
 
@@ -205,6 +211,7 @@ initial =
     , showRoadNetwork = False
     , showCarDebugVisuals = False
     , roadNetworkDotString = Nothing
+    , errorMessage = Nothing
     }
 
 

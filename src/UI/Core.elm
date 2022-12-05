@@ -6,8 +6,9 @@ module UI.Core exposing
     , borderSize
     , cellHighlightWidth
     , colorBorder
+    , colorCardBackground
     , colorDanger
-    , colorListItemBackground
+    , colorErrorScreenBackground
     , colorMainBackground
     , colorMenuBackground
     , colorMenuBackgroundInverse
@@ -23,7 +24,6 @@ module UI.Core exposing
     , colorZoomTrackBackground
     , containerId
     , controlButton
-    , errorScreenBackground
     , overlayId
     , panelSize
     , renderSafeAreaXSize
@@ -158,8 +158,8 @@ colorSplashScreenBackground =
     uiCompat Colors.gray7
 
 
-errorScreenBackground : Element.Color
-errorScreenBackground =
+colorErrorScreenBackground : Element.Color
+colorErrorScreenBackground =
     uiCompat Colors.red
 
 
@@ -178,8 +178,8 @@ colorMenuBackgroundInverse =
     uiCompat (Colors.withAlpha 0.35 Colors.gray1)
 
 
-colorListItemBackground : Element.Color
-colorListItemBackground =
+colorCardBackground : Element.Color
+colorCardBackground =
     uiCompat Colors.gray6
 
 

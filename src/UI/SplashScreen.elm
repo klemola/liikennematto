@@ -1,4 +1,4 @@
-module UI.SplashScreen exposing (splashScreen)
+module UI.SplashScreen exposing (view)
 
 import Element
 import Element.Background as Background
@@ -9,8 +9,8 @@ import Svg.Attributes as Attributes
 import UI.Core exposing (colorSplashScreenBackground)
 
 
-splashScreen : Screen -> Html msg
-splashScreen screen =
+view : Screen -> Html msg
+view screen =
     let
         logoWidthMultiplier =
             case screen.orientation of

@@ -21,6 +21,7 @@ import Subscriptions exposing (subscriptions)
 import Task
 import Time
 import UI
+import UI.ErrorScreen
 import UI.SplashScreen
 
 
@@ -165,11 +166,11 @@ view model =
                     (renderDebug model)
 
             Error ->
-                UI.errorScreen
+                UI.ErrorScreen.view model.errorMessage
 
             -- Show the splash screen for both the game init and loading states
             _ ->
-                UI.SplashScreen.splashScreen model.screen
+                UI.SplashScreen.view model.screen
         ]
     }
 
