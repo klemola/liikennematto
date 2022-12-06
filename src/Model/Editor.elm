@@ -85,6 +85,7 @@ reset editor =
         , activeCell = initial.activeCell
         , longPressTimer = initial.longPressTimer
         , pointerDownEvent = initial.pointerDownEvent
+        , zoomLevel = initial.zoomLevel
     }
 
 

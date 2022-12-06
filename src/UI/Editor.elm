@@ -82,8 +82,21 @@ update msg model =
             Tilemap.config world.tilemap
     in
     case msg of
+        InGame ->
+            ( model, centerView )
+
         GameSetupComplete ->
-            startIntro model
+            case
+                Cell.fromCoordinates tilemapConfig
+                    ( tilemapConfig.horizontalCellsAmount // 2
+                    , tilemapConfig.verticalCellsAmount // 2
+                    )
+            of
+                Just cell ->
+                    addTile cell model
+
+                Nothing ->
+                    ( model, Cmd.none )
 
         ChangeZoomLevel nextLevel ->
             let
@@ -272,40 +285,17 @@ tileActionsToCmds =
         )
 
 
-startIntro : Liikennematto -> ( Liikennematto, Cmd Message )
-startIntro model =
-    let
-        tilemapConfig =
-            Tilemap.config model.world.tilemap
-
-        startCell =
-            Cell.fromCoordinates tilemapConfig
-                ( tilemapConfig.horizontalCellsAmount // 2
-                , tilemapConfig.verticalCellsAmount // 2
-                )
-
-        ( modelWithTile, tileCmd ) =
-            case startCell of
-                Just cell ->
-                    addTile cell model
-
-                Nothing ->
-                    ( model, Cmd.none )
-    in
-    ( modelWithTile
-    , Cmd.batch
-        [ Browser.Dom.getViewportOf containerId
-            |> Task.andThen
-                (\domViewport ->
-                    Browser.Dom.setViewportOf
-                        containerId
-                        ((domViewport.scene.width - domViewport.viewport.width) / 2)
-                        ((domViewport.scene.height - domViewport.viewport.height - toFloat renderSafeAreaYSize) / 2)
-                )
-            |> Task.attempt (\_ -> NoOp)
-        , tileCmd
-        ]
-    )
+centerView : Cmd Message
+centerView =
+    Browser.Dom.getViewportOf containerId
+        |> Task.andThen
+            (\domViewport ->
+                Browser.Dom.setViewportOf
+                    containerId
+                    ((domViewport.scene.width - domViewport.viewport.width) / 2)
+                    ((domViewport.scene.height - domViewport.viewport.height - toFloat renderSafeAreaYSize) / 2)
+            )
+        |> Task.attempt (\_ -> NoOp)
 
 
 resolveTilemapUpdate : Duration -> TilemapUpdateResult -> Liikennematto -> ( Editor, Cmd Message )

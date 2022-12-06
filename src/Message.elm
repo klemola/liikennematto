@@ -18,6 +18,7 @@ type Message
     | ResetSeed Posix
     | AnimationFrameReceived Duration
     | GameSetupComplete
+    | InGame
     | NewGame
     | RestoreGame
     | SetSimulation SimulationState

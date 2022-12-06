@@ -65,6 +65,7 @@ type GameState
 type GameAction
     = StartIntro
     | TriggerPostLoadingEffects
+    | TriggerInGameEffects
 
 
 type alias GameUpdateContext =
@@ -128,7 +129,7 @@ inGame =
                 []
                 FSM.Direct
             ]
-        , entryActions = []
+        , entryActions = [ TriggerInGameEffects ]
         , exitActions = []
         }
 
@@ -229,18 +230,11 @@ fromNewGame previousWorld model =
                 { horizontalCellsAmount = Data.Defaults.horizontalCellsAmount
                 , verticalCellsAmount = Data.Defaults.verticalCellsAmount
                 }
-
-        baseEditor =
-            Editor.initial
     in
     { model
         | world = nextWorld
         , previousWorld = previousWorld
-        , editor =
-            { baseEditor
-                | lastEventDevice = model.editor.lastEventDevice
-                , zoomLevel = model.editor.zoomLevel
-            }
+        , editor = Editor.reset model.editor
         , renderCache = RenderCache.new nextWorld
         , simulation = Paused
     }

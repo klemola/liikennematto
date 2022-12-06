@@ -153,19 +153,22 @@ gameActionToCmd action =
         Liikennematto.TriggerPostLoadingEffects ->
             Message.asCmd (SetSimulation Liikennematto.Running)
 
+        Liikennematto.TriggerInGameEffects ->
+            Message.asCmd Message.InGame
+
 
 view : Liikennematto -> Browser.Document Message
 view model =
     { title = "Liikennematto"
     , body =
         [ case Liikennematto.currentState model of
-            InGame ->
+            Liikennematto.InGame ->
                 UI.layout
                     model
                     (render model)
                     (renderDebug model)
 
-            Error ->
+            Liikennematto.Error ->
                 UI.ErrorScreen.view model.errorMessage
 
             -- Show the splash screen for both the game init and loading states
