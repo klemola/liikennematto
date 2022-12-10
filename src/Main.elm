@@ -8,8 +8,7 @@ import FSM
 import Message exposing (Message(..))
 import Model.Liikennematto as Liikennematto
     exposing
-        ( GameState(..)
-        , Liikennematto
+        ( Liikennematto
         , SimulationState(..)
         )
 import Model.Screen as Screen
@@ -74,10 +73,33 @@ updateBase msg model =
 
         WindowResized domViewport ->
             let
+                { initSteps } =
+                    model
+
                 nextScreen =
-                    Screen.fromDimensions (round domViewport.viewport.width) (round domViewport.viewport.height)
+                    Screen.fromDimensions
+                        (round domViewport.viewport.width)
+                        (round domViewport.viewport.height)
+
+                nextInitSteps =
+                    { initSteps | viewportSizeSet = True }
             in
-            ( { model | screen = nextScreen }
+            ( { model
+                | screen = nextScreen
+                , initSteps = nextInitSteps
+              }
+            , Cmd.none
+            )
+
+        AudioInitComplete ->
+            let
+                { initSteps } =
+                    model
+
+                nextInitSteps =
+                    { initSteps | audioInitComplete = True }
+            in
+            ( { model | initSteps = nextInitSteps }
             , Cmd.none
             )
 
@@ -89,7 +111,7 @@ updateBase msg model =
         AnimationFrameReceived delta ->
             let
                 ( nextGameFSM, gameActions ) =
-                    FSM.update delta () model.game
+                    FSM.update delta model.initSteps model.game
             in
             ( { model | game = nextGameFSM }
             , gameActionsToCmd gameActions

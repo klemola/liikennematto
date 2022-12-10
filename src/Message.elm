@@ -17,6 +17,7 @@ type Message
     | VisibilityChanged Visibility
     | ResetSeed Posix
     | AnimationFrameReceived Duration
+    | AudioInitComplete
     | GameSetupComplete
     | InGame
     | NewGame

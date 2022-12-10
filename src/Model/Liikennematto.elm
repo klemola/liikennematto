@@ -3,6 +3,7 @@ module Model.Liikennematto exposing
     , GameFSM
     , GameState(..)
     , GameUpdateContext
+    , InitSteps
     , Liikennematto
     , SimulationState(..)
     , currentState
@@ -24,6 +25,7 @@ import Random
 
 type alias Liikennematto =
     { game : GameFSM
+    , initSteps : InitSteps
     , screen : Screen
     , seed : Random.Seed
     , world : World
@@ -49,6 +51,12 @@ type SimulationState
     | Paused
 
 
+type alias InitSteps =
+    { audioInitComplete : Bool
+    , viewportSizeSet : Bool
+    }
+
+
 
 --
 -- Game level FSM
@@ -56,7 +64,8 @@ type SimulationState
 
 
 type GameState
-    = InSplashScreen
+    = WaitingForInit
+    | InSplashScreen
     | Loading
     | InGame
     | Error
@@ -69,7 +78,7 @@ type GameAction
 
 
 type alias GameUpdateContext =
-    ()
+    InitSteps
 
 
 splashScreenTimer : Duration
@@ -80,6 +89,22 @@ splashScreenTimer =
 loadingTimer : Duration
 loadingTimer =
     Duration.milliseconds 1000
+
+
+waitingForInit : FSM.State GameState GameAction GameUpdateContext
+waitingForInit =
+    FSM.createState
+        { id = FSM.createStateId "game-waiting-for-init"
+        , kind = WaitingForInit
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> inSplashScreen)
+                []
+                (FSM.Condition (\initSteps _ -> initSteps.audioInitComplete && initSteps.viewportSizeSet))
+            ]
+        , entryActions = []
+        , exitActions = []
+        }
 
 
 inSplashScreen : FSM.State GameState GameAction GameUpdateContext
@@ -197,9 +222,13 @@ initial : Liikennematto
 initial =
     let
         ( appFsm, _ ) =
-            FSM.initialize inSplashScreen
+            FSM.initialize waitingForInit
     in
     { game = appFsm
+    , initSteps =
+        { audioInitComplete = False
+        , viewportSizeSet = False
+        }
     , screen = Screen.fallback
     , seed = initialSeed
     , previousWorld = Nothing

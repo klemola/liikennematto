@@ -1,4 +1,8 @@
-port module Audio exposing (Sound(..), playSound)
+port module Audio exposing
+    ( Sound(..)
+    , onAudioInitComplete
+    , playSound
+    )
 
 
 type Sound
@@ -29,3 +33,6 @@ playSound sound =
 
 
 port requestAudio : String -> Cmd msg
+
+
+port onAudioInitComplete : (String -> msg) -> Sub msg

@@ -36,7 +36,7 @@
                 getBuffer("build_road_end"),
                 getBuffer("destroy_road"),
                 getBuffer("build_lot"),
-            ]).then(onAudioInit);
+            ]).then(initAudio);
 
             roadGainNode.gain.value = 0.4;
             roadStereoPannerNode.pan.value = -0.25;
@@ -50,15 +50,17 @@
                 .connect(lotStereoPannerNode)
                 .connect(context.destination);
 
-            app.ports.requestAudio.subscribe(function (sound) {
-                if (context.state === "suspended") {
-                    context.resume();
-                }
+            function initAudio() {
+                app.ports.onAudioInitComplete.send("__audio_init_complete__");
 
-                sound && playSound(sound);
-            });
+                app.ports.requestAudio.subscribe(function (sound) {
+                    if (context.state === "suspended") {
+                        context.resume();
+                    }
 
-            function onAudioInit() {
+                    sound && playSound(sound);
+                });
+
                 document.body.addEventListener(
                     "pointerenter",
                     function handler() {
