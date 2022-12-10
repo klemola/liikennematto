@@ -3,6 +3,7 @@ module Data.Cars exposing
     , CarStyle
     , carAsset
     , sedan
+    , sedanGraphicsWithConfig
     , testCar
     )
 
@@ -93,8 +94,13 @@ sedanViewBox =
 
 sedanGraphics : List (Svg msg)
 sedanGraphics =
+    sedanGraphicsWithConfig sedan.bodyColor
+
+
+sedanGraphicsWithConfig : Color -> List (Svg msg)
+sedanGraphicsWithConfig bodyColor =
     [ path
-        [ sedan.bodyColor
+        [ bodyColor
             |> Color.toCssString
             |> Attributes.fill
         , Attributes.d "M73.968 48.14c5.303 0 9.097-.8 11.383-2.4v-.069c2.148-1.462 3.406-3.383 3.771-5.76v-.137l.412-3.497.068-.206.206-2.537.411-9.325-.411-9.258v-.068l-.206-2.537-.068-.137-.412-3.566v-.069c-.365-2.423-1.623-4.365-3.771-5.828C83.065 1.1 79.27.277 73.968.277l-2.674.069h-.069l-8.845.48c-13.486.594-26.652.594-39.498 0h-.274l-2.743.068c-12.434.503-18.674 5.28-18.72 14.332l-.274 8.982.274 9.12c.092 8.96 6.332 13.692 18.72 14.195l2.743.068h.274c12.846-.594 26.012-.594 39.498 0l8.845.48h.069l2.674.069z"
