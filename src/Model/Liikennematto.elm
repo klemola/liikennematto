@@ -1,10 +1,21 @@
 module Model.Liikennematto exposing
-    ( Liikennematto
+    ( GameAction(..)
+    , GameFSM
+    , GameState(..)
+    , GameUpdateContext
+    , InitSteps
+    , Liikennematto
     , SimulationState(..)
-    , new
+    , currentState
+    , fromNewGame
+    , fromPreviousGame
+    , initial
+    , triggerLoading
     )
 
 import Data.Defaults exposing (horizontalCellsAmount, verticalCellsAmount)
+import Duration exposing (Duration)
+import FSM exposing (FSM)
 import Model.Editor as Editor exposing (Editor)
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Screen as Screen exposing (Screen)
@@ -13,9 +24,12 @@ import Random
 
 
 type alias Liikennematto =
-    { world : World
+    { game : GameFSM
+    , initSteps : InitSteps
     , screen : Screen
     , seed : Random.Seed
+    , world : World
+    , previousWorld : Maybe World
     , simulation : SimulationState
     , editor : Editor
     , renderCache : RenderCache
@@ -24,7 +38,12 @@ type alias Liikennematto =
     , showRoadNetwork : Bool
     , showCarDebugVisuals : Bool
     , roadNetworkDotString : Maybe String
+    , errorMessage : Maybe String
     }
+
+
+type alias GameFSM =
+    FSM GameState GameAction GameUpdateContext
 
 
 type SimulationState
@@ -32,11 +51,166 @@ type SimulationState
     | Paused
 
 
+type alias InitSteps =
+    { audioInitComplete : Bool
+    , viewportSizeSet : Bool
+    }
+
+
+
+--
+-- Game level FSM
+--
+
+
+type GameState
+    = WaitingForInit
+    | InSplashScreen
+    | Loading
+    | InGame
+    | Error
+
+
+type GameAction
+    = StartIntro
+    | TriggerPostLoadingEffects
+    | TriggerInGameEffects
+
+
+type alias GameUpdateContext =
+    InitSteps
+
+
+splashScreenTimer : Duration
+splashScreenTimer =
+    Duration.milliseconds 1500
+
+
+loadingTimer : Duration
+loadingTimer =
+    Duration.milliseconds 1000
+
+
+waitingForInit : FSM.State GameState GameAction GameUpdateContext
+waitingForInit =
+    FSM.createState
+        { id = FSM.createStateId "game-waiting-for-init"
+        , kind = WaitingForInit
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> inSplashScreen)
+                []
+                (FSM.Condition (\initSteps _ -> initSteps.audioInitComplete && initSteps.viewportSizeSet))
+            ]
+        , entryActions = []
+        , exitActions = []
+        }
+
+
+inSplashScreen : FSM.State GameState GameAction GameUpdateContext
+inSplashScreen =
+    FSM.createState
+        { id = FSM.createStateId "game-in-splash-screen"
+        , kind = InSplashScreen
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> inGame)
+                []
+                (FSM.Timer splashScreenTimer)
+            ]
+        , entryActions = []
+        , exitActions = [ StartIntro ]
+        }
+
+
+loading : FSM.State GameState GameAction GameUpdateContext
+loading =
+    FSM.createState
+        { id = FSM.createStateId "game-loading"
+        , kind = Loading
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> inGame)
+                []
+                (FSM.Timer loadingTimer)
+            ]
+        , entryActions = []
+        , exitActions = [ TriggerPostLoadingEffects ]
+        }
+
+
+inGame : FSM.State GameState GameAction GameUpdateContext
+inGame =
+    FSM.createState
+        { id = FSM.createStateId "game-ingame"
+        , kind = InGame
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> loading)
+                []
+                FSM.Direct
+            , FSM.createTransition
+                (\_ -> error)
+                []
+                FSM.Direct
+            ]
+        , entryActions = [ TriggerInGameEffects ]
+        , exitActions = []
+        }
+
+
+error : FSM.State GameState GameAction GameUpdateContext
+error =
+    FSM.createState
+        { id = FSM.createStateId "game-error"
+        , kind = Error
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> inSplashScreen)
+                []
+                FSM.Direct
+            ]
+        , entryActions = []
+        , exitActions = []
+        }
+
+
+currentState : Liikennematto -> GameState
+currentState model =
+    FSM.toCurrentState model.game
+
+
+triggerLoading : Liikennematto -> ( Liikennematto, List GameAction )
+triggerLoading model =
+    case FSM.transitionTo (FSM.getId loading) model.game of
+        Ok ( nextFsm, actions ) ->
+            ( { model | game = nextFsm }, actions )
+
+        Err message ->
+            let
+                ( nextFsm, actions ) =
+                    FSM.initialize error
+            in
+            ( { model
+                | game = nextFsm
+                , errorMessage = Just message
+              }
+            , actions
+            )
+
+
+
+--
+-- Init
+--
+
+
 initialSeed : Random.Seed
 initialSeed =
     Random.initialSeed 666
 
 
+initialWorld : World
 initialWorld =
     World.empty
         { horizontalCellsAmount = horizontalCellsAmount
@@ -44,17 +218,68 @@ initialWorld =
         }
 
 
-new : Liikennematto
-new =
-    { world = initialWorld
+initial : Liikennematto
+initial =
+    let
+        ( appFsm, _ ) =
+            FSM.initialize waitingForInit
+    in
+    { game = appFsm
+    , initSteps =
+        { audioInitComplete = False
+        , viewportSizeSet = False
+        }
     , screen = Screen.fallback
     , seed = initialSeed
+    , previousWorld = Nothing
+    , world = initialWorld
     , simulation = Running
-    , editor = Editor.new
+    , editor = Editor.initial
     , renderCache = RenderCache.new initialWorld
     , dynamicTiles = []
     , showDebugPanel = False
     , showRoadNetwork = False
     , showCarDebugVisuals = False
     , roadNetworkDotString = Nothing
+    , errorMessage = Nothing
     }
+
+
+
+--
+-- Start or restore a game
+--
+
+
+fromNewGame : Maybe World -> Liikennematto -> Liikennematto
+fromNewGame previousWorld model =
+    let
+        nextWorld =
+            World.empty
+                { horizontalCellsAmount = Data.Defaults.horizontalCellsAmount
+                , verticalCellsAmount = Data.Defaults.verticalCellsAmount
+                }
+    in
+    { model
+        | world = nextWorld
+        , previousWorld = previousWorld
+        , editor = Editor.reset model.editor
+        , renderCache = RenderCache.new nextWorld
+        , simulation = Paused
+    }
+
+
+fromPreviousGame : Liikennematto -> Liikennematto
+fromPreviousGame model =
+    case model.previousWorld of
+        Just previousWorld ->
+            { model
+                | world = previousWorld
+                , previousWorld = Nothing
+                , editor = Editor.reset model.editor
+                , renderCache = RenderCache.new previousWorld
+                , simulation = Paused
+            }
+
+        Nothing ->
+            fromNewGame Nothing model

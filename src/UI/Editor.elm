@@ -1,13 +1,11 @@
 module UI.Editor exposing
-    ( init
-    , overlay
+    ( overlay
     , update
     , zoomControl
     )
 
 import Audio exposing (playSound)
 import Browser.Dom
-import Data.Defaults as Defaults
 import Duration exposing (Duration)
 import Element exposing (Color, Element)
 import Element.Background as Background
@@ -70,42 +68,6 @@ longTapIndicatorShowDelay =
     Duration.milliseconds 300
 
 
-init : Liikennematto -> ( Liikennematto, Cmd Message )
-init model =
-    let
-        tilemapConfig =
-            Tilemap.config model.world.tilemap
-
-        startCell =
-            Cell.fromCoordinates tilemapConfig
-                ( tilemapConfig.horizontalCellsAmount // 2
-                , tilemapConfig.verticalCellsAmount // 2
-                )
-
-        ( modelWithTile, tileCmd ) =
-            case startCell of
-                Just cell ->
-                    addTile cell model
-
-                Nothing ->
-                    ( model, Cmd.none )
-    in
-    ( modelWithTile
-    , Cmd.batch
-        [ Browser.Dom.getViewportOf containerId
-            |> Task.andThen
-                (\domViewport ->
-                    Browser.Dom.setViewportOf
-                        containerId
-                        ((domViewport.scene.width - domViewport.viewport.width) / 2)
-                        ((domViewport.scene.height - domViewport.viewport.height - toFloat renderSafeAreaYSize) / 2)
-                )
-            |> Task.attempt (\_ -> NoOp)
-        , tileCmd
-        ]
-    )
-
-
 
 -- Update
 
@@ -120,6 +82,22 @@ update msg model =
             Tilemap.config world.tilemap
     in
     case msg of
+        InGame ->
+            ( model, centerView )
+
+        GameSetupComplete ->
+            case
+                Cell.fromCoordinates tilemapConfig
+                    ( tilemapConfig.horizontalCellsAmount // 2
+                    , tilemapConfig.verticalCellsAmount // 2
+                    )
+            of
+                Just cell ->
+                    addTile cell model
+
+                Nothing ->
+                    ( model, Cmd.none )
+
         ChangeZoomLevel nextLevel ->
             let
                 nextEditor =
@@ -202,29 +180,6 @@ update msg model =
                     Editor.setCarSpawnQueue (editor.carSpawnQueue + 1) editor
             in
             ( { model | editor = nextEditor }
-            , Cmd.none
-            )
-
-        ResetWorld ->
-            let
-                nextWorld =
-                    World.empty
-                        { horizontalCellsAmount = Defaults.horizontalCellsAmount
-                        , verticalCellsAmount = Defaults.verticalCellsAmount
-                        }
-
-                baseEditor =
-                    Editor.new
-            in
-            ( { model
-                | editor =
-                    { baseEditor
-                        | lastEventDevice = model.editor.lastEventDevice
-                        , zoomLevel = model.editor.zoomLevel
-                    }
-                , world = nextWorld
-                , renderCache = RenderCache.new nextWorld
-              }
             , Cmd.none
             )
 
@@ -328,6 +283,19 @@ tileActionsToCmds =
                 Tile.PlayAudio sound ->
                     playSound sound
         )
+
+
+centerView : Cmd Message
+centerView =
+    Browser.Dom.getViewportOf containerId
+        |> Task.andThen
+            (\domViewport ->
+                Browser.Dom.setViewportOf
+                    containerId
+                    ((domViewport.scene.width - domViewport.viewport.width) / 2)
+                    ((domViewport.scene.height - domViewport.viewport.height - toFloat renderSafeAreaYSize) / 2)
+            )
+        |> Task.attempt (\_ -> NoOp)
 
 
 resolveTilemapUpdate : Duration -> TilemapUpdateResult -> Liikennematto -> ( Editor, Cmd Message )

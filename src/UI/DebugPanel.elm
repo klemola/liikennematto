@@ -22,7 +22,7 @@ import UI.Core
         ( borderRadiusButton
         , borderRadiusPanel
         , borderSize
-        , colorListItemBackground
+        , colorCardBackground
         , colorMenuBackgroundInverse
         , colorText
         , colorTextInverse
@@ -185,11 +185,11 @@ carStateView cache car =
         , Element.clipX
         , Font.color colorText
         , Font.size 13
-        , Background.color colorListItemBackground
+        , Background.color colorCardBackground
         , Border.solid
         , Border.rounded borderRadiusButton
         , Border.width borderSize
-        , Border.color colorListItemBackground
+        , Border.color colorCardBackground
         ]
         [ Element.text ("# " ++ String.fromInt car.id)
         , Element.column [ Element.spacing whitespaceTight ]

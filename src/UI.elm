@@ -9,6 +9,7 @@ import Html.Attributes
 import Message exposing (Message(..))
 import Model.Editor exposing (mouseDetected)
 import Model.Liikennematto exposing (Liikennematto, SimulationState(..))
+import Model.World exposing (World)
 import UI.Core
     exposing
         ( borderRadiusButton
@@ -71,6 +72,7 @@ layout model render renderDebugLayers =
         , Element.inFront (rightControls model)
         , Element.inFront (leftControls model)
         , Element.inFront (debugPanel model)
+        , Element.inFront (restoreGameControl model.previousWorld)
         , Element.htmlAttribute (Html.Attributes.id containerId)
         , Element.htmlAttribute (Html.Attributes.style "touch-action" "pan-x pan-y")
         ]
@@ -173,7 +175,7 @@ rightControls model =
             ]
             [ UI.Core.controlButton
                 { iconKind = Icons.NewGame
-                , onPress = ResetWorld
+                , onPress = NewGame
                 , selected = False
                 , disabled = False
                 }
@@ -213,3 +215,29 @@ debugPanel model =
 
     else
         Element.none
+
+
+restoreGameControl : Maybe World -> Element Message
+restoreGameControl previousWorld =
+    case previousWorld of
+        Just _ ->
+            Element.el
+                [ Element.padding whitespaceTight
+                , Element.spacing whitespaceTight
+                , Element.alignTop
+                , Element.alignLeft
+                , Element.moveDown scrollbarAwareOffsetF
+                , Element.moveRight scrollbarAwareOffsetF
+                , Background.color colorMenuBackground
+                , Border.rounded borderRadiusPanel
+                ]
+                (UI.Core.controlButton
+                    { iconKind = Icons.Back
+                    , onPress = RestoreGame
+                    , selected = False
+                    , disabled = False
+                    }
+                )
+
+        Nothing ->
+            Element.none

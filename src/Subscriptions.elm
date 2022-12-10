@@ -1,5 +1,6 @@
 module Subscriptions exposing (subscriptions)
 
+import Audio
 import Browser.Events as Events
 import Duration
 import Message exposing (Message(..))
@@ -28,8 +29,9 @@ subscriptions { simulation } =
         defaultSubs =
             [ Events.onResize (\_ _ -> ResizeTriggered)
             , Events.onVisibilityChange VisibilityChanged
-            , Time.every tilemapUpdateFrequency (always (UpdateTilemap (Duration.milliseconds tilemapUpdateFrequency)))
             , Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameReceived)
+            , Time.every tilemapUpdateFrequency (always (UpdateTilemap (Duration.milliseconds tilemapUpdateFrequency)))
+            , Audio.onAudioInitComplete (\_ -> AudioInitComplete)
             ]
     in
     if simulation == Paused then

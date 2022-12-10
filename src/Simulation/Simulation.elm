@@ -1,6 +1,6 @@
 module Simulation.Simulation exposing
-    ( initCmd
-    , update
+    ( update
+    , worldAfterTilemapChange
     )
 
 import Audio
@@ -25,11 +25,6 @@ import Simulation.Zoning as Zoning
 import Task
 
 
-initCmd : Random.Seed -> Cmd Message
-initCmd seed =
-    generateEnvironmentAfterDelay seed
-
-
 
 --
 -- Core update function and effects
@@ -39,6 +34,9 @@ initCmd seed =
 update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
 update msg model =
     case msg of
+        GameSetupComplete ->
+            ( model, generateEnvironmentAfterDelay model.seed )
+
         UpdateTraffic delta ->
             let
                 { world } =
@@ -70,13 +68,7 @@ update msg model =
             ( { model | simulation = simulation }, Cmd.none )
 
         TilemapChanged _ ->
-            let
-                nextWorld =
-                    model.world
-                        |> Infrastructure.updateRoadNetwork
-                        |> Traffic.rerouteCarsIfNeeded
-            in
-            ( { model | world = nextWorld }
+            ( { model | world = worldAfterTilemapChange model.world }
             , Cmd.none
             )
 
@@ -123,6 +115,13 @@ generateEnvironmentAfterDelay seed =
         |> toFloat
         |> Process.sleep
         |> Task.perform (always GenerateEnvironment)
+
+
+worldAfterTilemapChange : World -> World
+worldAfterTilemapChange world =
+    world
+        |> Infrastructure.updateRoadNetwork
+        |> Traffic.rerouteCarsIfNeeded
 
 
 
