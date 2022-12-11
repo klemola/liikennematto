@@ -39,6 +39,7 @@ benchmark:
 	elm make benchmarks/SplineBenchmark.elm --optimize --output build/benchmarks/splines.html
 	elm make benchmarks/PathfindingAndRouteBenchmark.elm --optimize --output build/benchmarks/pathfinding_route.html
 	elm make benchmarks/GameLoopBenchmark.elm --optimize --output build/benchmarks/game_loop.html
+	elm make benchmarks/RenderBenchmark.elm --optimize --output build/benchmarks/render.html
 
 devtools:
 	elm make devtools/RenderFixture.elm --output build/render_fixture.html

@@ -2,21 +2,11 @@ module RenderBenchmark exposing (main)
 
 import Benchmark exposing (Benchmark, benchmark, describe)
 import Benchmark.Runner exposing (BenchmarkProgram, program)
-import Color exposing (Color)
-import Data.Cars
-import Data.Colors
-import Svg exposing (Svg)
-import Svg.Lazy
+import Data.Cars exposing (testCar)
 
 
-sedanGraphicsWithConfigLazy : Color -> Svg msg
-sedanGraphicsWithConfigLazy bodyColor =
-    Svg.Lazy.lazy sedanGraphicsWithConfigProxy bodyColor
-
-
-sedanGraphicsWithConfigProxy : Color -> Svg msg
-sedanGraphicsWithConfigProxy bodyColor =
-    Svg.g [] (Data.Cars.sedanGraphicsWithConfig bodyColor)
+constantValue =
+    Data.Cars.carAsset Data.Cars.sedan
 
 
 suite : Benchmark
@@ -25,13 +15,17 @@ suite =
         [ describe "Car asset"
             [ benchmark "constant" <|
                 \_ ->
-                    Data.Cars.carAsset Data.Cars.sedan
+                    constantValue
             , benchmark "variable color" <|
                 \_ ->
-                    Data.Cars.sedanGraphicsWithConfig Data.Colors.red
+                    Data.Cars.sedanGraphics
+                        testCar.bodyColor
+                        testCar.detailColor
             , benchmark "variable color, lazy" <|
                 \_ ->
-                    sedanGraphicsWithConfigLazy Data.Colors.red
+                    Data.Cars.sedanGraphicsLazy
+                        testCar.bodyColor
+                        testCar.detailColor
             ]
         ]
 
