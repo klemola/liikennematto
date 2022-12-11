@@ -5,13 +5,14 @@ import Benchmark.Runner exposing (BenchmarkProgram, program)
 import Data.RuleSetups as RuleSetups
 import Duration
 import Message
+import Model.Flags exposing (RuntimeEnvironment(..))
 import Model.Liikennematto as Liikennematto
 import Simulation.Simulation as Simulation
 import UI.Editor as Editor
 
 
 baseModel =
-    Liikennematto.initial
+    Liikennematto.initial { runtimeEnvironment = Unknown }
 
 
 suite : Benchmark
