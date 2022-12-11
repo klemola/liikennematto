@@ -6,6 +6,7 @@ import Browser.Events as Events
 import Element exposing (Element)
 import FSM
 import Message exposing (Message(..))
+import Model.Flags as Flags exposing (FlagsJson)
 import Model.Liikennematto as Liikennematto
     exposing
         ( Liikennematto
@@ -24,11 +25,24 @@ import UI.ErrorScreen
 import UI.SplashScreen
 
 
-main : Program () Liikennematto Message
+main : Program FlagsJson Liikennematto Message
 main =
+    Browser.document
+        { init = init
+        , view = view
+        , update = update
+        , subscriptions = subscriptions
+        }
+
+
+init : FlagsJson -> ( Liikennematto, Cmd Message )
+init flags =
     let
+        flagsDecoded =
+            Flags.fromJsonValue flags
+
         initialModel =
-            Liikennematto.initial
+            Liikennematto.initial flagsDecoded
 
         initCmds =
             Cmd.batch
@@ -37,12 +51,7 @@ main =
                 , Task.perform ResetSeed Time.now
                 ]
     in
-    Browser.document
-        { init = \() -> ( initialModel, initCmds )
-        , view = view
-        , update = update
-        , subscriptions = subscriptions
-        }
+    ( initialModel, initCmds )
 
 
 update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )

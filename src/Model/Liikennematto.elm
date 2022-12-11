@@ -17,6 +17,7 @@ import Data.Defaults exposing (horizontalCellsAmount, verticalCellsAmount)
 import Duration exposing (Duration)
 import FSM exposing (FSM)
 import Model.Editor as Editor exposing (Editor)
+import Model.Flags exposing (Flags, RuntimeEnvironment(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Screen as Screen exposing (Screen)
 import Model.World as World exposing (World)
@@ -218,15 +219,18 @@ initialWorld =
         }
 
 
-initial : Liikennematto
-initial =
+initial : Flags -> Liikennematto
+initial flags =
     let
         ( appFsm, _ ) =
             FSM.initialize waitingForInit
+
+        skipExternalInit =
+            flags.runtimeEnvironment == Unknown
     in
     { game = appFsm
     , initSteps =
-        { audioInitComplete = False
+        { audioInitComplete = skipExternalInit
         , viewportSizeSet = False
         }
     , screen = Screen.fallback
