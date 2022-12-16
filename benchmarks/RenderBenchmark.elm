@@ -3,10 +3,12 @@ module RenderBenchmark exposing (main)
 import Benchmark exposing (Benchmark, benchmark, describe)
 import Benchmark.Runner exposing (BenchmarkProgram, program)
 import Data.Cars exposing (testCar)
+import Svg exposing (Svg)
 
 
+constantValue : ( Svg msg, String )
 constantValue =
-    Data.Cars.carAsset Data.Cars.sedan
+    Data.Cars.carAsset Data.Cars.testCar
 
 
 suite : Benchmark
@@ -20,12 +22,12 @@ suite =
                 \_ ->
                     Data.Cars.sedanGraphics
                         testCar.bodyColor
-                        testCar.detailColor
+                        testCar.accentColor
             , benchmark "variable color, lazy" <|
                 \_ ->
                     Data.Cars.sedanGraphicsLazy
                         testCar.bodyColor
-                        testCar.detailColor
+                        testCar.accentColor
             ]
         ]
 

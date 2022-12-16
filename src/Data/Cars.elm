@@ -22,7 +22,7 @@ import Svg.Lazy
 
 type alias CarMake =
     { bodyColor : Color
-    , detailColor : Color
+    , accentColor : Color
     , length : Length
     , width : Length
     , shapeAtOrigin : LMShape2d
@@ -34,19 +34,24 @@ type CarStyle
     = Sedan
 
 
+testCar : CarMake
+testCar =
+    sedan Colors.gray5 Colors.gray3
+
+
 carAsset : CarMake -> ( Svg msg, String )
 carAsset make =
-    ( sedanGraphicsLazy make.bodyColor make.detailColor, sedanViewBox )
+    ( sedanGraphicsLazy make.bodyColor make.accentColor, sedanViewBox )
 
 
-sedan : CarMake
-sedan =
+sedan : Color -> Color -> CarMake
+sedan bodyColor accentColor =
     let
         length =
             Length.meters 4.6
 
         width =
-            Length.meters 2.3
+            Length.meters 2.36
 
         halfLength =
             Quantity.half length
@@ -77,20 +82,12 @@ sedan =
         shape =
             Polygon2d.singleLoop [ p1, p2, p3, p4 ]
     in
-    { bodyColor = Colors.darkBlue
-    , detailColor = Colors.darkBlueDarker
+    { bodyColor = bodyColor
+    , accentColor = accentColor
     , length = length
     , width = width
     , shapeAtOrigin = shape
     , style = Sedan
-    }
-
-
-testCar : CarMake
-testCar =
-    { sedan
-        | bodyColor = Colors.red
-        , detailColor = Colors.redDarker
     }
 
 
@@ -105,10 +102,10 @@ sedanGraphicsLazy =
 
 
 sedanGraphics : Color -> Color -> Svg msg
-sedanGraphics bodyColor detailColor =
+sedanGraphics bodyColor accentColor =
     let
-        detailColorCSS =
-            Color.toCssString detailColor
+        accentColorCSS =
+            Color.toCssString accentColor
     in
     Svg.g
         []
@@ -126,7 +123,7 @@ sedanGraphics bodyColor detailColor =
             [ Attributes.fillRule "evenodd"
             , Attributes.clipRule "evenodd"
             , Attributes.d "M65.9668 2.3999H67.489L69.3868 4.50854L70.4668 10.557L70.1105 10.3788L70.1999 10.1999C70.1105 10.3788 70.1105 10.3788 70.1105 10.3788L70.1078 10.3774L70.1011 10.3741C70.0954 10.3711 70.087 10.3668 70.0763 10.3613C70.0547 10.3501 70.0234 10.3336 69.9837 10.3122C69.9043 10.2693 69.7911 10.2063 69.6542 10.1251C69.3806 9.96284 69.0112 9.72719 68.6282 9.43362C67.8737 8.85516 67.0212 8.01772 66.8047 7.04329C66.6036 6.13841 66.4029 5.03455 66.2528 4.1587C66.1777 3.72039 66.115 3.33845 66.0712 3.06605C66.0493 2.92985 66.0321 2.821 66.0203 2.74617L66.0069 2.66025L66.0023 2.63035L65.9668 2.3999ZM66.4337 2.7999C66.443 2.85791 66.4538 2.92585 66.4661 3.0025C66.5098 3.27386 66.5722 3.65442 66.647 4.09111C66.7969 4.96525 66.9962 6.06139 67.1952 6.95652C67.3786 7.78209 68.1261 8.54464 68.8716 9.11618C69.2387 9.39761 69.5942 9.62446 69.8582 9.781C69.8828 9.79558 69.9065 9.80953 69.9294 9.82286L69.0131 4.69126L67.3108 2.7999H66.4337Z"
-            , Attributes.fill detailColorCSS
+            , Attributes.fill accentColorCSS
             ]
             []
         , path
@@ -138,7 +135,7 @@ sedanGraphics bodyColor detailColor =
             [ Attributes.fillRule "evenodd"
             , Attributes.clipRule "evenodd"
             , Attributes.d "M65.9668 35.6001H67.489L69.3868 33.4915L70.4668 27.443L70.1105 27.6212L70.1999 27.8001C70.1105 27.6212 70.1105 27.6212 70.1105 27.6212L70.1078 27.6226L70.1011 27.6259C70.0954 27.6289 70.087 27.6332 70.0763 27.6387C70.0547 27.6499 70.0234 27.6664 69.9837 27.6878C69.9043 27.7307 69.7911 27.7937 69.6542 27.8749C69.3806 28.0372 69.0112 28.2728 68.6282 28.5664C67.8737 29.1448 67.0212 29.9823 66.8047 30.9567C66.6036 31.8616 66.4029 32.9654 66.2528 33.8413C66.1777 34.2796 66.115 34.6616 66.0712 34.9339C66.0493 35.0702 66.0321 35.179 66.0203 35.2538L66.0069 35.3397L66.0023 35.3696L65.9668 35.6001ZM66.4337 35.2001C66.443 35.1421 66.4538 35.0742 66.4661 34.9975C66.5098 34.7261 66.5722 34.3456 66.647 33.9089C66.7969 33.0347 66.9962 31.9386 67.1952 31.0435C67.3786 30.2179 68.1261 29.4554 68.8716 28.8838C69.2387 28.6024 69.5942 28.3755 69.8582 28.219C69.8828 28.2044 69.9065 28.1905 69.9294 28.1771L69.0131 33.3087L67.3108 35.2001H66.4337Z"
-            , Attributes.fill detailColorCSS
+            , Attributes.fill accentColorCSS
             ]
             []
         , path
@@ -157,7 +154,7 @@ sedanGraphics bodyColor detailColor =
             [ Attributes.fillRule "evenodd"
             , Attributes.clipRule "evenodd"
             , Attributes.d "M43.9919 33.2063L36.8281 32.4139C35.7842 32.2985 35.0049 31.3979 35.0468 30.3453C35.137 28.079 35.3272 22.8669 35.3272 19.2174C35.3272 15.5447 35.1346 10.2896 35.0451 8.0469C35.0042 7.02402 35.7401 6.13955 36.7493 5.98814L43.882 4.91805C45.3895 4.69188 46.812 5.71316 47.0395 7.23888C47.4649 10.0919 48.2 15.543 48.2 19.2174C48.2 22.8972 47.4631 28.1558 47.0377 30.8914C46.8082 32.3664 45.4569 33.3683 43.9919 33.2063ZM44.0799 32.4111L36.916 31.6188C36.288 31.5493 35.821 31.0085 35.8461 30.3771C35.9364 28.1118 36.1272 22.8849 36.1272 19.2174C36.1272 15.5267 35.9339 10.2567 35.8444 8.01499C35.82 7.4015 36.2608 6.87038 36.868 6.77928L44.0007 5.7092C45.08 5.54727 46.0873 6.27738 46.2483 7.35686C46.6745 10.2155 47.4 15.6107 47.4 19.2174C47.4 22.8273 46.6733 28.0288 46.2472 30.7684C46.085 31.8112 45.1288 32.5271 44.0799 32.4111Z"
-            , Attributes.fill detailColorCSS
+            , Attributes.fill accentColorCSS
             ]
             []
         , path
@@ -169,7 +166,7 @@ sedanGraphics bodyColor detailColor =
             [ Attributes.fillRule "evenodd"
             , Attributes.clipRule "evenodd"
             , Attributes.d "M17.8619 30.9877L23.7866 30.8781C24.9069 30.8574 25.7935 29.9227 25.7512 28.801C25.6706 26.6635 25.5177 22.2079 25.5177 19.1887C25.5177 16.1475 25.6728 11.6489 25.7529 9.53018C25.7942 8.43969 24.9556 7.51805 23.8668 7.45523L17.9752 7.11528C16.6223 7.03723 15.393 7.94086 15.1118 9.2904C14.6263 11.6194 13.7998 16.0348 13.7998 19.1887C13.7998 22.3511 14.6302 26.6097 15.1158 28.8374C15.3984 30.1335 16.5603 31.0118 17.8619 30.9877ZM17.8471 30.1878L23.7718 30.0782C24.4453 30.0658 24.9771 29.5044 24.9518 28.8312C24.8712 26.6949 24.7177 22.225 24.7177 19.1887C24.7177 16.1303 24.8735 11.6174 24.9535 9.49996C24.9783 8.84511 24.4749 8.29165 23.8207 8.2539L17.9291 7.91396C16.9601 7.85805 16.093 8.50349 15.8949 9.45363C15.4085 11.7874 14.5998 16.1277 14.5998 19.1887C14.5998 22.2551 15.4113 26.437 15.8975 28.667C16.0961 29.5781 16.9147 30.2051 17.8471 30.1878Z"
-            , Attributes.fill detailColorCSS
+            , Attributes.fill accentColorCSS
             ]
             []
         ]
