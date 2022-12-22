@@ -8,6 +8,12 @@ type alias Color =
     Color.Color
 
 
+type alias ThemeColor =
+    { base : Color
+    , accent : Color
+    }
+
+
 uiCompat : Color.Color -> Element.Color
 uiCompat color =
     Color.toRgba color |> Element.fromRgb

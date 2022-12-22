@@ -22,6 +22,7 @@ module Model.Lot exposing
 import Angle exposing (Angle)
 import BoundingBox2d
 import Common
+import Data.Colors exposing (ThemeColor)
 import Data.Lots exposing (LotKind, NewLot)
 import Direction2d
 import Length exposing (Length)
@@ -45,6 +46,7 @@ import Vector2d
 type alias Lot =
     { id : Id
     , kind : LotKind
+    , themeColor : ThemeColor
     , width : Length
     , height : Length
     , position : LMPoint2d
@@ -64,6 +66,7 @@ build lotId newLot anchor =
     in
     { id = lotId
     , kind = newLot.kind
+    , themeColor = newLot.themeColor
     , width = newLot.width
     , height = newLot.height
     , position = BoundingBox2d.centerPoint constructionSiteBB

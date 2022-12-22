@@ -10,6 +10,7 @@ module Data.Lots exposing
     )
 
 import Data.Cars exposing (CarMake, sedan)
+import Data.Colors as Colors exposing (ThemeColor)
 import Data.Roads exposing (innerLaneOffset, outerLaneOffset)
 import Length exposing (Length)
 import Model.Cell as Cell
@@ -22,6 +23,7 @@ import Svg.Attributes as Attributes
 
 type alias NewLot =
     { kind : LotKind
+    , themeColor : ThemeColor
     , width : Length
     , height : Length
     , parkingSpotExitDirection : OrthogonalDirection
@@ -85,9 +87,9 @@ toRoadConnectionPosition laneOffset drivewayExitDirection lotWidth =
             Point2d.origin
 
 
-resident : LotKind -> Maybe CarMake
-resident _ =
-    Just sedan
+resident : LotKind -> ThemeColor -> Maybe CarMake
+resident lotKind themeColor =
+    Just <| sedan themeColor.base themeColor.accent
 
 
 lotAsset : LotKind -> List (Svg msg)
@@ -122,6 +124,10 @@ residentialSingle1 =
             Right
     in
     { kind = ResidentialSingle1
+    , themeColor =
+        { base = Colors.red
+        , accent = Colors.redDarker
+        }
     , width = width
     , height = height
     , parkingSpotExitDirection = Right
@@ -680,6 +686,10 @@ school =
             Left
     in
     { kind = School
+    , themeColor =
+        { base = Colors.orange
+        , accent = Colors.orangeDarker
+        }
     , width = width
     , height = height
     , parkingSpotExitDirection = Down
@@ -1250,6 +1260,10 @@ cafe =
             Right
     in
     { kind = Cafe
+    , themeColor =
+        { base = Colors.lightBrown
+        , accent = Colors.lightBrownDarker
+        }
     , width = width
     , height = height
     , parkingSpotExitDirection = Down
@@ -1637,6 +1651,10 @@ residentialRow1 =
             Left
     in
     { kind = ResidentialRow1
+    , themeColor =
+        { base = Colors.darkBlue
+        , accent = Colors.darkBlueDarker
+        }
     , width = width
     , height = height
     , parkingSpotExitDirection = Down
@@ -2704,6 +2722,10 @@ residentialApartments1 =
             Down
     in
     { kind = ResidentialApartments1
+    , themeColor =
+        { base = Colors.yellowGreen
+        , accent = Colors.yellowGreenDarker
+        }
     , width = width
     , height = height
     , parkingSpotExitDirection = Left

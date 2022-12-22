@@ -218,7 +218,7 @@ renderCarPath cache car =
             |> List.map
                 (Render.Shape.cubicSpline
                     cache
-                    (Colors.red |> Colors.withAlpha 0.75)
+                    (car.make.bodyColor |> Colors.withAlpha 0.75)
                 )
         )
 
@@ -241,7 +241,7 @@ renderCarCollisionDetection cache car =
             []
         , Render.Shape.line
             cache
-            (Colors.darkBlue |> Colors.withAlpha 0.5)
+            (Colors.gray7 |> Colors.withAlpha 0.5)
             ray
         ]
 

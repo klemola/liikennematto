@@ -420,7 +420,7 @@ renderCar cache car =
             , Attributes.fill "none"
             , Attributes.viewBox viewBox
             ]
-            asset
+            [ asset ]
         ]
 
 

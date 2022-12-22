@@ -316,7 +316,7 @@ addLotResident lot world =
             Entity.nextId world.cars
 
         carMake =
-            Data.Lots.resident lot.kind
+            Data.Lots.resident lot.kind lot.themeColor
 
         parkingSpot =
             Lot.claimParkingSpot carId lot
