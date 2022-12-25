@@ -9,7 +9,7 @@ module Data.Lots exposing
     , school
     )
 
-import Data.Cars exposing (CarMake, sedan)
+import Data.Cars as Cars exposing (CarMake)
 import Data.Colors as Colors exposing (ThemeColor)
 import Data.Roads exposing (innerLaneOffset, outerLaneOffset)
 import Length exposing (Length)
@@ -89,7 +89,25 @@ toRoadConnectionPosition laneOffset drivewayExitDirection lotWidth =
 
 resident : LotKind -> ThemeColor -> Maybe CarMake
 resident lotKind themeColor =
-    Just <| sedan themeColor.base themeColor.accent
+    let
+        carMake =
+            case lotKind of
+                ResidentialSingle1 ->
+                    Cars.sedan
+
+                ResidentialApartments1 ->
+                    Cars.hatchback
+
+                ResidentialRow1 ->
+                    Cars.sedan
+
+                Cafe ->
+                    Cars.van
+
+                School ->
+                    Cars.van
+    in
+    Just (carMake themeColor.base themeColor.accent)
 
 
 lotAsset : LotKind -> List (Svg msg)
