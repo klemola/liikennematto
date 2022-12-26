@@ -3,6 +3,7 @@ module Data.Cars exposing
     , CarStyle
     , carAsset
     , hatchback
+    , randomCarMake
     , sedan
     , sedanGraphics
     , sedanGraphicsLazy
@@ -17,6 +18,8 @@ import Model.Geometry exposing (LMShape2d)
 import Point2d
 import Polygon2d
 import Quantity
+import Random
+import Random.Extra
 import Svg exposing (Svg, path)
 import Svg.Attributes as Attributes
 import Svg.Lazy
@@ -38,9 +41,39 @@ type CarStyle
     | Van
 
 
+carStyles : List CarStyle
+carStyles =
+    [ Sedan, Hatchback, Van ]
+
+
 testCar : CarMake
 testCar =
     sedan Colors.gray5 Colors.gray3
+
+
+randomCarMake : Random.Generator CarMake
+randomCarMake =
+    let
+        bodyColor =
+            Colors.gray5
+
+        accentColor =
+            Colors.gray3
+    in
+    Random.Extra.sample carStyles
+        |> Random.map (Maybe.withDefault Sedan)
+        |> Random.map
+            (\carStyle ->
+                case carStyle of
+                    Sedan ->
+                        sedan bodyColor accentColor
+
+                    Hatchback ->
+                        hatchback bodyColor accentColor
+
+                    Van ->
+                        van bodyColor accentColor
+            )
 
 
 carAsset : CarMake -> ( Svg msg, String )
