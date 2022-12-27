@@ -11,7 +11,7 @@ module Simulation.Traffic exposing
 
 import BoundingBox2d
 import Common
-import Data.Cars exposing (CarMake, testCar)
+import Data.Cars exposing (CarMake)
 import Data.Lots
 import Dict
 import Direction2d
@@ -394,8 +394,11 @@ spawnCar seed world =
                     route =
                         Pathfinding.generateRouteFromNode seedAfterRandomNode world id nodeCtx
 
+                    ( carMake, _ ) =
+                        Random.step Data.Cars.randomCarMake seed
+
                     car =
-                        Car.new testCar
+                        Car.new carMake
                             |> Car.withPosition nodeCtx.node.label.position
                             |> Car.withOrientation (Direction2d.toAngle nodeCtx.node.label.direction)
                             |> Car.build id (Just route) Nothing
