@@ -6,7 +6,7 @@ module Render exposing
 
 import Angle
 import Color
-import Data.Cars exposing (carAsset)
+import Data.Cars exposing (CarMake, carAsset)
 import Data.Colors as Colors
 import Data.Lots exposing (lotAsset)
 import Data.Roads exposing (roadAsset)
@@ -21,7 +21,8 @@ import Model.Cell as Cell exposing (Cell)
 import Model.Entity exposing (Id)
 import Model.Geometry
     exposing
-        ( OrthogonalDirection(..)
+        ( LMPoint2d
+        , OrthogonalDirection(..)
         )
 import Model.Lot exposing (Lot)
 import Model.RenderCache exposing (DynamicTilesPresentation, RenderCache)
@@ -92,10 +93,10 @@ view { cars, lots, roadNetwork, trafficLights } cache dynamicTiles =
         [ styles
         , Svg.Lazy.lazy renderTilemap cache
         , renderDynamicTiles cache dynamicTiles
-        , Svg.Lazy.lazy (renderLots cache) lots
+        , Svg.Lazy.lazy2 renderLots cache lots
         , renderCars cache cars
-        , Svg.Lazy.lazy (renderTrafficLights cache) trafficLights
-        , Svg.Lazy.lazy (renderTrafficSigns cache) roadNetwork
+        , Svg.Lazy.lazy2 renderTrafficLights cache trafficLights
+        , Svg.Lazy.lazy2 renderTrafficSigns cache roadNetwork
         ]
 
 
@@ -379,15 +380,20 @@ renderCars cache cars =
 
 renderCar : RenderCache -> Car -> Svg msg
 renderCar cache car =
+    Svg.Lazy.lazy4 carSvg cache car.position car.orientation car.make
+
+
+carSvg : RenderCache -> LMPoint2d -> Angle.Angle -> CarMake -> Svg msg
+carSvg cache position orientation make =
     let
         { x, y } =
-            pointToPixels cache.pixelsToMetersRatio car.position
+            pointToPixels cache.pixelsToMetersRatio position
 
         carWidthPixels =
-            toPixelsValue cache.pixelsToMetersRatio car.make.width
+            toPixelsValue cache.pixelsToMetersRatio make.width
 
         carLengthPixels =
-            toPixelsValue cache.pixelsToMetersRatio car.make.length
+            toPixelsValue cache.pixelsToMetersRatio make.length
 
         renderX =
             x - (carLengthPixels / 2)
@@ -396,7 +402,7 @@ renderCar cache car =
             cache.tilemapHeightPixels - y - (carWidthPixels / 2)
 
         rotateVal =
-            car.orientation
+            orientation
                 |> Quantity.negate
                 |> Angle.inDegrees
                 |> String.fromFloat
@@ -409,7 +415,7 @@ renderCar cache car =
             "translate(" ++ String.fromFloat renderX ++ " " ++ String.fromFloat renderY ++ ")"
 
         ( asset, viewBox ) =
-            carAsset car.make
+            carAsset make
     in
     Svg.g
         [ Attributes.transform <| String.join " " [ rotateStr, translateStr ]
