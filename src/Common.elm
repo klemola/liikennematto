@@ -3,6 +3,7 @@ module Common exposing
     , boundingBoxOverlaps
     , boundingBoxToFrame
     , boundingBoxWithDimensions
+    , isCloseToZeroVelocity
     , isInTheNormalPlaneOf
     , rightAnglePosition
     , splitBoundingBoxHorizontally
@@ -17,6 +18,7 @@ import Length exposing (Length)
 import Model.Geometry exposing (LMBoundingBox2d, LMFrame2d, LMPoint2d)
 import Point2d exposing (Point2d)
 import Quantity
+import Speed exposing (Speed)
 import Vector2d
 
 
@@ -166,3 +168,8 @@ isInTheNormalPlaneOf normal origin other =
     Direction2d.toVector normal
         |> Vector2d.dot (a |> Vector2d.minus p)
         |> Quantity.greaterThanOrEqualToZero
+
+
+isCloseToZeroVelocity : Speed -> Bool
+isCloseToZeroVelocity =
+    Quantity.abs >> Quantity.lessThan (Speed.metersPerSecond 0.1)

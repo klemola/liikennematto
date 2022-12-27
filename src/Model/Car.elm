@@ -7,6 +7,7 @@ module Model.Car exposing
     , UpdateContext
     , adjustedShape
     , build
+    , isDespawning
     , isParked
     , new
     , shouldWatchTraffic
@@ -23,8 +24,8 @@ module Model.Car exposing
 import Angle exposing (Angle)
 import AngularSpeed exposing (AngularSpeed)
 import BoundingBox2d
+import Common exposing (isCloseToZeroVelocity)
 import Data.Cars exposing (CarMake)
-import Duration exposing (Duration)
 import FSM exposing (FSM)
 import Frame2d
 import Length
@@ -86,7 +87,7 @@ type CarState
     | WaitingForParkingSpot
     | Parking
     | Despawning
-    | Despawned
+    | Queued
 
 
 type Action
@@ -98,13 +99,9 @@ type Action
 
 type alias UpdateContext =
     { currentPosition : LMPoint2d
+    , currentVelocity : Speed
     , route : Route
     }
-
-
-despawnTimer : Duration
-despawnTimer =
-    Duration.milliseconds 500
 
 
 parked : FSM.State CarState Action UpdateContext
@@ -245,20 +242,25 @@ despawning =
         , kind = Despawning
         , transitions =
             [ FSM.createTransition
-                (\_ -> despawned)
+                (\_ -> queued)
                 []
-                (FSM.Timer despawnTimer)
+                (FSM.Condition despawnComplete)
             ]
         , entryActions = []
         , exitActions = []
         }
 
 
-despawned : FSM.State CarState Action UpdateContext
-despawned =
+despawnComplete : UpdateContext -> CarState -> Bool
+despawnComplete { currentVelocity } _ =
+    isCloseToZeroVelocity currentVelocity
+
+
+queued : FSM.State CarState Action UpdateContext
+queued =
     FSM.createState
-        { id = FSM.createStateId "car-despawned"
-        , kind = Despawned
+        { id = FSM.createStateId "car-queued"
+        , kind = Queued
         , transitions = []
         , entryActions = []
         , exitActions = []
@@ -380,6 +382,11 @@ isParked car =
     FSM.toCurrentState car.fsm == Parked
 
 
+isDespawning : Car -> Bool
+isDespawning car =
+    FSM.toCurrentState car.fsm == Despawning
+
+
 shouldWatchTraffic : Car -> Bool
 shouldWatchTraffic car =
     FSM.toCurrentState car.fsm == Driving
@@ -435,7 +442,7 @@ statusDescription car =
                 Despawning ->
                     "Despawning"
 
-                Despawned ->
+                Queued ->
                     "Despawned"
     in
     String.join " "

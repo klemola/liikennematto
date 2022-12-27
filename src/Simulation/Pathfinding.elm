@@ -130,7 +130,7 @@ type RouteUpdateResult
     = BeginRoute
     | ReachEndNode RNNodeContext Route
     | ArrivedAtParkingSpot
-    | ArrivedAtNode
+    | ArrivedAtNode Route
     | Updated Route
 
 
@@ -201,8 +201,12 @@ carAfterRouteUpdate seed world roadNetworkStale delta car =
             in
             { car | route = Route.Unrouted (Just waitTimer) }
 
-        ArrivedAtNode ->
-            Car.triggerDespawn car
+        ArrivedAtNode nextRoute ->
+            if Car.isDespawning car then
+                { car | route = nextRoute }
+
+            else
+                Car.triggerDespawn car
 
 
 updateRoute : Duration -> Car -> RouteUpdateResult
@@ -238,6 +242,9 @@ updateRoute delta car =
             let
                 nextPath =
                     updatePath car.velocity delta path
+
+                nextRoute =
+                    Route.ArrivingToDestination destination nextPath
             in
             if nextPath.finished then
                 case destination of
@@ -245,10 +252,10 @@ updateRoute delta car =
                         ArrivedAtParkingSpot
 
                     Route.RoadNetworkNode ->
-                        ArrivedAtNode
+                        ArrivedAtNode nextRoute
 
             else
-                Updated (Route.ArrivingToDestination destination nextPath)
+                Updated nextRoute
 
 
 updateTimer : Duration -> Duration -> Maybe Duration

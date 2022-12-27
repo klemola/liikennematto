@@ -67,6 +67,11 @@ parkingRadius =
     Length.meters 8
 
 
+stopAtNodeRadius : Length
+stopAtNodeRadius =
+    Length.meters 8
+
+
 nearbyTrafficRadius : Length
 nearbyTrafficRadius =
     Length.meters 16
@@ -94,6 +99,7 @@ updateTraffic { updateQueue, seed, world, delta, roadNetworkStale } =
             let
                 fsmUpdateContext =
                     { currentPosition = activeCar.position
+                    , currentVelocity = activeCar.velocity
                     , route = activeCar.route
                     }
 
@@ -117,11 +123,7 @@ updateTraffic { updateQueue, seed, world, delta, roadNetworkStale } =
 
                 carAfterRouteUpdate =
                     case FSM.toCurrentState nextFSM of
-                        Car.Despawning ->
-                            -- Route update would just trigger despawn again, skip it
-                            Just carWithUpdatedFSM
-
-                        Car.Despawned ->
+                        Car.Queued ->
                             -- Route update not required, the car will be despawned after this update cycle
                             carAfterDespawn seed world carWithUpdatedFSM
 
@@ -452,8 +454,8 @@ type Rule
     | StopAtTrafficControl Length
     | SlowDownAtTrafficControl
     | SlowDownNearRouteEnd
+    | StopAtRouteEnd Length
     | WaitForParkingSpot
-    | StopAtParkingSpot
     | StayParked
 
 
@@ -525,15 +527,15 @@ applyRule activeCar rule =
                 velocity
                 (Just <| Speed.metersPerSecond 3.5)
 
-        WaitForParkingSpot ->
-            Steering.stop velocity
-
-        StopAtParkingSpot ->
+        StopAtRouteEnd stopRadius ->
             Steering.stopAtPathEnd
                 position
                 velocity
                 activeCar.route
-                parkingRadius
+                stopRadius
+
+        WaitForParkingSpot ->
+            Steering.stop velocity
 
         StayParked ->
             Steering.stop velocity
@@ -675,10 +677,13 @@ checkParking { activeCar } =
             Just WaitForParkingSpot
 
         Parking ->
-            Just StopAtParkingSpot
+            Just (StopAtRouteEnd parkingRadius)
 
         Parked ->
             Just StayParked
+
+        Despawning ->
+            Just (StopAtRouteEnd stopAtNodeRadius)
 
         _ ->
             Nothing

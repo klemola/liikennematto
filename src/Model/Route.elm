@@ -383,11 +383,11 @@ isWaitingForRoute route =
 isRouted : Route -> Bool
 isRouted route =
     case route of
-        Routed _ ->
-            True
+        Unrouted _ ->
+            False
 
         _ ->
-            False
+            True
 
 
 isArrivingToDestination : Route -> Bool
