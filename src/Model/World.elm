@@ -1,6 +1,8 @@
 module Model.World exposing
     ( World
+    , WorldEvent(..)
     , empty
+    , findCarById
     , findNodeByPosition
     , hasLot
     , isEmptyArea
@@ -12,7 +14,9 @@ module Model.World exposing
 
 import BoundingBox2d
 import Common
+import Data.Cars exposing (CarMake)
 import Dict exposing (Dict)
+import EventQueue exposing (EventQueue)
 import Graph
 import Length
 import Model.Car as Car exposing (Car)
@@ -34,6 +38,11 @@ import QuadTree
 import Set
 
 
+type WorldEvent
+    = SpawnTestCar
+    | SpawnResident CarMake Id
+
+
 type alias World =
     { tilemap : Tilemap
     , roadNetwork : RoadNetwork
@@ -42,6 +51,7 @@ type alias World =
     , lots : Dict Id Lot
     , carPositionLookup : CarPositionLookup
     , roadNetworkLookup : RoadNetworkLookup
+    , eventQueue : EventQueue WorldEvent
     }
 
 
@@ -58,6 +68,7 @@ empty tilemapConfig =
     , lots = Dict.empty
     , carPositionLookup = carPositionLookup tilemap Dict.empty
     , roadNetworkLookup = roadNetworkLookup tilemap Graph.empty
+    , eventQueue = EventQueue.empty
     }
 
 
@@ -85,6 +96,11 @@ isEmptyArea testAreaBB world =
     Tilemap.inBounds world.tilemap testAreaBB && not lotOverlap && not tilemapOverlap
 
 
+findCarById : Id -> World -> Maybe Car
+findCarById id world =
+    Dict.get id world.cars
+
+
 findNodeByPosition : World -> LMPoint2d -> Maybe RNNodeContext
 findNodeByPosition { roadNetworkLookup, roadNetwork } nodePosition =
     roadNetworkLookup
@@ -97,7 +113,7 @@ findNodeByPosition { roadNetworkLookup, roadNetwork } nodePosition =
 
 
 --
--- Utility
+-- Modification
 --
 
 

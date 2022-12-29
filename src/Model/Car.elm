@@ -1,6 +1,6 @@
 module Model.Car exposing
-    ( Action(..)
-    , Car
+    ( Car
+    , CarEvent(..)
     , CarFSM
     , CarState(..)
     , NewCar
@@ -77,7 +77,7 @@ type alias NewCar =
 
 
 type alias CarFSM =
-    FSM CarState Action UpdateContext
+    FSM CarState CarEvent UpdateContext
 
 
 type CarState
@@ -90,11 +90,13 @@ type CarState
     | Queued
 
 
-type Action
-    = TriggerParkingStartEffects
-    | TriggerParkingCompletedEffects
-    | TriggerUnparkingStartEffects
-    | TriggerUnparkingCompletedEffects
+type CarEvent
+    = ParkingStarted
+    | ParkingComplete
+    | UnparkingStarted
+    | UnparkingComplete
+    | DespawnComplete
+    | EnterQueue
 
 
 type alias UpdateContext =
@@ -104,7 +106,7 @@ type alias UpdateContext =
     }
 
 
-parked : FSM.State CarState Action UpdateContext
+parked : FSM.State CarState CarEvent UpdateContext
 parked =
     FSM.createState
         { id = FSM.createStateId "car-parked"
@@ -119,7 +121,7 @@ parked =
                 []
                 (FSM.Condition readyForUnparking)
             ]
-        , entryActions = [ TriggerParkingCompletedEffects ]
+        , entryActions = [ ParkingComplete ]
         , exitActions = []
         }
 
@@ -129,7 +131,7 @@ readyForUnparking { route } _ =
     Route.isRouted route
 
 
-unparking : FSM.State CarState Action UpdateContext
+unparking : FSM.State CarState CarEvent UpdateContext
 unparking =
     FSM.createState
         { id = FSM.createStateId "car-unparking"
@@ -144,8 +146,8 @@ unparking =
                 []
                 FSM.Direct
             ]
-        , entryActions = [ TriggerUnparkingStartEffects ]
-        , exitActions = [ TriggerUnparkingCompletedEffects ]
+        , entryActions = [ UnparkingStarted ]
+        , exitActions = [ UnparkingComplete ]
         }
 
 
@@ -161,7 +163,7 @@ unparkingCompleted { route, currentPosition } _ =
         |> Maybe.withDefault True
 
 
-driving : FSM.State CarState Action UpdateContext
+driving : FSM.State CarState CarEvent UpdateContext
 driving =
     FSM.createState
         { id = FSM.createStateId "car-driving"
@@ -185,7 +187,7 @@ driving =
         }
 
 
-waitingForParkingSpot : FSM.State CarState Action UpdateContext
+waitingForParkingSpot : FSM.State CarState CarEvent UpdateContext
 waitingForParkingSpot =
     FSM.createState
         { id = FSM.createStateId "car-waitingForParkingSpot"
@@ -210,7 +212,7 @@ parkingSpotFound { route } _ =
     Route.isArrivingToDestination route
 
 
-parking : FSM.State CarState Action UpdateContext
+parking : FSM.State CarState CarEvent UpdateContext
 parking =
     FSM.createState
         { id = FSM.createStateId "car-parking"
@@ -225,7 +227,7 @@ parking =
                 []
                 (FSM.Condition parkingCompleted)
             ]
-        , entryActions = [ TriggerParkingStartEffects ]
+        , entryActions = [ ParkingStarted ]
         , exitActions = []
         }
 
@@ -235,7 +237,7 @@ parkingCompleted { route } _ =
     Route.isWaitingForRoute route
 
 
-despawning : FSM.State CarState Action UpdateContext
+despawning : FSM.State CarState CarEvent UpdateContext
 despawning =
     FSM.createState
         { id = FSM.createStateId "car-despawning"
@@ -247,7 +249,9 @@ despawning =
                 (FSM.Condition despawnComplete)
             ]
         , entryActions = []
-        , exitActions = []
+        , exitActions =
+            [ DespawnComplete
+            ]
         }
 
 
@@ -256,18 +260,29 @@ despawnComplete { currentVelocity } _ =
     isCloseToZeroVelocity currentVelocity
 
 
-queued : FSM.State CarState Action UpdateContext
+queued : FSM.State CarState CarEvent UpdateContext
 queued =
     FSM.createState
         { id = FSM.createStateId "car-queued"
         , kind = Queued
-        , transitions = []
-        , entryActions = []
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> parked)
+                []
+                FSM.Direct
+            , FSM.createTransition
+                (\_ -> driving)
+                []
+                FSM.Direct
+            ]
+        , entryActions =
+            [ EnterQueue
+            ]
         , exitActions = []
         }
 
 
-initializeFSM : NewCar -> ( CarFSM, List Action )
+initializeFSM : NewCar -> ( CarFSM, List CarEvent )
 initializeFSM newCar =
     let
         initialState =

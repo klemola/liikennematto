@@ -19,10 +19,12 @@ import Model.TrafficLight exposing (TrafficLight)
 import Model.World exposing (World)
 import Process
 import Random
+import Simulation.Events exposing (processEvents)
 import Simulation.Infrastructure as Infrastructure
 import Simulation.Traffic as Traffic
 import Simulation.Zoning as Zoning
 import Task
+import Time
 
 
 
@@ -43,15 +45,17 @@ update msg model =
                     model
 
                 cars =
+                    -- TODO: fold to avoid double iteration
                     Dict.values world.cars
 
-                nextWorld =
+                ( nextWorld, trafficEvents ) =
                     Traffic.updateTraffic
                         { updateQueue = cars
                         , seed = model.seed
                         , roadNetworkStale = Editor.hasPendingTilemapChange model.editor
                         , world = world
                         , delta = delta
+                        , events = []
                         }
             in
             ( { model
@@ -61,8 +65,17 @@ update msg model =
                     Random.step (Random.int 0 42) model.seed
                         |> Tuple.second
               }
-            , Cmd.none
+            , Time.now
+                |> Task.map (Tuple.pair trafficEvents)
+                |> Task.perform TrafficUpdated
             )
+
+        TrafficUpdated ( trafficEvents, time ) ->
+            let
+                nextWorld =
+                    processEvents time trafficEvents model.world
+            in
+            ( { model | world = nextWorld }, Cmd.none )
 
         SetSimulation simulation ->
             ( { model | simulation = simulation }, Cmd.none )

@@ -21,7 +21,7 @@ import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car, CarState(..))
 import Model.Entity as Entity exposing (Id)
-import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d, orthogonalDirectionToLmDirection)
+import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
 import Model.Lookup exposing (carPositionLookup)
 import Model.Lot as Lot exposing (Lot, ParkingSpot)
 import Model.RoadNetwork as RoadNetwork
@@ -88,12 +88,15 @@ updateTraffic :
     , world : World
     , roadNetworkStale : Bool
     , delta : Duration
+    , events : List ( Id, Car.CarEvent )
     }
-    -> World
-updateTraffic { updateQueue, seed, world, delta, roadNetworkStale } =
+    -> ( World, List ( Id, Car.CarEvent ) )
+updateTraffic { updateQueue, seed, world, delta, roadNetworkStale, events } =
     case updateQueue of
         [] ->
-            { world | carPositionLookup = carPositionLookup world.tilemap world.cars }
+            ( { world | carPositionLookup = carPositionLookup world.tilemap world.cars }
+            , events
+            )
 
         activeCar :: queue ->
             let
@@ -103,7 +106,7 @@ updateTraffic { updateQueue, seed, world, delta, roadNetworkStale } =
                     , route = activeCar.route
                     }
 
-                ( nextFSM, actions ) =
+                ( nextFSM, fsmEvents ) =
                     FSM.update delta fsmUpdateContext activeCar.fsm
 
                 carWithUpdatedFSM =
@@ -142,8 +145,6 @@ updateTraffic { updateQueue, seed, world, delta, roadNetworkStale } =
                         |> Maybe.map (applySteering delta steering)
                         |> Maybe.map (\updatedCar -> World.setCar updatedCar world)
                         |> Maybe.withDefaultLazy (\_ -> World.removeCar activeCar.id world)
-                        -- The car might already be deleted, but the actions still need to be applied (using the car data on FSM update)
-                        |> applyActions actions carWithUpdatedFSM
             in
             updateTraffic
                 { updateQueue = queue
@@ -151,72 +152,8 @@ updateTraffic { updateQueue, seed, world, delta, roadNetworkStale } =
                 , world = nextWorld
                 , roadNetworkStale = roadNetworkStale
                 , delta = delta
+                , events = events ++ List.map (Tuple.pair activeCar.id) fsmEvents
                 }
-
-
-applyActions : List Car.Action -> Car -> World -> World
-applyActions actions car world =
-    List.foldl (applyAction car)
-        world
-        actions
-
-
-applyAction : Car -> Car.Action -> World -> World
-applyAction car action world =
-    case
-        car.parkingReservation
-            |> Maybe.andThen
-                (\{ lotId, parkingSpotId } ->
-                    Dict.get lotId world.lots
-                        |> Maybe.map (Tuple.pair parkingSpotId)
-                )
-    of
-        Just ( parkingSpotId, lot ) ->
-            case action of
-                Car.TriggerParkingStartEffects ->
-                    lot
-                        |> Lot.acquireParkingLock car.id
-                        |> Maybe.map (Lot.reserveParkingSpot car.id parkingSpotId)
-                        |> Maybe.map (\updatedLot -> World.setLot updatedLot world)
-                        |> Maybe.withDefault world
-
-                Car.TriggerParkingCompletedEffects ->
-                    let
-                        carWithUnparkingOrientation =
-                            { car
-                                | orientation =
-                                    lot.parkingSpotExitDirection
-                                        |> orthogonalDirectionToLmDirection
-                                        |> Direction2d.toAngle
-                            }
-                    in
-                    world
-                        |> World.setCar carWithUnparkingOrientation
-                        |> World.setLot (Lot.releaseParkingLock carWithUnparkingOrientation.id lot)
-
-                Car.TriggerUnparkingStartEffects ->
-                    case Lot.acquireParkingLock car.id lot of
-                        Just lotWithLock ->
-                            World.setLot lotWithLock world
-
-                        Nothing ->
-                            -- The parking lock should have been free but was not
-                            -- Room for improvement: acquire the parking lock when before unparking
-                            world
-                                |> World.setCar (Car.triggerDespawn car)
-                                |> World.setLot (Lot.unreserveParkingSpot parkingSpotId lot)
-
-                Car.TriggerUnparkingCompletedEffects ->
-                    let
-                        nextLot =
-                            lot
-                                |> Lot.releaseParkingLock car.id
-                                |> Lot.unreserveParkingSpot parkingSpotId
-                    in
-                    World.setLot nextLot world
-
-        Nothing ->
-            world
 
 
 applySteering : Duration -> Steering -> Car -> Car

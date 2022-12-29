@@ -4,7 +4,9 @@ import Browser.Dom
 import Browser.Events exposing (Visibility)
 import Duration exposing (Duration)
 import Html.Events.Extra.Pointer as Pointer
+import Model.Car exposing (CarEvent)
 import Model.Cell exposing (Cell)
+import Model.Entity exposing (Id)
 import Model.Liikennematto exposing (SimulationState)
 import Task
 import Time exposing (Posix)
@@ -24,6 +26,7 @@ type Message
     | RestoreGame
     | SetSimulation SimulationState
     | UpdateTraffic Duration
+    | TrafficUpdated ( List ( Id, CarEvent ), Time.Posix )
     | UpdateEnvironment
     | GenerateEnvironment
     | UpdateTilemap Duration
