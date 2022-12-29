@@ -22,6 +22,7 @@ import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Screen as Screen exposing (Screen)
 import Model.World as World exposing (World)
 import Random
+import Time
 
 
 type alias Liikennematto =
@@ -29,6 +30,7 @@ type alias Liikennematto =
     , initSteps : InitSteps
     , screen : Screen
     , seed : Random.Seed
+    , time : Time.Posix
     , world : World
     , previousWorld : Maybe World
     , simulation : SimulationState
@@ -235,6 +237,7 @@ initial flags =
         }
     , screen = Screen.fallback
     , seed = initialSeed
+    , time = Time.millisToPosix 0
     , previousWorld = Nothing
     , world = initialWorld
     , simulation = Running

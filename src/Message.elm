@@ -9,30 +9,32 @@ import Model.Cell exposing (Cell)
 import Model.Entity exposing (Id)
 import Model.Liikennematto exposing (SimulationState)
 import Task
-import Time exposing (Posix)
+import Time
 
 
 type Message
     = NoOp
+      -- High level
     | ResizeTriggered
     | WindowResized Browser.Dom.Viewport
     | VisibilityChanged Visibility
-    | ResetSeed Posix
     | AnimationFrameReceived Duration
     | AudioInitComplete
     | GameSetupComplete
     | InGame
     | NewGame
     | RestoreGame
+      -- Simulation / World
     | SetSimulation SimulationState
     | UpdateTraffic Duration
     | TrafficUpdated ( List ( Id, CarEvent ), Time.Posix )
+    | CheckQueues Time.Posix
     | UpdateEnvironment
     | GenerateEnvironment
     | UpdateTilemap Duration
     | TilemapChanged (List Cell)
-    | CheckQueues
     | SpawnTestCar
+      -- UI / Editor
     | ChangeZoomLevel Float
     | OverlayPointerMove Pointer.Event
     | OverlayPointerLeave Pointer.Event

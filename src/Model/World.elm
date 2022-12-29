@@ -1,9 +1,11 @@
 module Model.World exposing
     ( World
     , WorldEvent(..)
+    , addEvent
     , empty
     , findCarById
     , findNodeByPosition
+    , formatEvents
     , hasLot
     , isEmptyArea
     , removeCar
@@ -36,6 +38,7 @@ import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.TrafficLight exposing (TrafficLights)
 import QuadTree
 import Set
+import Time
 
 
 type WorldEvent
@@ -117,6 +120,15 @@ findNodeByPosition { roadNetworkLookup, roadNetwork } nodePosition =
 --
 
 
+addEvent : WorldEvent -> Time.Posix -> World -> World
+addEvent event triggerAt world =
+    let
+        queueEvent =
+            EventQueue.createEvent event triggerAt
+    in
+    { world | eventQueue = world.eventQueue |> EventQueue.addEvent queueEvent }
+
+
 setCar : Car -> World -> World
 setCar car world =
     { world | cars = Dict.insert car.id car world.cars }
@@ -173,3 +185,27 @@ removeLot lotId world =
 
         Nothing ->
             world
+
+
+formatEvents : World -> List ( String, String, String )
+formatEvents world =
+    EventQueue.toList world.eventQueue
+        |> List.map
+            (\event ->
+                let
+                    kind =
+                        case event.kind of
+                            SpawnTestCar ->
+                                "Spawn test car"
+
+                            SpawnResident _ lotId ->
+                                "Spawn resident: lot #" ++ String.fromInt lotId
+
+                    triggerAt =
+                        Time.posixToMillis event.triggerAt |> String.fromInt
+
+                    retries =
+                        "Retries: " ++ String.fromInt event.retryAmount
+                in
+                ( kind, triggerAt, retries )
+            )

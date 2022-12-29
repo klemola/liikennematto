@@ -87,7 +87,7 @@ type CarState
     | WaitingForParkingSpot
     | Parking
     | Despawning
-    | Queued
+    | Inactive
 
 
 type CarEvent
@@ -96,7 +96,6 @@ type CarEvent
     | UnparkingStarted
     | UnparkingComplete
     | DespawnComplete
-    | EnterQueue
 
 
 type alias UpdateContext =
@@ -244,7 +243,7 @@ despawning =
         , kind = Despawning
         , transitions =
             [ FSM.createTransition
-                (\_ -> queued)
+                (\_ -> inactive)
                 []
                 (FSM.Condition despawnComplete)
             ]
@@ -260,11 +259,11 @@ despawnComplete { currentVelocity } _ =
     isCloseToZeroVelocity currentVelocity
 
 
-queued : FSM.State CarState CarEvent UpdateContext
-queued =
+inactive : FSM.State CarState CarEvent UpdateContext
+inactive =
     FSM.createState
-        { id = FSM.createStateId "car-queued"
-        , kind = Queued
+        { id = FSM.createStateId "car-inactive"
+        , kind = Inactive
         , transitions =
             [ FSM.createTransition
                 (\_ -> parked)
@@ -276,8 +275,7 @@ queued =
                 FSM.Direct
             ]
         , entryActions =
-            [ EnterQueue
-            ]
+            []
         , exitActions = []
         }
 
@@ -457,7 +455,7 @@ statusDescription car =
                 Despawning ->
                     "Despawning"
 
-                Queued ->
+                Inactive ->
                     "Despawned"
     in
     String.join " "

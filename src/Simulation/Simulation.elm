@@ -19,7 +19,7 @@ import Model.TrafficLight exposing (TrafficLight)
 import Model.World exposing (World)
 import Process
 import Random
-import Simulation.Events exposing (processEvents)
+import Simulation.Events exposing (processEvents, updateEventQueue)
 import Simulation.Infrastructure as Infrastructure
 import Simulation.Traffic as Traffic
 import Simulation.Zoning as Zoning
@@ -58,13 +58,7 @@ update msg model =
                         , events = []
                         }
             in
-            ( { model
-                | world = nextWorld
-                , seed =
-                    -- Make sure that the seed is stepped often so that deeply nested functions don't have to return new seeds
-                    Random.step (Random.int 0 42) model.seed
-                        |> Tuple.second
-              }
+            ( { model | world = nextWorld }
             , Time.now
                 |> Task.map (Tuple.pair trafficEvents)
                 |> Task.perform TrafficUpdated
@@ -75,7 +69,18 @@ update msg model =
                 nextWorld =
                     processEvents time trafficEvents model.world
             in
-            ( { model | world = nextWorld }, Cmd.none )
+            ( { model
+                | world = nextWorld
+                , time = time
+                , seed = Random.initialSeed (Time.posixToMillis time)
+              }
+            , Cmd.none
+            )
+
+        CheckQueues time ->
+            ( { model | world = updateEventQueue time model.seed model.world }
+            , Cmd.none
+            )
 
         SetSimulation simulation ->
             ( { model | simulation = simulation }, Cmd.none )

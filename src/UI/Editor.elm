@@ -24,9 +24,7 @@ import Model.Tile as Tile
 import Model.Tilemap as Tilemap exposing (TilemapUpdateResult)
 import Model.World as World exposing (World)
 import Quantity
-import Random
 import Render.Conversion
-import Simulation.Traffic as Traffic
 import Simulation.Zoning as Zoning
 import Task
 import UI.Core
@@ -155,31 +153,15 @@ update msg model =
             , Cmd.batch (tilemapChangedEffects :: tileActionsToCmds tilemapUpdateResult.actions)
             )
 
-        CheckQueues ->
-            let
-                { carSpawnQueue } =
-                    editor
-
-                ( nextWorld, nextCarSpawnQueue, nextSeed ) =
-                    dequeueCarSpawn carSpawnQueue model.seed world
-
-                nextEditor =
-                    Editor.setCarSpawnQueue nextCarSpawnQueue editor
-            in
-            ( { model
-                | world = nextWorld
-                , seed = nextSeed
-                , editor = nextEditor
-              }
-            , Cmd.none
-            )
-
         SpawnTestCar ->
-            let
-                nextEditor =
-                    Editor.setCarSpawnQueue (editor.carSpawnQueue + 1) editor
-            in
-            ( { model | editor = nextEditor }
+            -- TODO: delay event
+            ( { model
+                | world =
+                    World.addEvent
+                        World.SpawnTestCar
+                        model.time
+                        model.world
+              }
             , Cmd.none
             )
 
@@ -348,28 +330,6 @@ resolveTilemapUpdate delta tilemapUpdateResult model =
                 ( { editor | pendingTilemapChange = Just ( nextTimer, nextChangedCells ) }
                 , Cmd.none
                 )
-
-
-dequeueCarSpawn : Int -> Random.Seed -> World -> ( World, Int, Random.Seed )
-dequeueCarSpawn queue seed world =
-    let
-        canSpawnCar =
-            queue > 0
-    in
-    if canSpawnCar then
-        let
-            ( nextWorld, nextSeed, newCarId ) =
-                Traffic.spawnCar seed world
-        in
-        case newCarId of
-            Just _ ->
-                ( nextWorld, queue - 1, nextSeed )
-
-            Nothing ->
-                ( nextWorld, queue, nextSeed )
-
-    else
-        ( world, queue, seed )
 
 
 pointerEventToCell : RenderCache -> Tilemap.TilemapConfig -> Pointer.Event -> Maybe Cell

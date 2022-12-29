@@ -1,4 +1,4 @@
-module Simulation.Events exposing (processEvents)
+module Simulation.Events exposing (processEvents, updateEventQueue)
 
 import Dict
 import Direction2d
@@ -8,7 +8,15 @@ import Model.Entity exposing (Id)
 import Model.Geometry exposing (orthogonalDirectionToLmDirection)
 import Model.Lot as Lot exposing (Lot)
 import Model.World as World exposing (World, WorldEvent(..))
+import Random
+import Simulation.Traffic exposing (spawnCar)
 import Time
+
+
+
+--
+-- Events from simulation
+--
 
 
 processEvents : Time.Posix -> List ( Id, CarEvent ) -> World -> World
@@ -20,10 +28,10 @@ processEvents time events world =
 
 processEvent : Time.Posix -> ( Id, CarEvent ) -> World -> World
 processEvent time ( carId, event ) world =
-    -- let
-    --     _ =
-    --         Debug.log "process event" ( carId, event )
-    -- in
+    let
+        _ =
+            Debug.log "process event" ( carId, event )
+    in
     case event of
         ParkingStarted ->
             -- TODO: retry
@@ -40,10 +48,7 @@ processEvent time ( carId, event ) world =
             leaveLot carId world
 
         DespawnComplete ->
-            world
-
-        EnterQueue ->
-            delayCarSpawn time carId world
+            setupRespawn time carId world
 
 
 attemptReserveParkingSpot : Id -> World -> World
@@ -116,8 +121,8 @@ leaveLot =
         )
 
 
-delayCarSpawn : Time.Posix -> Id -> World -> World
-delayCarSpawn time =
+setupRespawn : Time.Posix -> Id -> World -> World
+setupRespawn time =
     withCar
         (\car world ->
             let
@@ -131,15 +136,42 @@ delayCarSpawn time =
 
                 triggerAt =
                     (Time.posixToMillis time + 5000) |> Time.millisToPosix
-
-                queueEvent =
-                    EventQueue.createEvent eventKind triggerAt
             in
-            { world
-                | eventQueue =
-                    world.eventQueue |> EventQueue.addEvent queueEvent
-            }
+            -- Both remove the car and enqueue the respawn
+            world
+                |> World.removeCar car.id
+                |> World.addEvent eventKind triggerAt
         )
+
+
+
+--
+-- Dequeue
+--
+
+
+updateEventQueue : Time.Posix -> Random.Seed -> World -> World
+updateEventQueue time seed world =
+    let
+        ( nextQueue, triggeredEvents ) =
+            EventQueue.update time world.eventQueue
+    in
+    List.foldl
+        (\event nextWorld ->
+            case event.kind of
+                World.SpawnResident carMake lotId ->
+                    -- TODO
+                    nextWorld
+
+                World.SpawnTestCar ->
+                    let
+                        ( worldWithCar, _ ) =
+                            spawnCar seed nextWorld
+                    in
+                    worldWithCar
+        )
+        { world | eventQueue = nextQueue }
+        triggeredEvents
 
 
 

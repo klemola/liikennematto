@@ -8,11 +8,11 @@ import Element.Border as Border
 import Element.Font as Font
 import Message exposing (Message(..))
 import Model.Car as Car exposing (Car)
-import Model.Editor as Editor
 import Model.Geometry exposing (LMPoint2d)
 import Model.Liikennematto exposing (Liikennematto)
 import Model.RenderCache exposing (RenderCache)
 import Model.RoadNetwork as RoadNetwork
+import Model.World exposing (World, formatEvents)
 import Point2d
 import Quantity
 import Round
@@ -90,12 +90,29 @@ view model =
                 )
             ]
         , controls model
+        , eventQueueView model.world
         , Element.column
             [ Element.spacing whitespaceTight
             , Element.width Element.fill
             ]
             (Dict.values model.world.cars |> List.map (carStateView model.renderCache))
         ]
+
+
+cardAttributes : List (Element.Attribute msg)
+cardAttributes =
+    [ Element.width Element.fill
+    , Element.padding whitespaceTight
+    , Element.spacing UI.Core.whitespaceTight
+    , Element.clipX
+    , Font.color colorText
+    , Font.size 13
+    , Background.color colorCardBackground
+    , Border.solid
+    , Border.rounded borderRadiusButton
+    , Border.width borderSize
+    , Border.color colorCardBackground
+    ]
 
 
 controls : Liikennematto -> Element Message
@@ -114,7 +131,7 @@ controls model =
             { iconKind = Icons.SpawnCar
             , onPress = SpawnTestCar
             , selected = False
-            , disabled = model.editor.carSpawnQueue >= Editor.maxQueuedCars
+            , disabled = False
             }
         , controlButton
             { iconKind = Icons.ToggleGraphDebug
@@ -176,21 +193,36 @@ dotStringView dotString =
             Element.none
 
 
+eventQueueView : World -> Element msg
+eventQueueView world =
+    Element.column
+        [ Element.spacing whitespaceTight
+        , Element.width Element.fill
+        ]
+        (formatEvents world
+            |> List.map
+                (\queueEvent ->
+                    let
+                        ( kind, triggerAt, retries ) =
+                            queueEvent
+                    in
+                    Element.el
+                        cardAttributes
+                        (Element.column
+                            [ Element.spacing UI.Core.whitespaceTight ]
+                            [ Element.text kind
+                            , Element.text triggerAt
+                            , Element.text retries
+                            ]
+                        )
+                )
+        )
+
+
 carStateView : RenderCache -> Car -> Element msg
 carStateView cache car =
     Element.row
-        [ Element.width Element.fill
-        , Element.padding whitespaceTight
-        , Element.spacing UI.Core.whitespaceRegular
-        , Element.clipX
-        , Font.color colorText
-        , Font.size 13
-        , Background.color colorCardBackground
-        , Border.solid
-        , Border.rounded borderRadiusButton
-        , Border.width borderSize
-        , Border.color colorCardBackground
-        ]
+        cardAttributes
         [ Element.text ("# " ++ String.fromInt car.id)
         , Element.column [ Element.spacing whitespaceTight ]
             [ Element.text (pointToString cache car.position)

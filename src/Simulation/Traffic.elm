@@ -109,9 +109,6 @@ updateTraffic { updateQueue, seed, world, delta, roadNetworkStale, events } =
                 ( nextFSM, fsmEvents ) =
                     FSM.update delta fsmUpdateContext activeCar.fsm
 
-                carWithUpdatedFSM =
-                    { activeCar | fsm = nextFSM }
-
                 otherCars =
                     world.carPositionLookup
                         |> QuadTree.neighborsWithin nearbyTrafficRadius activeCar.boundingBox
@@ -124,32 +121,19 @@ updateTraffic { updateQueue, seed, world, delta, roadNetworkStale, events } =
                         , activeCar = activeCar
                         }
 
-                carAfterRouteUpdate =
-                    case FSM.toCurrentState nextFSM of
-                        Car.Queued ->
-                            -- Route update not required, the car will be despawned after this update cycle
-                            carAfterDespawn seed world carWithUpdatedFSM
-
-                        _ ->
-                            Just
-                                (Pathfinding.carAfterRouteUpdate
-                                    seed
-                                    world
-                                    roadNetworkStale
-                                    delta
-                                    carWithUpdatedFSM
-                                )
-
-                nextWorld =
-                    carAfterRouteUpdate
-                        |> Maybe.map (applySteering delta steering)
-                        |> Maybe.map (\updatedCar -> World.setCar updatedCar world)
-                        |> Maybe.withDefaultLazy (\_ -> World.removeCar activeCar.id world)
+                nextCar =
+                    { activeCar | fsm = nextFSM }
+                        |> Pathfinding.carAfterRouteUpdate
+                            seed
+                            world
+                            roadNetworkStale
+                            delta
+                        |> applySteering delta steering
             in
             updateTraffic
                 { updateQueue = queue
                 , seed = seed
-                , world = nextWorld
+                , world = World.setCar nextCar world
                 , roadNetworkStale = roadNetworkStale
                 , delta = delta
                 , events = events ++ List.map (Tuple.pair activeCar.id) fsmEvents
@@ -195,42 +179,6 @@ applySteering delta steering car =
         , shape = nextShape
         , boundingBox = nextBoundingBox
     }
-
-
-carAfterDespawn : Random.Seed -> World -> Car -> Maybe Car
-carAfterDespawn seed world car =
-    car.homeLotId
-        |> Maybe.andThen (\lotId -> Dict.get lotId world.lots)
-        |> Maybe.andThen (\lot -> Lot.findFreeParkingSpot car.id lot |> Maybe.map (Tuple.pair lot))
-        |> Maybe.map (moveCarToHome seed world car)
-
-
-moveCarToHome : Random.Seed -> World -> Car -> ( Lot, ParkingSpot ) -> Car
-moveCarToHome seed world car ( home, parkingSpot ) =
-    case
-        car.homeLotId
-    of
-        Just _ ->
-            let
-                parkingReservation =
-                    { lotId = home.id
-                    , parkingSpotId = parkingSpot.id
-                    }
-
-                ( nextFSM, _ ) =
-                    FSM.reset car.fsm
-            in
-            { car
-                | fsm = nextFSM
-                , position = parkingSpot.position
-                , orientation = Lot.parkingSpotOrientation home
-                , velocity = Quantity.zero
-                , parkingReservation = Just parkingReservation
-                , route = Pathfinding.generateRouteFromParkingSpot seed world car.id parkingReservation
-            }
-
-        _ ->
-            car
 
 
 rerouteCarsIfNeeded : World -> World
@@ -314,8 +262,9 @@ createCar carId lot make world parkingSpot =
 --
 
 
-spawnCar : Random.Seed -> World -> ( World, Random.Seed, Maybe Entity.Id )
+spawnCar : Random.Seed -> World -> ( World, Maybe Entity.Id )
 spawnCar seed world =
+    -- TODO: should be Result
     let
         ( maybeRandomNodeCtx, seedAfterRandomNode ) =
             RoadNetwork.getRandomNode world.roadNetwork
@@ -343,11 +292,10 @@ spawnCar seed world =
                             |> Car.build id (Just route) Nothing
                 in
                 ( World.setCar car world
-                , seedAfterRandomNode
                 , Just id
                 )
             )
-        |> Maybe.withDefault ( world, seedAfterRandomNode, Nothing )
+        |> Maybe.withDefault ( world, Nothing )
 
 
 validateSpawnConditions : World -> RNNodeContext -> Maybe RNNodeContext

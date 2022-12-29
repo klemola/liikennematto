@@ -13,13 +13,11 @@ import Model.Liikennematto as Liikennematto
         , SimulationState(..)
         )
 import Model.Screen as Screen
-import Random
 import Render
 import Render.Debug
 import Simulation.Simulation as Simulation
 import Subscriptions exposing (subscriptions)
 import Task
-import Time
 import UI
 import UI.ErrorScreen
 import UI.SplashScreen
@@ -45,11 +43,8 @@ init flags =
             Liikennematto.initial flagsDecoded
 
         initCmds =
-            Cmd.batch
-                [ -- simulate a screen resize
-                  Task.perform WindowResized getViewport
-                , Task.perform ResetSeed Time.now
-                ]
+            -- simulate a screen resize
+            Task.perform WindowResized getViewport
     in
     ( initialModel, initCmds )
 
@@ -109,11 +104,6 @@ updateBase msg model =
                     { initSteps | audioInitComplete = True }
             in
             ( { model | initSteps = nextInitSteps }
-            , Cmd.none
-            )
-
-        ResetSeed posix ->
-            ( { model | seed = Random.initialSeed (Time.posixToMillis posix) }
             , Cmd.none
             )
 
