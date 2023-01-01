@@ -5,12 +5,13 @@ module Simulation.Traffic exposing
     , applySteering
     , checkRules
     , rerouteCarsIfNeeded
-    , spawnCar
+    , spawnResident
+    , spawnTestCar
     , updateTraffic
     )
 
 import BoundingBox2d
-import Common
+import Common exposing (addMillisecondsToPosix)
 import Data.Cars exposing (CarMake)
 import Data.Lots
 import Dict
@@ -23,7 +24,7 @@ import Model.Car as Car exposing (Car, CarState(..))
 import Model.Entity as Entity exposing (Id)
 import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
 import Model.Lookup exposing (carPositionLookup)
-import Model.Lot as Lot exposing (Lot, ParkingSpot)
+import Model.Lot as Lot exposing (Lot)
 import Model.RoadNetwork as RoadNetwork
     exposing
         ( RNNodeContext
@@ -40,6 +41,7 @@ import Simulation.Collision as Collision
 import Simulation.Pathfinding as Pathfinding
 import Simulation.Steering as Steering exposing (Steering)
 import Speed
+import Time
 
 
 trafficLightReactionDistance : Length
@@ -192,78 +194,65 @@ rerouteCarsIfNeeded world =
 
 
 --
--- Cars & Lots
---
-
-
-addLotResident : Lot -> World -> World
-addLotResident lot world =
-    let
-        carId =
-            Entity.nextId world.cars
-
-        carMake =
-            Data.Lots.resident lot.kind lot.themeColor
-
-        parkingSpot =
-            Lot.claimParkingSpot carId lot
-    in
-    Maybe.map2
-        (createResident world carId lot)
-        carMake
-        parkingSpot
-        |> Maybe.withDefault world
-
-
-createResident : World -> Id -> Lot -> CarMake -> ParkingSpot -> World
-createResident world carId lot make parkingSpot =
-    let
-        lotWithClaimedParkingSpot =
-            Lot.updateParkingSpot parkingSpot lot
-
-        car =
-            createCar
-                carId
-                lotWithClaimedParkingSpot
-                make
-                world
-                parkingSpot
-    in
-    world
-        |> World.setCar car
-        |> World.setLot lotWithClaimedParkingSpot
-
-
-createCar : Id -> Lot -> CarMake -> World -> ParkingSpot -> Car
-createCar carId lot make world parkingSpot =
-    let
-        parkingReservation =
-            { lotId = lot.id
-            , parkingSpotId = parkingSpot.id
-            }
-
-        route =
-            Pathfinding.generateRouteFromParkingSpot
-                (Random.initialSeed (carId + lot.id))
-                world
-                carId
-                parkingReservation
-    in
-    Car.new make
-        |> Car.withHome lot.id
-        |> Car.withPosition parkingSpot.position
-        |> Car.withOrientation (Lot.parkingSpotOrientation lot)
-        |> Car.build carId (Just route) (Just parkingReservation)
-
-
-
---
 -- Spawn cars
 --
 
 
-spawnCar : Random.Seed -> World -> ( World, Maybe Entity.Id )
-spawnCar seed world =
+addLotResident : Time.Posix -> Lot -> World -> World
+addLotResident time lot world =
+    case Data.Lots.resident lot.kind lot.themeColor of
+        Just carMake ->
+            World.addEvent
+                (World.SpawnResident carMake lot.id)
+                -- TODO: random delay?
+                (addMillisecondsToPosix 5000 time)
+                world
+
+        Nothing ->
+            world
+
+
+spawnResident : CarMake -> Lot -> World -> Result String World
+spawnResident carMake lot world =
+    let
+        carId =
+            Entity.nextId world.cars
+    in
+    Lot.findFreeParkingSpot carId lot
+        |> Result.fromMaybe "Could not find free parking spot"
+        |> Result.map
+            (\parkingSpot ->
+                let
+                    lotWithClaimedParkingSpot =
+                        Lot.updateParkingSpot parkingSpot lot
+
+                    parkingReservation =
+                        { lotId = lot.id
+                        , parkingSpotId = parkingSpot.id
+                        }
+
+                    route =
+                        Pathfinding.generateRouteFromParkingSpot
+                            (Random.initialSeed (carId + lot.id))
+                            world
+                            carId
+                            parkingReservation
+
+                    car =
+                        Car.new carMake
+                            |> Car.withHome lot.id
+                            |> Car.withPosition parkingSpot.position
+                            |> Car.withOrientation (Lot.parkingSpotOrientation lot)
+                            |> Car.build carId (Just route) (Just parkingReservation)
+                in
+                world
+                    |> World.setCar car
+                    |> World.setLot lotWithClaimedParkingSpot
+            )
+
+
+spawnTestCar : Random.Seed -> World -> ( World, Maybe Entity.Id )
+spawnTestCar seed world =
     -- TODO: should be Result
     let
         ( maybeRandomNodeCtx, seedAfterRandomNode ) =
@@ -283,7 +272,7 @@ spawnCar seed world =
                         Pathfinding.generateRouteFromNode seedAfterRandomNode world id nodeCtx
 
                     ( carMake, _ ) =
-                        Random.step Data.Cars.randomCarMake seed
+                        Random.step Data.Cars.randomCarMake seedAfterRandomNode
 
                     car =
                         Car.new carMake

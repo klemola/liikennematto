@@ -14,10 +14,11 @@ import Random
 import Random.List
 import Simulation.Infrastructure as Infrastructure
 import Simulation.Traffic as Traffic
+import Time
 
 
-generateLot : World -> Random.Seed -> ( World, Random.Seed )
-generateLot world seed =
+generateLot : Time.Posix -> Random.Seed -> World -> World
+generateLot time seed world =
     let
         existingBuildingKinds =
             world.lots
@@ -32,16 +33,13 @@ generateLot world seed =
                 |> Random.List.choose
                 |> Random.map Tuple.first
 
-        ( potentialNewLot, nextSeed ) =
+        ( potentialNewLot, _ ) =
             Random.step randomLot seed
-
-        nextWorld =
-            potentialNewLot
-                |> Maybe.andThen (attemptBuildLot world seed)
-                |> Maybe.map (addLot world)
-                |> Maybe.withDefault world
     in
-    ( nextWorld, nextSeed )
+    potentialNewLot
+        |> Maybe.andThen (attemptBuildLot world seed)
+        |> Maybe.map (addLot time world)
+        |> Maybe.withDefault world
 
 
 attemptBuildLot : World -> Random.Seed -> NewLot -> Maybe ( Lot, Cell )
@@ -94,8 +92,8 @@ validateAnchor newLot world anchor =
         Nothing
 
 
-addLot : World -> ( Lot, Cell ) -> World
-addLot world ( lot, anchor ) =
+addLot : Time.Posix -> World -> ( Lot, Cell ) -> World
+addLot time world ( lot, anchor ) =
     world
         |> World.setLot lot
         -- TODO: add "setTilemap" to World
@@ -109,7 +107,7 @@ addLot world ( lot, anchor ) =
                 }
            )
         |> Infrastructure.connectLotToRoadNetwork
-        |> Traffic.addLotResident lot
+        |> Traffic.addLotResident time lot
 
 
 removeInvalidLots : List Cell -> World -> World

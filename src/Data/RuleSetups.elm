@@ -553,7 +553,12 @@ spawnCars n world aSeed =
 
     else
         let
-            ( nextWorld, nextSeed, _ ) =
-                Traffic.spawnCar aSeed world
+            ( nextWorld, id ) =
+                Traffic.spawnTestCar aSeed world
         in
-        spawnCars (n - 1) nextWorld nextSeed
+        spawnCars (n - 1)
+            nextWorld
+            (id
+                |> Maybe.withDefault n
+                |> Random.initialSeed
+            )

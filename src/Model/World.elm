@@ -4,6 +4,7 @@ module Model.World exposing
     , addEvent
     , empty
     , findCarById
+    , findLotById
     , findNodeByPosition
     , formatEvents
     , hasLot
@@ -102,6 +103,11 @@ isEmptyArea testAreaBB world =
 findCarById : Id -> World -> Maybe Car
 findCarById id world =
     Dict.get id world.cars
+
+
+findLotById : Id -> World -> Maybe Lot
+findLotById id world =
+    Dict.get id world.lots
 
 
 findNodeByPosition : World -> LMPoint2d -> Maybe RNNodeContext

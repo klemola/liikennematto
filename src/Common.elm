@@ -1,5 +1,6 @@
 module Common exposing
-    ( angleFromDirection
+    ( addMillisecondsToPosix
+    , angleFromDirection
     , boundingBoxOverlaps
     , boundingBoxToFrame
     , boundingBoxWithDimensions
@@ -19,6 +20,7 @@ import Model.Geometry exposing (LMBoundingBox2d, LMFrame2d, LMPoint2d)
 import Point2d exposing (Point2d)
 import Quantity
 import Speed exposing (Speed)
+import Time
 import Vector2d
 
 
@@ -173,3 +175,8 @@ isInTheNormalPlaneOf normal origin other =
 isCloseToZeroVelocity : Speed -> Bool
 isCloseToZeroVelocity =
     Quantity.abs >> Quantity.lessThan (Speed.metersPerSecond 0.1)
+
+
+addMillisecondsToPosix : Int -> Time.Posix -> Time.Posix
+addMillisecondsToPosix millis time =
+    Time.posixToMillis time + millis |> Time.millisToPosix

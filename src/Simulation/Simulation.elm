@@ -97,23 +97,25 @@ update msg model =
 
         GenerateEnvironment ->
             let
-                ( nextWorld, nextSeed ) =
-                    attemptGenerateLot model.world model.editor model.seed model.simulation
+                nextWorld =
+                    attemptGenerateLot
+                        model.time
+                        model.seed
+                        model.editor
+                        model.simulation
+                        model.world
 
                 cmds =
                     if Dict.size nextWorld.lots > Dict.size model.world.lots then
                         Cmd.batch
-                            [ generateEnvironmentAfterDelay nextSeed
+                            [ generateEnvironmentAfterDelay model.seed
                             , Audio.playSound Audio.BuildLot
                             ]
 
                     else
-                        generateEnvironmentAfterDelay nextSeed
+                        generateEnvironmentAfterDelay model.seed
             in
-            ( { model
-                | seed = nextSeed
-                , world = nextWorld
-              }
+            ( { model | world = nextWorld }
             , cmds
             )
 
@@ -169,14 +171,14 @@ updateTrafficLight trafficLight =
     { trafficLight | fsm = nextFsm }
 
 
-attemptGenerateLot : World -> Editor.Editor -> Random.Seed -> SimulationState -> ( World, Random.Seed )
-attemptGenerateLot world editor seed simulation =
+attemptGenerateLot : Time.Posix -> Random.Seed -> Editor.Editor -> SimulationState -> World -> World
+attemptGenerateLot time seed editor simulation world =
     let
         largeEnoughRoadNetwork =
             Tilemap.size world.tilemap > 4 * (Dict.size world.lots + 1)
     in
     if simulation == Paused || not largeEnoughRoadNetwork || editor.pendingTilemapChange /= Nothing then
-        ( world, seed )
+        world
 
     else
-        Zoning.generateLot world seed
+        Zoning.generateLot time seed world

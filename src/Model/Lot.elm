@@ -5,7 +5,6 @@ module Model.Lot exposing
     , acquireParkingLock
     , attemptParking
     , build
-    , claimParkingSpot
     , constructionSite
     , findFreeParkingSpot
     , hasParkingLockSet
@@ -262,22 +261,9 @@ findFreeParkingSpotHelper carId spots =
                 ( Nothing, Nothing ) ->
                     Just parkingSpot
 
-                ( Just ownerId, Nothing ) ->
-                    if carId == ownerId then
-                        Just parkingSpot
-
-                    else
-                        findFreeParkingSpotHelper carId others
-
                 -- the parking spot is reserved or owned by someone else
                 _ ->
                     findFreeParkingSpotHelper carId others
-
-
-claimParkingSpot : Id -> Lot -> Maybe ParkingSpot
-claimParkingSpot carId lot =
-    -- Claims the first parking spot (none will be reserved when the lot has just been created)
-    findFreeParkingSpot carId lot |> Maybe.map (\parkingSpot -> { parkingSpot | owner = Just carId })
 
 
 reserveParkingSpot : Id -> Id -> Lot -> Lot

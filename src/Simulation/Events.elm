@@ -9,7 +9,8 @@ import Model.Geometry exposing (orthogonalDirectionToLmDirection)
 import Model.Lot as Lot exposing (Lot)
 import Model.World as World exposing (World, WorldEvent(..))
 import Random
-import Simulation.Traffic exposing (spawnCar)
+import Result.Extra
+import Simulation.Traffic exposing (spawnResident, spawnTestCar)
 import Time
 
 
@@ -135,6 +136,7 @@ setupRespawn time =
                             SpawnTestCar
 
                 triggerAt =
+                    -- TODO: random delay?
                     (Time.posixToMillis time + 5000) |> Time.millisToPosix
             in
             -- Both remove the car and enqueue the respawn
@@ -160,14 +162,24 @@ updateEventQueue time seed world =
         (\event nextWorld ->
             case event.kind of
                 World.SpawnResident carMake lotId ->
-                    -- TODO
-                    nextWorld
+                    case World.findLotById lotId nextWorld of
+                        Just lot ->
+                            withRetry
+                                (spawnResident carMake lot nextWorld)
+                                time
+                                event
+                                nextWorld
+
+                        Nothing ->
+                            -- If the lot doesn't exist, then it's ok not to retry
+                            nextWorld
 
                 World.SpawnTestCar ->
                     let
                         ( worldWithCar, _ ) =
-                            spawnCar seed nextWorld
+                            spawnTestCar seed nextWorld
                     in
+                    -- The car might not have been spawned, but it's not important enough to retry
                     worldWithCar
         )
         { world | eventQueue = nextQueue }
@@ -178,6 +190,19 @@ updateEventQueue time seed world =
 --
 -- Utility
 --
+
+
+withRetry : Result String World -> Time.Posix -> EventQueue.Event WorldEvent -> World -> World
+withRetry result time event world =
+    world.eventQueue
+        |> EventQueue.try
+            (\_ -> result)
+            event
+            time
+        |> Result.Extra.extract
+            (\nextEventQueue ->
+                { world | eventQueue = nextEventQueue }
+            )
 
 
 withCar : (Car -> World -> World) -> Id -> World -> World

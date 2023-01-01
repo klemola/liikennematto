@@ -99,8 +99,11 @@ try tryFn event now eventQueue =
     event
         |> tryFn
         |> Result.mapError
-            (\_ ->
+            (\error ->
                 let
+                    _ =
+                        Debug.log "try error" error
+
                     nextRetryAmount =
                         event.retryAmount + 1
 
