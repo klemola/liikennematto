@@ -214,17 +214,16 @@ addLotResident time lot world =
 
 spawnResident : CarMake -> Lot -> World -> Result String World
 spawnResident carMake lot world =
-    let
-        carId =
-            Entity.nextId world.cars
-    in
-    Lot.findFreeParkingSpot carId lot
+    Lot.findFreeParkingSpot Lot.parkingSpotEligibleForResident lot
         |> Result.fromMaybe "Could not find free parking spot"
         |> Result.map
             (\parkingSpot ->
                 let
-                    lotWithClaimedParkingSpot =
-                        Lot.updateParkingSpot parkingSpot lot
+                    carId =
+                        Entity.nextId world.cars
+
+                    lotWithReservedParkingSpot =
+                        Lot.reserveParkingSpot carId parkingSpot.id lot
 
                     parkingReservation =
                         { lotId = lot.id
@@ -232,10 +231,13 @@ spawnResident carMake lot world =
                         }
 
                     route =
+                        -- Room for improvement: route could be generated later,
+                        -- which would remove the problem of not having a Car built yet
+                        -- (need to pass individual car attributes around instead)
                         Pathfinding.generateRouteFromParkingSpot
                             (Random.initialSeed (carId + lot.id))
                             world
-                            carId
+                            (Just lot.id)
                             parkingReservation
 
                     car =
@@ -247,7 +249,7 @@ spawnResident carMake lot world =
                 in
                 world
                     |> World.setCar car
-                    |> World.setLot lotWithClaimedParkingSpot
+                    |> World.setLot lotWithReservedParkingSpot
             )
 
 
@@ -269,7 +271,7 @@ spawnTestCar seed world =
                         Entity.nextId world.cars
 
                     route =
-                        Pathfinding.generateRouteFromNode seedAfterRandomNode world id nodeCtx
+                        Pathfinding.generateRouteFromNode seedAfterRandomNode world Nothing nodeCtx
 
                     ( carMake, _ ) =
                         Random.step Data.Cars.randomCarMake seedAfterRandomNode

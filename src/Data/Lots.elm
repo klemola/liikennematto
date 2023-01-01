@@ -1,6 +1,7 @@
 module Data.Lots exposing
     ( LotKind(..)
     , NewLot
+    , ParkingRestriction(..)
     , allLots
     , drivewayOffset
     , lotAsset
@@ -27,12 +28,17 @@ type alias NewLot =
     , width : Length
     , height : Length
     , parkingSpotExitDirection : OrthogonalDirection
-    , parkingSpots : List LMPoint2dLocal
+    , parkingSpots : List ( LMPoint2dLocal, ParkingRestriction )
     , drivewayExitDirection : OrthogonalDirection
     , entryPosition : LMPoint2dLocal
     , exitPosition : LMPoint2dLocal
     , parkingLaneStartPosition : LMPoint2dLocal
     }
+
+
+type ParkingRestriction
+    = ResidentParkingOnly
+    | NoRestriction
 
 
 type LotKind
@@ -85,6 +91,16 @@ toRoadConnectionPosition laneOffset drivewayExitDirection lotWidth =
 
         _ ->
             Point2d.origin
+
+
+residentParking : LMPoint2dLocal -> ( LMPoint2dLocal, ParkingRestriction )
+residentParking position =
+    ( position, ResidentParkingOnly )
+
+
+noRestrictions : LMPoint2dLocal -> ( LMPoint2dLocal, ParkingRestriction )
+noRestrictions position =
+    ( position, NoRestriction )
 
 
 resident : LotKind -> ThemeColor -> Maybe CarMake
@@ -150,7 +166,7 @@ residentialSingle1 =
     , height = height
     , parkingSpotExitDirection = Right
     , parkingSpots =
-        [ Point2d.fromMeters { x = 21.25, y = 3.75 }
+        [ residentParking <| Point2d.fromMeters { x = 21.25, y = 3.75 }
         ]
     , drivewayExitDirection = drivewayExitDirection
     , entryPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width
@@ -712,10 +728,10 @@ school =
     , height = height
     , parkingSpotExitDirection = Down
     , parkingSpots =
-        [ Point2d.fromMeters { x = 5.25, y = 9.4 }
-        , Point2d.fromMeters { x = 12.25, y = 9.4 }
-        , Point2d.fromMeters { x = 19.5, y = 9.4 }
-        , Point2d.fromMeters { x = 26.75, y = 9.4 }
+        [ noRestrictions <| Point2d.fromMeters { x = 5.25, y = 9.4 }
+        , noRestrictions <| Point2d.fromMeters { x = 12.25, y = 9.4 }
+        , noRestrictions <| Point2d.fromMeters { x = 19.5, y = 9.4 }
+        , residentParking <| Point2d.fromMeters { x = 26.75, y = 9.4 }
         ]
     , drivewayExitDirection = drivewayExitDirection
     , entryPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width
@@ -1286,10 +1302,10 @@ cafe =
     , height = height
     , parkingSpotExitDirection = Down
     , parkingSpots =
-        [ Point2d.fromMeters { x = 5.25, y = 9.4 }
-        , Point2d.fromMeters { x = 12.25, y = 9.4 }
-        , Point2d.fromMeters { x = 19.5, y = 9.4 }
-        , Point2d.fromMeters { x = 26.75, y = 9.4 }
+        [ residentParking <| Point2d.fromMeters { x = 5.25, y = 9.4 }
+        , noRestrictions <| Point2d.fromMeters { x = 12.25, y = 9.4 }
+        , noRestrictions <| Point2d.fromMeters { x = 19.5, y = 9.4 }
+        , noRestrictions <| Point2d.fromMeters { x = 26.75, y = 9.4 }
         ]
     , drivewayExitDirection = drivewayExitDirection
     , entryPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width
@@ -1677,9 +1693,9 @@ residentialRow1 =
     , height = height
     , parkingSpotExitDirection = Down
     , parkingSpots =
-        [ Point2d.fromMeters { x = 4.5, y = 9.4 }
-        , Point2d.fromMeters { x = 11.5, y = 9.4 }
-        , Point2d.fromMeters { x = 18.75, y = 9.4 }
+        [ noRestrictions <| Point2d.fromMeters { x = 4.5, y = 9.4 }
+        , noRestrictions <| Point2d.fromMeters { x = 11.5, y = 9.4 }
+        , residentParking <| Point2d.fromMeters { x = 18.75, y = 9.4 }
         ]
     , drivewayExitDirection = drivewayExitDirection
     , entryPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width
@@ -2748,9 +2764,9 @@ residentialApartments1 =
     , height = height
     , parkingSpotExitDirection = Left
     , parkingSpots =
-        [ Point2d.fromMeters { x = 12, y = 4.8 }
-        , Point2d.fromMeters { x = 12, y = 9.4 }
-        , Point2d.fromMeters { x = 12, y = 14 }
+        [ noRestrictions <| Point2d.fromMeters { x = 12, y = 4.8 }
+        , noRestrictions <| Point2d.fromMeters { x = 12, y = 9.4 }
+        , residentParking <| Point2d.fromMeters { x = 12, y = 14 }
         ]
     , drivewayExitDirection = drivewayExitDirection
     , entryPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width
