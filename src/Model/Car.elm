@@ -1,12 +1,13 @@
 module Model.Car exposing
-    ( Action(..)
-    , Car
+    ( Car
+    , CarEvent(..)
     , CarFSM
     , CarState(..)
     , NewCar
     , UpdateContext
     , adjustedShape
     , build
+    , isDespawning
     , isParked
     , new
     , shouldWatchTraffic
@@ -23,8 +24,8 @@ module Model.Car exposing
 import Angle exposing (Angle)
 import AngularSpeed exposing (AngularSpeed)
 import BoundingBox2d
+import Common exposing (isCloseToZeroVelocity)
 import Data.Cars exposing (CarMake)
-import Duration exposing (Duration)
 import FSM exposing (FSM)
 import Frame2d
 import Length
@@ -76,7 +77,7 @@ type alias NewCar =
 
 
 type alias CarFSM =
-    FSM CarState Action UpdateContext
+    FSM CarState CarEvent UpdateContext
 
 
 type CarState
@@ -86,28 +87,25 @@ type CarState
     | WaitingForParkingSpot
     | Parking
     | Despawning
-    | Despawned
+    | Inactive
 
 
-type Action
-    = TriggerParkingStartEffects
-    | TriggerParkingCompletedEffects
-    | TriggerUnparkingStartEffects
-    | TriggerUnparkingCompletedEffects
+type CarEvent
+    = ParkingStarted
+    | ParkingComplete
+    | UnparkingStarted
+    | UnparkingComplete
+    | DespawnComplete
 
 
 type alias UpdateContext =
     { currentPosition : LMPoint2d
+    , currentVelocity : Speed
     , route : Route
     }
 
 
-despawnTimer : Duration
-despawnTimer =
-    Duration.milliseconds 500
-
-
-parked : FSM.State CarState Action UpdateContext
+parked : FSM.State CarState CarEvent UpdateContext
 parked =
     FSM.createState
         { id = FSM.createStateId "car-parked"
@@ -122,7 +120,7 @@ parked =
                 []
                 (FSM.Condition readyForUnparking)
             ]
-        , entryActions = [ TriggerParkingCompletedEffects ]
+        , entryActions = [ ParkingComplete ]
         , exitActions = []
         }
 
@@ -132,7 +130,7 @@ readyForUnparking { route } _ =
     Route.isRouted route
 
 
-unparking : FSM.State CarState Action UpdateContext
+unparking : FSM.State CarState CarEvent UpdateContext
 unparking =
     FSM.createState
         { id = FSM.createStateId "car-unparking"
@@ -147,8 +145,8 @@ unparking =
                 []
                 FSM.Direct
             ]
-        , entryActions = [ TriggerUnparkingStartEffects ]
-        , exitActions = [ TriggerUnparkingCompletedEffects ]
+        , entryActions = [ UnparkingStarted ]
+        , exitActions = [ UnparkingComplete ]
         }
 
 
@@ -164,7 +162,7 @@ unparkingCompleted { route, currentPosition } _ =
         |> Maybe.withDefault True
 
 
-driving : FSM.State CarState Action UpdateContext
+driving : FSM.State CarState CarEvent UpdateContext
 driving =
     FSM.createState
         { id = FSM.createStateId "car-driving"
@@ -188,7 +186,7 @@ driving =
         }
 
 
-waitingForParkingSpot : FSM.State CarState Action UpdateContext
+waitingForParkingSpot : FSM.State CarState CarEvent UpdateContext
 waitingForParkingSpot =
     FSM.createState
         { id = FSM.createStateId "car-waitingForParkingSpot"
@@ -213,7 +211,7 @@ parkingSpotFound { route } _ =
     Route.isArrivingToDestination route
 
 
-parking : FSM.State CarState Action UpdateContext
+parking : FSM.State CarState CarEvent UpdateContext
 parking =
     FSM.createState
         { id = FSM.createStateId "car-parking"
@@ -228,7 +226,7 @@ parking =
                 []
                 (FSM.Condition parkingCompleted)
             ]
-        , entryActions = [ TriggerParkingStartEffects ]
+        , entryActions = [ ParkingStarted ]
         , exitActions = []
         }
 
@@ -238,34 +236,51 @@ parkingCompleted { route } _ =
     Route.isWaitingForRoute route
 
 
-despawning : FSM.State CarState Action UpdateContext
+despawning : FSM.State CarState CarEvent UpdateContext
 despawning =
     FSM.createState
         { id = FSM.createStateId "car-despawning"
         , kind = Despawning
         , transitions =
             [ FSM.createTransition
-                (\_ -> despawned)
+                (\_ -> inactive)
                 []
-                (FSM.Timer despawnTimer)
+                (FSM.Condition despawnComplete)
             ]
         , entryActions = []
-        , exitActions = []
+        , exitActions =
+            [ DespawnComplete
+            ]
         }
 
 
-despawned : FSM.State CarState Action UpdateContext
-despawned =
+despawnComplete : UpdateContext -> CarState -> Bool
+despawnComplete { currentVelocity } _ =
+    isCloseToZeroVelocity currentVelocity
+
+
+inactive : FSM.State CarState CarEvent UpdateContext
+inactive =
     FSM.createState
-        { id = FSM.createStateId "car-despawned"
-        , kind = Despawned
-        , transitions = []
-        , entryActions = []
+        { id = FSM.createStateId "car-inactive"
+        , kind = Inactive
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> parked)
+                []
+                FSM.Direct
+            , FSM.createTransition
+                (\_ -> driving)
+                []
+                FSM.Direct
+            ]
+        , entryActions =
+            []
         , exitActions = []
         }
 
 
-initializeFSM : NewCar -> ( CarFSM, List Action )
+initializeFSM : NewCar -> ( CarFSM, List CarEvent )
 initializeFSM newCar =
     let
         initialState =
@@ -380,6 +395,11 @@ isParked car =
     FSM.toCurrentState car.fsm == Parked
 
 
+isDespawning : Car -> Bool
+isDespawning car =
+    FSM.toCurrentState car.fsm == Despawning
+
+
 shouldWatchTraffic : Car -> Bool
 shouldWatchTraffic car =
     FSM.toCurrentState car.fsm == Driving
@@ -435,7 +455,7 @@ statusDescription car =
                 Despawning ->
                     "Despawning"
 
-                Despawned ->
+                Inactive ->
                     "Despawned"
     in
     String.join " "

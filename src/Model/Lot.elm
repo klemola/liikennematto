@@ -5,25 +5,25 @@ module Model.Lot exposing
     , acquireParkingLock
     , attemptParking
     , build
-    , claimParkingSpot
     , constructionSite
     , findFreeParkingSpot
     , hasParkingLockSet
     , inBounds
     , parkingPermitted
     , parkingSpotById
+    , parkingSpotEligibleForAll
+    , parkingSpotEligibleForResident
     , parkingSpotOrientation
     , releaseParkingLock
     , reserveParkingSpot
     , unreserveParkingSpot
-    , updateParkingSpot
     )
 
 import Angle exposing (Angle)
 import BoundingBox2d
 import Common
 import Data.Colors exposing (ThemeColor)
-import Data.Lots exposing (LotKind, NewLot)
+import Data.Lots exposing (LotKind, NewLot, ParkingRestriction(..))
 import Direction2d
 import Length exposing (Length)
 import Model.Cell as Cell exposing (Cell)
@@ -75,7 +75,7 @@ build lotId newLot anchor =
     , parkingSpotExitDirection = newLot.parkingSpotExitDirection
     , parkingSpots =
         List.indexedMap
-            (\spotId position -> createParkingSpot spotId newLot constructionSiteBB position)
+            (\spotId spot -> createParkingSpot spotId newLot constructionSiteBB spot)
             newLot.parkingSpots
     , parkingLock = Nothing
     }
@@ -133,13 +133,13 @@ inBounds cell lot =
 --
 
 
-attemptParking : Id -> Lot -> Maybe ParkingSpot
-attemptParking carId lot =
+attemptParking : (ParkingSpot -> Bool) -> Lot -> Maybe ParkingSpot
+attemptParking permissionPredicate lot =
     if hasParkingLockSet lot then
         Nothing
 
     else
-        findFreeParkingSpot carId lot
+        findFreeParkingSpot permissionPredicate lot
 
 
 
@@ -188,7 +188,7 @@ type alias ParkingSpot =
     , position : LMPoint2d
     , pathFromLotEntry : List LMCubicSpline2d
     , pathToLotExit : List LMCubicSpline2d
-    , owner : Maybe Id
+    , parkingRestriction : ParkingRestriction
     , reservedBy : Maybe Id
     }
 
@@ -199,14 +199,14 @@ type alias ParkingReservation =
     }
 
 
-createParkingSpot : Int -> NewLot -> LMBoundingBox2d -> LMPoint2dLocal -> ParkingSpot
-createParkingSpot idx newLot constructionSiteBB spot =
+createParkingSpot : Int -> NewLot -> LMBoundingBox2d -> ( LMPoint2dLocal, ParkingRestriction ) -> ParkingSpot
+createParkingSpot idx newLot constructionSiteBB ( position, parkingRestriction ) =
     let
         lotFrame =
             Common.boundingBoxToFrame constructionSiteBB
 
         splineProps =
-            { parkingSpotPosition = spot
+            { parkingSpotPosition = position
             , lotEntryPosition = newLot.entryPosition
             , lotExitPosition = newLot.exitPosition
             , parkingSpotExitDirection = orthogonalDirectionToLmDirection newLot.parkingSpotExitDirection
@@ -221,10 +221,10 @@ createParkingSpot idx newLot constructionSiteBB spot =
             Splines.lotExitSpline splineProps
     in
     { id = idx
-    , position = Point2d.placeIn lotFrame spot
+    , position = Point2d.placeIn lotFrame position
     , pathFromLotEntry = entrySpline |> List.map (Splines.asGlobalSpline lotFrame)
     , pathToLotExit = exitSpline |> List.map (Splines.asGlobalSpline lotFrame)
-    , owner = Nothing
+    , parkingRestriction = parkingRestriction
     , reservedBy = Nothing
     }
 
@@ -236,48 +236,45 @@ parkingSpotOrientation lot =
         |> Direction2d.toAngle
 
 
-parkingPermitted : Id -> Lot -> Bool
-parkingPermitted carId lot =
+parkingPermitted : (ParkingSpot -> Bool) -> Lot -> Bool
+parkingPermitted permissionPredicate lot =
     case lot.parkingSpots of
         [] ->
             False
 
         parkingSpots ->
-            parkingSpots |> List.any (\spot -> spot.owner == Nothing || spot.owner == Just carId)
+            List.any
+                permissionPredicate
+                parkingSpots
 
 
-findFreeParkingSpot : Id -> Lot -> Maybe ParkingSpot
-findFreeParkingSpot carId lot =
-    findFreeParkingSpotHelper carId lot.parkingSpots
+parkingSpotEligibleForResident : ParkingSpot -> Bool
+parkingSpotEligibleForResident _ =
+    True
 
 
-findFreeParkingSpotHelper : Id -> List ParkingSpot -> Maybe ParkingSpot
-findFreeParkingSpotHelper carId spots =
+parkingSpotEligibleForAll : ParkingSpot -> Bool
+parkingSpotEligibleForAll parkingSpot =
+    parkingSpot.parkingRestriction == NoRestriction
+
+
+findFreeParkingSpot : (ParkingSpot -> Bool) -> Lot -> Maybe ParkingSpot
+findFreeParkingSpot permssionPredicate lot =
+    findFreeParkingSpotHelper permssionPredicate lot.parkingSpots
+
+
+findFreeParkingSpotHelper : (ParkingSpot -> Bool) -> List ParkingSpot -> Maybe ParkingSpot
+findFreeParkingSpotHelper permissionPredicate spots =
     case spots of
         [] ->
             Nothing
 
         parkingSpot :: others ->
-            case ( parkingSpot.owner, parkingSpot.reservedBy ) of
-                ( Nothing, Nothing ) ->
-                    Just parkingSpot
+            if parkingSpot.reservedBy == Nothing && permissionPredicate parkingSpot then
+                Just parkingSpot
 
-                ( Just ownerId, Nothing ) ->
-                    if carId == ownerId then
-                        Just parkingSpot
-
-                    else
-                        findFreeParkingSpotHelper carId others
-
-                -- the parking spot is reserved or owned by someone else
-                _ ->
-                    findFreeParkingSpotHelper carId others
-
-
-claimParkingSpot : Id -> Lot -> Maybe ParkingSpot
-claimParkingSpot carId lot =
-    -- Claims the first parking spot (none will be reserved when the lot has just been created)
-    findFreeParkingSpot carId lot |> Maybe.map (\parkingSpot -> { parkingSpot | owner = Just carId })
+            else
+                findFreeParkingSpotHelper permissionPredicate others
 
 
 reserveParkingSpot : Id -> Id -> Lot -> Lot

@@ -1,6 +1,5 @@
 module Model.Editor exposing
-    ( CarSpawnQueue
-    , Editor
+    ( Editor
     , PendingTilemapChange
     , ZoomLevel(..)
     , activateCell
@@ -11,13 +10,11 @@ module Model.Editor exposing
     , deactivateCell
     , hasPendingTilemapChange
     , initial
-    , maxQueuedCars
     , minTilemapChangeFrequency
     , mouseDetected
     , reset
     , resetLongPressTimer
     , selectCell
-    , setCarSpawnQueue
     , setLastEventDevice
     , setZoomLevel
     , zoomLevelToUIValue
@@ -33,7 +30,6 @@ import Set exposing (Set)
 type alias Editor =
     { zoomLevel : ZoomLevel
     , pendingTilemapChange : Maybe PendingTilemapChange
-    , carSpawnQueue : CarSpawnQueue
     , activeCell : Maybe Cell
     , longPressTimer : Maybe Duration
     , pointerDownEvent : Maybe Pointer.Event
@@ -51,25 +47,15 @@ type alias PendingTilemapChange =
     ( Duration, Set CellCoordinates )
 
 
-type alias CarSpawnQueue =
-    Int
-
-
 minTilemapChangeFrequency : Duration
 minTilemapChangeFrequency =
     Duration.milliseconds 750
-
-
-maxQueuedCars : Int
-maxQueuedCars =
-    5
 
 
 initial : Editor
 initial =
     { zoomLevel = Far
     , pendingTilemapChange = Nothing
-    , carSpawnQueue = 0
     , activeCell = Nothing
     , longPressTimer = Nothing
     , pointerDownEvent = Nothing
@@ -81,7 +67,6 @@ reset : Editor -> Editor
 reset editor =
     { editor
         | pendingTilemapChange = Nothing
-        , carSpawnQueue = initial.carSpawnQueue
         , activeCell = initial.activeCell
         , longPressTimer = initial.longPressTimer
         , pointerDownEvent = initial.pointerDownEvent
@@ -121,15 +106,6 @@ zoomLevelToUIValue zoomLevel =
 
         Near ->
             3
-
-
-setCarSpawnQueue : Int -> Editor -> Editor
-setCarSpawnQueue queue editor =
-    if queue > maxQueuedCars then
-        editor
-
-    else
-        { editor | carSpawnQueue = queue }
 
 
 createPendingTilemapChange : List Cell -> Editor -> Editor

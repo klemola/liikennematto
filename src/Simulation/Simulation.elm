@@ -19,10 +19,12 @@ import Model.TrafficLight exposing (TrafficLight)
 import Model.World exposing (World)
 import Process
 import Random
+import Simulation.Events exposing (processEvents, updateEventQueue)
 import Simulation.Infrastructure as Infrastructure
 import Simulation.Traffic as Traffic
 import Simulation.Zoning as Zoning
 import Task
+import Time
 
 
 
@@ -43,24 +45,40 @@ update msg model =
                     model
 
                 cars =
+                    -- TODO: fold to avoid double iteration
                     Dict.values world.cars
 
-                nextWorld =
+                ( nextWorld, trafficEvents ) =
                     Traffic.updateTraffic
                         { updateQueue = cars
                         , seed = model.seed
                         , roadNetworkStale = Editor.hasPendingTilemapChange model.editor
                         , world = world
                         , delta = delta
+                        , events = []
                         }
+            in
+            ( { model | world = nextWorld }
+            , Time.now
+                |> Task.map (Tuple.pair trafficEvents)
+                |> Task.perform TrafficUpdated
+            )
+
+        TrafficUpdated ( trafficEvents, time ) ->
+            let
+                nextWorld =
+                    processEvents time model.seed trafficEvents model.world
             in
             ( { model
                 | world = nextWorld
-                , seed =
-                    -- Make sure that the seed is stepped often so that deeply nested functions don't have to return new seeds
-                    Random.step (Random.int 0 42) model.seed
-                        |> Tuple.second
+                , time = time
+                , seed = Random.initialSeed (Time.posixToMillis time)
               }
+            , Cmd.none
+            )
+
+        CheckQueues time ->
+            ( { model | world = updateEventQueue time model.seed model.world }
             , Cmd.none
             )
 
@@ -79,23 +97,25 @@ update msg model =
 
         GenerateEnvironment ->
             let
-                ( nextWorld, nextSeed ) =
-                    attemptGenerateLot model.world model.editor model.seed model.simulation
+                nextWorld =
+                    attemptGenerateLot
+                        model.time
+                        model.seed
+                        model.editor
+                        model.simulation
+                        model.world
 
                 cmds =
                     if Dict.size nextWorld.lots > Dict.size model.world.lots then
                         Cmd.batch
-                            [ generateEnvironmentAfterDelay nextSeed
+                            [ generateEnvironmentAfterDelay model.seed
                             , Audio.playSound Audio.BuildLot
                             ]
 
                     else
-                        generateEnvironmentAfterDelay nextSeed
+                        generateEnvironmentAfterDelay model.seed
             in
-            ( { model
-                | seed = nextSeed
-                , world = nextWorld
-              }
+            ( { model | world = nextWorld }
             , cmds
             )
 
@@ -151,14 +171,14 @@ updateTrafficLight trafficLight =
     { trafficLight | fsm = nextFsm }
 
 
-attemptGenerateLot : World -> Editor.Editor -> Random.Seed -> SimulationState -> ( World, Random.Seed )
-attemptGenerateLot world editor seed simulation =
+attemptGenerateLot : Time.Posix -> Random.Seed -> Editor.Editor -> SimulationState -> World -> World
+attemptGenerateLot time seed editor simulation world =
     let
         largeEnoughRoadNetwork =
             Tilemap.size world.tilemap > 4 * (Dict.size world.lots + 1)
     in
     if simulation == Paused || not largeEnoughRoadNetwork || editor.pendingTilemapChange /= Nothing then
-        ( world, seed )
+        world
 
     else
-        Zoning.generateLot world seed
+        Zoning.generateLot time seed world

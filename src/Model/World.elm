@@ -1,7 +1,12 @@
 module Model.World exposing
     ( World
+    , WorldEvent(..)
+    , addEvent
     , empty
+    , findCarById
+    , findLotById
     , findNodeByPosition
+    , formatEvents
     , hasLot
     , isEmptyArea
     , removeCar
@@ -12,7 +17,9 @@ module Model.World exposing
 
 import BoundingBox2d
 import Common
+import Data.Cars exposing (CarMake)
 import Dict exposing (Dict)
+import EventQueue exposing (EventQueue)
 import Graph
 import Length
 import Model.Car as Car exposing (Car)
@@ -31,7 +38,14 @@ import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext, RoadNetwork)
 import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.TrafficLight exposing (TrafficLights)
 import QuadTree
+import Round
 import Set
+import Time
+
+
+type WorldEvent
+    = SpawnTestCar
+    | SpawnResident CarMake Id
 
 
 type alias World =
@@ -42,6 +56,7 @@ type alias World =
     , lots : Dict Id Lot
     , carPositionLookup : CarPositionLookup
     , roadNetworkLookup : RoadNetworkLookup
+    , eventQueue : EventQueue WorldEvent
     }
 
 
@@ -58,6 +73,7 @@ empty tilemapConfig =
     , lots = Dict.empty
     , carPositionLookup = carPositionLookup tilemap Dict.empty
     , roadNetworkLookup = roadNetworkLookup tilemap Graph.empty
+    , eventQueue = EventQueue.empty
     }
 
 
@@ -85,6 +101,16 @@ isEmptyArea testAreaBB world =
     Tilemap.inBounds world.tilemap testAreaBB && not lotOverlap && not tilemapOverlap
 
 
+findCarById : Id -> World -> Maybe Car
+findCarById id world =
+    Dict.get id world.cars
+
+
+findLotById : Id -> World -> Maybe Lot
+findLotById id world =
+    Dict.get id world.lots
+
+
 findNodeByPosition : World -> LMPoint2d -> Maybe RNNodeContext
 findNodeByPosition { roadNetworkLookup, roadNetwork } nodePosition =
     roadNetworkLookup
@@ -97,8 +123,17 @@ findNodeByPosition { roadNetworkLookup, roadNetwork } nodePosition =
 
 
 --
--- Utility
+-- Modification
 --
+
+
+addEvent : WorldEvent -> Time.Posix -> World -> World
+addEvent event triggerAt world =
+    let
+        queueEvent =
+            EventQueue.createEvent event triggerAt
+    in
+    { world | eventQueue = world.eventQueue |> EventQueue.addEvent queueEvent }
 
 
 setCar : Car -> World -> World
@@ -157,3 +192,30 @@ removeLot lotId world =
 
         Nothing ->
             world
+
+
+formatEvents : Time.Posix -> World -> List ( String, String, String )
+formatEvents time world =
+    EventQueue.toList world.eventQueue
+        |> List.map
+            (\event ->
+                let
+                    kind =
+                        case event.kind of
+                            SpawnTestCar ->
+                                "Spawn test car"
+
+                            SpawnResident _ lotId ->
+                                "Spawn resident: lot #" ++ String.fromInt lotId
+
+                    timeDiff =
+                        Time.posixToMillis event.triggerAt - Time.posixToMillis time
+
+                    timeUntilTrigger =
+                        Round.round 2 (toFloat timeDiff / 1000) ++ "s"
+
+                    retries =
+                        "Retries: " ++ String.fromInt event.retryAmount
+                in
+                ( kind, timeUntilTrigger, retries )
+            )

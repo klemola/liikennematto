@@ -5,12 +5,13 @@ module Simulation.Traffic exposing
     , applySteering
     , checkRules
     , rerouteCarsIfNeeded
-    , spawnCar
+    , spawnResident
+    , spawnTestCar
     , updateTraffic
     )
 
 import BoundingBox2d
-import Common
+import Common exposing (addMillisecondsToPosix)
 import Data.Cars exposing (CarMake)
 import Data.Lots
 import Dict
@@ -21,9 +22,9 @@ import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car, CarState(..))
 import Model.Entity as Entity exposing (Id)
-import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d, orthogonalDirectionToLmDirection)
+import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
 import Model.Lookup exposing (carPositionLookup)
-import Model.Lot as Lot exposing (Lot, ParkingSpot)
+import Model.Lot as Lot exposing (Lot)
 import Model.RoadNetwork as RoadNetwork
     exposing
         ( RNNodeContext
@@ -40,6 +41,7 @@ import Simulation.Collision as Collision
 import Simulation.Pathfinding as Pathfinding
 import Simulation.Steering as Steering exposing (Steering)
 import Speed
+import Time
 
 
 trafficLightReactionDistance : Length
@@ -67,6 +69,11 @@ parkingRadius =
     Length.meters 8
 
 
+stopAtNodeRadius : Length
+stopAtNodeRadius =
+    Length.meters 8
+
+
 nearbyTrafficRadius : Length
 nearbyTrafficRadius =
     Length.meters 16
@@ -83,25 +90,26 @@ updateTraffic :
     , world : World
     , roadNetworkStale : Bool
     , delta : Duration
+    , events : List ( Id, Car.CarEvent )
     }
-    -> World
-updateTraffic { updateQueue, seed, world, delta, roadNetworkStale } =
+    -> ( World, List ( Id, Car.CarEvent ) )
+updateTraffic { updateQueue, seed, world, delta, roadNetworkStale, events } =
     case updateQueue of
         [] ->
-            { world | carPositionLookup = carPositionLookup world.tilemap world.cars }
+            ( { world | carPositionLookup = carPositionLookup world.tilemap world.cars }
+            , events
+            )
 
         activeCar :: queue ->
             let
                 fsmUpdateContext =
                     { currentPosition = activeCar.position
+                    , currentVelocity = activeCar.velocity
                     , route = activeCar.route
                     }
 
-                ( nextFSM, actions ) =
+                ( nextFSM, fsmEvents ) =
                     FSM.update delta fsmUpdateContext activeCar.fsm
-
-                carWithUpdatedFSM =
-                    { activeCar | fsm = nextFSM }
 
                 otherCars =
                     world.carPositionLookup
@@ -115,106 +123,23 @@ updateTraffic { updateQueue, seed, world, delta, roadNetworkStale } =
                         , activeCar = activeCar
                         }
 
-                carAfterRouteUpdate =
-                    case FSM.toCurrentState nextFSM of
-                        Car.Despawning ->
-                            -- Route update would just trigger despawn again, skip it
-                            Just carWithUpdatedFSM
-
-                        Car.Despawned ->
-                            -- Route update not required, the car will be despawned after this update cycle
-                            carAfterDespawn seed world carWithUpdatedFSM
-
-                        _ ->
-                            Just
-                                (Pathfinding.carAfterRouteUpdate
-                                    seed
-                                    world
-                                    roadNetworkStale
-                                    delta
-                                    carWithUpdatedFSM
-                                )
-
-                nextWorld =
-                    carAfterRouteUpdate
-                        |> Maybe.map (applySteering delta steering)
-                        |> Maybe.map (\updatedCar -> World.setCar updatedCar world)
-                        |> Maybe.withDefaultLazy (\_ -> World.removeCar activeCar.id world)
-                        -- The car might already be deleted, but the actions still need to be applied (using the car data on FSM update)
-                        |> applyActions actions carWithUpdatedFSM
+                nextCar =
+                    { activeCar | fsm = nextFSM }
+                        |> Pathfinding.carAfterRouteUpdate
+                            seed
+                            world
+                            roadNetworkStale
+                            delta
+                        |> applySteering delta steering
             in
             updateTraffic
                 { updateQueue = queue
                 , seed = seed
-                , world = nextWorld
+                , world = World.setCar nextCar world
                 , roadNetworkStale = roadNetworkStale
                 , delta = delta
+                , events = events ++ List.map (Tuple.pair activeCar.id) fsmEvents
                 }
-
-
-applyActions : List Car.Action -> Car -> World -> World
-applyActions actions car world =
-    List.foldl (applyAction car)
-        world
-        actions
-
-
-applyAction : Car -> Car.Action -> World -> World
-applyAction car action world =
-    case
-        car.parkingReservation
-            |> Maybe.andThen
-                (\{ lotId, parkingSpotId } ->
-                    Dict.get lotId world.lots
-                        |> Maybe.map (Tuple.pair parkingSpotId)
-                )
-    of
-        Just ( parkingSpotId, lot ) ->
-            case action of
-                Car.TriggerParkingStartEffects ->
-                    lot
-                        |> Lot.acquireParkingLock car.id
-                        |> Maybe.map (Lot.reserveParkingSpot car.id parkingSpotId)
-                        |> Maybe.map (\updatedLot -> World.setLot updatedLot world)
-                        |> Maybe.withDefault world
-
-                Car.TriggerParkingCompletedEffects ->
-                    let
-                        carWithUnparkingOrientation =
-                            { car
-                                | orientation =
-                                    lot.parkingSpotExitDirection
-                                        |> orthogonalDirectionToLmDirection
-                                        |> Direction2d.toAngle
-                            }
-                    in
-                    world
-                        |> World.setCar carWithUnparkingOrientation
-                        |> World.setLot (Lot.releaseParkingLock carWithUnparkingOrientation.id lot)
-
-                Car.TriggerUnparkingStartEffects ->
-                    case Lot.acquireParkingLock car.id lot of
-                        Just lotWithLock ->
-                            World.setLot lotWithLock world
-
-                        Nothing ->
-                            -- The parking lock should have been free but was not
-                            -- Room for improvement: acquire the parking lock when before unparking
-                            world
-                                |> World.setCar (Car.triggerDespawn car)
-                                |> World.setLot (Lot.unreserveParkingSpot parkingSpotId lot)
-
-                Car.TriggerUnparkingCompletedEffects ->
-                    let
-                        nextLot =
-                            lot
-                                |> Lot.releaseParkingLock car.id
-                                |> Lot.unreserveParkingSpot parkingSpotId
-                    in
-                    World.setLot nextLot world
-
-        Nothing ->
-            world
 
 
 applySteering : Duration -> Steering -> Car -> Car
@@ -258,42 +183,6 @@ applySteering delta steering car =
     }
 
 
-carAfterDespawn : Random.Seed -> World -> Car -> Maybe Car
-carAfterDespawn seed world car =
-    car.homeLotId
-        |> Maybe.andThen (\lotId -> Dict.get lotId world.lots)
-        |> Maybe.andThen (\lot -> Lot.findFreeParkingSpot car.id lot |> Maybe.map (Tuple.pair lot))
-        |> Maybe.map (moveCarToHome seed world car)
-
-
-moveCarToHome : Random.Seed -> World -> Car -> ( Lot, ParkingSpot ) -> Car
-moveCarToHome seed world car ( home, parkingSpot ) =
-    case
-        car.homeLotId
-    of
-        Just _ ->
-            let
-                parkingReservation =
-                    { lotId = home.id
-                    , parkingSpotId = parkingSpot.id
-                    }
-
-                ( nextFSM, _ ) =
-                    FSM.reset car.fsm
-            in
-            { car
-                | fsm = nextFSM
-                , position = parkingSpot.position
-                , orientation = Lot.parkingSpotOrientation home
-                , velocity = Quantity.zero
-                , parkingReservation = Just parkingReservation
-                , route = Pathfinding.generateRouteFromParkingSpot seed world car.id parkingReservation
-            }
-
-        _ ->
-            car
-
-
 rerouteCarsIfNeeded : World -> World
 rerouteCarsIfNeeded world =
     let
@@ -305,78 +194,73 @@ rerouteCarsIfNeeded world =
 
 
 --
--- Cars & Lots
---
-
-
-addLotResident : Lot -> World -> World
-addLotResident lot world =
-    let
-        carId =
-            Entity.nextId world.cars
-
-        carMake =
-            Data.Lots.resident lot.kind lot.themeColor
-
-        parkingSpot =
-            Lot.claimParkingSpot carId lot
-    in
-    Maybe.map2
-        (createResident world carId lot)
-        carMake
-        parkingSpot
-        |> Maybe.withDefault world
-
-
-createResident : World -> Id -> Lot -> CarMake -> ParkingSpot -> World
-createResident world carId lot make parkingSpot =
-    let
-        lotWithClaimedParkingSpot =
-            Lot.updateParkingSpot parkingSpot lot
-
-        car =
-            createCar
-                carId
-                lotWithClaimedParkingSpot
-                make
-                world
-                parkingSpot
-    in
-    world
-        |> World.setCar car
-        |> World.setLot lotWithClaimedParkingSpot
-
-
-createCar : Id -> Lot -> CarMake -> World -> ParkingSpot -> Car
-createCar carId lot make world parkingSpot =
-    let
-        parkingReservation =
-            { lotId = lot.id
-            , parkingSpotId = parkingSpot.id
-            }
-
-        route =
-            Pathfinding.generateRouteFromParkingSpot
-                (Random.initialSeed (carId + lot.id))
-                world
-                carId
-                parkingReservation
-    in
-    Car.new make
-        |> Car.withHome lot.id
-        |> Car.withPosition parkingSpot.position
-        |> Car.withOrientation (Lot.parkingSpotOrientation lot)
-        |> Car.build carId (Just route) (Just parkingReservation)
-
-
-
---
 -- Spawn cars
 --
 
 
-spawnCar : Random.Seed -> World -> ( World, Random.Seed, Maybe Entity.Id )
-spawnCar seed world =
+addLotResident : Time.Posix -> Random.Seed -> Lot -> World -> World
+addLotResident time seed lot world =
+    case Data.Lots.resident lot.kind lot.themeColor of
+        Just carMake ->
+            let
+                ( delay, _ ) =
+                    Random.step (Random.int 2500 10000) seed
+
+                triggerAt =
+                    addMillisecondsToPosix delay time
+            in
+            World.addEvent
+                (World.SpawnResident carMake lot.id)
+                triggerAt
+                world
+
+        Nothing ->
+            world
+
+
+spawnResident : CarMake -> Lot -> World -> Result String World
+spawnResident carMake lot world =
+    Lot.findFreeParkingSpot Lot.parkingSpotEligibleForResident lot
+        |> Result.fromMaybe "Could not find free parking spot"
+        |> Result.map
+            (\parkingSpot ->
+                let
+                    carId =
+                        Entity.nextId world.cars
+
+                    lotWithReservedParkingSpot =
+                        Lot.reserveParkingSpot carId parkingSpot.id lot
+
+                    parkingReservation =
+                        { lotId = lot.id
+                        , parkingSpotId = parkingSpot.id
+                        }
+
+                    route =
+                        -- Room for improvement: route could be generated later,
+                        -- which would remove the problem of not having a Car built yet
+                        -- (need to pass individual car attributes around instead)
+                        Pathfinding.generateRouteFromParkingSpot
+                            (Random.initialSeed (carId + lot.id))
+                            world
+                            (Just lot.id)
+                            parkingReservation
+
+                    car =
+                        Car.new carMake
+                            |> Car.withHome lot.id
+                            |> Car.withPosition parkingSpot.position
+                            |> Car.withOrientation (Lot.parkingSpotOrientation lot)
+                            |> Car.build carId (Just route) (Just parkingReservation)
+                in
+                world
+                    |> World.setCar car
+                    |> World.setLot lotWithReservedParkingSpot
+            )
+
+
+spawnTestCar : Random.Seed -> World -> ( World, Maybe Entity.Id )
+spawnTestCar seed world =
     let
         ( maybeRandomNodeCtx, seedAfterRandomNode ) =
             RoadNetwork.getRandomNode world.roadNetwork
@@ -392,10 +276,10 @@ spawnCar seed world =
                         Entity.nextId world.cars
 
                     route =
-                        Pathfinding.generateRouteFromNode seedAfterRandomNode world id nodeCtx
+                        Pathfinding.generateRouteFromNode seedAfterRandomNode world Nothing nodeCtx
 
                     ( carMake, _ ) =
-                        Random.step Data.Cars.randomCarMake seed
+                        Random.step Data.Cars.randomCarMake seedAfterRandomNode
 
                     car =
                         Car.new carMake
@@ -404,11 +288,10 @@ spawnCar seed world =
                             |> Car.build id (Just route) Nothing
                 in
                 ( World.setCar car world
-                , seedAfterRandomNode
                 , Just id
                 )
             )
-        |> Maybe.withDefault ( world, seedAfterRandomNode, Nothing )
+        |> Maybe.withDefault ( world, Nothing )
 
 
 validateSpawnConditions : World -> RNNodeContext -> Maybe RNNodeContext
@@ -452,8 +335,8 @@ type Rule
     | StopAtTrafficControl Length
     | SlowDownAtTrafficControl
     | SlowDownNearRouteEnd
+    | StopAtRouteEnd Length
     | WaitForParkingSpot
-    | StopAtParkingSpot
     | StayParked
 
 
@@ -525,15 +408,15 @@ applyRule activeCar rule =
                 velocity
                 (Just <| Speed.metersPerSecond 3.5)
 
-        WaitForParkingSpot ->
-            Steering.stop velocity
-
-        StopAtParkingSpot ->
+        StopAtRouteEnd stopRadius ->
             Steering.stopAtPathEnd
                 position
                 velocity
                 activeCar.route
-                parkingRadius
+                stopRadius
+
+        WaitForParkingSpot ->
+            Steering.stop velocity
 
         StayParked ->
             Steering.stop velocity
@@ -675,10 +558,13 @@ checkParking { activeCar } =
             Just WaitForParkingSpot
 
         Parking ->
-            Just StopAtParkingSpot
+            Just (StopAtRouteEnd parkingRadius)
 
         Parked ->
             Just StayParked
+
+        Despawning ->
+            Just (StopAtRouteEnd stopAtNodeRadius)
 
         _ ->
             Nothing

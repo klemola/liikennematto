@@ -20,6 +20,7 @@ import Acceleration exposing (Acceleration)
 import Angle exposing (Angle)
 import AngularAcceleration exposing (AngularAcceleration)
 import AngularSpeed exposing (AngularSpeed)
+import Common exposing (isCloseToZeroVelocity)
 import Duration
 import Length exposing (Length)
 import Model.Geometry exposing (LMPoint2d)
@@ -260,11 +261,7 @@ reachTargetVelocity : Speed -> Speed -> Acceleration
 reachTargetVelocity currentVelocity targetVelocity =
     let
         acceleration =
-            if
-                Quantity.difference currentVelocity targetVelocity
-                    |> Quantity.abs
-                    |> Quantity.lessThan (Speed.metersPerSecond 0.1)
-            then
+            if Quantity.difference currentVelocity targetVelocity |> isCloseToZeroVelocity then
                 -- With floating point precision the velocity is rarely exactly zero.
                 -- With absolute comparison to target speed and a very low acceleration the
                 -- car will hover just above and below zero, appearing to be still
