@@ -198,14 +198,20 @@ rerouteCarsIfNeeded world =
 --
 
 
-addLotResident : Time.Posix -> Lot -> World -> World
-addLotResident time lot world =
+addLotResident : Time.Posix -> Random.Seed -> Lot -> World -> World
+addLotResident time seed lot world =
     case Data.Lots.resident lot.kind lot.themeColor of
         Just carMake ->
+            let
+                ( delay, _ ) =
+                    Random.step (Random.int 2500 10000) seed
+
+                triggerAt =
+                    addMillisecondsToPosix delay time
+            in
             World.addEvent
                 (World.SpawnResident carMake lot.id)
-                -- TODO: random delay?
-                (addMillisecondsToPosix 5000 time)
+                triggerAt
                 world
 
         Nothing ->
@@ -255,7 +261,6 @@ spawnResident carMake lot world =
 
 spawnTestCar : Random.Seed -> World -> ( World, Maybe Entity.Id )
 spawnTestCar seed world =
-    -- TODO: should be Result
     let
         ( maybeRandomNodeCtx, seedAfterRandomNode ) =
             RoadNetwork.getRandomNode world.roadNetwork

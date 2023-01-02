@@ -1,5 +1,6 @@
 module Simulation.Events exposing (processEvents, updateEventQueue)
 
+import Common exposing (addMillisecondsToPosix)
 import Dict
 import Direction2d
 import EventQueue
@@ -20,19 +21,15 @@ import Time
 --
 
 
-processEvents : Time.Posix -> List ( Id, CarEvent ) -> World -> World
-processEvents time events world =
-    List.foldl (processEvent time)
+processEvents : Time.Posix -> Random.Seed -> List ( Id, CarEvent ) -> World -> World
+processEvents time seed events world =
+    List.foldl (processEvent time seed)
         world
         events
 
 
-processEvent : Time.Posix -> ( Id, CarEvent ) -> World -> World
-processEvent time ( carId, event ) world =
-    let
-        _ =
-            Debug.log "process event" ( carId, event )
-    in
+processEvent : Time.Posix -> Random.Seed -> ( Id, CarEvent ) -> World -> World
+processEvent time seed ( carId, event ) world =
     case event of
         ParkingStarted ->
             -- TODO: retry
@@ -42,14 +39,14 @@ processEvent time ( carId, event ) world =
             parkingCompleteEffects carId world
 
         UnparkingStarted ->
-            -- TODO: retry
+            -- Room for improvement: instead of despawn, the parking lock could be retried
             leaveParkingSpot carId world
 
         UnparkingComplete ->
             leaveLot carId world
 
         DespawnComplete ->
-            setupRespawn time carId world
+            setupRespawn time seed carId world
 
 
 attemptReserveParkingSpot : Id -> World -> World
@@ -122,24 +119,28 @@ leaveLot =
         )
 
 
-setupRespawn : Time.Posix -> Id -> World -> World
-setupRespawn time =
+setupRespawn : Time.Posix -> Random.Seed -> Id -> World -> World
+setupRespawn time seed =
     withCar
         (\car world ->
             let
-                eventKind =
+                ( eventKind, maxDelay ) =
                     case car.homeLotId of
                         Just homeLotId ->
-                            SpawnResident car.make homeLotId
+                            ( SpawnResident car.make homeLotId, 20 * 1000 )
 
                         Nothing ->
-                            SpawnTestCar
+                            ( SpawnTestCar, 3 * 1000 )
+
+                minDelay =
+                    maxDelay // 2
+
+                ( delay, _ ) =
+                    Random.step (Random.int minDelay maxDelay) seed
 
                 triggerAt =
-                    -- TODO: random delay?
-                    (Time.posixToMillis time + 5000) |> Time.millisToPosix
+                    addMillisecondsToPosix delay time
             in
-            -- Both remove the car and enqueue the respawn
             world
                 |> World.removeCar car.id
                 |> World.addEvent eventKind triggerAt

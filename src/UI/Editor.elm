@@ -154,7 +154,6 @@ update msg model =
             )
 
         SpawnTestCar ->
-            -- TODO: delay event
             ( { model
                 | world =
                     World.addEvent

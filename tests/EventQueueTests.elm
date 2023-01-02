@@ -1,4 +1,4 @@
-module EventQueueTests exposing (..)
+module EventQueueTests exposing (suite)
 
 import EventQueue
 import Expect
@@ -7,13 +7,13 @@ import Time
 
 
 type EventKind
-    = TestEvent Int
+    = TestEvent
 
 
 testEvent : EventQueue.Event EventKind
 testEvent =
     EventQueue.createEvent
-        (TestEvent 1)
+        TestEvent
         (Time.millisToPosix 1000)
 
 
@@ -21,10 +21,10 @@ testEvents : List (EventQueue.Event EventKind)
 testEvents =
     [ testEvent
     , EventQueue.createEvent
-        (TestEvent 1)
+        TestEvent
         (Time.millisToPosix 5000)
     , EventQueue.createEvent
-        (TestEvent 2)
+        TestEvent
         (Time.millisToPosix 20000)
     ]
 
@@ -60,10 +60,10 @@ suite =
                     testQueue
                         |> EventQueue.addEvents
                             [ EventQueue.createEvent
-                                (TestEvent 3)
+                                TestEvent
                                 (Time.millisToPosix 0)
                             , EventQueue.createEvent
-                                (TestEvent 4)
+                                TestEvent
                                 (Time.millisToPosix 0)
                             ]
                         |> EventQueue.update (Time.millisToPosix 50)

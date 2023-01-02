@@ -38,7 +38,7 @@ generateLot time seed world =
     in
     potentialNewLot
         |> Maybe.andThen (attemptBuildLot world seed)
-        |> Maybe.map (addLot time world)
+        |> Maybe.map (addLot time seed world)
         |> Maybe.withDefault world
 
 
@@ -92,8 +92,8 @@ validateAnchor newLot world anchor =
         Nothing
 
 
-addLot : Time.Posix -> World -> ( Lot, Cell ) -> World
-addLot time world ( lot, anchor ) =
+addLot : Time.Posix -> Random.Seed -> World -> ( Lot, Cell ) -> World
+addLot time seed world ( lot, anchor ) =
     world
         |> World.setLot lot
         -- TODO: add "setTilemap" to World
@@ -107,7 +107,7 @@ addLot time world ( lot, anchor ) =
                 }
            )
         |> Infrastructure.connectLotToRoadNetwork
-        |> Traffic.addLotResident time lot
+        |> Traffic.addLotResident time seed lot
 
 
 removeInvalidLots : List Cell -> World -> World

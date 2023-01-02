@@ -8,19 +8,15 @@ import Model.Liikennematto exposing (Liikennematto, SimulationState(..))
 import Time
 
 
-tilemapUpdateFrequencyMs : Float
-tilemapUpdateFrequencyMs =
-    50
-
-
 environmentUpdateFrequencyMs : Float
 environmentUpdateFrequencyMs =
     1000
 
 
-dequeueFrequencyMs : Float
-dequeueFrequencyMs =
-    10
+secondarySystemFrequencyMs : Float
+secondarySystemFrequencyMs =
+    -- 30 FPS/UPS
+    1000 / 30
 
 
 subscriptions : Liikennematto -> Sub Message
@@ -30,7 +26,7 @@ subscriptions { simulation } =
             [ Events.onResize (\_ _ -> ResizeTriggered)
             , Events.onVisibilityChange VisibilityChanged
             , Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameReceived)
-            , Time.every tilemapUpdateFrequencyMs (always (UpdateTilemap (Duration.milliseconds tilemapUpdateFrequencyMs)))
+            , Time.every secondarySystemFrequencyMs (always (UpdateTilemap (Duration.milliseconds secondarySystemFrequencyMs)))
             , Audio.onAudioInitComplete (\_ -> AudioInitComplete)
             ]
     in
@@ -42,6 +38,6 @@ subscriptions { simulation } =
             (defaultSubs
                 ++ [ Events.onAnimationFrameDelta (Duration.milliseconds >> UpdateTraffic)
                    , Time.every environmentUpdateFrequencyMs (always UpdateEnvironment)
-                   , Time.every dequeueFrequencyMs CheckQueues
+                   , Time.every secondarySystemFrequencyMs CheckQueues
                    ]
             )

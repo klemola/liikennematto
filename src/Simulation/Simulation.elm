@@ -67,7 +67,7 @@ update msg model =
         TrafficUpdated ( trafficEvents, time ) ->
             let
                 nextWorld =
-                    processEvents time trafficEvents model.world
+                    processEvents time model.seed trafficEvents model.world
             in
             ( { model
                 | world = nextWorld
