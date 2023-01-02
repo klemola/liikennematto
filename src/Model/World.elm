@@ -38,6 +38,7 @@ import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext, RoadNetwork)
 import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.TrafficLight exposing (TrafficLights)
 import QuadTree
+import Round
 import Set
 import Time
 
@@ -193,8 +194,8 @@ removeLot lotId world =
             world
 
 
-formatEvents : World -> List ( String, String, String )
-formatEvents world =
+formatEvents : Time.Posix -> World -> List ( String, String, String )
+formatEvents time world =
     EventQueue.toList world.eventQueue
         |> List.map
             (\event ->
@@ -207,11 +208,14 @@ formatEvents world =
                             SpawnResident _ lotId ->
                                 "Spawn resident: lot #" ++ String.fromInt lotId
 
-                    triggerAt =
-                        Time.posixToMillis event.triggerAt |> String.fromInt
+                    timeDiff =
+                        Time.posixToMillis event.triggerAt - Time.posixToMillis time
+
+                    timeUntilTrigger =
+                        Round.round 2 (toFloat timeDiff / 1000) ++ "s"
 
                     retries =
                         "Retries: " ++ String.fromInt event.retryAmount
                 in
-                ( kind, triggerAt, retries )
+                ( kind, timeUntilTrigger, retries )
             )

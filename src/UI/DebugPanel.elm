@@ -17,6 +17,7 @@ import Point2d
 import Quantity
 import Round
 import Speed exposing (Speed)
+import Time
 import UI.Core
     exposing
         ( borderRadiusButton
@@ -90,7 +91,7 @@ view model =
                 )
             ]
         , controls model
-        , eventQueueView model.world
+        , eventQueueView model.time model.world
         , Element.column
             [ Element.spacing whitespaceTight
             , Element.width Element.fill
@@ -193,13 +194,13 @@ dotStringView dotString =
             Element.none
 
 
-eventQueueView : World -> Element msg
-eventQueueView world =
+eventQueueView : Time.Posix -> World -> Element msg
+eventQueueView time world =
     Element.column
         [ Element.spacing whitespaceTight
         , Element.width Element.fill
         ]
-        (formatEvents world
+        (formatEvents time world
             |> List.map
                 (\queueEvent ->
                     let
