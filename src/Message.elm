@@ -6,6 +6,7 @@ import Duration exposing (Duration)
 import Html.Events.Extra.Pointer as Pointer
 import Model.Car exposing (CarEvent)
 import Model.Cell exposing (Cell)
+import Model.Debug exposing (DebugLayerKind)
 import Model.Entity exposing (Id)
 import Model.Liikennematto exposing (SimulationState)
 import Task
@@ -41,11 +42,9 @@ type Message
     | OverlayPointerDown Pointer.Event
     | OverlayPointerUp Pointer.Event
     | OverlayPointerCancel Pointer.Event
-    | ToggleDebugMode
-    | ToggleShowRoadNetwork
-    | ToggleShowCarDebugVisuals
+    | ToggleDebugPanel
+    | ToggleDebugLayer DebugLayerKind
     | ShowDotString String
-    | HideDotString
 
 
 asCmd : Message -> Cmd Message

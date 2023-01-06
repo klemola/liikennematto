@@ -12,10 +12,10 @@ type IconKind
     | Resume
     | Back
     | Close
-    | ToggleDebug
-    | ToggleGraphDebug
-    | ToggleDotString
-    | ToggleCarDebug
+    | DebugPanel
+    | CarDebug
+    | LotDebug
+    | GraphDebug
     | SpawnCar
 
 
@@ -37,17 +37,17 @@ chooseIcon kind =
         Close ->
             ( iconClose, Colors.gray1, Colors.gray2 )
 
-        ToggleDebug ->
+        DebugPanel ->
             ( iconToggleDebug, Colors.red, Colors.redDarker )
 
-        ToggleGraphDebug ->
-            ( iconToggleGraphDebug, Colors.gray5, Colors.gray6 )
-
-        ToggleDotString ->
-            ( iconToggleDotString, Colors.gray1, Colors.gray2 )
-
-        ToggleCarDebug ->
+        CarDebug ->
             ( iconToggleCarDebug, Colors.gray5, Colors.gray6 )
+
+        LotDebug ->
+            ( Html.text "🏡", Colors.gray5, Colors.gray6 )
+
+        GraphDebug ->
+            ( iconToggleGraphDebug, Colors.gray5, Colors.gray6 )
 
         SpawnCar ->
             ( iconSpawnCar, Colors.gray5, Colors.gray6 )
@@ -376,81 +376,6 @@ iconToggleGraphDebug =
         , path
             [ Attributes.d "M59 128C59 139.598 50.2696 149 39.5 149C28.7304 149 20 139.598 20 128C20 116.402 28.7304 107 39.5 107C50.2696 107 59 116.402 59 128Z"
             , Attributes.fill "#3D3434"
-            ]
-            []
-        ]
-
-
-iconToggleDotString : Svg msg
-iconToggleDotString =
-    svg
-        [ Attributes.width "256"
-        , Attributes.height "256"
-        , Attributes.viewBox "0 0 256 256"
-        , Attributes.fill "none"
-        ]
-        [ Svg.line
-            [ Attributes.x1 "39.4359"
-            , Attributes.y1 "125.764"
-            , Attributes.x2 "214.329"
-            , Attributes.y2 "38.3175"
-            , Attributes.stroke "#E68C4D"
-            , Attributes.strokeWidth "5"
-            ]
-            []
-        , Svg.line
-            [ Attributes.x1 "41.672"
-            , Attributes.y1 "125.764"
-            , Attributes.x2 "216.565"
-            , Attributes.y2 "213.21"
-            , Attributes.stroke "#E68C4D"
-            , Attributes.strokeWidth "5"
-            ]
-            []
-        , Svg.line
-            [ Attributes.x1 "213.5"
-            , Attributes.y1 "216"
-            , Attributes.x2 "213.5"
-            , Attributes.y2 "40"
-            , Attributes.stroke "#E68C4D"
-            , Attributes.strokeWidth "5"
-            ]
-            []
-        , Svg.circle
-            [ Attributes.cx "216.5"
-            , Attributes.cy "39.5"
-            , Attributes.r "19.5"
-            , Attributes.fill "#F9F9E9"
-            ]
-            []
-        , Svg.circle
-            [ Attributes.cx "216.5"
-            , Attributes.cy "216.5"
-            , Attributes.r "19.5"
-            , Attributes.fill "#F9F9E9"
-            ]
-            []
-        , Svg.ellipse
-            [ Attributes.cx "39.5"
-            , Attributes.cy "128"
-            , Attributes.rx "19.5"
-            , Attributes.ry "20"
-            , Attributes.fill "#F9F9E9"
-            ]
-            []
-        , path
-            [ Attributes.d "M20 20H37.1C40.2667 20 43.141 20.5253 45.7231 21.5759C48.3051 22.6265 50.4974 24.2025 52.3 26.3037C54.1513 28.3572 55.5641 30.9599 56.5385 34.1117C57.5128 37.2159 58 40.8453 58 45C58 49.1547 57.5128 52.808 56.5385 55.9599C55.5641 59.064 54.1513 61.6667 52.3 63.7679C50.4974 65.8214 48.3051 67.3734 45.7231 68.4241C43.141 69.4747 40.2667 70 37.1 70H20V20ZM37.1 64.6991C39.1949 64.6991 41.1192 64.3649 42.8731 63.6963C44.6269 62.9799 46.1372 61.9532 47.4038 60.616C48.6705 59.2789 49.6449 57.6552 50.3269 55.745C51.0577 53.787 51.4231 51.5664 51.4231 49.0831V40.9169C51.4231 38.4336 51.0577 36.2369 50.3269 34.3266C49.6449 32.3687 48.6705 30.7211 47.4038 29.384C46.1372 28.0468 44.6269 27.0439 42.8731 26.3754C41.1192 25.659 39.1949 25.3009 37.1 25.3009H26.1385V64.6991H37.1Z"
-            , Attributes.fill "#F9F9E9"
-            ]
-            []
-        , path
-            [ Attributes.d "M153.5 156C150.207 156 147.229 155.448 144.566 154.343C141.951 153.191 139.699 151.535 137.811 149.374C135.971 147.165 134.542 144.452 133.525 141.235C132.508 137.97 132 134.225 132 130C132 125.775 132.508 122.054 133.525 118.837C134.542 115.62 135.971 112.907 137.811 110.698C139.699 108.489 141.951 106.833 144.566 105.729C147.229 104.576 150.207 104 153.5 104C156.744 104 159.698 104.576 162.361 105.729C165.025 106.833 167.276 108.489 169.117 110.698C171.005 112.907 172.458 115.62 173.475 118.837C174.492 122.054 175 125.775 175 130C175 134.225 174.492 137.97 173.475 141.235C172.458 144.452 171.005 147.165 169.117 149.374C167.276 151.535 165.025 153.191 162.361 154.343C159.698 155.448 156.744 156 153.5 156ZM153.5 150.598C155.679 150.598 157.689 150.214 159.529 149.446C161.369 148.678 162.943 147.573 164.25 146.133C165.606 144.693 166.647 142.964 167.373 140.947C168.1 138.931 168.463 136.674 168.463 134.177V125.823C168.463 123.326 168.1 121.069 167.373 119.053C166.647 117.036 165.606 115.307 164.25 113.867C162.943 112.427 161.369 111.322 159.529 110.554C157.689 109.786 155.679 109.402 153.5 109.402C151.321 109.402 149.311 109.786 147.471 110.554C145.631 111.322 144.033 112.427 142.677 113.867C141.37 115.307 140.353 117.036 139.627 119.053C138.9 121.069 138.537 123.326 138.537 125.823V134.177C138.537 136.674 138.9 138.931 139.627 140.947C140.353 142.964 141.37 144.693 142.677 146.133C144.033 147.573 145.631 148.678 147.471 149.446C149.311 150.214 151.321 150.598 153.5 150.598Z"
-            , Attributes.fill "#F9F9E9"
-            ]
-            []
-        , path
-            [ Attributes.d "M42.0227 191.301V236H35.9773V191.301H20V186H58V191.301H42.0227Z"
-            , Attributes.fill "#F9F9E9"
             ]
             []
         ]

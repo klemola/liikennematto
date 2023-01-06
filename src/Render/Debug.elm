@@ -1,4 +1,4 @@
-module Render.Debug exposing (DebugLayers, view)
+module Render.Debug exposing (view)
 
 import Color
 import Data.Colors as Colors
@@ -7,6 +7,7 @@ import Graph
 import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Car exposing (Car)
+import Model.Debug exposing (DebugLayerKind(..), DebugState, isLayerEnabled)
 import Model.Geometry exposing (LMPoint2d)
 import Model.RenderCache exposing (RenderCache)
 import Model.RoadNetwork
@@ -28,50 +29,52 @@ import Svg.Attributes as Attributes
 import Svg.Keyed
 
 
-type alias DebugLayers =
-    { showRoadNetwork : Bool
-    , showCarDebugVisuals : Bool
-    }
-
-
 nodeRadius : Length
 nodeRadius =
     Length.meters 0.8
 
 
-view : World -> RenderCache -> DebugLayers -> Svg msg
-view world cache { showRoadNetwork, showCarDebugVisuals } =
+view : World -> RenderCache -> DebugState -> Svg msg
+view world cache debugState =
     let
         tilemapWidth =
             String.fromFloat cache.tilemapWidthPixels
 
         tilemapHeight =
             String.fromFloat cache.tilemapHeightPixels
-
-        carsLayer =
-            if showCarDebugVisuals then
-                Just (renderCarsDebug cache world.cars)
-
-            else
-                Nothing
-
-        roadNetworkLayer =
-            if showRoadNetwork then
-                Just (renderRoadNetwork cache world.roadNetwork)
-
-            else
-                Nothing
     in
     Svg.svg
         [ Attributes.width tilemapWidth
         , Attributes.height tilemapHeight
         , Attributes.viewBox <| "0 0 " ++ tilemapWidth ++ " " ++ tilemapHeight
         ]
-        (Maybe.values
-            [ carsLayer
-            , roadNetworkLayer
-            ]
+        (debugLayerViews
+            world
+            cache
+            debugState
         )
+
+
+debugLayerViews : World -> RenderCache -> DebugState -> List (Svg msg)
+debugLayerViews world cache debugState =
+    let
+        carsLayer =
+            if isLayerEnabled CarDebug debugState then
+                renderCarsDebug cache world.cars
+
+            else
+                Svg.g [] []
+
+        roadNetworkLayer =
+            if isLayerEnabled RoadNetworkDebug debugState then
+                renderRoadNetwork cache world.roadNetwork
+
+            else
+                Svg.g [] []
+    in
+    [ carsLayer
+    , roadNetworkLayer
+    ]
 
 
 renderRoadNetwork : RenderCache -> RoadNetwork -> Svg msg

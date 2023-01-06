@@ -207,15 +207,5 @@ render model =
 
 renderDebug : Liikennematto -> Element msg
 renderDebug model =
-    let
-        debugLayers =
-            { showRoadNetwork = model.showRoadNetwork
-            , showCarDebugVisuals = model.showCarDebugVisuals
-            }
-    in
-    if debugLayers.showRoadNetwork || debugLayers.showCarDebugVisuals then
-        Render.Debug.view model.world model.renderCache debugLayers
-            |> Element.html
-
-    else
-        Element.none
+    Render.Debug.view model.world model.renderCache model.debug
+        |> Element.html
