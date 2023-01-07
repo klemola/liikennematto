@@ -32,6 +32,7 @@ import Model.Geometry
     exposing
         ( LMBoundingBox2d
         , LMCubicSpline2d
+        , LMFrame2d
         , LMPoint2d
         , LMPoint2dLocal
         , OrthogonalDirection(..)
@@ -51,6 +52,8 @@ type alias Lot =
     , height : Length
     , position : LMPoint2d
     , boundingBox : LMBoundingBox2d
+    , entryPosition : LMPoint2d
+    , exitPosition : LMPoint2d
     , drivewayExitDirection : OrthogonalDirection
     , parkingSpotExitDirection : OrthogonalDirection
     , parkingSpots : List ParkingSpot
@@ -63,6 +66,9 @@ build lotId newLot anchor =
     let
         constructionSiteBB =
             constructionSite anchor newLot
+
+        lotFrame =
+            Common.boundingBoxToFrame constructionSiteBB
     in
     { id = lotId
     , kind = newLot.kind
@@ -71,11 +77,13 @@ build lotId newLot anchor =
     , height = newLot.height
     , position = BoundingBox2d.centerPoint constructionSiteBB
     , boundingBox = constructionSiteBB
+    , entryPosition = Point2d.placeIn lotFrame newLot.entryPosition
+    , exitPosition = Point2d.placeIn lotFrame newLot.exitPosition
     , drivewayExitDirection = newLot.drivewayExitDirection
     , parkingSpotExitDirection = newLot.parkingSpotExitDirection
     , parkingSpots =
         List.indexedMap
-            (\spotId spot -> createParkingSpot spotId newLot constructionSiteBB spot)
+            (\spotId spot -> createParkingSpot spotId newLot lotFrame spot)
             newLot.parkingSpots
     , parkingLock = Nothing
     }
@@ -199,12 +207,9 @@ type alias ParkingReservation =
     }
 
 
-createParkingSpot : Int -> NewLot -> LMBoundingBox2d -> ( LMPoint2dLocal, ParkingRestriction ) -> ParkingSpot
-createParkingSpot idx newLot constructionSiteBB ( position, parkingRestriction ) =
+createParkingSpot : Int -> NewLot -> LMFrame2d -> ( LMPoint2dLocal, ParkingRestriction ) -> ParkingSpot
+createParkingSpot idx newLot lotFrame ( position, parkingRestriction ) =
     let
-        lotFrame =
-            Common.boundingBoxToFrame constructionSiteBB
-
         splineProps =
             { parkingSpotPosition = position
             , lotEntryPosition = newLot.entryPosition
