@@ -8,6 +8,7 @@ import Html exposing (Html)
 import Html.Events.Extra.Mouse as MouseEvents
 import Maybe.Extra as Maybe
 import Model.Car exposing (Car)
+import Model.Debug
 import Model.Geometry exposing (LMPoint2d)
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Route as Route
@@ -142,7 +143,10 @@ view model =
             Render.Debug.view
                 world
                 model.cache
-                { showRoadNetwork = True, showCarDebugVisuals = True }
+                (Model.Debug.initialDebugState
+                    |> Model.Debug.toggleLayer Model.Debug.CarDebug
+                    |> Model.Debug.toggleLayer Model.Debug.RoadNetworkDebug
+                )
                 |> Element.html
     in
     Html.div []

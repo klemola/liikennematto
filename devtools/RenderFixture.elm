@@ -3,6 +3,7 @@ module RenderFixture exposing (main)
 import Data.RuleSetups as RuleSetups
 import Element
 import Html exposing (Html)
+import Model.Debug
 import Model.RenderCache as RenderCache
 import Render
 import Render.Debug
@@ -27,7 +28,9 @@ main =
             Render.Debug.view
                 world
                 cache
-                { showRoadNetwork = False, showCarDebugVisuals = True }
+                (Model.Debug.initialDebugState
+                    |> Model.Debug.toggleLayer Model.Debug.CarDebug
+                )
                 |> Element.html
     in
     Render.view world cache []
