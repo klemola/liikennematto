@@ -180,9 +180,9 @@ rightControls model =
                 , disabled = False
                 }
             , UI.Core.controlButton
-                { iconKind = Icons.ToggleDebug
-                , onPress = ToggleDebugMode
-                , selected = model.showDebugPanel
+                { iconKind = Icons.DebugPanel
+                , onPress = ToggleDebugPanel
+                , selected = model.debug.showDebugPanel
                 , disabled = False
                 }
             ]
@@ -210,7 +210,7 @@ simulationControl simulation =
 
 debugPanel : Liikennematto -> Element Message
 debugPanel model =
-    if model.showDebugPanel then
+    if model.debug.showDebugPanel then
         DebugPanel.view model
 
     else

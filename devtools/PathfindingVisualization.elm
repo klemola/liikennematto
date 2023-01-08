@@ -303,7 +303,12 @@ view model =
             , Attributes.style <| "background-color: " ++ Colors.lightGreenCSS ++ ";"
             ]
             [ Svg.Lazy.lazy renderPath model.path.splines
-            , Render.Shape.circle renderCache Colors.gray1 (Length.meters 1) model.path.pointOnSpline
+            , Render.Shape.circle
+                renderCache
+                Colors.gray1
+                Nothing
+                (Length.meters 1)
+                model.path.pointOnSpline
             , Render.renderCar renderCache model.car
             ]
         , Html.div []

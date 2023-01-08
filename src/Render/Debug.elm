@@ -1,13 +1,16 @@
-module Render.Debug exposing (DebugLayers, view)
+module Render.Debug exposing (view)
 
 import Color
 import Data.Colors as Colors
+import Data.Lots exposing (ParkingRestriction(..))
 import Dict exposing (Dict)
 import Graph
 import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Car exposing (Car)
+import Model.Debug exposing (DebugLayerKind(..), DebugState, isLayerEnabled)
 import Model.Geometry exposing (LMPoint2d)
+import Model.Lot exposing (Lot, ParkingSpot)
 import Model.RenderCache exposing (RenderCache)
 import Model.RoadNetwork
     exposing
@@ -28,50 +31,60 @@ import Svg.Attributes as Attributes
 import Svg.Keyed
 
 
-type alias DebugLayers =
-    { showRoadNetwork : Bool
-    , showCarDebugVisuals : Bool
-    }
-
-
 nodeRadius : Length
 nodeRadius =
     Length.meters 0.8
 
 
-view : World -> RenderCache -> DebugLayers -> Svg msg
-view world cache { showRoadNetwork, showCarDebugVisuals } =
+view : World -> RenderCache -> DebugState -> Svg msg
+view world cache debugState =
     let
         tilemapWidth =
             String.fromFloat cache.tilemapWidthPixels
 
         tilemapHeight =
             String.fromFloat cache.tilemapHeightPixels
-
-        carsLayer =
-            if showCarDebugVisuals then
-                Just (renderCarsDebug cache world.cars)
-
-            else
-                Nothing
-
-        roadNetworkLayer =
-            if showRoadNetwork then
-                Just (renderRoadNetwork cache world.roadNetwork)
-
-            else
-                Nothing
     in
     Svg.svg
         [ Attributes.width tilemapWidth
         , Attributes.height tilemapHeight
         , Attributes.viewBox <| "0 0 " ++ tilemapWidth ++ " " ++ tilemapHeight
         ]
-        (Maybe.values
-            [ carsLayer
-            , roadNetworkLayer
-            ]
+        (debugLayerViews
+            world
+            cache
+            debugState
         )
+
+
+debugLayerViews : World -> RenderCache -> DebugState -> List (Svg msg)
+debugLayerViews world cache debugState =
+    let
+        carsLayer =
+            if isLayerEnabled CarDebug debugState then
+                renderCarsDebug cache world.cars
+
+            else
+                Svg.g [] []
+
+        lotsLayer =
+            if isLayerEnabled LotDebug debugState then
+                renderLotsDebug cache world.lots
+
+            else
+                Svg.g [] []
+
+        roadNetworkLayer =
+            if isLayerEnabled RoadNetworkDebug debugState then
+                renderRoadNetwork cache world.roadNetwork
+
+            else
+                Svg.g [] []
+    in
+    [ carsLayer
+    , lotsLayer
+    , roadNetworkLayer
+    ]
 
 
 renderRoadNetwork : RenderCache -> RoadNetwork -> Svg msg
@@ -269,3 +282,59 @@ toPointsString cache points =
         )
         ""
         points
+
+
+renderLotsDebug : RenderCache -> Dict Int Lot -> Svg msg
+renderLotsDebug cache lots =
+    lots
+        |> Dict.foldl
+            (\_ lot acc ->
+                ( "LotsDebug-" ++ String.fromInt lot.id, renderLotDebug cache lot ) :: acc
+            )
+            []
+        |> Svg.Keyed.node "g" []
+
+
+renderLotDebug : RenderCache -> Lot -> Svg msg
+renderLotDebug cache lot =
+    let
+        parkingSpots =
+            List.map (renderParkingSpotDebug cache) lot.parkingSpots
+
+        parkingLockIndicator =
+            if lot.parkingLock == Nothing then
+                []
+
+            else
+                [ Render.Shape.circle
+                    cache
+                    (Colors.withAlpha 0.6 Colors.gray1)
+                    (Just ( Colors.gray7, 2 ))
+                    (Length.meters 1)
+                    lot.entryPosition
+                ]
+    in
+    Svg.g
+        []
+        (parkingSpots ++ parkingLockIndicator)
+
+
+renderParkingSpotDebug : RenderCache -> ParkingSpot -> Svg msg
+renderParkingSpotDebug cache parkingSpot =
+    let
+        spotIndicatorColor =
+            if parkingSpot.reservedBy /= Nothing then
+                Colors.withAlpha 0.85 Colors.redDarker
+
+            else if parkingSpot.parkingRestriction == ResidentParkingOnly then
+                Colors.withAlpha 0.85 Colors.yellowDarker
+
+            else
+                Colors.withAlpha 0.85 Colors.lightGreenDarker
+    in
+    Render.Shape.circle
+        cache
+        spotIndicatorColor
+        (Just ( Colors.gray7, 2 ))
+        (Length.meters 1)
+        parkingSpot.position

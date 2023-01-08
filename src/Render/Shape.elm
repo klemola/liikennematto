@@ -49,8 +49,18 @@ cubicSpline cache color spline =
             , Attributes.fill "none"
             ]
             splinePixels
-        , circle cache Colors.gray5 (Length.meters 0.5) (CubicSpline2d.startPoint spline)
-        , circle cache Colors.gray5 (Length.meters 0.5) (CubicSpline2d.endPoint spline)
+        , circle
+            cache
+            Colors.gray5
+            Nothing
+            (Length.meters 0.5)
+            (CubicSpline2d.startPoint spline)
+        , circle
+            cache
+            Colors.gray5
+            Nothing
+            (Length.meters 0.5)
+            (CubicSpline2d.endPoint spline)
         ]
 
 
@@ -93,12 +103,20 @@ cubicSplineDebug cache color spline =
                 )
             )
         , Svg.g [ Attributes.fill "rgba(255, 255, 255, 0.5)" ]
-            (List.map (circle cache Colors.gray5 (Length.meters 0.5)) controlPoints)
+            (List.map
+                (circle
+                    cache
+                    Colors.gray5
+                    Nothing
+                    (Length.meters 0.5)
+                )
+                controlPoints
+            )
         ]
 
 
-circle : RenderCache -> Color -> Length.Length -> LMPoint2d -> Svg msg
-circle cache color radius centerPoint =
+circle : RenderCache -> Color -> Maybe ( Color, Float ) -> Length.Length -> LMPoint2d -> Svg msg
+circle cache fillColor strokeProperties radius centerPoint =
     let
         centerPointInSVGCoords =
             centerPoint
@@ -107,10 +125,19 @@ circle cache color radius centerPoint =
 
         radiusPixels =
             radius |> Quantity.at cache.pixelsToMetersRatio
+
+        strokeAttrs =
+            case strokeProperties of
+                Just ( strokeColor, strokeWidth ) ->
+                    [ Attributes.stroke (Color.toCssString strokeColor)
+                    , Attributes.strokeWidth (String.fromFloat strokeWidth)
+                    ]
+
+                Nothing ->
+                    []
     in
     Svg.circle2d
-        [ Attributes.fill (Color.toCssString color)
-        ]
+        (Attributes.fill (Color.toCssString fillColor) :: strokeAttrs)
         (Circle2d.atPoint centerPointInSVGCoords radiusPixels)
 
 

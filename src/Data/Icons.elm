@@ -12,10 +12,10 @@ type IconKind
     | Resume
     | Back
     | Close
-    | ToggleDebug
-    | ToggleGraphDebug
-    | ToggleDotString
-    | ToggleCarDebug
+    | DebugPanel
+    | CarDebug
+    | LotDebug
+    | GraphDebug
     | SpawnCar
 
 
@@ -37,17 +37,17 @@ chooseIcon kind =
         Close ->
             ( iconClose, Colors.gray1, Colors.gray2 )
 
-        ToggleDebug ->
-            ( iconToggleDebug, Colors.red, Colors.redDarker )
+        DebugPanel ->
+            ( iconDebug, Colors.red, Colors.redDarker )
 
-        ToggleGraphDebug ->
-            ( iconToggleGraphDebug, Colors.gray5, Colors.gray6 )
+        CarDebug ->
+            ( iconCarDebug, Colors.gray5, Colors.gray6 )
 
-        ToggleDotString ->
-            ( iconToggleDotString, Colors.gray1, Colors.gray2 )
+        LotDebug ->
+            ( iconLotDebug, Colors.gray5, Colors.gray6 )
 
-        ToggleCarDebug ->
-            ( iconToggleCarDebug, Colors.gray5, Colors.gray6 )
+        GraphDebug ->
+            ( iconGraphDebug, Colors.gray5, Colors.gray6 )
 
         SpawnCar ->
             ( iconSpawnCar, Colors.gray5, Colors.gray6 )
@@ -261,8 +261,8 @@ iconClose =
         ]
 
 
-iconToggleDebug : Svg msg
-iconToggleDebug =
+iconDebug : Svg msg
+iconDebug =
     svg
         [ Attributes.width "256"
         , Attributes.height "256"
@@ -334,8 +334,8 @@ iconToggleDebug =
         ]
 
 
-iconToggleGraphDebug : Svg msg
-iconToggleGraphDebug =
+iconGraphDebug : Svg msg
+iconGraphDebug =
     svg
         [ Attributes.width "256"
         , Attributes.height "256"
@@ -381,83 +381,8 @@ iconToggleGraphDebug =
         ]
 
 
-iconToggleDotString : Svg msg
-iconToggleDotString =
-    svg
-        [ Attributes.width "256"
-        , Attributes.height "256"
-        , Attributes.viewBox "0 0 256 256"
-        , Attributes.fill "none"
-        ]
-        [ Svg.line
-            [ Attributes.x1 "39.4359"
-            , Attributes.y1 "125.764"
-            , Attributes.x2 "214.329"
-            , Attributes.y2 "38.3175"
-            , Attributes.stroke "#E68C4D"
-            , Attributes.strokeWidth "5"
-            ]
-            []
-        , Svg.line
-            [ Attributes.x1 "41.672"
-            , Attributes.y1 "125.764"
-            , Attributes.x2 "216.565"
-            , Attributes.y2 "213.21"
-            , Attributes.stroke "#E68C4D"
-            , Attributes.strokeWidth "5"
-            ]
-            []
-        , Svg.line
-            [ Attributes.x1 "213.5"
-            , Attributes.y1 "216"
-            , Attributes.x2 "213.5"
-            , Attributes.y2 "40"
-            , Attributes.stroke "#E68C4D"
-            , Attributes.strokeWidth "5"
-            ]
-            []
-        , Svg.circle
-            [ Attributes.cx "216.5"
-            , Attributes.cy "39.5"
-            , Attributes.r "19.5"
-            , Attributes.fill "#F9F9E9"
-            ]
-            []
-        , Svg.circle
-            [ Attributes.cx "216.5"
-            , Attributes.cy "216.5"
-            , Attributes.r "19.5"
-            , Attributes.fill "#F9F9E9"
-            ]
-            []
-        , Svg.ellipse
-            [ Attributes.cx "39.5"
-            , Attributes.cy "128"
-            , Attributes.rx "19.5"
-            , Attributes.ry "20"
-            , Attributes.fill "#F9F9E9"
-            ]
-            []
-        , path
-            [ Attributes.d "M20 20H37.1C40.2667 20 43.141 20.5253 45.7231 21.5759C48.3051 22.6265 50.4974 24.2025 52.3 26.3037C54.1513 28.3572 55.5641 30.9599 56.5385 34.1117C57.5128 37.2159 58 40.8453 58 45C58 49.1547 57.5128 52.808 56.5385 55.9599C55.5641 59.064 54.1513 61.6667 52.3 63.7679C50.4974 65.8214 48.3051 67.3734 45.7231 68.4241C43.141 69.4747 40.2667 70 37.1 70H20V20ZM37.1 64.6991C39.1949 64.6991 41.1192 64.3649 42.8731 63.6963C44.6269 62.9799 46.1372 61.9532 47.4038 60.616C48.6705 59.2789 49.6449 57.6552 50.3269 55.745C51.0577 53.787 51.4231 51.5664 51.4231 49.0831V40.9169C51.4231 38.4336 51.0577 36.2369 50.3269 34.3266C49.6449 32.3687 48.6705 30.7211 47.4038 29.384C46.1372 28.0468 44.6269 27.0439 42.8731 26.3754C41.1192 25.659 39.1949 25.3009 37.1 25.3009H26.1385V64.6991H37.1Z"
-            , Attributes.fill "#F9F9E9"
-            ]
-            []
-        , path
-            [ Attributes.d "M153.5 156C150.207 156 147.229 155.448 144.566 154.343C141.951 153.191 139.699 151.535 137.811 149.374C135.971 147.165 134.542 144.452 133.525 141.235C132.508 137.97 132 134.225 132 130C132 125.775 132.508 122.054 133.525 118.837C134.542 115.62 135.971 112.907 137.811 110.698C139.699 108.489 141.951 106.833 144.566 105.729C147.229 104.576 150.207 104 153.5 104C156.744 104 159.698 104.576 162.361 105.729C165.025 106.833 167.276 108.489 169.117 110.698C171.005 112.907 172.458 115.62 173.475 118.837C174.492 122.054 175 125.775 175 130C175 134.225 174.492 137.97 173.475 141.235C172.458 144.452 171.005 147.165 169.117 149.374C167.276 151.535 165.025 153.191 162.361 154.343C159.698 155.448 156.744 156 153.5 156ZM153.5 150.598C155.679 150.598 157.689 150.214 159.529 149.446C161.369 148.678 162.943 147.573 164.25 146.133C165.606 144.693 166.647 142.964 167.373 140.947C168.1 138.931 168.463 136.674 168.463 134.177V125.823C168.463 123.326 168.1 121.069 167.373 119.053C166.647 117.036 165.606 115.307 164.25 113.867C162.943 112.427 161.369 111.322 159.529 110.554C157.689 109.786 155.679 109.402 153.5 109.402C151.321 109.402 149.311 109.786 147.471 110.554C145.631 111.322 144.033 112.427 142.677 113.867C141.37 115.307 140.353 117.036 139.627 119.053C138.9 121.069 138.537 123.326 138.537 125.823V134.177C138.537 136.674 138.9 138.931 139.627 140.947C140.353 142.964 141.37 144.693 142.677 146.133C144.033 147.573 145.631 148.678 147.471 149.446C149.311 150.214 151.321 150.598 153.5 150.598Z"
-            , Attributes.fill "#F9F9E9"
-            ]
-            []
-        , path
-            [ Attributes.d "M42.0227 191.301V236H35.9773V191.301H20V186H58V191.301H42.0227Z"
-            , Attributes.fill "#F9F9E9"
-            ]
-            []
-        ]
-
-
-iconToggleCarDebug : Svg msg
-iconToggleCarDebug =
+iconCarDebug : Svg msg
+iconCarDebug =
     svg
         [ Attributes.width "256"
         , Attributes.height "256"
@@ -569,6 +494,105 @@ iconSpawnCar =
         , path
             [ Attributes.d "M207.5 28C207.5 24.4101 204.59 21.5 201 21.5C197.41 21.5 194.5 24.4101 194.5 28V48.5H174C170.41 48.5 167.5 51.4102 167.5 55C167.5 58.5899 170.41 61.5 174 61.5H194.5V82C194.5 85.5899 197.41 88.5 201 88.5C204.59 88.5 207.5 85.5899 207.5 82V61.5H228C231.59 61.5 234.5 58.5899 234.5 55C234.5 51.4102 231.59 48.5 228 48.5H207.5V28Z"
             , Attributes.fill "#E58C4D"
+            , Attributes.stroke "#3D3434"
+            , Attributes.strokeWidth "3"
+            , Attributes.strokeLinecap "round"
+            , Attributes.strokeLinejoin "round"
+            ]
+            []
+        ]
+
+
+iconLotDebug : Svg msg
+iconLotDebug =
+    svg
+        [ Attributes.width "256"
+        , Attributes.height "256"
+        , Attributes.viewBox "0 0 256 256"
+        , Attributes.fill "none"
+        ]
+        [ Svg.rect
+            [ Attributes.width "256"
+            , Attributes.height "256"
+            , Attributes.fill "#D9D9B5"
+            ]
+            []
+        , path
+            [ Attributes.d "M91 145.742H159.952V233.809H22.0481V189.775V145.742H91Z"
+            , Attributes.fill "#F9F9E9"
+            ]
+            []
+        , path
+            [ Attributes.d "M22.0481 144.717H159.952"
+            , Attributes.stroke "#3D3434"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.d "M133.192 98V124.679L118.442 115.035V98C118.442 96.6193 119.561 95.5 120.942 95.5H130.692C132.073 95.5 133.192 96.6193 133.192 98Z"
+            , Attributes.fill "#F0F0DD"
+            , Attributes.stroke "#3D3434"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.d "M91 95.9053L104.186 104.78L162 143.694H20L91 95.9053Z"
+            , Attributes.fill "#318CE7"
+            ]
+            []
+        , Svg.rect
+            [ Attributes.x "97.9619"
+            , Attributes.y "171.818"
+            , Attributes.width "35.2308"
+            , Attributes.height "35.2308"
+            , Attributes.rx "2.5"
+            , Attributes.fill "#F0F0DD"
+            , Attributes.stroke "#3D3434"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.d "M45.8459 186.838H70.6152C71.9959 186.838 73.1152 187.957 73.1152 189.338V234.357H43.3459V189.338C43.3459 187.957 44.4652 186.838 45.8459 186.838Z"
+            , Attributes.fill "#F0F0DD"
+            , Attributes.stroke "#3D3434"
+            , Attributes.strokeWidth "3"
+            , Attributes.strokeLinecap "round"
+            ]
+            []
+        , Svg.circle
+            [ Attributes.cx "52.0869"
+            , Attributes.cy "209.232"
+            , Attributes.r "2.04808"
+            , Attributes.fill "#3D3434"
+            ]
+            []
+        , path
+            [ Attributes.d "M92.3959 97.9704L159.396 143.067C160.086 143.531 160.5 144.309 160.5 145.14V231.857C160.5 233.238 159.381 234.357 158 234.357H24C22.6193 234.357 21.5 233.238 21.5 231.857V145.14C21.5 144.309 21.9139 143.531 22.6041 143.067L89.6041 97.9704C90.448 97.4023 91.552 97.4023 92.3959 97.9704Z"
+            , Attributes.stroke "#3D3434"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , Svg.circle
+            [ Attributes.cx "204"
+            , Attributes.cy "52"
+            , Attributes.r "30.5"
+            , Attributes.fill "#E68C4D"
+            , Attributes.stroke "#3D3434"
+            , Attributes.strokeWidth "3"
+            ]
+            []
+        , path
+            [ Attributes.d "M210.5 53C210.5 49.4101 207.59 46.5 204 46.5C200.41 46.5 197.5 49.4101 197.5 53V70C197.5 73.5899 200.41 76.5 204 76.5C207.59 76.5 210.5 73.5899 210.5 70V53Z"
+            , Attributes.fill "#F9F9E9"
+            , Attributes.stroke "#3D3434"
+            , Attributes.strokeWidth "3"
+            , Attributes.strokeLinecap "round"
+            , Attributes.strokeLinejoin "round"
+            ]
+            []
+        , path
+            [ Attributes.d "M210.5 34C210.5 30.4101 207.59 27.5 204 27.5C200.41 27.5 197.5 30.4101 197.5 34C197.5 37.5899 200.41 40.5 204 40.5C207.59 40.5 210.5 37.5899 210.5 34Z"
+            , Attributes.fill "#F9F9E9"
             , Attributes.stroke "#3D3434"
             , Attributes.strokeWidth "3"
             , Attributes.strokeLinecap "round"

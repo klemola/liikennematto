@@ -16,6 +16,7 @@ module Model.Liikennematto exposing
 import Data.Defaults exposing (horizontalCellsAmount, verticalCellsAmount)
 import Duration exposing (Duration)
 import FSM exposing (FSM)
+import Model.Debug exposing (DebugState, initialDebugState)
 import Model.Editor as Editor exposing (Editor)
 import Model.Flags exposing (Flags, RuntimeEnvironment(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
@@ -37,10 +38,7 @@ type alias Liikennematto =
     , editor : Editor
     , renderCache : RenderCache
     , dynamicTiles : RenderCache.DynamicTilesPresentation
-    , showDebugPanel : Bool
-    , showRoadNetwork : Bool
-    , showCarDebugVisuals : Bool
-    , roadNetworkDotString : Maybe String
+    , debug : DebugState
     , errorMessage : Maybe String
     }
 
@@ -244,10 +242,7 @@ initial flags =
     , editor = Editor.initial
     , renderCache = RenderCache.new initialWorld
     , dynamicTiles = []
-    , showDebugPanel = False
-    , showRoadNetwork = False
-    , showCarDebugVisuals = False
-    , roadNetworkDotString = Nothing
+    , debug = initialDebugState
     , errorMessage = Nothing
     }
 
@@ -273,6 +268,7 @@ fromNewGame previousWorld model =
         , editor = Editor.reset model.editor
         , renderCache = RenderCache.new nextWorld
         , simulation = Paused
+        , debug = initialDebugState
     }
 
 
@@ -286,6 +282,7 @@ fromPreviousGame model =
                 , editor = Editor.reset model.editor
                 , renderCache = RenderCache.new previousWorld
                 , simulation = Paused
+                , debug = initialDebugState
             }
 
         Nothing ->
