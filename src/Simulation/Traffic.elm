@@ -23,7 +23,6 @@ import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car, CarState(..))
 import Model.Entity as Entity exposing (Id)
 import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
-import Model.Lookup exposing (carPositionLookup)
 import Model.Lot as Lot exposing (Lot)
 import Model.RoadNetwork as RoadNetwork
     exposing
@@ -34,7 +33,6 @@ import Model.Route as Route
 import Model.TrafficLight as TrafficLight exposing (TrafficLight)
 import Model.World as World exposing (World)
 import Point2d
-import QuadTree
 import Quantity
 import Random
 import Simulation.Collision as Collision
@@ -96,7 +94,7 @@ updateTraffic :
 updateTraffic { updateQueue, seed, world, delta, roadNetworkStale, events } =
     case updateQueue of
         [] ->
-            ( { world | carPositionLookup = carPositionLookup world.tilemap world.cars }
+            ( { world | carLookup = World.createLookup (Dict.values world.cars) world }
             , events
             )
 
@@ -112,8 +110,8 @@ updateTraffic { updateQueue, seed, world, delta, roadNetworkStale, events } =
                     FSM.update delta fsmUpdateContext activeCar.fsm
 
                 otherCars =
-                    world.carPositionLookup
-                        |> QuadTree.neighborsWithin nearbyTrafficRadius activeCar.boundingBox
+                    world.carLookup
+                        |> World.findNearbyEntities nearbyTrafficRadius activeCar.boundingBox
                         |> List.filter (\car -> car.id /= activeCar.id)
 
                 steering =
@@ -255,7 +253,7 @@ spawnResident carMake lot world =
                 in
                 world
                     |> World.setCar car
-                    |> World.setLot lotWithReservedParkingSpot
+                    |> World.updateLot lotWithReservedParkingSpot
             )
 
 

@@ -6,6 +6,7 @@ module Model.Tilemap exposing
     , addAnchor
     , addTile
     , anchorAt
+    , boundingBox
     , canBuildRoadAt
     , config
     , dimensions
@@ -20,7 +21,6 @@ module Model.Tilemap exposing
     , size
     , tileAt
     , toList
-    , toQuadTree
     , update
     )
 
@@ -39,7 +39,6 @@ import Model.Geometry
     exposing
         ( DiagonalDirection
         , LMBoundingBox2d
-        , LMQuadTree
         , OrthogonalDirection(..)
         , diagonalDirections
         )
@@ -51,7 +50,6 @@ import Model.Tile as Tile
         , chooseTileKind
         )
 import Point2d
-import QuadTree
 import Quantity
 
 
@@ -224,11 +222,6 @@ toList mapperFn listFilter tilemap =
     mappedAcc.acc
 
 
-toQuadTree : Tilemap -> Int -> LMQuadTree a
-toQuadTree (Tilemap tilemapContents) quadTreeLeafElementsAmount =
-    QuadTree.init tilemapContents.boundingBox quadTreeLeafElementsAmount
-
-
 config : Tilemap -> TilemapConfig
 config (Tilemap tilemapContents) =
     { verticalCellsAmount = tilemapContents.verticalCellsAmount
@@ -256,6 +249,11 @@ dimensions (Tilemap tilemapContents) =
     { width = tilemapContents.width
     , height = tilemapContents.height
     }
+
+
+boundingBox : Tilemap -> LMBoundingBox2d
+boundingBox (Tilemap tilemapContents) =
+    tilemapContents.boundingBox
 
 
 updateCell : Cell -> Tile -> Tilemap -> Tilemap

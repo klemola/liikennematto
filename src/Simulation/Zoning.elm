@@ -95,17 +95,13 @@ validateAnchor newLot world anchor =
 addLot : Time.Posix -> Random.Seed -> World -> ( Lot, Cell ) -> World
 addLot time seed world ( lot, anchor ) =
     world
-        |> World.setLot lot
-        -- TODO: add "setTilemap" to World
-        |> (\worldWithLot ->
-                { worldWithLot
-                    | tilemap =
-                        Tilemap.addAnchor anchor
-                            lot.id
-                            (oppositeOrthogonalDirection lot.drivewayExitDirection)
-                            world.tilemap
-                }
-           )
+        |> World.addLot lot
+        |> World.setTilemap
+            (Tilemap.addAnchor anchor
+                lot.id
+                (oppositeOrthogonalDirection lot.drivewayExitDirection)
+                world.tilemap
+            )
         |> Infrastructure.connectLotToRoadNetwork
         |> Traffic.addLotResident time seed lot
 
@@ -130,7 +126,6 @@ removeInvalidLots changedCells world =
 validateLot : List Cell -> List ( Id, Cell ) -> Id -> Lot -> World -> World
 validateLot changedCells changedAnchors lotId lot world =
     let
-        -- Room for improvement: add a QuadTree lookup for lots and remove lots based on Cell BB overlap
         lotOverlapsWithRoad =
             List.any (\cell -> Lot.inBounds cell lot) changedCells
 

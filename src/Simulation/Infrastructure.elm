@@ -26,7 +26,6 @@ import Model.Geometry as Geometry
         , oppositeOrthogonalDirection
         , orthogonalDirectionToLmDirection
         )
-import Model.Lookup exposing (roadNetworkLookup)
 import Model.RoadNetwork as RoadNetwork
     exposing
         ( Connection
@@ -39,7 +38,7 @@ import Model.RoadNetwork as RoadNetwork
 import Model.Tile as Tile exposing (Tile)
 import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLights)
-import Model.World exposing (World)
+import Model.World as World exposing (World)
 import Point2d
 import Quantity
 import Vector2d exposing (Vector2d)
@@ -119,13 +118,22 @@ updateRoadNetwork world =
         ( nextRoadNetwork, nextTrafficLights ) =
             buildRoadNetwork world
 
-        nextRoadNetworkLookup =
-            roadNetworkLookup world.tilemap nextRoadNetwork
+        nodeLookupList =
+            Graph.fold
+                (\nodeCtx acc ->
+                    { id = nodeCtx.node.id
+                    , position = nodeCtx.node.label.position
+                    , boundingBox = BoundingBox2d.singleton nodeCtx.node.label.position
+                    }
+                        :: acc
+                )
+                []
+                nextRoadNetwork
     in
     { world
         | roadNetwork = nextRoadNetwork
         , trafficLights = nextTrafficLights
-        , roadNetworkLookup = nextRoadNetworkLookup
+        , roadNetworkLookup = World.createLookup nodeLookupList world
     }
 
 

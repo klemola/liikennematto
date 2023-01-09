@@ -12,7 +12,7 @@ import Data.RuleSetups
         )
 import Dict
 import Model.Cell as Cell
-import Model.Tilemap as Tilemap
+import Model.World as World
 import QuadTree
 import Simulation.Traffic as Traffic exposing (RuleSetup)
 
@@ -59,8 +59,8 @@ chooseOtherCarsWithQuadtree : RuleSetup -> RuleSetup
 chooseOtherCarsWithQuadtree ruleSetup =
     let
         nearbyCars =
-            Tilemap.toQuadTree ruleSetup.world.tilemap 4
-                |> QuadTree.insertList ruleSetup.otherCars
+            ruleSetup.world
+                |> World.createLookup ruleSetup.otherCars
                 |> QuadTree.neighborsWithin Cell.size ruleSetup.activeCar.boundingBox
     in
     { ruleSetup | otherCars = nearbyCars }

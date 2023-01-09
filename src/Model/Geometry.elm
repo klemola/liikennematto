@@ -11,7 +11,6 @@ module Model.Geometry exposing
     , LMLineSegment2d
     , LMPoint2d
     , LMPoint2dLocal
-    , LMQuadTree
     , LMShape2d
     , LocalCoordinates
     , OrthogonalDirection(..)
@@ -35,7 +34,6 @@ import Length
 import LineSegment2d exposing (LineSegment2d)
 import Point2d exposing (Point2d)
 import Polygon2d exposing (Polygon2d)
-import QuadTree exposing (QuadTree)
 
 
 type GlobalCoordinates
@@ -88,10 +86,6 @@ type alias LMArc2d =
 
 type alias LMFrame2d =
     Frame2d Length.Meters GlobalCoordinates { defines : LocalCoordinates }
-
-
-type alias LMQuadTree a =
-    QuadTree Length.Meters GlobalCoordinates a
 
 
 

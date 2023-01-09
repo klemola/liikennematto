@@ -2,9 +2,13 @@ module Model.World exposing
     ( World
     , WorldEvent(..)
     , addEvent
+    , addLot
+    , boundingBox
+    , createLookup
     , empty
     , findCarById
     , findLotById
+    , findNearbyEntities
     , findNodeByPosition
     , formatEvents
     , hasLot
@@ -12,7 +16,8 @@ module Model.World exposing
     , removeCar
     , removeLot
     , setCar
-    , setLot
+    , setTilemap
+    , updateLot
     )
 
 import BoundingBox2d
@@ -20,24 +25,16 @@ import Common
 import Data.Cars exposing (CarMake)
 import Dict exposing (Dict)
 import EventQueue exposing (EventQueue)
-import Graph
-import Length
+import Length exposing (Length)
 import Model.Car as Car exposing (Car)
 import Model.Cell exposing (Cell)
 import Model.Entity exposing (Id)
-import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
-import Model.Lookup
-    exposing
-        ( CarPositionLookup
-        , RoadNetworkLookup
-        , carPositionLookup
-        , roadNetworkLookup
-        )
+import Model.Geometry exposing (GlobalCoordinates, LMBoundingBox2d, LMPoint2d)
 import Model.Lot as Lot exposing (Lot)
 import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext, RoadNetwork)
 import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.TrafficLight exposing (TrafficLights)
-import QuadTree
+import QuadTree exposing (Bounded, QuadTree)
 import Round
 import Set
 import Time
@@ -54,10 +51,23 @@ type alias World =
     , trafficLights : TrafficLights
     , cars : Dict Id Car
     , lots : Dict Id Lot
-    , carPositionLookup : CarPositionLookup
-    , roadNetworkLookup : RoadNetworkLookup
+    , carLookup : QuadTree Length.Meters GlobalCoordinates Car
+    , lotLookup : QuadTree Length.Meters GlobalCoordinates Lot
+    , roadNetworkLookup : QuadTree Length.Meters GlobalCoordinates RNLookupEntry
     , eventQueue : EventQueue WorldEvent
     }
+
+
+type alias RNLookupEntry =
+    { id : Int
+    , position : LMPoint2d
+    , boundingBox : LMBoundingBox2d
+    }
+
+
+quadTreeLeafElementsAmount : Int
+quadTreeLeafElementsAmount =
+    4
 
 
 empty : Tilemap.TilemapConfig -> World
@@ -65,14 +75,18 @@ empty tilemapConfig =
     let
         tilemap =
             Tilemap.empty tilemapConfig
+
+        worldBB =
+            Tilemap.boundingBox tilemap
     in
     { tilemap = tilemap
     , roadNetwork = RoadNetwork.empty
     , trafficLights = Dict.empty
     , cars = Dict.empty
     , lots = Dict.empty
-    , carPositionLookup = carPositionLookup tilemap Dict.empty
-    , roadNetworkLookup = roadNetworkLookup tilemap Graph.empty
+    , carLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
+    , lotLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
+    , roadNetworkLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
     , eventQueue = EventQueue.empty
     }
 
@@ -81,6 +95,11 @@ empty tilemapConfig =
 --
 -- Queries
 --
+
+
+boundingBox : World -> LMBoundingBox2d
+boundingBox world =
+    Tilemap.boundingBox world.tilemap
 
 
 hasLot : Cell -> World -> Bool
@@ -111,6 +130,13 @@ findLotById id world =
     Dict.get id world.lots
 
 
+findLotByCarPosition : Car -> World -> Maybe Lot
+findLotByCarPosition car world =
+    world.lotLookup
+        |> findNearbyEntitiesFromPoint (Length.meters 0.1) car.position
+        |> List.head
+
+
 findNodeByPosition : World -> LMPoint2d -> Maybe RNNodeContext
 findNodeByPosition { roadNetworkLookup, roadNetwork } nodePosition =
     roadNetworkLookup
@@ -119,6 +145,19 @@ findNodeByPosition { roadNetworkLookup, roadNetwork } nodePosition =
             (BoundingBox2d.singleton nodePosition)
         |> List.head
         |> Maybe.andThen (.id >> RoadNetwork.findNodeByNodeId roadNetwork)
+
+
+findNearbyEntities : Length -> LMBoundingBox2d -> QuadTree Length.Meters GlobalCoordinates (Bounded Length.Meters GlobalCoordinates a) -> List (Bounded Length.Meters GlobalCoordinates a)
+findNearbyEntities radius bb quadTree =
+    QuadTree.neighborsWithin radius bb quadTree
+
+
+findNearbyEntitiesFromPoint : Length -> LMPoint2d -> QuadTree Length.Meters GlobalCoordinates (Bounded Length.Meters GlobalCoordinates a) -> List (Bounded Length.Meters GlobalCoordinates a)
+findNearbyEntitiesFromPoint radius point quadTree =
+    findNearbyEntities
+        radius
+        (BoundingBox2d.singleton point)
+        quadTree
 
 
 
@@ -143,11 +182,35 @@ setCar car world =
 
 removeCar : Id -> World -> World
 removeCar carId world =
-    { world | cars = Dict.remove carId world.cars }
+    case Dict.get carId world.cars of
+        Just car ->
+            let
+                baseWorld =
+                    case findLotByCarPosition car world of
+                        Just lot ->
+                            updateLot
+                                (Lot.releaseParkingLock carId lot)
+                                world
+
+                        Nothing ->
+                            world
+            in
+            { baseWorld | cars = Dict.remove carId baseWorld.cars }
+
+        Nothing ->
+            world
 
 
-setLot : Lot -> World -> World
-setLot lot world =
+addLot : Lot -> World -> World
+addLot lot world =
+    { world
+        | lots = Dict.insert lot.id lot world.lots
+        , lotLookup = QuadTree.insert lot world.lotLookup
+    }
+
+
+updateLot : Lot -> World -> World
+updateLot lot world =
     { world | lots = Dict.insert lot.id lot world.lots }
 
 
@@ -188,10 +251,22 @@ removeLot lotId world =
                 | lots = Dict.remove lotId world.lots
                 , tilemap = Tilemap.removeAnchor lotId world.tilemap
                 , cars = nextCars
+                , lotLookup = QuadTree.remove lot world.lotLookup
             }
 
         Nothing ->
             world
+
+
+setTilemap : Tilemap -> World -> World
+setTilemap tilemap world =
+    { world | tilemap = tilemap }
+
+
+createLookup : List (Bounded Length.Meters GlobalCoordinates a) -> World -> QuadTree Length.Meters GlobalCoordinates (Bounded Length.Meters GlobalCoordinates a)
+createLookup lookupItems world =
+    QuadTree.init (boundingBox world) quadTreeLeafElementsAmount
+        |> QuadTree.insertList lookupItems
 
 
 formatEvents : Time.Posix -> World -> List ( String, String, String )

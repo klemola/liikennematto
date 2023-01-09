@@ -57,7 +57,7 @@ attemptReserveParkingSpot =
                 lot
                     |> Lot.acquireParkingLock car.id
                     |> Maybe.map (Lot.reserveParkingSpot car.id parkingSpotId)
-                    |> Maybe.map (\updatedLot -> World.setLot updatedLot world)
+                    |> Maybe.map (\updatedLot -> World.updateLot updatedLot world)
                     |> Maybe.withDefault world
             )
         )
@@ -79,7 +79,7 @@ parkingCompleteEffects =
                 in
                 world
                     |> World.setCar nextCar
-                    |> World.setLot (Lot.releaseParkingLock nextCar.id lot)
+                    |> World.updateLot (Lot.releaseParkingLock nextCar.id lot)
             )
         )
 
@@ -91,14 +91,14 @@ leaveParkingSpot =
             (\parkingSpotId car lot world ->
                 case Lot.acquireParkingLock car.id lot of
                     Just lotWithLock ->
-                        World.setLot lotWithLock world
+                        World.updateLot lotWithLock world
 
                     Nothing ->
                         -- The parking lock should have been free but was not
                         -- Room for improvement: acquire the parking lock when before unparking
                         world
                             |> World.setCar (Car.triggerDespawn car)
-                            |> World.setLot (Lot.unreserveParkingSpot parkingSpotId lot)
+                            |> World.updateLot (Lot.unreserveParkingSpot parkingSpotId lot)
             )
         )
 
@@ -114,7 +114,7 @@ leaveLot =
                             |> Lot.releaseParkingLock car.id
                             |> Lot.unreserveParkingSpot parkingSpotId
                 in
-                World.setLot nextLot world
+                World.updateLot nextLot world
             )
         )
 
