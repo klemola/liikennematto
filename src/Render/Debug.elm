@@ -6,7 +6,6 @@ import Data.Lots exposing (ParkingRestriction(..))
 import Dict exposing (Dict)
 import Graph
 import Length exposing (Length)
-import Maybe.Extra as Maybe
 import Model.Car exposing (Car)
 import Model.Debug exposing (DebugLayerKind(..), DebugState, isLayerEnabled)
 import Model.Geometry exposing (LMPoint2d)

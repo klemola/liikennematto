@@ -15,12 +15,10 @@ module Model.RoadNetwork exposing
     , getOutgoingConnectionsAndCosts
     , getRandomNode
     , size
-    , toDotString
     , trafficControl
     )
 
 import Graph exposing (Graph, NodeContext, NodeId)
-import Graph.DOT
 import IntDict
 import Length exposing (Length)
 import Model.Cell exposing (Cell)
@@ -180,34 +178,3 @@ trafficControl nodeCtx =
 --
 -- Debug
 --
-
-
-connectionKindToString : ConnectionKind -> String
-connectionKindToString kind =
-    case kind of
-        LaneConnector ->
-            "Lane connector"
-
-        DeadendEntry ->
-            "Deadend entry"
-
-        DeadendExit ->
-            "Deadend exit"
-
-        LotEntry id ->
-            "Lot entry #" ++ String.fromInt id
-
-        LotExit id ->
-            "Lot exit #" ++ String.fromInt id
-
-
-toDotString : RoadNetwork -> String
-toDotString =
-    let
-        nodeFormatter =
-            \connection -> Just (connectionKindToString connection.kind)
-
-        edgeFormatter =
-            always Nothing
-    in
-    Graph.DOT.output nodeFormatter edgeFormatter

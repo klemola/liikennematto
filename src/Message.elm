@@ -44,7 +44,6 @@ type Message
     | OverlayPointerCancel Pointer.Event
     | ToggleDebugPanel
     | ToggleDebugLayer DebugLayerKind
-    | ShowDotString String
 
 
 asCmd : Message -> Cmd Message

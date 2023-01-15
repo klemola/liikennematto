@@ -25,7 +25,6 @@ module UI.Core exposing
     , containerId
     , controlButton
     , overlayId
-    , panelSize
     , renderSafeAreaXSize
     , renderSafeAreaYSize
     , scrollbarAwareOffsetF
@@ -105,11 +104,6 @@ scrollbarAwareOffsetF =
 controlButtonSize : Int
 controlButtonSize =
     baseSpacing * 3
-
-
-panelSize : Int
-panelSize =
-    320
 
 
 renderSafeAreaXSize : Int
