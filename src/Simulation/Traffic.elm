@@ -84,14 +84,13 @@ routeEndSlowRadius =
 
 updateTraffic :
     { updateQueue : List Car
-    , seed : Random.Seed
     , world : World
     , roadNetworkStale : Bool
     , delta : Duration
     , events : List ( Id, Car.CarEvent )
     }
     -> ( World, List ( Id, Car.CarEvent ) )
-updateTraffic { updateQueue, seed, world, delta, roadNetworkStale, events } =
+updateTraffic { updateQueue, world, delta, roadNetworkStale, events } =
     case updateQueue of
         [] ->
             ( { world | carLookup = World.createLookup (Dict.values world.cars) world }
@@ -124,7 +123,6 @@ updateTraffic { updateQueue, seed, world, delta, roadNetworkStale, events } =
                 nextCar =
                     { activeCar | fsm = nextFSM }
                         |> Pathfinding.carAfterRouteUpdate
-                            seed
                             world
                             roadNetworkStale
                             delta
@@ -132,7 +130,6 @@ updateTraffic { updateQueue, seed, world, delta, roadNetworkStale, events } =
             in
             updateTraffic
                 { updateQueue = queue
-                , seed = seed
                 , world = World.setCar nextCar world
                 , roadNetworkStale = roadNetworkStale
                 , delta = delta
@@ -196,13 +193,13 @@ rerouteCarsIfNeeded world =
 --
 
 
-addLotResident : Time.Posix -> Random.Seed -> Lot -> World -> World
-addLotResident time seed lot world =
+addLotResident : Time.Posix -> Lot -> World -> World
+addLotResident time lot world =
     case Data.Lots.resident lot.kind lot.themeColor of
         Just carMake ->
             let
                 ( delay, _ ) =
-                    Random.step (Random.int 2500 10000) seed
+                    Random.step (Random.int 2500 10000) world.seed
 
                 triggerAt =
                     addMillisecondsToPosix delay time
@@ -239,7 +236,6 @@ spawnResident carMake lot world =
                         -- which would remove the problem of not having a Car built yet
                         -- (need to pass individual car attributes around instead)
                         Pathfinding.generateRouteFromParkingSpot
-                            (Random.initialSeed (carId + lot.id))
                             world
                             (Just lot.id)
                             parkingReservation
@@ -257,12 +253,13 @@ spawnResident carMake lot world =
             )
 
 
-spawnTestCar : Random.Seed -> World -> ( World, Maybe Entity.Id )
-spawnTestCar seed world =
+spawnTestCar : World -> ( World, Maybe Entity.Id )
+spawnTestCar world =
     let
-        ( maybeRandomNodeCtx, seedAfterRandomNode ) =
-            RoadNetwork.getRandomNode world.roadNetwork
-                seed
+        maybeRandomNodeCtx =
+            RoadNetwork.getRandomNode
+                world.roadNetwork
+                world.seed
                 (\node -> node.label.kind == RoadNetwork.LaneConnector)
     in
     maybeRandomNodeCtx
@@ -274,10 +271,10 @@ spawnTestCar seed world =
                         Entity.nextId world.cars
 
                     route =
-                        Pathfinding.generateRouteFromNode seedAfterRandomNode world Nothing nodeCtx
+                        Pathfinding.generateRouteFromNode world Nothing nodeCtx
 
-                    ( carMake, _ ) =
-                        Random.step Data.Cars.randomCarMake seedAfterRandomNode
+                    ( carMake, nextSeed ) =
+                        Random.step Data.Cars.randomCarMake world.seed
 
                     car =
                         Car.new carMake
@@ -285,7 +282,9 @@ spawnTestCar seed world =
                             |> Car.withOrientation (Direction2d.toAngle nodeCtx.node.label.direction)
                             |> Car.build id (Just route) Nothing
                 in
-                ( World.setCar car world
+                ( world
+                    |> World.setCar car
+                    |> World.setSeed nextSeed
                 , Just id
                 )
             )

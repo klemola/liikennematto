@@ -17,8 +17,8 @@ import Simulation.Traffic as Traffic
 import Time
 
 
-generateLot : Time.Posix -> Random.Seed -> World -> World
-generateLot time seed world =
+generateLot : Time.Posix -> World -> World
+generateLot time world =
     let
         existingBuildingKinds =
             world.lots
@@ -33,17 +33,20 @@ generateLot time seed world =
                 |> Random.List.choose
                 |> Random.map Tuple.first
 
-        ( potentialNewLot, _ ) =
-            Random.step randomLot seed
+        ( potentialNewLot, nextSeed ) =
+            Random.step randomLot world.seed
+
+        updatedWorld =
+            World.setSeed nextSeed world
     in
     potentialNewLot
-        |> Maybe.andThen (attemptBuildLot world seed)
-        |> Maybe.map (addLot time seed world)
-        |> Maybe.withDefault world
+        |> Maybe.andThen (attemptBuildLot updatedWorld)
+        |> Maybe.map (addLot time updatedWorld)
+        |> Maybe.withDefault updatedWorld
 
 
-attemptBuildLot : World -> Random.Seed -> NewLot -> Maybe ( Lot, Cell )
-attemptBuildLot world seed newLot =
+attemptBuildLot : World -> NewLot -> Maybe ( Lot, Cell )
+attemptBuildLot world newLot =
     let
         anchorOptions =
             world.tilemap
@@ -62,7 +65,7 @@ attemptBuildLot world seed newLot =
                 |> Maybe.values
 
         ( shuffledAnchors, _ ) =
-            Random.step (Random.List.shuffle anchorOptions) seed
+            Random.step (Random.List.shuffle anchorOptions) world.seed
     in
     shuffledAnchors
         |> List.head
@@ -92,8 +95,8 @@ validateAnchor newLot world anchor =
         Nothing
 
 
-addLot : Time.Posix -> Random.Seed -> World -> ( Lot, Cell ) -> World
-addLot time seed world ( lot, anchor ) =
+addLot : Time.Posix -> World -> ( Lot, Cell ) -> World
+addLot time world ( lot, anchor ) =
     world
         |> World.addLot lot
         |> World.setTilemap
@@ -103,7 +106,7 @@ addLot time seed world ( lot, anchor ) =
                 world.tilemap
             )
         |> Infrastructure.connectLotToRoadNetwork
-        |> Traffic.addLotResident time seed lot
+        |> Traffic.addLotResident time lot
 
 
 removeInvalidLots : List Cell -> World -> World

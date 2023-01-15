@@ -16,7 +16,7 @@ import Model.Liikennematto
         )
 import Model.Tilemap as Tilemap
 import Model.TrafficLight exposing (TrafficLight)
-import Model.World exposing (World)
+import Model.World as World exposing (World)
 import Process
 import Random
 import Simulation.Events exposing (processEvents, updateEventQueue)
@@ -37,23 +37,19 @@ update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
 update msg model =
     case msg of
         GameSetupComplete ->
-            ( model, generateEnvironmentAfterDelay model.seed )
+            ( model, generateEnvironmentAfterDelay model.world )
 
         UpdateTraffic delta ->
             let
-                { world } =
-                    model
-
                 cars =
                     -- TODO: fold to avoid double iteration
-                    Dict.values world.cars
+                    Dict.values model.world.cars
 
                 ( nextWorld, trafficEvents ) =
                     Traffic.updateTraffic
                         { updateQueue = cars
-                        , seed = model.seed
                         , roadNetworkStale = Editor.hasPendingTilemapChange model.editor
-                        , world = world
+                        , world = model.world
                         , delta = delta
                         , events = []
                         }
@@ -67,18 +63,19 @@ update msg model =
         TrafficUpdated ( trafficEvents, time ) ->
             let
                 nextWorld =
-                    processEvents time model.seed trafficEvents model.world
+                    model.world
+                        |> World.setSeed (Random.initialSeed (Time.posixToMillis time))
+                        |> processEvents time trafficEvents
             in
             ( { model
                 | world = nextWorld
                 , time = time
-                , seed = Random.initialSeed (Time.posixToMillis time)
               }
             , Cmd.none
             )
 
         CheckQueues time ->
-            ( { model | world = updateEventQueue time model.seed model.world }
+            ( { model | world = updateEventQueue time model.world }
             , Cmd.none
             )
 
@@ -100,7 +97,6 @@ update msg model =
                 nextWorld =
                     attemptGenerateLot
                         model.time
-                        model.seed
                         model.editor
                         model.simulation
                         model.world
@@ -108,12 +104,12 @@ update msg model =
                 cmds =
                     if Dict.size nextWorld.lots > Dict.size model.world.lots then
                         Cmd.batch
-                            [ generateEnvironmentAfterDelay model.seed
+                            [ generateEnvironmentAfterDelay nextWorld
                             , Audio.playSound Audio.BuildLot
                             ]
 
                     else
-                        generateEnvironmentAfterDelay model.seed
+                        generateEnvironmentAfterDelay nextWorld
             in
             ( { model | world = nextWorld }
             , cmds
@@ -123,11 +119,11 @@ update msg model =
             ( model, Cmd.none )
 
 
-generateEnvironmentAfterDelay : Random.Seed -> Cmd Message
-generateEnvironmentAfterDelay seed =
+generateEnvironmentAfterDelay : World -> Cmd Message
+generateEnvironmentAfterDelay world =
     let
         randomMillis =
-            seed
+            world.seed
                 |> Random.step (Random.int 1000 3500)
                 |> Tuple.first
     in
@@ -171,14 +167,14 @@ updateTrafficLight trafficLight =
     { trafficLight | fsm = nextFsm }
 
 
-attemptGenerateLot : Time.Posix -> Random.Seed -> Editor.Editor -> SimulationState -> World -> World
-attemptGenerateLot time seed editor simulation world =
+attemptGenerateLot : Time.Posix -> Editor.Editor -> SimulationState -> World -> World
+attemptGenerateLot time editor simulation world =
     let
         largeEnoughRoadNetwork =
             Tilemap.size world.tilemap > 4 * (Dict.size world.lots + 1)
     in
-    if simulation == Paused || not largeEnoughRoadNetwork || editor.pendingTilemapChange /= Nothing then
+    if simulation == Paused || not largeEnoughRoadNetwork || Editor.hasPendingTilemapChange editor then
         world
 
     else
-        Zoning.generateLot time seed world
+        Zoning.generateLot time world

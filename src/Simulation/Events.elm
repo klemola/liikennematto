@@ -21,15 +21,13 @@ import Time
 --
 
 
-processEvents : Time.Posix -> Random.Seed -> List ( Id, CarEvent ) -> World -> World
-processEvents time seed events world =
-    List.foldl (processEvent time seed)
-        world
-        events
+processEvents : Time.Posix -> List ( Id, CarEvent ) -> World -> World
+processEvents time events world =
+    List.foldl (processEvent time) world events
 
 
-processEvent : Time.Posix -> Random.Seed -> ( Id, CarEvent ) -> World -> World
-processEvent time seed ( carId, event ) world =
+processEvent : Time.Posix -> ( Id, CarEvent ) -> World -> World
+processEvent time ( carId, event ) world =
     case event of
         ParkingStarted ->
             -- TODO: retry
@@ -46,7 +44,7 @@ processEvent time seed ( carId, event ) world =
             leaveLot carId world
 
         DespawnComplete ->
-            setupRespawn time seed carId world
+            setupRespawn time carId world
 
 
 attemptReserveParkingSpot : Id -> World -> World
@@ -119,8 +117,8 @@ leaveLot =
         )
 
 
-setupRespawn : Time.Posix -> Random.Seed -> Id -> World -> World
-setupRespawn time seed =
+setupRespawn : Time.Posix -> Id -> World -> World
+setupRespawn time =
     withCar
         (\car world ->
             let
@@ -135,13 +133,14 @@ setupRespawn time seed =
                 minDelay =
                     maxDelay // 2
 
-                ( delay, _ ) =
-                    Random.step (Random.int minDelay maxDelay) seed
+                ( delay, nextSeed ) =
+                    Random.step (Random.int minDelay maxDelay) world.seed
 
                 triggerAt =
                     addMillisecondsToPosix delay time
             in
             world
+                |> World.setSeed nextSeed
                 |> World.removeCar car.id
                 |> World.addEvent eventKind triggerAt
         )
@@ -153,8 +152,8 @@ setupRespawn time seed =
 --
 
 
-updateEventQueue : Time.Posix -> Random.Seed -> World -> World
-updateEventQueue time seed world =
+updateEventQueue : Time.Posix -> World -> World
+updateEventQueue time world =
     let
         ( nextQueue, triggeredEvents ) =
             EventQueue.update time world.eventQueue
@@ -178,7 +177,7 @@ updateEventQueue time seed world =
                 World.SpawnTestCar ->
                     let
                         ( worldWithCar, _ ) =
-                            spawnTestCar seed nextWorld
+                            spawnTestCar nextWorld
                     in
                     -- The car might not have been spawned, but it's not important enough to retry
                     worldWithCar

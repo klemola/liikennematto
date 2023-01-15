@@ -22,7 +22,6 @@ import Model.Flags exposing (Flags, RuntimeEnvironment(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Screen as Screen exposing (Screen)
 import Model.World as World exposing (World)
-import Random
 import Time
 
 
@@ -30,7 +29,6 @@ type alias Liikennematto =
     { game : GameFSM
     , initSteps : InitSteps
     , screen : Screen
-    , seed : Random.Seed
     , time : Time.Posix
     , world : World
     , previousWorld : Maybe World
@@ -206,11 +204,6 @@ triggerLoading model =
 --
 
 
-initialSeed : Random.Seed
-initialSeed =
-    Random.initialSeed 666
-
-
 initialWorld : World
 initialWorld =
     World.empty
@@ -234,7 +227,6 @@ initial flags =
         , viewportSizeSet = False
         }
     , screen = Screen.fallback
-    , seed = initialSeed
     , time = Time.millisToPosix 0
     , previousWorld = Nothing
     , world = initialWorld

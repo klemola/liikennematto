@@ -1,9 +1,9 @@
 module Model.World exposing
-    ( World
+    ( RNLookupEntry
+    , World
     , WorldEvent(..)
     , addEvent
     , addLot
-    , boundingBox
     , createLookup
     , empty
     , findCarById
@@ -16,6 +16,7 @@ module Model.World exposing
     , removeCar
     , removeLot
     , setCar
+    , setSeed
     , setTilemap
     , updateLot
     )
@@ -35,6 +36,7 @@ import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext, RoadNetwork)
 import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.TrafficLight exposing (TrafficLights)
 import QuadTree exposing (Bounded, QuadTree)
+import Random
 import Round
 import Set
 import Time
@@ -55,6 +57,7 @@ type alias World =
     , lotLookup : QuadTree Length.Meters GlobalCoordinates Lot
     , roadNetworkLookup : QuadTree Length.Meters GlobalCoordinates RNLookupEntry
     , eventQueue : EventQueue WorldEvent
+    , seed : Random.Seed
     }
 
 
@@ -68,6 +71,11 @@ type alias RNLookupEntry =
 quadTreeLeafElementsAmount : Int
 quadTreeLeafElementsAmount =
     4
+
+
+initialSeed : Random.Seed
+initialSeed =
+    Random.initialSeed 42
 
 
 empty : Tilemap.TilemapConfig -> World
@@ -88,6 +96,7 @@ empty tilemapConfig =
     , lotLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
     , roadNetworkLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
     , eventQueue = EventQueue.empty
+    , seed = initialSeed
     }
 
 
@@ -267,6 +276,15 @@ createLookup : List (Bounded Length.Meters GlobalCoordinates a) -> World -> Quad
 createLookup lookupItems world =
     QuadTree.init (boundingBox world) quadTreeLeafElementsAmount
         |> QuadTree.insertList lookupItems
+
+
+setSeed : Random.Seed -> World -> World
+setSeed seed world =
+    { world | seed = seed }
+
+
+
+-- Utility
 
 
 formatEvents : Time.Posix -> World -> List ( String, String, String )

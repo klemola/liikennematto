@@ -35,11 +35,9 @@ minRouteEndNodeDistance =
     Length.meters 100
 
 
-generateRouteFromNode : Random.Seed -> World -> Maybe Id -> RNNodeContext -> Route
-generateRouteFromNode seed world homeLotId startNodeCtx =
-    findRandomDestinationNode seed world homeLotId startNodeCtx
-        -- Seed discarded
-        |> Tuple.first
+generateRouteFromNode : World -> Maybe Id -> RNNodeContext -> Route
+generateRouteFromNode world homeLotId startNodeCtx =
+    findRandomDestinationNode world homeLotId startNodeCtx
         |> Maybe.map (Tuple.pair startNodeCtx)
         |> Maybe.andThen
             (\( start, end ) ->
@@ -47,19 +45,17 @@ generateRouteFromNode seed world homeLotId startNodeCtx =
             )
         |> Maybe.withDefaultLazy
             (\_ ->
-                Route.randomFromNode seed 10 world.roadNetwork startNodeCtx
+                Route.randomFromNode world.seed 10 world.roadNetwork startNodeCtx
             )
 
 
-generateRouteFromParkingSpot : Random.Seed -> World -> Maybe Id -> ParkingReservation -> Route
-generateRouteFromParkingSpot seed world homeLotId parkingReservation =
+generateRouteFromParkingSpot : World -> Maybe Id -> ParkingReservation -> Route
+generateRouteFromParkingSpot world homeLotId parkingReservation =
     parkingReservation.lotId
         |> RoadNetwork.findLotExitNodeByLotId world.roadNetwork
         |> Maybe.andThen
             (\startNode ->
-                findRandomDestinationNode seed world homeLotId startNode
-                    -- Seed discarded
-                    |> Tuple.first
+                findRandomDestinationNode world homeLotId startNode
                     |> Maybe.map (Tuple.pair startNode)
             )
         |> Maybe.andThen
@@ -75,16 +71,11 @@ generateRouteFromParkingSpot seed world homeLotId parkingReservation =
         |> Maybe.withDefault Route.initialRoute
 
 
-findRandomDestinationNode :
-    Random.Seed
-    -> World
-    -> Maybe Id
-    -> RNNodeContext
-    -> ( Maybe RNNodeContext, Random.Seed )
-findRandomDestinationNode seed world homeLotId startNodeCtx =
+findRandomDestinationNode : World -> Maybe Id -> RNNodeContext -> Maybe RNNodeContext
+findRandomDestinationNode world homeLotId startNodeCtx =
     let
         ( chance, seedAfterRandomFloat ) =
-            Random.step (Random.float 0 1) seed
+            Random.step (Random.float 0 1) world.seed
 
         lookingForLot =
             chance > 0.65 && Dict.size world.lots >= 2
@@ -155,8 +146,8 @@ type RouteUpdateResult
     | Updated Route
 
 
-carAfterRouteUpdate : Random.Seed -> World -> Bool -> Duration -> Car -> Car
-carAfterRouteUpdate seed world roadNetworkStale delta car =
+carAfterRouteUpdate : World -> Bool -> Duration -> Car -> Car
+carAfterRouteUpdate world roadNetworkStale delta car =
     case updateRoute delta car of
         Updated nextRoute ->
             { car | route = nextRoute }
@@ -178,7 +169,7 @@ carAfterRouteUpdate seed world roadNetworkStale delta car =
                                     Nothing
 
                                 else
-                                    Just (generateRouteFromParkingSpot seed world car.homeLotId parkingReservation)
+                                    Just (generateRouteFromParkingSpot world car.homeLotId parkingReservation)
                             )
                         |> Maybe.withDefault Route.initialRoute
             in
@@ -210,7 +201,7 @@ carAfterRouteUpdate seed world roadNetworkStale delta car =
                         |> Maybe.withDefaultLazy (\_ -> Car.triggerWaitingForParking car nextRoute)
 
                 _ ->
-                    { car | route = generateRouteFromNode seed world car.homeLotId nodeCtx }
+                    { car | route = generateRouteFromNode world car.homeLotId nodeCtx }
 
         ArrivedAtParkingSpot ->
             let
@@ -218,7 +209,7 @@ carAfterRouteUpdate seed world roadNetworkStale delta car =
                     Random.float 1500 30000 |> Random.map Duration.milliseconds
 
                 ( waitTimer, _ ) =
-                    Random.step timerGenerator seed
+                    Random.step timerGenerator world.seed
             in
             { car | route = Route.Unrouted (Just waitTimer) }
 

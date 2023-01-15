@@ -440,7 +440,7 @@ largeWorldSetup carsAmount =
             largeWorld
 
         worldWithCars =
-            spawnCars carsAmount world (Random.initialSeed 888)
+            spawnCars carsAmount world
     in
     case Dict.values worldWithCars.cars of
         x :: xs ->
@@ -546,19 +546,16 @@ routeCarByNodes node others parameter car =
         |> Traffic.applySteering (Duration.milliseconds 16) Steering.none
 
 
-spawnCars : Int -> World -> Random.Seed -> World
-spawnCars n world aSeed =
+spawnCars : Int -> World -> World
+spawnCars n world =
     if n == 0 then
         world
 
     else
         let
-            ( nextWorld, id ) =
-                Traffic.spawnTestCar aSeed world
+            ( nextWorld, _ ) =
+                Traffic.spawnTestCar world
         in
-        spawnCars (n - 1)
+        spawnCars
+            (n - 1)
             nextWorld
-            (id
-                |> Maybe.withDefault n
-                |> Random.initialSeed
-            )
