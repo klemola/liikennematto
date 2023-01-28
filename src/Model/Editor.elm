@@ -1,16 +1,11 @@
 module Model.Editor exposing
     ( Editor
-    , PendingTilemapChange
     , ZoomLevel(..)
     , activateCell
     , advanceLongPressTimer
     , clearPointerDownEvent
-    , combineChangedCells
-    , createPendingTilemapChange
     , deactivateCell
-    , hasPendingTilemapChange
     , initial
-    , minTilemapChangeFrequency
     , mouseDetected
     , reset
     , resetLongPressTimer
@@ -22,14 +17,12 @@ module Model.Editor exposing
 
 import Duration exposing (Duration)
 import Html.Events.Extra.Pointer as Pointer
-import Model.Cell as Cell exposing (Cell, CellCoordinates)
+import Model.Cell as Cell exposing (Cell)
 import Quantity
-import Set exposing (Set)
 
 
 type alias Editor =
     { zoomLevel : ZoomLevel
-    , pendingTilemapChange : Maybe PendingTilemapChange
     , activeCell : Maybe Cell
     , longPressTimer : Maybe Duration
     , pointerDownEvent : Maybe Pointer.Event
@@ -43,19 +36,9 @@ type ZoomLevel
     | VeryFar
 
 
-type alias PendingTilemapChange =
-    ( Duration, Set CellCoordinates )
-
-
-minTilemapChangeFrequency : Duration
-minTilemapChangeFrequency =
-    Duration.milliseconds 750
-
-
 initial : Editor
 initial =
     { zoomLevel = Far
-    , pendingTilemapChange = Nothing
     , activeCell = Nothing
     , longPressTimer = Nothing
     , pointerDownEvent = Nothing
@@ -66,8 +49,7 @@ initial =
 reset : Editor -> Editor
 reset editor =
     { editor
-        | pendingTilemapChange = Nothing
-        , activeCell = initial.activeCell
+        | activeCell = initial.activeCell
         , longPressTimer = initial.longPressTimer
         , pointerDownEvent = initial.pointerDownEvent
         , zoomLevel = initial.zoomLevel
@@ -106,31 +88,6 @@ zoomLevelToUIValue zoomLevel =
 
         Near ->
             3
-
-
-createPendingTilemapChange : List Cell -> Editor -> Editor
-createPendingTilemapChange changedCells editor =
-    let
-        pendingTilemapChange =
-            Just
-                ( minTilemapChangeFrequency
-                , combineChangedCells changedCells Set.empty
-                )
-    in
-    { editor | pendingTilemapChange = pendingTilemapChange }
-
-
-combineChangedCells : List Cell -> Set CellCoordinates -> Set CellCoordinates
-combineChangedCells changedCells currentChanges =
-    changedCells
-        |> List.map Cell.coordinates
-        |> Set.fromList
-        |> Set.union currentChanges
-
-
-hasPendingTilemapChange : Editor -> Bool
-hasPendingTilemapChange editor =
-    editor.pendingTilemapChange /= Nothing
 
 
 activateCell : Cell -> Editor -> Editor

@@ -10,6 +10,7 @@ module Model.Car exposing
     , isDespawning
     , isParked
     , new
+    , routed
     , shouldWatchTraffic
     , statusDescription
     , triggerDespawn
@@ -360,8 +361,8 @@ withVelocity velocity car =
     { car | velocity = velocity }
 
 
-build : Int -> Maybe Route -> Maybe ParkingReservation -> NewCar -> Car
-build id route parkingReservation newCar =
+build : Int -> Maybe ParkingReservation -> NewCar -> Car
+build id parkingReservation newCar =
     let
         ( shape, boundingBox ) =
             adjustedShape newCar.make newCar.position newCar.orientation
@@ -378,10 +379,21 @@ build id route parkingReservation newCar =
     , rotation = newCar.rotation
     , shape = shape
     , boundingBox = boundingBox
-    , route = route |> Maybe.withDefault Route.initialRoute
+    , route = Route.initialRoute
     , homeLotId = newCar.homeLotId
     , parkingReservation = parkingReservation
     }
+
+
+
+--
+-- Route
+--
+
+
+routed : Route -> Car -> Car
+routed route car =
+    { car | route = route }
 
 
 

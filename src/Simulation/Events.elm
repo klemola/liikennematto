@@ -7,10 +7,11 @@ import EventQueue
 import Model.Car as Car exposing (Car, CarEvent(..))
 import Model.Entity exposing (Id)
 import Model.Geometry exposing (orthogonalDirectionToLmDirection)
-import Model.Lot as Lot exposing (Lot)
+import Model.Lot as Lot exposing (Lot, ParkingReservation)
 import Model.World as World exposing (World, WorldEvent(..))
 import Random
 import Result.Extra
+import Simulation.Pathfinding exposing (generateRouteFromParkingSpot)
 import Simulation.Traffic exposing (spawnResident, spawnTestCar)
 import Time
 
@@ -37,7 +38,6 @@ processEvent time ( carId, event ) world =
             parkingCompleteEffects carId world
 
         UnparkingStarted ->
-            -- Room for improvement: instead of despawn, the parking lock could be retried
             leaveParkingSpot carId world
 
         UnparkingComplete ->
@@ -50,7 +50,7 @@ processEvent time ( carId, event ) world =
 attemptReserveParkingSpot : Id -> World -> World
 attemptReserveParkingSpot =
     withCar
-        (withParking
+        (withParkingContext
             (\parkingSpotId car lot world ->
                 lot
                     |> Lot.acquireParkingLock car.id
@@ -64,7 +64,7 @@ attemptReserveParkingSpot =
 parkingCompleteEffects : Id -> World -> World
 parkingCompleteEffects =
     withCar
-        (withParking
+        (withParkingContext
             (\_ car lot world ->
                 let
                     nextOrientation =
@@ -85,7 +85,7 @@ parkingCompleteEffects =
 leaveParkingSpot : Id -> World -> World
 leaveParkingSpot =
     withCar
-        (withParking
+        (withParkingContext
             (\parkingSpotId car lot world ->
                 case Lot.acquireParkingLock car.id lot of
                     Just lotWithLock ->
@@ -104,7 +104,7 @@ leaveParkingSpot =
 leaveLot : Id -> World -> World
 leaveLot =
     withCar
-        (withParking
+        (withParkingContext
             (\parkingSpotId car lot world ->
                 let
                     nextLot =
@@ -181,9 +181,39 @@ updateEventQueue time world =
                     in
                     -- The car might not have been spawned, but it's not important enough to retry
                     worldWithCar
+
+                World.RouteCarFromParkingSpot carId parkingReservation ->
+                    withCar
+                        (\car _ ->
+                            withRetry
+                                (attemptGenerateRouteFromParkingSpot car parkingReservation nextWorld)
+                                time
+                                event
+                                nextWorld
+                        )
+                        carId
+                        nextWorld
         )
         { world | eventQueue = nextQueue }
         triggeredEvents
+
+
+attemptGenerateRouteFromParkingSpot : Car -> ParkingReservation -> World -> Result String World
+attemptGenerateRouteFromParkingSpot car parkingReservation world =
+    let
+        parkingLockSet =
+            world.lots
+                |> Dict.get parkingReservation.lotId
+                |> Maybe.map Lot.hasParkingLockSet
+                |> Maybe.withDefault False
+    in
+    if parkingLockSet || World.hasPendingTilemapChange world then
+        Result.Err "Can't leave the parking spot yet"
+
+    else
+        generateRouteFromParkingSpot world car parkingReservation
+            |> Result.map (\route -> Car.routed route car)
+            |> Result.map (\routedCar -> World.setCar routedCar world)
 
 
 
@@ -215,8 +245,8 @@ withCar mapFn carId world =
             world
 
 
-withParking : (Id -> Car -> Lot -> World -> World) -> Car -> World -> World
-withParking mapFn car world =
+withParkingContext : (Id -> Car -> Lot -> World -> World) -> Car -> World -> World
+withParkingContext mapFn car world =
     case
         car.parkingReservation
             |> Maybe.andThen

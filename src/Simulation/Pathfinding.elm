@@ -35,9 +35,9 @@ minRouteEndNodeDistance =
     Length.meters 100
 
 
-generateRouteFromNode : World -> Maybe Id -> RNNodeContext -> Route
-generateRouteFromNode world homeLotId startNodeCtx =
-    findRandomDestinationNode world homeLotId startNodeCtx
+generateRouteFromNode : World -> Car -> RNNodeContext -> Route
+generateRouteFromNode world car startNodeCtx =
+    findRandomDestinationNode world car startNodeCtx
         |> Maybe.map (Tuple.pair startNodeCtx)
         |> Maybe.andThen
             (\( start, end ) ->
@@ -49,13 +49,13 @@ generateRouteFromNode world homeLotId startNodeCtx =
             )
 
 
-generateRouteFromParkingSpot : World -> Maybe Id -> ParkingReservation -> Route
-generateRouteFromParkingSpot world homeLotId parkingReservation =
+generateRouteFromParkingSpot : World -> Car -> ParkingReservation -> Result String Route
+generateRouteFromParkingSpot world car parkingReservation =
     parkingReservation.lotId
         |> RoadNetwork.findLotExitNodeByLotId world.roadNetwork
         |> Maybe.andThen
             (\startNode ->
-                findRandomDestinationNode world homeLotId startNode
+                findRandomDestinationNode world car startNode
                     |> Maybe.map (Tuple.pair startNode)
             )
         |> Maybe.andThen
@@ -67,12 +67,11 @@ generateRouteFromParkingSpot world homeLotId parkingReservation =
                     start
                     end
             )
-        -- Will trigger another generate route attempt
-        |> Maybe.withDefault Route.initialRoute
+        |> Result.fromMaybe "Could not generate route"
 
 
-findRandomDestinationNode : World -> Maybe Id -> RNNodeContext -> Maybe RNNodeContext
-findRandomDestinationNode world homeLotId startNodeCtx =
+findRandomDestinationNode : World -> Car -> RNNodeContext -> Maybe RNNodeContext
+findRandomDestinationNode world car startNodeCtx =
     let
         ( chance, seedAfterRandomFloat ) =
             Random.step (Random.float 0 1) world.seed
@@ -84,7 +83,7 @@ findRandomDestinationNode world homeLotId startNodeCtx =
             if lookingForLot then
                 randomLotMatchPredicate
                     world
-                    homeLotId
+                    car
                     startNodeCtx
 
             else
@@ -95,11 +94,11 @@ findRandomDestinationNode world homeLotId startNodeCtx =
 
 randomLotMatchPredicate :
     World
-    -> Maybe Id
+    -> Car
     -> RNNodeContext
     -> RNNode
     -> Bool
-randomLotMatchPredicate world homeLotId startNodeCtx endNode =
+randomLotMatchPredicate world car startNodeCtx endNode =
     case endNode.label.kind of
         LotEntry lotEntryId ->
             let
@@ -114,7 +113,7 @@ randomLotMatchPredicate world homeLotId startNodeCtx endNode =
                 parkingPermitted =
                     case Dict.get lotEntryId world.lots of
                         Just lot ->
-                            Lot.parkingPermitted (parkingPermissionPredicate homeLotId lotEntryId) lot
+                            Lot.parkingPermitted (parkingPermissionPredicate car.homeLotId lotEntryId) lot
 
                         Nothing ->
                             False
@@ -139,41 +138,17 @@ randomNodeMatchPredicate startNodeCtx endNode =
 
 
 type RouteUpdateResult
-    = BeginRoute
-    | ReachEndNode RNNodeContext Route
+    = ReachEndNode RNNodeContext Route
     | ArrivedAtParkingSpot
     | ArrivedAtNode Route
     | Updated Route
 
 
-carAfterRouteUpdate : World -> Bool -> Duration -> Car -> Car
-carAfterRouteUpdate world roadNetworkStale delta car =
+carAfterRouteUpdate : World -> Duration -> Car -> Car
+carAfterRouteUpdate world delta car =
     case updateRoute delta car of
         Updated nextRoute ->
-            { car | route = nextRoute }
-
-        BeginRoute ->
-            let
-                route =
-                    car.parkingReservation
-                        |> Maybe.andThen
-                            (\parkingReservation ->
-                                let
-                                    parkingLockSet =
-                                        world.lots
-                                            |> Dict.get parkingReservation.lotId
-                                            |> Maybe.map Lot.hasParkingLockSet
-                                            |> Maybe.withDefault False
-                                in
-                                if parkingLockSet || roadNetworkStale then
-                                    Nothing
-
-                                else
-                                    Just (generateRouteFromParkingSpot world car.homeLotId parkingReservation)
-                            )
-                        |> Maybe.withDefault Route.initialRoute
-            in
-            { car | route = route }
+            Car.routed nextRoute car
 
         ReachEndNode nodeCtx nextRoute ->
             case
@@ -201,21 +176,16 @@ carAfterRouteUpdate world roadNetworkStale delta car =
                         |> Maybe.withDefaultLazy (\_ -> Car.triggerWaitingForParking car nextRoute)
 
                 _ ->
-                    { car | route = generateRouteFromNode world car.homeLotId nodeCtx }
+                    Car.routed
+                        (generateRouteFromNode world car nodeCtx)
+                        car
 
         ArrivedAtParkingSpot ->
-            let
-                timerGenerator =
-                    Random.float 1500 30000 |> Random.map Duration.milliseconds
-
-                ( waitTimer, _ ) =
-                    Random.step timerGenerator world.seed
-            in
-            { car | route = Route.Unrouted (Just waitTimer) }
+            Car.routed Route.Unrouted car
 
         ArrivedAtNode nextRoute ->
             if Car.isDespawning car then
-                { car | route = nextRoute }
+                Car.routed nextRoute car
 
             else
                 Car.triggerDespawn car
@@ -224,17 +194,8 @@ carAfterRouteUpdate world roadNetworkStale delta car =
 updateRoute : Duration -> Car -> RouteUpdateResult
 updateRoute delta car =
     case car.route of
-        Route.Unrouted timer ->
-            let
-                nextTimer =
-                    timer |> Maybe.andThen (updateTimer delta)
-            in
-            case nextTimer of
-                Nothing ->
-                    BeginRoute
-
-                _ ->
-                    Updated (Route.Unrouted nextTimer)
+        Route.Unrouted ->
+            Updated car.route
 
         Route.Routed routeMeta ->
             let
@@ -268,19 +229,6 @@ updateRoute delta car =
 
             else
                 Updated nextRoute
-
-
-updateTimer : Duration -> Duration -> Maybe Duration
-updateTimer delta timer =
-    let
-        nextDuration =
-            timer |> Quantity.minus delta
-    in
-    if Quantity.lessThanOrEqualToZero nextDuration then
-        Nothing
-
-    else
-        Just nextDuration
 
 
 updatePath : Speed -> Duration -> Route.Path -> Route.Path

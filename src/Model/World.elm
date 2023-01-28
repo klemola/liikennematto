@@ -1,5 +1,6 @@
 module Model.World exposing
-    ( RNLookupEntry
+    ( PendingTilemapChange
+    , RNLookupEntry
     , World
     , WorldEvent(..)
     , addEvent
@@ -12,9 +13,11 @@ module Model.World exposing
     , findNodeByPosition
     , formatEvents
     , hasLot
+    , hasPendingTilemapChange
     , isEmptyArea
     , removeCar
     , removeLot
+    , resolveTilemapUpdate
     , setCar
     , setSeed
     , setTilemap
@@ -25,10 +28,11 @@ import BoundingBox2d
 import Common
 import Data.Cars exposing (CarMake)
 import Dict exposing (Dict)
+import Duration exposing (Duration)
 import EventQueue exposing (EventQueue)
 import Length exposing (Length)
 import Model.Car as Car exposing (Car)
-import Model.Cell exposing (Cell)
+import Model.Cell as Cell exposing (Cell, CellCoordinates)
 import Model.Entity exposing (Id)
 import Model.Geometry exposing (GlobalCoordinates, LMBoundingBox2d, LMPoint2d)
 import Model.Lot as Lot exposing (Lot)
@@ -36,19 +40,22 @@ import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext, RoadNetwork)
 import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.TrafficLight exposing (TrafficLights)
 import QuadTree exposing (Bounded, QuadTree)
+import Quantity
 import Random
 import Round
-import Set
+import Set exposing (Set)
 import Time
 
 
 type WorldEvent
     = SpawnTestCar
     | SpawnResident CarMake Id
+    | RouteCarFromParkingSpot Id Lot.ParkingReservation
 
 
 type alias World =
     { tilemap : Tilemap
+    , pendingTilemapChange : Maybe PendingTilemapChange
     , roadNetwork : RoadNetwork
     , trafficLights : TrafficLights
     , cars : Dict Id Car
@@ -61,6 +68,10 @@ type alias World =
     }
 
 
+type alias PendingTilemapChange =
+    ( Duration, Set CellCoordinates )
+
+
 type alias RNLookupEntry =
     { id : Int
     , position : LMPoint2d
@@ -71,6 +82,11 @@ type alias RNLookupEntry =
 quadTreeLeafElementsAmount : Int
 quadTreeLeafElementsAmount =
     4
+
+
+minTilemapChangeFrequency : Duration
+minTilemapChangeFrequency =
+    Duration.milliseconds 750
 
 
 initialSeed : Random.Seed
@@ -88,6 +104,7 @@ empty tilemapConfig =
             Tilemap.boundingBox tilemap
     in
     { tilemap = tilemap
+    , pendingTilemapChange = Nothing
     , roadNetwork = RoadNetwork.empty
     , trafficLights = Dict.empty
     , cars = Dict.empty
@@ -167,6 +184,11 @@ findNearbyEntitiesFromPoint radius point quadTree =
         radius
         (BoundingBox2d.singleton point)
         quadTree
+
+
+hasPendingTilemapChange : World -> Bool
+hasPendingTilemapChange editor =
+    editor.pendingTilemapChange /= Nothing
 
 
 
@@ -284,6 +306,77 @@ setSeed seed world =
 
 
 
+--
+-- Tilemap change
+--
+
+
+resolveTilemapUpdate : Duration -> Tilemap.TilemapUpdateResult -> World -> ( World, List Cell )
+resolveTilemapUpdate delta tilemapUpdateResult world =
+    case world.pendingTilemapChange of
+        Nothing ->
+            let
+                nextWorld =
+                    if List.isEmpty tilemapUpdateResult.transitionedCells then
+                        world
+
+                    else
+                        createPendingTilemapChange tilemapUpdateResult.transitionedCells world
+            in
+            ( nextWorld
+            , []
+            )
+
+        Just pendingTilemapChange ->
+            let
+                ( changeTimer, currentChangedCells ) =
+                    pendingTilemapChange
+
+                nextTimer =
+                    if not (List.isEmpty tilemapUpdateResult.transitionedCells) then
+                        -- The tilemap changed during the delay, reset it (AKA debounce)
+                        minTilemapChangeFrequency
+
+                    else
+                        changeTimer
+                            |> Quantity.minus delta
+                            |> Quantity.max Quantity.zero
+
+                nextChangedCells =
+                    combineChangedCells tilemapUpdateResult.transitionedCells currentChangedCells
+            in
+            if Quantity.lessThanOrEqualToZero nextTimer then
+                ( { world | pendingTilemapChange = Nothing }
+                , Cell.fromCoordinatesSet (Tilemap.config world.tilemap) nextChangedCells
+                )
+
+            else
+                ( { world | pendingTilemapChange = Just ( nextTimer, nextChangedCells ) }
+                , []
+                )
+
+
+createPendingTilemapChange : List Cell -> World -> World
+createPendingTilemapChange changedCells editor =
+    let
+        pendingTilemapChange =
+            Just
+                ( minTilemapChangeFrequency
+                , combineChangedCells changedCells Set.empty
+                )
+    in
+    { editor | pendingTilemapChange = pendingTilemapChange }
+
+
+combineChangedCells : List Cell -> Set CellCoordinates -> Set CellCoordinates
+combineChangedCells changedCells currentChanges =
+    changedCells
+        |> List.map Cell.coordinates
+        |> Set.fromList
+        |> Set.union currentChanges
+
+
+
 -- Utility
 
 
@@ -300,6 +393,9 @@ formatEvents time world =
 
                             SpawnResident _ lotId ->
                                 "Spawn resident: lot #" ++ String.fromInt lotId
+
+                            RouteCarFromParkingSpot carId _ ->
+                                "Router car from parkingSpot #" ++ String.fromInt carId
 
                     timeDiff =
                         Time.posixToMillis event.triggerAt - Time.posixToMillis time

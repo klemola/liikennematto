@@ -30,7 +30,6 @@ import AStar
 import Array exposing (Array)
 import CubicSpline2d exposing (ArcLengthParameterized)
 import Dict exposing (Dict)
-import Duration exposing (Duration)
 import Length exposing (Length)
 import List.Extra as List
 import Model.Entity exposing (Id)
@@ -55,12 +54,11 @@ import Model.RoadNetwork as RoadNetwork
 import Quantity
 import Random
 import Random.List
-import Round
 import Splines
 
 
 type Route
-    = Unrouted (Maybe Duration)
+    = Unrouted
     | Routed RouteMeta
     | ArrivingToDestination Destination Path
 
@@ -100,14 +98,9 @@ maxALPError =
     Length.meters 0.1
 
 
-initialParkingWaitTimer : Maybe Duration
-initialParkingWaitTimer =
-    Just (Duration.milliseconds 1500)
-
-
 initialRoute : Route
 initialRoute =
-    Unrouted initialParkingWaitTimer
+    Unrouted
 
 
 
@@ -373,7 +366,7 @@ isWaitingForRoute : Route -> Bool
 isWaitingForRoute route =
     case route of
         -- Still waiting until a new route is built
-        Unrouted (Just _) ->
+        Unrouted ->
             True
 
         _ ->
@@ -383,7 +376,7 @@ isWaitingForRoute route =
 isRouted : Route -> Bool
 isRouted route =
     case route of
-        Unrouted _ ->
+        Unrouted ->
             False
 
         _ ->
@@ -657,17 +650,8 @@ sampleAheadWithPath path lookAheadAmount currentSplineMeta =
 description : Route -> String
 description route =
     case route of
-        Unrouted timer ->
-            case timer of
-                Just activeTimer ->
-                    String.concat
-                        [ "Unrouted for "
-                        , Duration.inSeconds activeTimer |> Round.round 2
-                        , "s"
-                        ]
-
-                Nothing ->
-                    "Unrouted"
+        Unrouted ->
+            "Unrouted"
 
         Routed routeMeta ->
             String.concat

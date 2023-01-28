@@ -1,4 +1,10 @@
-module PathfindingVisualization exposing (Model, Msg, Path, SplineMeta, main)
+module PathfindingVisualization exposing
+    ( Model
+    , Msg
+    , Path
+    , SplineMeta
+    , main
+    )
 
 import Array exposing (Array)
 import Browser
@@ -191,7 +197,7 @@ initialCar =
         |> Car.withPosition initialStart
         |> Car.withOrientation (Direction2d.toAngle initialTangentDirection)
         |> Car.withVelocity Steering.maxVelocity
-        |> Car.build 1 Nothing Nothing
+        |> Car.build 1 Nothing
 
 
 initialModel : Model

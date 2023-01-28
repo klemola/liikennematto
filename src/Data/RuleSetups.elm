@@ -493,8 +493,7 @@ buildCar option position orientation velocity =
         |> Car.withPosition position
         |> Car.withOrientation orientation
         |> Car.withVelocity velocity
-        -- TODO: combine routeCarByDestination with buildCar for easier setup
-        |> Car.build id Nothing Nothing
+        |> Car.build id Nothing
 
 
 routeCarByDestination : World -> LMPoint2d -> Car -> Car
@@ -513,7 +512,8 @@ routeCarByDestination world position car =
                         world.roadNetwork
                         nodeCtx
             in
-            { car | route = route }
+            car
+                |> Car.routed route
                 |> Traffic.applySteering (Duration.milliseconds 16) Steering.none
 
         Nothing ->

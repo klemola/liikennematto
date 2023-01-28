@@ -19,13 +19,12 @@ import Message exposing (Message(..))
 import Model.Cell as Cell exposing (Cell)
 import Model.Editor as Editor exposing (Editor)
 import Model.Liikennematto exposing (Liikennematto)
-import Model.RenderCache as RenderCache exposing (RenderCache, refreshTilemapCache, setTilemapCache)
+import Model.RenderCache as RenderCache exposing (RenderCache, setTilemapCache)
 import Model.Tile as Tile
-import Model.Tilemap as Tilemap exposing (TilemapUpdateResult)
+import Model.Tilemap as Tilemap
 import Model.World as World exposing (World)
 import Quantity
 import Render.Conversion
-import Simulation.Zoning as Zoning
 import Task
 import UI.Core
     exposing
@@ -127,30 +126,6 @@ update msg model =
                         Browser.Dom.setViewportOf containerId (max nextScrollX 0) (max nextScrollY 0)
                     )
                 |> Task.attempt (\_ -> NoOp)
-            )
-
-        UpdateTilemap delta ->
-            let
-                tilemapUpdateResult =
-                    Tilemap.update delta world.tilemap
-
-                nextWorld =
-                    { world | tilemap = tilemapUpdateResult.tilemap }
-                        |> Zoning.removeInvalidLots tilemapUpdateResult.transitionedCells
-
-                ( nextRenderCache, dynamicTiles ) =
-                    refreshTilemapCache tilemapUpdateResult renderCache
-
-                ( nextEditor, tilemapChangedEffects ) =
-                    resolveTilemapUpdate delta tilemapUpdateResult model
-            in
-            ( { model
-                | world = nextWorld
-                , renderCache = nextRenderCache
-                , dynamicTiles = dynamicTiles
-                , editor = nextEditor
-              }
-            , Cmd.batch (tilemapChangedEffects :: tileActionsToCmds tilemapUpdateResult.actions)
             )
 
         SpawnTestCar ->
@@ -277,58 +252,6 @@ centerView =
                     ((domViewport.scene.height - domViewport.viewport.height - toFloat renderSafeAreaYSize) / 2)
             )
         |> Task.attempt (\_ -> NoOp)
-
-
-resolveTilemapUpdate : Duration -> TilemapUpdateResult -> Liikennematto -> ( Editor, Cmd Message )
-resolveTilemapUpdate delta tilemapUpdateResult model =
-    let
-        { editor } =
-            model
-    in
-    case editor.pendingTilemapChange of
-        Nothing ->
-            let
-                nextEditor =
-                    if List.isEmpty tilemapUpdateResult.transitionedCells then
-                        editor
-
-                    else
-                        Editor.createPendingTilemapChange tilemapUpdateResult.transitionedCells editor
-            in
-            ( nextEditor
-            , Cmd.none
-            )
-
-        Just pendingTilemapChange ->
-            let
-                ( changeTimer, currentChangedCells ) =
-                    pendingTilemapChange
-
-                nextTimer =
-                    if not (List.isEmpty tilemapUpdateResult.transitionedCells) then
-                        -- The tilemap changed during the delay, reset it (AKA debounce)
-                        Editor.minTilemapChangeFrequency
-
-                    else
-                        changeTimer
-                            |> Quantity.minus delta
-                            |> Quantity.max Quantity.zero
-
-                nextChangedCells =
-                    Editor.combineChangedCells tilemapUpdateResult.transitionedCells currentChangedCells
-            in
-            if Quantity.lessThanOrEqualToZero nextTimer then
-                ( { editor | pendingTilemapChange = Nothing }
-                , nextChangedCells
-                    |> Cell.fromCoordinatesSet (Tilemap.config model.world.tilemap)
-                    |> Task.succeed
-                    |> Task.perform TilemapChanged
-                )
-
-            else
-                ( { editor | pendingTilemapChange = Just ( nextTimer, nextChangedCells ) }
-                , Cmd.none
-                )
 
 
 pointerEventToCell : RenderCache -> Tilemap.TilemapConfig -> Pointer.Event -> Maybe Cell

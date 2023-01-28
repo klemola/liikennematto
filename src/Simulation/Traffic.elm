@@ -85,12 +85,11 @@ routeEndSlowRadius =
 updateTraffic :
     { updateQueue : List Car
     , world : World
-    , roadNetworkStale : Bool
     , delta : Duration
     , events : List ( Id, Car.CarEvent )
     }
     -> ( World, List ( Id, Car.CarEvent ) )
-updateTraffic { updateQueue, world, delta, roadNetworkStale, events } =
+updateTraffic { updateQueue, world, delta, events } =
     case updateQueue of
         [] ->
             ( { world | carLookup = World.createLookup (Dict.values world.cars) world }
@@ -122,16 +121,12 @@ updateTraffic { updateQueue, world, delta, roadNetworkStale, events } =
 
                 nextCar =
                     { activeCar | fsm = nextFSM }
-                        |> Pathfinding.carAfterRouteUpdate
-                            world
-                            roadNetworkStale
-                            delta
+                        |> Pathfinding.carAfterRouteUpdate world delta
                         |> applySteering delta steering
             in
             updateTraffic
                 { updateQueue = queue
                 , world = World.setCar nextCar world
-                , roadNetworkStale = roadNetworkStale
                 , delta = delta
                 , events = events ++ List.map (Tuple.pair activeCar.id) fsmEvents
                 }
@@ -231,25 +226,19 @@ spawnResident carMake lot world =
                         , parkingSpotId = parkingSpot.id
                         }
 
-                    route =
-                        -- Room for improvement: route could be generated later,
-                        -- which would remove the problem of not having a Car built yet
-                        -- (need to pass individual car attributes around instead)
-                        Pathfinding.generateRouteFromParkingSpot
-                            world
-                            (Just lot.id)
-                            parkingReservation
-
                     car =
                         Car.new carMake
                             |> Car.withHome lot.id
                             |> Car.withPosition parkingSpot.position
                             |> Car.withOrientation (Lot.parkingSpotOrientation lot)
-                            |> Car.build carId (Just route) (Just parkingReservation)
+                            |> Car.build carId (Just parkingReservation)
                 in
                 world
                     |> World.setCar car
                     |> World.updateLot lotWithReservedParkingSpot
+                    |> World.addEvent
+                        (World.RouteCarFromParkingSpot car.id parkingReservation)
+                        (Time.millisToPosix 0)
             )
 
 
@@ -270,9 +259,6 @@ spawnTestCar world =
                     id =
                         Entity.nextId world.cars
 
-                    route =
-                        Pathfinding.generateRouteFromNode world Nothing nodeCtx
-
                     ( carMake, nextSeed ) =
                         Random.step Data.Cars.randomCarMake world.seed
 
@@ -280,7 +266,7 @@ spawnTestCar world =
                         Car.new carMake
                             |> Car.withPosition nodeCtx.node.label.position
                             |> Car.withOrientation (Direction2d.toAngle nodeCtx.node.label.direction)
-                            |> Car.build id (Just route) Nothing
+                            |> Car.build id Nothing
                 in
                 ( world
                     |> World.setCar car
