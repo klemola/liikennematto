@@ -7,14 +7,12 @@ module Model.Car exposing
     , UpdateContext
     , adjustedShape
     , build
-    , isDespawning
-    , isParked
+    , currentState
     , new
     , routed
     , shouldWatchTraffic
     , statusDescription
     , triggerDespawn
-    , triggerParking
     , triggerWaitingForParking
     , withHome
     , withOrientation
@@ -170,10 +168,6 @@ driving =
         , kind = Driving
         , transitions =
             [ FSM.createTransition
-                (\_ -> parking)
-                []
-                FSM.Direct
-            , FSM.createTransition
                 (\_ -> waitingForParkingSpot)
                 []
                 FSM.Direct
@@ -256,8 +250,8 @@ despawning =
 
 
 despawnComplete : UpdateContext -> CarState -> Bool
-despawnComplete { currentVelocity } _ =
-    isCloseToZeroVelocity currentVelocity
+despawnComplete { currentVelocity, route } _ =
+    route == Route.Unrouted || isCloseToZeroVelocity currentVelocity
 
 
 inactive : FSM.State CarState CarEvent UpdateContext
@@ -295,20 +289,10 @@ initializeFSM newCar =
     FSM.initialize initialState
 
 
-triggerParking : Car -> ParkingReservation -> Route -> Car
-triggerParking car parkingReservation route =
-    { car
-        | fsm = car.fsm |> FSM.transitionOnNextUpdate (FSM.getId parking)
-        , parkingReservation = Just parkingReservation
-        , route = route
-    }
-
-
-triggerWaitingForParking : Car -> Route -> Car
-triggerWaitingForParking car route =
+triggerWaitingForParking : Car -> Car
+triggerWaitingForParking car =
     { car
         | fsm = car.fsm |> FSM.transitionOnNextUpdate (FSM.getId waitingForParkingSpot)
-        , route = route
     }
 
 
@@ -387,34 +371,29 @@ build id parkingReservation newCar =
 
 
 --
--- Route
+-- Queries
+--
+
+
+currentState : Car -> CarState
+currentState car =
+    FSM.toCurrentState car.fsm
+
+
+shouldWatchTraffic : Car -> Bool
+shouldWatchTraffic car =
+    FSM.toCurrentState car.fsm == Driving
+
+
+
+--
+-- Modification
 --
 
 
 routed : Route -> Car -> Car
 routed route car =
     { car | route = route }
-
-
-
---
--- Queries
---
-
-
-isParked : Car -> Bool
-isParked car =
-    FSM.toCurrentState car.fsm == Parked
-
-
-isDespawning : Car -> Bool
-isDespawning car =
-    FSM.toCurrentState car.fsm == Despawning
-
-
-shouldWatchTraffic : Car -> Bool
-shouldWatchTraffic car =
-    FSM.toCurrentState car.fsm == Driving
 
 
 

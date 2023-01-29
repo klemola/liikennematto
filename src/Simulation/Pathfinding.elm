@@ -1,9 +1,10 @@
 module Simulation.Pathfinding exposing
-    ( carAfterRouteUpdate
-    , generateRouteFromNode
+    ( generateRouteFromNode
     , generateRouteFromParkingSpot
     , restoreRoute
+    , routeToParkingSpot
     , routeTrafficControl
+    , updateRoute
     )
 
 import Array
@@ -35,7 +36,7 @@ minRouteEndNodeDistance =
     Length.meters 100
 
 
-generateRouteFromNode : World -> Car -> RNNodeContext -> Route
+generateRouteFromNode : World -> Car -> RNNodeContext -> Result String Route
 generateRouteFromNode world car startNodeCtx =
     findRandomDestinationNode world car startNodeCtx
         |> Maybe.map (Tuple.pair startNodeCtx)
@@ -43,10 +44,7 @@ generateRouteFromNode world car startNodeCtx =
             (\( start, end ) ->
                 Route.fromStartAndEndNodes world.roadNetwork start end
             )
-        |> Maybe.withDefaultLazy
-            (\_ ->
-                Route.randomFromNode world.seed 10 world.roadNetwork startNodeCtx
-            )
+        |> Result.fromMaybe "Could not generate route"
 
 
 generateRouteFromParkingSpot : World -> Car -> ParkingReservation -> Result String Route
@@ -137,65 +135,11 @@ randomNodeMatchPredicate startNodeCtx endNode =
            )
 
 
-type RouteUpdateResult
-    = ReachEndNode RNNodeContext Route
-    | ArrivedAtParkingSpot
-    | ArrivedAtNode Route
-    | Updated Route
-
-
-carAfterRouteUpdate : World -> Duration -> Car -> Car
-carAfterRouteUpdate world delta car =
-    case updateRoute delta car of
-        Updated nextRoute ->
-            Car.routed nextRoute car
-
-        ReachEndNode nodeCtx nextRoute ->
-            case
-                nodeCtx.node.label.kind
-            of
-                LotEntry lotId ->
-                    world.lots
-                        |> Dict.get lotId
-                        |> Maybe.andThen (Lot.attemptParking (parkingPermissionPredicate car.homeLotId lotId))
-                        |> Maybe.map
-                            (\parkingSpot ->
-                                let
-                                    parkingReservation =
-                                        { lotId = lotId
-                                        , parkingSpotId = parkingSpot.id
-                                        }
-                                in
-                                case Route.arriveToParkingSpot parkingReservation world.lots of
-                                    Just newRoute ->
-                                        Car.triggerParking car parkingReservation newRoute
-
-                                    Nothing ->
-                                        Car.triggerDespawn car
-                            )
-                        |> Maybe.withDefaultLazy (\_ -> Car.triggerWaitingForParking car nextRoute)
-
-                _ ->
-                    Car.routed
-                        (generateRouteFromNode world car nodeCtx)
-                        car
-
-        ArrivedAtParkingSpot ->
-            Car.routed Route.Unrouted car
-
-        ArrivedAtNode nextRoute ->
-            if Car.isDespawning car then
-                Car.routed nextRoute car
-
-            else
-                Car.triggerDespawn car
-
-
-updateRoute : Duration -> Car -> RouteUpdateResult
+updateRoute : Duration -> Car -> ( Route, World.WorldEvent )
 updateRoute delta car =
     case car.route of
         Route.Unrouted ->
-            Updated car.route
+            ( car.route, World.None )
 
         Route.Routed routeMeta ->
             let
@@ -206,29 +150,34 @@ updateRoute delta car =
                     Route.Routed { routeMeta | path = nextPath }
             in
             if nextPath.finished then
-                ReachEndNode routeMeta.endNode nextRoute
+                case
+                    routeMeta.endNode.node.label.kind
+                of
+                    LotEntry lotId ->
+                        ( nextRoute
+                        , if Car.currentState car == Car.Driving then
+                            World.BeginCarParking { carId = car.id, lotId = lotId }
+
+                          else
+                            World.None
+                        )
+
+                    _ ->
+                        ( nextRoute, World.CreateRouteFromNode car.id routeMeta.endNode )
 
             else
-                Updated nextRoute
+                ( nextRoute, World.None )
 
         Route.ArrivingToDestination destination path ->
             let
                 nextPath =
                     updatePath car.velocity delta path
-
-                nextRoute =
-                    Route.ArrivingToDestination destination nextPath
             in
             if nextPath.finished then
-                case destination of
-                    Route.LotParkingSpot ->
-                        ArrivedAtParkingSpot
-
-                    Route.RoadNetworkNode ->
-                        ArrivedAtNode nextRoute
+                ( Route.Unrouted, World.None )
 
             else
-                Updated nextRoute
+                ( Route.ArrivingToDestination destination nextPath, World.None )
 
 
 updatePath : Speed -> Duration -> Route.Path -> Route.Path
@@ -338,6 +287,24 @@ validateEndNode world route =
                         )
             )
         |> Maybe.withDefault (Err "End node not found")
+
+
+routeToParkingSpot : Car -> Id -> World -> Maybe ( ParkingReservation, Route )
+routeToParkingSpot car lotId world =
+    world.lots
+        |> Dict.get lotId
+        |> Maybe.andThen (Lot.attemptParking (parkingPermissionPredicate car.homeLotId lotId))
+        |> Maybe.andThen
+            (\parkingSpot ->
+                let
+                    parkingReservation =
+                        { lotId = lotId
+                        , parkingSpotId = parkingSpot.id
+                        }
+                in
+                Route.arriveToParkingSpot parkingReservation world.lots car.route
+                    |> Maybe.map (Tuple.pair parkingReservation)
+            )
 
 
 parkingPermissionPredicate : Maybe Id -> Id -> (ParkingSpot -> Bool)

@@ -50,7 +50,11 @@ import Time
 type WorldEvent
     = SpawnTestCar
     | SpawnResident CarMake Id
-    | RouteCarFromParkingSpot Id Lot.ParkingReservation
+    | CreateRouteFromParkingSpot Id Lot.ParkingReservation
+    | CreateRouteFromNode Id RNNodeContext
+    | BeginCarParking { carId : Id, lotId : Id }
+    | CarStateChange Id Car.CarEvent
+    | None
 
 
 type alias World =
@@ -387,15 +391,7 @@ formatEvents time world =
             (\event ->
                 let
                     kind =
-                        case event.kind of
-                            SpawnTestCar ->
-                                "Spawn test car"
-
-                            SpawnResident _ lotId ->
-                                "Spawn resident: lot #" ++ String.fromInt lotId
-
-                            RouteCarFromParkingSpot carId _ ->
-                                "Router car from parkingSpot #" ++ String.fromInt carId
+                        formatEventKind event.kind
 
                     timeDiff =
                         Time.posixToMillis event.triggerAt - Time.posixToMillis time
@@ -408,3 +404,28 @@ formatEvents time world =
                 in
                 ( kind, timeUntilTrigger, retries )
             )
+
+
+formatEventKind : WorldEvent -> String
+formatEventKind kind =
+    case kind of
+        SpawnTestCar ->
+            "Spawn test car"
+
+        SpawnResident _ lotId ->
+            "Spawn resident: lot #" ++ String.fromInt lotId
+
+        CreateRouteFromParkingSpot carId _ ->
+            "Route car from parkingSpot: #" ++ String.fromInt carId
+
+        CreateRouteFromNode carId _ ->
+            "Route car from node: #" ++ String.fromInt carId
+
+        BeginCarParking { carId, lotId } ->
+            "Begin parking: car #" ++ String.fromInt carId ++ "\nLot #" ++ String.fromInt lotId
+
+        CarStateChange carId _ ->
+            "Car FSM event: #" ++ String.fromInt carId
+
+        None ->
+            "_NONE_"

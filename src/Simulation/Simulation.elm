@@ -20,7 +20,7 @@ import Model.TrafficLight exposing (TrafficLight)
 import Model.World as World exposing (World)
 import Process
 import Random
-import Simulation.Events exposing (processEvents, updateEventQueue)
+import Simulation.Events exposing (updateEventQueue)
 import Simulation.Infrastructure as Infrastructure
 import Simulation.Traffic as Traffic
 import Simulation.Zoning as Zoning
@@ -46,7 +46,7 @@ update msg model =
                     -- TODO: fold to avoid double iteration
                     Dict.values model.world.cars
 
-                ( nextWorld, trafficEvents ) =
+                ( worldWithTrafficUpdate, worldEvents ) =
                     Traffic.updateTraffic
                         { updateQueue = cars
                         , world = model.world
@@ -54,28 +54,24 @@ update msg model =
                         , events = []
                         }
             in
-            ( { model | world = nextWorld }
-            , Time.now
-                |> Task.map (Tuple.pair trafficEvents)
-                |> Task.perform TrafficUpdated
-            )
-
-        TrafficUpdated ( trafficEvents, time ) ->
-            let
-                nextWorld =
-                    model.world
-                        |> World.setSeed (Random.initialSeed (Time.posixToMillis time))
-                        |> processEvents time trafficEvents
-            in
             ( { model
-                | world = nextWorld
-                , time = time
+                | world =
+                    processWorldEvents
+                        model.time
+                        worldEvents
+                        worldWithTrafficUpdate
               }
             , Cmd.none
             )
 
         CheckQueues time ->
-            ( { model | world = updateEventQueue time model.world }
+            ( { model
+                | world =
+                    model.world
+                        |> World.setSeed (Random.initialSeed (Time.posixToMillis time))
+                        |> updateEventQueue time
+                , time = time
+              }
             , Cmd.none
             )
 
@@ -178,6 +174,21 @@ tileActionsToCmds =
 --
 -- World effects
 --
+
+
+processWorldEvents : Time.Posix -> List World.WorldEvent -> World -> World
+processWorldEvents time events world =
+    List.foldl
+        (\event nextWorld ->
+            if event == World.None then
+                nextWorld
+
+            else
+                -- Trigger on next update
+                World.addEvent event time nextWorld
+        )
+        world
+        events
 
 
 worldAfterTilemapChange : World -> World

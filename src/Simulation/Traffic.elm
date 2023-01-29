@@ -21,7 +21,7 @@ import FSM
 import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car, CarState(..))
-import Model.Entity as Entity exposing (Id)
+import Model.Entity as Entity
 import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
 import Model.Lot as Lot exposing (Lot)
 import Model.RoadNetwork as RoadNetwork
@@ -31,7 +31,7 @@ import Model.RoadNetwork as RoadNetwork
         )
 import Model.Route as Route
 import Model.TrafficLight as TrafficLight exposing (TrafficLight)
-import Model.World as World exposing (World)
+import Model.World as World exposing (World, WorldEvent)
 import Point2d
 import Quantity
 import Random
@@ -86,9 +86,9 @@ updateTraffic :
     { updateQueue : List Car
     , world : World
     , delta : Duration
-    , events : List ( Id, Car.CarEvent )
+    , events : List WorldEvent
     }
-    -> ( World, List ( Id, Car.CarEvent ) )
+    -> ( World, List WorldEvent )
 updateTraffic { updateQueue, world, delta, events } =
     case updateQueue of
         [] ->
@@ -107,28 +107,38 @@ updateTraffic { updateQueue, world, delta, events } =
                 ( nextFSM, fsmEvents ) =
                     FSM.update delta fsmUpdateContext activeCar.fsm
 
+                carWithFsmUpdate =
+                    { activeCar | fsm = nextFSM }
+
+                ( nextRoute, pathfindingEvent ) =
+                    Pathfinding.updateRoute delta carWithFsmUpdate
+
                 otherCars =
                     world.carLookup
-                        |> World.findNearbyEntities nearbyTrafficRadius activeCar.boundingBox
-                        |> List.filter (\car -> car.id /= activeCar.id)
+                        |> World.findNearbyEntities nearbyTrafficRadius carWithFsmUpdate.boundingBox
+                        |> List.filter (\car -> car.id /= carWithFsmUpdate.id)
 
                 steering =
                     checkRules
                         { world = world
                         , otherCars = otherCars
-                        , activeCar = activeCar
+                        , activeCar = carWithFsmUpdate
                         }
 
                 nextCar =
-                    { activeCar | fsm = nextFSM }
-                        |> Pathfinding.carAfterRouteUpdate world delta
-                        |> applySteering delta steering
+                    applySteering
+                        delta
+                        steering
+                        { carWithFsmUpdate | route = nextRoute }
+
+                worldEvents =
+                    pathfindingEvent :: List.map (World.CarStateChange carWithFsmUpdate.id) fsmEvents
             in
             updateTraffic
                 { updateQueue = queue
                 , world = World.setCar nextCar world
                 , delta = delta
-                , events = events ++ List.map (Tuple.pair activeCar.id) fsmEvents
+                , events = events ++ worldEvents
                 }
 
 
@@ -237,7 +247,7 @@ spawnResident carMake lot world =
                     |> World.setCar car
                     |> World.updateLot lotWithReservedParkingSpot
                     |> World.addEvent
-                        (World.RouteCarFromParkingSpot car.id parkingReservation)
+                        (World.CreateRouteFromParkingSpot car.id parkingReservation)
                         (Time.millisToPosix 0)
             )
 
@@ -344,7 +354,7 @@ checkRules setup =
                 Steering.accelerate
 
             else
-                Steering.none
+                Steering.stop setup.activeCar.velocity
 
 
 applyRule : Car -> Rule -> Steering
