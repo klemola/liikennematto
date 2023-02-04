@@ -132,7 +132,10 @@ attemptGenerateRouteFromNode car startNodeCtx world =
         Result.Err "Can't generate route while tilemap change is pending"
 
     else
-        generateRouteFromNode world car startNodeCtx
+        -- Room for improvement: this step is not required once nodes have stable IDs
+        World.findNodeByPosition world startNodeCtx.node.label.position
+            |> Result.fromMaybe "Could not find the start node"
+            |> Result.andThen (generateRouteFromNode world car)
             |> Result.map (\route -> Car.routed route car)
             |> Result.map (\routedCar -> World.setCar routedCar world)
 

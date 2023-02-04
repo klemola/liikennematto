@@ -281,6 +281,9 @@ spawnTestCar world =
                 ( world
                     |> World.setCar car
                     |> World.setSeed nextSeed
+                    |> World.addEvent
+                        (World.CreateRouteFromNode car.id nodeCtx)
+                        (Time.millisToPosix 0)
                 , Just id
                 )
             )
