@@ -46,8 +46,13 @@ connectedRoadsSetup =
         world =
             simpleWorld
 
-        car =
-            buildCar CarA1 (Point2d.meters 10 150) (Angle.degrees 0) Steering.maxVelocity
+        delta =
+            Duration.milliseconds 200
+
+        ( car, _ ) =
+            buildCar CarA1 (Point2d.meters 8 150) (Angle.degrees 0) Steering.maxVelocity
+                |> routeCarByDestination world (Point2d.meters 8 150)
+                |> Traffic.updateCar delta world
 
         otherCars =
             []
@@ -215,11 +220,18 @@ noCollisionSetupDifferentLanes =
         world =
             simpleWorld
 
-        car =
-            buildCar CarA1 (Point2d.meters 12 150) (Angle.degrees 0) Steering.maxVelocity
+        delta =
+            Duration.milliseconds 500
 
-        otherCar =
-            buildCar CarB2 (Point2d.meters 20 153.8) (Angle.degrees 180) Steering.maxVelocity
+        ( car, _ ) =
+            buildCar CarA1 (Point2d.meters 8 150) (Angle.degrees 0) Steering.maxVelocity
+                |> routeCarByDestination world (Point2d.meters 8 150)
+                |> Traffic.updateCar delta world
+
+        ( otherCar, _ ) =
+            buildCar CarB2 (Point2d.meters 24 154) (Angle.degrees 180) Steering.maxVelocity
+                |> routeCarByDestination world (Point2d.meters 24 154)
+                |> Traffic.updateCar delta world
 
         otherCars =
             [ otherCar
@@ -241,18 +253,32 @@ noCollisionSetupIntersection =
 
         car =
             buildCar CarA1 (Point2d.meters 16 134) (Angle.degrees 0) Steering.maxVelocity
+                |> routeCarByDestination world (Point2d.meters 16 134)
 
         otherCar =
-            buildCar CarB2 (Point2d.meters 26 138) (Angle.degrees 90) Steering.maxVelocity
+            buildCar CarB2 (Point2d.meters 26 128) (Angle.degrees 90) Steering.maxVelocity
+
+        routedOtherCar =
+            case
+                positionsToNodes world
+                    [ Point2d.meters 26 128
+                    , Point2d.meters 26 144
+                    ]
+            of
+                Just ( startNode, otherNodes ) ->
+                    otherCar |> routeCarByNodes startNode otherNodes (Length.meters 10)
+
+                Nothing ->
+                    otherCar
 
         otherCars =
-            [ otherCar
+            [ routedOtherCar
             ]
 
         worldWithCars =
             world
                 |> World.setCar car
-                |> World.setCar otherCar
+                |> World.setCar routedOtherCar
     in
     RuleSetup worldWithCars car otherCars
 

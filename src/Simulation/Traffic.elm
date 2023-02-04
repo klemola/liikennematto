@@ -7,6 +7,7 @@ module Simulation.Traffic exposing
     , rerouteCarsIfNeeded
     , spawnResident
     , spawnTestCar
+    , updateCar
     , updateTraffic
     )
 
@@ -98,41 +99,8 @@ updateTraffic { updateQueue, world, delta, events } =
 
         activeCar :: queue ->
             let
-                fsmUpdateContext =
-                    { currentPosition = activeCar.position
-                    , currentVelocity = activeCar.velocity
-                    , route = activeCar.route
-                    }
-
-                ( nextFSM, fsmEvents ) =
-                    FSM.update delta fsmUpdateContext activeCar.fsm
-
-                carWithFsmUpdate =
-                    { activeCar | fsm = nextFSM }
-
-                ( nextRoute, pathfindingEvent ) =
-                    Pathfinding.updateRoute delta carWithFsmUpdate
-
-                otherCars =
-                    world.carLookup
-                        |> World.findNearbyEntities nearbyTrafficRadius carWithFsmUpdate.boundingBox
-                        |> List.filter (\car -> car.id /= carWithFsmUpdate.id)
-
-                steering =
-                    checkRules
-                        { world = world
-                        , otherCars = otherCars
-                        , activeCar = carWithFsmUpdate
-                        }
-
-                nextCar =
-                    applySteering
-                        delta
-                        steering
-                        { carWithFsmUpdate | route = nextRoute }
-
-                worldEvents =
-                    pathfindingEvent :: List.map (World.CarStateChange carWithFsmUpdate.id) fsmEvents
+                ( nextCar, worldEvents ) =
+                    updateCar delta world activeCar
             in
             updateTraffic
                 { updateQueue = queue
@@ -140,6 +108,47 @@ updateTraffic { updateQueue, world, delta, events } =
                 , delta = delta
                 , events = events ++ worldEvents
                 }
+
+
+updateCar : Duration -> World -> Car -> ( Car, List World.WorldEvent )
+updateCar delta world activeCar =
+    let
+        fsmUpdateContext =
+            { currentPosition = activeCar.position
+            , currentVelocity = activeCar.velocity
+            , route = activeCar.route
+            }
+
+        ( nextFSM, fsmEvents ) =
+            FSM.update delta fsmUpdateContext activeCar.fsm
+
+        carWithFsmUpdate =
+            { activeCar | fsm = nextFSM }
+
+        ( nextRoute, pathfindingEvent ) =
+            Pathfinding.updateRoute delta carWithFsmUpdate
+
+        otherCars =
+            world.carLookup
+                |> World.findNearbyEntities nearbyTrafficRadius carWithFsmUpdate.boundingBox
+                |> List.filter (\car -> car.id /= carWithFsmUpdate.id)
+
+        steering =
+            checkRules
+                { world = world
+                , otherCars = otherCars
+                , activeCar = carWithFsmUpdate
+                }
+
+        worldEvents =
+            pathfindingEvent :: List.map (World.CarStateChange carWithFsmUpdate.id) fsmEvents
+    in
+    ( applySteering
+        delta
+        steering
+        { carWithFsmUpdate | route = nextRoute }
+    , worldEvents
+    )
 
 
 applySteering : Duration -> Steering -> Car -> Car
