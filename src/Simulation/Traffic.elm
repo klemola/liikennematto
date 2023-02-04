@@ -11,7 +11,7 @@ module Simulation.Traffic exposing
     )
 
 import BoundingBox2d
-import Common exposing (addMillisecondsToPosix)
+import Common exposing (randomFutureTime)
 import Data.Cars exposing (CarMake)
 import Data.Lots
 import Dict
@@ -203,23 +203,23 @@ addLotResident time lot world =
     case Data.Lots.resident lot.kind lot.themeColor of
         Just carMake ->
             let
-                ( delay, _ ) =
-                    Random.step (Random.int 2500 10000) world.seed
-
-                triggerAt =
-                    addMillisecondsToPosix delay time
+                ( triggerAt, nextSeed ) =
+                    Random.step
+                        (randomFutureTime ( 2500, 10000 ) time)
+                        world.seed
             in
-            World.addEvent
-                (World.SpawnResident carMake lot.id)
-                triggerAt
-                world
+            world
+                |> World.setSeed nextSeed
+                |> World.addEvent
+                    (World.SpawnResident carMake lot.id)
+                    triggerAt
 
         Nothing ->
             world
 
 
-spawnResident : CarMake -> Lot -> World -> Result String World
-spawnResident carMake lot world =
+spawnResident : Time.Posix -> CarMake -> Lot -> World -> Result String World
+spawnResident time carMake lot world =
     Lot.findFreeParkingSpot Lot.parkingSpotEligibleForResident lot
         |> Result.fromMaybe "Could not find free parking spot"
         |> Result.map
@@ -242,13 +242,19 @@ spawnResident carMake lot world =
                             |> Car.withPosition parkingSpot.position
                             |> Car.withOrientation (Lot.parkingSpotOrientation lot)
                             |> Car.build carId (Just parkingReservation)
+
+                    ( routeTriggerAt, nextSeed ) =
+                        Random.step
+                            (randomFutureTime ( 1000, 20000 ) time)
+                            world.seed
                 in
                 world
                     |> World.setCar car
                     |> World.updateLot lotWithReservedParkingSpot
+                    |> World.setSeed nextSeed
                     |> World.addEvent
                         (World.CreateRouteFromParkingSpot car.id parkingReservation)
-                        (Time.millisToPosix 0)
+                        routeTriggerAt
             )
 
 

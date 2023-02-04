@@ -1,6 +1,6 @@
 module Simulation.Events exposing (updateEventQueue)
 
-import Common exposing (addMillisecondsToPosix)
+import Common exposing (randomFutureTime)
 import Dict
 import Direction2d
 import EventQueue
@@ -41,7 +41,7 @@ processEvent time event world =
             case World.findLotById lotId world of
                 Just lot ->
                     withRetry
-                        (spawnResident carMake lot world)
+                        (spawnResident time carMake lot world)
                         time
                         event
                         world
@@ -203,15 +203,18 @@ parkingCompleteEffects time =
                     nextCar =
                         { car | orientation = nextOrientation }
 
-                    ( routeDelayMs, _ ) =
-                        Random.step (Random.int 5000 45000) world.seed
+                    ( triggerAt, nextSeed ) =
+                        Random.step
+                            (randomFutureTime ( 5000, 45000 ) time)
+                            world.seed
                 in
                 world
                     |> World.setCar nextCar
                     |> World.updateLot (Lot.releaseParkingLock nextCar.id lot)
+                    |> World.setSeed nextSeed
                     |> World.addEvent
                         (World.CreateRouteFromParkingSpot car.id parkingReservation)
-                        (Common.addMillisecondsToPosix routeDelayMs time)
+                        triggerAt
             )
         )
 
@@ -267,11 +270,10 @@ setupRespawn time =
                 minDelay =
                     maxDelay // 2
 
-                ( delay, nextSeed ) =
-                    Random.step (Random.int minDelay maxDelay) world.seed
-
-                triggerAt =
-                    addMillisecondsToPosix delay time
+                ( triggerAt, nextSeed ) =
+                    Random.step
+                        (randomFutureTime ( minDelay, maxDelay ) time)
+                        world.seed
             in
             world
                 |> World.setSeed nextSeed

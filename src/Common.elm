@@ -1,11 +1,11 @@
 module Common exposing
-    ( addMillisecondsToPosix
-    , angleFromDirection
+    ( angleFromDirection
     , boundingBoxOverlaps
     , boundingBoxToFrame
     , boundingBoxWithDimensions
     , isCloseToZeroVelocity
     , isInTheNormalPlaneOf
+    , randomFutureTime
     , rightAnglePosition
     , splitBoundingBoxHorizontally
     , splitBoundingBoxVertically
@@ -19,6 +19,7 @@ import Length exposing (Length)
 import Model.Geometry exposing (LMBoundingBox2d, LMFrame2d, LMPoint2d)
 import Point2d exposing (Point2d)
 import Quantity
+import Random
 import Speed exposing (Speed)
 import Time
 import Vector2d
@@ -180,3 +181,9 @@ isCloseToZeroVelocity =
 addMillisecondsToPosix : Int -> Time.Posix -> Time.Posix
 addMillisecondsToPosix millis time =
     Time.posixToMillis time + millis |> Time.millisToPosix
+
+
+randomFutureTime : ( Int, Int ) -> Time.Posix -> Random.Generator Time.Posix
+randomFutureTime ( minDelay, maxDelay ) now =
+    Random.int minDelay maxDelay
+        |> Random.map (\delay -> addMillisecondsToPosix delay now)
