@@ -221,19 +221,26 @@ removeCar carId world =
         Just car ->
             let
                 baseWorld =
-                    case findLotByCarPosition car world of
-                        Just lot ->
-                            updateLot
-                                (Lot.releaseParkingLock carId lot)
-                                world
-
-                        Nothing ->
-                            world
+                    findLotByCarPosition car world
+                        |> Maybe.map (lotAfterCarDespawn car)
+                        |> Maybe.map (\lot -> updateLot lot world)
+                        |> Maybe.withDefault world
             in
             { baseWorld | cars = Dict.remove carId baseWorld.cars }
 
         Nothing ->
             world
+
+
+lotAfterCarDespawn : Car -> Lot -> Lot
+lotAfterCarDespawn car lot =
+    car.parkingReservation
+        |> Maybe.map
+            (\{ parkingSpotId } ->
+                Lot.unreserveParkingSpot parkingSpotId lot
+            )
+        |> Maybe.withDefault lot
+        |> Lot.releaseParkingLock car.id
 
 
 addLot : Lot -> World -> World
