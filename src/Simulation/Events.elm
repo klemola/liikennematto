@@ -110,20 +110,29 @@ processEvent time event world =
 
 attemptGenerateRouteFromParkingSpot : Car -> ParkingReservation -> World -> Result String World
 attemptGenerateRouteFromParkingSpot car parkingReservation world =
-    let
-        parkingLockSet =
-            world.lots
-                |> Dict.get parkingReservation.lotId
-                |> Maybe.map Lot.hasParkingLockSet
-                |> Maybe.withDefault False
-    in
-    if parkingLockSet || World.hasPendingTilemapChange world then
-        Result.Err "Can't leave the parking spot yet"
+    if World.hasPendingTilemapChange world then
+        Result.Err "Pending tilemap change, not safe to generate route"
 
     else
-        generateRouteFromParkingSpot world car parkingReservation
-            |> Result.map (\route -> Car.routed route car)
-            |> Result.map (\routedCar -> World.setCar routedCar world)
+        let
+            lotWithParkingLock =
+                world.lots
+                    |> Dict.get parkingReservation.lotId
+                    |> Maybe.andThen (Lot.acquireParkingLock car.id)
+        in
+        case lotWithParkingLock of
+            Just lot ->
+                generateRouteFromParkingSpot world car parkingReservation
+                    |> Result.map (\route -> Car.routed route car)
+                    |> Result.map
+                        (\routedCar ->
+                            world
+                                |> World.setCar routedCar
+                                |> World.updateLot lot
+                        )
+
+            Nothing ->
+                Result.Err "Could not acquire parcking lock for unparking"
 
 
 attemptGenerateRouteFromNode : Car -> RNNodeContext -> World -> Result String World
@@ -164,9 +173,6 @@ onCarStateChange time carId event world =
 
         ParkingComplete ->
             parkingCompleteEffects time carId world
-
-        UnparkingStarted ->
-            leaveParkingSpot carId world
 
         UnparkingComplete ->
             leaveLot carId world
@@ -215,25 +221,6 @@ parkingCompleteEffects time =
                     |> World.addEvent
                         (World.CreateRouteFromParkingSpot car.id parkingReservation)
                         triggerAt
-            )
-        )
-
-
-leaveParkingSpot : Id -> World -> World
-leaveParkingSpot =
-    withCar
-        (withParkingContext
-            (\{ parkingReservation, lot } car world ->
-                case Lot.acquireParkingLock car.id lot of
-                    Just lotWithLock ->
-                        World.updateLot lotWithLock world
-
-                    Nothing ->
-                        -- The parking lock should have been free but was not
-                        -- Room for improvement: acquire the parking lock when before unparking
-                        world
-                            |> World.setCar (Car.triggerDespawn car)
-                            |> World.updateLot (Lot.unreserveParkingSpot parkingReservation.parkingSpotId lot)
             )
         )
 

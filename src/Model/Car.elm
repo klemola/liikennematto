@@ -92,7 +92,6 @@ type CarState
 type CarEvent
     = ParkingStarted
     | ParkingComplete
-    | UnparkingStarted
     | UnparkingComplete
     | DespawnComplete
 
@@ -144,7 +143,7 @@ unparking =
                 []
                 FSM.Direct
             ]
-        , entryActions = [ UnparkingStarted ]
+        , entryActions = []
         , exitActions = [ UnparkingComplete ]
         }
 
