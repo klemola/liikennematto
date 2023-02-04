@@ -5,6 +5,7 @@ module EventQueue exposing
     , addEvents
     , createEvent
     , empty
+    , retryBackoffMillis
     , toList
     , try
     , update
