@@ -1,8 +1,8 @@
 module Simulation.Pathfinding exposing
-    ( generateRouteFromNode
+    ( attemptBeginParking
+    , generateRouteFromNode
     , generateRouteFromParkingSpot
     , restoreRoute
-    , routeToParkingSpot
     , routeTrafficControl
     , updateRoute
     )
@@ -289,13 +289,17 @@ validateEndNode world route =
         |> Maybe.withDefault (Err "End node not found")
 
 
-routeToParkingSpot : Car -> Id -> World -> Maybe ( ParkingReservation, Route )
-routeToParkingSpot car lotId world =
+attemptBeginParking : Car -> Id -> World -> Result String World
+attemptBeginParking car lotId world =
     world.lots
         |> Dict.get lotId
-        |> Maybe.andThen (Lot.attemptParking (parkingPermissionPredicate car.homeLotId lotId))
         |> Maybe.andThen
-            (\parkingSpot ->
+            (Lot.prepareParking
+                (parkingPermissionPredicate car.homeLotId lotId)
+                car.id
+            )
+        |> Maybe.andThen
+            (\( lotWithParkingLock, parkingSpot ) ->
                 let
                     parkingReservation =
                         { lotId = lotId
@@ -303,8 +307,14 @@ routeToParkingSpot car lotId world =
                         }
                 in
                 Route.arriveToParkingSpot parkingReservation world.lots car.route
-                    |> Maybe.map (Tuple.pair parkingReservation)
+                    |> Maybe.map
+                        (\route ->
+                            world
+                                |> World.setCar (Car.routedWithParking route parkingReservation car)
+                                |> World.updateLot (Lot.reserveParkingSpot car.id parkingSpot.id lotWithParkingLock)
+                        )
             )
+        |> Result.fromMaybe "Lot not ready for parking"
 
 
 parkingPermissionPredicate : Maybe Id -> Id -> (ParkingSpot -> Bool)

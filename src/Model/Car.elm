@@ -10,6 +10,7 @@ module Model.Car exposing
     , currentState
     , new
     , routed
+    , routedWithParking
     , shouldWatchTraffic
     , statusDescription
     , triggerDespawn
@@ -90,8 +91,7 @@ type CarState
 
 
 type CarEvent
-    = ParkingStarted
-    | ParkingComplete
+    = ParkingComplete
     | UnparkingComplete
     | DespawnComplete
 
@@ -220,7 +220,7 @@ parking =
                 []
                 (FSM.Condition parkingCompleted)
             ]
-        , entryActions = [ ParkingStarted ]
+        , entryActions = []
         , exitActions = []
         }
 
@@ -393,6 +393,14 @@ shouldWatchTraffic car =
 routed : Route -> Car -> Car
 routed route car =
     { car | route = route }
+
+
+routedWithParking : Route -> ParkingReservation -> Car -> Car
+routedWithParking route parkingReservation car =
+    { car
+        | route = route
+        , parkingReservation = Just parkingReservation
+    }
 
 
 

@@ -3,17 +3,16 @@ module Model.Lot exposing
     , ParkingReservation
     , ParkingSpot
     , acquireParkingLock
-    , attemptParking
     , build
     , constructionSite
     , findFreeParkingSpot
-    , hasParkingLockSet
     , inBounds
     , parkingPermitted
     , parkingSpotById
     , parkingSpotEligibleForAll
     , parkingSpotEligibleForResident
     , parkingSpotOrientation
+    , prepareParking
     , releaseParkingLock
     , reserveParkingSpot
     , unreserveParkingSpot
@@ -141,13 +140,18 @@ inBounds cell lot =
 --
 
 
-attemptParking : (ParkingSpot -> Bool) -> Lot -> Maybe ParkingSpot
-attemptParking permissionPredicate lot =
-    if hasParkingLockSet lot then
-        Nothing
+prepareParking : (ParkingSpot -> Bool) -> Id -> Lot -> Maybe ( Lot, ParkingSpot )
+prepareParking permissionPredicate carId lot =
+    carry
+        (acquireParkingLock carId lot)
+        (findFreeParkingSpot permissionPredicate)
 
-    else
-        findFreeParkingSpot permissionPredicate lot
+
+carry : Maybe a -> (a -> Maybe b) -> Maybe ( a, b )
+carry carried nextFn =
+    Maybe.map2 Tuple.pair
+        carried
+        (carried |> Maybe.andThen nextFn)
 
 
 
@@ -180,11 +184,6 @@ releaseParkingLock carId lot =
                     )
     in
     { lot | parkingLock = nextParkingLock }
-
-
-hasParkingLockSet : Lot -> Bool
-hasParkingLockSet lot =
-    lot.parkingLock /= Nothing
 
 
 

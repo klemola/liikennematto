@@ -14,9 +14,9 @@ import Random
 import Result.Extra
 import Simulation.Pathfinding
     exposing
-        ( generateRouteFromNode
+        ( attemptBeginParking
+        , generateRouteFromNode
         , generateRouteFromParkingSpot
-        , routeToParkingSpot
         )
 import Simulation.Traffic exposing (spawnResident, spawnTestCar)
 import Time
@@ -149,28 +149,9 @@ attemptGenerateRouteFromNode car startNodeCtx world =
             |> Result.map (\routedCar -> World.setCar routedCar world)
 
 
-attemptBeginParking : Car -> Id -> World -> Result String World
-attemptBeginParking car lotId world =
-    case routeToParkingSpot car lotId world of
-        Just ( parkingReservation, route ) ->
-            let
-                nextCar =
-                    { car | parkingReservation = Just parkingReservation }
-                        |> Car.routed route
-            in
-            Result.Ok (World.setCar nextCar world)
-
-        Nothing ->
-            Result.Err "Could not route car to parking spot"
-
-
 onCarStateChange : Time.Posix -> Id -> Car.CarEvent -> World -> World
 onCarStateChange time carId event world =
     case event of
-        ParkingStarted ->
-            -- TODO: retry
-            attemptReserveParkingSpot carId world
-
         ParkingComplete ->
             parkingCompleteEffects time carId world
 
@@ -179,20 +160,6 @@ onCarStateChange time carId event world =
 
         DespawnComplete ->
             setupRespawn time carId world
-
-
-attemptReserveParkingSpot : Id -> World -> World
-attemptReserveParkingSpot =
-    withCar
-        (withParkingContext
-            (\{ lot, parkingReservation } car world ->
-                lot
-                    |> Lot.acquireParkingLock car.id
-                    |> Maybe.map (Lot.reserveParkingSpot car.id parkingReservation.parkingSpotId)
-                    |> Maybe.map (\updatedLot -> World.updateLot updatedLot world)
-                    |> Maybe.withDefault world
-            )
-        )
 
 
 parkingCompleteEffects : Time.Posix -> Id -> World -> World
