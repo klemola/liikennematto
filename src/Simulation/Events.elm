@@ -41,7 +41,7 @@ processEvent time event world =
             case World.findLotById lotId world of
                 Just lot ->
                     withRetry
-                        (spawnResident time carMake lot world)
+                        (spawnResident time carMake lot)
                         time
                         event
                         world
@@ -62,7 +62,7 @@ processEvent time event world =
             withCar
                 (\car _ ->
                     withRetry
-                        (attemptGenerateRouteFromParkingSpot car parkingReservation world)
+                        (attemptGenerateRouteFromParkingSpot car parkingReservation)
                         time
                         event
                         world
@@ -74,7 +74,7 @@ processEvent time event world =
             withCar
                 (\car _ ->
                     withRetry
-                        (attemptGenerateRouteFromNode car startNodeCtx world)
+                        (attemptGenerateRouteFromNode car startNodeCtx)
                         time
                         event
                         world
@@ -93,7 +93,7 @@ processEvent time event world =
                             World.setCar carWithPendingStateChange world
                     in
                     withRetry
-                        (attemptBeginParking carWithPendingStateChange lotId updatedWorld)
+                        (attemptBeginParking carWithPendingStateChange lotId)
                         time
                         event
                         updatedWorld
@@ -242,11 +242,11 @@ setupRespawn time =
 --
 
 
-withRetry : Result String World -> Time.Posix -> EventQueue.Event WorldEvent -> World -> World
-withRetry result time event world =
+withRetry : (World -> Result String World) -> Time.Posix -> EventQueue.Event WorldEvent -> World -> World
+withRetry resultFn time event world =
     world.eventQueue
         |> EventQueue.try
-            (\_ -> result)
+            (\_ -> resultFn world)
             event
             time
         |> Result.Extra.extract
