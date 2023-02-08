@@ -154,7 +154,7 @@ updateRoute delta car =
                     routeMeta.endNode.node.label.kind
                 of
                     LotEntry lotId ->
-                        ( nextRoute
+                        ( Route.Unrouted
                         , if Car.currentState car == Car.Driving then
                             World.BeginCarParking { carId = car.id, lotId = lotId }
 
