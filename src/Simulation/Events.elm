@@ -7,16 +7,15 @@ import EventQueue
 import Model.Car as Car exposing (Car, CarEvent(..))
 import Model.Entity exposing (Id)
 import Model.Geometry exposing (orthogonalDirectionToLmDirection)
-import Model.Lot as Lot exposing (Lot, ParkingReservation)
-import Model.RoadNetwork exposing (RNNodeContext)
+import Model.Lot as Lot exposing (Lot)
 import Model.World as World exposing (World, WorldEvent(..))
 import Random
 import Result.Extra
 import Simulation.Pathfinding
     exposing
         ( attemptBeginParking
-        , generateRouteFromNode
-        , generateRouteFromParkingSpot
+        , attemptGenerateRouteFromNode
+        , attemptGenerateRouteFromParkingSpot
         )
 import Simulation.Traffic exposing (spawnResident, spawnTestCar)
 import Time
@@ -106,47 +105,6 @@ processEvent time event world =
 
         None ->
             world
-
-
-attemptGenerateRouteFromParkingSpot : Car -> ParkingReservation -> World -> Result String World
-attemptGenerateRouteFromParkingSpot car parkingReservation world =
-    if World.hasPendingTilemapChange world then
-        Result.Err "Pending tilemap change, not safe to generate route"
-
-    else
-        let
-            lotWithParkingLock =
-                world.lots
-                    |> Dict.get parkingReservation.lotId
-                    |> Maybe.andThen (Lot.acquireParkingLock car.id)
-        in
-        case lotWithParkingLock of
-            Just lot ->
-                generateRouteFromParkingSpot world car parkingReservation
-                    |> Result.map (\route -> Car.routed route car)
-                    |> Result.map
-                        (\routedCar ->
-                            world
-                                |> World.setCar routedCar
-                                |> World.updateLot lot
-                        )
-
-            Nothing ->
-                Result.Err "Could not acquire parcking lock for unparking"
-
-
-attemptGenerateRouteFromNode : Car -> RNNodeContext -> World -> Result String World
-attemptGenerateRouteFromNode car startNodeCtx world =
-    if World.hasPendingTilemapChange world then
-        Result.Err "Can't generate route while tilemap change is pending"
-
-    else
-        -- Room for improvement: this step is not required once nodes have stable IDs
-        World.findNodeByPosition world startNodeCtx.node.label.position
-            |> Result.fromMaybe "Could not find the start node"
-            |> Result.andThen (generateRouteFromNode world car)
-            |> Result.map (\route -> Car.routed route car)
-            |> Result.map (\routedCar -> World.setCar routedCar world)
 
 
 onCarStateChange : Time.Posix -> Id -> Car.CarEvent -> World -> World

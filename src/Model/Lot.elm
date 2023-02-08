@@ -142,16 +142,8 @@ inBounds cell lot =
 
 prepareParking : (ParkingSpot -> Bool) -> Id -> Lot -> Maybe ( Lot, ParkingSpot )
 prepareParking permissionPredicate carId lot =
-    carry
-        (acquireParkingLock carId lot)
-        (findFreeParkingSpot permissionPredicate)
-
-
-carry : Maybe a -> (a -> Maybe b) -> Maybe ( a, b )
-carry carried nextFn =
-    Maybe.map2 Tuple.pair
-        carried
-        (carried |> Maybe.andThen nextFn)
+    acquireParkingLock carId lot
+        |> Common.andCarry (findFreeParkingSpot permissionPredicate)
 
 
 

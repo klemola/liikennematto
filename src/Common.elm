@@ -1,5 +1,6 @@
 module Common exposing
-    ( angleFromDirection
+    ( andCarry
+    , angleFromDirection
     , boundingBoxOverlaps
     , boundingBoxToFrame
     , boundingBoxWithDimensions
@@ -187,3 +188,16 @@ randomFutureTime : ( Int, Int ) -> Time.Posix -> Random.Generator Time.Posix
 randomFutureTime ( minDelay, maxDelay ) now =
     Random.int minDelay maxDelay
         |> Random.map (\delay -> addMillisecondsToPosix delay now)
+
+
+
+--
+-- Maybe utility
+--
+
+
+andCarry : (a -> Maybe b) -> Maybe a -> Maybe ( a, b )
+andCarry nextFn carried =
+    Maybe.map2 Tuple.pair
+        carried
+        (carried |> Maybe.andThen nextFn)

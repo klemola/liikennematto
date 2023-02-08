@@ -1,13 +1,14 @@
 module Simulation.Pathfinding exposing
     ( attemptBeginParking
-    , generateRouteFromNode
-    , generateRouteFromParkingSpot
+    , attemptGenerateRouteFromNode
+    , attemptGenerateRouteFromParkingSpot
     , restoreRoute
     , routeTrafficControl
     , updateRoute
     )
 
 import Array
+import Common
 import Dict
 import Duration exposing (Duration)
 import Length exposing (Length)
@@ -34,105 +35,6 @@ import Speed exposing (Speed)
 minRouteEndNodeDistance : Length
 minRouteEndNodeDistance =
     Length.meters 100
-
-
-generateRouteFromNode : World -> Car -> RNNodeContext -> Result String Route
-generateRouteFromNode world car startNodeCtx =
-    findRandomDestinationNode world car startNodeCtx
-        |> Maybe.map (Tuple.pair startNodeCtx)
-        |> Maybe.andThen
-            (\( start, end ) ->
-                Route.fromStartAndEndNodes world.roadNetwork start end
-            )
-        |> Result.fromMaybe "Could not generate route"
-
-
-generateRouteFromParkingSpot : World -> Car -> ParkingReservation -> Result String Route
-generateRouteFromParkingSpot world car parkingReservation =
-    parkingReservation.lotId
-        |> RoadNetwork.findLotExitNodeByLotId world.roadNetwork
-        |> Maybe.andThen
-            (\startNode ->
-                findRandomDestinationNode world car startNode
-                    |> Maybe.map (Tuple.pair startNode)
-            )
-        |> Maybe.andThen
-            (\( start, end ) ->
-                Route.fromParkedAtLot
-                    parkingReservation
-                    world.lots
-                    world.roadNetwork
-                    start
-                    end
-            )
-        |> Result.fromMaybe "Could not generate route"
-
-
-findRandomDestinationNode : World -> Car -> RNNodeContext -> Maybe RNNodeContext
-findRandomDestinationNode world car startNodeCtx =
-    let
-        ( chance, seedAfterRandomFloat ) =
-            Random.step (Random.float 0 1) world.seed
-
-        lookingForLot =
-            chance > 0.65 && Dict.size world.lots >= 2
-
-        matchPredicate =
-            if lookingForLot then
-                randomLotMatchPredicate
-                    world
-                    car
-                    startNodeCtx
-
-            else
-                randomNodeMatchPredicate startNodeCtx
-    in
-    RoadNetwork.getRandomNode world.roadNetwork seedAfterRandomFloat matchPredicate
-
-
-randomLotMatchPredicate :
-    World
-    -> Car
-    -> RNNodeContext
-    -> RNNode
-    -> Bool
-randomLotMatchPredicate world car startNodeCtx endNode =
-    case endNode.label.kind of
-        LotEntry lotEntryId ->
-            let
-                isDifferentLot =
-                    case startNodeCtx.node.label.kind of
-                        LotExit lotExitId ->
-                            lotExitId /= lotEntryId
-
-                        _ ->
-                            True
-
-                parkingPermitted =
-                    case Dict.get lotEntryId world.lots of
-                        Just lot ->
-                            Lot.parkingPermitted (parkingPermissionPredicate car.homeLotId lotEntryId) lot
-
-                        Nothing ->
-                            False
-            in
-            isDifferentLot && parkingPermitted
-
-        _ ->
-            False
-
-
-randomNodeMatchPredicate :
-    RNNodeContext
-    -> RNNode
-    -> Bool
-randomNodeMatchPredicate startNodeCtx endNode =
-    (endNode.label.kind == LaneConnector)
-        && (Point2d.distanceFrom
-                startNodeCtx.node.label.position
-                endNode.label.position
-                |> Quantity.greaterThanOrEqualTo minRouteEndNodeDistance
-           )
 
 
 updateRoute : Duration -> Car -> ( Route, World.WorldEvent )
@@ -287,6 +189,130 @@ validateEndNode world route =
                         )
             )
         |> Maybe.withDefault (Err "End node not found")
+
+
+attemptGenerateRouteFromParkingSpot : Car -> ParkingReservation -> World -> Result String World
+attemptGenerateRouteFromParkingSpot car parkingReservation world =
+    if World.hasPendingTilemapChange world then
+        Result.Err "Pending tilemap change, not safe to generate route"
+
+    else
+        let
+            lotWithParkingLock =
+                world.lots
+                    |> Dict.get parkingReservation.lotId
+                    |> Maybe.andThen (Lot.acquireParkingLock car.id)
+        in
+        case lotWithParkingLock of
+            Just lot ->
+                parkingReservation.lotId
+                    |> RoadNetwork.findLotExitNodeByLotId world.roadNetwork
+                    |> Common.andCarry (findRandomDestinationNode world car)
+                    |> Maybe.andThen
+                        (\( start, end ) ->
+                            Route.fromParkedAtLot
+                                parkingReservation
+                                world.lots
+                                world.roadNetwork
+                                start
+                                end
+                        )
+                    |> Maybe.map
+                        (\route ->
+                            world
+                                |> World.setCar (Car.routed route car)
+                                |> World.updateLot lot
+                        )
+                    |> Result.fromMaybe "Could not generate route"
+
+            Nothing ->
+                Result.Err "Could not acquire parcking lock for unparking"
+
+
+attemptGenerateRouteFromNode : Car -> RNNodeContext -> World -> Result String World
+attemptGenerateRouteFromNode car startNodeCtx world =
+    if World.hasPendingTilemapChange world then
+        Result.Err "Can't generate route while tilemap change is pending"
+
+    else
+        -- Room for improvement: this step is not required once nodes have stable IDs
+        World.findNodeByPosition world startNodeCtx.node.label.position
+            |> Maybe.andThen (findRandomDestinationNode world car)
+            |> Maybe.andThen (Route.fromStartAndEndNodes world.roadNetwork startNodeCtx)
+            |> Maybe.map
+                (\route ->
+                    World.setCar
+                        (Car.routed route car)
+                        world
+                )
+            |> Result.fromMaybe "Could not generate route"
+
+
+findRandomDestinationNode : World -> Car -> RNNodeContext -> Maybe RNNodeContext
+findRandomDestinationNode world car startNodeCtx =
+    let
+        ( chance, seedAfterRandomFloat ) =
+            Random.step (Random.float 0 1) world.seed
+
+        lookingForLot =
+            chance > 0.65 && Dict.size world.lots >= 2
+
+        matchPredicate =
+            if lookingForLot then
+                randomLotMatchPredicate
+                    world
+                    car
+                    startNodeCtx
+
+            else
+                randomNodeMatchPredicate startNodeCtx
+    in
+    RoadNetwork.getRandomNode world.roadNetwork seedAfterRandomFloat matchPredicate
+
+
+randomLotMatchPredicate :
+    World
+    -> Car
+    -> RNNodeContext
+    -> RNNode
+    -> Bool
+randomLotMatchPredicate world car startNodeCtx endNode =
+    case endNode.label.kind of
+        LotEntry lotEntryId ->
+            let
+                isDifferentLot =
+                    case startNodeCtx.node.label.kind of
+                        LotExit lotExitId ->
+                            lotExitId /= lotEntryId
+
+                        _ ->
+                            True
+
+                parkingPermitted =
+                    case Dict.get lotEntryId world.lots of
+                        Just lot ->
+                            Lot.parkingPermitted (parkingPermissionPredicate car.homeLotId lotEntryId) lot
+
+                        Nothing ->
+                            False
+            in
+            isDifferentLot && parkingPermitted
+
+        _ ->
+            False
+
+
+randomNodeMatchPredicate :
+    RNNodeContext
+    -> RNNode
+    -> Bool
+randomNodeMatchPredicate startNodeCtx endNode =
+    (endNode.label.kind == LaneConnector)
+        && (Point2d.distanceFrom
+                startNodeCtx.node.label.position
+                endNode.label.position
+                |> Quantity.greaterThanOrEqualTo minRouteEndNodeDistance
+           )
 
 
 attemptBeginParking : Car -> Id -> World -> Result String World
