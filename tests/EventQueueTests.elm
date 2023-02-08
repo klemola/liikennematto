@@ -85,11 +85,11 @@ suite =
             [ test
                 "replaces the Err value with the queue that has the event re-instated if the Result is Err x"
                 (\_ ->
-                    EventQueue.try
-                        (\_ -> Err "dummy")
-                        testEvent
-                        (Time.millisToPosix 0)
-                        EventQueue.empty
+                    EventQueue.empty
+                        |> EventQueue.try
+                            (\_ -> Err "dummy")
+                            testEvent
+                            (Time.millisToPosix 0)
                         |> (\result ->
                                 case result of
                                     Ok _ ->
@@ -107,9 +107,30 @@ suite =
                                                     |> EventQueue.toList
                                                     |> List.head
                                                     |> Maybe.map .triggerAt
-                                                    |> Expect.equal (Just (Time.millisToPosix 1000))
+                                                    |> Expect.equal (Just (EventQueue.retryBackoffMillis 1 |> Time.millisToPosix))
                                             ]
                                             nextQueue
+                           )
+                )
+            , test
+                "has incremental backoff timing"
+                (\_ ->
+                    EventQueue.empty
+                        |> EventQueue.try
+                            (\_ -> Err "dummy")
+                            { testEvent | retryAmount = 1 }
+                            (Time.millisToPosix 0)
+                        |> (\result ->
+                                case result of
+                                    Ok _ ->
+                                        Expect.fail "expected Err"
+
+                                    Err nextQueue ->
+                                        nextQueue
+                                            |> EventQueue.toList
+                                            |> List.head
+                                            |> Maybe.map .triggerAt
+                                            |> Expect.equal (Just (EventQueue.retryBackoffMillis 2 |> Time.millisToPosix))
                            )
                 )
             ]

@@ -7,13 +7,13 @@ module Model.Car exposing
     , UpdateContext
     , adjustedShape
     , build
-    , isDespawning
-    , isParked
+    , currentState
     , new
+    , routed
+    , routedWithParking
     , shouldWatchTraffic
     , statusDescription
     , triggerDespawn
-    , triggerParking
     , triggerWaitingForParking
     , withHome
     , withOrientation
@@ -91,9 +91,7 @@ type CarState
 
 
 type CarEvent
-    = ParkingStarted
-    | ParkingComplete
-    | UnparkingStarted
+    = ParkingComplete
     | UnparkingComplete
     | DespawnComplete
 
@@ -145,7 +143,7 @@ unparking =
                 []
                 FSM.Direct
             ]
-        , entryActions = [ UnparkingStarted ]
+        , entryActions = []
         , exitActions = [ UnparkingComplete ]
         }
 
@@ -169,10 +167,6 @@ driving =
         , kind = Driving
         , transitions =
             [ FSM.createTransition
-                (\_ -> parking)
-                []
-                FSM.Direct
-            , FSM.createTransition
                 (\_ -> waitingForParkingSpot)
                 []
                 FSM.Direct
@@ -226,7 +220,7 @@ parking =
                 []
                 (FSM.Condition parkingCompleted)
             ]
-        , entryActions = [ ParkingStarted ]
+        , entryActions = []
         , exitActions = []
         }
 
@@ -255,8 +249,8 @@ despawning =
 
 
 despawnComplete : UpdateContext -> CarState -> Bool
-despawnComplete { currentVelocity } _ =
-    isCloseToZeroVelocity currentVelocity
+despawnComplete { currentVelocity, route } _ =
+    route == Route.Unrouted || isCloseToZeroVelocity currentVelocity
 
 
 inactive : FSM.State CarState CarEvent UpdateContext
@@ -294,20 +288,10 @@ initializeFSM newCar =
     FSM.initialize initialState
 
 
-triggerParking : Car -> ParkingReservation -> Route -> Car
-triggerParking car parkingReservation route =
-    { car
-        | fsm = car.fsm |> FSM.transitionOnNextUpdate (FSM.getId parking)
-        , parkingReservation = Just parkingReservation
-        , route = route
-    }
-
-
-triggerWaitingForParking : Car -> Route -> Car
-triggerWaitingForParking car route =
+triggerWaitingForParking : Car -> Car
+triggerWaitingForParking car =
     { car
         | fsm = car.fsm |> FSM.transitionOnNextUpdate (FSM.getId waitingForParkingSpot)
-        , route = route
     }
 
 
@@ -360,8 +344,8 @@ withVelocity velocity car =
     { car | velocity = velocity }
 
 
-build : Int -> Maybe Route -> Maybe ParkingReservation -> NewCar -> Car
-build id route parkingReservation newCar =
+build : Int -> Maybe ParkingReservation -> NewCar -> Car
+build id parkingReservation newCar =
     let
         ( shape, boundingBox ) =
             adjustedShape newCar.make newCar.position newCar.orientation
@@ -378,7 +362,7 @@ build id route parkingReservation newCar =
     , rotation = newCar.rotation
     , shape = shape
     , boundingBox = boundingBox
-    , route = route |> Maybe.withDefault Route.initialRoute
+    , route = Route.initialRoute
     , homeLotId = newCar.homeLotId
     , parkingReservation = parkingReservation
     }
@@ -390,19 +374,33 @@ build id route parkingReservation newCar =
 --
 
 
-isParked : Car -> Bool
-isParked car =
-    FSM.toCurrentState car.fsm == Parked
-
-
-isDespawning : Car -> Bool
-isDespawning car =
-    FSM.toCurrentState car.fsm == Despawning
+currentState : Car -> CarState
+currentState car =
+    FSM.toCurrentState car.fsm
 
 
 shouldWatchTraffic : Car -> Bool
 shouldWatchTraffic car =
     FSM.toCurrentState car.fsm == Driving
+
+
+
+--
+-- Modification
+--
+
+
+routed : Route -> Car -> Car
+routed route car =
+    { car | route = route }
+
+
+routedWithParking : Route -> ParkingReservation -> Car -> Car
+routedWithParking route parkingReservation car =
+    { car
+        | route = route
+        , parkingReservation = Just parkingReservation
+    }
 
 
 

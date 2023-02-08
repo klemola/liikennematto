@@ -57,7 +57,7 @@ fovRadius =
 
 checkFutureCollision : Car -> Car -> CollisionCheckResult
 checkFutureCollision activeCar otherCar =
-    if Car.isParked activeCar then
+    if Car.currentState activeCar == Car.Parked then
         NoCollision
 
     else

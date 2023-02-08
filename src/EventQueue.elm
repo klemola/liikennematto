@@ -5,6 +5,7 @@ module EventQueue exposing
     , addEvents
     , createEvent
     , empty
+    , retryBackoffMillis
     , toList
     , try
     , update
@@ -17,6 +18,28 @@ import Vendor.PriorityQueue as PriorityQueue exposing (PriorityQueue)
 maxRetryBackoffMillis : Int
 maxRetryBackoffMillis =
     60 * 1000
+
+
+retryBackoffMillis : Int -> Int
+retryBackoffMillis retriesAmount =
+    case retriesAmount of
+        1 ->
+            30
+
+        2 ->
+            100
+
+        3 ->
+            500
+
+        4 ->
+            1000
+
+        5 ->
+            3000
+
+        _ ->
+            min maxRetryBackoffMillis (retriesAmount * 1000)
 
 
 type EventQueue eventKind
@@ -108,7 +131,7 @@ try tryFn event now eventQueue =
                         Time.posixToMillis now
 
                     nextMillis =
-                        millis + min maxRetryBackoffMillis (nextRetryAmount * 1000)
+                        millis + retryBackoffMillis nextRetryAmount
                 in
                 addEvent
                     { kind = event.kind

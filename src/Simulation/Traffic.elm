@@ -7,11 +7,12 @@ module Simulation.Traffic exposing
     , rerouteCarsIfNeeded
     , spawnResident
     , spawnTestCar
+    , updateCar
     , updateTraffic
     )
 
 import BoundingBox2d
-import Common exposing (addMillisecondsToPosix)
+import Common exposing (randomFutureTime)
 import Data.Cars exposing (CarMake)
 import Data.Lots
 import Dict
@@ -21,7 +22,7 @@ import FSM
 import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car, CarState(..))
-import Model.Entity as Entity exposing (Id)
+import Model.Entity as Entity
 import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
 import Model.Lot as Lot exposing (Lot)
 import Model.RoadNetwork as RoadNetwork
@@ -31,7 +32,7 @@ import Model.RoadNetwork as RoadNetwork
         )
 import Model.Route as Route
 import Model.TrafficLight as TrafficLight exposing (TrafficLight)
-import Model.World as World exposing (World)
+import Model.World as World exposing (World, WorldEvent)
 import Point2d
 import Quantity
 import Random
@@ -85,12 +86,11 @@ routeEndSlowRadius =
 updateTraffic :
     { updateQueue : List Car
     , world : World
-    , roadNetworkStale : Bool
     , delta : Duration
-    , events : List ( Id, Car.CarEvent )
+    , events : List WorldEvent
     }
-    -> ( World, List ( Id, Car.CarEvent ) )
-updateTraffic { updateQueue, world, delta, roadNetworkStale, events } =
+    -> ( World, List WorldEvent )
+updateTraffic { updateQueue, world, delta, events } =
     case updateQueue of
         [] ->
             ( { world | carLookup = World.createLookup (Dict.values world.cars) world }
@@ -99,42 +99,56 @@ updateTraffic { updateQueue, world, delta, roadNetworkStale, events } =
 
         activeCar :: queue ->
             let
-                fsmUpdateContext =
-                    { currentPosition = activeCar.position
-                    , currentVelocity = activeCar.velocity
-                    , route = activeCar.route
-                    }
-
-                ( nextFSM, fsmEvents ) =
-                    FSM.update delta fsmUpdateContext activeCar.fsm
-
-                otherCars =
-                    world.carLookup
-                        |> World.findNearbyEntities nearbyTrafficRadius activeCar.boundingBox
-                        |> List.filter (\car -> car.id /= activeCar.id)
-
-                steering =
-                    checkRules
-                        { world = world
-                        , otherCars = otherCars
-                        , activeCar = activeCar
-                        }
-
-                nextCar =
-                    { activeCar | fsm = nextFSM }
-                        |> Pathfinding.carAfterRouteUpdate
-                            world
-                            roadNetworkStale
-                            delta
-                        |> applySteering delta steering
+                ( nextCar, worldEvents ) =
+                    updateCar delta world activeCar
             in
             updateTraffic
                 { updateQueue = queue
                 , world = World.setCar nextCar world
-                , roadNetworkStale = roadNetworkStale
                 , delta = delta
-                , events = events ++ List.map (Tuple.pair activeCar.id) fsmEvents
+                , events = events ++ worldEvents
                 }
+
+
+updateCar : Duration -> World -> Car -> ( Car, List World.WorldEvent )
+updateCar delta world activeCar =
+    let
+        fsmUpdateContext =
+            { currentPosition = activeCar.position
+            , currentVelocity = activeCar.velocity
+            , route = activeCar.route
+            }
+
+        ( nextFSM, fsmEvents ) =
+            FSM.update delta fsmUpdateContext activeCar.fsm
+
+        carWithFsmUpdate =
+            { activeCar | fsm = nextFSM }
+
+        ( nextRoute, pathfindingEvent ) =
+            Pathfinding.updateRoute delta carWithFsmUpdate
+
+        otherCars =
+            world.carLookup
+                |> World.findNearbyEntities nearbyTrafficRadius carWithFsmUpdate.boundingBox
+                |> List.filter (\car -> car.id /= carWithFsmUpdate.id)
+
+        steering =
+            checkRules
+                { world = world
+                , otherCars = otherCars
+                , activeCar = carWithFsmUpdate
+                }
+
+        worldEvents =
+            pathfindingEvent :: List.map (World.CarStateChange carWithFsmUpdate.id) fsmEvents
+    in
+    ( applySteering
+        delta
+        steering
+        { carWithFsmUpdate | route = nextRoute }
+    , worldEvents
+    )
 
 
 applySteering : Duration -> Steering -> Car -> Car
@@ -198,23 +212,23 @@ addLotResident time lot world =
     case Data.Lots.resident lot.kind lot.themeColor of
         Just carMake ->
             let
-                ( delay, _ ) =
-                    Random.step (Random.int 2500 10000) world.seed
-
-                triggerAt =
-                    addMillisecondsToPosix delay time
+                ( triggerAt, nextSeed ) =
+                    Random.step
+                        (randomFutureTime ( 2500, 10000 ) time)
+                        world.seed
             in
-            World.addEvent
-                (World.SpawnResident carMake lot.id)
-                triggerAt
-                world
+            world
+                |> World.setSeed nextSeed
+                |> World.addEvent
+                    (World.SpawnResident carMake lot.id)
+                    triggerAt
 
         Nothing ->
             world
 
 
-spawnResident : CarMake -> Lot -> World -> Result String World
-spawnResident carMake lot world =
+spawnResident : Time.Posix -> CarMake -> Lot -> World -> Result String World
+spawnResident time carMake lot world =
     Lot.findFreeParkingSpot Lot.parkingSpotEligibleForResident lot
         |> Result.fromMaybe "Could not find free parking spot"
         |> Result.map
@@ -231,25 +245,25 @@ spawnResident carMake lot world =
                         , parkingSpotId = parkingSpot.id
                         }
 
-                    route =
-                        -- Room for improvement: route could be generated later,
-                        -- which would remove the problem of not having a Car built yet
-                        -- (need to pass individual car attributes around instead)
-                        Pathfinding.generateRouteFromParkingSpot
-                            world
-                            (Just lot.id)
-                            parkingReservation
-
                     car =
                         Car.new carMake
                             |> Car.withHome lot.id
                             |> Car.withPosition parkingSpot.position
                             |> Car.withOrientation (Lot.parkingSpotOrientation lot)
-                            |> Car.build carId (Just route) (Just parkingReservation)
+                            |> Car.build carId (Just parkingReservation)
+
+                    ( routeTriggerAt, nextSeed ) =
+                        Random.step
+                            (randomFutureTime ( 1000, 20000 ) time)
+                            world.seed
                 in
                 world
                     |> World.setCar car
                     |> World.updateLot lotWithReservedParkingSpot
+                    |> World.setSeed nextSeed
+                    |> World.addEvent
+                        (World.CreateRouteFromParkingSpot car.id parkingReservation)
+                        routeTriggerAt
             )
 
 
@@ -270,9 +284,6 @@ spawnTestCar world =
                     id =
                         Entity.nextId world.cars
 
-                    route =
-                        Pathfinding.generateRouteFromNode world Nothing nodeCtx
-
                     ( carMake, nextSeed ) =
                         Random.step Data.Cars.randomCarMake world.seed
 
@@ -280,11 +291,14 @@ spawnTestCar world =
                         Car.new carMake
                             |> Car.withPosition nodeCtx.node.label.position
                             |> Car.withOrientation (Direction2d.toAngle nodeCtx.node.label.direction)
-                            |> Car.build id (Just route) Nothing
+                            |> Car.build id Nothing
                 in
                 ( world
                     |> World.setCar car
                     |> World.setSeed nextSeed
+                    |> World.addEvent
+                        (World.CreateRouteFromNode car.id nodeCtx)
+                        (Time.millisToPosix 0)
                 , Just id
                 )
             )
@@ -358,7 +372,7 @@ checkRules setup =
                 Steering.accelerate
 
             else
-                Steering.none
+                Steering.stop setup.activeCar.velocity
 
 
 applyRule : Car -> Rule -> Steering

@@ -33,9 +33,9 @@ suite =
     describe "Round"
         [ describe "Collision rules"
             [ test "allow movement if there will be no collision (straight road, different lanes)"
-                (\_ -> Expect.equal (Traffic.checkRules noCollisionSetupDifferentLanes) Steering.none)
+                (\_ -> Expect.equal (Traffic.checkRules noCollisionSetupDifferentLanes) Steering.accelerate)
             , test "allow movement if there will be no collision (intersection)"
-                (\_ -> Expect.equal (Traffic.checkRules noCollisionSetupIntersection) Steering.none)
+                (\_ -> Expect.equal (Traffic.checkRules noCollisionSetupIntersection) Steering.accelerate)
             , test "disallow movement if it will cause a collision (paths intersect)"
                 (\_ ->
                     Expect.true
@@ -61,7 +61,7 @@ suite =
             ]
         , describe "Intersection rules"
             [ test "allow movement if the car is not facing a intersection"
-                (\_ -> Expect.equal (Traffic.checkRules connectedRoadsSetup) Steering.none)
+                (\_ -> Expect.equal (Traffic.checkRules connectedRoadsSetup) Steering.accelerate)
             , test "allow movement if traffic lights are green"
                 (\_ ->
                     Expect.true
