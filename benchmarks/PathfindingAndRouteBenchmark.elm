@@ -3,9 +3,9 @@ module PathfindingAndRouteBenchmark exposing (main)
 import AStar
 import Benchmark exposing (Benchmark, benchmark, describe)
 import Benchmark.Runner exposing (BenchmarkProgram, program)
+import Collection
 import Data.RuleSetups
 import Data.Utility exposing (getStartAndEndNode)
-import Dict
 import Simulation.Pathfinding as Pathfinding
 
 
@@ -29,7 +29,7 @@ suite =
                             Data.RuleSetups.largeWorldSetup 5
                     in
                     \_ ->
-                        Dict.foldl
+                        Collection.foldl
                             (\_ car _ -> Pathfinding.restoreRoute setup.world car)
                             setup.activeCar
                             setup.world.cars

@@ -3,6 +3,7 @@ module Model.World exposing
     , RNLookupEntry
     , World
     , WorldEvent(..)
+    , addCar
     , addEvent
     , addLot
     , createLookup
@@ -25,20 +26,19 @@ module Model.World exposing
     )
 
 import BoundingBox2d
+import Collection exposing (Collection, Id)
 import Common
 import Data.Cars exposing (CarMake)
-import Dict exposing (Dict)
 import Duration exposing (Duration)
 import EventQueue exposing (EventQueue)
 import Length exposing (Length)
 import Model.Car as Car exposing (Car)
 import Model.Cell as Cell exposing (Cell, CellCoordinates)
-import Model.Entity exposing (Id)
 import Model.Geometry exposing (GlobalCoordinates, LMBoundingBox2d, LMPoint2d)
 import Model.Lot as Lot exposing (Lot)
 import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext, RoadNetwork)
 import Model.Tilemap as Tilemap exposing (Tilemap)
-import Model.TrafficLight exposing (TrafficLights)
+import Model.TrafficLight exposing (TrafficLight)
 import QuadTree exposing (Bounded, QuadTree)
 import Quantity
 import Random
@@ -61,9 +61,9 @@ type alias World =
     { tilemap : Tilemap
     , pendingTilemapChange : Maybe PendingTilemapChange
     , roadNetwork : RoadNetwork
-    , trafficLights : TrafficLights
-    , cars : Dict Id Car
-    , lots : Dict Id Lot
+    , trafficLights : Collection TrafficLight
+    , cars : Collection Car
+    , lots : Collection Lot
     , carLookup : QuadTree Length.Meters GlobalCoordinates Car
     , lotLookup : QuadTree Length.Meters GlobalCoordinates Lot
     , roadNetworkLookup : QuadTree Length.Meters GlobalCoordinates RNLookupEntry
@@ -110,9 +110,9 @@ empty tilemapConfig =
     { tilemap = tilemap
     , pendingTilemapChange = Nothing
     , roadNetwork = RoadNetwork.empty
-    , trafficLights = Dict.empty
-    , cars = Dict.empty
-    , lots = Dict.empty
+    , trafficLights = Collection.empty
+    , cars = Collection.empty
+    , lots = Collection.empty
     , carLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
     , lotLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
     , roadNetworkLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
@@ -134,7 +134,7 @@ boundingBox world =
 
 hasLot : Cell -> World -> Bool
 hasLot cell { lots } =
-    List.any (Lot.inBounds cell) (Dict.values lots)
+    List.any (Lot.inBounds cell) (Collection.values lots)
 
 
 isEmptyArea : LMBoundingBox2d -> World -> Bool
@@ -144,7 +144,7 @@ isEmptyArea testAreaBB world =
             Tilemap.intersects testAreaBB world.tilemap
 
         lotOverlap =
-            Dict.foldl (\_ lot acc -> lot.boundingBox :: acc) [] world.lots
+            Collection.foldl (\_ lot acc -> lot.boundingBox :: acc) [] world.lots
                 |> List.any (Common.boundingBoxOverlaps testAreaBB)
     in
     Tilemap.inBounds world.tilemap testAreaBB && not lotOverlap && not tilemapOverlap
@@ -152,12 +152,12 @@ isEmptyArea testAreaBB world =
 
 findCarById : Id -> World -> Maybe Car
 findCarById id world =
-    Dict.get id world.cars
+    Collection.get id world.cars
 
 
 findLotById : Id -> World -> Maybe Lot
 findLotById id world =
-    Dict.get id world.lots
+    Collection.get id world.lots
 
 
 findLotByCarPosition : Car -> World -> Maybe Lot
@@ -210,14 +210,19 @@ addEvent event triggerAt world =
     { world | eventQueue = world.eventQueue |> EventQueue.addEvent queueEvent }
 
 
+addCar : Car -> World -> World
+addCar car world =
+    { world | cars = Collection.addWithId car.id car world.cars }
+
+
 setCar : Car -> World -> World
 setCar car world =
-    { world | cars = Dict.insert car.id car world.cars }
+    { world | cars = Collection.update car.id car world.cars }
 
 
 removeCar : Id -> World -> World
 removeCar carId world =
-    case Dict.get carId world.cars of
+    case Collection.get carId world.cars of
         Just car ->
             let
                 baseWorld =
@@ -226,7 +231,7 @@ removeCar carId world =
                         |> Maybe.map (\lot -> updateLot lot world)
                         |> Maybe.withDefault world
             in
-            { baseWorld | cars = Dict.remove carId baseWorld.cars }
+            { baseWorld | cars = Collection.remove carId baseWorld.cars }
 
         Nothing ->
             world
@@ -245,33 +250,36 @@ lotAfterCarDespawn car lot =
 
 addLot : Lot -> World -> World
 addLot lot world =
+    let
+        nextLots =
+            Collection.addWithId lot.id lot world.lots
+    in
     { world
-        | lots = Dict.insert lot.id lot world.lots
+        | lots = nextLots
         , lotLookup = QuadTree.insert lot world.lotLookup
     }
 
 
 updateLot : Lot -> World -> World
 updateLot lot world =
-    { world | lots = Dict.insert lot.id lot world.lots }
+    { world | lots = Collection.update lot.id lot world.lots }
 
 
 removeLot : Id -> World -> World
 removeLot lotId world =
-    case Dict.get lotId world.lots of
+    case Collection.get lotId world.lots of
         Just lot ->
             let
                 parkedCarsIds =
                     lot.parkingSpots
                         |> List.filterMap (\parkingSpot -> parkingSpot.reservedBy)
-                        |> Set.fromList
 
                 nextCars =
-                    Dict.map
+                    Collection.map
                         (\_ car ->
                             let
                                 isParkedOnLot =
-                                    Set.member car.id parkedCarsIds
+                                    List.any (Collection.idMatches car.id) parkedCarsIds
 
                                 homeRemoved =
                                     case car.homeLotId of
@@ -290,7 +298,7 @@ removeLot lotId world =
                         world.cars
             in
             { world
-                | lots = Dict.remove lotId world.lots
+                | lots = Collection.remove lotId world.lots
                 , tilemap = Tilemap.removeAnchor lotId world.tilemap
                 , cars = nextCars
                 , lotLookup = QuadTree.remove lot world.lotLookup
@@ -420,19 +428,19 @@ formatEventKind kind =
             "Spawn test car"
 
         SpawnResident _ lotId ->
-            "Spawn resident: lot #" ++ String.fromInt lotId
+            "Spawn resident: lot #" ++ Collection.idToString lotId
 
         CreateRouteFromParkingSpot carId _ ->
-            "Route car from parkingSpot: #" ++ String.fromInt carId
+            "Route car from parkingSpot: #" ++ Collection.idToString carId
 
         CreateRouteFromNode carId _ ->
-            "Route car from node: #" ++ String.fromInt carId
+            "Route car from node: #" ++ Collection.idToString carId
 
         BeginCarParking { carId, lotId } ->
-            "Begin parking: car #" ++ String.fromInt carId ++ "\nLot #" ++ String.fromInt lotId
+            "Begin parking: car #" ++ Collection.idToString carId ++ "\nLot #" ++ Collection.idToString lotId
 
         CarStateChange carId _ ->
-            "Car FSM event: #" ++ String.fromInt carId
+            "Car FSM event: #" ++ Collection.idToString carId
 
         None ->
             "_NONE_"

@@ -5,18 +5,17 @@ module Simulation.Infrastructure exposing
     )
 
 import BoundingBox2d
+import Collection exposing (Collection, Id)
 import Common
 import Data.Lots exposing (drivewayOffset)
 import Data.Roads exposing (innerLaneOffset, outerLaneOffset)
 import Dict exposing (Dict)
-import Dict.Extra as Dict
 import Direction2d
 import Graph exposing (Edge, Node)
 import IntDict
 import Length
 import Maybe.Extra as Maybe
 import Model.Cell as Cell exposing (Cell)
-import Model.Entity as Entity exposing (Id)
 import Model.Geometry as Geometry
     exposing
         ( LMBoundingBox2d
@@ -37,7 +36,7 @@ import Model.RoadNetwork as RoadNetwork
         )
 import Model.Tile as Tile exposing (Tile)
 import Model.Tilemap as Tilemap exposing (Tilemap)
-import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLights)
+import Model.TrafficLight as TrafficLight exposing (TrafficLight)
 import Model.World as World exposing (World)
 import Point2d
 import Quantity
@@ -137,7 +136,7 @@ updateRoadNetwork world =
     }
 
 
-buildRoadNetwork : World -> ( RoadNetwork, TrafficLights )
+buildRoadNetwork : World -> ( RoadNetwork, Collection TrafficLight )
 buildRoadNetwork { tilemap, trafficLights } =
     let
         tilePriority ( _, tile ) =
@@ -613,15 +612,15 @@ connectDeadendEntryWithExit entry =
 --
 
 
-setupTrafficControl : TrafficLights -> RoadNetwork -> ( RoadNetwork, TrafficLights )
+setupTrafficControl : Collection TrafficLight -> RoadNetwork -> ( RoadNetwork, Collection TrafficLight )
 setupTrafficControl currentTrafficLights roadNetwork =
     Graph.fold
         (updateNodeTrafficControl currentTrafficLights)
-        ( roadNetwork, Dict.empty )
+        ( roadNetwork, Collection.empty )
         roadNetwork
 
 
-updateNodeTrafficControl : TrafficLights -> RNNodeContext -> ( RoadNetwork, TrafficLights ) -> ( RoadNetwork, TrafficLights )
+updateNodeTrafficControl : Collection TrafficLight -> RNNodeContext -> ( RoadNetwork, Collection TrafficLight ) -> ( RoadNetwork, Collection TrafficLight )
 updateNodeTrafficControl currentTrafficLights nodeCtx ( roadNetwork, nextTrafficLights ) =
     case IntDict.size nodeCtx.outgoing of
         -- Four-way intersection (or crossroads)
@@ -631,13 +630,15 @@ updateNodeTrafficControl currentTrafficLights nodeCtx ( roadNetwork, nextTraffic
                     nodeCtx.node.label
 
                 trafficLight =
-                    currentTrafficLights
-                        |> Dict.find (\_ existingTrafficLight -> existingTrafficLight.position == connection.position)
-                        |> Maybe.map Tuple.second
-                        |> Maybe.withDefault (createTrafficLight connection nextTrafficLights)
+                    case Collection.find (\_ existingTrafficLight -> existingTrafficLight.position == connection.position) currentTrafficLights of
+                        Just ( _, trafficLightMatch ) ->
+                            trafficLightMatch
+
+                        Nothing ->
+                            createTrafficLight connection nextTrafficLights
             in
             ( Graph.insert (linkTrafficLightToNode trafficLight.id nodeCtx) roadNetwork
-            , Dict.insert trafficLight.id trafficLight nextTrafficLights
+            , Collection.addWithId trafficLight.id trafficLight nextTrafficLights
             )
 
         -- Three-way intersection (or T-intersection)
@@ -688,11 +689,11 @@ isParallel nodeA nodeB =
         |> Maybe.withDefault False
 
 
-createTrafficLight : Connection -> TrafficLights -> TrafficLight
+createTrafficLight : Connection -> Collection TrafficLight -> TrafficLight
 createTrafficLight connection nextTrafficLights =
     let
         nextId =
-            Entity.nextId nextTrafficLights
+            Collection.prepareId nextTrafficLights
 
         facing =
             Direction2d.reverse connection.direction

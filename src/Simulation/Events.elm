@@ -1,11 +1,10 @@
 module Simulation.Events exposing (updateEventQueue)
 
+import Collection exposing (Id)
 import Common exposing (randomFutureTime)
-import Dict
 import Direction2d
 import EventQueue
 import Model.Car as Car exposing (Car, CarEvent(..))
-import Model.Entity exposing (Id)
 import Model.Geometry exposing (orthogonalDirectionToLmDirection)
 import Model.Lot as Lot exposing (Lot)
 import Model.World as World exposing (World, WorldEvent(..))
@@ -234,7 +233,7 @@ withParkingContext mapFn car world =
     car.parkingReservation
         |> Maybe.andThen
             (\parkingReservation ->
-                Dict.get parkingReservation.lotId world.lots
+                World.findLotById parkingReservation.lotId world
                     |> Maybe.map
                         (\lot ->
                             mapFn

@@ -24,12 +24,12 @@ module Model.Car exposing
 import Angle exposing (Angle)
 import AngularSpeed exposing (AngularSpeed)
 import BoundingBox2d
+import Collection exposing (Id)
 import Common exposing (isCloseToZeroVelocity)
 import Data.Cars exposing (CarMake)
 import FSM exposing (FSM)
 import Frame2d
 import Length
-import Model.Entity exposing (Id)
 import Model.Geometry
     exposing
         ( LMBoundingBox2d
@@ -55,7 +55,7 @@ type alias Car =
     , shape : LMShape2d
     , boundingBox : LMBoundingBox2d
     , route : Route
-    , homeLotId : Maybe Int
+    , homeLotId : Maybe Id
     , parkingReservation : Maybe ParkingReservation
     }
 
@@ -66,7 +66,7 @@ type alias NewCar =
     , orientation : Angle
     , velocity : Speed
     , rotation : AngularSpeed
-    , homeLotId : Maybe Int
+    , homeLotId : Maybe Id
     }
 
 
@@ -344,7 +344,7 @@ withVelocity velocity car =
     { car | velocity = velocity }
 
 
-build : Int -> Maybe ParkingReservation -> NewCar -> Car
+build : Id -> Maybe ParkingReservation -> NewCar -> Car
 build id parkingReservation newCar =
     let
         ( shape, boundingBox ) =

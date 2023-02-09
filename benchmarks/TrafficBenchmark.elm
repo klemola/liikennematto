@@ -2,6 +2,7 @@ module TrafficBenchmark exposing (main)
 
 import Benchmark exposing (Benchmark, benchmark, describe, scale)
 import Benchmark.Runner exposing (BenchmarkProgram, program)
+import Collection
 import Data.RuleSetups
     exposing
         ( collisionSetupNearCollision
@@ -10,7 +11,6 @@ import Data.RuleSetups
         , noCollisionSetupDifferentLanes
         , redTrafficLightsSetup
         )
-import Dict
 import Model.Cell as Cell
 import Model.World as World
 import QuadTree
@@ -36,7 +36,7 @@ suite =
                 |> List.map largeWorldSetup
                 |> List.map
                     (\ruleSetup ->
-                        ( Dict.size ruleSetup.world.cars |> String.fromInt
+                        ( Collection.size ruleSetup.world.cars |> String.fromInt
                         , \_ -> Traffic.checkRules ruleSetup
                         )
                     )
@@ -46,7 +46,7 @@ suite =
                 |> List.map chooseOtherCarsWithQuadtree
                 |> List.map
                     (\ruleSetup ->
-                        ( Dict.size ruleSetup.world.cars |> String.fromInt
+                        ( Collection.size ruleSetup.world.cars |> String.fromInt
                         , \_ -> Traffic.checkRules ruleSetup
                         )
                     )

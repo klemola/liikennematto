@@ -1,5 +1,6 @@
 module TilemapTests exposing (suite)
 
+import Collection exposing (initialId)
 import Data.Utility exposing (tilemapFromCoordinates)
 import Data.Worlds
     exposing
@@ -44,7 +45,7 @@ tilemapWithAnchor =
         , ( 1, 4 )
         ]
         [ { cellCoordinates = ( 1, 3 )
-          , lotId = 1
+          , lotId = initialId
           , anchorDirection = Right
           }
         ]

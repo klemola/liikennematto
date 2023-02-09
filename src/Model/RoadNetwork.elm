@@ -18,11 +18,11 @@ module Model.RoadNetwork exposing
     , trafficControl
     )
 
+import Collection exposing (Id, idMatches)
 import Graph exposing (Graph, NodeContext, NodeId)
 import IntDict
 import Length exposing (Length)
 import Model.Cell exposing (Cell)
-import Model.Entity exposing (Id)
 import Model.Geometry exposing (LMBoundingBox2d, LMDirection2d, LMPoint2d)
 import Random
 import Random.Extra
@@ -89,14 +89,14 @@ size =
     Graph.size
 
 
-findLotExitNodeByLotId : RoadNetwork -> Int -> Maybe RNNodeContext
+findLotExitNodeByLotId : RoadNetwork -> Id -> Maybe RNNodeContext
 findLotExitNodeByLotId roadNetwork lotId =
     roadNetwork
         |> Graph.fold
             (\ctx acc ->
                 case ctx.node.label.kind of
                     LotExit id ->
-                        if id == lotId then
+                        if idMatches id lotId then
                             Just ctx
 
                         else

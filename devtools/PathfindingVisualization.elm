@@ -9,6 +9,7 @@ module PathfindingVisualization exposing
 import Array exposing (Array)
 import Browser
 import Browser.Events as Events
+import Collection exposing (initialId)
 import CubicSpline2d exposing (ArcLengthParameterized, Nondegenerate)
 import Data.Cars exposing (testCar)
 import Data.Colors as Colors
@@ -197,7 +198,7 @@ initialCar =
         |> Car.withPosition initialStart
         |> Car.withOrientation (Direction2d.toAngle initialTangentDirection)
         |> Car.withVelocity Steering.maxVelocity
-        |> Car.build 1 Nothing
+        |> Car.build initialId Nothing
 
 
 initialModel : Model

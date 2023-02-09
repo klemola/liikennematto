@@ -8,13 +8,12 @@ module Simulation.Pathfinding exposing
     )
 
 import Array
+import Collection exposing (Id)
 import Common
-import Dict
 import Duration exposing (Duration)
 import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car)
-import Model.Entity exposing (Id)
 import Model.Geometry exposing (LMPoint2d)
 import Model.Lot as Lot exposing (ParkingReservation, ParkingSpot)
 import Model.RoadNetwork as RoadNetwork
@@ -199,8 +198,8 @@ attemptGenerateRouteFromParkingSpot car parkingReservation world =
     else
         let
             lotWithParkingLock =
-                world.lots
-                    |> Dict.get parkingReservation.lotId
+                world
+                    |> World.findLotById parkingReservation.lotId
                     |> Maybe.andThen (Lot.acquireParkingLock car.id)
         in
         case lotWithParkingLock of
@@ -255,7 +254,7 @@ findRandomDestinationNode world car startNodeCtx =
             Random.step (Random.float 0 1) world.seed
 
         lookingForLot =
-            chance > 0.65 && Dict.size world.lots >= 2
+            chance > 0.65 && Collection.size world.lots >= 2
 
         matchPredicate =
             if lookingForLot then
@@ -289,7 +288,7 @@ randomLotMatchPredicate world car startNodeCtx endNode =
                             True
 
                 parkingPermitted =
-                    case Dict.get lotEntryId world.lots of
+                    case World.findLotById lotEntryId world of
                         Just lot ->
                             Lot.parkingPermitted (parkingPermissionPredicate car.homeLotId lotEntryId) lot
 
@@ -317,8 +316,7 @@ randomNodeMatchPredicate startNodeCtx endNode =
 
 attemptBeginParking : Car -> Id -> World -> Result String World
 attemptBeginParking car lotId world =
-    world.lots
-        |> Dict.get lotId
+    World.findLotById lotId world
         |> Maybe.andThen
             (Lot.prepareParking
                 (parkingPermissionPredicate car.homeLotId lotId)

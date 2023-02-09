@@ -1,10 +1,9 @@
 module Simulation.Zoning exposing (generateLot, removeInvalidLots)
 
+import Collection exposing (Id)
 import Data.Lots exposing (NewLot, allLots)
-import Dict
 import Maybe.Extra as Maybe
 import Model.Cell exposing (Cell)
-import Model.Entity as Entity exposing (Id)
 import Model.Geometry exposing (oppositeOrthogonalDirection)
 import Model.Lot as Lot exposing (Lot)
 import Model.Tile as Tile
@@ -22,8 +21,8 @@ generateLot time world =
     let
         existingBuildingKinds =
             world.lots
-                |> Dict.map (\_ lot -> lot.kind)
-                |> Dict.values
+                |> Collection.map (\_ lot -> lot.kind)
+                |> Collection.values
 
         unusedLots =
             List.filter (\newLot -> not (List.member newLot.kind existingBuildingKinds)) allLots
@@ -73,7 +72,7 @@ attemptBuildLot world newLot =
             (\anchor ->
                 let
                     nextLotId =
-                        Entity.nextId world.lots
+                        Collection.prepareId world.lots
                 in
                 ( Lot.build nextLotId newLot anchor, anchor )
             )
@@ -120,7 +119,7 @@ removeInvalidLots changedCells world =
                 )
                 changedCells
     in
-    Dict.foldl
+    Collection.foldl
         (validateLot changedCells changedAnchors)
         world
         world.lots

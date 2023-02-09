@@ -12,17 +12,16 @@ module Simulation.Traffic exposing
     )
 
 import BoundingBox2d
+import Collection
 import Common exposing (randomFutureTime)
 import Data.Cars exposing (CarMake)
 import Data.Lots
-import Dict
 import Direction2d
 import Duration exposing (Duration)
 import FSM
 import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car, CarState(..))
-import Model.Entity as Entity
 import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
 import Model.Lot as Lot exposing (Lot)
 import Model.RoadNetwork as RoadNetwork
@@ -93,7 +92,7 @@ updateTraffic :
 updateTraffic { updateQueue, world, delta, events } =
     case updateQueue of
         [] ->
-            ( { world | carLookup = World.createLookup (Dict.values world.cars) world }
+            ( { world | carLookup = World.createLookup (Collection.values world.cars) world }
             , events
             )
 
@@ -194,11 +193,12 @@ applySteering delta steering car =
 
 rerouteCarsIfNeeded : World -> World
 rerouteCarsIfNeeded world =
-    let
-        nextCars =
-            Dict.map (\_ car -> Pathfinding.restoreRoute world car) world.cars
-    in
-    { world | cars = nextCars }
+    { world
+        | cars =
+            Collection.map
+                (\_ car -> Pathfinding.restoreRoute world car)
+                world.cars
+    }
 
 
 
@@ -235,7 +235,7 @@ spawnResident time carMake lot world =
             (\parkingSpot ->
                 let
                     carId =
-                        Entity.nextId world.cars
+                        Collection.prepareId world.cars
 
                     lotWithReservedParkingSpot =
                         Lot.reserveParkingSpot carId parkingSpot.id lot
@@ -258,7 +258,7 @@ spawnResident time carMake lot world =
                             world.seed
                 in
                 world
-                    |> World.setCar car
+                    |> World.addCar car
                     |> World.updateLot lotWithReservedParkingSpot
                     |> World.setSeed nextSeed
                     |> World.addEvent
@@ -267,7 +267,7 @@ spawnResident time carMake lot world =
             )
 
 
-spawnTestCar : World -> ( World, Maybe Entity.Id )
+spawnTestCar : World -> ( World, Maybe Collection.Id )
 spawnTestCar world =
     let
         maybeRandomNodeCtx =
@@ -282,7 +282,7 @@ spawnTestCar world =
             (\nodeCtx ->
                 let
                     id =
-                        Entity.nextId world.cars
+                        Collection.prepareId world.cars
 
                     ( carMake, nextSeed ) =
                         Random.step Data.Cars.randomCarMake world.seed
@@ -294,7 +294,7 @@ spawnTestCar world =
                             |> Car.build id Nothing
                 in
                 ( world
-                    |> World.setCar car
+                    |> World.addCar car
                     |> World.setSeed nextSeed
                     |> World.addEvent
                         (World.CreateRouteFromNode car.id nodeCtx)
@@ -314,10 +314,10 @@ validateSpawnConditions world nodeCtx =
                 |> not
 
         reasonableAmountOfTraffic =
-            RoadNetwork.size world.roadNetwork > Dict.size world.cars
+            RoadNetwork.size world.roadNetwork > Collection.size world.cars
 
         spawnPositionHasEnoughSpace =
-            Dict.values world.cars
+            Collection.values world.cars
                 |> List.all notAtSpawnPosition
     in
     if reasonableAmountOfTraffic && spawnPositionHasEnoughSpace then
@@ -498,7 +498,7 @@ checkTrafficControl setup =
                             { trafficLights } =
                                 setup.world
                         in
-                        Dict.get id trafficLights |> Maybe.andThen (checkTrafficLights setup)
+                        Collection.get id trafficLights |> Maybe.andThen (checkTrafficLights setup)
 
                     Yield yieldCheckArea ->
                         checkYield setup position yieldCheckArea

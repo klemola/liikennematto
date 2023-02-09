@@ -1,5 +1,6 @@
 module LotsGallery exposing (main)
 
+import Collection exposing (Id, nextId)
 import Color
 import Data.Colors as Colors
 import Data.Lots exposing (NewLot)
@@ -57,7 +58,7 @@ main =
         acc =
             { lots = []
             , baseY = 0
-            , id = 1
+            , id = Collection.prepareId Collection.empty
             }
     in
     Data.Lots.allLots
@@ -74,8 +75,8 @@ main =
 
 buildLot :
     NewLot
-    -> { lots : List Lot, baseY : Int, id : Int }
-    -> { lots : List Lot, baseY : Int, id : Int }
+    -> { lots : List Lot, baseY : Int, id : Id }
+    -> { lots : List Lot, baseY : Int, id : Id }
 buildLot newLot acc =
     let
         y =
@@ -96,7 +97,7 @@ buildLot newLot acc =
         Just lot ->
             { lots = lot :: acc.lots
             , baseY = y
-            , id = acc.id + 1
+            , id = nextId acc.id
             }
 
         Nothing ->

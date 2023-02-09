@@ -1,5 +1,6 @@
 module WorldTests exposing (suite)
 
+import Collection exposing (initialId)
 import Common exposing (boundingBoxWithDimensions)
 import Data.Lots exposing (school)
 import Data.Worlds
@@ -7,7 +8,6 @@ import Data.Worlds
         ( worldThatHasAVerticalRoadAtLeftSide
         , worldThatHasParallelRoads
         )
-import Dict
 import Expect
 import Length
 import Model.Cell as Cell
@@ -41,12 +41,12 @@ suite =
 
                         testLot =
                             Cell.fromCoordinates tilemapConfig ( 1, 8 )
-                                |> Maybe.map (Lot.build 1 school)
+                                |> Maybe.map (Lot.build initialId school)
 
                         lots =
                             testLot
-                                |> Maybe.map (\lot -> Dict.fromList [ ( 1, lot ) ])
-                                |> Maybe.withDefault Dict.empty
+                                |> Maybe.map (\lot -> Collection.empty |> Collection.addWithId lot.id lot)
+                                |> Maybe.withDefault Collection.empty
 
                         withLot =
                             worldThatHasAVerticalRoadAtLeftSide
