@@ -1,5 +1,6 @@
 module LotTests exposing (suite)
 
+import Collection exposing (Id, initialId, nextId)
 import Data.Lots
     exposing
         ( residentialSingle1
@@ -17,16 +18,28 @@ tilemapConfig =
     Tilemap.config lotTestWorld.tilemap
 
 
+id1 : Id
+id1 =
+    initialId
+
+
+id2 : Id
+id2 =
+    nextId initialId
+
+
 twoByTwoLot : Maybe Lot
 twoByTwoLot =
     Cell.fromCoordinates tilemapConfig ( 4, 5 )
-        |> Maybe.map (Lot.build 1 residentialSingle1)
+        |> Maybe.map (Lot.build residentialSingle1)
+        |> Maybe.map (\builderFn -> builderFn id1)
 
 
 threeByThreeLot : Maybe Lot
 threeByThreeLot =
     Cell.fromCoordinates tilemapConfig ( 1, 3 )
-        |> Maybe.map (Lot.build 2 school)
+        |> Maybe.map (Lot.build school)
+        |> Maybe.map (\builderFn -> builderFn id2)
 
 
 suite : Test

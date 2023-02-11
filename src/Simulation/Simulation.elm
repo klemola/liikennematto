@@ -4,7 +4,7 @@ module Simulation.Simulation exposing
     )
 
 import Audio exposing (playSound)
-import Dict
+import Collection
 import Duration
 import FSM
 import Message exposing (Message(..))
@@ -44,7 +44,7 @@ update msg model =
             let
                 cars =
                     -- TODO: fold to avoid double iteration
-                    Dict.values model.world.cars
+                    Collection.values model.world.cars
 
                 ( worldWithTrafficUpdate, worldEvents ) =
                     Traffic.updateTraffic
@@ -129,7 +129,7 @@ update msg model =
                         model.world
 
                 cmds =
-                    if Dict.size nextWorld.lots > Dict.size model.world.lots then
+                    if Collection.size nextWorld.lots > Collection.size model.world.lots then
                         Cmd.batch
                             [ generateEnvironmentAfterDelay nextWorld
                             , Audio.playSound Audio.BuildLot
@@ -206,13 +206,12 @@ worldAfterTilemapChange world =
 
 updateTrafficLights : World -> World
 updateTrafficLights world =
-    let
-        nextTrafficLights =
-            Dict.map
+    { world
+        | trafficLights =
+            Collection.map
                 (\_ trafficLight -> updateTrafficLight trafficLight)
                 world.trafficLights
-    in
-    { world | trafficLights = nextTrafficLights }
+    }
 
 
 updateTrafficLight : TrafficLight -> TrafficLight
@@ -229,7 +228,7 @@ attemptGenerateLot : Time.Posix -> SimulationState -> World -> World
 attemptGenerateLot time simulation world =
     let
         largeEnoughRoadNetwork =
-            Tilemap.size world.tilemap > 4 * (Dict.size world.lots + 1)
+            Tilemap.size world.tilemap > 4 * (Collection.size world.lots + 1)
     in
     if simulation == Paused || not largeEnoughRoadNetwork || World.hasPendingTilemapChange world then
         world

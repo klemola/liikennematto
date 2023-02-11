@@ -1,7 +1,7 @@
 module UI.DebugPanel exposing (update, view)
 
+import Collection
 import Data.Icons as Icons
-import Dict
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -87,7 +87,7 @@ view model =
             [ Element.spacing whitespaceTight
             , Element.width Element.fill
             ]
-            (Dict.values model.world.cars |> List.map (carStateView model.renderCache))
+            (Collection.values model.world.cars |> List.map (carStateView model.renderCache))
         ]
 
 
@@ -170,7 +170,7 @@ carStateView : RenderCache -> Car -> Element msg
 carStateView cache car =
     Element.row
         cardAttributes
-        [ Element.text ("# " ++ String.fromInt car.id)
+        [ Element.text ("# " ++ Collection.idToString car.id)
         , Element.column [ Element.spacing whitespaceTight ]
             [ Element.text (pointToString cache car.position)
             , Element.text (speedToString car.velocity)

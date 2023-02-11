@@ -16,6 +16,7 @@ module Data.RuleSetups exposing
     )
 
 import Angle exposing (Angle)
+import Collection exposing (Id)
 import Data.Cars exposing (testCar)
 import Data.Worlds
     exposing
@@ -25,7 +26,6 @@ import Data.Worlds
         , worldWithFourWayIntersection
         , worldWithThreeWayIntersection
         )
-import Dict
 import Duration
 import Length exposing (Length)
 import Model.Car as Car exposing (Car)
@@ -468,7 +468,7 @@ largeWorldSetup carsAmount =
         worldWithCars =
             spawnCars carsAmount world
     in
-    case Dict.values worldWithCars.cars of
+    case Collection.values worldWithCars.cars of
         x :: xs ->
             RuleSetup worldWithCars x xs
 
@@ -504,22 +504,33 @@ type TestCar
     | CarB2
 
 
+id1 : Id
+id1 =
+    Collection.initialId
+
+
+id2 : Id
+id2 =
+    Collection.nextId id1
+
+
 buildCar : TestCar -> LMPoint2d -> Angle -> Speed -> Car
 buildCar option position orientation velocity =
     let
         id =
             case option of
                 CarA1 ->
-                    1
+                    id1
 
                 CarB2 ->
-                    2
+                    id2
     in
     Car.new testCar
         |> Car.withPosition position
         |> Car.withOrientation orientation
         |> Car.withVelocity velocity
-        |> Car.build id Nothing
+        |> Car.build Nothing
+        |> (\builderFn -> builderFn id)
 
 
 routeCarByDestination : World -> LMPoint2d -> Car -> Car

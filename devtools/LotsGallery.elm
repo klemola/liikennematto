@@ -1,5 +1,6 @@
 module LotsGallery exposing (main)
 
+import Collection exposing (Id, nextId)
 import Color
 import Data.Colors as Colors
 import Data.Lots exposing (NewLot)
@@ -57,7 +58,7 @@ main =
         acc =
             { lots = []
             , baseY = 0
-            , id = 1
+            , id = Collection.initialId
             }
     in
     Data.Lots.allLots
@@ -74,8 +75,8 @@ main =
 
 buildLot :
     NewLot
-    -> { lots : List Lot, baseY : Int, id : Int }
-    -> { lots : List Lot, baseY : Int, id : Int }
+    -> { lots : List Lot, baseY : Int, id : Id }
+    -> { lots : List Lot, baseY : Int, id : Id }
 buildLot newLot acc =
     let
         y =
@@ -91,12 +92,13 @@ buildLot newLot acc =
     in
     case
         Cell.fromCoordinates tilemapConfig ( x, y )
-            |> Maybe.map (Model.Lot.build acc.id newLot)
+            |> Maybe.map (Model.Lot.build newLot)
+            |> Maybe.map (\builderFn -> builderFn acc.id)
     of
         Just lot ->
             { lots = lot :: acc.lots
             , baseY = y
-            , id = acc.id + 1
+            , id = nextId acc.id
             }
 
         Nothing ->

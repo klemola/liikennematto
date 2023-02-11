@@ -5,20 +5,18 @@ module Render exposing
     )
 
 import Angle
+import Collection exposing (Collection)
 import Color
 import Data.Cars exposing (CarMake, carAsset)
 import Data.Colors as Colors
 import Data.Lots exposing (lotAsset)
 import Data.Roads exposing (roadAsset)
-import Dict exposing (Dict)
-import Direction2d exposing (y)
 import Graph exposing (Node)
 import Html exposing (Html)
 import Length exposing (Length)
 import Model.Animation as Animation exposing (Animation)
 import Model.Car exposing (Car)
 import Model.Cell as Cell exposing (Cell)
-import Model.Entity exposing (Id)
 import Model.Geometry
     exposing
         ( LMPoint2d
@@ -33,7 +31,7 @@ import Model.RoadNetwork
         , TrafficControl(..)
         )
 import Model.Tile exposing (TileKind)
-import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..), TrafficLights)
+import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..))
 import Model.World exposing (World)
 import Quantity
 import Render.Conversion exposing (pointToPixels, toPixelsValue, toViewBoxValue)
@@ -367,12 +365,12 @@ tileAnimationProperties tileSizePixels animation ( tileX, tileY ) =
 --
 
 
-renderCars : RenderCache -> Dict Int Car -> Svg msg
+renderCars : RenderCache -> Collection Car -> Svg msg
 renderCars cache cars =
     cars
-        |> Dict.foldl
+        |> Collection.foldl
             (\_ car acc ->
-                ( "Car-" ++ String.fromInt car.id, renderCar cache car ) :: acc
+                ( "Car-" ++ Collection.idToString car.id, renderCar cache car ) :: acc
             )
             []
         |> Svg.Keyed.node "g" []
@@ -436,10 +434,10 @@ carSvg cache position orientation make =
 --
 
 
-renderLots : RenderCache -> Dict Id Lot -> Svg msg
+renderLots : RenderCache -> Collection Lot -> Svg msg
 renderLots cache lots =
     lots
-        |> Dict.foldl (\_ lot acc -> ( "Lot-" ++ String.fromInt lot.id, renderLot cache lot ) :: acc) []
+        |> Collection.foldl (\_ lot acc -> ( "Lot-" ++ Collection.idToString lot.id, renderLot cache lot ) :: acc) []
         |> Svg.Keyed.node "g" []
 
 
@@ -497,10 +495,10 @@ renderLot cache lot =
 --
 
 
-renderTrafficLights : RenderCache -> TrafficLights -> Svg msg
+renderTrafficLights : RenderCache -> Collection TrafficLight -> Svg msg
 renderTrafficLights cache trafficLights =
     trafficLights
-        |> Dict.foldl (\_ tl acc -> ( "TrafficLight-" ++ String.fromInt tl.id, renderTrafficLight cache tl ) :: acc) []
+        |> Collection.foldl (\_ tl acc -> ( "TrafficLight-" ++ Collection.idToString tl.id, renderTrafficLight cache tl ) :: acc) []
         |> Svg.Keyed.node "g" []
 
 

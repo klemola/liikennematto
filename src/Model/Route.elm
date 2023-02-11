@@ -28,11 +28,10 @@ module Model.Route exposing
 
 import AStar
 import Array exposing (Array)
+import Collection exposing (Collection)
 import CubicSpline2d exposing (ArcLengthParameterized)
-import Dict exposing (Dict)
 import Length exposing (Length)
 import List.Extra as List
-import Model.Entity exposing (Id)
 import Model.Geometry
     exposing
         ( GlobalCoordinates
@@ -44,7 +43,6 @@ import Model.Lot as Lot
     exposing
         ( Lot
         , ParkingReservation
-        , ParkingSpot
         )
 import Model.RoadNetwork as RoadNetwork
     exposing
@@ -109,9 +107,10 @@ initialRoute =
 --
 
 
-fromParkedAtLot : ParkingReservation -> Dict Id Lot -> RoadNetwork -> RNNodeContext -> RNNodeContext -> Maybe Route
+fromParkedAtLot : ParkingReservation -> Collection Lot -> RoadNetwork -> RNNodeContext -> RNNodeContext -> Maybe Route
 fromParkedAtLot parkingReservation lots roadNetwork startNodeCtx endNodeCtx =
-    parkingSpotFromReservation lots parkingReservation
+    Collection.get parkingReservation.lotId lots
+        |> Maybe.andThen (\lot -> Lot.parkingSpotById lot parkingReservation.parkingSpotId)
         |> Maybe.andThen
             (\spot ->
                 roadNetwork
@@ -174,10 +173,10 @@ stopAtSplineEnd route =
         |> Maybe.map (ArrivingToDestination RoadNetworkNode)
 
 
-arriveToParkingSpot : ParkingReservation -> Dict Id Lot -> Route -> Maybe Route
+arriveToParkingSpot : ParkingReservation -> Collection Lot -> Route -> Maybe Route
 arriveToParkingSpot parkingReservation lots route =
-    parkingReservation
-        |> parkingSpotFromReservation lots
+    Collection.get parkingReservation.lotId lots
+        |> Maybe.andThen (\lot -> Lot.parkingSpotById lot parkingReservation.parkingSpotId)
         |> Maybe.map .pathFromLotEntry
         |> Maybe.andThen createPath
         |> Maybe.map (ArrivingToDestination LotParkingSpot)
@@ -286,13 +285,6 @@ toPathSplines remaining acc =
 
         [] ->
             acc
-
-
-parkingSpotFromReservation : Dict Id Lot -> ParkingReservation -> Maybe ParkingSpot
-parkingSpotFromReservation lots { lotId, parkingSpotId } =
-    lots
-        |> Dict.get lotId
-        |> Maybe.andThen (\lot -> Lot.parkingSpotById lot parkingSpotId)
 
 
 

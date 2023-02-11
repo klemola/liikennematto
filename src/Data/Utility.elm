@@ -5,8 +5,8 @@ module Data.Utility exposing
     , worldFromTilemap
     )
 
+import Collection exposing (Id)
 import Model.Cell as Cell
-import Model.Entity exposing (Id)
 import Model.Geometry exposing (OrthogonalDirection)
 import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext)
 import Model.Tilemap as Tilemap exposing (Tilemap)

@@ -1,10 +1,9 @@
 module Simulation.Zoning exposing (generateLot, removeInvalidLots)
 
+import Collection exposing (Id)
 import Data.Lots exposing (NewLot, allLots)
-import Dict
 import Maybe.Extra as Maybe
 import Model.Cell exposing (Cell)
-import Model.Entity as Entity exposing (Id)
 import Model.Geometry exposing (oppositeOrthogonalDirection)
 import Model.Lot as Lot exposing (Lot)
 import Model.Tile as Tile
@@ -22,8 +21,8 @@ generateLot time world =
     let
         existingBuildingKinds =
             world.lots
-                |> Dict.map (\_ lot -> lot.kind)
-                |> Dict.values
+                |> Collection.map (\_ lot -> lot.kind)
+                |> Collection.values
 
         unusedLots =
             List.filter (\newLot -> not (List.member newLot.kind existingBuildingKinds)) allLots
@@ -40,13 +39,12 @@ generateLot time world =
             World.setSeed nextSeed world
     in
     potentialNewLot
-        |> Maybe.andThen (attemptBuildLot updatedWorld)
-        |> Maybe.map (addLot time updatedWorld)
+        |> Maybe.andThen (attemptBuildLot time updatedWorld)
         |> Maybe.withDefault updatedWorld
 
 
-attemptBuildLot : World -> NewLot -> Maybe ( Lot, Cell )
-attemptBuildLot world newLot =
+attemptBuildLot : Time.Posix -> World -> NewLot -> Maybe World
+attemptBuildLot time world newLot =
     let
         anchorOptions =
             world.tilemap
@@ -72,10 +70,22 @@ attemptBuildLot world newLot =
         |> Maybe.map
             (\anchor ->
                 let
-                    nextLotId =
-                        Entity.nextId world.lots
+                    builderFn =
+                        Lot.build newLot anchor
+
+                    ( lot, nextLots ) =
+                        Collection.addFromBuilder builderFn world.lots
                 in
-                ( Lot.build nextLotId newLot anchor, anchor )
+                world
+                    |> World.refreshLots lot nextLots
+                    |> World.setTilemap
+                        (Tilemap.addAnchor anchor
+                            lot.id
+                            (oppositeOrthogonalDirection lot.drivewayExitDirection)
+                            world.tilemap
+                        )
+                    |> Infrastructure.connectLotToRoadNetwork
+                    |> Traffic.addLotResident time lot
             )
 
 
@@ -95,20 +105,6 @@ validateAnchor newLot world anchor =
         Nothing
 
 
-addLot : Time.Posix -> World -> ( Lot, Cell ) -> World
-addLot time world ( lot, anchor ) =
-    world
-        |> World.addLot lot
-        |> World.setTilemap
-            (Tilemap.addAnchor anchor
-                lot.id
-                (oppositeOrthogonalDirection lot.drivewayExitDirection)
-                world.tilemap
-            )
-        |> Infrastructure.connectLotToRoadNetwork
-        |> Traffic.addLotResident time lot
-
-
 removeInvalidLots : List Cell -> World -> World
 removeInvalidLots changedCells world =
     let
@@ -120,7 +116,7 @@ removeInvalidLots changedCells world =
                 )
                 changedCells
     in
-    Dict.foldl
+    Collection.foldl
         (validateLot changedCells changedAnchors)
         world
         world.lots

@@ -1,9 +1,9 @@
 module Render.Debug exposing (view)
 
+import Collection exposing (Collection)
 import Color
 import Data.Colors as Colors
 import Data.Lots exposing (ParkingRestriction(..))
-import Dict exposing (Dict)
 import Graph
 import Length exposing (Length)
 import Model.Car exposing (Car)
@@ -202,12 +202,12 @@ renderRoadNetwork cache roadNetwork =
         ]
 
 
-renderCarsDebug : RenderCache -> Dict Int Car -> Svg msg
+renderCarsDebug : RenderCache -> Collection Car -> Svg msg
 renderCarsDebug cache cars =
     cars
-        |> Dict.foldl
+        |> Collection.foldl
             (\_ car acc ->
-                ( "CarDebug-" ++ String.fromInt car.id, renderCarDebug cache car ) :: acc
+                ( "CarDebug-" ++ Collection.idToString car.id, renderCarDebug cache car ) :: acc
             )
             []
         |> Svg.Keyed.node "g" []
@@ -283,12 +283,12 @@ toPointsString cache points =
         points
 
 
-renderLotsDebug : RenderCache -> Dict Int Lot -> Svg msg
+renderLotsDebug : RenderCache -> Collection Lot -> Svg msg
 renderLotsDebug cache lots =
     lots
-        |> Dict.foldl
+        |> Collection.foldl
             (\_ lot acc ->
-                ( "LotsDebug-" ++ String.fromInt lot.id, renderLotDebug cache lot ) :: acc
+                ( "LotsDebug-" ++ Collection.idToString lot.id, renderLotDebug cache lot ) :: acc
             )
             []
         |> Svg.Keyed.node "g" []

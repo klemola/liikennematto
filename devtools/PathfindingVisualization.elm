@@ -9,6 +9,7 @@ module PathfindingVisualization exposing
 import Array exposing (Array)
 import Browser
 import Browser.Events as Events
+import Collection exposing (initialId)
 import CubicSpline2d exposing (ArcLengthParameterized, Nondegenerate)
 import Data.Cars exposing (testCar)
 import Data.Colors as Colors
@@ -18,8 +19,8 @@ import Html exposing (Html)
 import Length
 import Model.Car as Car exposing (Car)
 import Model.Geometry exposing (GlobalCoordinates, LMDirection2d, LMPoint2d)
-import Model.RenderCache as RenderCache
-import Model.World as World
+import Model.RenderCache as RenderCache exposing (RenderCache)
+import Model.World as World exposing (World)
 import Point2d
 import Quantity
 import Render
@@ -51,6 +52,7 @@ type alias SplineMeta =
     }
 
 
+world : World
 world =
     World.empty
         { horizontalCellsAmount = 4
@@ -58,6 +60,7 @@ world =
         }
 
 
+renderCache : RenderCache
 renderCache =
     RenderCache.new world
 
@@ -197,7 +200,8 @@ initialCar =
         |> Car.withPosition initialStart
         |> Car.withOrientation (Direction2d.toAngle initialTangentDirection)
         |> Car.withVelocity Steering.maxVelocity
-        |> Car.build 1 Nothing
+        |> Car.build Nothing
+        |> (\builderFn -> builderFn initialId)
 
 
 initialModel : Model

@@ -20,13 +20,13 @@ module Model.Lot exposing
 
 import Angle exposing (Angle)
 import BoundingBox2d
+import Collection exposing (Id)
 import Common
 import Data.Colors exposing (ThemeColor)
 import Data.Lots exposing (LotKind, NewLot, ParkingRestriction(..))
 import Direction2d
 import Length exposing (Length)
 import Model.Cell as Cell exposing (Cell)
-import Model.Entity exposing (Id)
 import Model.Geometry
     exposing
         ( LMBoundingBox2d
@@ -60,8 +60,8 @@ type alias Lot =
     }
 
 
-build : Id -> NewLot -> Cell -> Lot
-build lotId newLot anchor =
+build : NewLot -> Cell -> Id -> Lot
+build newLot anchor lotId =
     let
         constructionSiteBB =
             constructionSite anchor newLot
@@ -183,7 +183,7 @@ releaseParkingLock carId lot =
 
 
 type alias ParkingSpot =
-    { id : Id
+    { id : Int
     , position : LMPoint2d
     , pathFromLotEntry : List LMCubicSpline2d
     , pathToLotExit : List LMCubicSpline2d
@@ -194,12 +194,12 @@ type alias ParkingSpot =
 
 type alias ParkingReservation =
     { lotId : Id
-    , parkingSpotId : Id
+    , parkingSpotId : Int
     }
 
 
 createParkingSpot : Int -> NewLot -> LMFrame2d -> ( LMPoint2dLocal, ParkingRestriction ) -> ParkingSpot
-createParkingSpot idx newLot lotFrame ( position, parkingRestriction ) =
+createParkingSpot id newLot lotFrame ( position, parkingRestriction ) =
     let
         splineProps =
             { parkingSpotPosition = position
@@ -216,7 +216,7 @@ createParkingSpot idx newLot lotFrame ( position, parkingRestriction ) =
         exitSpline =
             Splines.lotExitSpline splineProps
     in
-    { id = idx
+    { id = id
     , position = Point2d.placeIn lotFrame position
     , pathFromLotEntry = entrySpline |> List.map (Splines.asGlobalSpline lotFrame)
     , pathToLotExit = exitSpline |> List.map (Splines.asGlobalSpline lotFrame)
@@ -273,17 +273,17 @@ findFreeParkingSpotHelper permissionPredicate spots =
                 findFreeParkingSpotHelper permissionPredicate others
 
 
-reserveParkingSpot : Id -> Id -> Lot -> Lot
+reserveParkingSpot : Id -> Int -> Lot -> Lot
 reserveParkingSpot carId parkingSpotId lot =
     setParkingSpotReservation (Just carId) parkingSpotId lot
 
 
-unreserveParkingSpot : Id -> Lot -> Lot
+unreserveParkingSpot : Int -> Lot -> Lot
 unreserveParkingSpot parkingSpotId lot =
     setParkingSpotReservation Nothing parkingSpotId lot
 
 
-setParkingSpotReservation : Maybe Id -> Id -> Lot -> Lot
+setParkingSpotReservation : Maybe Id -> Int -> Lot -> Lot
 setParkingSpotReservation reservation parkingSpotId lot =
     case parkingSpotById lot parkingSpotId of
         Just parkingSpot ->
@@ -297,7 +297,7 @@ setParkingSpotReservation reservation parkingSpotId lot =
             lot
 
 
-parkingSpotById : Lot -> Id -> Maybe ParkingSpot
+parkingSpotById : Lot -> Int -> Maybe ParkingSpot
 parkingSpotById lot parkingSpotId =
     lot.parkingSpots
         |> List.filter (\parkingSpot -> parkingSpot.id == parkingSpotId)

@@ -26,6 +26,7 @@ module Model.Tilemap exposing
 
 import Array exposing (Array)
 import BoundingBox2d
+import Collection exposing (Id)
 import Common
 import Dict exposing (Dict)
 import Dict.Extra as Dict
@@ -34,7 +35,6 @@ import FSM
 import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Cell as Cell exposing (Cell, CellCoordinates)
-import Model.Entity exposing (Id)
 import Model.Geometry
     exposing
         ( DiagonalDirection
