@@ -60,8 +60,8 @@ type alias Lot =
     }
 
 
-build : Id -> NewLot -> Cell -> Lot
-build lotId newLot anchor =
+build : NewLot -> Cell -> Id -> Lot
+build newLot anchor lotId =
     let
         constructionSiteBB =
             constructionSite anchor newLot

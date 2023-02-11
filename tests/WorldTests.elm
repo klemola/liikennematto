@@ -41,7 +41,8 @@ suite =
 
                         testLot =
                             Cell.fromCoordinates tilemapConfig ( 1, 8 )
-                                |> Maybe.map (Lot.build initialId school)
+                                |> Maybe.map (Lot.build school)
+                                |> Maybe.map (\builderFn -> builderFn initialId)
 
                         lots =
                             testLot

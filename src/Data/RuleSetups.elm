@@ -529,7 +529,8 @@ buildCar option position orientation velocity =
         |> Car.withPosition position
         |> Car.withOrientation orientation
         |> Car.withVelocity velocity
-        |> Car.build id Nothing
+        |> Car.build Nothing
+        |> (\builderFn -> builderFn id)
 
 
 routeCarByDestination : World -> LMPoint2d -> Car -> Car

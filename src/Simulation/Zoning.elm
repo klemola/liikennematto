@@ -39,13 +39,12 @@ generateLot time world =
             World.setSeed nextSeed world
     in
     potentialNewLot
-        |> Maybe.andThen (attemptBuildLot updatedWorld)
-        |> Maybe.map (addLot time updatedWorld)
+        |> Maybe.andThen (attemptBuildLot time updatedWorld)
         |> Maybe.withDefault updatedWorld
 
 
-attemptBuildLot : World -> NewLot -> Maybe ( Lot, Cell )
-attemptBuildLot world newLot =
+attemptBuildLot : Time.Posix -> World -> NewLot -> Maybe World
+attemptBuildLot time world newLot =
     let
         anchorOptions =
             world.tilemap
@@ -71,10 +70,22 @@ attemptBuildLot world newLot =
         |> Maybe.map
             (\anchor ->
                 let
-                    nextLotId =
-                        Collection.prepareId world.lots
+                    builderFn =
+                        Lot.build newLot anchor
+
+                    ( lot, nextLots ) =
+                        Collection.addFromBuilder builderFn world.lots
                 in
-                ( Lot.build nextLotId newLot anchor, anchor )
+                world
+                    |> World.refreshLots lot nextLots
+                    |> World.setTilemap
+                        (Tilemap.addAnchor anchor
+                            lot.id
+                            (oppositeOrthogonalDirection lot.drivewayExitDirection)
+                            world.tilemap
+                        )
+                    |> Infrastructure.connectLotToRoadNetwork
+                    |> Traffic.addLotResident time lot
             )
 
 
@@ -92,20 +103,6 @@ validateAnchor newLot world anchor =
 
     else
         Nothing
-
-
-addLot : Time.Posix -> World -> ( Lot, Cell ) -> World
-addLot time world ( lot, anchor ) =
-    world
-        |> World.addLot lot
-        |> World.setTilemap
-            (Tilemap.addAnchor anchor
-                lot.id
-                (oppositeOrthogonalDirection lot.drivewayExitDirection)
-                world.tilemap
-            )
-        |> Infrastructure.connectLotToRoadNetwork
-        |> Traffic.addLotResident time lot
 
 
 removeInvalidLots : List Cell -> World -> World

@@ -31,13 +31,15 @@ id2 =
 twoByTwoLot : Maybe Lot
 twoByTwoLot =
     Cell.fromCoordinates tilemapConfig ( 4, 5 )
-        |> Maybe.map (Lot.build id1 residentialSingle1)
+        |> Maybe.map (Lot.build residentialSingle1)
+        |> Maybe.map (\builderFn -> builderFn id1)
 
 
 threeByThreeLot : Maybe Lot
 threeByThreeLot =
     Cell.fromCoordinates tilemapConfig ( 1, 3 )
-        |> Maybe.map (Lot.build id2 school)
+        |> Maybe.map (Lot.build school)
+        |> Maybe.map (\builderFn -> builderFn id2)
 
 
 suite : Test

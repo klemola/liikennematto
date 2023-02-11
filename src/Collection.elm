@@ -1,6 +1,7 @@
 module Collection exposing
     ( Collection
     , Id
+    , addFromBuilder
     , addWithId
     , empty
     , find
@@ -11,7 +12,6 @@ module Collection exposing
     , initialId
     , map
     , nextId
-    , prepareId
     , remove
     , size
     , update
@@ -46,12 +46,24 @@ get (Id id) (Collection internals) =
     Dict.get id internals.collection
 
 
-addWithId : Id -> a -> Collection a -> Collection a
-addWithId (Id id) entity (Collection internals) =
-    Collection
-        { collection = Dict.insert id entity internals.collection
-        , idCounter = id
+addFromBuilder : (Id -> a) -> Collection a -> ( a, Collection a )
+addFromBuilder builderFn (Collection internals) =
+    let
+        nextIdValue =
+            internals.idCounter + 1
+
+        id =
+            Id nextIdValue
+
+        entity =
+            builderFn id
+    in
+    ( entity
+    , Collection
+        { collection = Dict.insert nextIdValue entity internals.collection
+        , idCounter = nextIdValue
         }
+    )
 
 
 remove : Id -> Collection a -> Collection a
@@ -99,15 +111,6 @@ size (Collection internals) =
     Dict.size internals.collection
 
 
-prepareId : Collection a -> Id
-prepareId (Collection internals) =
-    let
-        nextIdValue =
-            internals.idCounter + 1
-    in
-    Id nextIdValue
-
-
 idMatches : Id -> Id -> Bool
 idMatches (Id a) (Id b) =
     a == b
@@ -120,6 +123,14 @@ idToString (Id id) =
 
 
 -- For tests and mock usage
+
+
+addWithId : Id -> a -> Collection a -> Collection a
+addWithId (Id id) entity (Collection internals) =
+    Collection
+        { collection = Dict.insert id entity internals.collection
+        , idCounter = id
+        }
 
 
 initialId : Id

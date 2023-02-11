@@ -234,23 +234,23 @@ spawnResident time carMake lot world =
         |> Result.map
             (\parkingSpot ->
                 let
-                    carId =
-                        Collection.prepareId world.cars
+                    builderFn =
+                        Car.new carMake
+                            |> Car.withHome lot.id
+                            |> Car.withPosition parkingSpot.position
+                            |> Car.withOrientation (Lot.parkingSpotOrientation lot)
+                            |> Car.build (Just parkingReservation)
+
+                    ( car, nextCars ) =
+                        Collection.addFromBuilder builderFn world.cars
 
                     lotWithReservedParkingSpot =
-                        Lot.reserveParkingSpot carId parkingSpot.id lot
+                        Lot.reserveParkingSpot car.id parkingSpot.id lot
 
                     parkingReservation =
                         { lotId = lot.id
                         , parkingSpotId = parkingSpot.id
                         }
-
-                    car =
-                        Car.new carMake
-                            |> Car.withHome lot.id
-                            |> Car.withPosition parkingSpot.position
-                            |> Car.withOrientation (Lot.parkingSpotOrientation lot)
-                            |> Car.build carId (Just parkingReservation)
 
                     ( routeTriggerAt, nextSeed ) =
                         Random.step
@@ -258,7 +258,7 @@ spawnResident time carMake lot world =
                             world.seed
                 in
                 world
-                    |> World.addCar car
+                    |> World.refreshCars nextCars
                     |> World.updateLot lotWithReservedParkingSpot
                     |> World.setSeed nextSeed
                     |> World.addEvent
@@ -281,25 +281,25 @@ spawnTestCar world =
         |> Maybe.map
             (\nodeCtx ->
                 let
-                    id =
-                        Collection.prepareId world.cars
-
                     ( carMake, nextSeed ) =
                         Random.step Data.Cars.randomCarMake world.seed
 
-                    car =
+                    builderFn =
                         Car.new carMake
                             |> Car.withPosition nodeCtx.node.label.position
                             |> Car.withOrientation (Direction2d.toAngle nodeCtx.node.label.direction)
-                            |> Car.build id Nothing
+                            |> Car.build Nothing
+
+                    ( car, nextCars ) =
+                        Collection.addFromBuilder builderFn world.cars
                 in
                 ( world
-                    |> World.addCar car
+                    |> World.refreshCars nextCars
                     |> World.setSeed nextSeed
                     |> World.addEvent
                         (World.CreateRouteFromNode car.id nodeCtx)
                         (Time.millisToPosix 0)
-                , Just id
+                , Just car.id
                 )
             )
         |> Maybe.withDefault ( world, Nothing )

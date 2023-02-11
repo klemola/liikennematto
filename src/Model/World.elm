@@ -3,9 +3,7 @@ module Model.World exposing
     , RNLookupEntry
     , World
     , WorldEvent(..)
-    , addCar
     , addEvent
-    , addLot
     , createLookup
     , empty
     , findCarById
@@ -16,6 +14,8 @@ module Model.World exposing
     , hasLot
     , hasPendingTilemapChange
     , isEmptyArea
+    , refreshCars
+    , refreshLots
     , removeCar
     , removeLot
     , resolveTilemapUpdate
@@ -210,9 +210,9 @@ addEvent event triggerAt world =
     { world | eventQueue = world.eventQueue |> EventQueue.addEvent queueEvent }
 
 
-addCar : Car -> World -> World
-addCar car world =
-    { world | cars = Collection.addWithId car.id car world.cars }
+refreshCars : Collection Car -> World -> World
+refreshCars nextCars world =
+    { world | cars = nextCars }
 
 
 setCar : Car -> World -> World
@@ -248,12 +248,8 @@ lotAfterCarDespawn car lot =
         |> Lot.releaseParkingLock car.id
 
 
-addLot : Lot -> World -> World
-addLot lot world =
-    let
-        nextLots =
-            Collection.addWithId lot.id lot world.lots
-    in
+refreshLots : Lot -> Collection Lot -> World -> World
+refreshLots lot nextLots world =
     { world
         | lots = nextLots
         , lotLookup = QuadTree.insert lot world.lotLookup

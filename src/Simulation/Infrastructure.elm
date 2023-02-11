@@ -621,7 +621,7 @@ setupTrafficControl currentTrafficLights roadNetwork =
 
 
 updateNodeTrafficControl : Collection TrafficLight -> RNNodeContext -> ( RoadNetwork, Collection TrafficLight ) -> ( RoadNetwork, Collection TrafficLight )
-updateNodeTrafficControl currentTrafficLights nodeCtx ( roadNetwork, nextTrafficLights ) =
+updateNodeTrafficControl currentTrafficLights nodeCtx ( roadNetwork, trafficLights ) =
     case IntDict.size nodeCtx.outgoing of
         -- Four-way intersection (or crossroads)
         3 ->
@@ -629,16 +629,16 @@ updateNodeTrafficControl currentTrafficLights nodeCtx ( roadNetwork, nextTraffic
                 connection =
                     nodeCtx.node.label
 
-                trafficLight =
+                ( trafficLight, nextTrafficLights ) =
                     case Collection.find (\_ existingTrafficLight -> existingTrafficLight.position == connection.position) currentTrafficLights of
                         Just ( _, trafficLightMatch ) ->
-                            trafficLightMatch
+                            ( trafficLightMatch, trafficLights )
 
                         Nothing ->
-                            createTrafficLight connection nextTrafficLights
+                            createTrafficLight connection trafficLights
             in
             ( Graph.insert (linkTrafficLightToNode trafficLight.id nodeCtx) roadNetwork
-            , Collection.addWithId trafficLight.id trafficLight nextTrafficLights
+            , nextTrafficLights
             )
 
         -- Three-way intersection (or T-intersection)
@@ -660,13 +660,13 @@ updateNodeTrafficControl currentTrafficLights nodeCtx ( roadNetwork, nextTraffic
                                 )
             in
             ( Graph.insert nextNodeCtx roadNetwork
-            , nextTrafficLights
+            , trafficLights
             )
 
         -- Not an intersection (assuming max four ways)
         _ ->
             ( Graph.insert (nodeCtx |> setTrafficControl NoTrafficControl) roadNetwork
-            , nextTrafficLights
+            , trafficLights
             )
 
 
@@ -689,19 +689,19 @@ isParallel nodeA nodeB =
         |> Maybe.withDefault False
 
 
-createTrafficLight : Connection -> Collection TrafficLight -> TrafficLight
-createTrafficLight connection nextTrafficLights =
+createTrafficLight : Connection -> Collection TrafficLight -> ( TrafficLight, Collection TrafficLight )
+createTrafficLight connection trafficLights =
     let
-        nextId =
-            Collection.prepareId nextTrafficLights
-
         facing =
             Direction2d.reverse connection.direction
+
+        builderFn =
+            TrafficLight.new
+                |> TrafficLight.withPosition connection.position
+                |> TrafficLight.withFacing facing
+                |> TrafficLight.build
     in
-    TrafficLight.new
-        |> TrafficLight.withPosition connection.position
-        |> TrafficLight.withFacing facing
-        |> TrafficLight.build nextId
+    Collection.addFromBuilder builderFn trafficLights
 
 
 linkTrafficLightToNode : Id -> RNNodeContext -> RNNodeContext

@@ -344,8 +344,8 @@ withVelocity velocity car =
     { car | velocity = velocity }
 
 
-build : Id -> Maybe ParkingReservation -> NewCar -> Car
-build id parkingReservation newCar =
+build : Maybe ParkingReservation -> NewCar -> Id -> Car
+build parkingReservation newCar id =
     let
         ( shape, boundingBox ) =
             adjustedShape newCar.make newCar.position newCar.orientation

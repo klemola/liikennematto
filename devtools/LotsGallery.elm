@@ -58,7 +58,7 @@ main =
         acc =
             { lots = []
             , baseY = 0
-            , id = Collection.prepareId Collection.empty
+            , id = Collection.initialId
             }
     in
     Data.Lots.allLots
@@ -92,7 +92,8 @@ buildLot newLot acc =
     in
     case
         Cell.fromCoordinates tilemapConfig ( x, y )
-            |> Maybe.map (Model.Lot.build acc.id newLot)
+            |> Maybe.map (Model.Lot.build newLot)
+            |> Maybe.map (\builderFn -> builderFn acc.id)
     of
         Just lot ->
             { lots = lot :: acc.lots

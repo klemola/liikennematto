@@ -103,8 +103,8 @@ withFacing direction newTrafficLight =
     { newTrafficLight | facing = direction }
 
 
-build : Id -> NewTrafficLight -> TrafficLight
-build id newTrafficLight =
+build : NewTrafficLight -> Id -> TrafficLight
+build newTrafficLight id =
     let
         initialState =
             if newTrafficLight.facing == Direction2d.positiveX || newTrafficLight.facing == Direction2d.negativeX then
