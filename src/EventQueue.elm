@@ -17,7 +17,7 @@ import Vendor.PriorityQueue as PriorityQueue exposing (PriorityQueue)
 
 maxRetryBackoffMillis : Int
 maxRetryBackoffMillis =
-    60 * 1000
+    10 * 1000
 
 
 retryBackoffMillis : Int -> Int
@@ -36,10 +36,10 @@ retryBackoffMillis retriesAmount =
             1000
 
         5 ->
-            3000
+            2000
 
         _ ->
-            min maxRetryBackoffMillis (retriesAmount * 1000)
+            min maxRetryBackoffMillis (retriesAmount * 500)
 
 
 type EventQueue eventKind
