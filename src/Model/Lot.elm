@@ -80,11 +80,19 @@ build newLot anchor lotId =
     , exitPosition = Point2d.placeIn lotFrame newLot.exitPosition
     , drivewayExitDirection = newLot.drivewayExitDirection
     , parkingSpotExitDirection = newLot.parkingSpotExitDirection
-    , parkingSpots =
-        List.indexedMap
-            (\spotId spot -> createParkingSpot spotId newLot lotFrame spot)
-            newLot.parkingSpots
     , parkingLock = Nothing
+    , parkingSpots =
+        newLot.parkingSpots
+            |> List.indexedMap (\spotId spot -> createParkingSpot spotId newLot lotFrame spot)
+            -- Prioritize resident parking, so that those spots are tried first when looking for a free spot
+            |> List.sortWith
+                (\spotA spotB ->
+                    if spotA.parkingRestriction == ResidentParkingOnly && spotB.parkingRestriction == NoRestriction then
+                        LT
+
+                    else
+                        GT
+                )
     }
 
 
