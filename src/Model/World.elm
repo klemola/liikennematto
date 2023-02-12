@@ -292,12 +292,21 @@ removeLot lotId world =
                                 car
                         )
                         world.cars
+
+                nextLots =
+                    Collection.remove lotId world.lots
+
+                nextTilemap =
+                    Tilemap.removeAnchor lotId world.tilemap
+
+                nextLookup =
+                    createLookup (Collection.values nextLots) world
             in
             { world
-                | lots = Collection.remove lotId world.lots
-                , tilemap = Tilemap.removeAnchor lotId world.tilemap
+                | lots = nextLots
+                , tilemap = nextTilemap
                 , cars = nextCars
-                , lotLookup = QuadTree.remove lot world.lotLookup
+                , lotLookup = nextLookup
             }
 
         Nothing ->

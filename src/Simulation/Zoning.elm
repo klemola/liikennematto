@@ -133,11 +133,7 @@ validateLot changedCells changedAnchors lotId lot world =
                 (\( id, cell ) ->
                     case Tilemap.tileAt world.tilemap cell of
                         Just tile ->
-                            if id == lotId then
-                                not (Tile.isLotEntry tile)
-
-                            else
-                                False
+                            id == lotId && not (Tile.isLotEntry tile)
 
                         Nothing ->
                             id == lotId
