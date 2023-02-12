@@ -545,17 +545,12 @@ checkYield { activeCar, otherCars } signPosition checkArea =
 
 hasPriority : LMBoundingBox2d -> Car -> Bool
 hasPriority yieldCheckArea otherCar =
-    let
-        centerPoint =
-            BoundingBox2d.centerPoint yieldCheckArea
-
-        isInYieldCheckArea =
-            BoundingBox2d.contains otherCar.position yieldCheckArea
-    in
-    isInYieldCheckArea
+    Car.isMoving otherCar
+        && BoundingBox2d.contains otherCar.position yieldCheckArea
         && -- If the center point of the yield check area is in any way visible to the car,
            -- it must be heading to the intersection - it has priority
-           (centerPoint
+           (yieldCheckArea
+                |> BoundingBox2d.centerPoint
                 |> Common.isInTheNormalPlaneOf
                     (Direction2d.fromAngle otherCar.orientation)
                     otherCar.position

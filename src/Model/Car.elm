@@ -8,6 +8,7 @@ module Model.Car exposing
     , adjustedShape
     , build
     , currentState
+    , isMoving
     , new
     , routed
     , routedWithParking
@@ -382,6 +383,11 @@ currentState car =
 shouldWatchTraffic : Car -> Bool
 shouldWatchTraffic car =
     FSM.toCurrentState car.fsm == Driving
+
+
+isMoving : Car -> Bool
+isMoving car =
+    not <| isCloseToZeroVelocity car.velocity
 
 
 
