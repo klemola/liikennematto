@@ -1,7 +1,7 @@
 module Simulation.Traffic exposing
     ( Rule(..)
     , RuleSetup
-    , addLotResident
+    , addLotResidents
     , applySteering
     , checkRules
     , rerouteCarsIfNeeded
@@ -12,10 +12,9 @@ module Simulation.Traffic exposing
     )
 
 import BoundingBox2d
-import Collection
+import Collection exposing (Id)
 import Common exposing (randomFutureTime)
 import Data.Cars exposing (CarMake)
-import Data.Lots
 import Direction2d
 import Duration exposing (Duration)
 import FSM
@@ -214,9 +213,9 @@ rerouteCarsIfNeeded world =
 --
 
 
-addLotResident : Time.Posix -> Lot -> World -> World
-addLotResident time lot world =
-    case Data.Lots.resident lot.kind lot.themeColor of
+addLotResidents : Time.Posix -> Id -> List CarMake -> World -> World
+addLotResidents time lotId residents world =
+    case List.head residents of
         Just carMake ->
             let
                 ( triggerAt, nextSeed ) =
@@ -227,7 +226,7 @@ addLotResident time lot world =
             world
                 |> World.setSeed nextSeed
                 |> World.addEvent
-                    (World.SpawnResident carMake lot.id)
+                    (World.SpawnResident carMake lotId)
                     triggerAt
 
         Nothing ->

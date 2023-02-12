@@ -85,7 +85,7 @@ attemptBuildLot time world newLot =
                             world.tilemap
                         )
                     |> Infrastructure.connectLotToRoadNetwork
-                    |> Traffic.addLotResident time lot
+                    |> Traffic.addLotResidents time lot.id newLot.residents
             )
 
 
