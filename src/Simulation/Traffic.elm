@@ -215,22 +215,29 @@ rerouteCarsIfNeeded world =
 
 addLotResidents : Time.Posix -> Id -> List CarMake -> World -> World
 addLotResidents time lotId residents world =
-    case List.head residents of
-        Just carMake ->
+    addLotResidentsHelper time lotId residents world.seed world
+
+
+addLotResidentsHelper : Time.Posix -> Id -> List CarMake -> Random.Seed -> World -> World
+addLotResidentsHelper time lotId remainingResidents seed world =
+    case remainingResidents of
+        [] ->
+            World.setSeed seed world
+
+        resident :: others ->
             let
                 ( triggerAt, nextSeed ) =
                     Random.step
-                        (randomFutureTime ( 2500, 10000 ) time)
-                        world.seed
-            in
-            world
-                |> World.setSeed nextSeed
-                |> World.addEvent
-                    (World.SpawnResident carMake lotId)
-                    triggerAt
+                        (randomFutureTime ( 5000, 20000 ) time)
+                        seed
 
-        Nothing ->
-            world
+                nextWorld =
+                    World.addEvent
+                        (World.SpawnResident resident lotId)
+                        triggerAt
+                        world
+            in
+            addLotResidentsHelper time lotId others nextSeed nextWorld
 
 
 spawnResident : Time.Posix -> CarMake -> Lot -> World -> Result String World
