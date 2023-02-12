@@ -2778,6 +2778,7 @@ residentialApartments1 =
     , parkingLaneStartPosition = Point2d.fromMeters { x = 4.75, y = 7.1 }
     , residents =
         [ Cars.hatchback Colors.yellowGreen Colors.yellowGreenDarker
+        , Cars.sedan Colors.yellowGreen Colors.yellowGreenDarker
         ]
     }
 
