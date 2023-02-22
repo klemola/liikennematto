@@ -100,8 +100,8 @@ straightSpline origin target =
     CubicSpline2d.fromControlPoints origin cp1 cp2 target
 
 
-mirroredSpline : Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> CubicSpline2d Length.Meters a
-mirroredSpline origin target direction =
+mirroredSpline : Point2d Length.Meters a -> Point2d Length.Meters a -> Float -> Direction2d a -> CubicSpline2d Length.Meters a
+mirroredSpline origin target distanceMultiplier direction =
     let
         distanceToTarget =
             Point2d.distanceFrom origin target
@@ -120,7 +120,7 @@ mirroredSpline origin target direction =
 
         magnitude =
             distanceToTarget
-                |> Quantity.multiplyBy 0.33
+                |> Quantity.multiplyBy distanceMultiplier
                 |> Quantity.plus differenceOffset
 
         cp1 =
@@ -162,16 +162,8 @@ lotEntrySpline { parkingSpotPosition, lotEntryPosition, parkingSpotExitDirection
         startDirection =
             drivewayExitDirection |> Direction2d.reverse
     in
-    if parkingSkipsParkingLane parkingLaneStartPosition parkingSpotPosition drivewayExitDirection then
-        [ curveSpline lotEntryPosition parkingSpotPosition startDirection 0.6 ]
-
-    else if parkingSpotExitDirection == drivewayExitDirection then
-        [ mirroredSpline lotEntryPosition parkingSpotPosition startDirection ]
-
-    else if parkingSpotCloseToParkingLaneStart lotEntryPosition parkingSpotPosition then
-        [ mirroredSpline lotEntryPosition parkingLaneStartPosition startDirection
-        , curveSpline parkingLaneStartPosition parkingSpotPosition startDirection 0.8
-        ]
+    if parkingSpotExitDirection == drivewayExitDirection then
+        [ mirroredSpline lotEntryPosition parkingSpotPosition 0.5 startDirection ]
 
     else
         let
@@ -181,7 +173,7 @@ lotEntrySpline { parkingSpotPosition, lotEntryPosition, parkingSpotExitDirection
                     parkingSpotPosition
                     startDirection
         in
-        [ mirroredSpline lotEntryPosition parkingLaneStartPosition startDirection
+        [ mirroredSpline lotEntryPosition parkingLaneStartPosition 0.33 startDirection
         , straightSpline parkingLaneStartPosition parkingSpotSplineStart
         , curveSpline parkingSpotSplineStart parkingSpotPosition startDirection 0.7
         ]
@@ -193,15 +185,12 @@ lotExitSpline { parkingSpotPosition, lotExitPosition, parkingSpotExitDirection, 
         startDirection =
             parkingSpotExitDirection
     in
-    if parkingSkipsParkingLane parkingLaneStartPosition parkingSpotPosition drivewayExitDirection then
-        [ curveSpline parkingSpotPosition lotExitPosition startDirection 0.6 ]
-
-    else if parkingSpotExitDirection == drivewayExitDirection then
-        [ mirroredSpline parkingSpotPosition lotExitPosition startDirection ]
+    if parkingSpotExitDirection == drivewayExitDirection then
+        [ mirroredSpline parkingSpotPosition lotExitPosition 0.66 startDirection ]
 
     else if parkingSpotCloseToParkingLaneStart lotExitPosition parkingSpotPosition then
         [ curveSpline parkingSpotPosition parkingLaneStartPosition startDirection 0.8
-        , mirroredSpline parkingLaneStartPosition lotExitPosition drivewayExitDirection
+        , mirroredSpline parkingLaneStartPosition lotExitPosition 0.33 drivewayExitDirection
         ]
 
     else
@@ -214,7 +203,7 @@ lotExitSpline { parkingSpotPosition, lotExitPosition, parkingSpotExitDirection, 
         in
         [ curveSpline parkingSpotPosition parkingSpotSplineStart startDirection 0.7
         , straightSpline parkingSpotSplineStart parkingLaneStartPosition
-        , mirroredSpline parkingLaneStartPosition lotExitPosition drivewayExitDirection
+        , mirroredSpline parkingLaneStartPosition lotExitPosition 0.33 drivewayExitDirection
         ]
 
 
@@ -240,8 +229,3 @@ parkingSpotSplineStartPosition parkingLaneStartPosition parkingSpotPosition star
 parkingSpotCloseToParkingLaneStart : Point2d Length.Meters a -> Point2d Length.Meters a -> Bool
 parkingSpotCloseToParkingLaneStart lotEntryOrExit parkingSpotPosition =
     Point2d.distanceFrom lotEntryOrExit parkingSpotPosition |> Quantity.lessThan (Length.meters 16)
-
-
-parkingSkipsParkingLane : Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> Bool
-parkingSkipsParkingLane parkingLaneStartPosition parkingSpotPosition lotExitDirection =
-    parkingSpotPosition |> Common.isInTheNormalPlaneOf lotExitDirection parkingLaneStartPosition
