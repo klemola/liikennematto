@@ -240,26 +240,34 @@ curveBottomLeft =
 
 regularHorizontal : List (Svg msg)
 regularHorizontal =
-    [ path
-        [ Attributes.fill Colors.gray3CSS
-        , Attributes.d "M0 223.5V32h256v191.5z"
+    [ Svg.rect
+        [ Attributes.y "224"
+        , Attributes.width "192"
+        , Attributes.height "256"
+        , Attributes.transform "rotate(-90 0 224)"
+        , Attributes.fill "#BCA9A9"
+        ]
+        []
+    , Svg.rect
+        [ Attributes.y "188"
+        , Attributes.width "120"
+        , Attributes.height "256"
+        , Attributes.transform "rotate(-90 0 188)"
+        , Attributes.fill "#766565"
         ]
         []
     , path
-        [ Attributes.fill Colors.gray2CSS
-        , Attributes.d "M0 188V68h256v120z"
+        [ Attributes.d "M13 128H38.6M64.2 128H89.8M115.4 128H141M166.6 128H192.2M217.8 128H243.4"
+        , Attributes.stroke "#F0F0DD"
+        , Attributes.strokeWidth "4"
+        , Attributes.fill "none"
         ]
         []
     , path
-        [ Attributes.fill Colors.gray6CSS
-        , Attributes.d "M13 130h25.6v-4H13v4zm51.2 0h25.6v-4H64.2v4zm51.2 0H141v-4h-25.6v4zm51.2 0h25.6v-4h-25.6v4zm51.2 0h25.6v-4h-25.6v4z"
-        ]
-        []
-    , path
-        [ Attributes.stroke Colors.gray1CSS
+        [ Attributes.d "M0 30.5L256 30.5M0 225.5L256 225.5"
+        , Attributes.stroke "#3D3434"
         , Attributes.strokeWidth "3"
         , Attributes.fill "none"
-        , Attributes.d "M0 30.5h256M0 225.5h256"
         ]
         []
     ]
@@ -268,23 +276,27 @@ regularHorizontal =
 intersectionTUp : List (Svg msg)
 intersectionTUp =
     [ path
-        [ Attributes.fill Colors.gray3CSS
-        , Attributes.d "M0 32c17.673 0 32-14.327 32-32h192c0 17.673 14.327 32 32 32v192H0V32z"
+        [ Attributes.d "M256 32C238.327 32 224 17.6731 224 0H32C32 17.6731 17.6731 32 0 32V224H256V32Z"
+        , Attributes.fill "#BCA9A9"
         ]
         []
     , path
-        [ Attributes.fill Colors.gray2CSS
-        , Attributes.d "M188 0H68v36c0 17.673-14.327 32-32 32H0v120h256V68h-36c-17.673 0-32-14.327-32-32V0z"
+        [ Attributes.d "M68 0H188V36C188 53.6731 202.327 68 220 68H256V188H188H68H0V68H36C53.6731 68 68 53.6731 68 36V0Z"
+        , Attributes.fill "#766565"
         ]
         []
     , path
-        [ Attributes.fill Colors.gray6CSS
-        , Attributes.d "M125 6v32h6V6h-6zm22 0v32h6V6h-6zm22 0v32h6V6h-6zm-66 0v32h6V6h-6zM81 6v32h6V6h-6zm137 125h32v-6h-32v6zm0-22h32v-6h-32v6zm0-22h32v-6h-32v6zm0 66h32v-6h-32v6zm0 22h32v-6h-32v6zM6 131h32v-6H6v6zm0-22h32v-6H6v6zm0-22h32v-6H6v6zm0 66h32v-6H6v6zm0 22h32v-6H6v6z"
+        [ Attributes.d "M128 6V38M106 6V38M84 6V38M150 6V38M172 6V38M38 128H6M38 106H6M38 84H6M38 150H6M38 172H6"
+        , Attributes.stroke "#F0F0DD"
+        , Attributes.strokeWidth "6"
+        , Attributes.fill "none"
         ]
         []
     , path
-        [ Attributes.fill Colors.gray1CSS
-        , Attributes.d "M224 0c0 17.673 14.327 32 32 32v-3c-16.016 0-29-12.984-29-29h-3zM0 32c17.673 0 32-14.327 32-32h-3c0 16.016-12.984 29-29 29v3zm0 195h256v-3H0v3z"
+        [ Attributes.d "M30.5 0C30.5 16.8447 16.8447 30.5 0 30.5M256 30.5C239.155 30.5 225.5 16.8447 225.5 0M256 225.5H0"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "3"
+        , Attributes.fill "none"
         ]
         []
     ]
@@ -319,26 +331,32 @@ deadendUp =
 
 regularVertical : List (Svg msg)
 regularVertical =
-    [ path
-        [ Attributes.fill Colors.gray3CSS
-        , Attributes.d "M32.5 0H224v256H32.5z"
+    [ Svg.rect
+        [ Attributes.x "32"
+        , Attributes.width "192"
+        , Attributes.height "256"
+        , Attributes.fill "#BCA9A9"
+        ]
+        []
+    , Svg.rect
+        [ Attributes.x "68"
+        , Attributes.width "120"
+        , Attributes.height "256"
+        , Attributes.fill "#766565"
         ]
         []
     , path
-        [ Attributes.fill Colors.gray2CSS
-        , Attributes.d "M68 0h120v256H68z"
+        [ Attributes.d "M128 13V38.6M128 64.2V89.8M128 115.4V141M128 166.6V192.2M128 217.8V243.4"
+        , Attributes.stroke "#F0F0DD"
+        , Attributes.strokeWidth "4"
+        , Attributes.fill "none"
         ]
         []
     , path
-        [ Attributes.fill Colors.gray6CSS
-        , Attributes.d "M126 13v25.6h4V13h-4zm0 51.2v25.6h4V64.2h-4zm0 51.2V141h4v-25.6h-4zm0 51.2v25.6h4v-25.6h-4zm0 51.2v25.6h4v-25.6h-4z"
-        ]
-        []
-    , path
-        [ Attributes.stroke Colors.gray1CSS
+        [ Attributes.d "M225.5 0V256M30.5 0V256"
+        , Attributes.stroke "#3D3434"
         , Attributes.strokeWidth "3"
         , Attributes.fill "none"
-        , Attributes.d "M225.5 0v256M30.5 0v256"
         ]
         []
     ]
@@ -372,23 +390,27 @@ curveTopRight =
 intersectionTLeft : List (Svg msg)
 intersectionTLeft =
     [ path
-        [ Attributes.fill Colors.gray3CSS
-        , Attributes.d "M32 256c0-17.673-14.327-32-32-32V32c17.673 0 32-14.327 32-32h192v256H32z"
+        [ Attributes.d "M32 256C32 238.327 17.6731 224 0 224L0 32C17.6731 32 32 17.6731 32 0H224L224 256H32Z"
+        , Attributes.fill "#BCA9A9"
         ]
         []
     , path
-        [ Attributes.fill Colors.gray2CSS
-        , Attributes.d "M0 68v120h36c17.673 0 32 14.327 32 32v36h120V0H68v36c0 17.673-14.327 32-32 32H0z"
+        [ Attributes.d "M0 68L0 188H36C53.6731 188 68 202.327 68 220V256H188V188V68L188 0H68V36C68 53.6731 53.6731 68 36 68H0Z"
+        , Attributes.fill "#766565"
         ]
         []
     , path
-        [ Attributes.fill Colors.gray6CSS
-        , Attributes.d "M6 131h32v-6H6v6zm0-22h32v-6H6v6zm0-22h32v-6H6v6zm0 66h32v-6H6v6zm0 22h32v-6H6v6zM131 38V6h-6v32h6zm-22 0V6h-6v32h6zm-22 0V6h-6v32h6zm66 0V6h-6v32h6zm22 0V6h-6v32h6zm-44 212v-32h-6v32h6zm-22 0v-32h-6v32h6zm-22 0v-32h-6v32h6zm66 0v-32h-6v32h6zm22 0v-32h-6v32h6z"
+        [ Attributes.d "M6 128H38M6 106H38M6 84H38M6 150H38M6 172H38M128 38V6M106 38V6M84 38V6M150 38V6M172 38V6"
+        , Attributes.stroke "#F0F0DD"
+        , Attributes.strokeWidth "6"
+        , Attributes.fill "none"
         ]
         []
     , path
-        [ Attributes.fill Colors.gray1CSS
-        , Attributes.d "M0 32c17.673 0 32-14.327 32-32h-3c0 16.016-12.984 29-29 29v3zm32 224c0-17.673-14.327-32-32-32v3c16.016 0 29 12.984 29 29h3zm195 0V0h-3v256h3z"
+        [ Attributes.d "M0 30.5C16.8447 30.5 30.5 16.8447 30.5 0M30.5 256C30.5 239.155 16.8447 225.5 0 225.5M225.5 256L225.5 0"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "3"
+        , Attributes.fill "none"
         ]
         []
     ]
@@ -422,23 +444,27 @@ curveTopLeft =
 intersectionTRight : List (Svg msg)
 intersectionTRight =
     [ path
-        [ Attributes.fill Colors.gray3CSS
-        , Attributes.d "M224 0c0 17.673 14.327 32 32 32v192c-17.673 0-32 14.327-32 32H32V0h192z"
+        [ Attributes.d "M224 256C224 238.327 238.327 224 256 224V32C238.327 32 224 17.6731 224 0H32L32 256H224Z"
+        , Attributes.fill "#BCA9A9"
         ]
         []
     , path
-        [ Attributes.fill Colors.gray2CSS
-        , Attributes.d "M256 188V68h-36c-17.673 0-32-14.327-32-32V0H68v256h120v-36c0-17.673 14.327-32 32-32h36z"
+        [ Attributes.d "M256 68V188H220C202.327 188 188 202.327 188 220V256H68V188V68L68 0H188V36C188 53.6731 202.327 68 220 68H256Z"
+        , Attributes.fill "#766565"
         ]
         []
     , path
-        [ Attributes.fill Colors.gray6CSS
-        , Attributes.d "M250 125h-32v6h32v-6zm0 22h-32v6h32v-6zm0 22h-32v6h32v-6zm0-66h-32v6h32v-6zm0-22h-32v6h32v-6zM125 218v32h6v-32h-6zm22 0v32h6v-32h-6zm22 0v32h6v-32h-6zm-66 0v32h6v-32h-6zm-22 0v32h6v-32h-6zM125 6v32h6V6h-6zm22 0v32h6V6h-6zm22 0v32h6V6h-6zm-66 0v32h6V6h-6zM81 6v32h6V6h-6z"
+        [ Attributes.d "M250 128H218M250 106H218M250 84H218M250 150H218M250 172H218M128 38V6M150 38V6M172 38V6M106 38V6M84 38V6"
+        , Attributes.stroke "#F0F0DD"
+        , Attributes.strokeWidth "6"
+        , Attributes.fill "none"
         ]
         []
     , path
-        [ Attributes.fill Colors.gray1CSS
-        , Attributes.d "M256 224c-17.673 0-32 14.327-32 32h3c0-16.016 12.984-29 29-29v-3zM224 0c0 17.673 14.327 32 32 32v-3c-16.016 0-29-12.984-29-29h-3zM29 0v256h3V0h-3z"
+        [ Attributes.d "M256 30.5C239.155 30.5 225.5 16.8447 225.5 0M225.5 256C225.5 239.155 239.155 225.5 256 225.5M30.5 256L30.5 0"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "3"
+        , Attributes.fill "none"
         ]
         []
     ]
@@ -447,23 +473,27 @@ intersectionTRight =
 intersectionTDown : List (Svg msg)
 intersectionTDown =
     [ path
-        [ Attributes.fill Colors.gray3CSS
-        , Attributes.d "M256 224c-17.673 0-32 14.327-32 32H32c0-17.673-14.327-32-32-32V32h256v192z"
+        [ Attributes.d "M256 224C238.327 224 224 238.327 224 256L32 256C32 238.327 17.6731 224 0 224L0 32L256 32V224Z"
+        , Attributes.fill "#BCA9A9"
         ]
         []
     , path
-        [ Attributes.fill Colors.gray2CSS
-        , Attributes.d "M68 256h120v-36c0-17.673 14.327-32 32-32h36V68H0v120h36c17.673 0 32 14.327 32 32v36z"
+        [ Attributes.d "M68 256L188 256V220C188 202.327 202.327 188 220 188H256V68H188L68 68H0L0 188H36C53.6731 188 68 202.327 68 220V256Z"
+        , Attributes.fill "#766565"
         ]
         []
     , path
-        [ Attributes.fill Colors.gray6CSS
-        , Attributes.d "M131 250v-32h-6v32h6zm-22 0v-32h-6v32h6zm-22 0v-32h-6v32h6zm66 0v-32h-6v32h6zm22 0v-32h-6v32h6zM38 125H6v6h32v-6zm0 22H6v6h32v-6zm0 22H6v6h32v-6zm0-66H6v6h32v-6zm0-22H6v6h32v-6zm212 44h-32v6h32v-6zm0 22h-32v6h32v-6zm0 22h-32v6h32v-6zm0-66h-32v6h32v-6zm0-22h-32v6h32v-6z"
+        [ Attributes.d "M128 250V218M106 250V218M84 250V218M150 250V218M172 250V218M38 128H6M38 150H6M38 172H6M38 106H6M38 84H6"
+        , Attributes.stroke "#F0F0DD"
+        , Attributes.strokeWidth "6"
+        , Attributes.fill "none"
         ]
         []
     , path
-        [ Attributes.fill Colors.gray1CSS
-        , Attributes.d "M32 256c0-17.673-14.327-32-32-32v3c16.016 0 29 12.984 29 29h3zm224-32c-17.673 0-32 14.327-32 32h3c0-16.016 12.984-29 29-29v-3zm0-195H0v3h256v-3z"
+        [ Attributes.d "M30.5 256C30.5 239.155 16.8447 225.5 0 225.5M256 225.5C239.155 225.5 225.5 239.155 225.5 256M256 30.5L0 30.5"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "3"
+        , Attributes.fill "none"
         ]
         []
     ]
