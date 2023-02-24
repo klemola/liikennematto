@@ -620,7 +620,9 @@ updateNodeTrafficControl currentTrafficLights nodeCtx ( roadNetwork, trafficLigh
                 ( trafficLight, nextTrafficLights ) =
                     case Collection.find (\_ existingTrafficLight -> existingTrafficLight.position == connection.position) currentTrafficLights of
                         Just ( _, trafficLightMatch ) ->
-                            ( trafficLightMatch, trafficLights )
+                            ( trafficLightMatch
+                            , Collection.addWithId trafficLightMatch.id trafficLightMatch trafficLights
+                            )
 
                         Nothing ->
                             createTrafficLight connection trafficLights
