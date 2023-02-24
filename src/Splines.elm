@@ -166,6 +166,11 @@ lotEntrySpline { parkingSpotPosition, lotEntryPosition, parkingSpotExitDirection
     if parkingSpotExitDirection == drivewayExitDirection then
         [ mirroredSpline lotEntryPosition parkingSpotPosition 0.5 startDirection ]
 
+    else if parkingSpotCloseToParkingLaneStart lotEntryPosition parkingSpotPosition then
+        [ mirroredSpline lotEntryPosition parkingLaneStartPosition 0.33 startDirection
+        , curveSpline parkingLaneStartPosition parkingSpotPosition startDirection 0.8
+        ]
+
     else
         let
             parkingSpotSplineStart =
