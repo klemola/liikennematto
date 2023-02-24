@@ -31,7 +31,7 @@ import Quantity
 
 uTurnDistance : Length
 uTurnDistance =
-    Length.meters 4
+    Length.meters 3
 
 
 asGlobalSpline : LMFrame2d -> LMCubicSpline2dLocal -> LMCubicSpline2d
