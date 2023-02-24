@@ -12,7 +12,6 @@ import Data.Roads exposing (innerLaneOffset, outerLaneOffset)
 import Dict exposing (Dict)
 import Direction2d
 import Graph exposing (Edge, Node)
-import IntDict
 import Length
 import Maybe.Extra as Maybe
 import Model.Cell as Cell exposing (Cell)
@@ -247,7 +246,6 @@ deadendConnections cell trafficDirection =
             , position = entryPosition
             , direction = trafficDirection
             , cell = cell
-            , environment = RoadNetwork.Road
             , trafficControl = NoTrafficControl
             }
 
@@ -256,7 +254,6 @@ deadendConnections cell trafficDirection =
             , position = exitPosition
             , direction = Direction2d.reverse trafficDirection
             , cell = cell
-            , environment = RoadNetwork.Road
             , trafficControl = NoTrafficControl
             }
     in
@@ -319,26 +316,17 @@ connectionsByTileEntryDirection tilemap cell tile direction =
 
         startConnectionCell =
             chooseConnectionCell tilemap tile direction startConnectionKind cell
-
-        environment =
-            if Tile.isIntersection tile || Tile.isLotEntry tile then
-                RoadNetwork.Intersection
-
-            else
-                RoadNetwork.Road
     in
     [ { kind = startConnectionKind
       , position = origin |> Point2d.translateBy (startOffset |> Vector2d.plus extraOffset)
       , direction = startDirection
       , cell = startConnectionCell
-      , environment = environment
       , trafficControl = NoTrafficControl
       }
     , { kind = endConnectionKind
       , position = origin |> Point2d.translateBy (endOffset |> Vector2d.plus extraOffset)
       , direction = endDirection
       , cell = cell
-      , environment = environment
       , trafficControl = NoTrafficControl
       }
     ]
@@ -622,7 +610,7 @@ setupTrafficControl currentTrafficLights roadNetwork =
 
 updateNodeTrafficControl : Collection TrafficLight -> RNNodeContext -> ( RoadNetwork, Collection TrafficLight ) -> ( RoadNetwork, Collection TrafficLight )
 updateNodeTrafficControl currentTrafficLights nodeCtx ( roadNetwork, trafficLights ) =
-    case IntDict.size nodeCtx.outgoing of
+    case RoadNetwork.outgoingConnectionsAmount nodeCtx of
         -- Four-way intersection (or crossroads)
         3 ->
             let

@@ -42,11 +42,12 @@ asGlobalSpline frame localSpline =
 type alias PathParameters =
     { origin : LMPoint2d
     , direction : LMDirection2d
+    , environment : RoadNetwork.ConnectionEnvironment
     }
 
 
 toNode : PathParameters -> RNNodeContext -> LMCubicSpline2d
-toNode { direction, origin } { node } =
+toNode { direction, origin, environment } { node } =
     let
         target =
             node.label.position
@@ -67,7 +68,7 @@ toNode { direction, origin } { node } =
         else
             let
                 parameter =
-                    if node.label.environment == RoadNetwork.Intersection then
+                    if environment == RoadNetwork.Intersection then
                         0.75
 
                     else

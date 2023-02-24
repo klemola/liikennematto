@@ -208,21 +208,29 @@ buildRoute startNodeValue nodes initialSplines =
 
 
 nodesToSplines : RNNodeContext -> List RNNodeContext -> List LMCubicSpline2d -> List LMCubicSpline2d
-nodesToSplines last remaining splines =
+nodesToSplines current remaining splines =
     case remaining of
         [] ->
             splines
 
-        current :: others ->
+        next :: others ->
             let
+                environment =
+                    if RoadNetwork.outgoingConnectionsAmount current > 1 then
+                        RoadNetwork.Intersection
+
+                    else
+                        RoadNetwork.Road
+
                 spline =
                     Splines.toNode
-                        { origin = last.node.label.position
-                        , direction = last.node.label.direction
+                        { origin = current.node.label.position
+                        , direction = current.node.label.direction
+                        , environment = environment
                         }
-                        current
+                        next
             in
-            nodesToSplines current others (splines ++ [ spline ])
+            nodesToSplines next others (splines ++ [ spline ])
 
 
 createPath :

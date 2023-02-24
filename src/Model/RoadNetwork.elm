@@ -14,6 +14,7 @@ module Model.RoadNetwork exposing
     , getOutgoingConnectionIds
     , getOutgoingConnectionsAndCosts
     , getRandomNode
+    , outgoingConnectionsAmount
     , size
     , trafficControl
     )
@@ -45,7 +46,6 @@ type alias Connection =
     , position : LMPoint2d
     , direction : LMDirection2d
     , cell : Cell
-    , environment : ConnectionEnvironment
     , trafficControl : TrafficControl
     }
 
@@ -147,6 +147,11 @@ getRandomNode roadNetwork seed predicate =
     in
     Random.step randomNodeGenerator seed
         |> Tuple.first
+
+
+outgoingConnectionsAmount : RNNodeContext -> Int
+outgoingConnectionsAmount nodeCtx =
+    IntDict.size nodeCtx.outgoing
 
 
 getOutgoingConnectionIds : RNNodeContext -> List NodeId
