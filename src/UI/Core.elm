@@ -207,6 +207,7 @@ colorTarget =
     uiCompat (Colors.withAlpha 0.65 Colors.gray7)
 
 
+colorTransparent : Element.Color
 colorTransparent =
     Element.rgba255 0 0 0 0
 

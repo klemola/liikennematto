@@ -5,7 +5,7 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Html exposing (Html)
-import Html.Attributes
+import Html.Attributes as HtmlAttribute
 import Message exposing (Message(..))
 import Model.Editor exposing (mouseDetected)
 import Model.Liikennematto exposing (Liikennematto, SimulationState(..))
@@ -23,6 +23,7 @@ import UI.Core
         , renderSafeAreaXSize
         , renderSafeAreaYSize
         , scrollbarAwareOffsetF
+        , whitespaceRegular
         , whitespaceTight
         )
 import UI.DebugPanel as DebugPanel
@@ -41,6 +42,7 @@ update msg model =
     ( modelWithEditorChanges, Cmd.batch [ debugCmd, editorCmd ] )
 
 
+baseLayoutOptions : List Element.Option
 baseLayoutOptions =
     [ Element.focusStyle
         { borderColor = Nothing
@@ -51,6 +53,7 @@ baseLayoutOptions =
     ]
 
 
+touchLayoutOptions : List Element.Option
 touchLayoutOptions =
     Element.noHover :: baseLayoutOptions
 
@@ -73,8 +76,8 @@ layout model render renderDebugLayers =
         , Element.inFront (leftControls model)
         , Element.inFront (debugPanel model)
         , Element.inFront (restoreGameControl model.previousWorld)
-        , Element.htmlAttribute (Html.Attributes.id containerId)
-        , Element.htmlAttribute (Html.Attributes.style "touch-action" "pan-x pan-y")
+        , Element.htmlAttribute (HtmlAttribute.id containerId)
+        , Element.htmlAttribute (HtmlAttribute.style "touch-action" "pan-x pan-y")
         ]
         (renderWrapper model render renderDebugLayers)
 
@@ -106,7 +109,7 @@ renderWrapper model render debugLayers =
                 ( Element.centerY, 0 )
 
             else
-                ( Element.alignTop, toFloat borderRadiusButton )
+                ( Element.alignTop, toFloat whitespaceRegular )
     in
     Element.el
         [ Element.width (Element.px wrapperWidth)
@@ -117,7 +120,7 @@ renderWrapper model render debugLayers =
         (Element.el
             [ Element.width (Element.px renderWidth)
             , Element.height (Element.px renderHeight)
-            , Element.moveDown renderTopOffset
+            , Element.htmlAttribute (HtmlAttribute.style "top" (String.fromFloat renderTopOffset ++ "px"))
             , Element.centerX
             , Element.clip
             , verticalAlignment
