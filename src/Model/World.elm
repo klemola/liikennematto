@@ -266,16 +266,12 @@ removeLot lotId world =
     case Collection.get lotId world.lots of
         Just lot ->
             let
-                parkedCarsIds =
-                    lot.parkingSpots
-                        |> List.filterMap (\parkingSpot -> parkingSpot.reservedBy)
-
                 nextCars =
                     Collection.map
                         (\_ car ->
                             let
-                                isParkedOnLot =
-                                    List.any (Collection.idMatches car.id) parkedCarsIds
+                                isInsideLot =
+                                    lot.boundingBox |> BoundingBox2d.contains car.position
 
                                 homeRemoved =
                                     case car.homeLotId of
@@ -285,7 +281,7 @@ removeLot lotId world =
                                         Nothing ->
                                             False
                             in
-                            if isParkedOnLot || homeRemoved then
+                            if isInsideLot || homeRemoved then
                                 Car.triggerDespawn car
 
                             else

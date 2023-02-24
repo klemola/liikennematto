@@ -304,7 +304,7 @@ triggerDespawn car =
     in
     { car
         | fsm = nextFSM
-        , route = Route.stopAtSplineEnd car.route |> Maybe.withDefault car.route
+        , route = Route.stopAtSplineEnd car.route |> Maybe.withDefault Route.Unrouted
     }
 
 
