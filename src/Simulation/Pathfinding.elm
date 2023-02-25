@@ -316,29 +316,37 @@ randomNodeMatchPredicate startNodeCtx endNode =
 
 attemptBeginParking : Car -> Id -> World -> Result String World
 attemptBeginParking car lotId world =
-    World.findLotById lotId world
-        |> Maybe.andThen
-            (Lot.prepareParking
-                (parkingPermissionPredicate car.homeLotId lotId)
-                car.id
-            )
-        |> Maybe.andThen
-            (\( lotWithParkingLock, parkingSpot ) ->
-                let
-                    parkingReservation =
-                        { lotId = lotId
-                        , parkingSpotId = parkingSpot.id
-                        }
-                in
-                Route.arriveToParkingSpot parkingReservation world.lots car.route
-                    |> Maybe.map
-                        (\route ->
-                            world
-                                |> World.setCar (Car.routedWithParking route parkingReservation car)
-                                |> World.updateLot (Lot.reserveParkingSpot car.id parkingSpot.id lotWithParkingLock)
-                        )
-            )
-        |> Result.fromMaybe "Lot not ready for parking"
+    case World.findLotById lotId world of
+        Just lot ->
+            lot
+                |> Lot.prepareParking
+                    (parkingPermissionPredicate car.homeLotId lotId)
+                    car.id
+                |> Maybe.andThen
+                    (\( lotWithParkingLock, parkingSpot ) ->
+                        let
+                            parkingReservation =
+                                { lotId = lotId
+                                , parkingSpotId = parkingSpot.id
+                                }
+                        in
+                        Route.arriveToParkingSpot parkingReservation world.lots car.route
+                            |> Maybe.map
+                                (\route ->
+                                    world
+                                        |> World.setCar (Car.routedWithParking route parkingReservation car)
+                                        |> World.updateLot (Lot.reserveParkingSpot car.id parkingSpot.id lotWithParkingLock)
+                                )
+                    )
+                |> Result.fromMaybe "Lot not ready for parking"
+
+        Nothing ->
+            -- The lot has been removed, despawn the car
+            Result.Ok
+                (World.setCar
+                    (Car.triggerDespawn car)
+                    world
+                )
 
 
 parkingPermissionPredicate : Maybe Id -> Id -> (ParkingSpot -> Bool)
