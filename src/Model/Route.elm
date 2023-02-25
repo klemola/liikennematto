@@ -12,9 +12,10 @@ module Model.Route exposing
     , fromNodesAndParameter
     , fromParkedAtLot
     , fromStartAndEndNodes
+    , hasPath
     , initialRoute
     , isArrivingToDestination
-    , isRouted
+    , isReroutable
     , isWaitingForRoute
     , pathToSplines
     , randomFromNode
@@ -374,16 +375,6 @@ isWaitingForRoute route =
             False
 
 
-isRouted : Route -> Bool
-isRouted route =
-    case route of
-        Unrouted ->
-            False
-
-        _ ->
-            True
-
-
 isArrivingToDestination : Route -> Bool
 isArrivingToDestination route =
     case route of
@@ -392,6 +383,26 @@ isArrivingToDestination route =
 
         _ ->
             False
+
+
+isReroutable : Route -> Bool
+isReroutable route =
+    case route of
+        Routed _ ->
+            True
+
+        _ ->
+            False
+
+
+hasPath : Route -> Bool
+hasPath route =
+    case route of
+        Unrouted ->
+            False
+
+        _ ->
+            True
 
 
 startNodePosition : Route -> Maybe LMPoint2d

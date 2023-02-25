@@ -45,27 +45,32 @@ updateRoute delta car =
             let
                 nextPath =
                     updatePath car.velocity delta routeMeta.path
-
-                nextRoute =
-                    Route.Routed { routeMeta | path = nextPath }
             in
             if nextPath.finished then
-                case
-                    routeMeta.endNode.node.label.kind
-                of
-                    LotEntry lotId ->
-                        ( Route.Unrouted
-                        , if Car.currentState car == Car.Driving then
-                            World.BeginCarParking { carId = car.id, lotId = lotId }
+                let
+                    worldEvent =
+                        case
+                            routeMeta.endNode.node.label.kind
+                        of
+                            LotEntry lotId ->
+                                -- Arrived to a lot
+                                if Car.currentState car == Car.Driving then
+                                    World.BeginCarParking { carId = car.id, lotId = lotId }
 
-                          else
-                            World.None
-                        )
+                                else
+                                    World.None
 
-                    _ ->
-                        ( nextRoute, World.CreateRouteFromNode car.id routeMeta.endNode )
+                            _ ->
+                                -- Arrived to a node
+                                World.CreateRouteFromNode car.id routeMeta.endNode
+                in
+                ( Route.Unrouted, worldEvent )
 
             else
+                let
+                    nextRoute =
+                        Route.Routed { routeMeta | path = nextPath }
+                in
                 ( nextRoute, World.None )
 
         Route.ArrivingToDestination destination path ->
@@ -142,7 +147,8 @@ routeTrafficControl world route =
 
 restoreRoute : World -> Car -> Result String Route
 restoreRoute world car =
-    if not <| Route.isRouted car.route then
+    if not <| Route.isReroutable car.route then
+        -- If the car is unrouted or arriving to the destination, no need to reroute
         Ok car.route
 
     else

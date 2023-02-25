@@ -126,7 +126,7 @@ parked =
 
 readyForUnparking : UpdateContext -> CarState -> Bool
 readyForUnparking { route } _ =
-    Route.isRouted route
+    Route.hasPath route
 
 
 unparking : FSM.State CarState CarEvent UpdateContext

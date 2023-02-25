@@ -202,10 +202,6 @@ rerouteCarsIfNeeded world =
                             { car | route = validatedRoute }
 
                         Err reason ->
-                            let
-                                _ =
-                                    Debug.log "restore route failed" reason
-                            in
                             Car.triggerDespawn car
                 )
                 world.cars
@@ -379,7 +375,7 @@ checkRules setup =
 
         Nothing ->
             -- cancel the effects of previously applied rules
-            if Route.isRouted setup.activeCar.route then
+            if Route.hasPath setup.activeCar.route then
                 Steering.accelerate
 
             else
