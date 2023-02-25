@@ -35,9 +35,11 @@ import Model.Route as Route
 import Model.World as World exposing (World)
 import Point2d
 import Random
+import Simulation.Events exposing (updateEventQueue)
 import Simulation.Steering as Steering
 import Simulation.Traffic as Traffic exposing (RuleSetup)
 import Speed exposing (Speed)
+import Time
 
 
 connectedRoadsSetup : RuleSetup
@@ -467,6 +469,7 @@ largeWorldSetup carsAmount =
 
         worldWithCars =
             spawnCars carsAmount world
+                |> updateEventQueue (Time.millisToPosix 16)
     in
     case Collection.values worldWithCars.cars of
         x :: xs ->
