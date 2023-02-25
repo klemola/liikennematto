@@ -30,8 +30,14 @@ suite =
                     in
                     \_ ->
                         Collection.foldl
-                            (\_ car _ -> Pathfinding.restoreRoute setup.world car)
-                            setup.activeCar
+                            (\_ car acc ->
+                                let
+                                    route =
+                                        Pathfinding.restoreRoute setup.world car
+                                in
+                                route :: acc
+                            )
+                            []
                             setup.world.cars
                 ]
             ]

@@ -12,7 +12,6 @@ import Collection exposing (Id)
 import Common
 import Duration exposing (Duration)
 import Length exposing (Length)
-import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car)
 import Model.Geometry exposing (LMPoint2d)
 import Model.Lot as Lot exposing (ParkingReservation, ParkingSpot)
@@ -141,9 +140,12 @@ routeTrafficControl world route =
             )
 
 
-restoreRoute : World -> Car -> Car
+restoreRoute : World -> Car -> Result String Route
 restoreRoute world car =
-    if Route.isRouted car.route then
+    if not <| Route.isRouted car.route then
+        Ok car.route
+
+    else
         let
             startNodeValidation =
                 Route.splineEndPoint car.route
@@ -154,16 +156,10 @@ restoreRoute world car =
                 validateEndNode world car.route
         in
         Result.map2 Tuple.pair startNodeValidation endNodeValidation
-            |> Result.toMaybe
-            |> Maybe.andThen
+            |> Result.andThen
                 (\( startNodeCtx, endNodeCtx ) ->
                     Route.reroute car.route world.roadNetwork startNodeCtx endNodeCtx
                 )
-            |> Maybe.map (\validatedRoute -> { car | route = validatedRoute })
-            |> Maybe.withDefaultLazy (\_ -> Car.triggerDespawn car)
-
-    else
-        car
 
 
 validateNodeByPosition : World -> LMPoint2d -> Result String RNNodeContext

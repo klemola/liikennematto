@@ -196,7 +196,18 @@ rerouteCarsIfNeeded world =
     { world
         | cars =
             Collection.map
-                (\_ car -> Pathfinding.restoreRoute world car)
+                (\_ car ->
+                    case Pathfinding.restoreRoute world car of
+                        Ok validatedRoute ->
+                            { car | route = validatedRoute }
+
+                        Err reason ->
+                            let
+                                _ =
+                                    Debug.log "restore route failed" reason
+                            in
+                            Car.triggerDespawn car
+                )
                 world.cars
     }
 

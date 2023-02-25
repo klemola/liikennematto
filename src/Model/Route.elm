@@ -136,25 +136,26 @@ fromStartAndEndNodes roadNetwork startNodeCtx endNodeCtx =
                 )
 
 
-reroute : Route -> RoadNetwork -> RNNodeContext -> RNNodeContext -> Maybe Route
+reroute : Route -> RoadNetwork -> RNNodeContext -> RNNodeContext -> Result String Route
 reroute currentRoute roadNetwork nextNodeCtx endNodeCtx =
-    if nextNodeCtx.node.id == endNodeCtx.node.id then
-        Nothing
+    let
+        nextPathNodes =
+            if nextNodeCtx.node.id == endNodeCtx.node.id then
+                Just [ endNodeCtx ]
 
-    else
-        let
-            nextPathNodes =
+            else
                 AStar.findPath nextNodeCtx endNodeCtx roadNetwork |> Maybe.map Tuple.second
 
-            initialSplines =
-                toPath currentRoute
-                    |> Maybe.andThen
-                        (\path ->
-                            path.currentSpline |> Maybe.map (currentSplineRemaining path.parameter)
-                        )
-                    |> Maybe.map List.singleton
-        in
-        Maybe.map2 (buildRoute nextNodeCtx) nextPathNodes initialSplines
+        initialSplines =
+            toPath currentRoute
+                |> Maybe.andThen
+                    (\path ->
+                        path.currentSpline |> Maybe.map (currentSplineRemaining path.parameter)
+                    )
+                |> Maybe.map List.singleton
+    in
+    Maybe.map2 (buildRoute nextNodeCtx) nextPathNodes initialSplines
+        |> Result.fromMaybe "Could not find a route to the destination"
 
 
 {-| A low level constructor for tests
