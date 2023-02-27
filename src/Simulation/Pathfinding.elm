@@ -9,7 +9,7 @@ module Simulation.Pathfinding exposing
 
 import Array
 import Collection exposing (Id)
-import Common
+import Common exposing (andCarry)
 import Duration exposing (Duration)
 import Length exposing (Length)
 import Model.Car as Car exposing (Car)
@@ -238,8 +238,8 @@ attemptGenerateRouteFromNode car startNodeCtx world =
     else
         -- Room for improvement: this step is not required once nodes have stable IDs
         World.findNodeByPosition world startNodeCtx.node.label.position
-            |> Maybe.andThen (findRandomDestinationNode world car)
-            |> Maybe.andThen (Route.fromStartAndEndNodes world.roadNetwork startNodeCtx)
+            |> andCarry (findRandomDestinationNode world car)
+            |> Maybe.andThen (Route.fromStartAndEndNodes world.roadNetwork)
             |> Maybe.map
                 (\route ->
                     World.setCar

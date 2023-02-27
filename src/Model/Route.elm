@@ -123,8 +123,8 @@ fromParkedAtLot parkingReservation lots roadNetwork startNodeCtx endNodeCtx =
             )
 
 
-fromStartAndEndNodes : RoadNetwork -> RNNodeContext -> RNNodeContext -> Maybe Route
-fromStartAndEndNodes roadNetwork startNodeCtx endNodeCtx =
+fromStartAndEndNodes : RoadNetwork -> ( RNNodeContext, RNNodeContext ) -> Maybe Route
+fromStartAndEndNodes roadNetwork ( startNodeCtx, endNodeCtx ) =
     if startNodeCtx.node.id == endNodeCtx.node.id then
         Nothing
 
