@@ -196,7 +196,14 @@ rerouteCarsIfNeeded world =
     { world
         | cars =
             Collection.map
-                (\_ car -> Pathfinding.restoreRoute world car)
+                (\_ car ->
+                    case Pathfinding.restoreRoute world car of
+                        Ok validatedRoute ->
+                            { car | route = validatedRoute }
+
+                        Err reason ->
+                            Car.triggerDespawn car
+                )
                 world.cars
     }
 
@@ -368,7 +375,7 @@ checkRules setup =
 
         Nothing ->
             -- cancel the effects of previously applied rules
-            if Route.isRouted setup.activeCar.route then
+            if Route.hasPath setup.activeCar.route then
                 Steering.accelerate
 
             else

@@ -9,10 +9,9 @@ module Simulation.Pathfinding exposing
 
 import Array
 import Collection exposing (Id)
-import Common
+import Common exposing (andCarry)
 import Duration exposing (Duration)
 import Length exposing (Length)
-import Maybe.Extra as Maybe
 import Model.Car as Car exposing (Car)
 import Model.Geometry exposing (LMPoint2d)
 import Model.Lot as Lot exposing (ParkingReservation, ParkingSpot)
@@ -46,27 +45,32 @@ updateRoute delta car =
             let
                 nextPath =
                     updatePath car.velocity delta routeMeta.path
-
-                nextRoute =
-                    Route.Routed { routeMeta | path = nextPath }
             in
             if nextPath.finished then
-                case
-                    routeMeta.endNode.node.label.kind
-                of
-                    LotEntry lotId ->
-                        ( Route.Unrouted
-                        , if Car.currentState car == Car.Driving then
-                            World.BeginCarParking { carId = car.id, lotId = lotId }
+                let
+                    worldEvent =
+                        case
+                            routeMeta.endNode.node.label.kind
+                        of
+                            LotEntry lotId ->
+                                -- Arrived to a lot
+                                if Car.currentState car == Car.Driving then
+                                    World.BeginCarParking { carId = car.id, lotId = lotId }
 
-                          else
-                            World.None
-                        )
+                                else
+                                    World.None
 
-                    _ ->
-                        ( nextRoute, World.CreateRouteFromNode car.id routeMeta.endNode )
+                            _ ->
+                                -- Arrived to a node
+                                World.CreateRouteFromNode car.id routeMeta.endNode
+                in
+                ( Route.Unrouted, worldEvent )
 
             else
+                let
+                    nextRoute =
+                        Route.Routed { routeMeta | path = nextPath }
+                in
                 ( nextRoute, World.None )
 
         Route.ArrivingToDestination destination path ->
@@ -141,9 +145,13 @@ routeTrafficControl world route =
             )
 
 
-restoreRoute : World -> Car -> Car
+restoreRoute : World -> Car -> Result String Route
 restoreRoute world car =
-    if Route.isRouted car.route then
+    if not <| Route.isReroutable car.route then
+        -- If the car is unrouted or arriving to the destination, no need to reroute
+        Ok car.route
+
+    else
         let
             startNodeValidation =
                 Route.splineEndPoint car.route
@@ -154,16 +162,10 @@ restoreRoute world car =
                 validateEndNode world car.route
         in
         Result.map2 Tuple.pair startNodeValidation endNodeValidation
-            |> Result.toMaybe
-            |> Maybe.andThen
+            |> Result.andThen
                 (\( startNodeCtx, endNodeCtx ) ->
                     Route.reroute car.route world.roadNetwork startNodeCtx endNodeCtx
                 )
-            |> Maybe.map (\validatedRoute -> { car | route = validatedRoute })
-            |> Maybe.withDefaultLazy (\_ -> Car.triggerDespawn car)
-
-    else
-        car
 
 
 validateNodeByPosition : World -> LMPoint2d -> Result String RNNodeContext
@@ -236,8 +238,8 @@ attemptGenerateRouteFromNode car startNodeCtx world =
     else
         -- Room for improvement: this step is not required once nodes have stable IDs
         World.findNodeByPosition world startNodeCtx.node.label.position
-            |> Maybe.andThen (findRandomDestinationNode world car)
-            |> Maybe.andThen (Route.fromStartAndEndNodes world.roadNetwork startNodeCtx)
+            |> andCarry (findRandomDestinationNode world car)
+            |> Maybe.andThen (Route.fromStartAndEndNodes world.roadNetwork)
             |> Maybe.map
                 (\route ->
                     World.setCar
@@ -316,29 +318,37 @@ randomNodeMatchPredicate startNodeCtx endNode =
 
 attemptBeginParking : Car -> Id -> World -> Result String World
 attemptBeginParking car lotId world =
-    World.findLotById lotId world
-        |> Maybe.andThen
-            (Lot.prepareParking
-                (parkingPermissionPredicate car.homeLotId lotId)
-                car.id
-            )
-        |> Maybe.andThen
-            (\( lotWithParkingLock, parkingSpot ) ->
-                let
-                    parkingReservation =
-                        { lotId = lotId
-                        , parkingSpotId = parkingSpot.id
-                        }
-                in
-                Route.arriveToParkingSpot parkingReservation world.lots car.route
-                    |> Maybe.map
-                        (\route ->
-                            world
-                                |> World.setCar (Car.routedWithParking route parkingReservation car)
-                                |> World.updateLot (Lot.reserveParkingSpot car.id parkingSpot.id lotWithParkingLock)
-                        )
-            )
-        |> Result.fromMaybe "Lot not ready for parking"
+    case World.findLotById lotId world of
+        Just lot ->
+            lot
+                |> Lot.prepareParking
+                    (parkingPermissionPredicate car.homeLotId lotId)
+                    car.id
+                |> Maybe.andThen
+                    (\( lotWithParkingLock, parkingSpot ) ->
+                        let
+                            parkingReservation =
+                                { lotId = lotId
+                                , parkingSpotId = parkingSpot.id
+                                }
+                        in
+                        Route.arriveToParkingSpot parkingReservation world.lots car.route
+                            |> Maybe.map
+                                (\route ->
+                                    world
+                                        |> World.setCar (Car.routedWithParking route parkingReservation car)
+                                        |> World.updateLot (Lot.reserveParkingSpot car.id parkingSpot.id lotWithParkingLock)
+                                )
+                    )
+                |> Result.fromMaybe "Lot not ready for parking"
+
+        Nothing ->
+            -- The lot has been removed, despawn the car
+            Result.Ok
+                (World.setCar
+                    (Car.triggerDespawn car)
+                    world
+                )
 
 
 parkingPermissionPredicate : Maybe Id -> Id -> (ParkingSpot -> Bool)

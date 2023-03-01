@@ -126,7 +126,7 @@ parked =
 
 readyForUnparking : UpdateContext -> CarState -> Bool
 readyForUnparking { route } _ =
-    Route.isRouted route
+    Route.hasPath route
 
 
 unparking : FSM.State CarState CarEvent UpdateContext
@@ -304,7 +304,7 @@ triggerDespawn car =
     in
     { car
         | fsm = nextFSM
-        , route = Route.stopAtSplineEnd car.route |> Maybe.withDefault car.route
+        , route = Route.stopAtSplineEnd car.route |> Maybe.withDefault Route.Unrouted
     }
 
 

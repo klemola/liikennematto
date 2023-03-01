@@ -221,29 +221,34 @@ stopAtDistance distanceFromTarget threshold currentVelocity =
 
 stopAtPathEnd : LMPoint2d -> Speed -> Route -> Length -> Steering
 stopAtPathEnd currentPosition velocity route stopRadius =
-    let
-        distanceToParkingSpot =
-            Point2d.distanceFrom
-                (Route.endPoint route |> Maybe.withDefault currentPosition)
-                currentPosition
+    case route of
+        Route.Unrouted ->
+            stop velocity
 
-        nextAcceleration =
-            if distanceToParkingSpot |> Quantity.lessThanOrEqualTo stopRadius then
-                case Route.distanceToPathEnd route of
-                    Just distanceRemaining ->
-                        accelerateToZeroOverDistance
-                            velocity
-                            distanceRemaining
+        _ ->
+            let
+                distanceToPathEnd =
+                    Point2d.distanceFrom
+                        (Route.endPoint route |> Maybe.withDefault currentPosition)
+                        currentPosition
 
-                    Nothing ->
-                        maxDeceleration
+                nextAcceleration =
+                    if distanceToPathEnd |> Quantity.lessThanOrEqualTo stopRadius then
+                        case Route.distanceToPathEnd route of
+                            Just distanceRemaining ->
+                                accelerateToZeroOverDistance
+                                    velocity
+                                    distanceRemaining
 
-            else
-                reachTargetVelocity velocity (Quantity.half maxVelocity)
-    in
-    { linear = Just nextAcceleration
-    , angular = Nothing
-    }
+                            Nothing ->
+                                maxDeceleration
+
+                    else
+                        reachTargetVelocity velocity (Quantity.half maxVelocity)
+            in
+            { linear = Just nextAcceleration
+            , angular = Nothing
+            }
 
 
 

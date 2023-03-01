@@ -12,9 +12,10 @@ module Model.Route exposing
     , fromNodesAndParameter
     , fromParkedAtLot
     , fromStartAndEndNodes
+    , hasPath
     , initialRoute
     , isArrivingToDestination
-    , isRouted
+    , isReroutable
     , isWaitingForRoute
     , pathToSplines
     , randomFromNode
@@ -122,8 +123,8 @@ fromParkedAtLot parkingReservation lots roadNetwork startNodeCtx endNodeCtx =
             )
 
 
-fromStartAndEndNodes : RoadNetwork -> RNNodeContext -> RNNodeContext -> Maybe Route
-fromStartAndEndNodes roadNetwork startNodeCtx endNodeCtx =
+fromStartAndEndNodes : RoadNetwork -> ( RNNodeContext, RNNodeContext ) -> Maybe Route
+fromStartAndEndNodes roadNetwork ( startNodeCtx, endNodeCtx ) =
     if startNodeCtx.node.id == endNodeCtx.node.id then
         Nothing
 
@@ -136,25 +137,26 @@ fromStartAndEndNodes roadNetwork startNodeCtx endNodeCtx =
                 )
 
 
-reroute : Route -> RoadNetwork -> RNNodeContext -> RNNodeContext -> Maybe Route
+reroute : Route -> RoadNetwork -> RNNodeContext -> RNNodeContext -> Result String Route
 reroute currentRoute roadNetwork nextNodeCtx endNodeCtx =
-    if nextNodeCtx.node.id == endNodeCtx.node.id then
-        Nothing
+    let
+        nextPathNodes =
+            if nextNodeCtx.node.id == endNodeCtx.node.id then
+                Just [ endNodeCtx ]
 
-    else
-        let
-            nextPathNodes =
+            else
                 AStar.findPath nextNodeCtx endNodeCtx roadNetwork |> Maybe.map Tuple.second
 
-            initialSplines =
-                toPath currentRoute
-                    |> Maybe.andThen
-                        (\path ->
-                            path.currentSpline |> Maybe.map (currentSplineRemaining path.parameter)
-                        )
-                    |> Maybe.map List.singleton
-        in
-        Maybe.map2 (buildRoute nextNodeCtx) nextPathNodes initialSplines
+        initialSplines =
+            toPath currentRoute
+                |> Maybe.andThen
+                    (\path ->
+                        path.currentSpline |> Maybe.map (currentSplineRemaining path.parameter)
+                    )
+                |> Maybe.map List.singleton
+    in
+    Maybe.map2 (buildRoute nextNodeCtx) nextPathNodes initialSplines
+        |> Result.fromMaybe "Could not find a route to the destination"
 
 
 {-| A low level constructor for tests
@@ -373,16 +375,6 @@ isWaitingForRoute route =
             False
 
 
-isRouted : Route -> Bool
-isRouted route =
-    case route of
-        Unrouted ->
-            False
-
-        _ ->
-            True
-
-
 isArrivingToDestination : Route -> Bool
 isArrivingToDestination route =
     case route of
@@ -391,6 +383,26 @@ isArrivingToDestination route =
 
         _ ->
             False
+
+
+isReroutable : Route -> Bool
+isReroutable route =
+    case route of
+        Routed _ ->
+            True
+
+        _ ->
+            False
+
+
+hasPath : Route -> Bool
+hasPath route =
+    case route of
+        Unrouted ->
+            False
+
+        _ ->
+            True
 
 
 startNodePosition : Route -> Maybe LMPoint2d
