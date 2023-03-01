@@ -15,7 +15,6 @@ import Model.RoadNetwork
     exposing
         ( ConnectionKind(..)
         , RoadNetwork
-        , TrafficControl(..)
         )
 import Model.Route as Route
 import Model.World exposing (World)
@@ -114,7 +113,7 @@ renderRoadNetwork cache roadNetwork =
                             radius =
                                 toPixelsValue cache.pixelsToMetersRatio nodeRadius
 
-                            { position, kind, trafficControl } =
+                            { position, kind } =
                                 nodeCtx.node.label
 
                             nodeXY =
@@ -142,12 +141,6 @@ renderRoadNetwork cache roadNetwork =
                                 , Attributes.fill <| Color.toCssString <| Colors.withAlpha 0.75 Colors.gray4
                                 ]
                                 []
-                            , case trafficControl of
-                                Yield yieldArea ->
-                                    Render.Shape.boundingBox cache (Colors.withAlpha 0.15 Colors.yellow) yieldArea
-
-                                _ ->
-                                    Svg.g [] []
                             ]
                         )
                             :: acc
