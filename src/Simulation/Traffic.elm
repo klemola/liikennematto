@@ -1,7 +1,7 @@
 module Simulation.Traffic exposing
     ( Rule(..)
     , RuleSetup
-    , addLotResident
+    , addLotResidents
     , applySteering
     , checkRules
     , rerouteCarsIfNeeded
@@ -12,10 +12,9 @@ module Simulation.Traffic exposing
     )
 
 import BoundingBox2d
-import Collection
+import Collection exposing (Id)
 import Common exposing (randomFutureTime)
 import Data.Cars exposing (CarMake)
-import Data.Lots
 import Direction2d
 import Duration exposing (Duration)
 import FSM
@@ -214,24 +213,31 @@ rerouteCarsIfNeeded world =
 --
 
 
-addLotResident : Time.Posix -> Lot -> World -> World
-addLotResident time lot world =
-    case Data.Lots.resident lot.kind lot.themeColor of
-        Just carMake ->
+addLotResidents : Time.Posix -> Id -> List CarMake -> World -> World
+addLotResidents time lotId residents world =
+    addLotResidentsHelper time lotId residents world.seed world
+
+
+addLotResidentsHelper : Time.Posix -> Id -> List CarMake -> Random.Seed -> World -> World
+addLotResidentsHelper time lotId remainingResidents seed world =
+    case remainingResidents of
+        [] ->
+            World.setSeed seed world
+
+        resident :: others ->
             let
                 ( triggerAt, nextSeed ) =
                     Random.step
-                        (randomFutureTime ( 2500, 10000 ) time)
-                        world.seed
-            in
-            world
-                |> World.setSeed nextSeed
-                |> World.addEvent
-                    (World.SpawnResident carMake lot.id)
-                    triggerAt
+                        (randomFutureTime ( 5000, 20000 ) time)
+                        seed
 
-        Nothing ->
-            world
+                nextWorld =
+                    World.addEvent
+                        (World.SpawnResident resident lotId)
+                        triggerAt
+                        world
+            in
+            addLotResidentsHelper time lotId others nextSeed nextWorld
 
 
 spawnResident : Time.Posix -> CarMake -> Lot -> World -> Result String World

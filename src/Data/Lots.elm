@@ -5,13 +5,12 @@ module Data.Lots exposing
     , allLots
     , drivewayOffset
     , lotAsset
-    , resident
     , residentialSingle1
     , school
     )
 
 import Data.Cars as Cars exposing (CarMake)
-import Data.Colors as Colors exposing (ThemeColor)
+import Data.Colors as Colors
 import Data.Roads exposing (innerLaneOffset, outerLaneOffset)
 import Length exposing (Length)
 import Model.Cell as Cell
@@ -24,7 +23,6 @@ import Svg.Attributes as Attributes
 
 type alias NewLot =
     { kind : LotKind
-    , themeColor : ThemeColor
     , width : Length
     , height : Length
     , parkingSpotExitDirection : OrthogonalDirection
@@ -33,6 +31,7 @@ type alias NewLot =
     , entryPosition : LMPoint2dLocal
     , exitPosition : LMPoint2dLocal
     , parkingLaneStartPosition : LMPoint2dLocal
+    , residents : List CarMake
     }
 
 
@@ -103,29 +102,6 @@ noRestrictions position =
     ( position, NoRestriction )
 
 
-resident : LotKind -> ThemeColor -> Maybe CarMake
-resident lotKind themeColor =
-    let
-        carMake =
-            case lotKind of
-                ResidentialSingle1 ->
-                    Cars.sedan
-
-                ResidentialApartments1 ->
-                    Cars.hatchback
-
-                ResidentialRow1 ->
-                    Cars.sedan
-
-                Cafe ->
-                    Cars.van
-
-                School ->
-                    Cars.van
-    in
-    Just (carMake themeColor.base themeColor.accent)
-
-
 lotAsset : LotKind -> List (Svg msg)
 lotAsset kind =
     case kind of
@@ -158,10 +134,6 @@ residentialSingle1 =
             Right
     in
     { kind = ResidentialSingle1
-    , themeColor =
-        { base = Colors.red
-        , accent = Colors.redDarker
-        }
     , width = width
     , height = height
     , parkingSpotExitDirection = Right
@@ -172,6 +144,9 @@ residentialSingle1 =
     , entryPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width
     , exitPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width
     , parkingLaneStartPosition = Point2d.fromMeters { x = 26, y = 3.75 }
+    , residents =
+        [ Cars.sedan Colors.red Colors.redDarker
+        ]
     }
 
 
@@ -720,10 +695,6 @@ school =
             Left
     in
     { kind = School
-    , themeColor =
-        { base = Colors.orange
-        , accent = Colors.orangeDarker
-        }
     , width = width
     , height = height
     , parkingSpotExitDirection = Down
@@ -738,6 +709,9 @@ school =
     , entryPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width
     , exitPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width
     , parkingLaneStartPosition = Point2d.fromMeters { x = 7.5, y = 3.75 }
+    , residents =
+        [ Cars.van Colors.orange Colors.orangeDarker
+        ]
     }
 
 
@@ -1279,10 +1253,6 @@ cafe =
             Right
     in
     { kind = Cafe
-    , themeColor =
-        { base = Colors.lightBrown
-        , accent = Colors.lightBrownDarker
-        }
     , width = width
     , height = height
     , parkingSpotExitDirection = Down
@@ -1297,6 +1267,9 @@ cafe =
     , entryPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width
     , exitPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width
     , parkingLaneStartPosition = Point2d.fromMeters { x = 24.5, y = 3.75 }
+    , residents =
+        [ Cars.van Colors.lightBrown Colors.lightBrownDarker
+        ]
     }
 
 
@@ -1677,10 +1650,6 @@ residentialRow1 =
             Left
     in
     { kind = ResidentialRow1
-    , themeColor =
-        { base = Colors.darkBlue
-        , accent = Colors.darkBlueDarker
-        }
     , width = width
     , height = height
     , parkingSpotExitDirection = Down
@@ -1694,6 +1663,10 @@ residentialRow1 =
     , entryPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width
     , exitPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width
     , parkingLaneStartPosition = Point2d.fromMeters { x = 7.5, y = 3.75 }
+    , residents =
+        [ Cars.sedan Colors.darkBlue Colors.darkBlueDarker
+        , Cars.hatchback Colors.darkBlue Colors.darkBlueDarker
+        ]
     }
 
 
@@ -2791,10 +2764,6 @@ residentialApartments1 =
             Down
     in
     { kind = ResidentialApartments1
-    , themeColor =
-        { base = Colors.yellowGreen
-        , accent = Colors.yellowGreenDarker
-        }
     , width = width
     , height = height
     , parkingSpotExitDirection = Down
@@ -2807,6 +2776,10 @@ residentialApartments1 =
     , entryPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width
     , exitPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width
     , parkingLaneStartPosition = Point2d.fromMeters { x = 4.75, y = 7.1 }
+    , residents =
+        [ Cars.hatchback Colors.yellowGreen Colors.yellowGreenDarker
+        , Cars.sedan Colors.yellowGreen Colors.yellowGreenDarker
+        ]
     }
 
 
