@@ -31,6 +31,7 @@ type alias NewLot =
     , entryPosition : LMPoint2dLocal
     , exitPosition : LMPoint2dLocal
     , parkingLaneStartPosition : LMPoint2dLocal
+    , parkingLaneStartDirection : OrthogonalDirection
     , residents : List CarMake
     }
 
@@ -46,6 +47,7 @@ type LotKind
     | ResidentialApartments1
     | School
     | Cafe
+    | FireStation
 
 
 allLots : List NewLot
@@ -55,6 +57,7 @@ allLots =
     , residentialApartments1
     , school
     , cafe
+    , fireStation
     ]
 
 
@@ -120,6 +123,9 @@ lotAsset kind =
         Cafe ->
             cafeAsset
 
+        FireStation ->
+            fireStationAsset
+
 
 residentialSingle1 : NewLot
 residentialSingle1 =
@@ -143,7 +149,8 @@ residentialSingle1 =
     , drivewayExitDirection = drivewayExitDirection
     , entryPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width
     , exitPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width
-    , parkingLaneStartPosition = Point2d.fromMeters { x = 26, y = 3.75 }
+    , parkingLaneStartPosition = Point2d.fromMeters { x = 21.25, y = 3.75 }
+    , parkingLaneStartDirection = Left
     , residents =
         [ Cars.sedan Colors.red Colors.redDarker
         ]
@@ -709,6 +716,7 @@ school =
     , entryPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width
     , exitPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width
     , parkingLaneStartPosition = Point2d.fromMeters { x = 7.5, y = 3.75 }
+    , parkingLaneStartDirection = Right
     , residents =
         [ Cars.van Colors.orange Colors.orangeDarker
         ]
@@ -1267,6 +1275,7 @@ cafe =
     , entryPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width
     , exitPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width
     , parkingLaneStartPosition = Point2d.fromMeters { x = 24.5, y = 3.75 }
+    , parkingLaneStartDirection = Left
     , residents =
         [ Cars.van Colors.lightBrown Colors.lightBrownDarker
         ]
@@ -1663,6 +1672,7 @@ residentialRow1 =
     , entryPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width
     , exitPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width
     , parkingLaneStartPosition = Point2d.fromMeters { x = 7.5, y = 3.75 }
+    , parkingLaneStartDirection = Right
     , residents =
         [ Cars.sedan Colors.darkBlue Colors.darkBlueDarker
         , Cars.hatchback Colors.darkBlue Colors.darkBlueDarker
@@ -2776,6 +2786,7 @@ residentialApartments1 =
     , entryPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width
     , exitPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width
     , parkingLaneStartPosition = Point2d.fromMeters { x = 4.75, y = 7.1 }
+    , parkingLaneStartDirection = Up
     , residents =
         [ Cars.hatchback Colors.yellowGreen Colors.yellowGreenDarker
         , Cars.sedan Colors.yellowGreen Colors.yellowGreenDarker
@@ -3217,6 +3228,358 @@ residentialApartments1Asset =
         [ Attributes.d "M295.694 724.612C294.469 720.531 296.51 692.776 296.51 691.551C296.51 690.327 289.98 724.612 289.98 724.612"
         , Attributes.stroke "#3D6E36"
         , Attributes.strokeLinecap "round"
+        ]
+        []
+    ]
+
+
+fireStation : NewLot
+fireStation =
+    let
+        width =
+            Cell.size |> Quantity.multiplyBy 3
+
+        height =
+            Cell.size |> Quantity.multiplyBy 2
+
+        drivewayExitDirection =
+            Down
+    in
+    { kind = FireStation
+    , width = width
+    , height = height
+    , parkingSpotExitDirection = Left
+    , parkingSpots =
+        [ residentParking <| Point2d.fromMeters { x = 20.4, y = 5 }
+        ]
+    , drivewayExitDirection = drivewayExitDirection
+    , entryPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width
+    , exitPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width
+    , parkingLaneStartPosition = Point2d.fromMeters { x = 12, y = 5 }
+    , parkingLaneStartDirection = Right
+    , residents =
+        [ Cars.fireTruck
+        ]
+    }
+
+
+fireStationAsset : List (Svg msg)
+fireStationAsset =
+    [ path
+        [ Attributes.d "M16 342.5H753C753.828 342.5 754.5 343.172 754.5 344V419C754.5 423.142 751.142 426.5 747 426.5H576C570.201 426.5 565.5 431.201 565.5 437V479C565.5 483.142 562.142 486.5 558 486.5H145C140.858 486.5 137.5 489.858 137.5 494V514.5H14.5V344C14.5 343.172 15.1716 342.5 16 342.5Z"
+        , Attributes.fill "#BCA9A9"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "3"
+        ]
+        []
+    , path
+        [ Attributes.d "M595 194C597.209 194 599 192.209 599 190V88H752C753.105 88 754 88.8954 754 90V378C754 380.209 752.209 382 750 382H53V194H595Z"
+        , Attributes.fill "#E93F3F"
+        ]
+        []
+    , path
+        [ Attributes.d "M13 162.988V342.283C13 343.379 13.4501 344.428 14.245 345.183L51.3112 380.396C51.9482 381.001 53 380.549 53 379.671V194L18.0662 160.813C16.1553 158.998 13 160.352 13 162.988Z"
+        , Attributes.fill "#E93F3F"
+        ]
+        []
+    , path
+        [ Attributes.d "M599 88L562.688 53.5989C562.05 52.9951 561 53.4469 561 54.3249V157.5L599 193.5V88Z"
+        , Attributes.fill "#E93F3F"
+        ]
+        []
+    , path
+        [ Attributes.d "M580 32L560 51L599 88H753L694 32H580Z"
+        , Attributes.fill "#BC2F2F"
+        ]
+        []
+    , path
+        [ Attributes.d "M53 194H599.5L561.791 157.284C561.604 157.102 561.354 157 561.094 157H20.6612C17.9318 157 16.6204 160.349 18.6241 162.202L53 194Z"
+        , Attributes.fill "#BC2F2F"
+        ]
+        []
+    , path
+        [ Attributes.d "M440.5 247.18H565.5V380.5H440.5V247.18Z"
+        , Attributes.fill "#DAD1D1"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "3"
+        ]
+        []
+    , Svg.rect
+        [ Attributes.x "429"
+        , Attributes.y "238"
+        , Attributes.width "148"
+        , Attributes.height "12"
+        , Attributes.rx "2"
+        , Attributes.fill "#3D3434"
+        ]
+        []
+    , path
+        [ Attributes.d "M439 271H567"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "2"
+        ]
+        []
+    , Svg.line
+        [ Attributes.x1 "439"
+        , Attributes.y1 "292"
+        , Attributes.x2 "567"
+        , Attributes.y2 "292"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "2"
+        ]
+        []
+    , Svg.line
+        [ Attributes.x1 "439"
+        , Attributes.y1 "314"
+        , Attributes.x2 "567"
+        , Attributes.y2 "314"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "2"
+        ]
+        []
+    , Svg.line
+        [ Attributes.x1 "439"
+        , Attributes.y1 "336"
+        , Attributes.x2 "567"
+        , Attributes.y2 "336"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "2"
+        ]
+        []
+    , Svg.line
+        [ Attributes.x1 "439"
+        , Attributes.y1 "358"
+        , Attributes.x2 "567"
+        , Attributes.y2 "358"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "2"
+        ]
+        []
+    , path
+        [ Attributes.d "M264.5 247.18H389.5V380.5H264.5V247.18Z"
+        , Attributes.fill "#766565"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "3"
+        ]
+        []
+    , Svg.rect
+        [ Attributes.x "253"
+        , Attributes.y "238"
+        , Attributes.width "148"
+        , Attributes.height "12"
+        , Attributes.rx "2"
+        , Attributes.fill "#3D3434"
+        ]
+        []
+    , path
+        [ Attributes.d "M266 250H388V379H266V250Z"
+        , Attributes.fill "#DAD1D1"
+        ]
+        []
+    , path
+        [ Attributes.d "M263 271H391"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "2"
+        ]
+        []
+    , Svg.line
+        [ Attributes.x1 "263"
+        , Attributes.y1 "292"
+        , Attributes.x2 "391"
+        , Attributes.y2 "292"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "2"
+        ]
+        []
+    , Svg.line
+        [ Attributes.x1 "263"
+        , Attributes.y1 "314"
+        , Attributes.x2 "391"
+        , Attributes.y2 "314"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "2"
+        ]
+        []
+    , Svg.line
+        [ Attributes.x1 "263"
+        , Attributes.y1 "336"
+        , Attributes.x2 "391"
+        , Attributes.y2 "336"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "2"
+        ]
+        []
+    , Svg.line
+        [ Attributes.x1 "263"
+        , Attributes.y1 "358"
+        , Attributes.x2 "391"
+        , Attributes.y2 "358"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "2"
+        ]
+        []
+    , path
+        [ Attributes.d "M88.5 247.18H213.5V380.5H88.5V247.18Z"
+        , Attributes.fill "#766565"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "3"
+        ]
+        []
+    , Svg.rect
+        [ Attributes.x "77"
+        , Attributes.y "238"
+        , Attributes.width "148"
+        , Attributes.height "12"
+        , Attributes.rx "2"
+        , Attributes.fill "#3D3434"
+        ]
+        []
+    , Svg.rect
+        [ Attributes.x "90"
+        , Attributes.y "250"
+        , Attributes.width "122"
+        , Attributes.height "71"
+        , Attributes.fill "#DAD1D1"
+        ]
+        []
+    , Svg.line
+        [ Attributes.x1 "87"
+        , Attributes.y1 "321.84"
+        , Attributes.x2 "215"
+        , Attributes.y2 "321.84"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "2"
+        ]
+        []
+    , Svg.line
+        [ Attributes.x1 "87"
+        , Attributes.y1 "256.84"
+        , Attributes.x2 "215"
+        , Attributes.y2 "256.84"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "2"
+        ]
+        []
+    , Svg.line
+        [ Attributes.x1 "87"
+        , Attributes.y1 "278.84"
+        , Attributes.x2 "215"
+        , Attributes.y2 "278.84"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "2"
+        ]
+        []
+    , Svg.line
+        [ Attributes.x1 "87"
+        , Attributes.y1 "300.84"
+        , Attributes.x2 "215"
+        , Attributes.y2 "300.84"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "2"
+        ]
+        []
+    , path
+        [ Attributes.d "M640 301.5H714C714.828 301.5 715.5 302.172 715.5 303V380.5H638.5V303C638.5 302.172 639.172 301.5 640 301.5Z"
+        , Attributes.fill "#EBD252"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "3"
+        , Attributes.strokeLinecap "round"
+        ]
+        []
+    , path
+        [ Attributes.d "M677 300V382"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "4"
+        ]
+        []
+    , path
+        [ Attributes.d "M693 343H684"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "3"
+        , Attributes.strokeLinecap "round"
+        ]
+        []
+    , path
+        [ Attributes.d "M670 343H661"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "3"
+        , Attributes.strokeLinecap "round"
+        ]
+        []
+    , path
+        [ Attributes.fillRule "evenodd"
+        , Attributes.clipRule "evenodd"
+        , Attributes.d "M653.489 217.956C651.397 217.098 649.01 218.517 649.14 220.774C650.211 239.393 657.583 254.371 675.729 263.386C676.526 263.783 677.474 263.783 678.272 263.386C696.417 254.371 703.789 239.393 704.86 220.774C704.99 218.517 702.603 217.098 700.511 217.956C697.347 219.254 694.635 219.695 690.101 219.664C686.554 219.65 681.826 216.101 678.987 213.721C677.833 212.754 676.167 212.754 675.013 213.721C672.174 216.101 667.446 219.65 663.899 219.664C659.365 219.695 656.653 219.254 653.489 217.956Z"
+        , Attributes.fill "#BCA9A9"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "3"
+        , Attributes.strokeLinejoin "round"
+        ]
+        []
+    , path
+        [ Attributes.d "M675.977 214.871C676.573 214.371 677.427 214.371 678.023 214.871C679.468 216.081 681.429 217.621 683.508 218.866C685.536 220.082 687.897 221.155 690.093 221.164C694.761 221.196 697.682 220.738 701.081 219.344C701.666 219.104 702.277 219.188 702.721 219.467C703.146 219.735 703.393 220.158 703.363 220.688C703.156 224.283 702.711 227.725 701.998 231C701.998 231 694.793 234 677 234C659.207 234 652.003 231 652.003 231C651.289 227.725 650.844 224.283 650.637 220.688C650.607 220.158 650.854 219.735 651.28 219.467C651.723 219.188 652.334 219.104 652.92 219.344C656.318 220.738 659.24 221.196 663.907 221.164C666.103 221.155 668.464 220.082 670.492 218.866C672.571 217.621 674.533 216.081 675.977 214.871Z"
+        , Attributes.fill "#DAD1D1"
+        ]
+        []
+    , Svg.rect
+        [ Attributes.x "632.5"
+        , Attributes.y "116.5"
+        , Attributes.width "89"
+        , Attributes.height "61"
+        , Attributes.rx "1.5"
+        , Attributes.fill "#88B0DD"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "3"
+        ]
+        []
+    , path
+        [ Attributes.d "M53 380V194M53 194H599M53 194L15 158M599 194V88M599 194L559.5 156M599 88H753M599 88L561 52M599 88L619 69M619 69H734M619 69L581 33"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "4"
+        , Attributes.strokeLinejoin "round"
+        ]
+        []
+    , path
+        [ Attributes.d "M51.5198 380.065L14.9441 343.815C14.6599 343.533 14.5 343.15 14.5 342.749V158.5C14.5 157.672 15.1716 157 16 157H556.5C558.985 157 561 154.985 561 152.5V51.2868C561 50.876 561.169 50.4831 561.466 50.2L579.876 32.6886C580.34 32.2465 580.957 32 581.599 32H694.393C695.037 32 695.657 32.249 696.123 32.695L753.73 87.902C754.222 88.3735 754.5 89.0254 754.5 89.7069V379C754.5 379.828 753.828 380.5 753 380.5H52.5757C52.1802 380.5 51.8007 380.344 51.5198 380.065Z"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "3"
+        , Attributes.strokeLinejoin "round"
+        ]
+        []
+    , path
+        [ Attributes.d "M662.556 467.79C662.169 467.819 661.947 468.144 661.972 468.532C662.312 473.94 662.793 478.852 663.124 479.141C663.864 479.785 660.165 480 659.178 480C658.191 480 654.985 479.57 655.478 479.141C656.482 478.267 657.125 474.881 657.432 470.087C657.47 469.489 656.965 468.986 656.378 468.867C655.661 468.722 654.775 468.415 653.675 467.912C650.195 466.32 646.478 464.091 647.061 462.878C647.318 462.341 651.947 461.92 655.427 463.512C655.903 463.73 657.638 464.715 657.638 464.468C657.692 459.901 657.458 454.697 656.958 454H661.891C661.484 454.355 661.497 458.592 661.705 463.49C661.729 464.061 661.892 464.188 662.351 463.848C662.843 463.483 663.487 463.072 663.871 462.878C666.657 461.472 670.737 461.363 670.953 461.77C671.467 462.741 667.684 465.796 664.899 467.202C663.927 467.693 663.107 467.75 662.556 467.79Z"
+        , Attributes.fill "#4C8943"
+        , Attributes.stroke "#3D6E36"
+        ]
+        []
+    , path
+        [ Attributes.d "M673.179 443.403C672.619 446.087 671.347 448.754 669.518 450.512C668.281 451.702 666.594 452.453 664.726 452.905C662.861 453.356 660.85 453.5 659 453.5C657.15 453.5 655.139 453.356 653.274 452.905C651.406 452.453 649.719 451.702 648.482 450.512C646.632 448.733 645.352 446.025 644.802 443.31C644.701 442.814 644.897 442.414 645.234 442.172C645.578 441.924 646.081 441.839 646.58 442.048L651.45 444.089C652.202 444.404 653.06 444.333 653.749 443.899L658.251 441.063C658.72 440.767 659.313 440.755 659.794 441.029L664.923 443.958C665.62 444.356 666.466 444.395 667.196 444.063L671.38 442.163C671.882 441.935 672.392 442.012 672.742 442.257C673.084 442.496 673.285 442.899 673.179 443.403Z"
+        , Attributes.fill "#E93F3F"
+        , Attributes.stroke "#BC2F2F"
+        ]
+        []
+    , path
+        [ Attributes.d "M702.241 474.79C702.624 474.819 702.842 475.141 702.818 475.524C702.486 480.935 702.016 485.852 701.692 486.141C700.969 486.785 704.583 487 705.547 487C706.51 487 709.642 486.57 709.16 486.141C708.178 485.265 707.55 480.776 707.251 475.819C707.215 475.221 707.721 474.718 708.307 474.593C709.002 474.446 709.86 474.141 710.921 473.644C714.32 472.052 718.517 469.092 717.948 467.878C717.696 467.341 712.609 467.652 709.21 469.244C708.745 469.462 707.051 470.446 707.051 470.2C706.998 465.633 707.226 461.697 707.715 461H702.897C703.294 461.355 703.282 465.592 703.078 470.492C703.055 471.061 702.893 471.185 702.438 470.841C701.959 470.478 701.336 470.071 700.963 469.878C698.242 468.472 694.257 468.363 694.046 468.77C693.544 469.741 697.239 472.796 699.959 474.202C700.904 474.691 701.702 474.749 702.241 474.79Z"
+        , Attributes.fill "#4C8943"
+        , Attributes.stroke "#3D6E36"
+        ]
+        []
+    , path
+        [ Attributes.d "M719.179 450.403C718.619 453.087 717.347 455.754 715.518 457.512C714.281 458.702 712.594 459.453 710.726 459.905C708.861 460.356 706.85 460.5 705 460.5C703.15 460.5 701.139 460.356 699.274 459.905C697.406 459.453 695.719 458.702 694.482 457.512C692.632 455.733 691.352 453.025 690.802 450.31C690.701 449.814 690.897 449.414 691.234 449.172C691.578 448.924 692.081 448.839 692.58 449.048L697.45 451.089C698.202 451.404 699.06 451.333 699.749 450.899L704.251 448.063C704.72 447.767 705.313 447.755 705.794 448.029L710.923 450.958C711.62 451.356 712.466 451.395 713.196 451.063L717.38 449.163C717.882 448.935 718.392 449.012 718.742 449.257C719.084 449.496 719.285 449.899 719.179 450.403Z"
+        , Attributes.fill "#EBD252"
+        , Attributes.stroke "#E7C82D"
+        ]
+        []
+    , path
+        [ Attributes.d "M610.241 474.79C610.624 474.819 610.842 475.141 610.818 475.524C610.486 480.935 610.016 485.852 609.692 486.141C608.969 486.785 612.583 487 613.547 487C614.51 487 617.642 486.57 617.16 486.141C616.178 485.265 615.55 480.776 615.251 475.819C615.215 475.221 615.721 474.718 616.307 474.593C617.002 474.446 617.86 474.141 618.921 473.644C622.32 472.052 626.517 469.092 625.948 467.878C625.696 467.341 620.609 467.652 617.21 469.244C616.745 469.462 615.051 470.446 615.051 470.2C614.998 465.633 615.226 461.697 615.715 461H610.897C611.294 461.355 611.282 465.592 611.078 470.492C611.055 471.061 610.893 471.185 610.438 470.841C609.959 470.478 609.336 470.071 608.963 469.878C606.242 468.472 602.257 468.363 602.046 468.77C601.544 469.741 605.239 472.796 607.959 474.202C608.904 474.691 609.702 474.749 610.241 474.79Z"
+        , Attributes.fill "#4C8943"
+        , Attributes.stroke "#3D6E36"
+        ]
+        []
+    , path
+        [ Attributes.d "M627.179 450.403C626.619 453.087 625.347 455.754 623.518 457.512C622.281 458.702 620.594 459.453 618.726 459.905C616.861 460.356 614.85 460.5 613 460.5C611.15 460.5 609.139 460.356 607.274 459.905C605.406 459.453 603.719 458.702 602.482 457.512C600.632 455.733 599.352 453.025 598.802 450.31C598.701 449.814 598.897 449.414 599.234 449.172C599.578 448.924 600.081 448.839 600.58 449.048L605.45 451.089C606.202 451.404 607.06 451.333 607.749 450.899L612.251 448.063C612.72 447.767 613.313 447.755 613.794 448.029L618.923 450.958C619.62 451.356 620.466 451.395 621.196 451.063L625.38 449.163C625.882 448.935 626.392 449.012 626.742 449.257C627.084 449.496 627.285 449.899 627.179 450.403Z"
+        , Attributes.fill "#EBD252"
+        , Attributes.stroke "#E7C82D"
         ]
         []
     ]

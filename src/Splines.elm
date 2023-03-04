@@ -152,13 +152,14 @@ type alias LotSplineProperties =
     , lotEntryPosition : LMPoint2dLocal
     , lotExitPosition : LMPoint2dLocal
     , parkingLaneStartPosition : LMPoint2dLocal
+    , parkingLaneStartDirection : LMDirection2dLocal
     , parkingSpotExitDirection : LMDirection2dLocal
     , drivewayExitDirection : LMDirection2dLocal
     }
 
 
 lotEntrySpline : LotSplineProperties -> List LMCubicSpline2dLocal
-lotEntrySpline { parkingSpotPosition, lotEntryPosition, parkingSpotExitDirection, parkingLaneStartPosition, drivewayExitDirection } =
+lotEntrySpline { parkingSpotPosition, lotEntryPosition, parkingSpotExitDirection, parkingLaneStartPosition, parkingLaneStartDirection, drivewayExitDirection } =
     let
         startDirection =
             drivewayExitDirection |> Direction2d.reverse
@@ -166,7 +167,12 @@ lotEntrySpline { parkingSpotPosition, lotEntryPosition, parkingSpotExitDirection
     if parkingSpotExitDirection == drivewayExitDirection then
         [ mirroredSpline lotEntryPosition parkingSpotPosition 0.5 startDirection ]
 
-    else if parkingSpotCloseToParkingLaneStart lotEntryPosition parkingSpotPosition then
+    else if startDirection /= parkingLaneStartDirection then
+        [ curveSpline lotEntryPosition parkingLaneStartPosition startDirection 0.7
+        , curveSpline parkingLaneStartPosition parkingSpotPosition parkingLaneStartDirection 0.5
+        ]
+
+    else if parkingSpotCloseToLotEntry lotEntryPosition parkingSpotPosition then
         [ mirroredSpline lotEntryPosition parkingLaneStartPosition 0.33 startDirection
         , curveSpline parkingLaneStartPosition parkingSpotPosition startDirection 0.8
         ]
@@ -186,7 +192,7 @@ lotEntrySpline { parkingSpotPosition, lotEntryPosition, parkingSpotExitDirection
 
 
 lotExitSpline : LotSplineProperties -> List LMCubicSpline2dLocal
-lotExitSpline { parkingSpotPosition, lotExitPosition, parkingSpotExitDirection, parkingLaneStartPosition, drivewayExitDirection } =
+lotExitSpline { parkingSpotPosition, lotExitPosition, parkingSpotExitDirection, parkingLaneStartPosition, parkingLaneStartDirection, drivewayExitDirection } =
     let
         startDirection =
             parkingSpotExitDirection
@@ -194,7 +200,12 @@ lotExitSpline { parkingSpotPosition, lotExitPosition, parkingSpotExitDirection, 
     if parkingSpotExitDirection == drivewayExitDirection then
         [ mirroredSpline parkingSpotPosition lotExitPosition 0.66 startDirection ]
 
-    else if parkingSpotCloseToParkingLaneStart lotExitPosition parkingSpotPosition then
+    else if Direction2d.reverse drivewayExitDirection /= parkingLaneStartDirection then
+        [ curveSpline parkingSpotPosition parkingLaneStartPosition startDirection 0.5
+        , curveSpline parkingLaneStartPosition lotExitPosition (Direction2d.reverse parkingLaneStartDirection) 0.8
+        ]
+
+    else if parkingSpotCloseToLotEntry lotExitPosition parkingSpotPosition then
         [ curveSpline parkingSpotPosition parkingLaneStartPosition startDirection 0.8
         , mirroredSpline parkingLaneStartPosition lotExitPosition 0.33 drivewayExitDirection
         ]
@@ -232,6 +243,6 @@ parkingSpotSplineStartPosition parkingLaneStartPosition parkingSpotPosition star
     parkingLaneStartPosition |> Point2d.translateIn startDirection distanceToParkingSpotSplineStart
 
 
-parkingSpotCloseToParkingLaneStart : Point2d Length.Meters a -> Point2d Length.Meters a -> Bool
-parkingSpotCloseToParkingLaneStart lotEntryOrExit parkingSpotPosition =
+parkingSpotCloseToLotEntry : Point2d Length.Meters a -> Point2d Length.Meters a -> Bool
+parkingSpotCloseToLotEntry lotEntryOrExit parkingSpotPosition =
     Point2d.distanceFrom lotEntryOrExit parkingSpotPosition |> Quantity.lessThan (Length.meters 16)
