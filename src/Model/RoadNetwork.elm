@@ -14,9 +14,10 @@ module Model.RoadNetwork exposing
     , getOutgoingConnectionIds
     , getOutgoingConnectionsAndCosts
     , getRandomNode
+    , nodeLotId
+    , nodeTrafficControl
     , outgoingConnectionsAmount
     , size
-    , trafficControl
     )
 
 import Collection exposing (Id, idMatches)
@@ -91,21 +92,21 @@ size =
 
 findLotExitNodeByLotId : RoadNetwork -> Id -> Maybe RNNodeContext
 findLotExitNodeByLotId roadNetwork lotId =
-    roadNetwork
-        |> Graph.fold
-            (\ctx acc ->
-                case ctx.node.label.kind of
-                    LotExit id ->
-                        if idMatches id lotId then
-                            Just ctx
+    Graph.fold
+        (\ctx acc ->
+            case ctx.node.label.kind of
+                LotExit id ->
+                    if idMatches id lotId then
+                        Just ctx
 
-                        else
-                            acc
-
-                    _ ->
+                    else
                         acc
-            )
-            Nothing
+
+                _ ->
+                    acc
+        )
+        Nothing
+        roadNetwork
 
 
 findNodeByNodeId : RoadNetwork -> NodeId -> Maybe RNNodeContext
@@ -174,12 +175,19 @@ getOutgoingConnectionsAndCosts roadNetwork nodeCtx =
         nodeCtx.outgoing
 
 
-trafficControl : RNNodeContext -> TrafficControl
-trafficControl nodeCtx =
+nodeTrafficControl : RNNodeContext -> TrafficControl
+nodeTrafficControl nodeCtx =
     nodeCtx.node.label.trafficControl
 
 
+nodeLotId : RNNodeContext -> Maybe Id
+nodeLotId nodeCtx =
+    case nodeCtx.node.label.kind of
+        LotEntry id ->
+            Just id
 
---
--- Debug
---
+        LotExit id ->
+            Just id
+
+        _ ->
+            Nothing

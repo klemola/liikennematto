@@ -1,5 +1,6 @@
 module Data.Cars exposing
     ( CarMake
+    , CarRole(..)
     , CarStyle
     , carAsset
     , fireTruck
@@ -33,6 +34,7 @@ type alias CarMake =
     , width : Length
     , shapeAtOrigin : LMShape2d
     , style : CarStyle
+    , role : CarRole
     }
 
 
@@ -41,6 +43,11 @@ type CarStyle
     | Hatchback
     | Van
     | FireTruck
+
+
+type CarRole
+    = None
+    | ServiceVehicle
 
 
 commonCarStyles : List CarStyle
@@ -98,8 +105,16 @@ carAsset make =
             ( fireTruckGraphics, fireTruckViewBox )
 
 
-createCarMake : { style : CarStyle, bodyColor : Color, accentColor : Color, length : Length, width : Length } -> CarMake
-createCarMake { style, bodyColor, accentColor, length, width } =
+createCarMake :
+    { style : CarStyle
+    , bodyColor : Color
+    , accentColor : Color
+    , length : Length
+    , width : Length
+    , role : CarRole
+    }
+    -> CarMake
+createCarMake { style, bodyColor, accentColor, length, width, role } =
     let
         halfLength =
             Quantity.half length
@@ -136,6 +151,7 @@ createCarMake { style, bodyColor, accentColor, length, width } =
     , width = width
     , shapeAtOrigin = shape
     , style = style
+    , role = role
     }
 
 
@@ -147,6 +163,7 @@ sedan bodyColor accentColor =
         , width = Length.meters 2.36
         , bodyColor = bodyColor
         , accentColor = accentColor
+        , role = None
         }
 
 
@@ -246,6 +263,7 @@ hatchback bodyColor accentColor =
         , width = Length.meters 2.5
         , bodyColor = bodyColor
         , accentColor = accentColor
+        , role = None
         }
 
 
@@ -338,6 +356,7 @@ van bodyColor accentColor =
         , width = Length.meters 2.7
         , bodyColor = bodyColor
         , accentColor = accentColor
+        , role = None
         }
 
 
@@ -430,6 +449,7 @@ fireTruck =
         , width = Length.meters 2.8
         , bodyColor = Colors.red
         , accentColor = Colors.redDarker
+        , role = ServiceVehicle
         }
 
 
