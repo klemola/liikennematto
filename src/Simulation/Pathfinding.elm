@@ -10,6 +10,7 @@ module Simulation.Pathfinding exposing
 import Array
 import Collection exposing (Id)
 import Common exposing (andCarry)
+import Data.Cars exposing (CarRole(..))
 import Duration exposing (Duration)
 import Length exposing (Length)
 import Model.Car as Car exposing (Car)
@@ -33,6 +34,11 @@ import Speed exposing (Speed)
 minRouteEndNodeDistance : Length
 minRouteEndNodeDistance =
     Length.meters 100
+
+
+lotToNodeRouteTargetRatio : Float
+lotToNodeRouteTargetRatio =
+    2 / 3
 
 
 updateRoute : Duration -> Car -> ( Route, World.WorldEvent )
@@ -93,8 +99,11 @@ updatePath velocity delta path =
                 |> Maybe.map .length
                 |> Maybe.withDefault Quantity.zero
 
+        updatedParameter =
+            updateParameter velocity delta path.parameter
+
         ( nextSplineIdx, nextSplineMeta, nextParameter ) =
-            if Quantity.ratio path.parameter currentSplineLength >= 0.99 then
+            if Quantity.ratio updatedParameter currentSplineLength >= 0.995 then
                 let
                     idxPlusOne =
                         path.currentSplineIdx + 1
@@ -102,7 +111,7 @@ updatePath velocity delta path =
                 ( idxPlusOne
                 , Array.get idxPlusOne path.splines
                   -- if the parameter overflows (more than the spline length), add the remainder to the next spline's parameter
-                , path.parameter
+                , updatedParameter
                     |> Quantity.minus currentSplineLength
                     |> Quantity.max Quantity.zero
                 )
@@ -110,7 +119,7 @@ updatePath velocity delta path =
             else
                 ( path.currentSplineIdx
                 , path.currentSpline
-                , updateParameter velocity delta path.parameter
+                , updatedParameter
                 )
     in
     { path
@@ -139,7 +148,7 @@ routeTrafficControl world route =
             (\nodeCtx ->
                 let
                     trafficControlResult =
-                        RoadNetwork.trafficControl nodeCtx
+                        RoadNetwork.nodeTrafficControl nodeCtx
                 in
                 ( trafficControlResult, nodeCtx.node.label.position )
             )
@@ -256,19 +265,32 @@ findRandomDestinationNode world car startNodeCtx =
             Random.step (Random.float 0 1) world.seed
 
         lookingForLot =
-            chance > 0.65 && Collection.size world.lots >= 2
+            (chance > lotToNodeRouteTargetRatio)
+                && (Collection.size world.lots >= 2)
 
-        matchPredicate =
+        predicate =
             if lookingForLot then
-                randomLotMatchPredicate
-                    world
-                    car
-                    startNodeCtx
+                case car.make.role of
+                    None ->
+                        randomLotMatchPredicate
+                            world
+                            car
+                            startNodeCtx
+
+                    ServiceVehicle ->
+                        case RoadNetwork.nodeLotId startNodeCtx of
+                            Just _ ->
+                                -- No valid lot to look for
+                                randomNodeMatchPredicate startNodeCtx
+
+                            Nothing ->
+                                -- Try to return the service vehicle to their home lot
+                                homeLotMatchPredicate car
 
             else
                 randomNodeMatchPredicate startNodeCtx
     in
-    RoadNetwork.getRandomNode world.roadNetwork seedAfterRandomFloat matchPredicate
+    RoadNetwork.getRandomNode world.roadNetwork seedAfterRandomFloat predicate
 
 
 randomLotMatchPredicate :
@@ -300,6 +322,21 @@ randomLotMatchPredicate world car startNodeCtx endNode =
             isDifferentLot && parkingPermitted
 
         _ ->
+            False
+
+
+homeLotMatchPredicate : Car -> RNNode -> Bool
+homeLotMatchPredicate car endNode =
+    case car.homeLotId of
+        Just homeLotId ->
+            case endNode.label.kind of
+                LotEntry lotEntryId ->
+                    lotEntryId == homeLotId
+
+                _ ->
+                    False
+
+        Nothing ->
             False
 
 

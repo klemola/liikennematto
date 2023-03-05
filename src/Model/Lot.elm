@@ -213,6 +213,7 @@ createParkingSpot id newLot lotFrame ( position, parkingRestriction ) =
             , parkingSpotExitDirection = orthogonalDirectionToLmDirection newLot.parkingSpotExitDirection
             , drivewayExitDirection = orthogonalDirectionToLmDirection newLot.drivewayExitDirection
             , parkingLaneStartPosition = newLot.parkingLaneStartPosition
+            , parkingLaneStartDirection = orthogonalDirectionToLmDirection newLot.parkingLaneStartDirection
             }
 
         entrySpline =
