@@ -23,6 +23,7 @@ module Model.Route exposing
     , sample
     , sampleAhead
     , splineEndPoint
+    , startNode
     , startNodePosition
     , stopAtSplineEnd
     )
@@ -69,6 +70,7 @@ type Destination
 
 type alias RouteMeta =
     { startNodePosition : LMPoint2d
+    , startNode : RNNodeContext
     , endNode : RNNodeContext
     , path : Path
     }
@@ -148,22 +150,59 @@ reroute currentRoute roadNetwork nextNodeCtx endNodeCtx =
                 AStar.findPath nextNodeCtx endNodeCtx roadNetwork |> Maybe.map Tuple.second
 
         initialSplines =
-            toPath currentRoute
-                |> Maybe.andThen
-                    (\path ->
-                        path.currentSpline |> Maybe.map (currentSplineRemaining path.parameter)
-                    )
-                |> Maybe.map List.singleton
+            toPath currentRoute |> Maybe.map (splinesToNode nextNodeCtx)
     in
     Maybe.map2 (buildRoute nextNodeCtx) nextPathNodes initialSplines
         |> Result.fromMaybe "Could not find a route to the destination"
 
 
+splinesToNode : RNNodeContext -> Path -> List LMCubicSpline2d
+splinesToNode nodeCtx path =
+    let
+        nextNodePosition =
+            RoadNetwork.nodePosition nodeCtx
+    in
+    splinesToNodeHelper
+        (\splineMeta -> splineMeta.endPoint == nextNodePosition)
+        path.parameter
+        (remainingSplines path)
+        []
+
+
+splinesToNodeHelper : (SplineMeta -> Bool) -> Length -> Array SplineMeta -> List LMCubicSpline2d -> List LMCubicSpline2d
+splinesToNodeHelper stopPredicate parameter splinesSlice results =
+    let
+        idx =
+            List.length results
+    in
+    case Array.get idx splinesSlice of
+        Nothing ->
+            results
+
+        Just splineMeta ->
+            let
+                spline =
+                    if idx == 0 then
+                        currentSplineRemaining parameter splineMeta
+
+                    else
+                        CubicSpline2d.fromArcLengthParameterized splineMeta.spline
+
+                nextResults =
+                    results ++ [ spline ]
+            in
+            if stopPredicate splineMeta then
+                nextResults
+
+            else
+                splinesToNodeHelper stopPredicate parameter splinesSlice nextResults
+
+
 {-| A low level constructor for tests
 -}
 fromNodesAndParameter : RNNodeContext -> List RNNodeContext -> Length -> Route
-fromNodesAndParameter startNode otherNodes parameter =
-    buildRoute startNode otherNodes []
+fromNodesAndParameter startNodeCtx otherNodes parameter =
+    buildRoute startNodeCtx otherNodes []
         |> setParameter parameter
 
 
@@ -185,11 +224,11 @@ arriveToParkingSpot parkingReservation lots route =
 
 
 buildRoute : RNNodeContext -> List RNNodeContext -> List LMCubicSpline2d -> Route
-buildRoute startNodeValue nodes initialSplines =
+buildRoute startNodeCtx nodes initialSplines =
     let
         nodeSplines =
             nodesToSplines
-                startNodeValue
+                startNodeCtx
                 nodes
                 []
 
@@ -199,7 +238,8 @@ buildRoute startNodeValue nodes initialSplines =
     Maybe.map2
         (\path end ->
             Routed
-                { startNodePosition = startNodeValue.node.label.position
+                { startNodePosition = RoadNetwork.nodePosition startNodeCtx
+                , startNode = startNodeCtx
                 , endNode = end
                 , path = path
                 }
@@ -226,8 +266,8 @@ nodesToSplines current remaining splines =
 
                 spline =
                     Splines.toNode
-                        { origin = current.node.label.position
-                        , direction = current.node.label.direction
+                        { origin = RoadNetwork.nodePosition current
+                        , direction = RoadNetwork.nodeDirection current
                         , environment = environment
                         }
                         next
@@ -420,6 +460,16 @@ endNode route =
     case route of
         Routed meta ->
             Just meta.endNode
+
+        _ ->
+            Nothing
+
+
+startNode : Route -> Maybe RNNodeContext
+startNode route =
+    case route of
+        Routed meta ->
+            Just meta.startNode
 
         _ ->
             Nothing

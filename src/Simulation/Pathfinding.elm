@@ -162,9 +162,18 @@ restoreRoute world car =
 
     else
         let
+            nextNodePosition =
+                case Car.currentState car of
+                    Car.Unparking ->
+                        Route.startNode car.route
+                            |> Maybe.map RoadNetwork.nodePosition
+
+                    _ ->
+                        Route.splineEndPoint car.route
+
             startNodeValidation =
-                Route.splineEndPoint car.route
-                    |> Result.fromMaybe "Spline end point not found"
+                nextNodePosition
+                    |> Result.fromMaybe "Could not find the start node for the route"
                     |> Result.andThen (validateNodeByPosition world)
 
             endNodeValidation =

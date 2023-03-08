@@ -14,7 +14,9 @@ module Model.RoadNetwork exposing
     , getOutgoingConnectionIds
     , getOutgoingConnectionsAndCosts
     , getRandomNode
+    , nodeDirection
     , nodeLotId
+    , nodePosition
     , nodeTrafficControl
     , outgoingConnectionsAmount
     , size
@@ -191,3 +193,13 @@ nodeLotId nodeCtx =
 
         _ ->
             Nothing
+
+
+nodePosition : RNNodeContext -> LMPoint2d
+nodePosition nodeCtx =
+    nodeCtx.node.label.position
+
+
+nodeDirection : RNNodeContext -> LMDirection2d
+nodeDirection nodeCtx =
+    nodeCtx.node.label.direction
