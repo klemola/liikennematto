@@ -14,6 +14,7 @@ module Model.Liikennematto exposing
     )
 
 import Data.Defaults exposing (horizontalCellsAmount, verticalCellsAmount)
+import Data.Tiles exposing (allTiles, defaultTile)
 import Duration exposing (Duration)
 import FSM exposing (FSM)
 import Model.Debug exposing (DebugState, initialDebugState)
@@ -22,6 +23,7 @@ import Model.Flags exposing (Flags, RuntimeEnvironment(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Screen as Screen exposing (Screen)
 import Model.World as World exposing (World)
+import Random
 import Time
 
 
@@ -204,12 +206,18 @@ triggerLoading model =
 --
 
 
+tilemapConfig =
+    { horizontalCellsAmount = horizontalCellsAmount
+    , verticalCellsAmount = verticalCellsAmount
+    , initialSeed = Random.initialSeed 0
+    , defaultTile = defaultTile
+    , tiles = allTiles
+    }
+
+
 initialWorld : World
 initialWorld =
-    World.empty
-        { horizontalCellsAmount = horizontalCellsAmount
-        , verticalCellsAmount = verticalCellsAmount
-        }
+    World.empty tilemapConfig
 
 
 initial : Flags -> Liikennematto
@@ -247,18 +255,11 @@ initial flags =
 
 fromNewGame : Maybe World -> Liikennematto -> Liikennematto
 fromNewGame previousWorld model =
-    let
-        nextWorld =
-            World.empty
-                { horizontalCellsAmount = Data.Defaults.horizontalCellsAmount
-                , verticalCellsAmount = Data.Defaults.verticalCellsAmount
-                }
-    in
     { model
-        | world = nextWorld
+        | world = initialWorld
         , previousWorld = previousWorld
         , editor = Editor.reset model.editor
-        , renderCache = RenderCache.new nextWorld
+        , renderCache = RenderCache.new initialWorld
         , simulation = Paused
         , debug = initialDebugState
     }

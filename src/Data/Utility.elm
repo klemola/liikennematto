@@ -6,11 +6,13 @@ module Data.Utility exposing
     )
 
 import Collection exposing (Id)
+import Data.Tiles exposing (allTiles, defaultTile)
 import Model.Cell as Cell
 import Model.Geometry exposing (OrthogonalDirection)
 import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext)
 import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.World as World exposing (World)
+import Random
 import Simulation.Infrastructure as Infrastructure
 
 
@@ -25,6 +27,9 @@ tilemapConfig : Tilemap.TilemapConfig
 tilemapConfig =
     { horizontalCellsAmount = 10
     , verticalCellsAmount = 10
+    , initialSeed = Random.initialSeed 0
+    , defaultTile = defaultTile
+    , tiles = allTiles
     }
 
 

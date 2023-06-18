@@ -16,7 +16,7 @@ import Model.Animation as Animation exposing (Animation)
 import Model.Cell exposing (Cell)
 import Model.Editor as Editor
 import Model.Geometry exposing (OrthogonalDirection, oppositeOrthogonalDirection)
-import Model.Tile as Tile exposing (Tile, TileKind)
+import Model.Tile as Tile exposing (Tile, TileId, TileKind(..))
 import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.World exposing (World)
 import Pixels
@@ -47,7 +47,7 @@ type alias DynamicTilesPresentation =
 
 
 type alias DynamicTilePresentation =
-    ( Cell, TileKind, Maybe Animation )
+    ( Cell, TileId, Maybe Animation )
 
 
 new : World -> RenderCache
@@ -144,8 +144,15 @@ toDynamicTiles tilemap changingCells =
         |> List.filterMap
             (\cell ->
                 Tilemap.tileAt tilemap cell
-                    |> Maybe.map
-                        (\tile -> ( cell, tile.kind, tileAnimation tile ))
+                    |> Maybe.andThen
+                        (\tile ->
+                            case tile.kind of
+                                Fixed tileId ->
+                                    Just ( cell, tileId, tileAnimation tile )
+
+                                Superposition _ ->
+                                    Nothing
+                        )
             )
 
 

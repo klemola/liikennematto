@@ -30,7 +30,7 @@ import Model.RoadNetwork
         , RoadNetwork
         , TrafficControl(..)
         )
-import Model.Tile exposing (TileKind)
+import Model.Tile exposing (TileId, TileKind(..))
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..))
 import Model.World exposing (World)
 import Quantity
@@ -128,34 +128,44 @@ renderTile cache cell tileKind =
         yAdjusted =
             cache.tilemapHeightPixels - tileSizePixels - y
     in
-    tileElement
-        tileSizePixels
-        { x = x
-        , y = yAdjusted
-        , tileIndex = tileKind
-        , tileStyles = ""
-        }
+    case tileKind of
+        Fixed tileId ->
+            tileElement
+                tileSizePixels
+                { x = x
+                , y = yAdjusted
+                , tileIndex = tileId
+                , tileStyles = ""
+                }
+
+        Superposition tileIds ->
+            renderSuperposition tileIds
+
+
+renderSuperposition : List TileId -> Svg msg
+renderSuperposition tileIds =
+    nothing
 
 
 renderDynamicTiles : RenderCache -> DynamicTilesPresentation -> Svg msg
 renderDynamicTiles cache tiles =
     tiles
         |> List.map
-            (\( cell, tileKind, maybeAnimation ) ->
+            (\( cell, tileId, maybeAnimation ) ->
                 ( Cell.toString cell
                 , case maybeAnimation of
                     Just animation ->
-                        renderAnimatedTile cache cell tileKind animation
+                        renderAnimatedTile cache cell tileId animation
 
                     Nothing ->
-                        renderTile cache cell tileKind
+                        renderTile cache cell (Fixed tileId)
                 )
             )
         |> Svg.Keyed.node "g" []
 
 
-renderAnimatedTile : RenderCache -> Cell -> TileKind -> Animation -> Svg msg
-renderAnimatedTile cache cell tileKind animation =
+renderAnimatedTile : RenderCache -> Cell -> TileId -> Animation -> Svg msg
+renderAnimatedTile cache cell tileId animation =
     let
         tileSizePixels =
             toPixelsValue cache.pixelsToMetersRatio Cell.size
@@ -194,7 +204,7 @@ renderAnimatedTile cache cell tileKind animation =
             tileSizePixels
             { x = x
             , y = yAdjusted
-            , tileIndex = tileKind
+            , tileIndex = tileId
             , tileStyles = tileStyles
             }
         , overflowTile

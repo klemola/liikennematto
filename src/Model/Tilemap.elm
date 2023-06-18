@@ -1,10 +1,15 @@
 module Model.Tilemap exposing
-    ( TileListFilter(..)
+    ( Socket
+    , Sockets
+    , TerrainType(..)
+    , TileListFilter(..)
+    , TileMeta
     , Tilemap
     , TilemapConfig
     , TilemapUpdateResult
     , addAnchor
     , addTile
+    , all
     , anchorAt
     , boundingBox
     , canBuildRoadAt
@@ -12,12 +17,14 @@ module Model.Tilemap exposing
     , dimensions
     , empty
     , exists
+    , foldr
     , fromCells
     , hasAnchor
     , inBounds
     , intersects
     , removeAnchor
     , removeTile
+    , setTile
     , size
     , tileAt
     , toList
@@ -25,6 +32,7 @@ module Model.Tilemap exposing
     )
 
 import Array exposing (Array)
+import Array.Extra as Array
 import BoundingBox2d
 import Collection exposing (Id)
 import Common
@@ -45,29 +53,56 @@ import Model.Geometry
 import Model.Tile as Tile
     exposing
         ( Tile
-        , TileKind
+        , TileId
+        , TileKind(..)
         , TileOperation
         , chooseTileKind
         )
 import Point2d
 import Quantity
+import Random
 
 
 type Tilemap
     = Tilemap
-        { cells : Array (Maybe Tile)
+        { cells : Array Tile
         , anchors : Dict CellCoordinates ( Id, OrthogonalDirection )
-        , horizontalCellsAmount : Int
-        , verticalCellsAmount : Int
         , width : Length
         , height : Length
         , boundingBox : LMBoundingBox2d
+        , config : TilemapConfig
         }
+
+
+type TerrainType
+    = Road
+    | Grass
+
+
+type alias Sockets =
+    { top : Socket
+    , left : Socket
+    , bottom : Socket
+    , right : Socket
+    }
+
+
+type alias Socket =
+    ( TerrainType, TerrainType )
+
+
+type alias TileMeta =
+    { id : TileId
+    , sockets : Sockets
+    }
 
 
 type alias TilemapConfig =
     { horizontalCellsAmount : Int
     , verticalCellsAmount : Int
+    , initialSeed : Random.Seed
+    , defaultTile : TileMeta
+    , tiles : List TileMeta
     }
 
 
@@ -82,16 +117,26 @@ empty tilemapConfig =
 
         arrSize =
             tilemapConfig.horizontalCellsAmount * tilemapConfig.verticalCellsAmount
+
+        tileFill =
+            Tile.init (superposition tilemapConfig.tiles)
     in
     Tilemap
-        { cells = Array.initialize arrSize (always Nothing)
+        { cells = Array.initialize arrSize (always tileFill)
         , anchors = Dict.empty
-        , horizontalCellsAmount = tilemapConfig.horizontalCellsAmount
-        , verticalCellsAmount = tilemapConfig.verticalCellsAmount
         , width = width
         , height = height
         , boundingBox = Common.boundingBoxWithDimensions width height Point2d.origin
+        , config = tilemapConfig
         }
+
+
+superposition : List TileMeta -> TileKind
+superposition tileMetas =
+    tileMetas
+        |> List.length
+        |> List.range 0
+        |> Superposition
 
 
 fromCells : TilemapConfig -> List Cell -> Tilemap
@@ -127,7 +172,17 @@ tileAt tilemap cell =
             indexFromCell tilemap cell
     in
     Array.get idx tilemapContents.cells
-        |> Maybe.andThen identity
+        |> Maybe.andThen extractFixedTile
+
+
+extractFixedTile : Tile -> Maybe Tile
+extractFixedTile tile =
+    case tile.kind of
+        Fixed _ ->
+            Just tile
+
+        Superposition _ ->
+            Nothing
 
 
 anchorAt : Tilemap -> Cell -> Maybe ( Id, OrthogonalDirection )
@@ -151,13 +206,16 @@ inBounds (Tilemap tilemap) testBB =
 
 intersects : LMBoundingBox2d -> Tilemap -> Bool
 intersects testBB tilemap =
-    toList (\cell _ -> Cell.boundingBox cell) NoFilter tilemap
+    -- FIXME : upoptimized, skips dynamic tiles
+    toList (\cell _ -> Cell.boundingBox cell) StaticTiles tilemap
         |> List.any (Common.boundingBoxOverlaps testBB)
 
 
 exists : Cell -> Tilemap -> Bool
 exists cell tilemap =
-    tileAt tilemap cell |> Maybe.isJust
+    tileAt tilemap cell
+        |> Maybe.andThen extractFixedTile
+        |> Maybe.isJust
 
 
 canBuildRoadAt : Cell -> Tilemap -> Bool
@@ -196,23 +254,21 @@ toList mapperFn listFilter tilemap =
         mappedAcc =
             -- This is an optimization - Array.indexedMap would require double iteration (cell mapping + Nothing values discarded)
             Array.foldl
-                (\maybeTile { acc, index } ->
+                (\tile { acc, index } ->
                     { acc =
-                        case maybeTile of
-                            Just tile ->
-                                cellFromIndex tilemap index
-                                    |> Maybe.map
-                                        (\cell ->
-                                            if listFilter == StaticTiles && Tile.isDynamic tile then
-                                                acc
+                        cellFromIndex tilemap index
+                            |> Maybe.map
+                                (\cell ->
+                                    if
+                                        (listFilter == StaticTiles)
+                                            && (Tile.isDynamic tile || not (Tile.isFixed tile))
+                                    then
+                                        acc
 
-                                            else
-                                                mapperFn cell tile :: acc
-                                        )
-                                    |> Maybe.withDefault acc
-
-                            Nothing ->
-                                acc
+                                    else
+                                        mapperFn cell tile :: acc
+                                )
+                            |> Maybe.withDefault acc
                     , index = index + 1
                     }
                 )
@@ -222,23 +278,57 @@ toList mapperFn listFilter tilemap =
     mappedAcc.acc
 
 
+foldr : (Cell -> Tile -> b -> b) -> b -> Tilemap -> b
+foldr foldFn b tilemap =
+    let
+        (Tilemap tilemapContents) =
+            tilemap
+
+        -- Keep track of the array index, which Array.foldr does not
+        initialAcc =
+            { acc = b
+            , index = 0
+            }
+
+        mappedAcc =
+            -- This is an optimization - Array.indexedMap would require double iteration (cell mapping + Nothing values discarded)
+            Array.foldr
+                (\tile { acc, index } ->
+                    { acc =
+                        cellFromIndex tilemap index
+                            |> Maybe.map
+                                (\cell ->
+                                    foldFn cell tile acc
+                                )
+                            |> Maybe.withDefault acc
+                    , index = index + 1
+                    }
+                )
+                initialAcc
+                tilemapContents.cells
+    in
+    mappedAcc.acc
+
+
+all : (Tile -> Bool) -> Tilemap -> Bool
+all predicate (Tilemap tilemapContents) =
+    Array.all predicate tilemapContents.cells
+
+
 config : Tilemap -> TilemapConfig
 config (Tilemap tilemapContents) =
-    { verticalCellsAmount = tilemapContents.verticalCellsAmount
-    , horizontalCellsAmount = tilemapContents.horizontalCellsAmount
-    }
+    tilemapContents.config
 
 
 size : Tilemap -> Int
 size (Tilemap tilemapContents) =
     Array.foldl
-        (\maybeTile count ->
-            case maybeTile of
-                Just _ ->
-                    count + 1
+        (\tile count ->
+            if not <| Tile.isPropagating tile then
+                count + 1
 
-                Nothing ->
-                    count
+            else
+                count
         )
         0
         tilemapContents.cells
@@ -265,7 +355,7 @@ updateCell cell tile tilemap =
         idx =
             indexFromCell tilemap cell
     in
-    Tilemap { tilemapContents | cells = tilemapContents.cells |> Array.set idx (Just tile) }
+    Tilemap { tilemapContents | cells = tilemapContents.cells |> Array.set idx tile }
 
 
 cellFromIndex : Tilemap -> Int -> Maybe Cell
@@ -298,7 +388,7 @@ indexFromCell (Tilemap tilemapContents) cell =
             }
     in
     -- Arrays are 0-indexed - map the coordinates to match
-    xyZeroIndexed.x + (xyZeroIndexed.y * tilemapContents.verticalCellsAmount)
+    xyZeroIndexed.x + (xyZeroIndexed.y * tilemapContents.config.verticalCellsAmount)
 
 
 
@@ -308,7 +398,7 @@ indexFromCell (Tilemap tilemapContents) cell =
 
 
 type alias TilemapUpdate =
-    { nextTiles : Array (Maybe Tile)
+    { nextTiles : Array Tile
     , actions : List Tile.Action
 
     -- Room for improvement: keep a single list with an union that describes the indices' status
@@ -332,9 +422,12 @@ update delta tilemap =
         (Tilemap currentTilemap) =
             tilemap
 
+        tilemapConfig =
+            config tilemap
+
         cellsUpdate =
             Array.foldl
-                (maybeUpdateTile delta)
+                (updateTile delta tilemapConfig)
                 { nextTiles = Array.empty
                 , actions = []
                 , emptiedIndices = []
@@ -373,23 +466,8 @@ update delta tilemap =
     }
 
 
-maybeUpdateTile : Duration -> Maybe Tile -> TilemapUpdate -> TilemapUpdate
-maybeUpdateTile delta maybeTile tilemapUpdate =
-    case maybeTile of
-        Just tile ->
-            updateTileFSM delta tile tilemapUpdate
-
-        Nothing ->
-            { nextTiles = tilemapUpdate.nextTiles |> Array.push Nothing
-            , actions = tilemapUpdate.actions
-            , emptiedIndices = tilemapUpdate.emptiedIndices
-            , transitionedIndices = tilemapUpdate.transitionedIndices
-            , dynamicIndices = tilemapUpdate.dynamicIndices
-            }
-
-
-updateTileFSM : Duration -> Tile -> TilemapUpdate -> TilemapUpdate
-updateTileFSM delta tile tilemapUpdate =
+updateTile : Duration -> TilemapConfig -> Tile -> TilemapUpdate -> TilemapUpdate
+updateTile delta tilemapConfig tile tilemapUpdate =
     let
         idx =
             Array.length tilemapUpdate.nextTiles
@@ -402,16 +480,12 @@ updateTileFSM delta tile tilemapUpdate =
 
         nextTile =
             if isRemoved then
-                Nothing
+                Tile.init (superposition tilemapConfig.tiles)
 
             else
-                Just
-                    { kind = tile.kind
-                    , fsm = nextFSM
-                    }
-
-        isDynamic =
-            nextTile |> Maybe.map Tile.isDynamic |> Maybe.withDefault False
+                { kind = tile.kind
+                , fsm = nextFSM
+                }
 
         nextEmptiedIndices =
             if isRemoved then
@@ -428,7 +502,7 @@ updateTileFSM delta tile tilemapUpdate =
                 tilemapUpdate.transitionedIndices
 
         nextDynamicIndices =
-            if isDynamic then
+            if Tile.isDynamic nextTile then
                 idx :: tilemapUpdate.dynamicIndices
 
             else
@@ -445,6 +519,11 @@ updateTileFSM delta tile tilemapUpdate =
 addTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )
 addTile =
     applyTilemapOperation Tile.Add
+
+
+setTile : Cell -> Tile -> Tilemap -> Tilemap
+setTile =
+    updateCell
 
 
 changeTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )
@@ -480,7 +559,7 @@ setAnchorTile anchor tilemap =
                     chooseTile tilemap anchor
 
                 ( anchorTile, actions ) =
-                    Tile.updateTileKind anchorTileKind tile
+                    Tile.updateTileId anchorTileKind tile
             in
             ( updateCell anchor anchorTile tilemap, actions )
 
@@ -525,7 +604,7 @@ updateNeighborCells origin tilemap =
 
                     -- FSM actions are ignored
                     ( nextTile, _ ) =
-                        Tile.updateTileKind nextTileKind tile
+                        Tile.updateTileId nextTileKind tile
                 in
                 updateCell changedCell nextTile acc
             )
@@ -619,7 +698,7 @@ nextOrthogonalTile dir cell tilemap =
         maybeTile
 
 
-chooseTile : Tilemap -> Cell -> TileKind
+chooseTile : Tilemap -> Cell -> TileId
 chooseTile tilemap origin =
     let
         orthogonalNeighbors =
