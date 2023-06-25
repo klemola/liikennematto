@@ -139,12 +139,33 @@ renderTile cache cell tileKind =
                 }
 
         Superposition tileIds ->
-            renderSuperposition tileIds
+            renderSuperposition { size = tileSizePixels, x = x, y = yAdjusted } tileIds
 
 
-renderSuperposition : List TileId -> Svg msg
-renderSuperposition tileIds =
-    nothing
+renderSuperposition : { size : Float, x : Float, y : Float } -> List TileId -> Svg msg
+renderSuperposition { size, x, y } tileIds =
+    let
+        idsDebug =
+            List.map String.fromInt tileIds
+    in
+    Svg.svg
+        [ Attributes.x (String.fromFloat x)
+        , Attributes.y (String.fromFloat y)
+        , Attributes.width (String.fromFloat size)
+        , Attributes.height (String.fromFloat size)
+        , Attributes.viewBox "0 0 256 256"
+        ]
+        [ Svg.text_
+            [ Attributes.fill "black"
+            , Attributes.x "64"
+            , Attributes.y "128"
+            , Attributes.style "font: italic 24px sans-serif;"
+            ]
+            [ ("S" :: idsDebug)
+                |> String.join " "
+                |> Svg.text
+            ]
+        ]
 
 
 renderDynamicTiles : RenderCache -> DynamicTilesPresentation -> Svg msg

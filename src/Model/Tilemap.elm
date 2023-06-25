@@ -17,7 +17,7 @@ module Model.Tilemap exposing
     , dimensions
     , empty
     , exists
-    , foldr
+    , fold
     , fromCells
     , hasAnchor
     , inBounds
@@ -27,6 +27,7 @@ module Model.Tilemap exposing
     , setTile
     , size
     , tileAt
+    , tileAtAny
     , toList
     , update
     )
@@ -81,14 +82,14 @@ type TerrainType
 
 type alias Sockets =
     { top : Socket
-    , left : Socket
-    , bottom : Socket
     , right : Socket
+    , bottom : Socket
+    , left : Socket
     }
 
 
 type alias Socket =
-    ( TerrainType, TerrainType )
+    TerrainType
 
 
 type alias TileMeta =
@@ -134,8 +135,7 @@ empty tilemapConfig =
 superposition : List TileMeta -> TileKind
 superposition tileMetas =
     tileMetas
-        |> List.length
-        |> List.range 0
+        |> List.map (\tileMeta -> tileMeta.id)
         |> Superposition
 
 
@@ -173,6 +173,18 @@ tileAt tilemap cell =
     in
     Array.get idx tilemapContents.cells
         |> Maybe.andThen extractFixedTile
+
+
+tileAtAny : Tilemap -> Cell -> Maybe Tile
+tileAtAny tilemap cell =
+    let
+        (Tilemap tilemapContents) =
+            tilemap
+
+        idx =
+            indexFromCell tilemap cell
+    in
+    Array.get idx tilemapContents.cells
 
 
 extractFixedTile : Tile -> Maybe Tile
@@ -278,8 +290,8 @@ toList mapperFn listFilter tilemap =
     mappedAcc.acc
 
 
-foldr : (Cell -> Tile -> b -> b) -> b -> Tilemap -> b
-foldr foldFn b tilemap =
+fold : (Cell -> Tile -> b -> b) -> b -> Tilemap -> b
+fold foldFn b tilemap =
     let
         (Tilemap tilemapContents) =
             tilemap
@@ -292,7 +304,7 @@ foldr foldFn b tilemap =
 
         mappedAcc =
             -- This is an optimization - Array.indexedMap would require double iteration (cell mapping + Nothing values discarded)
-            Array.foldr
+            Array.foldl
                 (\tile { acc, index } ->
                     { acc =
                         cellFromIndex tilemap index
@@ -522,8 +534,8 @@ addTile =
 
 
 setTile : Cell -> Tile -> Tilemap -> Tilemap
-setTile =
-    updateCell
+setTile cell tile tilemap =
+    updateCell cell tile tilemap
 
 
 changeTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )

@@ -1,12 +1,33 @@
-module Data.Tiles exposing (allTiles, defaultTile)
+module Data.Tiles exposing
+    ( allTiles
+    , defaultTile
+    )
 
-import Model.Tile exposing (TileId, TileKind(..))
+import Model.Tile exposing (TileId)
 import Model.Tilemap exposing (Sockets, TerrainType(..), TileMeta)
 
 
 allTiles : List TileMeta
 allTiles =
-    [ grass, horizontalRoad, verticalRoad, deadendUp, deadendRight, deadendDown, deadendLeft ]
+    [ grass
+
+    -- , loneRoad
+    , horizontalRoad
+    , verticalRoad
+    , deadendUp
+    , deadendDown
+    , deadendRight
+    , deadendLeft
+    , curveBottomRight
+    , curveBottomLeft
+    , curveTopRight
+    , curveTopLeft
+    , intersectionTUp
+    , intersectionTLeft
+    , intersectionTRight
+    , intersectionTDown
+    , intersectionCross
+    ]
 
 
 defaultTile : TileMeta
@@ -19,29 +40,39 @@ grass =
     mkTile 0 Grass Grass Grass Grass
 
 
+loneRoad : TileMeta
+loneRoad =
+    mkTile 17 Grass Grass Grass Grass
+
+
 horizontalRoad : TileMeta
 horizontalRoad =
-    mkTile 6 Road Grass Road Grass
+    mkTile 6 Grass Road Grass Road
 
 
 verticalRoad : TileMeta
 verticalRoad =
-    mkTile 9 Grass Road Grass Road
+    mkTile 9 Road Grass Road Grass
 
 
+curveBottomRight : TileMeta
+curveBottomRight =
+    mkTile 3 Road Grass Grass Road
 
--- curveBottomRight : TileMeta
--- curveBottomRight =
---     3
--- curveBottomLeft : TileMeta
--- curveBottomLeft =
---     5
--- curveTopRight : TileMeta
--- curveTopRight =
---     10
--- curveTopLeft : TileMeta
--- curveTopLeft =
---     12
+
+curveBottomLeft : TileMeta
+curveBottomLeft =
+    mkTile 5 Road Road Grass Grass
+
+
+curveTopRight : TileMeta
+curveTopRight =
+    mkTile 10 Grass Grass Road Road
+
+
+curveTopLeft : TileMeta
+curveTopLeft =
+    mkTile 12 Grass Road Road Grass
 
 
 deadendDown : TileMeta
@@ -51,12 +82,12 @@ deadendDown =
 
 deadendRight : TileMeta
 deadendRight =
-    mkTile 2 Grass Road Grass Grass
+    mkTile 2 Grass Grass Grass Road
 
 
 deadendLeft : TileMeta
 deadendLeft =
-    mkTile 4 Grass Grass Grass Road
+    mkTile 4 Grass Road Grass Grass
 
 
 deadendUp : TileMeta
@@ -64,22 +95,32 @@ deadendUp =
     mkTile 8 Grass Grass Road Grass
 
 
+intersectionTUp : TileMeta
+intersectionTUp =
+    mkTile 7 Road Road Grass Road
 
--- intersectionTUp : TileMeta
--- intersectionTUp =
---     7
--- intersectionTLeft : TileMeta
--- intersectionTLeft =
---     11
--- intersectionTRight : TileMeta
--- intersectionTRight =
---     13
--- intersectionTDown : TileMeta
--- intersectionTDown =
---     14
--- intersectionCross : TileMeta
--- intersectionCross =
---     15
+
+intersectionTLeft : TileMeta
+intersectionTLeft =
+    mkTile 11 Road Grass Road Road
+
+
+intersectionTRight : TileMeta
+intersectionTRight =
+    mkTile 13 Road Road Road Grass
+
+
+intersectionTDown : TileMeta
+intersectionTDown =
+    mkTile 14 Grass Road Road Road
+
+
+intersectionCross : TileMeta
+intersectionCross =
+    mkTile 15 Road Road Road Road
+
+
+
 -- lotEntryTUp : TileMeta
 -- lotEntryTUp =
 -- 23
@@ -101,8 +142,8 @@ mkTile id t0 t1 t2 t3 =
 
 mkSockets : TerrainType -> TerrainType -> TerrainType -> TerrainType -> Sockets
 mkSockets t0 t1 t2 t3 =
-    { top = ( t0, t3 )
-    , left = ( t0, t1 )
-    , bottom = ( t1, t2 )
-    , right = ( t3, t2 )
+    { top = t0
+    , right = t1
+    , bottom = t2
+    , left = t3
     }

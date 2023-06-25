@@ -5,21 +5,24 @@ module Editor.WFC exposing
     , pickTile
     , propagate
     , solve
-    , tileById
+    , toTilemap
     )
 
 -- TODO:
 -- do not ignore tile FMS events
 --
+-- Should random pick ingore indices that havea fixed tile?!
 --
 --
 
-import Common exposing (andCarry)
+import Data.Tiles exposing (defaultTile)
+import List.Extra
 import Model.Cell as Cell exposing (Cell)
 import Model.Geometry exposing (OrthogonalDirection(..), oppositeOrthogonalDirection, orthogonalDirections)
 import Model.Tile as Tile exposing (Tile, TileId, TileKind(..))
 import Model.Tilemap as Tilemap exposing (Socket, TileMeta, Tilemap, TilemapConfig)
 import Random exposing (Seed)
+import Random.Extra
 
 
 type Model
@@ -33,9 +36,14 @@ type alias ModelDetails =
     }
 
 
+toTilemap : Model -> Tilemap
+toTilemap (Model model) =
+    model.tilemap
+
+
 type PropStep
     = PickTile Cell TileId
-    | KeepOnlyMatching Cell (Maybe Cell)
+    | KeepOnlyMatching Cell Cell
 
 
 type alias Candidate =
@@ -95,19 +103,8 @@ solve tilemapConfig =
                     propagate <| init tilemapConfig
             in
             solve_ (done <| nextModel) nextModel
-
-        convert propagationTile =
-            case propagationTile of
-                Fixed tileKind ->
-                    listAtWithDefault tilemapConfig.defaultTile tileKind tilemapConfig.tiles
-
-                Superposition _ ->
-                    tilemapConfig.defaultTile
     in
-    -- TODO:
-    -- Maybe add a new fn to allow full modification of the tilemap
-    -- Tilemap.map convert tilemap
-    Tilemap.empty tilemapConfig
+    tilemap
 
 
 solve_ : Bool -> Model -> Model
@@ -124,11 +121,20 @@ or propagating restrictions resulting from the last placement of a tile.
 -}
 propagate : Model -> Model
 propagate ((Model modelDetails) as model) =
+    -- let
+    --     _ =
+    --         Debug.log
+    --             "> PROPAGATE"
+    --             ( modelDetails.openSteps |> List.map debugStep, modelDetails.seed )
+    -- in
     case modelDetails.openSteps of
         step :: otherSteps ->
             let
                 ( additionalSteps, nextTilemap ) =
                     processStep modelDetails step modelDetails.tilemap
+
+                -- _ =
+                --     Debug.log "step" (debugStep step)
             in
             Model
                 { modelDetails
@@ -144,6 +150,9 @@ propagate ((Model modelDetails) as model) =
 
                     withPick =
                         pickRandom randomPick modelDetails
+
+                    -- _ =
+                    --     Debug.log "randomPick" randomPick
                 in
                 Model
                     { withPick | seed = nextSeed }
@@ -153,6 +162,12 @@ propagate ((Model modelDetails) as model) =
 
 
 
+-- debugStep step =
+--     case step of
+--         PickTile cell tileId ->
+--             "pick tile " ++ Debug.toString (Cell.coordinates cell) ++ " " ++ String.fromInt tileId
+--         KeepOnlyMatching from to ->
+--             "keep only matching f: " ++ Debug.toString (Cell.coordinates from) ++ " t: " ++ Debug.toString (Cell.coordinates to)
 -- Internals
 
 
@@ -193,10 +208,10 @@ canDock modelDetails dockDir dockSocket dockTileId =
         dockTile =
             tileById modelDetails.tilemap dockTileId
 
-        currentSocket =
+        matchSocket =
             getSocketIn dockTile dockDir
     in
-    currentSocket == dockSocket
+    matchSocket == dockSocket
 
 
 nextCandidates : ModelDetails -> List Candidate
@@ -205,7 +220,7 @@ nextCandidates { tilemap } =
         tilemapConfig =
             Tilemap.config tilemap
 
-        f cell tile ( candidates, length ) =
+        toCandidate cell tile ( candidates, length ) =
             case tile.kind of
                 Fixed _ ->
                     ( candidates, length )
@@ -229,12 +244,12 @@ nextCandidates { tilemap } =
                         )
     in
     tilemap
-        |> Tilemap.foldr f ( [], List.length tilemapConfig.tiles + 1 )
+        |> Tilemap.fold toCandidate ( [], List.length tilemapConfig.tiles + 1 )
         |> Tuple.first
 
 
 pickRandom : RandomPick -> ModelDetails -> ModelDetails
-pickRandom ( posRand, tileRand ) modelDetails =
+pickRandom ( indexPick, tileIdPick ) modelDetails =
     let
         candidates =
             nextCandidates modelDetails
@@ -250,21 +265,25 @@ pickRandom ( posRand, tileRand ) modelDetails =
                             Nothing
 
                         else
-                            List.head <| List.drop (modBy (List.length candidates) posRand) candidates
+                            let
+                                randomIdx =
+                                    modBy (List.length candidates) indexPick
+                            in
+                            List.head <| List.drop randomIdx candidates
                 in
                 case randomCandidate of
                     Just { cell, options } ->
                         let
                             randomTileId =
-                                if List.isEmpty options then
-                                    Nothing
+                                if List.member tileIdPick options then
+                                    Just tileIdPick
 
                                 else
-                                    List.head <| List.drop (modBy (List.length options) tileRand) options
+                                    Nothing
                         in
                         case randomTileId of
-                            Just tileKind ->
-                                [ PickTile cell tileKind ]
+                            Just tileId ->
+                                [ PickTile cell tileId ]
 
                             Nothing ->
                                 []
@@ -280,53 +299,55 @@ pickRandom ( posRand, tileRand ) modelDetails =
 processStep : ModelDetails -> PropStep -> Tilemap -> ( List PropStep, Tilemap )
 processStep modelDetails step tilemap =
     case step of
-        PickTile cell tileKind ->
+        PickTile cell tileId ->
             let
                 tilemapConfig =
                     Tilemap.config tilemap
 
                 mkStep dir =
-                    KeepOnlyMatching cell (Cell.nextOrthogonalCell tilemapConfig dir cell)
+                    Cell.nextOrthogonalCell tilemapConfig dir cell
+                        |> Maybe.map (\toCell -> KeepOnlyMatching cell toCell)
 
                 nextSteps =
-                    List.map mkStep orthogonalDirections
+                    List.filterMap mkStep orthogonalDirections
 
                 ( tile, _ ) =
-                    Tile.new tileKind Tile.BuildInstantly
+                    Tile.new tileId Tile.BuildInstantly
             in
             ( nextSteps
             , Tilemap.setTile cell tile tilemap
             )
 
-        KeepOnlyMatching from maybeTo ->
+        KeepOnlyMatching from to ->
             case
-                ( Tilemap.tileAt tilemap from
-                , maybeTo |> andCarry (Tilemap.tileAt tilemap)
+                ( Tilemap.tileAtAny tilemap from
+                , Tilemap.tileAtAny tilemap to
                 )
             of
-                ( Just fromTile, Just ( to, toTile ) ) ->
-                    case ( fromTile.kind, toTile.kind ) of
+                ( Just originTile, Just targetTile ) ->
+                    case ( originTile.kind, targetTile.kind ) of
                         ( Fixed originTileId, Superposition options ) ->
                             let
                                 dir =
                                     findDirection (Cell.coordinates from) (Cell.coordinates to)
 
-                                originTile =
+                                originTileMeta =
                                     tileById modelDetails.tilemap originTileId
 
                                 originSocket =
-                                    getSocketIn originTile dir
+                                    getSocketIn originTileMeta dir
 
                                 revisedOptions =
                                     List.filter
-                                        (canDock modelDetails
+                                        (canDock
+                                            modelDetails
                                             (oppositeOrthogonalDirection dir)
                                             originSocket
                                         )
                                         options
 
                                 ( nextTile, _ ) =
-                                    Tile.updateTileKind (Superposition revisedOptions) fromTile
+                                    Tile.updateTileKind (Superposition revisedOptions) originTile
                             in
                             ( [], Tilemap.setTile to nextTile tilemap )
 
@@ -350,27 +371,28 @@ randomTileAndTileIdGen { tilemap } =
         tileCount =
             tilemapConfig.horizontalCellsAmount * tilemapConfig.verticalCellsAmount
 
-        tilesAmount =
-            List.length tilemapConfig.tiles
+        tileIds =
+            List.map (\tile -> tile.id) tilemapConfig.tiles
+
+        tileIdSample =
+            tileIds
+                |> Random.Extra.sample
+                |> Random.map (Maybe.withDefault defaultTile.id)
     in
     Random.pair
         (Random.int 0 tileCount)
-        (Random.int 0 tilesAmount)
+        tileIdSample
 
 
 tileById : Tilemap -> Int -> TileMeta
-tileById tilemap index =
+tileById tilemap tileId =
     let
         tilemapConfig =
             Tilemap.config tilemap
     in
-    -- TODO: refactor this list get by index thingy (or use the listAtWithDefault here too)
-    case List.head <| List.drop index tilemapConfig.tiles of
-        Nothing ->
-            tilemapConfig.defaultTile
-
-        Just aTile ->
-            aTile
+    tilemapConfig.tiles
+        |> List.Extra.find (\tm -> tm.id == tileId)
+        |> Maybe.withDefault defaultTile
 
 
 listAtWithDefault : a -> Int -> List a -> a

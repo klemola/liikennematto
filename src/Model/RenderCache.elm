@@ -130,7 +130,7 @@ refreshTilemapCache tilemapUpdateResult cache =
 
 toTilemapCache : Tilemap -> List StaticTilePresentation
 toTilemapCache tilemap =
-    Tilemap.toList tileMapper Tilemap.StaticTiles tilemap
+    Tilemap.toList tileMapper Tilemap.NoFilter tilemap
 
 
 tileMapper : Cell -> Tile -> StaticTilePresentation

@@ -23,9 +23,9 @@ outerLaneOffset =
 
 
 roadAsset : Int -> List (Svg msg)
-roadAsset tileIndex =
-    case tileIndex of
-        0 ->
+roadAsset tileId =
+    case tileId of
+        17 ->
             defaultRoad
 
         1 ->
@@ -83,7 +83,7 @@ roadAsset tileIndex =
             lotEntryTRight
 
         _ ->
-            defaultRoad
+            []
 
 
 defaultRoad : List (Svg msg)
