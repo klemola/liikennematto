@@ -11,16 +11,16 @@ module Editor.WFC exposing
 -- TODO:
 -- do not ignore tile FMS events
 --
--- Should random pick ingore indices that havea fixed tile?!
+-- Should random pick ingore indices that have a fixed tile?
 --
 --
 
-import Data.Tiles exposing (defaultTile)
+import Data.Tiles exposing (defaultTile, pairingsForSocket)
 import List.Extra
 import Model.Cell as Cell exposing (Cell)
 import Model.Geometry exposing (OrthogonalDirection(..), oppositeOrthogonalDirection, orthogonalDirections)
-import Model.Tile as Tile exposing (Tile, TileId, TileKind(..))
-import Model.Tilemap as Tilemap exposing (Socket, TileMeta, Tilemap, TilemapConfig)
+import Model.Tile as Tile exposing (Socket, Tile, TileId, TileKind(..), TileMeta)
+import Model.Tilemap as Tilemap exposing (Tilemap, TilemapConfig)
 import Random exposing (Seed)
 import Random.Extra
 
@@ -210,8 +210,11 @@ canDock modelDetails dockDir dockSocket dockTileId =
 
         matchSocket =
             getSocketIn dockTile dockDir
+
+        pairings =
+            pairingsForSocket dockSocket
     in
-    matchSocket == dockSocket
+    List.any (\pair -> pair == matchSocket) pairings
 
 
 nextCandidates : ModelDetails -> List Candidate

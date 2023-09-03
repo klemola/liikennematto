@@ -1,9 +1,5 @@
 module Model.Tilemap exposing
-    ( Socket
-    , Sockets
-    , TerrainType(..)
-    , TileListFilter(..)
-    , TileMeta
+    ( TileListFilter(..)
     , Tilemap
     , TilemapConfig
     , TilemapUpdateResult
@@ -56,6 +52,7 @@ import Model.Tile as Tile
         ( Tile
         , TileId
         , TileKind(..)
+        , TileMeta
         , TileOperation
         , chooseTileKind
         )
@@ -73,29 +70,6 @@ type Tilemap
         , boundingBox : LMBoundingBox2d
         , config : TilemapConfig
         }
-
-
-type TerrainType
-    = Road
-    | Grass
-
-
-type alias Sockets =
-    { top : Socket
-    , right : Socket
-    , bottom : Socket
-    , left : Socket
-    }
-
-
-type alias Socket =
-    TerrainType
-
-
-type alias TileMeta =
-    { id : TileId
-    , sockets : Sockets
-    }
 
 
 type alias TilemapConfig =

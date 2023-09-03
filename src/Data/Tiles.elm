@@ -1,10 +1,29 @@
 module Data.Tiles exposing
     ( allTiles
     , defaultTile
+    , pairingsForSocket
     )
 
-import Model.Tile exposing (TileId)
-import Model.Tilemap exposing (Sockets, TerrainType(..), TileMeta)
+import Model.Tile exposing (Socket(..), TileMeta)
+
+
+pairingsForSocket : Socket -> List Socket
+pairingsForSocket socket =
+    case socket of
+        Red ->
+            [ Red, Pink, Yellow, Blue ]
+
+        Green ->
+            [ Green ]
+
+        Blue ->
+            [ Red, Yellow ]
+
+        Yellow ->
+            [ Red, Yellow ]
+
+        Pink ->
+            [ Red ]
 
 
 allTiles : List TileMeta
@@ -37,87 +56,206 @@ defaultTile =
 
 grass : TileMeta
 grass =
-    mkTile 0 Grass Grass Grass Grass
+    { id = 0
+    , sockets =
+        { top = Green
+        , right = Green
+        , bottom = Green
+        , left = Green
+        }
+    }
 
 
 loneRoad : TileMeta
 loneRoad =
-    mkTile 17 Grass Grass Grass Grass
+    { id = 17
+    , sockets =
+        { top = Green
+        , right = Green
+        , bottom = Green
+        , left = Green
+        }
+    }
 
 
 horizontalRoad : TileMeta
 horizontalRoad =
-    mkTile 6 Grass Road Grass Road
+    { id = 6
+    , sockets =
+        { top = Green
+        , right = Red
+        , bottom = Green
+        , left = Red
+        }
+    }
 
 
 verticalRoad : TileMeta
 verticalRoad =
-    mkTile 9 Road Grass Road Grass
-
-
-curveBottomRight : TileMeta
-curveBottomRight =
-    mkTile 3 Road Grass Grass Road
-
-
-curveBottomLeft : TileMeta
-curveBottomLeft =
-    mkTile 5 Road Road Grass Grass
-
-
-curveTopRight : TileMeta
-curveTopRight =
-    mkTile 10 Grass Grass Road Road
-
-
-curveTopLeft : TileMeta
-curveTopLeft =
-    mkTile 12 Grass Road Road Grass
+    { id = 9
+    , sockets =
+        { top = Red
+        , right = Green
+        , bottom = Red
+        , left = Green
+        }
+    }
 
 
 deadendDown : TileMeta
 deadendDown =
-    mkTile 1 Road Grass Grass Grass
+    { id = 1
+    , sockets =
+        { top = Blue
+        , right = Green
+        , bottom = Green
+        , left = Green
+        }
+    }
 
 
 deadendRight : TileMeta
 deadendRight =
-    mkTile 2 Grass Grass Grass Road
+    { id = 2
+    , sockets =
+        { top = Green
+        , right = Green
+        , bottom = Green
+        , left = Blue
+        }
+    }
 
 
 deadendLeft : TileMeta
 deadendLeft =
-    mkTile 4 Grass Road Grass Grass
+    { id = 4
+    , sockets =
+        { top = Green
+        , right = Blue
+        , bottom = Green
+        , left = Green
+        }
+    }
 
 
 deadendUp : TileMeta
 deadendUp =
-    mkTile 8 Grass Grass Road Grass
+    { id = 8
+    , sockets =
+        { top = Green
+        , right = Green
+        , bottom = Blue
+        , left = Green
+        }
+    }
+
+
+curveBottomRight : TileMeta
+curveBottomRight =
+    { id = 3
+    , sockets =
+        { top = Yellow
+        , right = Green
+        , bottom = Green
+        , left = Yellow
+        }
+    }
+
+
+curveBottomLeft : TileMeta
+curveBottomLeft =
+    { id = 5
+    , sockets =
+        { top = Yellow
+        , right = Yellow
+        , bottom = Green
+        , left = Green
+        }
+    }
+
+
+curveTopRight : TileMeta
+curveTopRight =
+    { id = 10
+    , sockets =
+        { top = Green
+        , right = Green
+        , bottom = Yellow
+        , left = Yellow
+        }
+    }
+
+
+curveTopLeft : TileMeta
+curveTopLeft =
+    { id = 12
+    , sockets =
+        { top = Green
+        , right = Yellow
+        , bottom = Yellow
+        , left = Green
+        }
+    }
 
 
 intersectionTUp : TileMeta
 intersectionTUp =
-    mkTile 7 Road Road Grass Road
+    { id = 7
+    , sockets =
+        { top = Pink
+        , right = Yellow
+        , bottom = Green
+        , left = Pink
+        }
+    }
 
 
 intersectionTLeft : TileMeta
 intersectionTLeft =
-    mkTile 11 Road Grass Road Road
+    { id = 11
+    , sockets =
+        { top = Pink
+        , right = Green
+        , bottom = Yellow
+        , left = Pink
+        }
+    }
 
 
 intersectionTRight : TileMeta
 intersectionTRight =
-    mkTile 13 Road Road Road Grass
+    { id = 13
+    , sockets =
+        { top = Yellow
+        , right = Pink
+        , bottom = Pink
+        , left = Green
+        }
+    }
 
 
 intersectionTDown : TileMeta
 intersectionTDown =
-    mkTile 14 Grass Road Road Road
+    { id = 14
+    , sockets =
+        { top = Green
+        , right = Pink
+        , bottom = Pink
+        , left = Yellow
+        }
+    }
 
 
 intersectionCross : TileMeta
 intersectionCross =
-    mkTile 15 Road Road Road Road
+    { id = 15
+    , sockets =
+        { top = Pink
+        , right = Pink
+        , bottom = Pink
+        , left = Pink
+        }
+    }
 
 
 
@@ -131,19 +269,3 @@ intersectionCross =
 -- lotEntryTRight =
 --     29
 --
-
-
-mkTile : TileId -> TerrainType -> TerrainType -> TerrainType -> TerrainType -> TileMeta
-mkTile id t0 t1 t2 t3 =
-    { id = id
-    , sockets = mkSockets t0 t1 t2 t3
-    }
-
-
-mkSockets : TerrainType -> TerrainType -> TerrainType -> TerrainType -> Sockets
-mkSockets t0 t1 t2 t3 =
-    { top = t0
-    , right = t1
-    , bottom = t2
-    , left = t3
-    }

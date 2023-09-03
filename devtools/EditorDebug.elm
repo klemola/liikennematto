@@ -1,4 +1,4 @@
-module EditorDebug exposing (..)
+module EditorDebug exposing (main)
 
 import Browser
 import Data.Tiles exposing (allTiles, defaultTile)
@@ -59,7 +59,7 @@ init _ =
             RenderCache.new world
     in
     ( { wfModel = WFC.init tilemapConfig
-      , mode = Manual
+      , mode = AutoStep
       , world = world
       , cache = cache
       }
@@ -84,7 +84,7 @@ subscriptions { mode } =
             Sub.none
 
         AutoStep ->
-            Time.every 16 (\_ -> Step)
+            Time.every 1 (\_ -> Step)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -199,7 +199,7 @@ view model =
 
 controls : Element.Element Msg
 controls =
-    Element.row [ Element.spacing 16 ]
+    Element.row [ Element.spacing 16, Element.padding 16 ]
         [ Input.button []
             { onPress = Just Step
             , label = Element.text "Pick"
