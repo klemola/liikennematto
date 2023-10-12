@@ -10,6 +10,7 @@ module Model.Cell exposing
     , fromCoordinatesSet
     , identical
     , nextOrthogonalCell
+    , orthogonalDirection
     , quadrantNeighbors
     , size
     , toString
@@ -240,6 +241,35 @@ boundingBox (Cell cellProperties) =
 identical : Cell -> Cell -> Bool
 identical (Cell cellA) (Cell cellB) =
     cellA.x == cellB.x && cellA.y == cellB.y
+
+
+orthogonalDirection : Cell -> Cell -> Maybe OrthogonalDirection
+orthogonalDirection from to =
+    if identical from to then
+        Nothing
+
+    else
+        let
+            ( x0, y0 ) =
+                coordinates from
+
+            ( x1, y1 ) =
+                coordinates to
+
+            dir =
+                if x1 > x0 then
+                    Right
+
+                else if y1 > y0 then
+                    Down
+
+                else if y0 > y1 then
+                    Up
+
+                else
+                    Left
+        in
+        Just dir
 
 
 toString : Cell -> String

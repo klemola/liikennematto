@@ -298,6 +298,7 @@ fold foldFn b tilemap =
 
 all : (Tile -> Bool) -> Tilemap -> Bool
 all predicate (Tilemap tilemapContents) =
+    -- Room for improvement: early exit if any cell does not satisfy the predicate
     Array.all predicate tilemapContents.cells
 
 

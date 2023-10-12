@@ -1,10 +1,11 @@
 module Editor.WFC exposing
     ( Model
-    , done
     , init
     , pickTile
     , propagate
     , solve
+    , stopped
+    , toString
     , toTilemap
     )
 
@@ -18,7 +19,12 @@ module Editor.WFC exposing
 import Data.Tiles exposing (defaultTile, pairingsForSocket)
 import List.Extra
 import Model.Cell as Cell exposing (Cell)
-import Model.Geometry exposing (OrthogonalDirection(..), oppositeOrthogonalDirection, orthogonalDirections)
+import Model.Geometry
+    exposing
+        ( OrthogonalDirection(..)
+        , oppositeOrthogonalDirection
+        , orthogonalDirections
+        )
 import Model.Tile as Tile exposing (Socket, Tile, TileId, TileKind(..), TileMeta)
 import Model.Tilemap as Tilemap exposing (Tilemap, TilemapConfig)
 import Random exposing (Seed)
@@ -31,19 +37,34 @@ type Model
 
 type alias ModelDetails =
     { tilemap : Tilemap
-    , openSteps : List PropStep
+    , openSteps : List PropagationStep
+    , supervisorState : SupervisorState
+    , generationState : GenerationState
     , seed : Seed
     }
 
 
-toTilemap : Model -> Tilemap
-toTilemap (Model model) =
-    model.tilemap
+type SupervisorState
+    = Generating
+    | Done
+    | Recovering
 
 
-type PropStep
+type GenerationState
+    = Propagating
+    | Failure PropagationFailure
+
+
+type PropagationStep
     = PickTile Cell TileId
     | KeepOnlyMatching Cell Cell
+
+
+type PropagationFailure
+    = NoSuperpositionOptions
+    | NoPotentialMatch
+    | InvalidDirection
+    | TileNotFound
 
 
 type alias Candidate =
@@ -57,6 +78,8 @@ init tilemapConfig =
     Model
         { tilemap = Tilemap.empty tilemapConfig
         , openSteps = []
+        , supervisorState = Generating
+        , generationState = Propagating
         , seed = tilemapConfig.initialSeed
         }
 
@@ -73,17 +96,13 @@ pickTile cell tileKind (Model model) =
 
 {-| Returns true if all positions in the grid have a tile assigned
 -}
-done : Model -> Bool
-done ((Model { tilemap }) as model) =
-    let
-        stopped (Model { openSteps }) =
-            List.isEmpty openSteps
-    in
-    stopped model && Tilemap.all donePredicate tilemap
+propagationDone : Model -> Bool
+propagationDone (Model { tilemap, openSteps }) =
+    List.isEmpty openSteps && Tilemap.all propagatinDonePredicate tilemap
 
 
-donePredicate : Tile -> Bool
-donePredicate tile =
+propagatinDonePredicate : Tile -> Bool
+propagatinDonePredicate tile =
     case tile.kind of
         Superposition _ ->
             False
@@ -92,28 +111,29 @@ donePredicate tile =
             True
 
 
+stopped : Model -> Bool
+stopped (Model modelDetails) =
+    modelDetails.supervisorState == Done || modelDetails.supervisorState == Recovering
+
+
 {-| Tries to solve/fill the whole grid in one go by assigning a tile to each position.
 -}
-solve : TilemapConfig -> Tilemap
+solve : TilemapConfig -> Model
 solve tilemapConfig =
     let
-        (Model { tilemap }) =
-            let
-                nextModel =
-                    propagate <| init tilemapConfig
-            in
-            solve_ (done <| nextModel) nextModel
+        nextModel =
+            propagate <| init tilemapConfig
     in
-    tilemap
+    solve_ nextModel
 
 
-solve_ : Bool -> Model -> Model
-solve_ isDone model =
-    if isDone then
+solve_ : Model -> Model
+solve_ model =
+    if stopped model then
         model
 
     else
-        solve_ (done model) (propagate model)
+        solve_ (propagate model)
 
 
 {-| Execute a single step. This can mean picking the next random tile
@@ -121,69 +141,62 @@ or propagating restrictions resulting from the last placement of a tile.
 -}
 propagate : Model -> Model
 propagate ((Model modelDetails) as model) =
-    -- let
-    --     _ =
-    --         Debug.log
-    --             "> PROPAGATE"
-    --             ( modelDetails.openSteps |> List.map debugStep, modelDetails.seed )
-    -- in
     case modelDetails.openSteps of
         step :: otherSteps ->
             let
-                ( additionalSteps, nextTilemap ) =
+                processStepResult =
                     processStep modelDetails step modelDetails.tilemap
 
-                -- _ =
-                --     Debug.log "step" (debugStep step)
+                nextModelDetails =
+                    case processStepResult of
+                        Ok ( additionalSteps, nextTilemap ) ->
+                            { modelDetails
+                                | tilemap = nextTilemap
+                                , generationState = Propagating
+                                , openSteps = otherSteps ++ additionalSteps
+                            }
+
+                        Err propagationFailure ->
+                            { modelDetails
+                                | supervisorState =
+                                    -- NoPotentialMatch is a common propagation failure and does not require a recovery strategy
+                                    if propagationFailure == NoPotentialMatch then
+                                        Generating
+
+                                    else
+                                        Recovering
+                                , generationState = Failure propagationFailure
+                                , openSteps = otherSteps
+                            }
             in
-            Model
-                { modelDetails
-                    | tilemap = nextTilemap
-                    , openSteps = otherSteps ++ additionalSteps
-                }
+            Model nextModelDetails
 
         [] ->
-            if not (done model) then
-                let
-                    ( randomPick, nextSeed ) =
-                        Random.step (randomTileAndTileIdGen modelDetails) modelDetails.seed
+            let
+                nextModelDetails =
+                    if not (propagationDone model) then
+                        let
+                            ( randomPick, nextSeed ) =
+                                Random.step (randomTileAndTileIdGen modelDetails) modelDetails.seed
 
-                    withPick =
-                        pickRandom randomPick modelDetails
+                            withPick =
+                                pickRandom randomPick modelDetails
+                        in
+                        { withPick
+                            | seed = nextSeed
+                            , generationState = Propagating
+                        }
 
-                    -- _ =
-                    --     Debug.log "randomPick" randomPick
-                in
-                Model
-                    { withPick | seed = nextSeed }
-
-            else
-                model
+                    else
+                        { modelDetails | supervisorState = Done }
+            in
+            Model nextModelDetails
 
 
 
--- debugStep step =
---     case step of
---         PickTile cell tileId ->
---             "pick tile " ++ Debug.toString (Cell.coordinates cell) ++ " " ++ String.fromInt tileId
---         KeepOnlyMatching from to ->
---             "keep only matching f: " ++ Debug.toString (Cell.coordinates from) ++ " t: " ++ Debug.toString (Cell.coordinates to)
+--
 -- Internals
-
-
-findDirection : ( comparable, comparable ) -> ( comparable, comparable ) -> OrthogonalDirection
-findDirection ( x0, y0 ) ( x1, y1 ) =
-    if x1 > x0 then
-        Right
-
-    else if y1 > y0 then
-        Down
-
-    else if y0 > y1 then
-        Up
-
-    else
-        Left
+--
 
 
 getSocketIn : TileMeta -> OrthogonalDirection -> Socket
@@ -251,6 +264,114 @@ nextCandidates { tilemap } =
         |> Tuple.first
 
 
+processStep : ModelDetails -> PropagationStep -> Tilemap -> Result PropagationFailure ( List PropagationStep, Tilemap )
+processStep modelDetails step tilemap =
+    case step of
+        PickTile cell tileId ->
+            let
+                tilemapConfig =
+                    Tilemap.config tilemap
+
+                mkStep dir =
+                    Cell.nextOrthogonalCell tilemapConfig dir cell
+                        |> Maybe.map (KeepOnlyMatching cell)
+
+                nextSteps =
+                    List.filterMap mkStep orthogonalDirections
+
+                ( tile, _ ) =
+                    Tile.new tileId Tile.BuildInstantly
+            in
+            Ok
+                ( nextSteps
+                , Tilemap.setTile cell tile tilemap
+                )
+
+        KeepOnlyMatching from to ->
+            Maybe.map2 Tuple.pair
+                (Tilemap.tileAtAny tilemap from)
+                (Tilemap.tileAtAny tilemap to)
+                |> Result.fromMaybe TileNotFound
+                |> Result.andThen (findDirectionAndDock modelDetails from to)
+                |> Result.map (Tuple.pair [])
+
+
+findDirectionAndDock : ModelDetails -> Cell -> Cell -> ( Tile, Tile ) -> Result PropagationFailure Tilemap
+findDirectionAndDock modelDetails from to tilePair =
+    Cell.orthogonalDirection from to
+        |> Result.fromMaybe InvalidDirection
+        |> Result.andThen
+            (dockTileInDirection
+                modelDetails
+                tilePair
+            )
+        |> Result.map (\tile -> Tilemap.setTile to tile modelDetails.tilemap)
+
+
+dockTileInDirection : ModelDetails -> ( Tile, Tile ) -> OrthogonalDirection -> Result PropagationFailure Tile
+dockTileInDirection modelDetails ( originTile, targetTile ) dir =
+    case ( originTile.kind, targetTile.kind ) of
+        ( Fixed originTileId, Superposition options ) ->
+            let
+                originTileMeta =
+                    tileById modelDetails.tilemap originTileId
+
+                originSocket =
+                    getSocketIn originTileMeta dir
+
+                revisedOptions =
+                    List.filter
+                        (canDock
+                            modelDetails
+                            (oppositeOrthogonalDirection dir)
+                            originSocket
+                        )
+                        options
+            in
+            if List.isEmpty revisedOptions then
+                -- let
+                --     _ =
+                --         Debug.log "NoSuperpositionOptions" ( originTileId, options, dir )
+                -- in
+                Err NoSuperpositionOptions
+
+            else
+                let
+                    ( nextTile, _ ) =
+                        Tile.updateTileKind (Superposition revisedOptions) originTile
+                in
+                Ok nextTile
+
+        _ ->
+            Err NoPotentialMatch
+
+
+type alias RandomPick =
+    ( Int, Int )
+
+
+randomTileAndTileIdGen : ModelDetails -> Random.Generator RandomPick
+randomTileAndTileIdGen { tilemap } =
+    let
+        tilemapConfig =
+            Tilemap.config tilemap
+
+        tileCount =
+            tilemapConfig.horizontalCellsAmount * tilemapConfig.verticalCellsAmount
+
+        tileIds =
+            List.map .id tilemapConfig.tiles
+
+        tileIdSample =
+            tileIds
+                |> Random.Extra.sample
+                |> Random.map (Maybe.withDefault defaultTile.id)
+    in
+    Random.pair
+        (Random.int 0 tileCount)
+        tileIdSample
+
+
 pickRandom : RandomPick -> ModelDetails -> ModelDetails
 pickRandom ( indexPick, tileIdPick ) modelDetails =
     let
@@ -299,94 +420,6 @@ pickRandom ( indexPick, tileIdPick ) modelDetails =
     }
 
 
-processStep : ModelDetails -> PropStep -> Tilemap -> ( List PropStep, Tilemap )
-processStep modelDetails step tilemap =
-    case step of
-        PickTile cell tileId ->
-            let
-                tilemapConfig =
-                    Tilemap.config tilemap
-
-                mkStep dir =
-                    Cell.nextOrthogonalCell tilemapConfig dir cell
-                        |> Maybe.map (\toCell -> KeepOnlyMatching cell toCell)
-
-                nextSteps =
-                    List.filterMap mkStep orthogonalDirections
-
-                ( tile, _ ) =
-                    Tile.new tileId Tile.BuildInstantly
-            in
-            ( nextSteps
-            , Tilemap.setTile cell tile tilemap
-            )
-
-        KeepOnlyMatching from to ->
-            case
-                ( Tilemap.tileAtAny tilemap from
-                , Tilemap.tileAtAny tilemap to
-                )
-            of
-                ( Just originTile, Just targetTile ) ->
-                    case ( originTile.kind, targetTile.kind ) of
-                        ( Fixed originTileId, Superposition options ) ->
-                            let
-                                dir =
-                                    findDirection (Cell.coordinates from) (Cell.coordinates to)
-
-                                originTileMeta =
-                                    tileById modelDetails.tilemap originTileId
-
-                                originSocket =
-                                    getSocketIn originTileMeta dir
-
-                                revisedOptions =
-                                    List.filter
-                                        (canDock
-                                            modelDetails
-                                            (oppositeOrthogonalDirection dir)
-                                            originSocket
-                                        )
-                                        options
-
-                                ( nextTile, _ ) =
-                                    Tile.updateTileKind (Superposition revisedOptions) originTile
-                            in
-                            ( [], Tilemap.setTile to nextTile tilemap )
-
-                        _ ->
-                            ( [], tilemap )
-
-                _ ->
-                    ( [], tilemap )
-
-
-type alias RandomPick =
-    ( Int, Int )
-
-
-randomTileAndTileIdGen : ModelDetails -> Random.Generator ( Int, Int )
-randomTileAndTileIdGen { tilemap } =
-    let
-        tilemapConfig =
-            Tilemap.config tilemap
-
-        tileCount =
-            tilemapConfig.horizontalCellsAmount * tilemapConfig.verticalCellsAmount
-
-        tileIds =
-            List.map (\tile -> tile.id) tilemapConfig.tiles
-
-        tileIdSample =
-            tileIds
-                |> Random.Extra.sample
-                |> Random.map (Maybe.withDefault defaultTile.id)
-    in
-    Random.pair
-        (Random.int 0 tileCount)
-        tileIdSample
-
-
 tileById : Tilemap -> Int -> TileMeta
 tileById tilemap tileId =
     let
@@ -398,11 +431,57 @@ tileById tilemap tileId =
         |> Maybe.withDefault defaultTile
 
 
-listAtWithDefault : a -> Int -> List a -> a
-listAtWithDefault default idx list =
-    case List.head <| List.drop idx list of
-        Just a ->
-            a
 
-        Nothing ->
-            default
+--
+-- Interop
+--
+
+
+toTilemap : Model -> Tilemap
+toTilemap (Model modelDetails) =
+    modelDetails.tilemap
+
+
+toString : Model -> String
+toString model =
+    describeState model
+
+
+describeState : Model -> String
+describeState (Model modelContents) =
+    let
+        supervisorStateString =
+            case modelContents.supervisorState of
+                Generating ->
+                    "generating"
+
+                Recovering ->
+                    "recovering"
+
+                Done ->
+                    "done"
+
+        generationStateString =
+            case modelContents.generationState of
+                Propagating ->
+                    "propagating"
+
+                Failure propagationFailure ->
+                    let
+                        failureString =
+                            case propagationFailure of
+                                NoSuperpositionOptions ->
+                                    "No superposition opts"
+
+                                NoPotentialMatch ->
+                                    "No potential match"
+
+                                InvalidDirection ->
+                                    "Invalid direction (cell to cell)"
+
+                                TileNotFound ->
+                                    "Tile not found"
+                    in
+                    "failure: " ++ failureString
+    in
+    supervisorStateString ++ "\n" ++ generationStateString

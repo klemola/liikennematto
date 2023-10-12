@@ -27,7 +27,7 @@ type Msg
 
 
 type alias Model =
-    { wfModel : WFC.Model
+    { wfcModel : WFC.Model
     , world : World.World
     , cache : RenderCache.RenderCache
     , mode : Mode
@@ -58,7 +58,7 @@ init _ =
         cache =
             RenderCache.new world
     in
-    ( { wfModel = WFC.init tilemapConfig
+    ( { wfcModel = WFC.init tilemapConfig
       , mode = AutoStep
       , world = world
       , cache = cache
@@ -93,18 +93,18 @@ update msg model =
         Pick _ pos tileId ->
             case Cell.fromCoordinates tilemapConfig pos of
                 Just cell ->
-                    ( { model | wfModel = WFC.pickTile cell tileId model.wfModel }, Cmd.none )
+                    ( { model | wfcModel = WFC.pickTile cell tileId model.wfcModel }, Cmd.none )
 
                 Nothing ->
                     ( model, Cmd.none )
 
         Step ->
             let
-                wfModel =
-                    WFC.propagate model.wfModel
+                wfcModel =
+                    WFC.propagate model.wfcModel
 
                 tilemap =
-                    WFC.toTilemap wfModel
+                    WFC.toTilemap wfcModel
 
                 nextWorld =
                     World.setTilemap tilemap model.world
@@ -113,14 +113,14 @@ update msg model =
                     RenderCache.setTilemapCache tilemap model.cache
 
                 mode =
-                    if WFC.done model.wfModel then
+                    if WFC.stopped model.wfcModel then
                         Manual
 
                     else
                         model.mode
             in
             ( { model
-                | wfModel = wfModel
+                | wfcModel = wfcModel
                 , world = nextWorld
                 , cache = cache
                 , mode = mode
@@ -148,18 +148,23 @@ update msg model =
                         | initialSeed = seed
                     }
 
-                solvedTilemap =
+                solveResult =
                     WFC.solve tilemapConfigWithSeed
 
+                tilemap =
+                    WFC.toTilemap solveResult
+
                 nextWorld =
-                    World.setTilemap solvedTilemap model.world
+                    World.setTilemap tilemap model.world
 
                 cache =
-                    RenderCache.setTilemapCache solvedTilemap model.cache
+                    RenderCache.setTilemapCache tilemap model.cache
             in
             ( { model
-                | world = nextWorld
+                | wfcModel = solveResult
+                , world = nextWorld
                 , cache = cache
+                , mode = Manual
               }
             , Cmd.none
             )
@@ -189,7 +194,13 @@ view model =
             [ Element.width (Element.px renderWidth)
             , Element.height (Element.px renderHeight)
             , Element.inFront renderDebug
-            , Element.below controls
+            , Element.below
+                (Element.column
+                    []
+                    [ controls
+                    , wfcState model.wfcModel
+                    ]
+                )
             ]
         |> Element.layout
             [ Element.width Element.fill
@@ -202,10 +213,17 @@ controls =
     Element.row [ Element.spacing 16, Element.padding 16 ]
         [ Input.button []
             { onPress = Just Step
-            , label = Element.text "Pick"
+            , label = Element.text "Step"
             }
         , Input.button []
             { onPress = Just Solve
             , label = Element.text "Solve"
             }
+        ]
+
+
+wfcState : WFC.Model -> Element.Element Msg
+wfcState wfcModel =
+    Element.column []
+        [ Element.el [] (Element.text (WFC.toString wfcModel))
         ]
