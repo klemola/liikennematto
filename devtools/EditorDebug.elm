@@ -12,7 +12,7 @@ import Data.Colors
         , yellowCSS
         )
 import Data.Roads exposing (roadAsset)
-import Data.Tiles exposing (allTiles, defaultTile)
+import Data.Tiles exposing (allTiles, defaultTile, pairingsForSocket)
 import Editor.WFC as WFC
 import Element
 import Element.Background
@@ -20,6 +20,7 @@ import Element.Font
 import Element.Input as Input
 import Html exposing (Html)
 import Html.Attributes
+import List.Extra
 import Model.Cell as Cell
 import Model.Debug
 import Model.RenderCache as RenderCache
@@ -214,13 +215,14 @@ view model =
                     , Element.inFront renderDebug
                     ]
     in
-    Element.row []
-        [ Element.column [ Element.spacing 8 ]
-            [ render
-            , wfcState model.wfcModel
-            , renderTiles (Element.px renderWidth)
+    Element.column
+        [ Element.spacing 8 ]
+        [ Element.row [ Element.spacing 8 ] [ render, controls ]
+        , wfcState model.wfcModel
+        , Element.row [ Element.spacing 8 ]
+            [ tileSetDebug (Element.px renderWidth)
+            , socketsMatrix
             ]
-        , controls
         ]
         |> Element.layout
             [ Element.width Element.fill
@@ -247,6 +249,12 @@ controls =
         ]
 
 
+
+--
+-- WFC state debug
+--
+
+
 wfcState : WFC.Model -> Element.Element Msg
 wfcState wfcModel =
     Element.el
@@ -254,19 +262,26 @@ wfcState wfcModel =
         (Element.text (WFC.toString wfcModel))
 
 
-renderTiles : Element.Length -> Element.Element Msg
-renderTiles width =
+
+--
+-- Tileset debug
+--
+
+
+tileSetDebug : Element.Length -> Element.Element Msg
+tileSetDebug width =
     Element.wrappedRow
         [ Element.spacing 16
         , Element.padding 8
         , Element.width width
         , Element.Background.color (Element.rgba 0.1 0.1 0.1 0.9)
+        , Element.alignTop
         ]
-        (List.map renderTileMeta allTiles)
+        (List.map tileMetaDebug allTiles)
 
 
-renderTileMeta : TileMeta -> Element.Element Msg
-renderTileMeta tileMeta =
+tileMetaDebug : TileMeta -> Element.Element Msg
+tileMetaDebug tileMeta =
     let
         idDebug =
             Element.el
@@ -282,7 +297,7 @@ renderTileMeta tileMeta =
             ]
     in
     Element.el
-        (baseAttrs ++ socketDebug tileMeta.sockets)
+        (baseAttrs ++ tileSocketsDebug tileMeta.sockets)
         (Element.html
             (Svg.svg
                 [ Svg.Attributes.viewBox "0 0 256 256"
@@ -294,13 +309,130 @@ renderTileMeta tileMeta =
         )
 
 
-socketDebug : Sockets -> List (Element.Attribute msg)
-socketDebug sockets =
+tileSocketsDebug : Sockets -> List (Element.Attribute msg)
+tileSocketsDebug sockets =
     [ Element.htmlAttribute <| Html.Attributes.style "border-top" ("4px solid " ++ socketToCSSColor sockets.top)
     , Element.htmlAttribute <| Html.Attributes.style "border-right" ("4px solid " ++ socketToCSSColor sockets.right)
     , Element.htmlAttribute <| Html.Attributes.style "border-bottom" ("4px solid " ++ socketToCSSColor sockets.bottom)
     , Element.htmlAttribute <| Html.Attributes.style "border-left" ("4px solid " ++ socketToCSSColor sockets.left)
     ]
+
+
+allSockets : List Socket
+allSockets =
+    [ Red, Green, Blue, Yellow, Pink ]
+
+
+socketMatrixCellSize : Int
+socketMatrixCellSize =
+    24
+
+
+matrixCellMargin : Int
+matrixCellMargin =
+    8
+
+
+matrixWidth : Int
+matrixWidth =
+    (socketMatrixCellSize + matrixCellMargin) * (List.length allSockets + 1) - matrixCellMargin
+
+
+socketsMatrix : Element.Element msg
+socketsMatrix =
+    let
+        cellSizeWithMargin =
+            socketMatrixCellSize + matrixCellMargin
+
+        columnLegendRow =
+            List.indexedMap
+                (\idx socket ->
+                    let
+                        x =
+                            (idx + 1) * cellSizeWithMargin
+
+                        y =
+                            0
+                    in
+                    matrixCell ( x, y ) socket
+                )
+                allSockets
+
+        rowLegendRow =
+            List.indexedMap
+                (\idx socket ->
+                    let
+                        x =
+                            0
+
+                        y =
+                            (idx + 1) * cellSizeWithMargin
+                    in
+                    matrixCell ( x, y ) socket
+                )
+                allSockets
+
+        pairings =
+            allSockets
+                |> List.indexedMap
+                    (\idx socket ->
+                        List.filterMap
+                            (\pairing ->
+                                List.Extra.elemIndex pairing allSockets
+                                    |> Maybe.map
+                                        (\pairingIdx ->
+                                            let
+                                                pairingX =
+                                                    (pairingIdx + 1) * cellSizeWithMargin
+
+                                                pairingY =
+                                                    (idx + 1) * cellSizeWithMargin
+                                            in
+                                            matrixCell ( pairingX, pairingY ) pairing
+                                        )
+                            )
+                            (pairingsForSocket socket)
+                    )
+                |> List.concat
+
+        matrixWidthString =
+            String.fromInt matrixWidth
+
+        svgMatrix =
+            Svg.svg
+                [ Svg.Attributes.viewBox ("0 0 " ++ matrixWidthString ++ " " ++ matrixWidthString)
+                , Svg.Attributes.width matrixWidthString
+                , Svg.Attributes.height matrixWidthString
+                ]
+                (columnLegendRow ++ rowLegendRow ++ pairings)
+    in
+    Element.el
+        [ Element.Background.color (Element.rgba 0.1 0.1 0.1 0.9)
+        , Element.padding matrixCellMargin
+        ]
+        (Element.html svgMatrix)
+
+
+matrixCell : ( Int, Int ) -> Socket -> Svg.Svg msg
+matrixCell ( x, y ) socket =
+    let
+        socketMatrixCellSizeString =
+            String.fromInt socketMatrixCellSize
+    in
+    Svg.rect
+        [ Svg.Attributes.width socketMatrixCellSizeString
+        , Svg.Attributes.height socketMatrixCellSizeString
+        , Svg.Attributes.fill (socketToCSSColor socket)
+        , Svg.Attributes.x (String.fromInt x)
+        , Svg.Attributes.y (String.fromInt y)
+        ]
+        []
+
+
+
+--
+-- Debug helpers
+--
 
 
 socketToCSSColor : Socket -> String
