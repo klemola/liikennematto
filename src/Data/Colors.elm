@@ -102,6 +102,16 @@ redCSS =
     Color.toCssString red
 
 
+pink : Color.Color
+pink =
+    Color.rgb255 240 127 168
+
+
+pinkCSS : String
+pinkCSS =
+    Color.toCssString pink
+
+
 redDarker : Color.Color
 redDarker =
     Color.rgb255 188 47 47

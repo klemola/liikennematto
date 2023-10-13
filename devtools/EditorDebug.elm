@@ -1,19 +1,36 @@
 module EditorDebug exposing (main)
 
 import Browser
+import Data.Colors
+    exposing
+        ( darkBlueCSS
+        , darkGreenCSS
+        , gray7
+        , pinkCSS
+        , redCSS
+        , uiCompat
+        , yellowCSS
+        )
+import Data.Roads exposing (roadAsset)
 import Data.Tiles exposing (allTiles, defaultTile)
 import Editor.WFC as WFC
 import Element
+import Element.Background
+import Element.Font
 import Element.Input as Input
 import Html exposing (Html)
+import Html.Attributes
 import Model.Cell as Cell
 import Model.Debug
 import Model.RenderCache as RenderCache
+import Model.Tile exposing (Socket(..), Sockets, TileMeta)
 import Model.Tilemap exposing (TilemapConfig)
 import Model.World as World
 import Random
 import Render
 import Render.Debug
+import Svg
+import Svg.Attributes
 import Task
 import Time
 
@@ -187,30 +204,38 @@ view model =
                     |> Model.Debug.toggleLayer Model.Debug.CarDebug
                 )
                 |> Element.html
-    in
-    Render.view model.world model.cache []
-        |> Element.html
-        |> Element.el
-            [ Element.width (Element.px renderWidth)
-            , Element.height (Element.px renderHeight)
-            , Element.inFront renderDebug
-            , Element.below
-                (Element.column
-                    []
-                    [ controls
-                    , wfcState model.wfcModel
+
+        render =
+            Render.view model.world model.cache []
+                |> Element.html
+                |> Element.el
+                    [ Element.width (Element.px renderWidth)
+                    , Element.height (Element.px renderHeight)
+                    , Element.inFront renderDebug
                     ]
-                )
+    in
+    Element.row []
+        [ Element.column [ Element.spacing 8 ]
+            [ render
+            , wfcState model.wfcModel
+            , renderTiles (Element.px renderWidth)
             ]
+        , controls
+        ]
         |> Element.layout
             [ Element.width Element.fill
             , Element.height Element.fill
+            , Element.Font.size 16
             ]
 
 
 controls : Element.Element Msg
 controls =
-    Element.row [ Element.spacing 16, Element.padding 16 ]
+    Element.column
+        [ Element.spacing 16
+        , Element.padding 8
+        , Element.alignTop
+        ]
         [ Input.button []
             { onPress = Just Step
             , label = Element.text "Step"
@@ -224,6 +249,74 @@ controls =
 
 wfcState : WFC.Model -> Element.Element Msg
 wfcState wfcModel =
-    Element.column []
-        [ Element.el [] (Element.text (WFC.toString wfcModel))
+    Element.el
+        [ Element.padding 8 ]
+        (Element.text (WFC.toString wfcModel))
+
+
+renderTiles : Element.Length -> Element.Element Msg
+renderTiles width =
+    Element.wrappedRow
+        [ Element.spacing 16
+        , Element.padding 8
+        , Element.width width
+        , Element.Background.color (Element.rgba 0.1 0.1 0.1 0.9)
         ]
+        (List.map renderTileMeta allTiles)
+
+
+renderTileMeta : TileMeta -> Element.Element Msg
+renderTileMeta tileMeta =
+    let
+        idDebug =
+            Element.el
+                [ Element.padding 2
+                , Element.Background.color (Element.rgba 0.1 0.1 0.1 0.3)
+                , Element.Font.size 14
+                ]
+                (Element.text (String.fromInt tileMeta.id))
+
+        baseAttrs =
+            [ Element.inFront idDebug
+            , Element.Font.color (uiCompat gray7)
+            ]
+    in
+    Element.el
+        (baseAttrs ++ socketDebug tileMeta.sockets)
+        (Element.html
+            (Svg.svg
+                [ Svg.Attributes.viewBox "0 0 256 256"
+                , Svg.Attributes.width "64"
+                , Svg.Attributes.height "64"
+                ]
+                (roadAsset tileMeta.id)
+            )
+        )
+
+
+socketDebug : Sockets -> List (Element.Attribute msg)
+socketDebug sockets =
+    [ Element.htmlAttribute <| Html.Attributes.style "border-top" ("4px solid " ++ socketToCSSColor sockets.top)
+    , Element.htmlAttribute <| Html.Attributes.style "border-right" ("4px solid " ++ socketToCSSColor sockets.right)
+    , Element.htmlAttribute <| Html.Attributes.style "border-bottom" ("4px solid " ++ socketToCSSColor sockets.bottom)
+    , Element.htmlAttribute <| Html.Attributes.style "border-left" ("4px solid " ++ socketToCSSColor sockets.left)
+    ]
+
+
+socketToCSSColor : Socket -> String
+socketToCSSColor socket =
+    case socket of
+        Red ->
+            redCSS
+
+        Green ->
+            darkGreenCSS
+
+        Blue ->
+            darkBlueCSS
+
+        Pink ->
+            pinkCSS
+
+        Yellow ->
+            yellowCSS

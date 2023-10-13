@@ -484,4 +484,4 @@ describeState (Model modelContents) =
                     in
                     "failure: " ++ failureString
     in
-    supervisorStateString ++ "\n" ++ generationStateString
+    supervisorStateString ++ " | " ++ generationStateString
