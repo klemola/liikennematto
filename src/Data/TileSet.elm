@@ -1,10 +1,10 @@
-module Data.Tiles exposing
+module Data.TileSet exposing
     ( allTiles
     , defaultTile
     , pairingsForSocket
     )
 
-import Model.Tile exposing (Socket(..), TileMeta)
+import Model.TileConfig exposing (Socket(..), Sockets, TileConfig)
 
 
 pairingsForSocket : Socket -> List Socket
@@ -17,16 +17,31 @@ pairingsForSocket socket =
             [ Green ]
 
         Blue ->
-            [ Red, Yellow ]
+            [ Red, Pink, Yellow ]
 
         Yellow ->
-            [ Red, Yellow ]
+            [ Red, Yellow, Blue ]
 
         Pink ->
-            [ Red ]
+            [ Red, Blue ]
 
 
-allTiles : List TileMeta
+mirroredHorizontally : Sockets -> Sockets
+mirroredHorizontally sockets =
+    { sockets | left = sockets.right, right = sockets.left }
+
+
+mirroredVertically : Sockets -> Sockets
+mirroredVertically sockets =
+    { sockets | top = sockets.bottom, bottom = sockets.top }
+
+
+rotatedClockwise : Sockets -> Sockets
+rotatedClockwise sockets =
+    { sockets | top = sockets.left, right = sockets.top, bottom = sockets.right, left = sockets.bottom }
+
+
+allTiles : List TileConfig
 allTiles =
     [ grass
 
@@ -42,19 +57,19 @@ allTiles =
     , curveTopRight
     , curveTopLeft
     , intersectionTUp
+    , intersectionTDown
     , intersectionTLeft
     , intersectionTRight
-    , intersectionTDown
     , intersectionCross
     ]
 
 
-defaultTile : TileMeta
+defaultTile : TileConfig
 defaultTile =
     grass
 
 
-grass : TileMeta
+grass : TileConfig
 grass =
     { id = 0
     , sockets =
@@ -66,7 +81,7 @@ grass =
     }
 
 
-loneRoad : TileMeta
+loneRoad : TileConfig
 loneRoad =
     { id = 17
     , sockets =
@@ -78,7 +93,7 @@ loneRoad =
     }
 
 
-horizontalRoad : TileMeta
+horizontalRoad : TileConfig
 horizontalRoad =
     { id = 6
     , sockets =
@@ -90,55 +105,14 @@ horizontalRoad =
     }
 
 
-verticalRoad : TileMeta
+verticalRoad : TileConfig
 verticalRoad =
     { id = 9
-    , sockets =
-        { top = Red
-        , right = Green
-        , bottom = Red
-        , left = Green
-        }
+    , sockets = rotatedClockwise horizontalRoad.sockets
     }
 
 
-deadendDown : TileMeta
-deadendDown =
-    { id = 1
-    , sockets =
-        { top = Blue
-        , right = Green
-        , bottom = Green
-        , left = Green
-        }
-    }
-
-
-deadendRight : TileMeta
-deadendRight =
-    { id = 2
-    , sockets =
-        { top = Green
-        , right = Green
-        , bottom = Green
-        , left = Blue
-        }
-    }
-
-
-deadendLeft : TileMeta
-deadendLeft =
-    { id = 4
-    , sockets =
-        { top = Green
-        , right = Blue
-        , bottom = Green
-        , left = Green
-        }
-    }
-
-
-deadendUp : TileMeta
+deadendUp : TileConfig
 deadendUp =
     { id = 8
     , sockets =
@@ -150,7 +124,28 @@ deadendUp =
     }
 
 
-curveBottomRight : TileMeta
+deadendRight : TileConfig
+deadendRight =
+    { id = 2
+    , sockets = rotatedClockwise deadendUp.sockets
+    }
+
+
+deadendDown : TileConfig
+deadendDown =
+    { id = 1
+    , sockets = rotatedClockwise deadendRight.sockets
+    }
+
+
+deadendLeft : TileConfig
+deadendLeft =
+    { id = 4
+    , sockets = rotatedClockwise deadendDown.sockets
+    }
+
+
+curveBottomRight : TileConfig
 curveBottomRight =
     { id = 3
     , sockets =
@@ -162,43 +157,32 @@ curveBottomRight =
     }
 
 
-curveBottomLeft : TileMeta
+curveBottomLeft : TileConfig
 curveBottomLeft =
     { id = 5
-    , sockets =
-        { top = Yellow
-        , right = Yellow
-        , bottom = Green
-        , left = Green
-        }
+    , sockets = rotatedClockwise curveBottomRight.sockets
     }
 
 
-curveTopRight : TileMeta
-curveTopRight =
-    { id = 10
-    , sockets =
-        { top = Green
-        , right = Green
-        , bottom = Yellow
-        , left = Yellow
-        }
-    }
-
-
-curveTopLeft : TileMeta
+curveTopLeft : TileConfig
 curveTopLeft =
     { id = 12
-    , sockets =
-        { top = Green
-        , right = Yellow
-        , bottom = Yellow
-        , left = Green
-        }
+    , sockets = rotatedClockwise curveBottomLeft.sockets
     }
 
 
-intersectionTUp : TileMeta
+curveTopRight : TileConfig
+curveTopRight =
+    { id = 10
+    , sockets = rotatedClockwise curveTopLeft.sockets
+    }
+
+
+
+-- T-intersections cannot be simply rotations of each other, as they have asymmetric sockets (crossings are not on both sides)
+
+
+intersectionTUp : TileConfig
 intersectionTUp =
     { id = 7
     , sockets =
@@ -210,7 +194,14 @@ intersectionTUp =
     }
 
 
-intersectionTLeft : TileMeta
+intersectionTDown : TileConfig
+intersectionTDown =
+    { id = 14
+    , sockets = mirroredVertically intersectionTUp.sockets
+    }
+
+
+intersectionTLeft : TileConfig
 intersectionTLeft =
     { id = 11
     , sockets =
@@ -222,31 +213,14 @@ intersectionTLeft =
     }
 
 
-intersectionTRight : TileMeta
+intersectionTRight : TileConfig
 intersectionTRight =
     { id = 13
-    , sockets =
-        { top = Yellow
-        , right = Pink
-        , bottom = Pink
-        , left = Green
-        }
+    , sockets = mirroredHorizontally intersectionTLeft.sockets
     }
 
 
-intersectionTDown : TileMeta
-intersectionTDown =
-    { id = 14
-    , sockets =
-        { top = Green
-        , right = Pink
-        , bottom = Pink
-        , left = Yellow
-        }
-    }
-
-
-intersectionCross : TileMeta
+intersectionCross : TileConfig
 intersectionCross =
     { id = 15
     , sockets =

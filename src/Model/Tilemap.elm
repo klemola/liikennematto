@@ -50,12 +50,11 @@ import Model.Geometry
 import Model.Tile as Tile
     exposing
         ( Tile
-        , TileId
         , TileKind(..)
-        , TileMeta
         , TileOperation
         , chooseTileKind
         )
+import Model.TileConfig exposing (TileConfig, TileId)
 import Point2d
 import Quantity
 import Random
@@ -76,8 +75,8 @@ type alias TilemapConfig =
     { horizontalCellsAmount : Int
     , verticalCellsAmount : Int
     , initialSeed : Random.Seed
-    , defaultTile : TileMeta
-    , tiles : List TileMeta
+    , defaultTile : TileConfig
+    , tiles : List TileConfig
     }
 
 
@@ -106,7 +105,7 @@ empty tilemapConfig =
         }
 
 
-superposition : List TileMeta -> TileKind
+superposition : List TileConfig -> TileKind
 superposition tileMetas =
     tileMetas
         |> List.map (\tileMeta -> tileMeta.id)

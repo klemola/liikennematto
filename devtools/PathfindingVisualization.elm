@@ -13,7 +13,7 @@ import Collection exposing (initialId)
 import CubicSpline2d exposing (ArcLengthParameterized, Nondegenerate)
 import Data.Cars exposing (testCar)
 import Data.Colors as Colors
-import Data.Tiles exposing (allTiles, defaultTile)
+import Data.TileSet exposing (allTiles, defaultTile)
 import Direction2d
 import Duration exposing (Duration)
 import Html exposing (Html)

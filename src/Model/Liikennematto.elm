@@ -14,7 +14,7 @@ module Model.Liikennematto exposing
     )
 
 import Data.Defaults exposing (horizontalCellsAmount, verticalCellsAmount)
-import Data.Tiles exposing (allTiles, defaultTile)
+import Data.TileSet exposing (allTiles, defaultTile)
 import Duration exposing (Duration)
 import FSM exposing (FSM)
 import Model.Debug exposing (DebugState, initialDebugState)

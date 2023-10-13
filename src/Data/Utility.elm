@@ -6,7 +6,7 @@ module Data.Utility exposing
     )
 
 import Collection exposing (Id)
-import Data.Tiles exposing (allTiles, defaultTile)
+import Data.TileSet exposing (allTiles, defaultTile)
 import Model.Cell as Cell
 import Model.Geometry exposing (OrthogonalDirection)
 import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext)

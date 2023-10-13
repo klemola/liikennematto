@@ -12,7 +12,7 @@ import Data.Colors
         , yellowCSS
         )
 import Data.Roads exposing (roadAsset)
-import Data.Tiles exposing (allTiles, defaultTile, pairingsForSocket)
+import Data.TileSet exposing (allTiles, defaultTile, pairingsForSocket)
 import Editor.WFC as WFC
 import Element
 import Element.Background
@@ -24,7 +24,7 @@ import List.Extra
 import Model.Cell as Cell
 import Model.Debug
 import Model.RenderCache as RenderCache
-import Model.Tile exposing (Socket(..), Sockets, TileMeta)
+import Model.TileConfig exposing (Socket(..), Sockets, TileConfig)
 import Model.Tilemap exposing (TilemapConfig)
 import Model.World as World
 import Random
@@ -280,7 +280,7 @@ tileSetDebug width =
         (List.map tileMetaDebug allTiles)
 
 
-tileMetaDebug : TileMeta -> Element.Element Msg
+tileMetaDebug : TileConfig -> Element.Element Msg
 tileMetaDebug tileMeta =
     let
         idDebug =

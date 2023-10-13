@@ -30,7 +30,8 @@ import Model.RoadNetwork
         , RoadNetwork
         , TrafficControl(..)
         )
-import Model.Tile exposing (TileId, TileKind(..))
+import Model.Tile exposing (TileKind(..))
+import Model.TileConfig exposing (TileId)
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..))
 import Model.World exposing (World)
 import Quantity

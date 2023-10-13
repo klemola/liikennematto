@@ -16,7 +16,7 @@ module Editor.WFC exposing
 --
 --
 
-import Data.Tiles exposing (defaultTile, pairingsForSocket)
+import Data.TileSet exposing (defaultTile, pairingsForSocket)
 import List.Extra
 import Model.Cell as Cell exposing (Cell)
 import Model.Geometry
@@ -25,7 +25,8 @@ import Model.Geometry
         , oppositeOrthogonalDirection
         , orthogonalDirections
         )
-import Model.Tile as Tile exposing (Socket, Tile, TileId, TileKind(..), TileMeta)
+import Model.Tile as Tile exposing (Tile, TileKind(..))
+import Model.TileConfig exposing (Socket(..), TileConfig, TileId)
 import Model.Tilemap as Tilemap exposing (Tilemap, TilemapConfig)
 import Random exposing (Seed)
 import Random.Extra
@@ -199,7 +200,7 @@ propagate ((Model modelDetails) as model) =
 --
 
 
-getSocketIn : TileMeta -> OrthogonalDirection -> Socket
+getSocketIn : TileConfig -> OrthogonalDirection -> Socket
 getSocketIn tileMeta direction =
     case direction of
         Up ->
@@ -420,7 +421,7 @@ pickRandom ( indexPick, tileIdPick ) modelDetails =
     }
 
 
-tileById : Tilemap -> Int -> TileMeta
+tileById : Tilemap -> Int -> TileConfig
 tileById tilemap tileId =
     let
         tilemapConfig =

@@ -1,13 +1,9 @@
 module Model.Tile exposing
     ( Action(..)
     , OrthogonalNeighbors
-    , Socket(..)
-    , Sockets
     , Tile
     , TileFSM
-    , TileId
     , TileKind(..)
-    , TileMeta
     , TileOperation(..)
     , TileState(..)
     , attemptRemove
@@ -39,29 +35,8 @@ import Model.Geometry
         , crossOrthogonalDirection
         , orthogonalDirections
         )
+import Model.TileConfig exposing (TileId)
 import Set exposing (Set)
-
-
-type Socket
-    = Red
-    | Green
-    | Blue
-    | Pink
-    | Yellow
-
-
-type alias Sockets =
-    { top : Socket
-    , right : Socket
-    , bottom : Socket
-    , left : Socket
-    }
-
-
-type alias TileMeta =
-    { id : TileId
-    , sockets : Sockets
-    }
 
 
 type alias Tile =
@@ -73,10 +48,6 @@ type alias Tile =
 type TileKind
     = Fixed TileId
     | Superposition (List TileId)
-
-
-type alias TileId =
-    Int
 
 
 type alias TileFSM =

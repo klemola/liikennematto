@@ -4,7 +4,7 @@ import Collection exposing (Id, nextId)
 import Color
 import Data.Colors as Colors
 import Data.Lots exposing (NewLot)
-import Data.Tiles exposing (allTiles, defaultTile)
+import Data.TileSet exposing (allTiles, defaultTile)
 import Model.Cell as Cell
 import Model.Geometry exposing (OrthogonalDirection(..))
 import Model.Lot exposing (Lot, ParkingSpot)
