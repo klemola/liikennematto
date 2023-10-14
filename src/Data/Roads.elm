@@ -82,6 +82,30 @@ roadAsset tileId =
         29 ->
             lotEntryTRight
 
+        30 ->
+            lotDebugCornerTopLeft
+
+        31 ->
+            lotDebugCornerTopRight
+
+        32 ->
+            lotDebugCornerBottomRight
+
+        33 ->
+            lotDebugCornerBottomLeft
+
+        34 ->
+            lotDebugCenter
+
+        35 ->
+            lotDebugDrivewayRight
+
+        36 ->
+            lotDebugDrivewayLeft
+
+        37 ->
+            lotDebugDrivewayUp
+
         _ ->
             []
 
@@ -600,6 +624,179 @@ lotEntryTRight =
     , path
         [ Attributes.d "M125.8 243.2V217.6H129.8V243.2H125.8ZM125.8 192V166.4H129.8V192H125.8ZM125.8 140.8L125.8 115.2H129.8V140.8H125.8ZM125.8 89.5999V63.9999H129.8V89.5999H125.8ZM125.8 38.3999V12.7999H129.8V38.3999H125.8Z"
         , Attributes.fill Colors.gray6CSS
+        ]
+        []
+    ]
+
+
+lotDebugCornerTopLeft : List (Svg msg)
+lotDebugCornerTopLeft =
+    [ Svg.rect
+        [ Attributes.x "12"
+        , Attributes.y "12"
+        , Attributes.width "232"
+        , Attributes.height "232"
+        , Attributes.fill "#F9F9E9"
+        ]
+        []
+    , path
+        [ Attributes.d "M30 210V30H210"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "10"
+        , Attributes.strokeLinecap "round"
+        , Attributes.strokeLinejoin "round"
+        , Attributes.fill "none"
+        ]
+        []
+    ]
+
+
+lotDebugCornerTopRight : List (Svg msg)
+lotDebugCornerTopRight =
+    [ Svg.rect
+        [ Attributes.x "244"
+        , Attributes.y "12"
+        , Attributes.width "232"
+        , Attributes.height "232"
+        , Attributes.transform "rotate(90 244 12)"
+        , Attributes.fill "#F9F9E9"
+        ]
+        []
+    , path
+        [ Attributes.d "M46 30L226 30L226 210"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "10"
+        , Attributes.strokeLinecap "round"
+        , Attributes.strokeLinejoin "round"
+        , Attributes.fill "none"
+        ]
+        []
+    ]
+
+
+lotDebugCornerBottomRight : List (Svg msg)
+lotDebugCornerBottomRight =
+    [ Svg.rect
+        [ Attributes.x "244"
+        , Attributes.y "244"
+        , Attributes.width "232"
+        , Attributes.height "232"
+        , Attributes.transform "rotate(-180 244 244)"
+        , Attributes.fill "#F9F9E9"
+        ]
+        []
+    , path
+        [ Attributes.d "M226 46L226 226L46 226"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "10"
+        , Attributes.strokeLinecap "round"
+        , Attributes.strokeLinejoin "round"
+        , Attributes.fill "none"
+        ]
+        []
+    ]
+
+
+lotDebugCornerBottomLeft : List (Svg msg)
+lotDebugCornerBottomLeft =
+    [ Svg.rect
+        [ Attributes.x "12"
+        , Attributes.y "244"
+        , Attributes.width "232"
+        , Attributes.height "232"
+        , Attributes.transform "rotate(-90 12 244)"
+        , Attributes.fill "#F9F9E9"
+        ]
+        []
+    , path
+        [ Attributes.d "M210 226L30 226L30 46"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "10"
+        , Attributes.strokeLinecap "round"
+        , Attributes.strokeLinejoin "round"
+        , Attributes.fill "none"
+        ]
+        []
+    ]
+
+
+lotDebugCenter : List (Svg msg)
+lotDebugCenter =
+    [ Svg.rect
+        [ Attributes.x "12"
+        , Attributes.y "12"
+        , Attributes.width "232"
+        , Attributes.height "232"
+        , Attributes.fill "#F9F9E9"
+        ]
+        []
+    ]
+
+
+lotDebugDrivewayRight : List (Svg msg)
+lotDebugDrivewayRight =
+    [ Svg.rect
+        [ Attributes.x "244"
+        , Attributes.y "244"
+        , Attributes.width "232"
+        , Attributes.height "232"
+        , Attributes.transform "rotate(-180 244 244)"
+        , Attributes.fill "#766565"
+        ]
+        []
+    , path
+        [ Attributes.d "M226 46L226 226L46 226"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "10"
+        , Attributes.strokeLinecap "round"
+        , Attributes.strokeLinejoin "round"
+        , Attributes.fill "none"
+        ]
+        []
+    ]
+
+
+lotDebugDrivewayLeft : List (Svg msg)
+lotDebugDrivewayLeft =
+    [ Svg.rect
+        [ Attributes.x "12"
+        , Attributes.y "244"
+        , Attributes.width "232"
+        , Attributes.height "232"
+        , Attributes.transform "rotate(-90 12 244)"
+        , Attributes.fill "#766565"
+        ]
+        []
+    , path
+        [ Attributes.d "M210 226L30 226L30 46"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "10"
+        , Attributes.strokeLinecap "round"
+        , Attributes.strokeLinejoin "round"
+        , Attributes.fill "none"
+        ]
+        []
+    ]
+
+
+lotDebugDrivewayUp : List (Svg msg)
+lotDebugDrivewayUp =
+    [ Svg.rect
+        [ Attributes.x "12"
+        , Attributes.y "244"
+        , Attributes.width "232"
+        , Attributes.height "232"
+        , Attributes.transform "rotate(-90 12 244)"
+        , Attributes.fill "#766565"
+        ]
+        []
+    , path
+        [ Attributes.d "M210 226L30 226L30 46"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "10"
+        , Attributes.strokeLinecap "round"
+        , Attributes.strokeLinejoin "round"
+        , Attributes.fill "none"
         ]
         []
     ]

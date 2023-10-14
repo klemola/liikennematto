@@ -2,15 +2,6 @@ module EditorDebug exposing (main)
 
 import Browser
 import Data.Colors
-    exposing
-        ( darkBlueCSS
-        , darkGreenCSS
-        , gray7
-        , pinkCSS
-        , redCSS
-        , uiCompat
-        , yellowCSS
-        )
 import Data.Roads exposing (roadAsset)
 import Data.TileSet exposing (allTiles, defaultTile, pairingsForSocket)
 import Editor.WFC as WFC
@@ -24,7 +15,7 @@ import List.Extra
 import Model.Cell as Cell
 import Model.Debug
 import Model.RenderCache as RenderCache
-import Model.TileConfig exposing (Socket(..), Sockets, TileConfig)
+import Model.TileConfig exposing (Socket(..), Sockets, TileConfig, allSockets)
 import Model.Tilemap exposing (TilemapConfig)
 import Model.World as World
 import Process
@@ -334,7 +325,7 @@ tileMetaDebug tileMeta =
 
         baseAttrs =
             [ Element.inFront idDebug
-            , Element.Font.color (uiCompat gray7)
+            , Element.Font.color (Data.Colors.uiCompat Data.Colors.gray7)
             ]
     in
     Element.el
@@ -357,11 +348,6 @@ tileSocketsDebug sockets =
     , Element.htmlAttribute <| Html.Attributes.style "border-bottom" ("4px solid " ++ socketToCSSColor sockets.bottom)
     , Element.htmlAttribute <| Html.Attributes.style "border-left" ("4px solid " ++ socketToCSSColor sockets.left)
     ]
-
-
-allSockets : List Socket
-allSockets =
-    [ Red, Green, Blue, Yellow, Pink ]
 
 
 socketMatrixCellSize : Int
@@ -450,6 +436,7 @@ socketsMatrix =
     Element.el
         [ Element.Background.color (Element.rgba 0.1 0.1 0.1 0.9)
         , Element.padding matrixCellMargin
+        , Element.alignTop
         ]
         (Element.html svgMatrix)
 
@@ -480,16 +467,31 @@ socketToCSSColor : Socket -> String
 socketToCSSColor socket =
     case socket of
         Red ->
-            redCSS
+            Data.Colors.redCSS
 
         Green ->
-            darkGreenCSS
+            Data.Colors.darkGreenCSS
 
         Blue ->
-            darkBlueCSS
+            Data.Colors.darkBlueCSS
 
         Pink ->
-            pinkCSS
+            Data.Colors.pinkCSS
 
         Yellow ->
-            yellowCSS
+            Data.Colors.yellowCSS
+
+        Orange ->
+            Data.Colors.orangeCSS
+
+        Gray ->
+            Data.Colors.gray3CSS
+
+        White ->
+            Data.Colors.gray7CSS
+
+        LightBrown ->
+            Data.Colors.lightBrownCSS
+
+        DarkBrown ->
+            Data.Colors.darkBrownCSS

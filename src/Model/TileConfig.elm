@@ -3,6 +3,7 @@ module Model.TileConfig exposing
     , Sockets
     , TileConfig
     , TileId
+    , allSockets
     )
 
 
@@ -30,3 +31,23 @@ type Socket
     | Blue
     | Pink
     | Yellow
+    | Orange
+    | Gray
+    | White
+    | LightBrown
+    | DarkBrown
+
+
+allSockets : List Socket
+allSockets =
+    [ Red
+    , Green
+    , Blue
+    , Pink
+    , Yellow
+    , Orange
+    , Gray
+    , White
+    , LightBrown
+    , DarkBrown
+    ]

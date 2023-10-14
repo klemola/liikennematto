@@ -25,6 +25,21 @@ pairingsForSocket socket =
         Pink ->
             [ Red, Yellow, Blue ]
 
+        Orange ->
+            [ LightBrown ]
+
+        Gray ->
+            [ Gray, White ]
+
+        White ->
+            [ White, Gray, DarkBrown, Green ]
+
+        LightBrown ->
+            [ Orange ]
+
+        DarkBrown ->
+            [ DarkBrown, White ]
+
 
 mirroredHorizontally : Sockets -> Sockets
 mirroredHorizontally sockets =
@@ -61,12 +76,33 @@ allTiles =
     , intersectionTLeft
     , intersectionTRight
     , intersectionCross
+
+    --
+    , lotEntryTUp
+    , lotEntryTLeft
+    , lotEntryTRight
+
+    --
+    , lotTopLeft
+    , lotTopRight
+    , lotBottomRight
+    , lotBottomLeft
+    , lotCenter
+    , lotDrivewayRight
+    , lotDrivewayLeft
+    , lotDrivewayUp
     ]
 
 
 defaultTile : TileConfig
 defaultTile =
     grass
+
+
+
+--
+-- Terrain
+--
 
 
 grass : TileConfig
@@ -79,6 +115,12 @@ grass =
         , left = Green
         }
     }
+
+
+
+--
+-- Road
+--
 
 
 loneRoad : TileConfig
@@ -232,14 +274,139 @@ intersectionCross =
     }
 
 
+lotEntryTUp : TileConfig
+lotEntryTUp =
+    { id = 23
+    , sockets =
+        { top = Orange
+        , right = Red
+        , bottom = Green
+        , left = Red
+        }
+    }
 
--- lotEntryTUp : TileMeta
--- lotEntryTUp =
--- 23
--- lotEntryTLeft : TileMeta
--- lotEntryTLeft =
---     27
--- lotEntryTRight : TileMeta
--- lotEntryTRight =
---     29
+
+lotEntryTLeft : TileConfig
+lotEntryTLeft =
+    { id = 27
+    , sockets =
+        { top = Red
+        , right = Green
+        , bottom = Red
+        , left = Orange
+        }
+    }
+
+
+lotEntryTRight : TileConfig
+lotEntryTRight =
+    { id = 29
+    , sockets =
+        { top = Red
+        , right = Orange
+        , bottom = Red
+        , left = Green
+        }
+    }
+
+
+
 --
+-- Lots
+--
+
+
+lotTopLeft : TileConfig
+lotTopLeft =
+    { id = 30
+    , sockets =
+        { top = Green
+        , right = Gray
+        , bottom = DarkBrown
+        , left = Green
+        }
+    }
+
+
+lotTopRight : TileConfig
+lotTopRight =
+    { id = 31
+    , sockets =
+        { top = Green
+        , right = Green
+        , bottom = Gray
+        , left = Gray
+        }
+    }
+
+
+lotBottomRight : TileConfig
+lotBottomRight =
+    { id = 32
+    , sockets =
+        { top = Gray
+        , right = Green
+        , bottom = Green
+        , left = DarkBrown
+        }
+    }
+
+
+lotBottomLeft : TileConfig
+lotBottomLeft =
+    { id = 33
+    , sockets =
+        { top = DarkBrown
+        , right = DarkBrown
+        , bottom = Green
+        , left = Green
+        }
+    }
+
+
+lotCenter : TileConfig
+lotCenter =
+    { id = 34
+    , sockets =
+        { top = White
+        , right = White
+        , bottom = White
+        , left = White
+        }
+    }
+
+
+lotDrivewayRight : TileConfig
+lotDrivewayRight =
+    { id = 35
+    , sockets =
+        { top = lotBottomRight.sockets.top
+        , right = LightBrown
+        , bottom = lotBottomRight.sockets.bottom
+        , left = lotBottomRight.sockets.left
+        }
+    }
+
+
+lotDrivewayLeft : TileConfig
+lotDrivewayLeft =
+    { id = 36
+    , sockets =
+        { top = lotBottomLeft.sockets.top
+        , right = lotBottomLeft.sockets.right
+        , bottom = lotBottomLeft.sockets.bottom
+        , left = LightBrown
+        }
+    }
+
+
+lotDrivewayUp : TileConfig
+lotDrivewayUp =
+    { id = 37
+    , sockets =
+        { top = lotBottomLeft.sockets.top
+        , right = lotBottomLeft.sockets.right
+        , bottom = LightBrown
+        , left = lotBottomLeft.sockets.left
+        }
+    }
