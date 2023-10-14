@@ -23,10 +23,11 @@ import Model.Geometry
     exposing
         ( OrthogonalDirection(..)
         , oppositeOrthogonalDirection
+        , orthogonalDirectionToString
         , orthogonalDirections
         )
 import Model.Tile as Tile exposing (Tile, TileKind(..))
-import Model.TileConfig exposing (Socket(..), TileConfig, TileId)
+import Model.TileConfig exposing (Socket, TileConfig, TileId)
 import Model.Tilemap as Tilemap exposing (Tilemap, TilemapConfig)
 import Random exposing (Seed)
 import Random.Extra
@@ -38,7 +39,7 @@ type Model
 
 type alias ModelDetails =
     { tilemap : Tilemap
-    , openSteps : List PropagationStep
+    , propagationContext : PropagationContext
     , supervisorState : SupervisorState
     , generationState : GenerationState
     , seed : Seed
@@ -54,6 +55,14 @@ type SupervisorState
 type GenerationState
     = Propagating
     | Failure PropagationFailure
+
+
+type alias PropagationContext =
+    { from : Maybe Cell
+    , to : Maybe Cell
+    , direction : Maybe OrthogonalDirection
+    , openSteps : List PropagationStep
+    }
 
 
 type PropagationStep
@@ -74,11 +83,20 @@ type alias Candidate =
     }
 
 
+initialPropagationContext : PropagationContext
+initialPropagationContext =
+    { from = Nothing
+    , to = Nothing
+    , direction = Nothing
+    , openSteps = []
+    }
+
+
 init : TilemapConfig -> Model
 init tilemapConfig =
     Model
         { tilemap = Tilemap.empty tilemapConfig
-        , openSteps = []
+        , propagationContext = initialPropagationContext
         , supervisorState = Generating
         , generationState = Propagating
         , seed = tilemapConfig.initialSeed
@@ -88,18 +106,22 @@ init tilemapConfig =
 {-| Adds a step to pick a specific tile at a specific position
 -}
 pickTile : Cell -> TileId -> Model -> Model
-pickTile cell tileKind (Model model) =
+pickTile cell tileKind (Model ({ propagationContext } as modelDetails)) =
     Model
-        { model
-            | openSteps = PickTile cell tileKind :: model.openSteps
+        { modelDetails
+            | propagationContext =
+                { propagationContext
+                    | openSteps =
+                        PickTile cell tileKind :: propagationContext.openSteps
+                }
         }
 
 
 {-| Returns true if all positions in the grid have a tile assigned
 -}
-propagationDone : Model -> Bool
-propagationDone (Model { tilemap, openSteps }) =
-    List.isEmpty openSteps && Tilemap.all propagatinDonePredicate tilemap
+propagationDone : ModelDetails -> Bool
+propagationDone { tilemap, propagationContext } =
+    List.isEmpty propagationContext.openSteps && Tilemap.all propagatinDonePredicate tilemap
 
 
 propagatinDonePredicate : Tile -> Bool
@@ -141,12 +163,23 @@ solve_ model =
 or propagating restrictions resulting from the last placement of a tile.
 -}
 propagate : Model -> Model
-propagate ((Model modelDetails) as model) =
-    case modelDetails.openSteps of
+propagate (Model ({ propagationContext, tilemap } as modelDetails)) =
+    case modelDetails.propagationContext.openSteps of
         step :: otherSteps ->
             let
                 processStepResult =
-                    processStep modelDetails step modelDetails.tilemap
+                    processStep modelDetails step tilemap
+
+                ( fromCell, toCell, dir ) =
+                    case step of
+                        PickTile cell _ ->
+                            ( Just cell, Nothing, Nothing )
+
+                        KeepOnlyMatching cellA cellB ->
+                            ( Just cellA
+                            , Just cellB
+                            , Cell.orthogonalDirection cellA cellB
+                            )
 
                 nextModelDetails =
                     case processStepResult of
@@ -154,7 +187,13 @@ propagate ((Model modelDetails) as model) =
                             { modelDetails
                                 | tilemap = nextTilemap
                                 , generationState = Propagating
-                                , openSteps = otherSteps ++ additionalSteps
+                                , propagationContext =
+                                    { propagationContext
+                                        | openSteps = otherSteps ++ additionalSteps
+                                        , from = fromCell
+                                        , to = toCell
+                                        , direction = dir
+                                    }
                             }
 
                         Err propagationFailure ->
@@ -167,7 +206,13 @@ propagate ((Model modelDetails) as model) =
                                     else
                                         Recovering
                                 , generationState = Failure propagationFailure
-                                , openSteps = otherSteps
+                                , propagationContext =
+                                    { propagationContext
+                                        | openSteps = otherSteps
+                                        , from = fromCell
+                                        , to = toCell
+                                        , direction = dir
+                                    }
                             }
             in
             Model nextModelDetails
@@ -175,7 +220,7 @@ propagate ((Model modelDetails) as model) =
         [] ->
             let
                 nextModelDetails =
-                    if not (propagationDone model) then
+                    if not (propagationDone modelDetails) then
                         let
                             ( randomPick, nextSeed ) =
                                 Random.step (randomTileAndTileIdGen modelDetails) modelDetails.seed
@@ -374,7 +419,7 @@ randomTileAndTileIdGen { tilemap } =
 
 
 pickRandom : RandomPick -> ModelDetails -> ModelDetails
-pickRandom ( indexPick, tileIdPick ) modelDetails =
+pickRandom ( indexPick, tileIdPick ) ({ propagationContext } as modelDetails) =
     let
         candidates =
             nextCandidates modelDetails
@@ -417,7 +462,13 @@ pickRandom ( indexPick, tileIdPick ) modelDetails =
                         []
     in
     { modelDetails
-        | openSteps = pickRandomStep ++ modelDetails.openSteps
+        | propagationContext =
+            { propagationContext
+                | openSteps = pickRandomStep ++ propagationContext.openSteps
+                , from = Nothing
+                , to = Nothing
+                , direction = Nothing
+            }
     }
 
 
@@ -451,6 +502,9 @@ toString model =
 describeState : Model -> String
 describeState (Model modelContents) =
     let
+        { propagationContext } =
+            modelContents
+
         supervisorStateString =
             case modelContents.supervisorState of
                 Generating ->
@@ -483,6 +537,18 @@ describeState (Model modelContents) =
                                 TileNotFound ->
                                     "Tile not found"
                     in
-                    "failure: " ++ failureString
+                    String.join " "
+                        [ "failure:"
+                        , failureString
+                        ]
+
+        parts =
+            List.filterMap identity
+                [ Just supervisorStateString
+                , Just generationStateString
+                , Maybe.map Cell.toString propagationContext.from
+                , Maybe.map Cell.toString propagationContext.to
+                , Maybe.map orthogonalDirectionToString propagationContext.direction
+                ]
     in
-    supervisorStateString ++ " | " ++ generationStateString
+    String.join " | " parts

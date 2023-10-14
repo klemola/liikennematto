@@ -23,7 +23,7 @@ pairingsForSocket socket =
             [ Red, Yellow, Blue ]
 
         Pink ->
-            [ Red, Blue ]
+            [ Red, Yellow, Blue ]
 
 
 mirroredHorizontally : Sockets -> Sockets
