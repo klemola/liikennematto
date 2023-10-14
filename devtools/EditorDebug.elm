@@ -27,6 +27,7 @@ import Model.RenderCache as RenderCache
 import Model.TileConfig exposing (Socket(..), Sockets, TileConfig)
 import Model.Tilemap exposing (TilemapConfig)
 import Model.World as World
+import Process
 import Random
 import Render
 import Render.Debug
@@ -39,9 +40,11 @@ import Time
 type Msg
     = Pick Mode ( Int, Int ) Int
     | Step
-    | Play
-    | Solve
-    | GotTime Time.Posix
+    | InitAutoPropagate
+    | AutoPropagateInitDone Time.Posix
+    | StopPropagation
+    | InitSolve
+    | SolveInitDone Time.Posix
 
 
 type alias Model =
@@ -54,7 +57,7 @@ type alias Model =
 
 type Mode
     = Manual
-    | AutoStep
+    | AutoPropagate
 
 
 main : Program () Model Msg
@@ -77,7 +80,7 @@ init _ =
             RenderCache.new world
     in
     ( { wfcModel = WFC.init tilemapConfig
-      , mode = AutoStep
+      , mode = Manual
       , world = world
       , cache = cache
       }
@@ -101,7 +104,7 @@ subscriptions { mode } =
         Manual ->
             Sub.none
 
-        AutoStep ->
+        AutoPropagate ->
             Time.every 1 (\_ -> Step)
 
 
@@ -130,12 +133,22 @@ update msg model =
                 cache =
                     RenderCache.setTilemapCache tilemap model.cache
 
-                mode =
+                ( mode, cmd ) =
                     if WFC.stopped model.wfcModel then
-                        Manual
+                        ( Manual
+                        , case model.mode of
+                            AutoPropagate ->
+                                Process.sleep 1200
+                                    |> Task.perform (\_ -> InitAutoPropagate)
+
+                            Manual ->
+                                Cmd.none
+                        )
 
                     else
-                        model.mode
+                        ( model.mode
+                        , Cmd.none
+                        )
             in
             ( { model
                 | wfcModel = wfcModel
@@ -143,20 +156,41 @@ update msg model =
                 , cache = cache
                 , mode = mode
               }
+            , cmd
+            )
+
+        InitAutoPropagate ->
+            ( { model
+                | mode = AutoPropagate
+              }
+            , Task.perform AutoPropagateInitDone <| Time.now
+            )
+
+        AutoPropagateInitDone posix ->
+            let
+                seed =
+                    Random.initialSeed <| Time.posixToMillis posix
+
+                tilemapConfigWithSeed =
+                    { tilemapConfig
+                        | initialSeed = seed
+                    }
+            in
+            ( { model | wfcModel = WFC.init tilemapConfigWithSeed }
+            , Task.succeed () |> Task.perform (\_ -> Step)
+            )
+
+        StopPropagation ->
+            ( { model | mode = Manual }
             , Cmd.none
             )
 
-        Play ->
-            ( { model | mode = AutoStep }
-            , Cmd.none
+        InitSolve ->
+            ( { model | mode = Manual }
+            , Task.perform SolveInitDone <| Time.now
             )
 
-        Solve ->
-            ( model
-            , Task.perform GotTime <| Time.now
-            )
-
-        GotTime posix ->
+        SolveInitDone posix ->
             let
                 seed =
                     Random.initialSeed <| Time.posixToMillis posix
@@ -182,7 +216,6 @@ update msg model =
                 | wfcModel = solveResult
                 , world = nextWorld
                 , cache = cache
-                , mode = Manual
               }
             , Cmd.none
             )
@@ -243,8 +276,16 @@ controls =
             , label = Element.text "Step"
             }
         , Input.button []
-            { onPress = Just Solve
+            { onPress = Just InitSolve
             , label = Element.text "Solve"
+            }
+        , Input.button []
+            { onPress = Just InitAutoPropagate
+            , label = Element.text "Auto-propagate"
+            }
+        , Input.button []
+            { onPress = Just StopPropagation
+            , label = Element.text "Stop propagation"
             }
         ]
 
