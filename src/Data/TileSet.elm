@@ -4,7 +4,12 @@ module Data.TileSet exposing
     , pairingsForSocket
     )
 
-import Model.TileConfig exposing (Socket(..), Sockets, TileConfig)
+import Array
+import Model.TileConfig as TileConfig
+    exposing
+        ( Socket(..)
+        , TileConfig
+        )
 
 
 pairingsForSocket : Socket -> List Socket
@@ -41,19 +46,43 @@ pairingsForSocket socket =
             [ DarkBrown, White ]
 
 
-mirroredHorizontally : Sockets -> Sockets
-mirroredHorizontally sockets =
-    { sockets | left = sockets.right, right = sockets.left }
+mirroredHorizontally : Int -> TileConfig -> TileConfig
+mirroredHorizontally id tileConfig =
+    case tileConfig of
+        TileConfig.Single { sockets } ->
+            TileConfig.Single
+                { id = id
+                , sockets = { sockets | left = sockets.right, right = sockets.left }
+                }
+
+        TileConfig.Large _ ->
+            tileConfig
 
 
-mirroredVertically : Sockets -> Sockets
-mirroredVertically sockets =
-    { sockets | top = sockets.bottom, bottom = sockets.top }
+mirroredVertically : Int -> TileConfig -> TileConfig
+mirroredVertically id tileConfig =
+    case tileConfig of
+        TileConfig.Single { sockets } ->
+            TileConfig.Single
+                { id = id
+                , sockets = { sockets | top = sockets.bottom, bottom = sockets.top }
+                }
+
+        TileConfig.Large _ ->
+            tileConfig
 
 
-rotatedClockwise : Sockets -> Sockets
-rotatedClockwise sockets =
-    { sockets | top = sockets.left, right = sockets.top, bottom = sockets.right, left = sockets.bottom }
+rotatedClockwise : Int -> TileConfig -> TileConfig
+rotatedClockwise id tileConfig =
+    case tileConfig of
+        TileConfig.Single { sockets } ->
+            TileConfig.Single
+                { id = id
+                , sockets = { sockets | top = sockets.left, right = sockets.top, bottom = sockets.right, left = sockets.bottom }
+                }
+
+        TileConfig.Large _ ->
+            tileConfig
 
 
 allTiles : List TileConfig
@@ -83,14 +112,8 @@ allTiles =
     , lotEntryTRight
 
     --
-    , lotTopLeft
-    , lotTopRight
-    , lotBottomRight
-    , lotBottomLeft
-    , lotCenter
-    , lotDrivewayRight
-    , lotDrivewayLeft
-    , lotDrivewayUp
+    , twoByTwoLot
+    , threeByThreeLot
     ]
 
 
@@ -107,14 +130,15 @@ defaultTile =
 
 grass : TileConfig
 grass =
-    { id = 0
-    , sockets =
-        { top = Green
-        , right = Green
-        , bottom = Green
-        , left = Green
+    TileConfig.Single
+        { id = 0
+        , sockets =
+            { top = Green
+            , right = Green
+            , bottom = Green
+            , left = Green
+            }
         }
-    }
 
 
 
@@ -125,99 +149,89 @@ grass =
 
 loneRoad : TileConfig
 loneRoad =
-    { id = 17
-    , sockets =
-        { top = Green
-        , right = Green
-        , bottom = Green
-        , left = Green
+    TileConfig.Single
+        { id = 17
+        , sockets =
+            { top = Green
+            , right = Green
+            , bottom = Green
+            , left = Green
+            }
         }
-    }
 
 
 horizontalRoad : TileConfig
 horizontalRoad =
-    { id = 6
-    , sockets =
-        { top = Green
-        , right = Red
-        , bottom = Green
-        , left = Red
+    TileConfig.Single
+        { id = 6
+        , sockets =
+            { top = Green
+            , right = Red
+            , bottom = Green
+            , left = Red
+            }
         }
-    }
 
 
 verticalRoad : TileConfig
 verticalRoad =
-    { id = 9
-    , sockets = rotatedClockwise horizontalRoad.sockets
-    }
+    rotatedClockwise 9 horizontalRoad
 
 
 deadendUp : TileConfig
 deadendUp =
-    { id = 8
-    , sockets =
-        { top = Green
-        , right = Green
-        , bottom = Blue
-        , left = Green
+    TileConfig.Single
+        { id = 8
+        , sockets =
+            { top = Green
+            , right = Green
+            , bottom = Blue
+            , left = Green
+            }
         }
-    }
 
 
 deadendRight : TileConfig
 deadendRight =
-    { id = 2
-    , sockets = rotatedClockwise deadendUp.sockets
-    }
+    rotatedClockwise 2 deadendUp
 
 
 deadendDown : TileConfig
 deadendDown =
-    { id = 1
-    , sockets = rotatedClockwise deadendRight.sockets
-    }
+    rotatedClockwise 1 deadendRight
 
 
 deadendLeft : TileConfig
 deadendLeft =
-    { id = 4
-    , sockets = rotatedClockwise deadendDown.sockets
-    }
+    rotatedClockwise 4 deadendDown
 
 
 curveBottomRight : TileConfig
 curveBottomRight =
-    { id = 3
-    , sockets =
-        { top = Yellow
-        , right = Green
-        , bottom = Green
-        , left = Yellow
+    TileConfig.Single
+        { id = 3
+        , sockets =
+            { top = Yellow
+            , right = Green
+            , bottom = Green
+            , left = Yellow
+            }
         }
-    }
 
 
 curveBottomLeft : TileConfig
 curveBottomLeft =
-    { id = 5
-    , sockets = rotatedClockwise curveBottomRight.sockets
-    }
+    rotatedClockwise 5 curveBottomRight
 
 
 curveTopLeft : TileConfig
 curveTopLeft =
-    { id = 12
-    , sockets = rotatedClockwise curveBottomLeft.sockets
-    }
+    rotatedClockwise 12 curveBottomLeft
 
 
 curveTopRight : TileConfig
 curveTopRight =
-    { id = 10
-    , sockets = rotatedClockwise curveTopLeft.sockets
-    }
+    rotatedClockwise 10 curveTopLeft
 
 
 
@@ -226,88 +240,90 @@ curveTopRight =
 
 intersectionTUp : TileConfig
 intersectionTUp =
-    { id = 7
-    , sockets =
-        { top = Pink
-        , right = Yellow
-        , bottom = Green
-        , left = Pink
+    TileConfig.Single
+        { id = 7
+        , sockets =
+            { top = Pink
+            , right = Yellow
+            , bottom = Green
+            , left = Pink
+            }
         }
-    }
 
 
 intersectionTDown : TileConfig
 intersectionTDown =
-    { id = 14
-    , sockets = mirroredVertically intersectionTUp.sockets
-    }
+    mirroredVertically 14 intersectionTUp
 
 
 intersectionTLeft : TileConfig
 intersectionTLeft =
-    { id = 11
-    , sockets =
-        { top = Pink
-        , right = Green
-        , bottom = Yellow
-        , left = Pink
+    TileConfig.Single
+        { id = 11
+        , sockets =
+            { top = Pink
+            , right = Green
+            , bottom = Yellow
+            , left = Pink
+            }
         }
-    }
 
 
 intersectionTRight : TileConfig
 intersectionTRight =
-    { id = 13
-    , sockets = mirroredHorizontally intersectionTLeft.sockets
-    }
+    mirroredHorizontally 13 intersectionTLeft
 
 
 intersectionCross : TileConfig
 intersectionCross =
-    { id = 15
-    , sockets =
-        { top = Pink
-        , right = Pink
-        , bottom = Pink
-        , left = Pink
+    TileConfig.Single
+        { id = 15
+        , sockets =
+            { top = Pink
+            , right = Pink
+            , bottom = Pink
+            , left = Pink
+            }
         }
-    }
 
 
 lotEntryTUp : TileConfig
 lotEntryTUp =
-    { id = 23
-    , sockets =
-        { top = Orange
-        , right = Red
-        , bottom = Green
-        , left = Red
+    TileConfig.Single
+        { id = 23
+        , sockets =
+            { top = Orange
+            , right = Red
+            , bottom = Green
+            , left = Red
+            }
         }
-    }
 
 
 lotEntryTLeft : TileConfig
 lotEntryTLeft =
-    { id = 27
-    , sockets =
-        { top = Red
-        , right = Green
-        , bottom = Red
-        , left = Orange
+    TileConfig.Single
+        { id = 27
+        , sockets =
+            { top = Red
+            , right = Green
+            , bottom = Red
+            , left = Orange
+            }
         }
-    }
 
 
 lotEntryTRight : TileConfig
 lotEntryTRight =
-    { id = 29
-    , sockets =
-        { top = Red
-        , right = Orange
-        , bottom = Red
-        , left = Green
+    TileConfig.Single
+        { id = 29
+        , sockets =
+            { top = Red
+            , right = Orange
+            , bottom = Red
+            , left = Green
+            }
         }
-    }
 
 
 
@@ -316,56 +332,56 @@ lotEntryTRight =
 --
 
 
-lotTopLeft : TileConfig
-lotTopLeft =
+lotTopLeftCorner : TileConfig.SingleTile
+lotTopLeftCorner =
     { id = 30
     , sockets =
         { top = Green
-        , right = Gray
-        , bottom = DarkBrown
+        , right = White
+        , bottom = White
         , left = Green
         }
     }
 
 
-lotTopRight : TileConfig
-lotTopRight =
+lotTopRightCorner : TileConfig.SingleTile
+lotTopRightCorner =
     { id = 31
     , sockets =
         { top = Green
         , right = Green
-        , bottom = Gray
-        , left = Gray
+        , bottom = White
+        , left = White
         }
     }
 
 
-lotBottomRight : TileConfig
-lotBottomRight =
+lotBottomRightCorner : TileConfig.SingleTile
+lotBottomRightCorner =
     { id = 32
     , sockets =
-        { top = Gray
+        { top = White
         , right = Green
         , bottom = Green
-        , left = DarkBrown
+        , left = White
         }
     }
 
 
-lotBottomLeft : TileConfig
-lotBottomLeft =
+lotBottomLeftCorner : TileConfig.SingleTile
+lotBottomLeftCorner =
     { id = 33
     , sockets =
-        { top = DarkBrown
-        , right = DarkBrown
+        { top = White
+        , right = White
         , bottom = Green
         , left = Green
         }
     }
 
 
-lotCenter : TileConfig
-lotCenter =
+lotInnerSpace : TileConfig.SingleTile
+lotInnerSpace =
     { id = 34
     , sockets =
         { top = White
@@ -376,37 +392,76 @@ lotCenter =
     }
 
 
-lotDrivewayRight : TileConfig
+lotDrivewayRight : TileConfig.SingleTile
 lotDrivewayRight =
     { id = 35
     , sockets =
-        { top = lotBottomRight.sockets.top
+        { top = White
         , right = LightBrown
-        , bottom = lotBottomRight.sockets.bottom
-        , left = lotBottomRight.sockets.left
+        , bottom = Green
+        , left = Green
         }
     }
 
 
-lotDrivewayLeft : TileConfig
+lotDrivewayLeft : TileConfig.SingleTile
 lotDrivewayLeft =
     { id = 36
     , sockets =
-        { top = lotBottomLeft.sockets.top
-        , right = lotBottomLeft.sockets.right
-        , bottom = lotBottomLeft.sockets.bottom
+        { top = White
+        , right = White
+        , bottom = Green
         , left = LightBrown
         }
     }
 
 
-lotDrivewayUp : TileConfig
+lotDrivewayUp : TileConfig.SingleTile
 lotDrivewayUp =
     { id = 37
     , sockets =
-        { top = lotBottomLeft.sockets.top
-        , right = lotBottomLeft.sockets.right
+        { top = White
+        , right = White
         , bottom = LightBrown
-        , left = lotBottomLeft.sockets.left
+        , left = Green
         }
     }
+
+
+twoByTwoLot : TileConfig
+twoByTwoLot =
+    TileConfig.Large
+        { id = 100
+        , tiles =
+            Array.fromList
+                [ lotTopLeftCorner, lotTopRightCorner, lotBottomLeftCorner, lotDrivewayRight ]
+        , width = 2
+        , height = 2
+        , anchorIndex = 3
+        }
+
+
+threeByThreeLot : TileConfig
+threeByThreeLot =
+    TileConfig.Large
+        { id = 101
+        , tiles =
+            Array.fromList
+                [ lotTopLeftCorner
+                , lotInnerSpace
+                , lotTopRightCorner
+
+                --
+                , lotInnerSpace
+                , lotInnerSpace
+                , lotInnerSpace
+
+                --
+                , lotDrivewayLeft
+                , lotInnerSpace
+                , lotBottomRightCorner
+                ]
+        , width = 3
+        , height = 3
+        , anchorIndex = 6
+        }

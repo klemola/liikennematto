@@ -54,7 +54,7 @@ import Model.Tile as Tile
         , TileOperation
         , chooseTileKind
         )
-import Model.TileConfig exposing (TileConfig, TileId)
+import Model.TileConfig exposing (TileConfig, TileId, tileConfigId)
 import Point2d
 import Quantity
 import Random
@@ -106,9 +106,9 @@ empty tilemapConfig =
 
 
 superposition : List TileConfig -> TileKind
-superposition tileMetas =
-    tileMetas
-        |> List.map (\tileMeta -> tileMeta.id)
+superposition tileConfigs =
+    tileConfigs
+        |> List.map tileConfigId
         |> Superposition
 
 

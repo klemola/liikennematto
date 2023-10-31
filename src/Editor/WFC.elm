@@ -12,22 +12,26 @@ module Editor.WFC exposing
 -- TODO:
 -- do not ignore tile FMS events
 --
--- Should random pick ingore indices that have a fixed tile?
---
---
 
 import Data.TileSet exposing (defaultTile, pairingsForSocket)
 import List.Extra
 import Model.Cell as Cell exposing (Cell)
 import Model.Geometry
     exposing
-        ( OrthogonalDirection(..)
+        ( OrthogonalDirection
         , oppositeOrthogonalDirection
         , orthogonalDirectionToString
         , orthogonalDirections
         )
 import Model.Tile as Tile exposing (Tile, TileKind(..))
-import Model.TileConfig exposing (Socket, TileConfig, TileId)
+import Model.TileConfig
+    exposing
+        ( Socket
+        , TileConfig
+        , TileId
+        , socketByDirection
+        , tileConfigId
+        )
 import Model.Tilemap as Tilemap exposing (Tilemap, TilemapConfig)
 import Random exposing (Seed)
 import Random.Extra
@@ -245,30 +249,14 @@ propagate (Model ({ propagationContext, tilemap } as modelDetails)) =
 --
 
 
-getSocketIn : TileConfig -> OrthogonalDirection -> Socket
-getSocketIn tileMeta direction =
-    case direction of
-        Up ->
-            tileMeta.sockets.top
-
-        Right ->
-            tileMeta.sockets.right
-
-        Down ->
-            tileMeta.sockets.bottom
-
-        Left ->
-            tileMeta.sockets.left
-
-
 canDock : ModelDetails -> OrthogonalDirection -> Socket -> Int -> Bool
 canDock modelDetails dockDir dockSocket dockTileId =
     let
         dockTile =
-            tileById modelDetails.tilemap dockTileId
+            tileConfigById modelDetails.tilemap dockTileId
 
         matchSocket =
-            getSocketIn dockTile dockDir
+            socketByDirection dockTile dockDir
 
         pairings =
             pairingsForSocket dockSocket
@@ -359,11 +347,11 @@ dockTileInDirection modelDetails ( originTile, targetTile ) dir =
     case ( originTile.kind, targetTile.kind ) of
         ( Fixed originTileId, Superposition options ) ->
             let
-                originTileMeta =
-                    tileById modelDetails.tilemap originTileId
+                originTileConfig =
+                    tileConfigById modelDetails.tilemap originTileId
 
                 originSocket =
-                    getSocketIn originTileMeta dir
+                    socketByDirection originTileConfig dir
 
                 revisedOptions =
                     List.filter
@@ -375,10 +363,6 @@ dockTileInDirection modelDetails ( originTile, targetTile ) dir =
                         options
             in
             if List.isEmpty revisedOptions then
-                -- let
-                --     _ =
-                --         Debug.log "NoSuperpositionOptions" ( originTileId, options, dir )
-                -- in
                 Err NoSuperpositionOptions
 
             else
@@ -403,19 +387,23 @@ randomTileAndTileIdGen { tilemap } =
             Tilemap.config tilemap
 
         tileCount =
+            -- TODO: Should random pick ingore indices that have a fixed tile?
             tilemapConfig.horizontalCellsAmount * tilemapConfig.verticalCellsAmount
 
-        tileIds =
-            List.map .id tilemapConfig.tiles
+        tileConfigIds =
+            List.map tileConfigId tilemapConfig.tiles
 
-        tileIdSample =
-            tileIds
+        tileConfigIdSample =
+            tileConfigIds
                 |> Random.Extra.sample
-                |> Random.map (Maybe.withDefault defaultTile.id)
+                |> Random.map (Maybe.withDefault 0)
+
+        randomTilemapIndex =
+            Random.int 0 tileCount
     in
     Random.pair
-        (Random.int 0 tileCount)
-        tileIdSample
+        randomTilemapIndex
+        tileConfigIdSample
 
 
 pickRandom : RandomPick -> ModelDetails -> ModelDetails
@@ -472,14 +460,14 @@ pickRandom ( indexPick, tileIdPick ) ({ propagationContext } as modelDetails) =
     }
 
 
-tileById : Tilemap -> Int -> TileConfig
-tileById tilemap tileId =
+tileConfigById : Tilemap -> Int -> TileConfig
+tileConfigById tilemap tileId =
     let
         tilemapConfig =
             Tilemap.config tilemap
     in
     tilemapConfig.tiles
-        |> List.Extra.find (\tm -> tm.id == tileId)
+        |> List.Extra.find (\tileConfig -> tileConfigId tileConfig == tileId)
         |> Maybe.withDefault defaultTile
 
 

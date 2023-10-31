@@ -15,7 +15,14 @@ import List.Extra
 import Model.Cell as Cell
 import Model.Debug
 import Model.RenderCache as RenderCache
-import Model.TileConfig exposing (Socket(..), Sockets, TileConfig, allSockets)
+import Model.TileConfig as TileConfig
+    exposing
+        ( Socket(..)
+        , Sockets
+        , TileConfig
+        , allSockets
+        , tileConfigId
+        )
 import Model.Tilemap exposing (TilemapConfig)
 import Model.World as World
 import Process
@@ -309,11 +316,11 @@ tileSetDebug width =
         , Element.Background.color (Element.rgba 0.1 0.1 0.1 0.9)
         , Element.alignTop
         ]
-        (List.map tileMetaDebug allTiles)
+        (List.map tileConfigDebug allTiles)
 
 
-tileMetaDebug : TileConfig -> Element.Element Msg
-tileMetaDebug tileMeta =
+tileConfigDebug : TileConfig -> Element.Element Msg
+tileConfigDebug tileConfig =
     let
         idDebug =
             Element.el
@@ -321,7 +328,11 @@ tileMetaDebug tileMeta =
                 , Element.Background.color (Element.rgba 0.1 0.1 0.1 0.3)
                 , Element.Font.size 14
                 ]
-                (Element.text (String.fromInt tileMeta.id))
+                (tileConfig
+                    |> tileConfigId
+                    |> String.fromInt
+                    |> Element.text
+                )
 
         baseAttrs =
             [ Element.inFront idDebug
@@ -329,14 +340,14 @@ tileMetaDebug tileMeta =
             ]
     in
     Element.el
-        (baseAttrs ++ tileSocketsDebug tileMeta.sockets)
+        (baseAttrs ++ tileSocketsDebug (TileConfig.sockets tileConfig))
         (Element.html
             (Svg.svg
                 [ Svg.Attributes.viewBox "0 0 256 256"
                 , Svg.Attributes.width "64"
                 , Svg.Attributes.height "64"
                 ]
-                (roadAsset tileMeta.id)
+                (roadAsset (tileConfigId tileConfig))
             )
         )
 
