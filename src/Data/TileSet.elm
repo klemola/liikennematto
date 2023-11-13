@@ -1,6 +1,7 @@
 module Data.TileSet exposing
     ( allTiles
     , defaultTile
+    , largeTileInnerEdgeSocket
     , pairingsForSocket
     )
 
@@ -34,16 +35,21 @@ pairingsForSocket socket =
             [ LightBrown ]
 
         Gray ->
-            [ Gray, White ]
+            []
 
         White ->
-            [ White, Gray, DarkBrown, Green ]
+            [ White ]
 
         LightBrown ->
             [ Orange ]
 
         DarkBrown ->
-            [ DarkBrown, White ]
+            []
+
+
+largeTileInnerEdgeSocket : Socket
+largeTileInnerEdgeSocket =
+    White
 
 
 mirroredHorizontally : Int -> TileConfig -> TileConfig

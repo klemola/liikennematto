@@ -7,6 +7,7 @@ module Model.TileConfig exposing
     , TileId
     , allSockets
     , socketByDirection
+    , socketByDirectionWithConfig
     , sockets
     , tileConfigId
     )
@@ -35,11 +36,7 @@ type alias SingleTile =
 
 type alias LargeTile =
     { id : TileId
-    , tiles :
-        Array
-            { id : TileId
-            , sockets : Sockets
-            }
+    , tiles : Array SingleTile
     , width : Int
     , height : Int
     , anchorIndex : Int
@@ -72,10 +69,10 @@ allSockets =
     , Pink
     , Yellow
     , Orange
-    , Gray
-    , White
     , LightBrown
     , DarkBrown
+    , Gray
+    , White
     ]
 
 
@@ -109,12 +106,17 @@ sockets tileConfig =
                     }
 
 
-socketByDirection : TileConfig -> OrthogonalDirection -> Socket
-socketByDirection tileConfig direction =
+socketByDirectionWithConfig : TileConfig -> OrthogonalDirection -> Socket
+socketByDirectionWithConfig tileConfig direction =
     let
         sockets_ =
             sockets tileConfig
     in
+    socketByDirection sockets_ direction
+
+
+socketByDirection : Sockets -> OrthogonalDirection -> Socket
+socketByDirection sockets_ direction =
     case direction of
         Up ->
             sockets_.top

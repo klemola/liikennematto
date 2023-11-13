@@ -88,8 +88,8 @@ init _ =
 
 tilemapConfig : TilemapConfig
 tilemapConfig =
-    { verticalCellsAmount = 8
-    , horizontalCellsAmount = 8
+    { horizontalCellsAmount = 8
+    , verticalCellsAmount = 8
     , initialSeed = Random.initialSeed 13213
     , defaultTile = defaultTile
     , tiles = allTiles
@@ -495,14 +495,14 @@ socketToCSSColor socket =
         Orange ->
             Data.Colors.orangeCSS
 
-        Gray ->
-            Data.Colors.gray3CSS
-
-        White ->
-            Data.Colors.gray7CSS
-
         LightBrown ->
             Data.Colors.lightBrownCSS
 
         DarkBrown ->
             Data.Colors.darkBrownCSS
+
+        Gray ->
+            Data.Colors.gray3CSS
+
+        White ->
+            Data.Colors.gray7CSS

@@ -142,7 +142,7 @@ tileAt tilemap cell =
             tilemap
 
         idx =
-            indexFromCell tilemap cell
+            Cell.array1DIndex tilemapContents.config cell
     in
     Array.get idx tilemapContents.cells
         |> Maybe.andThen extractFixedTile
@@ -155,7 +155,7 @@ tileAtAny tilemap cell =
             tilemap
 
         idx =
-            indexFromCell tilemap cell
+            Cell.array1DIndex tilemapContents.config cell
     in
     Array.get idx tilemapContents.cells
 
@@ -241,7 +241,7 @@ toList mapperFn listFilter tilemap =
             Array.foldl
                 (\tile { acc, index } ->
                     { acc =
-                        cellFromIndex tilemap index
+                        Cell.fromArray1DIndex tilemapContents.config index
                             |> Maybe.map
                                 (\cell ->
                                     if
@@ -280,7 +280,7 @@ fold foldFn b tilemap =
             Array.foldl
                 (\tile { acc, index } ->
                     { acc =
-                        cellFromIndex tilemap index
+                        Cell.fromArray1DIndex tilemapContents.config index
                             |> Maybe.map
                                 (\cell ->
                                     foldFn cell tile acc
@@ -339,42 +339,9 @@ updateCell cell tile tilemap =
             tilemap
 
         idx =
-            indexFromCell tilemap cell
+            Cell.array1DIndex tilemapContents.config cell
     in
     Tilemap { tilemapContents | cells = tilemapContents.cells |> Array.set idx tile }
-
-
-cellFromIndex : Tilemap -> Int -> Maybe Cell
-cellFromIndex tilemap idx =
-    let
-        tilemapConfig =
-            config tilemap
-
-        xyZeroIndexed =
-            { x = remainderBy tilemapConfig.horizontalCellsAmount idx
-            , y = idx // tilemapConfig.verticalCellsAmount
-            }
-    in
-    -- Cells are 1-indexed - map the coordinates to match
-    Cell.fromCoordinates tilemapConfig
-        ( xyZeroIndexed.x + 1
-        , xyZeroIndexed.y + 1
-        )
-
-
-indexFromCell : Tilemap -> Cell -> Int
-indexFromCell (Tilemap tilemapContents) cell =
-    let
-        ( cellX, cellY ) =
-            Cell.coordinates cell
-
-        xyZeroIndexed =
-            { x = cellX - 1
-            , y = cellY - 1
-            }
-    in
-    -- Arrays are 0-indexed - map the coordinates to match
-    xyZeroIndexed.x + (xyZeroIndexed.y * tilemapContents.config.verticalCellsAmount)
 
 
 
@@ -408,12 +375,9 @@ update delta tilemap =
         (Tilemap currentTilemap) =
             tilemap
 
-        tilemapConfig =
-            config tilemap
-
         cellsUpdate =
             Array.foldl
-                (updateTile delta tilemapConfig)
+                (updateTile delta currentTilemap.config)
                 { nextTiles = Array.empty
                 , actions = []
                 , emptiedIndices = []
@@ -425,7 +389,7 @@ update delta tilemap =
         nextTilemap =
             List.foldl
                 (\idx acc ->
-                    case cellFromIndex tilemap idx of
+                    case Cell.fromArray1DIndex currentTilemap.config idx of
                         Just cell ->
                             updateNeighborCells cell acc
 
@@ -436,14 +400,14 @@ update delta tilemap =
                 cellsUpdate.emptiedIndices
 
         transitionedCells =
-            cellsUpdate.transitionedIndices
-                |> List.map (cellFromIndex nextTilemap)
-                |> Maybe.values
+            List.filterMap
+                (Cell.fromArray1DIndex currentTilemap.config)
+                cellsUpdate.transitionedIndices
 
         dynamicCells =
-            cellsUpdate.dynamicIndices
-                |> List.map (cellFromIndex nextTilemap)
-                |> Maybe.values
+            List.filterMap
+                (Cell.fromArray1DIndex currentTilemap.config)
+                cellsUpdate.dynamicIndices
     in
     { tilemap = nextTilemap
     , actions = cellsUpdate.actions

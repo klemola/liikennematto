@@ -2,10 +2,12 @@ module Model.Cell exposing
     ( Cell
     , CellCoordinates
     , Constraints
+    , array1DIndex
     , bottomLeftCorner
     , boundingBox
     , centerPoint
     , coordinates
+    , fromArray1DIndex
     , fromCoordinates
     , fromCoordinatesSet
     , identical
@@ -14,6 +16,7 @@ module Model.Cell exposing
     , quadrantNeighbors
     , size
     , toString
+    , translateBy
     )
 
 import Common
@@ -51,8 +54,8 @@ type alias CellCoordinates =
 type alias Constraints a =
     -- The partial record definition allows one to pass a larger config record as constraints, for convenience
     { a
-        | verticalCellsAmount : Int
-        , horizontalCellsAmount : Int
+        | horizontalCellsAmount : Int
+        , verticalCellsAmount : Int
     }
 
 
@@ -122,6 +125,28 @@ fromCoordinatesSet constraints set =
         )
         []
         set
+
+
+fromArray1DIndex : Constraints a -> Int -> Maybe Cell
+fromArray1DIndex constraints idx =
+    let
+        coordinatesZeroIndexed =
+            { x = idx |> remainderBy constraints.horizontalCellsAmount
+            , y = idx // constraints.horizontalCellsAmount
+            }
+
+        yPadding =
+            if coordinatesZeroIndexed.y == constraints.verticalCellsAmount then
+                0
+
+            else
+                1
+    in
+    -- Cells are 1-indexed - map the coordinates to match
+    fromCoordinates constraints
+        ( coordinatesZeroIndexed.x + 1
+        , coordinatesZeroIndexed.y + yPadding
+        )
 
 
 nextOrthogonalCell : Constraints a -> OrthogonalDirection -> Cell -> Maybe Cell
@@ -201,6 +226,14 @@ quadrantNeighbors constraints dir origin =
                 ]
 
 
+translateBy : Constraints a -> CellCoordinates -> Cell -> Maybe Cell
+translateBy constraints ( offsetX, offsetY ) (Cell cellProperties) =
+    fromCoordinates constraints
+        ( cellProperties.x + offsetX
+        , cellProperties.y + offsetY
+        )
+
+
 
 --
 -- Queries & interop
@@ -231,6 +264,20 @@ centerPoint (Cell cellProperties) =
                 (Quantity.half size)
     in
     cellProperties.bottomLeftCorner |> Point2d.translateBy displacement
+
+
+array1DIndex : Constraints a -> Cell -> Int
+array1DIndex constraints cell =
+    let
+        ( cellX, cellY ) =
+            coordinates cell
+
+        xyZeroIndexed =
+            { x = cellX - 1
+            , y = cellY - 1
+            }
+    in
+    xyZeroIndexed.x + (xyZeroIndexed.y * constraints.horizontalCellsAmount)
 
 
 boundingBox : Cell -> LMBoundingBox2d
