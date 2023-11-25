@@ -7,6 +7,7 @@ import Data.TileSet exposing (allTiles, defaultTile, pairingsForSocket)
 import Editor.WFC as WFC
 import Element
 import Element.Background
+import Element.Border as Border
 import Element.Font
 import Element.Input as Input
 import Html exposing (Html)
@@ -28,6 +29,7 @@ import Model.World as World
 import Process
 import Random
 import Render
+import Render.Conversion
 import Render.Debug
 import Svg
 import Svg.Attributes
@@ -36,8 +38,7 @@ import Time
 
 
 type Msg
-    = Pick Mode ( Int, Int ) Int
-    | Step
+    = Step
     | InitAutoPropagate
     | AutoPropagateInitDone Time.Posix
     | StopPropagation
@@ -90,7 +91,7 @@ tilemapConfig : TilemapConfig
 tilemapConfig =
     { horizontalCellsAmount = 8
     , verticalCellsAmount = 8
-    , initialSeed = Random.initialSeed 13213
+    , initialSeed = Random.initialSeed 131
     , defaultTile = defaultTile
     , tiles = allTiles
     }
@@ -109,14 +110,6 @@ subscriptions { mode } =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Pick _ pos tileId ->
-            case Cell.fromCoordinates tilemapConfig pos of
-                Just cell ->
-                    ( { model | wfcModel = WFC.pickTile cell tileId model.wfcModel }, Cmd.none )
-
-                Nothing ->
-                    ( model, Cmd.none )
-
         Step ->
             let
                 wfcModel =
@@ -232,9 +225,7 @@ view model =
             Render.Debug.view
                 model.world
                 model.cache
-                (Model.Debug.initialDebugState
-                    |> Model.Debug.toggleLayer Model.Debug.CarDebug
-                )
+                Model.Debug.initialDebugState
                 |> Element.html
 
         render =
@@ -244,16 +235,16 @@ view model =
                     [ Element.width (Element.px renderWidth)
                     , Element.height (Element.px renderHeight)
                     , Element.inFront renderDebug
+                    , Element.inFront (wfcCurrentCell model.cache model.wfcModel)
                     ]
     in
     Element.column
         [ Element.spacing 8 ]
-        [ Element.row [ Element.spacing 8 ] [ render, controls ]
-        , wfcState model.wfcModel
-        , Element.row [ Element.spacing 8 ]
-            [ tileSetDebug (Element.px renderWidth)
-            , socketsMatrix
+        [ Element.row [ Element.spacing 8 ]
+            [ render
+            , sidePanel model.wfcModel
             ]
+        , bottomPanel renderWidth
         ]
         |> Element.layout
             [ Element.width Element.fill
@@ -262,12 +253,23 @@ view model =
             ]
 
 
+sidePanel : WFC.Model -> Element.Element Msg
+sidePanel wfcModel =
+    Element.column
+        [ Element.alignTop
+        , Element.spacing 16
+        , Element.padding 8
+        ]
+        [ controls
+        , wfcState wfcModel
+        , wfcPropagationContext wfcModel
+        ]
+
+
 controls : Element.Element Msg
 controls =
     Element.column
-        [ Element.spacing 16
-        , Element.padding 8
-        , Element.alignTop
+        [ Element.spacing 12
         ]
         [ Input.button []
             { onPress = Just Step
@@ -288,6 +290,14 @@ controls =
         ]
 
 
+bottomPanel : Int -> Element.Element Msg
+bottomPanel widthPixels =
+    Element.row [ Element.spacing 8 ]
+        [ tileSetDebug (Element.px widthPixels)
+        , socketsMatrix
+        ]
+
+
 
 --
 -- WFC state debug
@@ -297,8 +307,55 @@ controls =
 wfcState : WFC.Model -> Element.Element Msg
 wfcState wfcModel =
     Element.el
-        [ Element.padding 8 ]
-        (Element.text (WFC.toString wfcModel))
+        []
+        (Element.text (WFC.stateDebug wfcModel))
+
+
+wfcPropagationContext : WFC.Model -> Element.Element Msg
+wfcPropagationContext wfcModel =
+    let
+        { position, openSteps } =
+            WFC.propagationContextDebug wfcModel
+    in
+    Element.column [ Element.spacing 8 ]
+        [ Element.column
+            []
+            (position |> List.map (\step -> Element.el [] (Element.text step)))
+        , Element.column
+            []
+            (openSteps |> List.map (\step -> Element.el [] (Element.text step)))
+        ]
+
+
+wfcCurrentCell : RenderCache.RenderCache -> WFC.Model -> Element.Element Msg
+wfcCurrentCell cache wfcModel =
+    case WFC.currentCell wfcModel of
+        Just cell ->
+            let
+                tileSizePixels =
+                    Render.Conversion.toPixelsValue cache.pixelsToMetersRatio Cell.size
+
+                ( cellX, cellY ) =
+                    Cell.coordinates cell
+
+                cellSize =
+                    Element.px (floor tileSizePixels)
+            in
+            Element.el
+                [ Element.width cellSize
+                , Element.height cellSize
+                , Element.moveRight (toFloat (cellX - 1) * tileSizePixels)
+                , Element.moveDown (toFloat (cellY - 1) * tileSizePixels)
+                , Border.width 2
+                , Border.rounded 4
+                , Border.solid
+                , Border.color
+                    (Data.Colors.uiCompat Data.Colors.red)
+                ]
+                Element.none
+
+        Nothing ->
+            Element.none
 
 
 

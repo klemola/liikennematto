@@ -158,7 +158,7 @@ renderSuperposition { size, x, y } tileIds =
         ]
         [ Svg.text_
             [ Attributes.fill "black"
-            , Attributes.x "64"
+            , Attributes.x "32"
             , Attributes.y "128"
             , Attributes.style "font: italic 24px sans-serif;"
             ]

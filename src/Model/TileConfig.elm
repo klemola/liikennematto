@@ -6,10 +6,12 @@ module Model.TileConfig exposing
     , TileConfig(..)
     , TileId
     , allSockets
+    , isSingleTile
     , socketByDirection
     , socketByDirectionWithConfig
     , sockets
     , tileConfigId
+    , toString
     )
 
 import Array exposing (Array)
@@ -86,6 +88,16 @@ tileConfigId tileConfig =
             largeTile.id
 
 
+isSingleTile : TileConfig -> Bool
+isSingleTile tileConfig =
+    case tileConfig of
+        Single _ ->
+            True
+
+        Large _ ->
+            False
+
+
 sockets : TileConfig -> Sockets
 sockets tileConfig =
     case tileConfig of
@@ -129,3 +141,13 @@ socketByDirection sockets_ direction =
 
         Left ->
             sockets_.left
+
+
+toString : TileConfig -> String
+toString tileConfig =
+    case tileConfig of
+        Single singleTile ->
+            "Single " ++ String.fromInt singleTile.id
+
+        Large largeTile ->
+            "Large " ++ String.fromInt largeTile.id

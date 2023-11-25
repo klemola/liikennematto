@@ -1,6 +1,7 @@
 module Data.TileSet exposing
     ( allTiles
     , defaultTile
+    , defaultTileId
     , largeTileInnerEdgeSocket
     , pairingsForSocket
     )
@@ -13,6 +14,21 @@ import Model.TileConfig as TileConfig
         )
 
 
+largeTileInnerEdgeSocket : Socket
+largeTileInnerEdgeSocket =
+    White
+
+
+lotEntrySocket : Socket
+lotEntrySocket =
+    Orange
+
+
+lotDrivewaySocket : Socket
+lotDrivewaySocket =
+    LightBrown
+
+
 pairingsForSocket : Socket -> List Socket
 pairingsForSocket socket =
     case socket of
@@ -20,7 +36,7 @@ pairingsForSocket socket =
             [ Red, Pink, Yellow, Blue ]
 
         Green ->
-            [ Green ]
+            [ Green, White ]
 
         Blue ->
             [ Red, Pink, Yellow ]
@@ -38,18 +54,13 @@ pairingsForSocket socket =
             []
 
         White ->
-            [ White ]
+            [ White, Green ]
 
         LightBrown ->
             [ Orange ]
 
         DarkBrown ->
             []
-
-
-largeTileInnerEdgeSocket : Socket
-largeTileInnerEdgeSocket =
-    White
 
 
 mirroredHorizontally : Int -> TileConfig -> TileConfig
@@ -113,7 +124,7 @@ allTiles =
     , intersectionCross
 
     --
-    , lotEntryTUp
+    -- , lotEntryTUp (not yet used by any lots)
     , lotEntryTLeft
     , lotEntryTRight
 
@@ -128,6 +139,10 @@ defaultTile =
     grass
 
 
+defaultTileId =
+    0
+
+
 
 --
 -- Terrain
@@ -137,7 +152,7 @@ defaultTile =
 grass : TileConfig
 grass =
     TileConfig.Single
-        { id = 0
+        { id = defaultTileId
         , sockets =
             { top = Green
             , right = Green
@@ -298,7 +313,7 @@ lotEntryTUp =
     TileConfig.Single
         { id = 23
         , sockets =
-            { top = Orange
+            { top = lotEntrySocket
             , right = Red
             , bottom = Green
             , left = Red
@@ -314,7 +329,7 @@ lotEntryTLeft =
             { top = Red
             , right = Green
             , bottom = Red
-            , left = Orange
+            , left = lotEntrySocket
             }
         }
 
@@ -325,7 +340,7 @@ lotEntryTRight =
         { id = 29
         , sockets =
             { top = Red
-            , right = Orange
+            , right = lotEntrySocket
             , bottom = Red
             , left = Green
             }
@@ -343,8 +358,8 @@ lotTopLeftCorner =
     { id = 30
     , sockets =
         { top = Green
-        , right = White
-        , bottom = White
+        , right = largeTileInnerEdgeSocket
+        , bottom = largeTileInnerEdgeSocket
         , left = Green
         }
     }
@@ -356,8 +371,8 @@ lotTopRightCorner =
     , sockets =
         { top = Green
         , right = Green
-        , bottom = White
-        , left = White
+        , bottom = largeTileInnerEdgeSocket
+        , left = largeTileInnerEdgeSocket
         }
     }
 
@@ -366,10 +381,10 @@ lotBottomRightCorner : TileConfig.SingleTile
 lotBottomRightCorner =
     { id = 32
     , sockets =
-        { top = White
+        { top = largeTileInnerEdgeSocket
         , right = Green
         , bottom = Green
-        , left = White
+        , left = largeTileInnerEdgeSocket
         }
     }
 
@@ -378,8 +393,8 @@ lotBottomLeftCorner : TileConfig.SingleTile
 lotBottomLeftCorner =
     { id = 33
     , sockets =
-        { top = White
-        , right = White
+        { top = largeTileInnerEdgeSocket
+        , right = largeTileInnerEdgeSocket
         , bottom = Green
         , left = Green
         }
@@ -390,10 +405,10 @@ lotInnerSpace : TileConfig.SingleTile
 lotInnerSpace =
     { id = 34
     , sockets =
-        { top = White
-        , right = White
-        , bottom = White
-        , left = White
+        { top = largeTileInnerEdgeSocket
+        , right = largeTileInnerEdgeSocket
+        , bottom = largeTileInnerEdgeSocket
+        , left = largeTileInnerEdgeSocket
         }
     }
 
@@ -402,10 +417,10 @@ lotDrivewayRight : TileConfig.SingleTile
 lotDrivewayRight =
     { id = 35
     , sockets =
-        { top = White
-        , right = LightBrown
+        { top = largeTileInnerEdgeSocket
+        , right = lotDrivewaySocket
         , bottom = Green
-        , left = Green
+        , left = largeTileInnerEdgeSocket
         }
     }
 
@@ -414,10 +429,10 @@ lotDrivewayLeft : TileConfig.SingleTile
 lotDrivewayLeft =
     { id = 36
     , sockets =
-        { top = White
-        , right = White
+        { top = largeTileInnerEdgeSocket
+        , right = largeTileInnerEdgeSocket
         , bottom = Green
-        , left = LightBrown
+        , left = lotDrivewaySocket
         }
     }
 
@@ -426,9 +441,9 @@ lotDrivewayUp : TileConfig.SingleTile
 lotDrivewayUp =
     { id = 37
     , sockets =
-        { top = White
-        , right = White
-        , bottom = LightBrown
+        { top = largeTileInnerEdgeSocket
+        , right = largeTileInnerEdgeSocket
+        , bottom = lotDrivewaySocket
         , left = Green
         }
     }

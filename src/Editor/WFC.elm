@@ -1,18 +1,21 @@
 module Editor.WFC exposing
     ( Model
+    , currentCell
     , init
     , pickTile
     , propagate
+    , propagationContextDebug
     , solve
+    , stateDebug
     , stopped
-    , toString
     , toTilemap
     )
 
 import Array
+import Common exposing (attemptFoldList, attemptMapList)
 import Data.TileSet exposing (defaultTile, largeTileInnerEdgeSocket, pairingsForSocket)
 import List.Extra
-import Model.Cell as Cell exposing (Cell, Constraints)
+import Model.Cell as Cell exposing (Cell)
 import Model.Geometry
     exposing
         ( OrthogonalDirection
@@ -21,7 +24,7 @@ import Model.Geometry
         , orthogonalDirections
         )
 import Model.Tile as Tile exposing (Tile, TileKind(..))
-import Model.TileConfig
+import Model.TileConfig as TileConfig
     exposing
         ( LargeTile
         , SingleTile
@@ -70,7 +73,7 @@ type alias PropagationContext =
 
 
 type PropagationStep
-    = PickTile Cell TileId
+    = PickTile Cell TileConfig
     | KeepMatching Cell Cell
 
 
@@ -110,14 +113,14 @@ init tilemapConfig =
 
 {-| Adds a step to pick a specific tile at a specific position
 -}
-pickTile : Cell -> TileId -> Model -> Model
-pickTile cell tileKind (Model ({ propagationContext } as modelDetails)) =
+pickTile : Cell -> TileConfig -> Model -> Model
+pickTile cell tileConfig (Model ({ propagationContext } as modelDetails)) =
     Model
         { modelDetails
             | propagationContext =
                 { propagationContext
                     | openSteps =
-                        PickTile cell tileKind :: propagationContext.openSteps
+                        PickTile cell tileConfig :: propagationContext.openSteps
                 }
         }
 
@@ -142,6 +145,16 @@ propagatinDonePredicate tile =
 stopped : Model -> Bool
 stopped (Model modelDetails) =
     modelDetails.supervisorState == Done || modelDetails.supervisorState == Recovering
+
+
+currentCell : Model -> Maybe Cell
+currentCell (Model modelDetails) =
+    case modelDetails.propagationContext.openSteps of
+        [] ->
+            Nothing
+
+        x :: _ ->
+            .from <| stepPosition x
 
 
 {-| Tries to solve/fill the whole grid in one go by assigning a tile to each position.
@@ -175,16 +188,8 @@ propagate (Model ({ propagationContext, tilemap } as modelDetails)) =
                 processStepResult =
                     processStep tilemap step
 
-                ( fromCell, toCell, dir ) =
-                    case step of
-                        PickTile cell _ ->
-                            ( Just cell, Nothing, Nothing )
-
-                        KeepMatching cellA cellB ->
-                            ( Just cellA
-                            , Just cellB
-                            , Cell.orthogonalDirection cellA cellB
-                            )
+                { from, to, direction } =
+                    stepPosition step
 
                 nextModelDetails =
                     case processStepResult of
@@ -195,9 +200,9 @@ propagate (Model ({ propagationContext, tilemap } as modelDetails)) =
                                 , propagationContext =
                                     { propagationContext
                                         | openSteps = otherSteps ++ additionalSteps
-                                        , from = fromCell
-                                        , to = toCell
-                                        , direction = dir
+                                        , from = from
+                                        , to = to
+                                        , direction = direction
                                     }
                             }
 
@@ -214,9 +219,9 @@ propagate (Model ({ propagationContext, tilemap } as modelDetails)) =
                                 , propagationContext =
                                     { propagationContext
                                         | openSteps = otherSteps
-                                        , from = fromCell
-                                        , to = toCell
-                                        , direction = dir
+                                        , from = from
+                                        , to = to
+                                        , direction = direction
                                     }
                             }
             in
@@ -248,6 +253,25 @@ propagate (Model ({ propagationContext, tilemap } as modelDetails)) =
 --
 -- Internals
 --
+
+
+stepPosition :
+    PropagationStep
+    ->
+        { from : Maybe Cell
+        , to : Maybe Cell
+        , direction : Maybe OrthogonalDirection
+        }
+stepPosition step =
+    case step of
+        PickTile cell _ ->
+            { from = Just cell, to = Nothing, direction = Nothing }
+
+        KeepMatching cellA cellB ->
+            { from = Just cellA
+            , to = Just cellB
+            , direction = Cell.orthogonalDirection cellA cellB
+            }
 
 
 matchingSuperpositionOptions : Tilemap -> OrthogonalDirection -> TileId -> List TileId -> List TileId
@@ -320,7 +344,7 @@ nextCandidates { tilemap } =
 processStep : Tilemap -> PropagationStep -> Result PropagationFailure ( List PropagationStep, Tilemap )
 processStep tilemap step =
     case step of
-        PickTile cell tileId ->
+        PickTile cell tileConfig ->
             let
                 tilemapConfig =
                     Tilemap.config tilemap
@@ -329,18 +353,26 @@ processStep tilemap step =
                     -- TODO: are Fixed tile neighbors unnecessarily included here? filterMap instead?
                     Cell.nextOrthogonalCell tilemapConfig dir cell
                         |> Maybe.map (KeepMatching cell)
-
-                nextSteps =
-                    List.filterMap stepInDirection orthogonalDirections
-
-                -- TODO: ignoring actions
-                ( tile, _ ) =
-                    Tile.new tileId Tile.BuildInstantly
             in
-            Ok
-                ( nextSteps
-                , Tilemap.setTile cell tile tilemap
-                )
+            case tileConfig of
+                TileConfig.Large largeTile ->
+                    attemptPlaceLargeTile tilemap cell largeTile
+                        |> Result.map (Tuple.pair [])
+
+                TileConfig.Single singleTile ->
+                    let
+                        nextSteps =
+                            -- TODO: prioritize potential large tile anchor cell if it can be one of the neighbors
+                            List.filterMap stepInDirection orthogonalDirections
+
+                        -- TODO: ignoring actions
+                        ( tile, _ ) =
+                            Tile.new singleTile.id Tile.BuildInstantly
+                    in
+                    Ok
+                        ( nextSteps
+                        , Tilemap.setTile cell tile tilemap
+                        )
 
         KeepMatching from to ->
             Maybe.map2 Tuple.pair
@@ -396,8 +428,7 @@ superpositionOptionsForTile tilemap ( originTile, targetTile ) dir =
 
 
 type alias RandomPick =
-    -- TODO: the (Int, Int) tuple is ambiguous, use a record with named fields instead
-    ( Int, Int )
+    { tileConfig : TileConfig, index : Int }
 
 
 randomTileAndTileIdGen : ModelDetails -> Random.Generator RandomPick
@@ -410,56 +441,65 @@ randomTileAndTileIdGen { tilemap } =
             -- TODO: Should random pick ingore indices that have a fixed tile?
             tilemapConfig.horizontalCellsAmount * tilemapConfig.verticalCellsAmount
 
-        tileConfigIds =
-            List.map tileConfigId tilemapConfig.tiles
-
-        tileConfigIdSample =
-            tileConfigIds
+        tileConfigSample =
+            tilemapConfig.tiles
+                |> List.filter TileConfig.isSingleTile
                 |> Random.Extra.sample
-                |> Random.map (Maybe.withDefault 0)
+                |> Random.map (Maybe.withDefault defaultTile)
 
         randomTilemapIndex =
             Random.int 0 tileCount
     in
-    Random.pair
+    Random.map2
+        (\idx tileConfig ->
+            { tileConfig = tileConfig
+            , index = idx
+            }
+        )
         randomTilemapIndex
-        tileConfigIdSample
+        tileConfigSample
 
 
 pickRandom : RandomPick -> ModelDetails -> ModelDetails
-pickRandom ( indexPick, tileIdPick ) ({ propagationContext } as modelDetails) =
+pickRandom randomPick ({ propagationContext, tilemap, seed } as modelDetails) =
     let
         candidates =
             nextCandidates modelDetails
 
         pickRandomStep =
-            if List.isEmpty candidates then
-                []
+            case candidates of
+                [] ->
+                    []
 
-            else
-                let
-                    randomCandidate =
-                        if List.isEmpty candidates then
-                            Nothing
+                singleCandidate :: [] ->
+                    case
+                        Random.step (Random.Extra.sample singleCandidate.options) seed
+                    of
+                        ( Just optionId, _ ) ->
+                            [ PickTile singleCandidate.cell (tileConfigById tilemap optionId) ]
 
-                        else
-                            let
-                                randomIdx =
-                                    modBy (List.length candidates) indexPick
-                            in
-                            List.head <| List.drop randomIdx candidates
-                in
-                case randomCandidate of
-                    Just { cell, options } ->
-                        if List.member tileIdPick options then
-                            -- TODO: if large tile, attemptPlaceLargeTile
-                            [ PickTile cell tileIdPick ]
-
-                        else
+                        ( Nothing, _ ) ->
                             []
 
-                    Nothing ->
-                        []
+                _ ->
+                    let
+                        randomCandidate =
+                            let
+                                randomIdx =
+                                    modBy (List.length candidates) randomPick.index
+                            in
+                            List.head <| List.drop randomIdx candidates
+                    in
+                    case randomCandidate of
+                        Just { cell, options } ->
+                            if List.member (TileConfig.tileConfigId randomPick.tileConfig) options then
+                                [ PickTile cell randomPick.tileConfig ]
+
+                            else
+                                []
+
+                        Nothing ->
+                            []
     in
     { modelDetails
         | propagationContext =
@@ -478,6 +518,7 @@ tileConfigById tilemap tileId =
         tilemapConfig =
             Tilemap.config tilemap
     in
+    -- TODO: optimize?
     tilemapConfig.tiles
         |> List.Extra.find (\tileConfig -> tileConfigId tileConfig == tileId)
         |> Maybe.withDefault defaultTile
@@ -486,7 +527,7 @@ tileConfigById tilemap tileId =
 attemptPlaceLargeTile : Tilemap -> Cell -> LargeTile -> Result PropagationFailure Tilemap
 attemptPlaceLargeTile tilemap anchorCell tile =
     let
-        tilemapDimensions =
+        tilemapConstraints =
             Tilemap.config tilemap
 
         -- The large tile is a subgrid in the main grid; the tilemap
@@ -506,97 +547,124 @@ attemptPlaceLargeTile tilemap anchorCell tile =
                 |> Maybe.map Cell.coordinates
                 |> Maybe.andThen
                     (\( x, y ) ->
-                        Cell.translateBy tilemapDimensions ( -x, -y ) anchorCell
+                        Cell.translateBy tilemapConstraints ( -x + 1, -y + 1 ) anchorCell
                     )
     in
-    case ( topLeftCornerCell, Array.get 0 tile.tiles ) of
-        ( Just startCell, Just startTile ) ->
-            buildLargeTile tilemap
-                startCell
-                subgridDimensions
-                (Array.toList tile.tiles)
-                startTile
+    topLeftCornerCell
+        |> Result.fromMaybe InvalidBigTilePlacement
+        |> Result.andThen
+            (\origin ->
+                tile.tiles
+                    |> Array.toIndexedList
+                    |> attemptMapList
+                        (\( subgridIdx, singleTile ) ->
+                            let
+                                cellInGlobalCoordinates =
+                                    subgridIdx
+                                        -- Use of unsafe function: we know that here that the Cell can be constructed
+                                        |> Cell.fromArray1DIndexUnsafe subgridDimensions
+                                        |> Cell.placeIn tilemapConstraints origin
+                            in
+                            case cellInGlobalCoordinates of
+                                Just cell ->
+                                    Ok ( cell, singleTile )
 
-        _ ->
-            Err InvalidBigTilePlacement
+                                Nothing ->
+                                    Err InvalidBigTilePlacement
+                        )
+            )
+        |> Result.andThen (attemptPlaceLargeTileHelper tilemap)
 
 
-buildLargeTile : Tilemap -> Cell -> Constraints a -> List SingleTile -> SingleTile -> Result PropagationFailure Tilemap
-buildLargeTile tilemap cell subgridDimensions remainingTiles currentTile =
+attemptPlaceLargeTileHelper : Tilemap -> List ( Cell, SingleTile ) -> Result PropagationFailure Tilemap
+attemptPlaceLargeTileHelper tilemap tileList =
+    case tileList of
+        [] ->
+            Ok tilemap
+
+        ( cell, currentTile ) :: remainingTiles ->
+            let
+                nextTilemapResult =
+                    tilemap
+                        |> attemptNeighborUpdate currentTile cell
+                        |> Result.map
+                            (\tilemapWithNeighborUpdate ->
+                                let
+                                    -- TODO: ignoring actions
+                                    ( tile, _ ) =
+                                        Tile.new currentTile.id Tile.BuildInstantly
+                                in
+                                Tilemap.setTile cell tile tilemapWithNeighborUpdate
+                            )
+            in
+            case nextTilemapResult of
+                Err _ ->
+                    nextTilemapResult
+
+                Ok nextTilemap ->
+                    attemptPlaceLargeTileHelper nextTilemap remainingTiles
+
+
+attemptNeighborUpdate : SingleTile -> Cell -> Tilemap -> Result PropagationFailure Tilemap
+attemptNeighborUpdate currentTile cell tilemap =
     let
         tilemapConfig =
             Tilemap.config tilemap
 
-        -- Check here if the current tile can dock in the cell in all directions
-        -- If the cell in the direction is part of the large tile, skip
-        updatedNeighbors =
-            orthogonalDirections
-                |> List.filterMap
-                    (\dir ->
-                        let
-                            originSocket =
-                                socketByDirection currentTile.sockets dir
-                        in
-                        if originSocket == largeTileInnerEdgeSocket then
-                            -- The neighbor is part of the large tile, skip
-                            Nothing
+        neighborUpdateByDirection : OrthogonalDirection -> Tilemap -> Result PropagationFailure Tilemap
+        neighborUpdateByDirection dir nextTilemap =
+            let
+                originSocket =
+                    socketByDirection currentTile.sockets dir
+            in
+            if originSocket == largeTileInnerEdgeSocket then
+                -- The neighbor is part of the large tile = skip
+                Ok nextTilemap
 
-                        else
-                            Cell.nextOrthogonalCell tilemapConfig dir cell
-                                |> Maybe.andThen
-                                    (\toCell ->
-                                        case Tilemap.tileAtAny tilemap toCell of
-                                            Just toTile ->
-                                                case toTile.kind of
-                                                    Fixed tileId ->
-                                                        if canDock tilemap (oppositeOrthogonalDirection dir) originSocket tileId then
-                                                            -- This is fine, continue, do not include this neighbor in the updates
-                                                            Nothing
+            else
+                case Cell.nextOrthogonalCell tilemapConfig dir cell of
+                    Just toCell ->
+                        case Tilemap.tileAtAny nextTilemap toCell of
+                            Just toTile ->
+                                case toTile.kind of
+                                    Fixed tileId ->
+                                        if canDock nextTilemap (oppositeOrthogonalDirection dir) originSocket tileId then
+                                            -- Tiles can dock, no tilemap update needed = skip
+                                            Ok nextTilemap
 
-                                                        else
-                                                            -- TODO: Err here, can't dock!
-                                                            Nothing
+                                        else
+                                            Err InvalidBigTilePlacement
 
-                                                    Superposition options ->
-                                                        let
-                                                            matching =
-                                                                matchingSuperpositionOptions tilemap dir currentTile.id options
-                                                        in
-                                                        if List.isEmpty matching then
-                                                            -- TODO: Err here, can't dock!
-                                                            Nothing
+                                    Superposition options ->
+                                        let
+                                            matching =
+                                                matchingSuperpositionOptions nextTilemap dir currentTile.id options
+                                        in
+                                        if List.isEmpty matching then
+                                            Err InvalidBigTilePlacement
 
-                                                        else
-                                                            let
-                                                                -- TODO: ignoring actions
-                                                                ( updatedTile, _ ) =
-                                                                    Tile.updateTileKind (Superposition matching) toTile
-                                                            in
-                                                            Just ( toCell, updatedTile )
+                                        else
+                                            let
+                                                -- TODO: ignoring actions
+                                                ( updatedTile, _ ) =
+                                                    Tile.updateTileKind (Superposition matching) toTile
+                                            in
+                                            Ok (Tilemap.setTile toCell updatedTile nextTilemap)
 
-                                            Nothing ->
-                                                Nothing
-                                    )
-                    )
+                            Nothing ->
+                                -- Tile not found = skip
+                                Ok nextTilemap
 
-        -- TODO: ignoring actions
-        ( tile, _ ) =
-            Tile.new currentTile.id Tile.BuildInstantly
-
-        nextTilemap =
-            Tilemap.setTile cell tile tilemap
+                    Nothing ->
+                        -- Out of tilemap bounds = skip
+                        Ok tilemap
     in
-    case remainingTiles of
-        [] ->
-            Ok nextTilemap
-
-        nextTile :: nextRemainingTiles ->
-            buildLargeTile nextTilemap cell subgridDimensions nextRemainingTiles nextTile
+    attemptFoldList neighborUpdateByDirection tilemap orthogonalDirections
 
 
 
 --
--- Interop
+-- Interop and debug
 --
 
 
@@ -605,19 +673,11 @@ toTilemap (Model modelDetails) =
     modelDetails.tilemap
 
 
-toString : Model -> String
-toString model =
-    describeState model
-
-
-describeState : Model -> String
-describeState (Model modelContents) =
+stateDebug : Model -> String
+stateDebug (Model modelDetails) =
     let
-        { propagationContext } =
-            modelContents
-
         supervisorStateString =
-            case modelContents.supervisorState of
+            case modelDetails.supervisorState of
                 Generating ->
                     "generating"
 
@@ -628,7 +688,7 @@ describeState (Model modelContents) =
                     "done"
 
         generationStateString =
-            case modelContents.generationState of
+            case modelDetails.generationState of
                 Propagating ->
                     "propagating"
 
@@ -655,14 +715,44 @@ describeState (Model modelContents) =
                         [ "failure:"
                         , failureString
                         ]
-
-        parts =
-            List.filterMap identity
-                [ Just supervisorStateString
-                , Just generationStateString
-                , Maybe.map Cell.toString propagationContext.from
-                , Maybe.map Cell.toString propagationContext.to
-                , Maybe.map orthogonalDirectionToString propagationContext.direction
-                ]
     in
-    String.join " | " parts
+    String.join " | " [ supervisorStateString, generationStateString ]
+
+
+propagationContextDebug :
+    Model
+    ->
+        { position : List String
+        , openSteps : List String
+        }
+propagationContextDebug (Model modelDetails) =
+    let
+        { propagationContext } =
+            modelDetails
+
+        position =
+            [ Maybe.map Cell.toString propagationContext.from |> Maybe.withDefault "-"
+            , Maybe.map Cell.toString propagationContext.to |> Maybe.withDefault "-"
+            , Maybe.map orthogonalDirectionToString propagationContext.direction |> Maybe.withDefault "-"
+            ]
+
+        openSteps =
+            propagationContext.openSteps
+                |> List.map
+                    (\step ->
+                        case step of
+                            PickTile cell tileConfig ->
+                                String.join ""
+                                    [ "PickTile"
+                                    , Cell.toString cell
+                                    , "tile config:"
+                                    , TileConfig.toString tileConfig
+                                    ]
+
+                            KeepMatching fromCell toCell ->
+                                String.join "" [ "KeepMatching from:", Cell.toString fromCell, "to:", Cell.toString toCell ]
+                    )
+    in
+    { position = position
+    , openSteps = openSteps
+    }

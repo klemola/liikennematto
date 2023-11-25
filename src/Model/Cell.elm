@@ -8,11 +8,14 @@ module Model.Cell exposing
     , centerPoint
     , coordinates
     , fromArray1DIndex
+    , fromArray1DIndexUnsafe
     , fromCoordinates
     , fromCoordinatesSet
+    , fromCoordinatesUnsafe
     , identical
     , nextOrthogonalCell
     , orthogonalDirection
+    , placeIn
     , quadrantNeighbors
     , size
     , toString
@@ -80,36 +83,43 @@ fromCoordinates constraints cellCoordinates =
         isValidCoordinate x constraints.horizontalCellsAmount
             && isValidCoordinate y constraints.verticalCellsAmount
     then
-        let
-            bottomLeftCornerPoint =
-                if x > 0 && y > 0 then
-                    let
-                        yMultiplier =
-                            (constraints.verticalCellsAmount - y) |> toFloat
-
-                        xMultiplier =
-                            (x - 1) |> toFloat
-                    in
-                    Point2d.xy
-                        (size |> Quantity.multiplyBy xMultiplier)
-                        (size |> Quantity.multiplyBy yMultiplier)
-
-                else
-                    -- When Cells are built from coordinates, the coordinates are required to be positive.
-                    -- Invalid input results in a fallback value that is guaranteed to be outside the tilemap.
-                    Point2d.xy negativeInfinity negativeInfinity
-
-            cellProperties =
-                { x = x
-                , y = y
-                , bottomLeftCorner = bottomLeftCornerPoint
-                , boundingBox = Common.boundingBoxWithDimensions size size bottomLeftCornerPoint
-                }
-        in
-        Just (Cell cellProperties)
+        Just (Cell (buildCellProperties constraints cellCoordinates))
 
     else
         Nothing
+
+
+fromCoordinatesUnsafe : Constraints a -> CellCoordinates -> Cell
+fromCoordinatesUnsafe constraints cellCoordinates =
+    Cell (buildCellProperties constraints cellCoordinates)
+
+
+buildCellProperties : Constraints a -> CellCoordinates -> CellProperties
+buildCellProperties constraints ( x, y ) =
+    let
+        bottomLeftCornerPoint =
+            if x > 0 && y > 0 then
+                let
+                    yMultiplier =
+                        (constraints.verticalCellsAmount - y) |> toFloat
+
+                    xMultiplier =
+                        (x - 1) |> toFloat
+                in
+                Point2d.xy
+                    (size |> Quantity.multiplyBy xMultiplier)
+                    (size |> Quantity.multiplyBy yMultiplier)
+
+            else
+                -- When Cells are built from coordinates, the coordinates are required to be positive.
+                -- Invalid input results in a fallback value that is guaranteed to be outside the tilemap.
+                Point2d.xy negativeInfinity negativeInfinity
+    in
+    { x = x
+    , y = y
+    , bottomLeftCorner = bottomLeftCornerPoint
+    , boundingBox = Common.boundingBoxWithDimensions size size bottomLeftCornerPoint
+    }
 
 
 fromCoordinatesSet : Constraints a -> Set CellCoordinates -> List Cell
@@ -144,6 +154,28 @@ fromArray1DIndex constraints idx =
     in
     -- Cells are 1-indexed - map the coordinates to match
     fromCoordinates constraints
+        ( coordinatesZeroIndexed.x + 1
+        , coordinatesZeroIndexed.y + yPadding
+        )
+
+
+fromArray1DIndexUnsafe : Constraints a -> Int -> Cell
+fromArray1DIndexUnsafe constraints idx =
+    let
+        coordinatesZeroIndexed =
+            { x = idx |> remainderBy constraints.horizontalCellsAmount
+            , y = idx // constraints.horizontalCellsAmount
+            }
+
+        yPadding =
+            if coordinatesZeroIndexed.y == constraints.verticalCellsAmount then
+                0
+
+            else
+                1
+    in
+    -- Cells are 1-indexed - map the coordinates to match
+    fromCoordinatesUnsafe constraints
         ( coordinatesZeroIndexed.x + 1
         , coordinatesZeroIndexed.y + yPadding
         )
@@ -232,6 +264,17 @@ translateBy constraints ( offsetX, offsetY ) (Cell cellProperties) =
         ( cellProperties.x + offsetX
         , cellProperties.y + offsetY
         )
+
+
+{-| Given a global grid and (local) subgrid, place subgrid cell into global space relative to the global origin
+-}
+placeIn : Constraints a -> Cell -> Cell -> Maybe Cell
+placeIn globalConstraints globalOrigin (Cell cellProperties) =
+    let
+        offset =
+            ( cellProperties.x - 1, cellProperties.y - 1 )
+    in
+    translateBy globalConstraints offset globalOrigin
 
 
 
