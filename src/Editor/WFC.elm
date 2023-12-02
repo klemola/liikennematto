@@ -613,51 +613,46 @@ attemptNeighborUpdate currentTile cell tilemap =
 
         neighborUpdateByDirection : OrthogonalDirection -> Tilemap -> Result PropagationFailure Tilemap
         neighborUpdateByDirection dir nextTilemap =
-            let
-                originSocket =
-                    socketByDirection currentTile.sockets dir
-            in
-            if originSocket == largeTileInnerEdgeSocket then
-                -- The neighbor is part of the large tile = skip
-                Ok nextTilemap
+            case Cell.nextOrthogonalCell tilemapConfig dir cell of
+                Just toCell ->
+                    case Tilemap.tileAtAny nextTilemap toCell of
+                        Just toTile ->
+                            case toTile.kind of
+                                Fixed tileId ->
+                                    let
+                                        originSocket =
+                                            socketByDirection currentTile.sockets dir
+                                    in
+                                    if canDock nextTilemap (oppositeOrthogonalDirection dir) originSocket tileId then
+                                        -- Tiles can dock, no tilemap update needed = skip
+                                        Ok nextTilemap
 
-            else
-                case Cell.nextOrthogonalCell tilemapConfig dir cell of
-                    Just toCell ->
-                        case Tilemap.tileAtAny nextTilemap toCell of
-                            Just toTile ->
-                                case toTile.kind of
-                                    Fixed tileId ->
-                                        if canDock nextTilemap (oppositeOrthogonalDirection dir) originSocket tileId then
-                                            -- Tiles can dock, no tilemap update needed = skip
-                                            Ok nextTilemap
+                                    else
+                                        Err InvalidBigTilePlacement
 
-                                        else
-                                            Err InvalidBigTilePlacement
+                                Superposition options ->
+                                    let
+                                        matching =
+                                            matchingSuperpositionOptions nextTilemap dir currentTile.id options
+                                    in
+                                    if List.isEmpty matching then
+                                        Err InvalidBigTilePlacement
 
-                                    Superposition options ->
+                                    else
                                         let
-                                            matching =
-                                                matchingSuperpositionOptions nextTilemap dir currentTile.id options
+                                            -- TODO: ignoring actions
+                                            ( updatedTile, _ ) =
+                                                Tile.updateTileKind (Superposition matching) toTile
                                         in
-                                        if List.isEmpty matching then
-                                            Err InvalidBigTilePlacement
+                                        Ok (Tilemap.setTile toCell updatedTile nextTilemap)
 
-                                        else
-                                            let
-                                                -- TODO: ignoring actions
-                                                ( updatedTile, _ ) =
-                                                    Tile.updateTileKind (Superposition matching) toTile
-                                            in
-                                            Ok (Tilemap.setTile toCell updatedTile nextTilemap)
+                        Nothing ->
+                            -- Tile not found = skip
+                            Ok nextTilemap
 
-                            Nothing ->
-                                -- Tile not found = skip
-                                Ok nextTilemap
-
-                    Nothing ->
-                        -- Out of tilemap bounds = skip
-                        Ok tilemap
+                Nothing ->
+                    -- Out of tilemap bounds = skip
+                    Ok nextTilemap
     in
     attemptFoldList neighborUpdateByDirection tilemap orthogonalDirections
 
@@ -742,7 +737,7 @@ propagationContextDebug (Model modelDetails) =
                     (\step ->
                         case step of
                             PickTile cell tileConfig ->
-                                String.join ""
+                                String.join " "
                                     [ "PickTile"
                                     , Cell.toString cell
                                     , "tile config:"
@@ -750,7 +745,7 @@ propagationContextDebug (Model modelDetails) =
                                     ]
 
                             KeepMatching fromCell toCell ->
-                                String.join "" [ "KeepMatching from:", Cell.toString fromCell, "to:", Cell.toString toCell ]
+                                String.join " " [ "KeepMatching from:", Cell.toString fromCell, "to:", Cell.toString toCell ]
                     )
     in
     { position = position

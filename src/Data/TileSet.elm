@@ -1,7 +1,6 @@
 module Data.TileSet exposing
     ( allTiles
     , defaultTile
-    , defaultTileId
     , largeTileInnerEdgeSocket
     , pairingsForSocket
     )
@@ -139,6 +138,7 @@ defaultTile =
     grass
 
 
+defaultTileId : Int
 defaultTileId =
     0
 
@@ -401,9 +401,57 @@ lotBottomLeftCorner =
     }
 
 
+lotTopEdge : TileConfig.SingleTile
+lotTopEdge =
+    { id = 34
+    , sockets =
+        { top = Green
+        , right = largeTileInnerEdgeSocket
+        , bottom = largeTileInnerEdgeSocket
+        , left = largeTileInnerEdgeSocket
+        }
+    }
+
+
+lotRightEdge : TileConfig.SingleTile
+lotRightEdge =
+    { id = 35
+    , sockets =
+        { top = largeTileInnerEdgeSocket
+        , right = Green
+        , bottom = largeTileInnerEdgeSocket
+        , left = largeTileInnerEdgeSocket
+        }
+    }
+
+
+lotBottomEdge : TileConfig.SingleTile
+lotBottomEdge =
+    { id = 36
+    , sockets =
+        { top = largeTileInnerEdgeSocket
+        , right = largeTileInnerEdgeSocket
+        , bottom = Green
+        , left = largeTileInnerEdgeSocket
+        }
+    }
+
+
+lotLeftEdge : TileConfig.SingleTile
+lotLeftEdge =
+    { id = 37
+    , sockets =
+        { top = largeTileInnerEdgeSocket
+        , right = largeTileInnerEdgeSocket
+        , bottom = largeTileInnerEdgeSocket
+        , left = Green
+        }
+    }
+
+
 lotInnerSpace : TileConfig.SingleTile
 lotInnerSpace =
-    { id = 34
+    { id = 38
     , sockets =
         { top = largeTileInnerEdgeSocket
         , right = largeTileInnerEdgeSocket
@@ -415,7 +463,7 @@ lotInnerSpace =
 
 lotDrivewayRight : TileConfig.SingleTile
 lotDrivewayRight =
-    { id = 35
+    { id = 40
     , sockets =
         { top = largeTileInnerEdgeSocket
         , right = lotDrivewaySocket
@@ -427,7 +475,7 @@ lotDrivewayRight =
 
 lotDrivewayLeft : TileConfig.SingleTile
 lotDrivewayLeft =
-    { id = 36
+    { id = 41
     , sockets =
         { top = largeTileInnerEdgeSocket
         , right = largeTileInnerEdgeSocket
@@ -439,7 +487,7 @@ lotDrivewayLeft =
 
 lotDrivewayUp : TileConfig.SingleTile
 lotDrivewayUp =
-    { id = 37
+    { id = 42
     , sockets =
         { top = largeTileInnerEdgeSocket
         , right = largeTileInnerEdgeSocket
@@ -469,17 +517,17 @@ threeByThreeLot =
         , tiles =
             Array.fromList
                 [ lotTopLeftCorner
-                , lotInnerSpace
+                , lotTopEdge
                 , lotTopRightCorner
 
                 --
+                , lotLeftEdge
                 , lotInnerSpace
-                , lotInnerSpace
-                , lotInnerSpace
+                , lotRightEdge
 
                 --
                 , lotDrivewayLeft
-                , lotInnerSpace
+                , lotBottomEdge
                 , lotBottomRightCorner
                 ]
         , width = 3

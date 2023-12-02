@@ -98,12 +98,24 @@ roadAsset tileId =
             lotDebugCenter
 
         35 ->
-            lotDebugDrivewayRight
+            lotDebugCenter
 
         36 ->
-            lotDebugDrivewayLeft
+            lotDebugCenter
 
         37 ->
+            lotDebugCenter
+
+        38 ->
+            lotDebugCenter
+
+        40 ->
+            lotDebugDrivewayRight
+
+        41 ->
+            lotDebugDrivewayLeft
+
+        42 ->
             lotDebugDrivewayUp
 
         _ ->
