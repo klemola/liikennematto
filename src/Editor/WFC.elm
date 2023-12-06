@@ -13,7 +13,7 @@ module Editor.WFC exposing
 
 import Array
 import Common exposing (attemptFoldList, attemptMapList)
-import Data.TileSet exposing (defaultTile, largeTileInnerEdgeSocket, pairingsForSocket)
+import Data.TileSet exposing (defaultTile, pairingsForSocket)
 import List.Extra
 import Model.Cell as Cell exposing (Cell)
 import Model.Geometry
@@ -232,16 +232,10 @@ propagate (Model ({ propagationContext, tilemap } as modelDetails)) =
                 nextModelDetails =
                     if not (propagationDone modelDetails) then
                         let
-                            ( randomPick, nextSeed ) =
-                                Random.step (randomTileAndTileIdGen modelDetails) modelDetails.seed
-
                             withPick =
-                                pickRandom randomPick modelDetails
+                                pickRandom modelDetails
                         in
-                        { withPick
-                            | seed = nextSeed
-                            , generationState = Propagating
-                        }
+                        { withPick | generationState = Propagating }
 
                     else
                         { modelDetails | supervisorState = Done }
@@ -253,6 +247,18 @@ propagate (Model ({ propagationContext, tilemap } as modelDetails)) =
 --
 -- Internals
 --
+
+
+tileConfigById : Tilemap -> Int -> TileConfig
+tileConfigById tilemap tileId =
+    let
+        tilemapConfig =
+            Tilemap.config tilemap
+    in
+    -- TODO: optimize?
+    tilemapConfig.tiles
+        |> List.Extra.find (\tileConfig -> tileConfigId tileConfig == tileId)
+        |> Maybe.withDefault defaultTile
 
 
 stepPosition :
@@ -305,40 +311,6 @@ canDock tilemap dockDir dockSocket dockTileId =
             pairingsForSocket dockSocket
     in
     List.any (\pair -> pair == matchSocket) pairings
-
-
-nextCandidates : ModelDetails -> List Candidate
-nextCandidates { tilemap } =
-    let
-        tilemapConfig =
-            Tilemap.config tilemap
-
-        toCandidate cell tile ( candidates, length ) =
-            case tile.kind of
-                Fixed _ ->
-                    ( candidates, length )
-
-                Superposition options ->
-                    let
-                        currentLength =
-                            List.length options
-                    in
-                    if currentLength > length then
-                        ( candidates, length )
-
-                    else if currentLength < length then
-                        ( [ { cell = cell, options = options } ]
-                        , currentLength
-                        )
-
-                    else
-                        ( { cell = cell, options = options } :: candidates
-                        , currentLength
-                        )
-    in
-    tilemap
-        |> Tilemap.fold toCandidate ( [], List.length tilemapConfig.tiles + 1 )
-        |> Tuple.first
 
 
 processStep : Tilemap -> PropagationStep -> Result PropagationFailure ( List PropagationStep, Tilemap )
@@ -427,101 +399,101 @@ superpositionOptionsForTile tilemap ( originTile, targetTile ) dir =
             Err NoPotentialMatch
 
 
-type alias RandomPick =
-    { tileConfig : TileConfig, index : Int }
+
+--
+-- Random pick
+--
 
 
-randomTileAndTileIdGen : ModelDetails -> Random.Generator RandomPick
-randomTileAndTileIdGen { tilemap } =
-    let
-        tilemapConfig =
-            Tilemap.config tilemap
-
-        tileCount =
-            -- TODO: Should random pick ingore indices that have a fixed tile?
-            tilemapConfig.horizontalCellsAmount * tilemapConfig.verticalCellsAmount
-
-        tileConfigSample =
-            tilemapConfig.tiles
-                |> List.filter TileConfig.isSingleTile
-                |> Random.Extra.sample
-                |> Random.map (Maybe.withDefault defaultTile)
-
-        randomTilemapIndex =
-            Random.int 0 tileCount
-    in
-    Random.map2
-        (\idx tileConfig ->
-            { tileConfig = tileConfig
-            , index = idx
-            }
-        )
-        randomTilemapIndex
-        tileConfigSample
-
-
-pickRandom : RandomPick -> ModelDetails -> ModelDetails
-pickRandom randomPick ({ propagationContext, tilemap, seed } as modelDetails) =
+pickRandom : ModelDetails -> ModelDetails
+pickRandom ({ propagationContext, tilemap, seed } as modelDetails) =
     let
         candidates =
-            nextCandidates modelDetails
+            nextCandidates tilemap
 
-        pickRandomStep =
+        randomCandidateGen =
             case candidates of
-                [] ->
-                    []
-
                 singleCandidate :: [] ->
-                    case
-                        Random.step (Random.Extra.sample singleCandidate.options) seed
-                    of
-                        ( Just optionId, _ ) ->
-                            [ PickTile singleCandidate.cell (tileConfigById tilemap optionId) ]
+                    Random.constant (Just singleCandidate)
 
-                        ( Nothing, _ ) ->
-                            []
+                candidatesList ->
+                    Random.Extra.sample candidatesList
 
-                _ ->
-                    let
-                        randomCandidate =
-                            let
-                                randomIdx =
-                                    modBy (List.length candidates) randomPick.index
-                            in
-                            List.head <| List.drop randomIdx candidates
-                    in
-                    case randomCandidate of
-                        Just { cell, options } ->
-                            if List.member (TileConfig.tileConfigId randomPick.tileConfig) options then
-                                [ PickTile cell randomPick.tileConfig ]
+        ( randomCandidate, seedAfterCandidateGen ) =
+            Random.step randomCandidateGen seed
+    in
+    case randomCandidate of
+        Nothing ->
+            modelDetails
 
-                            else
-                                []
+        Just { cell, options } ->
+            let
+                randomOptionGen =
+                    options
+                        |> List.map (tileConfigById tilemap)
+                        |> Random.Extra.sample
+
+                ( randomOption, nextSeed ) =
+                    Random.step randomOptionGen seedAfterCandidateGen
+
+                pickRandomStep =
+                    case randomOption of
+                        Just randomTileConfig ->
+                            [ PickTile cell randomTileConfig ]
 
                         Nothing ->
                             []
-    in
-    { modelDetails
-        | propagationContext =
-            { propagationContext
-                | openSteps = pickRandomStep ++ propagationContext.openSteps
-                , from = Nothing
-                , to = Nothing
-                , direction = Nothing
+            in
+            { modelDetails
+                | propagationContext =
+                    { propagationContext
+                        | openSteps = pickRandomStep ++ propagationContext.openSteps
+                        , from = Nothing
+                        , to = Nothing
+                        , direction = Nothing
+                    }
+                , seed = nextSeed
             }
-    }
 
 
-tileConfigById : Tilemap -> Int -> TileConfig
-tileConfigById tilemap tileId =
+nextCandidates : Tilemap -> List Candidate
+nextCandidates tilemap =
     let
         tilemapConfig =
             Tilemap.config tilemap
+
+        toCandidate cell tile ( candidates, minEntropy ) =
+            case tile.kind of
+                Fixed _ ->
+                    ( candidates, minEntropy )
+
+                Superposition options ->
+                    let
+                        currentEntropy =
+                            List.length options
+                    in
+                    if currentEntropy > minEntropy then
+                        ( candidates, minEntropy )
+
+                    else if currentEntropy < minEntropy then
+                        ( [ { cell = cell, options = options } ]
+                        , currentEntropy
+                        )
+
+                    else
+                        ( { cell = cell, options = options } :: candidates
+                        , currentEntropy
+                        )
     in
-    -- TODO: optimize?
-    tilemapConfig.tiles
-        |> List.Extra.find (\tileConfig -> tileConfigId tileConfig == tileId)
-        |> Maybe.withDefault defaultTile
+    tilemap
+        |> Tilemap.fold toCandidate ( [], List.length tilemapConfig.tiles + 1 )
+        |> Tuple.first
+
+
+
+--
+-- Extra constraints
+--
 
 
 attemptPlaceLargeTile : Tilemap -> Cell -> LargeTile -> Result PropagationFailure Tilemap
