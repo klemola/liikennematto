@@ -113,7 +113,7 @@ update msg model =
         Step ->
             let
                 wfcModel =
-                    WFC.propagate model.wfcModel
+                    WFC.propagateWithRecovery model.wfcModel
 
                 tilemap =
                     WFC.toTilemap wfcModel
@@ -242,7 +242,7 @@ view model =
         [ Element.spacing 8 ]
         [ Element.row [ Element.spacing 8 ]
             [ render
-            , sidePanel model.wfcModel
+            , sidePanel model.mode model.wfcModel
             ]
         , bottomPanel renderWidth
         ]
@@ -253,8 +253,8 @@ view model =
             ]
 
 
-sidePanel : WFC.Model -> Element.Element Msg
-sidePanel wfcModel =
+sidePanel : Mode -> WFC.Model -> Element.Element Msg
+sidePanel mode wfcModel =
     Element.column
         [ Element.alignTop
         , Element.spacing 16
@@ -262,7 +262,12 @@ sidePanel wfcModel =
         ]
         [ controls
         , wfcState wfcModel
-        , wfcPropagationContext wfcModel
+        , case mode of
+            Manual ->
+                wfcPropagationContext wfcModel
+
+            AutoPropagate ->
+                Element.none
         ]
 
 

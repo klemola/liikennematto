@@ -6,7 +6,8 @@ module Model.TileConfig exposing
     , TileConfig(..)
     , TileId
     , allSockets
-    , isSingleTile
+    , baseTileId
+    , complexity
     , socketByDirection
     , socketByDirectionWithConfig
     , sockets
@@ -33,6 +34,8 @@ type alias Sockets =
 type alias SingleTile =
     { id : TileId
     , sockets : Sockets
+    , complexity : Float -- 0.0 to 1.0
+    , baseTileId : Maybe TileId
     }
 
 
@@ -42,6 +45,7 @@ type alias LargeTile =
     , width : Int
     , height : Int
     , anchorIndex : Int
+    , complexity : Float -- 0.0 to 1.0
     }
 
 
@@ -78,7 +82,7 @@ allSockets =
     ]
 
 
-tileConfigId : TileConfig -> Int
+tileConfigId : TileConfig -> TileId
 tileConfigId tileConfig =
     case tileConfig of
         Single singleTile ->
@@ -88,14 +92,24 @@ tileConfigId tileConfig =
             largeTile.id
 
 
-isSingleTile : TileConfig -> Bool
-isSingleTile tileConfig =
+complexity : TileConfig -> Float
+complexity tileConfig =
     case tileConfig of
-        Single _ ->
-            True
+        Single singleTile ->
+            singleTile.complexity
+
+        Large largeTile ->
+            largeTile.complexity
+
+
+baseTileId : TileConfig -> Maybe TileId
+baseTileId tileConfig =
+    case tileConfig of
+        Single singleTile ->
+            singleTile.baseTileId
 
         Large _ ->
-            False
+            Nothing
 
 
 sockets : TileConfig -> Sockets

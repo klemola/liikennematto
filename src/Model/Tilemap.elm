@@ -19,7 +19,10 @@ module Model.Tilemap exposing
     , inBounds
     , intersects
     , removeAnchor
+    , removeSuperpositionOption
     , removeTile
+    , setFixedTile
+    , setSuperpositionOptions
     , setTile
     , size
     , tileAt
@@ -344,6 +347,47 @@ updateCell cell tile tilemap =
     Tilemap { tilemapContents | cells = tilemapContents.cells |> Array.set idx tile }
 
 
+removeSuperpositionOption : Cell -> TileId -> Tilemap -> Result String Tilemap
+removeSuperpositionOption cell tileId tilemap =
+    case tileAtAny tilemap cell of
+        Just tile ->
+            case tile.kind of
+                Fixed _ ->
+                    -- No need to fail here, can continue
+                    Ok tilemap
+
+                Superposition options ->
+                    let
+                        nextOptions =
+                            List.filter (\optionTileId -> optionTileId /= tileId) options
+                    in
+                    if List.isEmpty nextOptions then
+                        Err "Superposition option was removed but there are no options left"
+
+                    else
+                        Ok
+                            (updateCell cell
+                                { tile | kind = Superposition nextOptions }
+                                tilemap
+                            )
+
+        Nothing ->
+            Err "Tile not found"
+
+
+setSuperpositionOptions : Cell -> List TileId -> Tilemap -> Tilemap
+setSuperpositionOptions cell nextOptions tilemap =
+    case tileAtAny tilemap cell of
+        Just tile ->
+            -- Either retains superposition with next set of tileIds or unfixes the tile, no need to match on the kind
+            updateCell cell
+                { tile | kind = Superposition nextOptions }
+                tilemap
+
+        Nothing ->
+            tilemap
+
+
 
 --
 -- Update
@@ -474,6 +518,11 @@ addTile =
 setTile : Cell -> Tile -> Tilemap -> Tilemap
 setTile cell tile tilemap =
     updateCell cell tile tilemap
+
+
+setFixedTile : Cell -> TileId -> Tilemap -> Tilemap
+setFixedTile cell tileId tilemap =
+    setTile cell (Tile.init (Fixed tileId)) tilemap
 
 
 changeTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )

@@ -73,14 +73,14 @@ roadAsset tileId =
         15 ->
             intersectionCrossroads
 
-        23 ->
+        20 ->
             lotEntryTUp
 
-        27 ->
-            lotEntryTLeft
-
-        29 ->
+        21 ->
             lotEntryTRight
+
+        22 ->
+            lotEntryTLeft
 
         30 ->
             lotDebugCornerTopLeft

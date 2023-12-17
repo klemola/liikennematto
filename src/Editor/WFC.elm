@@ -3,7 +3,7 @@ module Editor.WFC exposing
     , currentCell
     , init
     , pickTile
-    , propagate
+    , propagateWithRecovery
     , propagationContextDebug
     , solve
     , stateDebug
@@ -48,20 +48,14 @@ type alias ModelDetails =
     { tilemap : Tilemap
     , propagationContext : PropagationContext
     , supervisorState : SupervisorState
-    , generationState : GenerationState
     , seed : Seed
     }
 
 
 type SupervisorState
-    = Generating
-    | Done
-    | Recovering
-
-
-type GenerationState
     = Propagating
-    | Failure PropagationFailure
+    | Done
+    | Recovering PropagationFailure
 
 
 type alias PropagationContext =
@@ -80,7 +74,7 @@ type PropagationStep
 type PropagationFailure
     = NoSuperpositionOptions
     | NoPotentialMatch
-    | InvalidBigTilePlacement
+    | InvalidBigTilePlacement Cell LargeTile
     | InvalidDirection
     | TileNotFound
 
@@ -105,8 +99,7 @@ init tilemapConfig =
     Model
         { tilemap = Tilemap.empty tilemapConfig
         , propagationContext = initialPropagationContext
-        , supervisorState = Generating
-        , generationState = Propagating
+        , supervisorState = Propagating
         , seed = tilemapConfig.initialSeed
         }
 
@@ -144,7 +137,7 @@ propagatinDonePredicate tile =
 
 stopped : Model -> Bool
 stopped (Model modelDetails) =
-    modelDetails.supervisorState == Done || modelDetails.supervisorState == Recovering
+    modelDetails.supervisorState /= Propagating
 
 
 currentCell : Model -> Maybe Cell
@@ -163,7 +156,7 @@ solve : TilemapConfig -> Model
 solve tilemapConfig =
     let
         nextModel =
-            propagate <| init tilemapConfig
+            propagateWithRecovery <| init tilemapConfig
     in
     solve_ nextModel
 
@@ -174,7 +167,57 @@ solve_ model =
         model
 
     else
-        solve_ (propagate model)
+        solve_ (propagateWithRecovery model)
+
+
+propagateWithRecovery : Model -> Model
+propagateWithRecovery model =
+    let
+        ((Model modelDetails) as afterPropagation) =
+            propagate model
+    in
+    case modelDetails.supervisorState of
+        Recovering propagationFailure ->
+            case propagationFailure of
+                NoPotentialMatch ->
+                    -- Aknowledge failure, can resume propagation
+                    Model { modelDetails | supervisorState = Propagating }
+
+                InvalidBigTilePlacement cell largeTile ->
+                    case Tilemap.removeSuperpositionOption cell largeTile.id modelDetails.tilemap of
+                        Ok tilemapWithRecovery ->
+                            Model
+                                { modelDetails
+                                    | supervisorState = Propagating
+                                    , tilemap = tilemapWithRecovery
+                                }
+
+                        Err _ ->
+                            case attemptRecoverFromNoSuperpositionOptions cell largeTile modelDetails.tilemap of
+                                Ok ( nextSteps, tilemapWithRecovery_ ) ->
+                                    let
+                                        _ =
+                                            Debug.log "recovered" ( modelDetails.propagationContext.openSteps, nextSteps )
+
+                                        { propagationContext } =
+                                            modelDetails
+                                    in
+                                    Model
+                                        { modelDetails
+                                            | supervisorState = Propagating
+                                            , tilemap = tilemapWithRecovery_
+                                            , propagationContext = { propagationContext | openSteps = nextSteps }
+                                        }
+
+                                Err _ ->
+                                    afterPropagation
+
+                -- No recovery strategy yet
+                _ ->
+                    afterPropagation
+
+        _ ->
+            afterPropagation
 
 
 {-| Execute a single step. This can mean picking the next random tile
@@ -191,38 +234,30 @@ propagate (Model ({ propagationContext, tilemap } as modelDetails)) =
                 { from, to, direction } =
                     stepPosition step
 
+                basePropagationContext =
+                    { propagationContext
+                        | openSteps = otherSteps
+                        , from = from
+                        , to = to
+                        , direction = direction
+                    }
+
                 nextModelDetails =
                     case processStepResult of
                         Ok ( additionalSteps, nextTilemap ) ->
                             { modelDetails
                                 | tilemap = nextTilemap
-                                , generationState = Propagating
+                                , supervisorState = Propagating
                                 , propagationContext =
-                                    { propagationContext
-                                        | openSteps = otherSteps ++ additionalSteps
-                                        , from = from
-                                        , to = to
-                                        , direction = direction
+                                    { basePropagationContext
+                                        | openSteps = basePropagationContext.openSteps ++ additionalSteps
                                     }
                             }
 
                         Err propagationFailure ->
                             { modelDetails
-                                | supervisorState =
-                                    -- NoPotentialMatch is a common propagation failure and does not require a recovery strategy
-                                    if propagationFailure == NoPotentialMatch then
-                                        Generating
-
-                                    else
-                                        Recovering
-                                , generationState = Failure propagationFailure
-                                , propagationContext =
-                                    { propagationContext
-                                        | openSteps = otherSteps
-                                        , from = from
-                                        , to = to
-                                        , direction = direction
-                                    }
+                                | supervisorState = Recovering propagationFailure
+                                , propagationContext = basePropagationContext
                             }
             in
             Model nextModelDetails
@@ -235,7 +270,7 @@ propagate (Model ({ propagationContext, tilemap } as modelDetails)) =
                             withPick =
                                 pickRandom modelDetails
                         in
-                        { withPick | generationState = Propagating }
+                        { withPick | supervisorState = Propagating }
 
                     else
                         { modelDetails | supervisorState = Done }
@@ -301,11 +336,11 @@ matchingSuperpositionOptions tilemap dir originTileId options =
 canDock : Tilemap -> OrthogonalDirection -> Socket -> Int -> Bool
 canDock tilemap dockDir dockSocket dockTileId =
     let
-        dockTile =
+        dockTileConfig =
             tileConfigById tilemap dockTileId
 
         matchSocket =
-            socketByDirectionWithConfig dockTile dockDir
+            socketByDirectionWithConfig dockTileConfig dockDir
 
         pairings =
             pairingsForSocket dockSocket
@@ -317,22 +352,20 @@ processStep : Tilemap -> PropagationStep -> Result PropagationFailure ( List Pro
 processStep tilemap step =
     case step of
         PickTile cell tileConfig ->
-            let
-                tilemapConfig =
-                    Tilemap.config tilemap
-
-                stepInDirection dir =
-                    -- TODO: are Fixed tile neighbors unnecessarily included here? filterMap instead?
-                    Cell.nextOrthogonalCell tilemapConfig dir cell
-                        |> Maybe.map (KeepMatching cell)
-            in
             case tileConfig of
                 TileConfig.Large largeTile ->
                     attemptPlaceLargeTile tilemap cell largeTile
-                        |> Result.map (Tuple.pair [])
 
                 TileConfig.Single singleTile ->
                     let
+                        tilemapConfig =
+                            Tilemap.config tilemap
+
+                        stepInDirection dir =
+                            -- TODO: are Fixed tile neighbors unnecessarily included here? filterMap instead?
+                            Cell.nextOrthogonalCell tilemapConfig dir cell
+                                |> Maybe.map (KeepMatching cell)
+
                         nextSteps =
                             -- TODO: prioritize potential large tile anchor cell if it can be one of the neighbors
                             List.filterMap stepInDirection orthogonalDirections
@@ -366,14 +399,7 @@ updateSuperpositionOptions tilemap from to tilePair =
             )
         |> Result.map
             (\superpositionOptions ->
-                let
-                    ( _, targetTile ) =
-                        tilePair
-
-                    ( tile, _ ) =
-                        Tile.updateTileKind (Superposition superpositionOptions) targetTile
-                in
-                Tilemap.setTile to tile tilemap
+                Tilemap.setSuperpositionOptions to superpositionOptions tilemap
             )
 
 
@@ -397,6 +423,115 @@ superpositionOptionsForTile tilemap ( originTile, targetTile ) dir =
 
         _ ->
             Err NoPotentialMatch
+
+
+attemptRecoverFromNoSuperpositionOptions : Cell -> LargeTile -> Tilemap -> Result String ( List PropagationStep, Tilemap )
+attemptRecoverFromNoSuperpositionOptions cell largeTile tilemap =
+    case Array.get largeTile.anchorIndex largeTile.tiles of
+        Nothing ->
+            -- This should not be possible
+            Err "Anchor tile not found"
+
+        Just anchorTileConfig ->
+            let
+                tilemapConfig =
+                    Tilemap.config tilemap
+
+                safeOptions =
+                    List.filterMap
+                        (\tc ->
+                            if TileConfig.complexity tc > 0.1 then
+                                Nothing
+
+                            else
+                                Just (TileConfig.tileConfigId tc)
+                        )
+                        tilemapConfig.tiles
+            in
+            applyToNeighbor
+                (\nuCtx neighborTileId ->
+                    let
+                        originSocket =
+                            socketByDirection anchorTileConfig.sockets nuCtx.dir
+
+                        neighborTileConfig =
+                            tileConfigById nuCtx.tilemap neighborTileId
+
+                        neighborComplexity =
+                            TileConfig.complexity neighborTileConfig
+
+                        canDock_ =
+                            canDock nuCtx.tilemap (oppositeOrthogonalDirection nuCtx.dir) originSocket neighborTileId
+                    in
+                    -- This is a heuristic that might mitigate problems with complex tiles (f.ex. the lot entry tiles)
+                    if neighborComplexity > 0.7 && canDock_ then
+                        case TileConfig.baseTileId neighborTileConfig of
+                            Just baseTileId ->
+                                Ok ( [], Tilemap.setFixedTile nuCtx.neighborCell baseTileId tilemap )
+
+                            Nothing ->
+                                Err "No suitable replacement for complex neighbor tile"
+
+                    else if canDock_ then
+                        Ok ( [], nuCtx.tilemap )
+
+                    else
+                        Err "No match for low complexity neighbor"
+                )
+                (\nuCtx _ ->
+                    -- Nothing to do for a superposition
+                    Ok ( [], nuCtx.tilemap )
+                )
+                cell
+                -- Start from a tilemap with the recovery tile reset
+                (Tilemap.setFixedTile cell 0 tilemap)
+
+
+type alias NeighborUpdateContext =
+    { dir : OrthogonalDirection
+    , neighborTile : Tile
+    , neighborCell : Cell
+    , tilemap : Tilemap
+    , steps : List PropagationStep
+    }
+
+
+applyToNeighbor :
+    (NeighborUpdateContext -> TileId -> Result error ( List PropagationStep, Tilemap ))
+    -> (NeighborUpdateContext -> List TileId -> Result error ( List PropagationStep, Tilemap ))
+    -> Cell
+    -> Tilemap
+    -> Result error ( List PropagationStep, Tilemap )
+applyToNeighbor onFixed onSuperposition cell tilemap =
+    let
+        tilemapConfig =
+            Tilemap.config tilemap
+    in
+    attemptFoldList
+        (\dir ( steps, nextTilemap ) ->
+            case Cell.nextOrthogonalCell tilemapConfig dir cell of
+                Just toCell ->
+                    case Tilemap.tileAtAny nextTilemap toCell of
+                        Just toTile ->
+                            let
+                                neighborUpdateContext =
+                                    NeighborUpdateContext dir toTile toCell nextTilemap steps
+                            in
+                            case toTile.kind of
+                                Fixed tileId ->
+                                    onFixed neighborUpdateContext tileId
+
+                                Superposition options ->
+                                    onSuperposition neighborUpdateContext options
+
+                        Nothing ->
+                            Ok ( steps, nextTilemap )
+
+                Nothing ->
+                    Ok ( steps, nextTilemap )
+        )
+        ( [], tilemap )
+        orthogonalDirections
 
 
 
@@ -496,7 +631,7 @@ nextCandidates tilemap =
 --
 
 
-attemptPlaceLargeTile : Tilemap -> Cell -> LargeTile -> Result PropagationFailure Tilemap
+attemptPlaceLargeTile : Tilemap -> Cell -> LargeTile -> Result PropagationFailure ( List PropagationStep, Tilemap )
 attemptPlaceLargeTile tilemap anchorCell tile =
     let
         tilemapConstraints =
@@ -523,7 +658,7 @@ attemptPlaceLargeTile tilemap anchorCell tile =
                     )
     in
     topLeftCornerCell
-        |> Result.fromMaybe InvalidBigTilePlacement
+        |> Result.fromMaybe ()
         |> Result.andThen
             (\origin ->
                 tile.tiles
@@ -542,91 +677,81 @@ attemptPlaceLargeTile tilemap anchorCell tile =
                                     Ok ( cell, singleTile )
 
                                 Nothing ->
-                                    Err InvalidBigTilePlacement
+                                    Err ()
                         )
             )
-        |> Result.andThen (attemptPlaceLargeTileHelper tilemap)
+        |> Result.andThen (attemptPlaceLargeTileHelper [] tilemap)
+        |> Result.mapError (\_ -> InvalidBigTilePlacement anchorCell tile)
 
 
-attemptPlaceLargeTileHelper : Tilemap -> List ( Cell, SingleTile ) -> Result PropagationFailure Tilemap
-attemptPlaceLargeTileHelper tilemap tileList =
+attemptPlaceLargeTileHelper : List PropagationStep -> Tilemap -> List ( Cell, SingleTile ) -> Result () ( List PropagationStep, Tilemap )
+attemptPlaceLargeTileHelper steps tilemap tileList =
     case tileList of
         [] ->
-            Ok tilemap
+            Ok ( steps, tilemap )
 
         ( cell, currentTile ) :: remainingTiles ->
             let
                 nextTilemapResult =
                     tilemap
-                        |> attemptNeighborUpdate currentTile cell
+                        |> attemptSubTileNeighborUpdate currentTile cell
                         |> Result.map
-                            (\tilemapWithNeighborUpdate ->
+                            (\( nextSteps, tilemapWithNeighborUpdate ) ->
                                 let
                                     -- TODO: ignoring actions
                                     ( tile, _ ) =
                                         Tile.new currentTile.id Tile.BuildInstantly
                                 in
-                                Tilemap.setTile cell tile tilemapWithNeighborUpdate
+                                ( nextSteps, Tilemap.setTile cell tile tilemapWithNeighborUpdate )
                             )
             in
             case nextTilemapResult of
                 Err _ ->
                     nextTilemapResult
 
-                Ok nextTilemap ->
-                    attemptPlaceLargeTileHelper nextTilemap remainingTiles
+                Ok ( nextSteps, nextTilemap ) ->
+                    attemptPlaceLargeTileHelper (steps ++ nextSteps) nextTilemap remainingTiles
 
 
-attemptNeighborUpdate : SingleTile -> Cell -> Tilemap -> Result PropagationFailure Tilemap
-attemptNeighborUpdate currentTile cell tilemap =
-    let
-        tilemapConfig =
-            Tilemap.config tilemap
+attemptSubTileNeighborUpdate : SingleTile -> Cell -> Tilemap -> Result () ( List PropagationStep, Tilemap )
+attemptSubTileNeighborUpdate currentTile cell tilemap =
+    applyToNeighbor
+        (\nuCtx tileId ->
+            let
+                originSocket =
+                    socketByDirection currentTile.sockets nuCtx.dir
+            in
+            if canDock nuCtx.tilemap (oppositeOrthogonalDirection nuCtx.dir) originSocket tileId then
+                -- Tiles can dock, no tilemap update needed = skip
+                Ok ( nuCtx.steps, nuCtx.tilemap )
 
-        neighborUpdateByDirection : OrthogonalDirection -> Tilemap -> Result PropagationFailure Tilemap
-        neighborUpdateByDirection dir nextTilemap =
-            case Cell.nextOrthogonalCell tilemapConfig dir cell of
-                Just toCell ->
-                    case Tilemap.tileAtAny nextTilemap toCell of
-                        Just toTile ->
-                            case toTile.kind of
-                                Fixed tileId ->
-                                    let
-                                        originSocket =
-                                            socketByDirection currentTile.sockets dir
-                                    in
-                                    if canDock nextTilemap (oppositeOrthogonalDirection dir) originSocket tileId then
-                                        -- Tiles can dock, no tilemap update needed = skip
-                                        Ok nextTilemap
+            else
+                Err ()
+        )
+        (\nuCtx options ->
+            let
+                { dir, neighborCell, neighborTile } =
+                    nuCtx
 
-                                    else
-                                        Err InvalidBigTilePlacement
+                matching =
+                    matchingSuperpositionOptions nuCtx.tilemap dir currentTile.id options
+            in
+            if List.isEmpty matching then
+                Err ()
 
-                                Superposition options ->
-                                    let
-                                        matching =
-                                            matchingSuperpositionOptions nextTilemap dir currentTile.id options
-                                    in
-                                    if List.isEmpty matching then
-                                        Err InvalidBigTilePlacement
-
-                                    else
-                                        let
-                                            -- TODO: ignoring actions
-                                            ( updatedTile, _ ) =
-                                                Tile.updateTileKind (Superposition matching) toTile
-                                        in
-                                        Ok (Tilemap.setTile toCell updatedTile nextTilemap)
-
-                        Nothing ->
-                            -- Tile not found = skip
-                            Ok nextTilemap
-
-                Nothing ->
-                    -- Out of tilemap bounds = skip
-                    Ok nextTilemap
-    in
-    attemptFoldList neighborUpdateByDirection tilemap orthogonalDirections
+            else
+                let
+                    -- TODO: ignoring actions
+                    ( updatedTile, _ ) =
+                        Tile.updateTileKind (Superposition matching) neighborTile
+                in
+                Ok
+                    ( nuCtx.steps
+                    , Tilemap.setTile neighborCell updatedTile nuCtx.tilemap
+                    )
+        )
+        cell
+        tilemap
 
 
 
@@ -642,48 +767,36 @@ toTilemap (Model modelDetails) =
 
 stateDebug : Model -> String
 stateDebug (Model modelDetails) =
-    let
-        supervisorStateString =
-            case modelDetails.supervisorState of
-                Generating ->
-                    "generating"
+    case modelDetails.supervisorState of
+        Propagating ->
+            "propagating"
 
-                Recovering ->
-                    "recovering"
+        Recovering propagationFailure ->
+            let
+                failureString =
+                    case propagationFailure of
+                        NoSuperpositionOptions ->
+                            "No superposition opts"
 
-                Done ->
-                    "done"
+                        NoPotentialMatch ->
+                            "No potential match"
 
-        generationStateString =
-            case modelDetails.generationState of
-                Propagating ->
-                    "propagating"
+                        InvalidBigTilePlacement _ _ ->
+                            "Invalid big tile surroundings (no space or socket mismatch)"
 
-                Failure propagationFailure ->
-                    let
-                        failureString =
-                            case propagationFailure of
-                                NoSuperpositionOptions ->
-                                    "No superposition opts"
+                        InvalidDirection ->
+                            "Invalid direction (cell to cell)"
 
-                                NoPotentialMatch ->
-                                    "No potential match"
+                        TileNotFound ->
+                            "Tile not found"
+            in
+            String.join " "
+                [ "recovering:"
+                , failureString
+                ]
 
-                                InvalidBigTilePlacement ->
-                                    "Invalid big tile surroundings (no space or socket mismatch)"
-
-                                InvalidDirection ->
-                                    "Invalid direction (cell to cell)"
-
-                                TileNotFound ->
-                                    "Tile not found"
-                    in
-                    String.join " "
-                        [ "failure:"
-                        , failureString
-                        ]
-    in
-    String.join " | " [ supervisorStateString, generationStateString ]
+        Done ->
+            "done"
 
 
 propagationContextDebug :

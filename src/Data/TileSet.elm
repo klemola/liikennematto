@@ -1,7 +1,6 @@
 module Data.TileSet exposing
     ( allTiles
     , defaultTile
-    , largeTileInnerEdgeSocket
     , pairingsForSocket
     )
 
@@ -65,10 +64,12 @@ pairingsForSocket socket =
 mirroredHorizontally : Int -> TileConfig -> TileConfig
 mirroredHorizontally id tileConfig =
     case tileConfig of
-        TileConfig.Single { sockets } ->
+        TileConfig.Single { sockets, complexity, baseTileId } ->
             TileConfig.Single
                 { id = id
                 , sockets = { sockets | left = sockets.right, right = sockets.left }
+                , complexity = complexity
+                , baseTileId = baseTileId
                 }
 
         TileConfig.Large _ ->
@@ -78,10 +79,12 @@ mirroredHorizontally id tileConfig =
 mirroredVertically : Int -> TileConfig -> TileConfig
 mirroredVertically id tileConfig =
     case tileConfig of
-        TileConfig.Single { sockets } ->
+        TileConfig.Single { sockets, complexity, baseTileId } ->
             TileConfig.Single
                 { id = id
                 , sockets = { sockets | top = sockets.bottom, bottom = sockets.top }
+                , complexity = complexity
+                , baseTileId = baseTileId
                 }
 
         TileConfig.Large _ ->
@@ -91,10 +94,12 @@ mirroredVertically id tileConfig =
 rotatedClockwise : Int -> TileConfig -> TileConfig
 rotatedClockwise id tileConfig =
     case tileConfig of
-        TileConfig.Single { sockets } ->
+        TileConfig.Single { sockets, complexity, baseTileId } ->
             TileConfig.Single
                 { id = id
                 , sockets = { sockets | top = sockets.left, right = sockets.top, bottom = sockets.right, left = sockets.bottom }
+                , complexity = complexity
+                , baseTileId = baseTileId
                 }
 
         TileConfig.Large _ ->
@@ -159,6 +164,8 @@ grass =
             , bottom = Green
             , left = Green
             }
+        , complexity = 0.1
+        , baseTileId = Nothing
         }
 
 
@@ -178,6 +185,8 @@ loneRoad =
             , bottom = Green
             , left = Green
             }
+        , complexity = 0.1
+        , baseTileId = Nothing
         }
 
 
@@ -191,6 +200,8 @@ horizontalRoad =
             , bottom = Green
             , left = Red
             }
+        , complexity = 0.1
+        , baseTileId = Nothing
         }
 
 
@@ -209,6 +220,8 @@ deadendUp =
             , bottom = Blue
             , left = Green
             }
+        , complexity = 0.1
+        , baseTileId = Nothing
         }
 
 
@@ -237,6 +250,8 @@ curveBottomRight =
             , bottom = Green
             , left = Yellow
             }
+        , complexity = 0.2
+        , baseTileId = Nothing
         }
 
 
@@ -269,6 +284,8 @@ intersectionTUp =
             , bottom = Green
             , left = Pink
             }
+        , complexity = 0.2
+        , baseTileId = Nothing
         }
 
 
@@ -287,6 +304,8 @@ intersectionTLeft =
             , bottom = Yellow
             , left = Pink
             }
+        , complexity = 0.2
+        , baseTileId = Nothing
         }
 
 
@@ -305,45 +324,53 @@ intersectionCross =
             , bottom = Pink
             , left = Pink
             }
+        , complexity = 0.2
+        , baseTileId = Nothing
         }
 
 
 lotEntryTUp : TileConfig
 lotEntryTUp =
     TileConfig.Single
-        { id = 23
+        { id = 20
         , sockets =
             { top = lotEntrySocket
             , right = Red
             , bottom = Green
             , left = Red
             }
-        }
-
-
-lotEntryTLeft : TileConfig
-lotEntryTLeft =
-    TileConfig.Single
-        { id = 27
-        , sockets =
-            { top = Red
-            , right = Green
-            , bottom = Red
-            , left = lotEntrySocket
-            }
+        , complexity = 0.8
+        , baseTileId = Just 6
         }
 
 
 lotEntryTRight : TileConfig
 lotEntryTRight =
     TileConfig.Single
-        { id = 29
+        { id = 21
         , sockets =
             { top = Red
             , right = lotEntrySocket
             , bottom = Red
             , left = Green
             }
+        , complexity = 0.8
+        , baseTileId = Just 9
+        }
+
+
+lotEntryTLeft : TileConfig
+lotEntryTLeft =
+    TileConfig.Single
+        { id = 22
+        , sockets =
+            { top = Red
+            , right = Green
+            , bottom = Red
+            , left = lotEntrySocket
+            }
+        , complexity = 0.8
+        , baseTileId = Just 9
         }
 
 
@@ -362,6 +389,8 @@ lotTopLeftCorner =
         , bottom = largeTileInnerEdgeSocket
         , left = Green
         }
+    , complexity = 0.6
+    , baseTileId = Nothing
     }
 
 
@@ -374,6 +403,8 @@ lotTopRightCorner =
         , bottom = largeTileInnerEdgeSocket
         , left = largeTileInnerEdgeSocket
         }
+    , complexity = 0.6
+    , baseTileId = Nothing
     }
 
 
@@ -386,6 +417,8 @@ lotBottomRightCorner =
         , bottom = Green
         , left = largeTileInnerEdgeSocket
         }
+    , complexity = 0.6
+    , baseTileId = Nothing
     }
 
 
@@ -398,6 +431,8 @@ lotBottomLeftCorner =
         , bottom = Green
         , left = Green
         }
+    , complexity = 0.6
+    , baseTileId = Nothing
     }
 
 
@@ -410,6 +445,8 @@ lotTopEdge =
         , bottom = largeTileInnerEdgeSocket
         , left = largeTileInnerEdgeSocket
         }
+    , complexity = 0.6
+    , baseTileId = Nothing
     }
 
 
@@ -422,6 +459,8 @@ lotRightEdge =
         , bottom = largeTileInnerEdgeSocket
         , left = largeTileInnerEdgeSocket
         }
+    , complexity = 0.6
+    , baseTileId = Nothing
     }
 
 
@@ -434,6 +473,8 @@ lotBottomEdge =
         , bottom = Green
         , left = largeTileInnerEdgeSocket
         }
+    , complexity = 0.6
+    , baseTileId = Nothing
     }
 
 
@@ -446,6 +487,8 @@ lotLeftEdge =
         , bottom = largeTileInnerEdgeSocket
         , left = Green
         }
+    , complexity = 0.6
+    , baseTileId = Nothing
     }
 
 
@@ -458,6 +501,8 @@ lotInnerSpace =
         , bottom = largeTileInnerEdgeSocket
         , left = largeTileInnerEdgeSocket
         }
+    , complexity = 0.6
+    , baseTileId = Nothing
     }
 
 
@@ -470,6 +515,8 @@ lotDrivewayRight =
         , bottom = Green
         , left = largeTileInnerEdgeSocket
         }
+    , complexity = 0.6
+    , baseTileId = Nothing
     }
 
 
@@ -482,6 +529,8 @@ lotDrivewayLeft =
         , bottom = Green
         , left = lotDrivewaySocket
         }
+    , complexity = 0.6
+    , baseTileId = Nothing
     }
 
 
@@ -494,6 +543,8 @@ lotDrivewayUp =
         , bottom = lotDrivewaySocket
         , left = Green
         }
+    , complexity = 0.6
+    , baseTileId = Nothing
     }
 
 
@@ -507,6 +558,7 @@ twoByTwoLot =
         , width = 2
         , height = 2
         , anchorIndex = 3
+        , complexity = 0.6
         }
 
 
@@ -533,4 +585,5 @@ threeByThreeLot =
         , width = 3
         , height = 3
         , anchorIndex = 6
+        , complexity = 0.7
         }
