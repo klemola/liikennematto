@@ -1,5 +1,6 @@
 module Data.TileSet exposing
     ( allTiles
+    , allTilesAndMetaTiles
     , defaultTile
     , pairingsForSocket
     )
@@ -34,7 +35,7 @@ pairingsForSocket socket =
             [ Red, Pink, Yellow, Blue ]
 
         Green ->
-            [ Green, White ]
+            [ Green ]
 
         Blue ->
             [ Red, Pink, Yellow ]
@@ -52,7 +53,7 @@ pairingsForSocket socket =
             []
 
         White ->
-            [ White, Green ]
+            [ White ]
 
         LightBrown ->
             [ Orange ]
@@ -136,6 +137,25 @@ allTiles =
     , twoByTwoLot
     , threeByThreeLot
     ]
+
+
+allTilesAndMetaTiles : List TileConfig
+allTilesAndMetaTiles =
+    allTiles
+        ++ [ TileConfig.Single lotTopLeftCorner
+           , TileConfig.Single lotTopRightCorner
+           , TileConfig.Single lotBottomLeftCorner
+           , TileConfig.Single lotBottomRightCorner
+           , TileConfig.Single lotTopEdge
+           , TileConfig.Single lotRightEdge
+           , TileConfig.Single lotBottomEdge
+           , TileConfig.Single lotLeftEdge
+           , TileConfig.Single lotInnerSpace
+           , TileConfig.Single lotDrivewayLeft
+           , TileConfig.Single lotDrivewayRight
+
+           -- , TileConfig.Single lotDrivewayUp
+           ]
 
 
 defaultTile : TileConfig

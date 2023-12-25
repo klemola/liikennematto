@@ -13,7 +13,7 @@ module Editor.WFC exposing
 
 import Array
 import Common exposing (attemptFoldList, attemptMapList)
-import Data.TileSet exposing (defaultTile, pairingsForSocket)
+import Data.TileSet exposing (allTilesAndMetaTiles, defaultTile, pairingsForSocket)
 import List.Extra
 import Model.Cell as Cell exposing (Cell)
 import Model.Geometry
@@ -193,24 +193,7 @@ propagateWithRecovery model =
                                 }
 
                         Err _ ->
-                            case attemptRecoverFromNoSuperpositionOptions cell largeTile modelDetails.tilemap of
-                                Ok ( nextSteps, tilemapWithRecovery_ ) ->
-                                    let
-                                        _ =
-                                            Debug.log "recovered" ( modelDetails.propagationContext.openSteps, nextSteps )
-
-                                        { propagationContext } =
-                                            modelDetails
-                                    in
-                                    Model
-                                        { modelDetails
-                                            | supervisorState = Propagating
-                                            , tilemap = tilemapWithRecovery_
-                                            , propagationContext = { propagationContext | openSteps = nextSteps }
-                                        }
-
-                                Err _ ->
-                                    afterPropagation
+                            afterPropagation
 
                 -- No recovery strategy yet
                 _ ->
@@ -286,12 +269,9 @@ propagate (Model ({ propagationContext, tilemap } as modelDetails)) =
 
 tileConfigById : Tilemap -> Int -> TileConfig
 tileConfigById tilemap tileId =
-    let
-        tilemapConfig =
-            Tilemap.config tilemap
-    in
     -- TODO: optimize?
-    tilemapConfig.tiles
+    -- TODO: fix: hardcoded tileset
+    allTilesAndMetaTiles
         |> List.Extra.find (\tileConfig -> tileConfigId tileConfig == tileId)
         |> Maybe.withDefault defaultTile
 
@@ -423,68 +403,6 @@ superpositionOptionsForTile tilemap ( originTile, targetTile ) dir =
 
         _ ->
             Err NoPotentialMatch
-
-
-attemptRecoverFromNoSuperpositionOptions : Cell -> LargeTile -> Tilemap -> Result String ( List PropagationStep, Tilemap )
-attemptRecoverFromNoSuperpositionOptions cell largeTile tilemap =
-    case Array.get largeTile.anchorIndex largeTile.tiles of
-        Nothing ->
-            -- This should not be possible
-            Err "Anchor tile not found"
-
-        Just anchorTileConfig ->
-            let
-                tilemapConfig =
-                    Tilemap.config tilemap
-
-                safeOptions =
-                    List.filterMap
-                        (\tc ->
-                            if TileConfig.complexity tc > 0.1 then
-                                Nothing
-
-                            else
-                                Just (TileConfig.tileConfigId tc)
-                        )
-                        tilemapConfig.tiles
-            in
-            applyToNeighbor
-                (\nuCtx neighborTileId ->
-                    let
-                        originSocket =
-                            socketByDirection anchorTileConfig.sockets nuCtx.dir
-
-                        neighborTileConfig =
-                            tileConfigById nuCtx.tilemap neighborTileId
-
-                        neighborComplexity =
-                            TileConfig.complexity neighborTileConfig
-
-                        canDock_ =
-                            canDock nuCtx.tilemap (oppositeOrthogonalDirection nuCtx.dir) originSocket neighborTileId
-                    in
-                    -- This is a heuristic that might mitigate problems with complex tiles (f.ex. the lot entry tiles)
-                    if neighborComplexity > 0.7 && canDock_ then
-                        case TileConfig.baseTileId neighborTileConfig of
-                            Just baseTileId ->
-                                Ok ( [], Tilemap.setFixedTile nuCtx.neighborCell baseTileId tilemap )
-
-                            Nothing ->
-                                Err "No suitable replacement for complex neighbor tile"
-
-                    else if canDock_ then
-                        Ok ( [], nuCtx.tilemap )
-
-                    else
-                        Err "No match for low complexity neighbor"
-                )
-                (\nuCtx _ ->
-                    -- Nothing to do for a superposition
-                    Ok ( [], nuCtx.tilemap )
-                )
-                cell
-                -- Start from a tilemap with the recovery tile reset
-                (Tilemap.setFixedTile cell 0 tilemap)
 
 
 type alias NeighborUpdateContext =
@@ -716,12 +634,12 @@ attemptPlaceLargeTileHelper steps tilemap tileList =
 attemptSubTileNeighborUpdate : SingleTile -> Cell -> Tilemap -> Result () ( List PropagationStep, Tilemap )
 attemptSubTileNeighborUpdate currentTile cell tilemap =
     applyToNeighbor
-        (\nuCtx tileId ->
+        (\nuCtx neighborTileId ->
             let
                 originSocket =
                     socketByDirection currentTile.sockets nuCtx.dir
             in
-            if canDock nuCtx.tilemap (oppositeOrthogonalDirection nuCtx.dir) originSocket tileId then
+            if canDock nuCtx.tilemap (oppositeOrthogonalDirection nuCtx.dir) originSocket neighborTileId then
                 -- Tiles can dock, no tilemap update needed = skip
                 Ok ( nuCtx.steps, nuCtx.tilemap )
 
