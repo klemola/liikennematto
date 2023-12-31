@@ -30,6 +30,7 @@
             "ianmackenzie/elm-geometry-svg": "3.0.0",
             "ianmackenzie/elm-units": "2.9.0",
             "mdgriffith/elm-ui": "1.1.7",
+            "mgold/elm-nonempty-list": "4.2.0",
             "mpizenberg/elm-pointer-events": "4.0.2",
             "myrho/elm-round": "1.0.4"
         },

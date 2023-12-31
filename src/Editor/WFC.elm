@@ -15,6 +15,7 @@ import Array
 import Common exposing (attemptFoldList, attemptMapList)
 import Data.TileSet exposing (allTilesAndMetaTiles, defaultTile, pairingsForSocket)
 import List.Extra
+import List.Nonempty exposing (Nonempty)
 import Model.Cell as Cell exposing (Cell)
 import Model.Geometry
     exposing
@@ -81,7 +82,7 @@ type PropagationFailure
 
 type alias Candidate =
     { cell : Cell
-    , options : List TileId
+    , options : Nonempty TileId
     }
 
 
@@ -460,42 +461,26 @@ applyToNeighbor onFixed onSuperposition cell tilemap =
 
 pickRandom : ModelDetails -> ModelDetails
 pickRandom ({ propagationContext, tilemap, seed } as modelDetails) =
-    let
-        candidates =
-            nextCandidates tilemap
-
-        randomCandidateGen =
-            case candidates of
-                singleCandidate :: [] ->
-                    Random.constant (Just singleCandidate)
-
-                candidatesList ->
-                    Random.Extra.sample candidatesList
-
-        ( randomCandidate, seedAfterCandidateGen ) =
-            Random.step randomCandidateGen seed
-    in
-    case randomCandidate of
+    case
+        List.Nonempty.fromList (nextCandidates tilemap)
+    of
         Nothing ->
+            -- TODO: fail
             modelDetails
 
-        Just { cell, options } ->
+        Just candidates ->
             let
+                ( randomCandidate, seedAfterCandidateGen ) =
+                    Random.step (List.Nonempty.sample candidates) seed
+
                 randomOptionGen =
-                    options
-                        |> List.map (tileConfigById tilemap)
-                        |> Random.Extra.sample
+                    toWeightedOptions tilemap randomCandidate.options
 
                 ( randomOption, nextSeed ) =
                     Random.step randomOptionGen seedAfterCandidateGen
 
                 pickRandomStep =
-                    case randomOption of
-                        Just randomTileConfig ->
-                            [ PickTile cell randomTileConfig ]
-
-                        Nothing ->
-                            []
+                    [ PickTile randomCandidate.cell randomOption ]
             in
             { modelDetails
                 | propagationContext =
@@ -507,6 +492,23 @@ pickRandom ({ propagationContext, tilemap, seed } as modelDetails) =
                     }
                 , seed = nextSeed
             }
+
+
+toWeightedOptions : Tilemap -> Nonempty TileId -> Random.Generator TileConfig
+toWeightedOptions tilemap options =
+    let
+        withWeights =
+            List.Nonempty.map
+                (\option ->
+                    let
+                        tileConfig =
+                            tileConfigById tilemap option
+                    in
+                    ( 1.0 - TileConfig.complexity tileConfig, tileConfig )
+                )
+                options
+    in
+    Random.weighted (List.Nonempty.head withWeights) (List.Nonempty.toList withWeights)
 
 
 nextCandidates : Tilemap -> List Candidate
@@ -521,22 +523,27 @@ nextCandidates tilemap =
                     ( candidates, minEntropy )
 
                 Superposition options ->
-                    let
-                        currentEntropy =
-                            List.length options
-                    in
-                    if currentEntropy > minEntropy then
-                        ( candidates, minEntropy )
+                    case List.Nonempty.fromList options of
+                        Just nonemptyOptions ->
+                            let
+                                currentEntropy =
+                                    List.Nonempty.length nonemptyOptions
+                            in
+                            if currentEntropy > minEntropy then
+                                ( candidates, minEntropy )
 
-                    else if currentEntropy < minEntropy then
-                        ( [ { cell = cell, options = options } ]
-                        , currentEntropy
-                        )
+                            else if currentEntropy < minEntropy then
+                                ( [ { cell = cell, options = nonemptyOptions } ]
+                                , currentEntropy
+                                )
 
-                    else
-                        ( { cell = cell, options = options } :: candidates
-                        , currentEntropy
-                        )
+                            else
+                                ( { cell = cell, options = nonemptyOptions } :: candidates
+                                , currentEntropy
+                                )
+
+                        Nothing ->
+                            ( candidates, minEntropy )
     in
     tilemap
         |> Tilemap.fold toCandidate ( [], List.length tilemapConfig.tiles + 1 )

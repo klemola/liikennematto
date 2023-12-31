@@ -304,7 +304,7 @@ intersectionTUp =
             , bottom = Green
             , left = Pink
             }
-        , complexity = 0.2
+        , complexity = 0.4
         , baseTileId = Nothing
         }
 
@@ -324,7 +324,7 @@ intersectionTLeft =
             , bottom = Yellow
             , left = Pink
             }
-        , complexity = 0.2
+        , complexity = 0.4
         , baseTileId = Nothing
         }
 
@@ -344,7 +344,7 @@ intersectionCross =
             , bottom = Pink
             , left = Pink
             }
-        , complexity = 0.2
+        , complexity = 0.4
         , baseTileId = Nothing
         }
 
@@ -578,7 +578,7 @@ twoByTwoLot =
         , width = 2
         , height = 2
         , anchorIndex = 3
-        , complexity = 0.6
+        , complexity = 0.5
         }
 
 
@@ -605,5 +605,5 @@ threeByThreeLot =
         , width = 3
         , height = 3
         , anchorIndex = 6
-        , complexity = 0.7
+        , complexity = 0.5
         }
