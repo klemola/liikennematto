@@ -278,7 +278,15 @@ propagateN nTimes model =
         model
 
     else
-        propagateN (nTimes - 1) (propagateWithRecovery model)
+        let
+            propagationResult =
+                propagateWithRecovery model
+        in
+        if failed propagationResult then
+            propagationResult
+
+        else
+            propagateN (nTimes - 1) propagationResult
 
 
 
