@@ -104,7 +104,7 @@ subscriptions { mode } =
             Sub.none
 
         AutoPropagate ->
-            Time.every 10 (\_ -> Step)
+            Time.every 17 (\_ -> Step)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -118,7 +118,7 @@ update msg model =
                             WFC.propagateWithRecovery model.wfcModel
 
                         AutoPropagate ->
-                            WFC.propagateN 4 model.wfcModel
+                            WFC.propagateN 5 model.wfcModel
 
                 tilemap =
                     WFC.toTilemap wfcModel

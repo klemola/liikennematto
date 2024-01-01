@@ -584,7 +584,7 @@ twoByTwoLot =
         , width = 2
         , height = 2
         , anchorIndex = 3
-        , complexity = 0.5
+        , complexity = 0.75
         }
 
 
@@ -611,7 +611,7 @@ threeByThreeLot =
         , width = 3
         , height = 3
         , anchorIndex = 6
-        , complexity = 0.5
+        , complexity = 0.8
         }
 
 
