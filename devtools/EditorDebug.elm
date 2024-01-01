@@ -104,7 +104,7 @@ subscriptions { mode } =
             Sub.none
 
         AutoPropagate ->
-            Time.every 1 (\_ -> Step)
+            Time.every 10 (\_ -> Step)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -113,7 +113,12 @@ update msg model =
         Step ->
             let
                 wfcModel =
-                    WFC.propagateWithRecovery model.wfcModel
+                    case model.mode of
+                        Manual ->
+                            WFC.propagateWithRecovery model.wfcModel
+
+                        AutoPropagate ->
+                            WFC.propagateN 3 model.wfcModel
 
                 tilemap =
                     WFC.toTilemap wfcModel
@@ -345,6 +350,13 @@ wfcCurrentCell cache wfcModel =
 
                 cellSize =
                     Element.px (floor tileSizePixels)
+
+                cursorColor =
+                    if WFC.failed wfcModel then
+                        Data.Colors.red
+
+                    else
+                        Data.Colors.gray7
             in
             Element.el
                 [ Element.width cellSize
@@ -355,7 +367,7 @@ wfcCurrentCell cache wfcModel =
                 , Border.rounded 4
                 , Border.solid
                 , Border.color
-                    (Data.Colors.uiCompat Data.Colors.red)
+                    (Data.Colors.uiCompat cursorColor)
                 ]
                 Element.none
 

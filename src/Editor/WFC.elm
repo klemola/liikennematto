@@ -1,8 +1,10 @@
 module Editor.WFC exposing
     ( Model
     , currentCell
+    , failed
     , init
     , pickTile
+    , propagateN
     , propagateWithRecovery
     , propagationContextDebug
     , solve
@@ -38,7 +40,6 @@ import Model.TileConfig as TileConfig
         )
 import Model.Tilemap as Tilemap exposing (Tilemap, TilemapConfig)
 import Random exposing (Seed)
-import Random.Extra
 
 
 type Model
@@ -57,6 +58,7 @@ type SupervisorState
     = Propagating
     | Done
     | Recovering PropagationFailure
+    | Failed PropagationFailure
 
 
 type alias PropagationContext =
@@ -141,14 +143,19 @@ stopped (Model modelDetails) =
     modelDetails.supervisorState /= Propagating
 
 
+failed : Model -> Bool
+failed (Model modelDetails) =
+    case modelDetails.supervisorState of
+        Failed _ ->
+            True
+
+        _ ->
+            False
+
+
 currentCell : Model -> Maybe Cell
 currentCell (Model modelDetails) =
-    case modelDetails.propagationContext.openSteps of
-        [] ->
-            Nothing
-
-        x :: _ ->
-            .from <| stepPosition x
+    modelDetails.propagationContext.from
 
 
 {-| Tries to solve/fill the whole grid in one go by assigning a tile to each position.
@@ -194,11 +201,11 @@ propagateWithRecovery model =
                                 }
 
                         Err _ ->
-                            afterPropagation
+                            Model { modelDetails | supervisorState = Failed propagationFailure }
 
                 -- No recovery strategy yet
                 _ ->
-                    afterPropagation
+                    Model { modelDetails | supervisorState = Failed propagationFailure }
 
         _ ->
             afterPropagation
@@ -257,9 +264,21 @@ propagate (Model ({ propagationContext, tilemap } as modelDetails)) =
                         { withPick | supervisorState = Propagating }
 
                     else
-                        { modelDetails | supervisorState = Done }
+                        { modelDetails
+                            | supervisorState = Done
+                            , propagationContext = initialPropagationContext
+                        }
             in
             Model nextModelDetails
+
+
+propagateN : Int -> Model -> Model
+propagateN nTimes model =
+    if nTimes == 0 then
+        model
+
+    else
+        propagateN (nTimes - 1) (propagateWithRecovery model)
 
 
 
@@ -697,31 +716,38 @@ stateDebug (Model modelDetails) =
             "propagating"
 
         Recovering propagationFailure ->
-            let
-                failureString =
-                    case propagationFailure of
-                        NoSuperpositionOptions ->
-                            "No superposition opts"
-
-                        NoPotentialMatch ->
-                            "No potential match"
-
-                        InvalidBigTilePlacement _ _ ->
-                            "Invalid big tile surroundings (no space or socket mismatch)"
-
-                        InvalidDirection ->
-                            "Invalid direction (cell to cell)"
-
-                        TileNotFound ->
-                            "Tile not found"
-            in
             String.join " "
                 [ "recovering:"
-                , failureString
+                , propagationFailureToString propagationFailure
+                ]
+
+        Failed propagationFailure ->
+            String.join " "
+                [ "failed:"
+                , propagationFailureToString propagationFailure
                 ]
 
         Done ->
             "done"
+
+
+propagationFailureToString : PropagationFailure -> String
+propagationFailureToString propagationFailure =
+    case propagationFailure of
+        NoSuperpositionOptions ->
+            "No superposition opts"
+
+        NoPotentialMatch ->
+            "No potential match"
+
+        InvalidBigTilePlacement _ _ ->
+            "Invalid big tile surroundings (no space or socket mismatch)"
+
+        InvalidDirection ->
+            "Invalid direction (cell to cell)"
+
+        TileNotFound ->
+            "Tile not found"
 
 
 propagationContextDebug :
