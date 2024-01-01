@@ -118,7 +118,7 @@ update msg model =
                             WFC.propagateWithRecovery model.wfcModel
 
                         AutoPropagate ->
-                            WFC.propagateN 3 model.wfcModel
+                            WFC.propagateN 4 model.wfcModel
 
                 tilemap =
                     WFC.toTilemap wfcModel

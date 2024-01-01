@@ -129,13 +129,14 @@ allTiles =
     , intersectionCross
 
     --
-    -- , lotEntryTUp (not yet used by any lots)
+    , lotEntryTUp
     , lotEntryTLeft
     , lotEntryTRight
 
     --
     , twoByTwoLot
     , threeByThreeLot
+    , fourByTwoLot
     ]
 
 
@@ -153,8 +154,7 @@ allTilesAndMetaTiles =
            , TileConfig.Single lotInnerSpace
            , TileConfig.Single lotDrivewayLeft
            , TileConfig.Single lotDrivewayRight
-
-           -- , TileConfig.Single lotDrivewayUp
+           , TileConfig.Single lotDrivewayUp
            ]
 
 
@@ -563,7 +563,7 @@ lotDrivewayUp =
         , bottom = lotDrivewaySocket
         , left = Green
         }
-    , complexity = 0.6
+    , complexity = 0.8
     , baseTileId = Nothing
     }
 
@@ -574,7 +574,13 @@ twoByTwoLot =
         { id = 100
         , tiles =
             Array.fromList
-                [ lotTopLeftCorner, lotTopRightCorner, lotBottomLeftCorner, lotDrivewayRight ]
+                [ lotTopLeftCorner
+                , lotTopRightCorner
+
+                --
+                , lotBottomLeftCorner
+                , lotDrivewayRight
+                ]
         , width = 2
         , height = 2
         , anchorIndex = 3
@@ -606,4 +612,28 @@ threeByThreeLot =
         , height = 3
         , anchorIndex = 6
         , complexity = 0.5
+        }
+
+
+fourByTwoLot : TileConfig
+fourByTwoLot =
+    TileConfig.Large
+        { id = 102
+        , tiles =
+            Array.fromList
+                [ lotTopLeftCorner
+                , lotTopEdge
+                , lotTopEdge
+                , lotTopRightCorner
+
+                --
+                , lotDrivewayUp
+                , lotBottomEdge
+                , lotBottomEdge
+                , lotBottomRightCorner
+                ]
+        , width = 4
+        , height = 2
+        , anchorIndex = 4
+        , complexity = 0.9
         }

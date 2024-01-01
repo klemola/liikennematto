@@ -290,7 +290,7 @@ propagateN nTimes model =
 tileConfigById : Tilemap -> Int -> TileConfig
 tileConfigById tilemap tileId =
     -- TODO: optimize?
-    -- TODO: fix: hardcoded tileset
+    -- TODO: fix: hardcoded tileset, dangerous default tile
     allTilesAndMetaTiles
         |> List.Extra.find (\tileConfig -> tileConfigId tileConfig == tileId)
         |> Maybe.withDefault defaultTile
@@ -602,7 +602,7 @@ attemptPlaceLargeTile tilemap anchorCell tile =
                     )
     in
     topLeftCornerCell
-        |> Result.fromMaybe ()
+        |> Result.fromMaybe "Invalid origin"
         |> Result.andThen
             (\origin ->
                 tile.tiles
@@ -621,14 +621,14 @@ attemptPlaceLargeTile tilemap anchorCell tile =
                                     Ok ( cell, singleTile )
 
                                 Nothing ->
-                                    Err ()
+                                    Err "Cannot translate cell to global coordinates"
                         )
             )
         |> Result.andThen (attemptPlaceLargeTileHelper [] tilemap)
         |> Result.mapError (\_ -> InvalidBigTilePlacement anchorCell tile)
 
 
-attemptPlaceLargeTileHelper : List PropagationStep -> Tilemap -> List ( Cell, SingleTile ) -> Result () ( List PropagationStep, Tilemap )
+attemptPlaceLargeTileHelper : List PropagationStep -> Tilemap -> List ( Cell, SingleTile ) -> Result String ( List PropagationStep, Tilemap )
 attemptPlaceLargeTileHelper steps tilemap tileList =
     case tileList of
         [] ->
@@ -657,7 +657,7 @@ attemptPlaceLargeTileHelper steps tilemap tileList =
                     attemptPlaceLargeTileHelper (steps ++ nextSteps) nextTilemap remainingTiles
 
 
-attemptSubTileNeighborUpdate : SingleTile -> Cell -> Tilemap -> Result () ( List PropagationStep, Tilemap )
+attemptSubTileNeighborUpdate : SingleTile -> Cell -> Tilemap -> Result String ( List PropagationStep, Tilemap )
 attemptSubTileNeighborUpdate currentTile cell tilemap =
     applyToNeighbor
         (\nuCtx neighborTileId ->
@@ -670,7 +670,7 @@ attemptSubTileNeighborUpdate currentTile cell tilemap =
                 Ok ( nuCtx.steps, nuCtx.tilemap )
 
             else
-                Err ()
+                Err "Can't dock fixed neighbor"
         )
         (\nuCtx options ->
             let
@@ -681,7 +681,7 @@ attemptSubTileNeighborUpdate currentTile cell tilemap =
                     matchingSuperpositionOptions nuCtx.tilemap dir currentTile.id options
             in
             if List.isEmpty matching then
-                Err ()
+                Err "Invalid neighbor"
 
             else
                 let
