@@ -7,10 +7,10 @@ module Render exposing
 import Angle
 import Collection exposing (Collection)
 import Color
+import Data.Assets exposing (assetById)
 import Data.Cars exposing (CarMake, carAsset)
 import Data.Colors as Colors
 import Data.Lots exposing (lotAsset)
-import Data.Roads exposing (roadAsset)
 import Graph exposing (Node)
 import Html exposing (Html)
 import Length exposing (Length)
@@ -74,7 +74,7 @@ styles =
 --
 
 
-view : World -> RenderCache -> DynamicTilesPresentation -> Html msg
+view : World -> RenderCache -> DynamicTilesPresentation -> Html ()
 view { cars, lots, roadNetwork, trafficLights } cache dynamicTiles =
     let
         tilemapWidth =
@@ -105,7 +105,7 @@ view { cars, lots, roadNetwork, trafficLights } cache dynamicTiles =
 --
 
 
-renderTilemap : RenderCache -> Svg msg
+renderTilemap : RenderCache -> Svg ()
 renderTilemap cache =
     cache.tilemap
         |> List.map
@@ -117,7 +117,7 @@ renderTilemap cache =
         |> Svg.Keyed.node "g" []
 
 
-renderTile : RenderCache -> Cell -> TileKind -> Svg msg
+renderTile : RenderCache -> Cell -> TileKind -> Svg ()
 renderTile cache cell tileKind =
     let
         tileSizePixels =
@@ -135,7 +135,7 @@ renderTile cache cell tileKind =
                 tileSizePixels
                 { x = x
                 , y = yAdjusted
-                , tileIndex = tileId
+                , asset = assetById cache.roadAssets tileId
                 , tileStyles = ""
                 }
 
@@ -169,7 +169,7 @@ renderSuperposition { size, x, y } tileIds =
         ]
 
 
-renderDynamicTiles : RenderCache -> DynamicTilesPresentation -> Svg msg
+renderDynamicTiles : RenderCache -> DynamicTilesPresentation -> Svg ()
 renderDynamicTiles cache tiles =
     tiles
         |> List.map
@@ -177,7 +177,7 @@ renderDynamicTiles cache tiles =
                 ( Cell.toString cell
                 , case maybeAnimation of
                     Just animation ->
-                        renderAnimatedTile cache cell tileId animation
+                        renderAnimatedTile cache cell (assetById cache.roadAssets tileId) animation
 
                     Nothing ->
                         renderTile cache cell (Fixed tileId)
@@ -186,8 +186,8 @@ renderDynamicTiles cache tiles =
         |> Svg.Keyed.node "g" []
 
 
-renderAnimatedTile : RenderCache -> Cell -> TileId -> Animation -> Svg msg
-renderAnimatedTile cache cell tileId animation =
+renderAnimatedTile : RenderCache -> Cell -> List (Svg msg) -> Animation -> Svg msg
+renderAnimatedTile cache cell asset animation =
     let
         tileSizePixels =
             toPixelsValue cache.pixelsToMetersRatio Cell.size
@@ -226,7 +226,7 @@ renderAnimatedTile cache cell tileId animation =
             tileSizePixels
             { x = x
             , y = yAdjusted
-            , tileIndex = tileId
+            , asset = asset
             , tileStyles = tileStyles
             }
         , overflowTile
@@ -284,8 +284,8 @@ animationOverflowTile { tileSizePixels, baseX, baseY } animationDirection =
     )
 
 
-tileElement : Float -> { x : Float, y : Float, tileIndex : Int, tileStyles : String } -> Svg msg
-tileElement tileSizePixels { x, y, tileIndex, tileStyles } =
+tileElement : Float -> { x : Float, y : Float, asset : List (Svg msg), tileStyles : String } -> Svg msg
+tileElement tileSizePixels { x, y, asset, tileStyles } =
     Svg.g
         [ Attributes.style tileStyles
         ]
@@ -296,7 +296,7 @@ tileElement tileSizePixels { x, y, tileIndex, tileStyles } =
             , Attributes.height (String.fromFloat tileSizePixels)
             , Attributes.viewBox "0 0 256 256"
             ]
-            (roadAsset tileIndex)
+            asset
         ]
 
 

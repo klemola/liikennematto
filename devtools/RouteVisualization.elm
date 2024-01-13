@@ -2,6 +2,7 @@ module RouteVisualization exposing (Clicked, Model, Msg, main)
 
 import AStar
 import Browser
+import Data.Assets exposing (roadsLegacy)
 import Data.RuleSetups as RuleSetups
 import Element
 import Html exposing (Html)
@@ -44,13 +45,14 @@ initialModel : Model
 initialModel =
     { world = ruleSetup.world
     , activeCar = ruleSetup.activeCar
-    , cache = RenderCache.new ruleSetup.world
+    , cache = RenderCache.new ruleSetup.world roadsLegacy
     , clicked = Nothing
     }
 
 
 type Msg
     = WorldClicked MouseEvents.Event
+    | NoOp
 
 
 main : Program () Model Msg
@@ -66,6 +68,9 @@ main =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
         WorldClicked event ->
             let
                 { activeCar, world } =
@@ -153,6 +158,7 @@ view model =
         [ Html.div [ MouseEvents.onClick WorldClicked ]
             [ Render.view world model.cache []
                 |> Element.html
+                |> Element.map (always NoOp)
                 |> Element.el
                     [ Element.width (Element.px renderWidth)
                     , Element.height (Element.px renderHeight)

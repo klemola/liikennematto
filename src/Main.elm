@@ -199,13 +199,14 @@ view model =
     }
 
 
-render : Liikennematto -> Element msg
+render : Liikennematto -> Element Message
 render model =
     Render.view model.world model.renderCache model.dynamicTiles
         |> Element.html
+        |> Element.map (always NoOp)
 
 
-renderDebug : Liikennematto -> Element msg
+renderDebug : Liikennematto -> Element Message
 renderDebug model =
     Render.Debug.view model.world model.renderCache model.debug
         |> Element.html

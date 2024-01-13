@@ -10,6 +10,7 @@ module Model.RenderCache exposing
     , setTilemapCache
     )
 
+import Data.Assets exposing (Assets)
 import FSM
 import Length
 import Model.Animation as Animation exposing (Animation)
@@ -32,6 +33,7 @@ type alias RenderCache =
     , tilemapHeightPixels : Float
     , tilemapWidth : Length.Length
     , tilemapHeight : Length.Length
+    , roadAssets : Assets ()
     }
 
 
@@ -51,8 +53,8 @@ type alias DynamicTilePresentation =
     ( Cell, TileId, Maybe Animation )
 
 
-new : World -> RenderCache
-new { tilemap } =
+new : World -> Assets () -> RenderCache
+new { tilemap } roadAssets =
     let
         tilemapDimensions =
             Tilemap.dimensions tilemap
@@ -70,6 +72,7 @@ new { tilemap } =
     , tilemapHeightPixels = tilemapHeigthPixels
     , tilemapWidth = tilemapDimensions.width
     , tilemapHeight = tilemapDimensions.height
+    , roadAssets = roadAssets
     }
 
 

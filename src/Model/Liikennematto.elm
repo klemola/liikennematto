@@ -13,6 +13,7 @@ module Model.Liikennematto exposing
     , triggerLoading
     )
 
+import Data.Assets exposing (roadsLegacy)
 import Data.Defaults exposing (horizontalCellsAmount, verticalCellsAmount)
 import Data.TileSet exposing (allTiles, defaultTile)
 import Duration exposing (Duration)
@@ -240,7 +241,7 @@ initial flags =
     , world = initialWorld
     , simulation = Running
     , editor = Editor.initial
-    , renderCache = RenderCache.new initialWorld
+    , renderCache = RenderCache.new initialWorld roadsLegacy
     , dynamicTiles = []
     , debug = initialDebugState
     , errorMessage = Nothing
@@ -259,7 +260,7 @@ fromNewGame previousWorld model =
         | world = initialWorld
         , previousWorld = previousWorld
         , editor = Editor.reset model.editor
-        , renderCache = RenderCache.new initialWorld
+        , renderCache = RenderCache.new initialWorld roadsLegacy
         , simulation = Paused
         , debug = initialDebugState
     }
@@ -273,7 +274,7 @@ fromPreviousGame model =
                 | world = previousWorld
                 , previousWorld = Nothing
                 , editor = Editor.reset model.editor
-                , renderCache = RenderCache.new previousWorld
+                , renderCache = RenderCache.new previousWorld roadsLegacy
                 , simulation = Paused
                 , debug = initialDebugState
             }

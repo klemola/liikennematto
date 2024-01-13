@@ -1,5 +1,6 @@
 module RenderFixture exposing (main)
 
+import Data.Assets exposing (roadsLegacy)
 import Data.RuleSetups as RuleSetups
 import Element
 import Html exposing (Html)
@@ -9,14 +10,14 @@ import Render
 import Render.Debug
 
 
-main : Html msg
+main : Html ()
 main =
     let
         world =
             RuleSetups.collisionSetupPathsIntersect.world
 
         cache =
-            RenderCache.new world
+            RenderCache.new world roadsLegacy
 
         renderWidth =
             floor cache.tilemapWidthPixels

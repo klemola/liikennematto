@@ -7,8 +7,8 @@ module Simulation.Infrastructure exposing
 import BoundingBox2d
 import Collection exposing (Collection, Id)
 import Common
+import Data.Assets exposing (innerLaneOffset, outerLaneOffset)
 import Data.Lots exposing (drivewayOffset)
-import Data.Roads exposing (innerLaneOffset, outerLaneOffset)
 import Dict exposing (Dict)
 import Direction2d
 import Graph exposing (Edge, Node)

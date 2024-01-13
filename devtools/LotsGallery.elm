@@ -2,6 +2,7 @@ module LotsGallery exposing (main)
 
 import Collection exposing (Id, nextId)
 import Color
+import Data.Assets exposing (roadsLegacy)
 import Data.Colors as Colors
 import Data.Lots exposing (NewLot)
 import Data.TileSet exposing (allTiles, defaultTile)
@@ -45,7 +46,7 @@ world =
 
 renderCache : RenderCache
 renderCache =
-    RenderCache.new world
+    RenderCache.new world roadsLegacy
 
 
 tilemapWidthStr : String

@@ -9,9 +9,9 @@ module Data.Lots exposing
     , school
     )
 
+import Data.Assets exposing (innerLaneOffset, outerLaneOffset)
 import Data.Cars as Cars exposing (CarMake)
 import Data.Colors as Colors
-import Data.Roads exposing (innerLaneOffset, outerLaneOffset)
 import Length exposing (Length)
 import Model.Cell as Cell
 import Model.Geometry exposing (LMPoint2dLocal, OrthogonalDirection(..))

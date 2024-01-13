@@ -1,13 +1,31 @@
-module Data.Roads exposing
-    ( innerLaneOffset
+module Data.Assets exposing
+    ( Assets
+    , assetById
+    , innerLaneOffset
     , outerLaneOffset
-    , roadAsset
+    , roads
+    , roadsLegacy
     )
 
 import Data.Colors as Colors
+import Dict exposing (Dict)
 import Length exposing (Length)
 import Svg exposing (Svg, path)
 import Svg.Attributes as Attributes
+
+
+type alias Assets msg =
+    Dict Int (List (Svg msg))
+
+
+assetById : Assets msg -> Int -> List (Svg msg)
+assetById assets assetId =
+    case Dict.get assetId assets of
+        Just asset ->
+            asset
+
+        Nothing ->
+            []
 
 
 innerLaneOffset : Length
@@ -22,104 +40,66 @@ outerLaneOffset =
     Length.meters 10
 
 
-roadAsset : Int -> List (Svg msg)
-roadAsset tileId =
-    case tileId of
-        17 ->
-            defaultRoad
+roads : Assets ()
+roads =
+    Dict.fromList
+        [ ( 17, defaultRoad )
+        , ( 1, deadendDown )
+        , ( 2, deadendRight )
+        , ( 3, curveBottomRight )
+        , ( 4, deadendLeft )
+        , ( 5, curveBottomLeft )
+        , ( 6, regularHorizontal )
+        , ( 7, intersectionTUp )
+        , ( 8, deadendUp )
+        , ( 9, regularVertical )
+        , ( 10, curveTopRight )
+        , ( 11, intersectionTLeft )
+        , ( 12, curveTopLeft )
+        , ( 13, intersectionTRight )
+        , ( 14, intersectionTDown )
+        , ( 15, intersectionCrossroads )
+        , ( 20, lotEntryTUp )
+        , ( 21, lotEntryTRight )
+        , ( 22, lotEntryTLeft )
+        , ( 30, lotDebugCornerTopLeft )
+        , ( 31, lotDebugCornerTopRight )
+        , ( 32, lotDebugCornerBottomRight )
+        , ( 33, lotDebugCornerBottomLeft )
+        , ( 34, lotDebugCenter )
+        , ( 35, lotDebugCenter )
+        , ( 36, lotDebugCenter )
+        , ( 37, lotDebugCenter )
+        , ( 38, lotDebugCenter )
+        , ( 40, lotDebugDrivewayRight )
+        , ( 41, lotDebugDrivewayLeft )
+        , ( 42, lotDebugDrivewayUp )
+        ]
 
-        1 ->
-            deadendDown
 
-        2 ->
-            deadendRight
-
-        3 ->
-            curveBottomRight
-
-        4 ->
-            deadendLeft
-
-        5 ->
-            curveBottomLeft
-
-        6 ->
-            regularHorizontal
-
-        7 ->
-            intersectionTUp
-
-        8 ->
-            deadendUp
-
-        9 ->
-            regularVertical
-
-        10 ->
-            curveTopRight
-
-        11 ->
-            intersectionTLeft
-
-        12 ->
-            curveTopLeft
-
-        13 ->
-            intersectionTRight
-
-        14 ->
-            intersectionTDown
-
-        15 ->
-            intersectionCrossroads
-
-        20 ->
-            lotEntryTUp
-
-        21 ->
-            lotEntryTRight
-
-        22 ->
-            lotEntryTLeft
-
-        30 ->
-            lotDebugCornerTopLeft
-
-        31 ->
-            lotDebugCornerTopRight
-
-        32 ->
-            lotDebugCornerBottomRight
-
-        33 ->
-            lotDebugCornerBottomLeft
-
-        34 ->
-            lotDebugCenter
-
-        35 ->
-            lotDebugCenter
-
-        36 ->
-            lotDebugCenter
-
-        37 ->
-            lotDebugCenter
-
-        38 ->
-            lotDebugCenter
-
-        40 ->
-            lotDebugDrivewayRight
-
-        41 ->
-            lotDebugDrivewayLeft
-
-        42 ->
-            lotDebugDrivewayUp
-
-        _ ->
-            []
+roadsLegacy : Assets ()
+roadsLegacy =
+    Dict.fromList
+        [ ( 0, defaultRoad )
+        , ( 1, deadendDown )
+        , ( 2, deadendRight )
+        , ( 3, curveBottomRight )
+        , ( 4, deadendLeft )
+        , ( 5, curveBottomLeft )
+        , ( 6, regularHorizontal )
+        , ( 7, intersectionTUp )
+        , ( 8, deadendUp )
+        , ( 9, regularVertical )
+        , ( 10, curveTopRight )
+        , ( 11, intersectionTLeft )
+        , ( 12, curveTopLeft )
+        , ( 13, intersectionTRight )
+        , ( 14, intersectionTDown )
+        , ( 15, intersectionCrossroads )
+        , ( 23, lotEntryTUp )
+        , ( 27, lotEntryTLeft )
+        , ( 29, lotEntryTRight )
+        ]
 
 
 defaultRoad : List (Svg msg)

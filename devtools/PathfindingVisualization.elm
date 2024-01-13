@@ -11,6 +11,7 @@ import Browser
 import Browser.Events as Events
 import Collection exposing (initialId)
 import CubicSpline2d exposing (ArcLengthParameterized, Nondegenerate)
+import Data.Assets exposing (roadsLegacy)
 import Data.Cars exposing (testCar)
 import Data.Colors as Colors
 import Data.TileSet exposing (allTiles, defaultTile)
@@ -67,7 +68,7 @@ world =
 
 renderCache : RenderCache
 renderCache =
-    RenderCache.new world
+    RenderCache.new world roadsLegacy
 
 
 renderArea : Length.Length

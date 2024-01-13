@@ -1,8 +1,8 @@
 module EditorDebug exposing (main)
 
 import Browser
+import Data.Assets exposing (assetById, roads)
 import Data.Colors
-import Data.Roads exposing (roadAsset)
 import Data.TileSet exposing (allTiles, defaultTile, pairingsForSocket)
 import Editor.WFC as WFC
 import Element
@@ -15,7 +15,7 @@ import Html.Attributes
 import List.Extra
 import Model.Cell as Cell
 import Model.Debug
-import Model.RenderCache as RenderCache
+import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.TileConfig as TileConfig
     exposing
         ( Socket(..)
@@ -44,6 +44,7 @@ type Msg
     | StopPropagation
     | InitSolve
     | SolveInitDone Time.Posix
+    | NoOp
 
 
 type alias Model =
@@ -76,7 +77,7 @@ init _ =
             World.empty tilemapConfig
 
         cache =
-            RenderCache.new world
+            RenderCache.new world roads
     in
     ( { wfcModel = WFC.init tilemapConfig
       , mode = Manual
@@ -89,8 +90,8 @@ init _ =
 
 tilemapConfig : TilemapConfig
 tilemapConfig =
-    { horizontalCellsAmount = 8
-    , verticalCellsAmount = 8
+    { horizontalCellsAmount = 14
+    , verticalCellsAmount = 10
     , initialSeed = Random.initialSeed 131
     , defaultTile = defaultTile
     , tiles = allTiles
@@ -216,6 +217,9 @@ update msg model =
             , Cmd.none
             )
 
+        NoOp ->
+            ( model, Cmd.none )
+
 
 view : Model -> Html Msg
 view model =
@@ -240,8 +244,10 @@ view model =
                     [ Element.width (Element.px renderWidth)
                     , Element.height (Element.px renderHeight)
                     , Element.inFront renderDebug
-                    , Element.inFront (wfcCurrentCell model.cache model.wfcModel)
+                    , Element.inFront
+                        (wfcCurrentCell model.cache model.wfcModel)
                     ]
+                |> Element.map (always NoOp)
     in
     Element.column
         [ Element.spacing 8 ]
@@ -249,7 +255,8 @@ view model =
             [ render
             , sidePanel model.mode model.wfcModel
             ]
-        , bottomPanel renderWidth
+        , bottomPanel model.cache renderWidth
+            |> Element.map (always NoOp)
         ]
         |> Element.layout
             [ Element.width Element.fill
@@ -300,10 +307,10 @@ controls =
         ]
 
 
-bottomPanel : Int -> Element.Element Msg
-bottomPanel widthPixels =
+bottomPanel : RenderCache -> Int -> Element.Element ()
+bottomPanel cache widthPixels =
     Element.row [ Element.spacing 8 ]
-        [ tileSetDebug (Element.px widthPixels)
+        [ tileSetDebug cache (Element.px widthPixels)
         , socketsMatrix
         ]
 
@@ -337,7 +344,7 @@ wfcPropagationContext wfcModel =
         ]
 
 
-wfcCurrentCell : RenderCache.RenderCache -> WFC.Model -> Element.Element Msg
+wfcCurrentCell : RenderCache.RenderCache -> WFC.Model -> Element.Element ()
 wfcCurrentCell cache wfcModel =
     case WFC.currentCell wfcModel of
         Just cell ->
@@ -381,8 +388,8 @@ wfcCurrentCell cache wfcModel =
 --
 
 
-tileSetDebug : Element.Length -> Element.Element Msg
-tileSetDebug width =
+tileSetDebug : RenderCache -> Element.Length -> Element.Element ()
+tileSetDebug cache width =
     Element.wrappedRow
         [ Element.spacing 16
         , Element.padding 8
@@ -390,11 +397,11 @@ tileSetDebug width =
         , Element.Background.color (Element.rgba 0.1 0.1 0.1 0.9)
         , Element.alignTop
         ]
-        (List.map tileConfigDebug allTiles)
+        (List.map (tileConfigDebug cache) allTiles)
 
 
-tileConfigDebug : TileConfig -> Element.Element Msg
-tileConfigDebug tileConfig =
+tileConfigDebug : RenderCache -> TileConfig -> Element.Element ()
+tileConfigDebug cache tileConfig =
     let
         idDebug =
             Element.el
@@ -421,7 +428,7 @@ tileConfigDebug tileConfig =
                 , Svg.Attributes.width "64"
                 , Svg.Attributes.height "64"
                 ]
-                (roadAsset (tileConfigId tileConfig))
+                (assetById cache.roadAssets (tileConfigId tileConfig))
             )
         )
 
