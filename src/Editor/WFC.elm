@@ -3,9 +3,8 @@ module Editor.WFC exposing
     , currentCell
     , failed
     , init
-    , pickTile
+    , propagate
     , propagateN
-    , propagateWithRecovery
     , propagationContextDebug
     , solve
     , stateDebug
@@ -79,6 +78,7 @@ type PropagationFailure
     | NoPotentialMatch
     | InvalidBigTilePlacement Cell LargeTile
     | InvalidDirection
+    | NoCandidates
     | TileNotFound
 
 
@@ -107,64 +107,13 @@ init tilemapConfig =
         }
 
 
-{-| Adds a step to pick a specific tile at a specific position
--}
-pickTile : Cell -> TileConfig -> Model -> Model
-pickTile cell tileConfig (Model ({ propagationContext } as modelDetails)) =
-    Model
-        { modelDetails
-            | propagationContext =
-                { propagationContext
-                    | openSteps =
-                        PickTile cell tileConfig :: propagationContext.openSteps
-                }
-        }
-
-
-{-| Returns true if all positions in the grid have a tile assigned
--}
-propagationDone : ModelDetails -> Bool
-propagationDone { tilemap, propagationContext } =
-    List.isEmpty propagationContext.openSteps && Tilemap.all propagatinDonePredicate tilemap
-
-
-propagatinDonePredicate : Tile -> Bool
-propagatinDonePredicate tile =
-    case tile.kind of
-        Superposition _ ->
-            False
-
-        Fixed _ ->
-            True
-
-
-stopped : Model -> Bool
-stopped (Model modelDetails) =
-    modelDetails.supervisorState /= Propagating
-
-
-failed : Model -> Bool
-failed (Model modelDetails) =
-    case modelDetails.supervisorState of
-        Failed _ ->
-            True
-
-        _ ->
-            False
-
-
-currentCell : Model -> Maybe Cell
-currentCell (Model modelDetails) =
-    modelDetails.propagationContext.from
-
-
 {-| Tries to solve/fill the whole grid in one go by assigning a tile to each position.
 -}
 solve : TilemapConfig -> Model
 solve tilemapConfig =
     let
         nextModel =
-            propagateWithRecovery <| init tilemapConfig
+            propagate <| init tilemapConfig
     in
     solve_ nextModel
 
@@ -175,14 +124,14 @@ solve_ model =
         model
 
     else
-        solve_ (propagateWithRecovery model)
+        solve_ (propagate model)
 
 
-propagateWithRecovery : Model -> Model
-propagateWithRecovery model =
+propagate : Model -> Model
+propagate model =
     let
         ((Model modelDetails) as afterPropagation) =
-            propagate model
+            propagate_ model
     in
     case modelDetails.supervisorState of
         Recovering propagationFailure ->
@@ -211,11 +160,28 @@ propagateWithRecovery model =
             afterPropagation
 
 
+propagateN : Int -> Model -> Model
+propagateN nTimes model =
+    if nTimes == 0 then
+        model
+
+    else
+        let
+            propagationResult =
+                propagate model
+        in
+        if failed propagationResult then
+            propagationResult
+
+        else
+            propagateN (nTimes - 1) propagationResult
+
+
 {-| Execute a single step. This can mean picking the next random tile
 or propagating restrictions resulting from the last placement of a tile.
 -}
-propagate : Model -> Model
-propagate (Model ({ propagationContext, tilemap } as modelDetails)) =
+propagate_ : Model -> Model
+propagate_ (Model ({ propagationContext, tilemap } as modelDetails)) =
     case modelDetails.propagationContext.openSteps of
         step :: otherSteps ->
             let
@@ -272,26 +238,9 @@ propagate (Model ({ propagationContext, tilemap } as modelDetails)) =
             Model nextModelDetails
 
 
-propagateN : Int -> Model -> Model
-propagateN nTimes model =
-    if nTimes == 0 then
-        model
-
-    else
-        let
-            propagationResult =
-                propagateWithRecovery model
-        in
-        if failed propagationResult then
-            propagationResult
-
-        else
-            propagateN (nTimes - 1) propagationResult
-
-
 
 --
--- Internals
+-- Propagation
 --
 
 
@@ -353,7 +302,7 @@ canDock tilemap dockDir dockSocket dockTileId =
         pairings =
             pairingsForSocket dockSocket
     in
-    List.any (\pair -> pair == matchSocket) pairings
+    List.member matchSocket pairings
 
 
 processStep : Tilemap -> PropagationStep -> Result PropagationFailure ( List PropagationStep, Tilemap )
@@ -370,12 +319,10 @@ processStep tilemap step =
                             Tilemap.config tilemap
 
                         stepInDirection dir =
-                            -- TODO: are Fixed tile neighbors unnecessarily included here? filterMap instead?
                             Cell.nextOrthogonalCell tilemapConfig dir cell
                                 |> Maybe.map (KeepMatching cell)
 
                         nextSteps =
-                            -- TODO: prioritize potential large tile anchor cell if it can be one of the neighbors
                             List.filterMap stepInDirection orthogonalDirections
 
                         -- TODO: ignoring actions
@@ -480,6 +427,23 @@ applyToNeighbor onFixed onSuperposition cell tilemap =
         orthogonalDirections
 
 
+{-| Returns true if all positions in the grid have a tile assigned
+-}
+propagationDone : ModelDetails -> Bool
+propagationDone { tilemap, propagationContext } =
+    List.isEmpty propagationContext.openSteps && Tilemap.all propagatinDonePredicate tilemap
+
+
+propagatinDonePredicate : Tile -> Bool
+propagatinDonePredicate tile =
+    case tile.kind of
+        Superposition _ ->
+            False
+
+        Fixed _ ->
+            True
+
+
 
 --
 -- Random pick
@@ -492,8 +456,7 @@ pickRandom ({ propagationContext, tilemap, seed } as modelDetails) =
         List.Nonempty.fromList (nextCandidates tilemap)
     of
         Nothing ->
-            -- TODO: fail
-            modelDetails
+            { modelDetails | supervisorState = Recovering NoCandidates }
 
         Just candidates ->
             let
@@ -708,8 +671,28 @@ attemptSubTileNeighborUpdate currentTile cell tilemap =
 
 
 --
--- Interop and debug
+-- Interop, queries and debug
 --
+
+
+stopped : Model -> Bool
+stopped (Model modelDetails) =
+    modelDetails.supervisorState /= Propagating
+
+
+failed : Model -> Bool
+failed (Model modelDetails) =
+    case modelDetails.supervisorState of
+        Failed _ ->
+            True
+
+        _ ->
+            False
+
+
+currentCell : Model -> Maybe Cell
+currentCell (Model modelDetails) =
+    modelDetails.propagationContext.from
 
 
 toTilemap : Model -> Tilemap
@@ -756,6 +739,9 @@ propagationFailureToString propagationFailure =
 
         TileNotFound ->
             "Tile not found"
+
+        NoCandidates ->
+            "No candidates available"
 
 
 propagationContextDebug :

@@ -6,7 +6,6 @@ module Model.TileConfig exposing
     , TileConfig(..)
     , TileId
     , allSockets
-    , baseTileId
     , complexity
     , socketByDirection
     , socketByDirectionWithConfig
@@ -102,16 +101,6 @@ complexity tileConfig =
             largeTile.complexity
 
 
-baseTileId : TileConfig -> Maybe TileId
-baseTileId tileConfig =
-    case tileConfig of
-        Single singleTile ->
-            singleTile.baseTileId
-
-        Large _ ->
-            Nothing
-
-
 sockets : TileConfig -> Sockets
 sockets tileConfig =
     case tileConfig of
@@ -124,7 +113,6 @@ sockets tileConfig =
                     anchorTile.sockets
 
                 Nothing ->
-                    -- TODO: placeholder value
                     { top = Green
                     , right = Green
                     , bottom = Green

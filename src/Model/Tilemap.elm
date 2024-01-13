@@ -21,7 +21,6 @@ module Model.Tilemap exposing
     , removeAnchor
     , removeSuperpositionOption
     , removeTile
-    , setFixedTile
     , setSuperpositionOptions
     , setTile
     , size
@@ -518,11 +517,6 @@ addTile =
 setTile : Cell -> Tile -> Tilemap -> Tilemap
 setTile cell tile tilemap =
     updateCell cell tile tilemap
-
-
-setFixedTile : Cell -> TileId -> Tilemap -> Tilemap
-setFixedTile cell tileId tilemap =
-    setTile cell (Tile.init (Fixed tileId)) tilemap
 
 
 changeTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )

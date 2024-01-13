@@ -115,7 +115,7 @@ update msg model =
                 wfcModel =
                     case model.mode of
                         Manual ->
-                            WFC.propagateWithRecovery model.wfcModel
+                            WFC.propagate model.wfcModel
 
                         AutoPropagate ->
                             WFC.propagateN 5 model.wfcModel

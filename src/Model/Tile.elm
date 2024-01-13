@@ -20,7 +20,6 @@ module Model.Tile exposing
     , isPropagating
     , new
     , potentialConnections
-    , propagating
     , transitionTimer
     , updateTileId
     , updateTileKind
