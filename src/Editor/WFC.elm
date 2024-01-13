@@ -47,7 +47,10 @@ type Model
 
 type alias ModelDetails =
     { tilemap : Tilemap
-    , propagationContext : PropagationContext
+    , currentCell : Maybe Cell
+    , targetCell : Maybe Cell
+    , propagationDirection : Maybe OrthogonalDirection
+    , openSteps : List PropagationStep
     , supervisorState : SupervisorState
     , seed : Seed
     }
@@ -58,14 +61,6 @@ type SupervisorState
     | Done
     | Recovering PropagationFailure
     | Failed PropagationFailure
-
-
-type alias PropagationContext =
-    { from : Maybe Cell
-    , to : Maybe Cell
-    , direction : Maybe OrthogonalDirection
-    , openSteps : List PropagationStep
-    }
 
 
 type PropagationStep
@@ -88,20 +83,14 @@ type alias Candidate =
     }
 
 
-initialPropagationContext : PropagationContext
-initialPropagationContext =
-    { from = Nothing
-    , to = Nothing
-    , direction = Nothing
-    , openSteps = []
-    }
-
-
 init : TilemapConfig -> Model
 init tilemapConfig =
     Model
         { tilemap = Tilemap.empty tilemapConfig
-        , propagationContext = initialPropagationContext
+        , currentCell = Nothing
+        , targetCell = Nothing
+        , propagationDirection = Nothing
+        , openSteps = []
         , supervisorState = Propagating
         , seed = tilemapConfig.initialSeed
         }
@@ -181,40 +170,36 @@ propagateN nTimes model =
 or propagating restrictions resulting from the last placement of a tile.
 -}
 propagate_ : Model -> Model
-propagate_ (Model ({ propagationContext, tilemap } as modelDetails)) =
-    case modelDetails.propagationContext.openSteps of
+propagate_ (Model ({ openSteps, tilemap } as modelDetails)) =
+    case openSteps of
         step :: otherSteps ->
             let
                 processStepResult =
                     processStep tilemap step
 
-                { from, to, direction } =
+                position =
                     stepPosition step
 
-                basePropagationContext =
-                    { propagationContext
-                        | openSteps = otherSteps
-                        , from = from
-                        , to = to
-                        , direction = direction
+                withPosition =
+                    { modelDetails
+                        | currentCell = position.currentCell
+                        , targetCell = position.targetCell
+                        , propagationDirection = position.propagationDirection
                     }
 
                 nextModelDetails =
                     case processStepResult of
                         Ok ( additionalSteps, nextTilemap ) ->
-                            { modelDetails
+                            { withPosition
                                 | tilemap = nextTilemap
                                 , supervisorState = Propagating
-                                , propagationContext =
-                                    { basePropagationContext
-                                        | openSteps = basePropagationContext.openSteps ++ additionalSteps
-                                    }
+                                , openSteps = otherSteps ++ additionalSteps
                             }
 
                         Err propagationFailure ->
-                            { modelDetails
+                            { withPosition
                                 | supervisorState = Recovering propagationFailure
-                                , propagationContext = basePropagationContext
+                                , openSteps = otherSteps
                             }
             in
             Model nextModelDetails
@@ -232,7 +217,9 @@ propagate_ (Model ({ propagationContext, tilemap } as modelDetails)) =
                     else
                         { modelDetails
                             | supervisorState = Done
-                            , propagationContext = initialPropagationContext
+                            , currentCell = Nothing
+                            , targetCell = Nothing
+                            , propagationDirection = Nothing
                         }
             in
             Model nextModelDetails
@@ -256,19 +243,19 @@ tileConfigById tilemap tileId =
 stepPosition :
     PropagationStep
     ->
-        { from : Maybe Cell
-        , to : Maybe Cell
-        , direction : Maybe OrthogonalDirection
+        { currentCell : Maybe Cell
+        , targetCell : Maybe Cell
+        , propagationDirection : Maybe OrthogonalDirection
         }
 stepPosition step =
     case step of
         PickTile cell _ ->
-            { from = Just cell, to = Nothing, direction = Nothing }
+            { currentCell = Just cell, targetCell = Nothing, propagationDirection = Nothing }
 
         KeepMatching cellA cellB ->
-            { from = Just cellA
-            , to = Just cellB
-            , direction = Cell.orthogonalDirection cellA cellB
+            { currentCell = Just cellA
+            , targetCell = Just cellB
+            , propagationDirection = Cell.orthogonalDirection cellA cellB
             }
 
 
@@ -430,8 +417,8 @@ applyToNeighbor onFixed onSuperposition cell tilemap =
 {-| Returns true if all positions in the grid have a tile assigned
 -}
 propagationDone : ModelDetails -> Bool
-propagationDone { tilemap, propagationContext } =
-    List.isEmpty propagationContext.openSteps && Tilemap.all propagatinDonePredicate tilemap
+propagationDone { tilemap, openSteps } =
+    List.isEmpty openSteps && Tilemap.all propagatinDonePredicate tilemap
 
 
 propagatinDonePredicate : Tile -> Bool
@@ -451,7 +438,7 @@ propagatinDonePredicate tile =
 
 
 pickRandom : ModelDetails -> ModelDetails
-pickRandom ({ propagationContext, tilemap, seed } as modelDetails) =
+pickRandom ({ openSteps, tilemap, seed } as modelDetails) =
     case
         List.Nonempty.fromList (nextCandidates tilemap)
     of
@@ -473,13 +460,10 @@ pickRandom ({ propagationContext, tilemap, seed } as modelDetails) =
                     [ PickTile randomCandidate.cell randomOption ]
             in
             { modelDetails
-                | propagationContext =
-                    { propagationContext
-                        | openSteps = pickRandomStep ++ propagationContext.openSteps
-                        , from = Nothing
-                        , to = Nothing
-                        , direction = Nothing
-                    }
+                | openSteps = pickRandomStep ++ openSteps
+                , currentCell = Nothing
+                , targetCell = Nothing
+                , propagationDirection = Nothing
                 , seed = nextSeed
             }
 
@@ -692,7 +676,7 @@ failed (Model modelDetails) =
 
 currentCell : Model -> Maybe Cell
 currentCell (Model modelDetails) =
-    modelDetails.propagationContext.from
+    modelDetails.currentCell
 
 
 toTilemap : Model -> Tilemap
@@ -751,33 +735,25 @@ propagationContextDebug :
         , openSteps : List String
         }
 propagationContextDebug (Model modelDetails) =
-    let
-        { propagationContext } =
-            modelDetails
-
-        position =
-            [ Maybe.map Cell.toString propagationContext.from |> Maybe.withDefault "-"
-            , Maybe.map Cell.toString propagationContext.to |> Maybe.withDefault "-"
-            , Maybe.map orthogonalDirectionToString propagationContext.direction |> Maybe.withDefault "-"
-            ]
-
-        openSteps =
-            propagationContext.openSteps
-                |> List.map
-                    (\step ->
-                        case step of
-                            PickTile cell tileConfig ->
-                                String.join " "
-                                    [ "PickTile"
-                                    , Cell.toString cell
-                                    , "tile config:"
-                                    , TileConfig.toString tileConfig
-                                    ]
-
-                            KeepMatching fromCell toCell ->
-                                String.join " " [ "KeepMatching from:", Cell.toString fromCell, "to:", Cell.toString toCell ]
-                    )
-    in
-    { position = position
-    , openSteps = openSteps
+    { position =
+        [ Maybe.map Cell.toString modelDetails.currentCell |> Maybe.withDefault "-"
+        , Maybe.map Cell.toString modelDetails.targetCell |> Maybe.withDefault "-"
+        , Maybe.map orthogonalDirectionToString modelDetails.propagationDirection |> Maybe.withDefault "-"
+        ]
+    , openSteps = List.map stepDebug modelDetails.openSteps
     }
+
+
+stepDebug : PropagationStep -> String
+stepDebug step =
+    case step of
+        PickTile cell tileConfig ->
+            String.join " "
+                [ "PickTile"
+                , Cell.toString cell
+                , "tile config:"
+                , TileConfig.toString tileConfig
+                ]
+
+        KeepMatching fromCell toCell ->
+            String.join " " [ "KeepMatching from:", Cell.toString fromCell, "to:", Cell.toString toCell ]
