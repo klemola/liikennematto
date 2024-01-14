@@ -26,6 +26,7 @@ type DebugLayerKind
     = CarDebug
     | LotDebug
     | RoadNetworkDebug
+    | WFCDebug
 
 
 initialDebugState : DebugState
@@ -58,6 +59,10 @@ layerToBinary layerKind =
         RoadNetworkDebug ->
             -- 000100
             4
+
+        WFCDebug ->
+            -- 001000
+            8
 
 
 toggleLayer : DebugLayerKind -> DebugState -> DebugState

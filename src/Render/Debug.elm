@@ -7,6 +7,7 @@ import Data.Lots exposing (ParkingRestriction(..))
 import Graph
 import Length exposing (Length)
 import Model.Car exposing (Car)
+import Model.Cell as Cell exposing (Cell)
 import Model.Debug exposing (DebugLayerKind(..), DebugState, isLayerEnabled)
 import Model.Geometry exposing (LMPoint2d)
 import Model.Lot exposing (Lot, ParkingSpot)
@@ -17,6 +18,8 @@ import Model.RoadNetwork
         , RoadNetwork
         )
 import Model.Route as Route
+import Model.Tile exposing (TileKind(..))
+import Model.TileConfig exposing (TileId)
 import Model.World exposing (World)
 import Point2d
 import Polygon2d
@@ -29,12 +32,17 @@ import Svg.Attributes as Attributes
 import Svg.Keyed
 
 
+nothing : Svg msg
+nothing =
+    Svg.g [] []
+
+
 nodeRadius : Length
 nodeRadius =
     Length.meters 0.8
 
 
-view : World -> RenderCache -> DebugState -> Svg msg
+view : World -> RenderCache -> DebugState -> Svg ()
 view world cache debugState =
     let
         tilemapWidth =
@@ -55,7 +63,7 @@ view world cache debugState =
         )
 
 
-debugLayerViews : World -> RenderCache -> DebugState -> List (Svg msg)
+debugLayerViews : World -> RenderCache -> DebugState -> List (Svg ())
 debugLayerViews world cache debugState =
     let
         carsLayer =
@@ -63,25 +71,33 @@ debugLayerViews world cache debugState =
                 renderCarsDebug cache world.cars
 
             else
-                Svg.g [] []
+                nothing
 
         lotsLayer =
             if isLayerEnabled LotDebug debugState then
                 renderLotsDebug cache world.lots
 
             else
-                Svg.g [] []
+                nothing
 
         roadNetworkLayer =
             if isLayerEnabled RoadNetworkDebug debugState then
                 renderRoadNetwork cache world.roadNetwork
 
             else
-                Svg.g [] []
+                nothing
+
+        wfcLayer =
+            if isLayerEnabled WFCDebug debugState then
+                renderWFC cache
+
+            else
+                nothing
     in
     [ carsLayer
     , lotsLayer
     , roadNetworkLayer
+    , wfcLayer
     ]
 
 
@@ -330,3 +346,61 @@ renderParkingSpotDebug cache parkingSpot =
         (Just ( Colors.gray7, 2 ))
         (Length.meters 1)
         parkingSpot.position
+
+
+renderWFC : RenderCache -> Svg ()
+renderWFC cache =
+    cache.tilemap
+        |> List.map
+            (\( cell, tileKind ) ->
+                ( Cell.toString cell
+                , renderTile cache cell tileKind
+                )
+            )
+        |> Svg.Keyed.node "g" []
+
+
+renderTile : RenderCache -> Cell -> TileKind -> Svg ()
+renderTile cache cell tileKind =
+    let
+        tileSizePixels =
+            toPixelsValue cache.pixelsToMetersRatio Cell.size
+
+        { x, y } =
+            Cell.bottomLeftCorner cell |> pointToPixels cache.pixelsToMetersRatio
+
+        yAdjusted =
+            cache.tilemapHeightPixels - tileSizePixels - y
+    in
+    case tileKind of
+        Fixed _ ->
+            nothing
+
+        Superposition tileIds ->
+            renderSuperposition { size = tileSizePixels, x = x, y = yAdjusted } tileIds
+
+
+renderSuperposition : { size : Float, x : Float, y : Float } -> List TileId -> Svg msg
+renderSuperposition { size, x, y } tileIds =
+    let
+        idsDebug =
+            List.map String.fromInt tileIds
+    in
+    Svg.svg
+        [ Attributes.x (String.fromFloat x)
+        , Attributes.y (String.fromFloat y)
+        , Attributes.width (String.fromFloat size)
+        , Attributes.height (String.fromFloat size)
+        , Attributes.viewBox "0 0 256 256"
+        ]
+        [ Svg.text_
+            [ Attributes.fill "black"
+            , Attributes.x "32"
+            , Attributes.y "128"
+            , Attributes.style "font: italic 24px sans-serif;"
+            ]
+            [ ("S" :: idsDebug)
+                |> String.join " "
+                |> Svg.text
+            ]
+        ]

@@ -158,12 +158,12 @@ view model =
         [ Html.div [ MouseEvents.onClick WorldClicked ]
             [ Render.view world model.cache []
                 |> Element.html
-                |> Element.map (always NoOp)
                 |> Element.el
                     [ Element.width (Element.px renderWidth)
                     , Element.height (Element.px renderHeight)
                     , Element.inFront renderDebug
                     ]
+                |> Element.map (always NoOp)
                 |> Element.layout
                     [ Element.width Element.fill
                     , Element.height Element.fill

@@ -234,7 +234,9 @@ view model =
             Render.Debug.view
                 model.world
                 model.cache
-                Model.Debug.initialDebugState
+                (Model.Debug.initialDebugState
+                    |> Model.Debug.toggleLayer Model.Debug.WFCDebug
+                )
                 |> Element.html
 
         render =

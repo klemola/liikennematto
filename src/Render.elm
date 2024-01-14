@@ -31,7 +31,6 @@ import Model.RoadNetwork
         , TrafficControl(..)
         )
 import Model.Tile exposing (TileKind(..))
-import Model.TileConfig exposing (TileId)
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..))
 import Model.World exposing (World)
 import Quantity
@@ -139,34 +138,8 @@ renderTile cache cell tileKind =
                 , tileStyles = ""
                 }
 
-        Superposition tileIds ->
-            renderSuperposition { size = tileSizePixels, x = x, y = yAdjusted } tileIds
-
-
-renderSuperposition : { size : Float, x : Float, y : Float } -> List TileId -> Svg msg
-renderSuperposition { size, x, y } tileIds =
-    let
-        idsDebug =
-            List.map String.fromInt tileIds
-    in
-    Svg.svg
-        [ Attributes.x (String.fromFloat x)
-        , Attributes.y (String.fromFloat y)
-        , Attributes.width (String.fromFloat size)
-        , Attributes.height (String.fromFloat size)
-        , Attributes.viewBox "0 0 256 256"
-        ]
-        [ Svg.text_
-            [ Attributes.fill "black"
-            , Attributes.x "32"
-            , Attributes.y "128"
-            , Attributes.style "font: italic 24px sans-serif;"
-            ]
-            [ ("S" :: idsDebug)
-                |> String.join " "
-                |> Svg.text
-            ]
-        ]
+        Superposition _ ->
+            nothing
 
 
 renderDynamicTiles : RenderCache -> DynamicTilesPresentation -> Svg ()

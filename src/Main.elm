@@ -210,3 +210,4 @@ renderDebug : Liikennematto -> Element Message
 renderDebug model =
     Render.Debug.view model.world model.renderCache model.debug
         |> Element.html
+        |> Element.map (always NoOp)
