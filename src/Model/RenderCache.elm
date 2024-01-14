@@ -7,6 +7,7 @@ module Model.RenderCache exposing
     , new
     , refreshTilemapCache
     , setPixelsToMetersRatio
+    , setTileListFilter
     , setTilemapCache
     )
 
@@ -33,6 +34,7 @@ type alias RenderCache =
     , tilemapHeightPixels : Float
     , tilemapWidth : Length.Length
     , tilemapHeight : Length.Length
+    , tileListFilter : Tilemap.TileListFilter
     , roadAssets : Assets ()
     }
 
@@ -64,14 +66,18 @@ new { tilemap } roadAssets =
 
         tilemapHeigthPixels =
             toPixelsValue defaultPixelsToMetersRatio tilemapDimensions.height
+
+        initialTileListFilter =
+            Tilemap.StaticTiles
     in
     { pixelsToMetersRatio = defaultPixelsToMetersRatio
-    , tilemap = toTilemapCache tilemap
+    , tilemap = toTilemapCache initialTileListFilter tilemap
     , tilemapWidthPixels =
         tilemapWidthPixels
     , tilemapHeightPixels = tilemapHeigthPixels
     , tilemapWidth = tilemapDimensions.width
     , tilemapHeight = tilemapDimensions.height
+    , tileListFilter = initialTileListFilter
     , roadAssets = roadAssets
     }
 
@@ -107,7 +113,12 @@ zoomLevelToPixelsPerMeterValue zoomLevel =
 
 setTilemapCache : Tilemap -> RenderCache -> RenderCache
 setTilemapCache tilemap cache =
-    { cache | tilemap = toTilemapCache tilemap }
+    { cache | tilemap = toTilemapCache cache.tileListFilter tilemap }
+
+
+setTileListFilter : Tilemap.TileListFilter -> RenderCache -> RenderCache
+setTileListFilter tileListFilter cache =
+    { cache | tileListFilter = tileListFilter }
 
 
 refreshTilemapCache : Tilemap.TilemapUpdateResult -> RenderCache -> ( RenderCache, DynamicTilesPresentation )
@@ -118,7 +129,7 @@ refreshTilemapCache tilemapUpdateResult cache =
                 cache
 
             else
-                { cache | tilemap = toTilemapCache tilemapUpdateResult.tilemap }
+                { cache | tilemap = toTilemapCache cache.tileListFilter tilemapUpdateResult.tilemap }
 
         nextDynamicTiles =
             if List.isEmpty tilemapUpdateResult.dynamicCells then
@@ -132,9 +143,9 @@ refreshTilemapCache tilemapUpdateResult cache =
     ( nextCache, nextDynamicTiles )
 
 
-toTilemapCache : Tilemap -> List StaticTilePresentation
-toTilemapCache tilemap =
-    Tilemap.toList tileMapper Tilemap.NoFilter tilemap
+toTilemapCache : Tilemap.TileListFilter -> Tilemap -> List StaticTilePresentation
+toTilemapCache tileListFilter tilemap =
+    Tilemap.toList tileMapper tileListFilter tilemap
 
 
 tileMapper : Cell -> Tile -> StaticTilePresentation

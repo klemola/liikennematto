@@ -24,7 +24,7 @@ import Model.TileConfig as TileConfig
         , allSockets
         , tileConfigId
         )
-import Model.Tilemap exposing (TilemapConfig)
+import Model.Tilemap as Tilemap exposing (TilemapConfig)
 import Model.World as World
 import Process
 import Random
@@ -78,6 +78,7 @@ init _ =
 
         cache =
             RenderCache.new world roads
+                |> RenderCache.setTileListFilter Tilemap.NoFilter
     in
     ( { wfcModel = WFC.init tilemapConfig
       , mode = Manual
