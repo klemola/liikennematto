@@ -613,7 +613,7 @@ attemptPlaceLargeTileHelper steps tilemap tileList =
 
 
 attemptSubTileNeighborUpdate : SingleTile -> Cell -> Tilemap -> Result String ( List PropagationStep, Tilemap )
-attemptSubTileNeighborUpdate currentTile cell tilemap =
+attemptSubTileNeighborUpdate currentTile originCell tilemap =
     applyToNeighbor
         (\nuCtx neighborTileId ->
             let
@@ -627,29 +627,13 @@ attemptSubTileNeighborUpdate currentTile cell tilemap =
             else
                 Err "Can't dock fixed neighbor"
         )
-        (\nuCtx options ->
-            let
-                { dir, neighborCell, neighborTile } =
-                    nuCtx
-
-                matching =
-                    matchingSuperpositionOptions nuCtx.tilemap dir currentTile.id options
-            in
-            if List.isEmpty matching then
-                Err "Invalid neighbor"
-
-            else
-                let
-                    -- TODO: ignoring actions
-                    ( updatedTile, _ ) =
-                        Tile.updateTileKind (Superposition matching) neighborTile
-                in
-                Ok
-                    ( nuCtx.steps
-                    , Tilemap.setTile neighborCell updatedTile nuCtx.tilemap
-                    )
+        (\nuCtx _ ->
+            Ok
+                ( KeepMatching originCell nuCtx.neighborCell :: nuCtx.steps
+                , nuCtx.tilemap
+                )
         )
-        cell
+        originCell
         tilemap
 
 
