@@ -39,9 +39,9 @@ import Time
 
 type Msg
     = Step
-    | InitAutoPropagate
-    | AutoPropagateInitDone Time.Posix
-    | StopPropagation
+    | InitAutoStep
+    | AutoStepInitDone Time.Posix
+    | StopAutoStep
     | InitSolve
     | SolveInitDone Time.Posix
     | NoOp
@@ -57,7 +57,7 @@ type alias Model =
 
 type Mode
     = Manual
-    | AutoPropagate
+    | AutoStep
 
 
 main : Program () Model Msg
@@ -89,13 +89,13 @@ init _ =
     )
 
 
-propagateFrequencyMs : Float
-propagateFrequencyMs =
+stepFrequencyMs : Float
+stepFrequencyMs =
     17
 
 
-propagateN : Int
-propagateN =
+stepN : Int
+stepN =
     8
 
 
@@ -115,8 +115,8 @@ subscriptions { mode } =
         Manual ->
             Sub.none
 
-        AutoPropagate ->
-            Time.every propagateFrequencyMs (\_ -> Step)
+        AutoStep ->
+            Time.every stepFrequencyMs (\_ -> Step)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -127,10 +127,10 @@ update msg model =
                 wfcModel =
                     case model.mode of
                         Manual ->
-                            WFC.propagate model.wfcModel
+                            WFC.step model.wfcModel
 
-                        AutoPropagate ->
-                            WFC.propagateN propagateN model.wfcModel
+                        AutoStep ->
+                            WFC.stepN stepN model.wfcModel
 
                 tilemap =
                     WFC.toTilemap wfcModel
@@ -145,9 +145,9 @@ update msg model =
                     if WFC.stopped model.wfcModel then
                         ( Manual
                         , case model.mode of
-                            AutoPropagate ->
+                            AutoStep ->
                                 Process.sleep 1200
-                                    |> Task.perform (\_ -> InitAutoPropagate)
+                                    |> Task.perform (\_ -> InitAutoStep)
 
                             Manual ->
                                 Cmd.none
@@ -167,14 +167,14 @@ update msg model =
             , cmd
             )
 
-        InitAutoPropagate ->
+        InitAutoStep ->
             ( { model
-                | mode = AutoPropagate
+                | mode = AutoStep
               }
-            , Task.perform AutoPropagateInitDone <| Time.now
+            , Task.perform AutoStepInitDone <| Time.now
             )
 
-        AutoPropagateInitDone posix ->
+        AutoStepInitDone posix ->
             let
                 seed =
                     Random.initialSeed <| Time.posixToMillis posix
@@ -188,7 +188,7 @@ update msg model =
             , Task.succeed () |> Task.perform (\_ -> Step)
             )
 
-        StopPropagation ->
+        StopAutoStep ->
             ( { model | mode = Manual }
             , Cmd.none
             )
@@ -290,9 +290,9 @@ sidePanel mode wfcModel =
         , wfcState wfcModel
         , case mode of
             Manual ->
-                wfcPropagationContext wfcModel
+                wfcContext wfcModel
 
-            AutoPropagate ->
+            AutoStep ->
                 Element.none
         ]
 
@@ -311,12 +311,12 @@ controls =
             , label = Element.text "Solve"
             }
         , Input.button []
-            { onPress = Just InitAutoPropagate
-            , label = Element.text "Auto-propagate"
+            { onPress = Just InitAutoStep
+            , label = Element.text "Auto-step"
             }
         , Input.button []
-            { onPress = Just StopPropagation
-            , label = Element.text "Stop propagation"
+            { onPress = Just StopAutoStep
+            , label = Element.text "Stop auto-step"
             }
         ]
 
@@ -342,11 +342,11 @@ wfcState wfcModel =
         (Element.text (WFC.stateDebug wfcModel))
 
 
-wfcPropagationContext : WFC.Model -> Element.Element Msg
-wfcPropagationContext wfcModel =
+wfcContext : WFC.Model -> Element.Element Msg
+wfcContext wfcModel =
     let
         { position, openSteps, previousSteps } =
-            WFC.propagationContextDebug wfcModel
+            WFC.contextDebug wfcModel
     in
     Element.column
         [ Element.width (Element.px 420)
@@ -373,7 +373,7 @@ wfcPropagationContext wfcModel =
 
 wfcCurrentCell : RenderCache.RenderCache -> WFC.Model -> Element.Element ()
 wfcCurrentCell cache wfcModel =
-    case WFC.currentCell wfcModel of
+    case WFC.toCurrentCell wfcModel of
         Just cell ->
             let
                 tileSizePixels =
