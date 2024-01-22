@@ -39,6 +39,7 @@ import Model.TileConfig as TileConfig
         )
 import Model.Tilemap as Tilemap exposing (Tilemap, TilemapConfig)
 import Random exposing (Seed)
+import Stack exposing (Stack)
 
 
 type Model
@@ -51,9 +52,20 @@ type alias ModelDetails =
     , targetCell : Maybe Cell
     , propagationDirection : Maybe OrthogonalDirection
     , openSteps : List PropagationStep
+    , previousSteps : PreviousSteps
     , supervisorState : SupervisorState
     , seed : Seed
     }
+
+
+type PropagationStep
+    = PickTile Cell TileConfig
+    | PlaceSubgridTile Cell SingleTile TileId
+    | KeepMatching Cell Cell
+
+
+type alias PreviousSteps =
+    Stack ( PropagationStep, Nonempty TileId )
 
 
 type SupervisorState
@@ -63,15 +75,10 @@ type SupervisorState
     | Failed PropagationFailure
 
 
-type PropagationStep
-    = PickTile Cell TileConfig
-    | KeepMatching Cell Cell
-
-
 type PropagationFailure
     = NoSuperpositionOptions
     | NoPotentialMatch
-    | InvalidBigTilePlacement Cell LargeTile
+    | InvalidBigTilePlacement Cell TileId
     | InvalidDirection
     | NoCandidates
     | TileNotFound
@@ -91,6 +98,7 @@ init tilemapConfig =
         , targetCell = Nothing
         , propagationDirection = Nothing
         , openSteps = []
+        , previousSteps = Stack.empty
         , supervisorState = Propagating
         , seed = tilemapConfig.initialSeed
         }
@@ -129,8 +137,8 @@ propagate model =
                     -- Aknowledge failure, can resume propagation
                     Model { modelDetails | supervisorState = Propagating }
 
-                InvalidBigTilePlacement cell largeTile ->
-                    case Tilemap.removeSuperpositionOption cell largeTile.id modelDetails.tilemap of
+                InvalidBigTilePlacement cell largeTileId ->
+                    case Tilemap.removeSuperpositionOption cell largeTileId modelDetails.tilemap of
                         Ok tilemapWithRecovery ->
                             Model
                                 { modelDetails
@@ -170,13 +178,10 @@ propagateN nTimes model =
 or propagating restrictions resulting from the last placement of a tile.
 -}
 propagate_ : Model -> Model
-propagate_ (Model ({ openSteps, tilemap } as modelDetails)) =
+propagate_ (Model ({ openSteps, previousSteps, tilemap } as modelDetails)) =
     case openSteps of
         step :: otherSteps ->
             let
-                processStepResult =
-                    processStep tilemap step
-
                 position =
                     stepPosition step
 
@@ -186,23 +191,29 @@ propagate_ (Model ({ openSteps, tilemap } as modelDetails)) =
                         , targetCell = position.targetCell
                         , propagationDirection = position.propagationDirection
                     }
-
-                nextModelDetails =
-                    case processStepResult of
-                        Ok ( additionalSteps, nextTilemap ) ->
-                            { withPosition
-                                | tilemap = nextTilemap
-                                , supervisorState = Propagating
-                                , openSteps = otherSteps ++ additionalSteps
-                            }
-
-                        Err propagationFailure ->
-                            { withPosition
-                                | supervisorState = Recovering propagationFailure
-                                , openSteps = otherSteps
-                            }
             in
-            Model nextModelDetails
+            case processStep tilemap step of
+                Ok ( additionalSteps, nextTilemap ) ->
+                    Model
+                        { withPosition
+                            | tilemap = nextTilemap
+                            , supervisorState = Propagating
+                            , openSteps = otherSteps ++ additionalSteps
+                            , previousSteps =
+                                case stepSuperposition tilemap step of
+                                    Just superpositionOptions ->
+                                        Stack.push ( step, superpositionOptions ) previousSteps
+
+                                    Nothing ->
+                                        previousSteps
+                        }
+
+                Err propagationFailure ->
+                    Model
+                        { withPosition
+                            | supervisorState = Recovering propagationFailure
+                            , openSteps = otherSteps
+                        }
 
         [] ->
             let
@@ -240,6 +251,32 @@ tileConfigById tilemap tileId =
         |> Maybe.withDefault defaultTile
 
 
+stepSuperposition : Tilemap -> PropagationStep -> Maybe (Nonempty TileId)
+stepSuperposition tilemap step =
+    let
+        stepCell =
+            case step of
+                PickTile cell _ ->
+                    cell
+
+                PlaceSubgridTile cell _ _ ->
+                    cell
+
+                KeepMatching _ toCell ->
+                    toCell
+    in
+    Tilemap.tileAtAny tilemap stepCell
+        |> Maybe.andThen
+            (\tile ->
+                case tile.kind of
+                    Tile.Fixed _ ->
+                        Nothing
+
+                    Tile.Superposition options ->
+                        List.Nonempty.fromList options
+            )
+
+
 stepPosition :
     PropagationStep
     ->
@@ -250,6 +287,9 @@ stepPosition :
 stepPosition step =
     case step of
         PickTile cell _ ->
+            { currentCell = Just cell, targetCell = Nothing, propagationDirection = Nothing }
+
+        PlaceSubgridTile cell _ _ ->
             { currentCell = Just cell, targetCell = Nothing, propagationDirection = Nothing }
 
         KeepMatching cellA cellB ->
@@ -298,7 +338,8 @@ processStep tilemap step =
         PickTile cell tileConfig ->
             case tileConfig of
                 TileConfig.Large largeTile ->
-                    attemptPlaceLargeTile tilemap cell largeTile
+                    attemptPlanLargeTilePlacement tilemap cell largeTile
+                        |> Result.map (\steps -> ( steps, tilemap ))
 
                 TileConfig.Single singleTile ->
                     let
@@ -316,10 +357,16 @@ processStep tilemap step =
                         ( tile, _ ) =
                             Tile.new singleTile.id Tile.BuildInstantly
                     in
-                    Ok
-                        ( nextSteps
-                        , Tilemap.setTile cell tile tilemap
+                    Ok ( nextSteps, Tilemap.setTile cell tile tilemap )
+
+        PlaceSubgridTile cell singleTile largeTileId ->
+            attemptPlaceSubgridTile tilemap largeTileId cell singleTile
+                |> Result.map
+                    (\( neighborSteps, nextTilemap ) ->
+                        ( neighborSteps
+                        , nextTilemap
                         )
+                    )
 
         KeepMatching from to ->
             Maybe.map2 Tuple.pair
@@ -327,7 +374,7 @@ processStep tilemap step =
                 (Tilemap.tileAtAny tilemap to)
                 |> Result.fromMaybe TileNotFound
                 |> Result.andThen (updateSuperpositionOptions tilemap from to)
-                |> Result.map (Tuple.pair [])
+                |> Result.map (\nextTilemap -> ( [], nextTilemap ))
 
 
 updateSuperpositionOptions : Tilemap -> Cell -> Cell -> ( Tile, Tile ) -> Result PropagationFailure Tilemap
@@ -377,25 +424,25 @@ type alias NeighborUpdateContext =
 
 
 applyToNeighbor :
-    (NeighborUpdateContext -> TileId -> Result error ( List PropagationStep, Tilemap ))
-    -> (NeighborUpdateContext -> List TileId -> Result error ( List PropagationStep, Tilemap ))
+    (NeighborUpdateContext -> TileId -> Result error (List PropagationStep))
+    -> (NeighborUpdateContext -> List TileId -> Result error (List PropagationStep))
     -> Cell
     -> Tilemap
-    -> Result error ( List PropagationStep, Tilemap )
+    -> Result error (List PropagationStep)
 applyToNeighbor onFixed onSuperposition cell tilemap =
     let
         tilemapConfig =
             Tilemap.config tilemap
     in
     attemptFoldList
-        (\dir ( steps, nextTilemap ) ->
+        (\dir steps ->
             case Cell.nextOrthogonalCell tilemapConfig dir cell of
                 Just toCell ->
-                    case Tilemap.tileAtAny nextTilemap toCell of
+                    case Tilemap.tileAtAny tilemap toCell of
                         Just toTile ->
                             let
                                 neighborUpdateContext =
-                                    NeighborUpdateContext dir toTile toCell nextTilemap steps
+                                    NeighborUpdateContext dir toTile toCell tilemap steps
                             in
                             case toTile.kind of
                                 Fixed tileId ->
@@ -405,12 +452,12 @@ applyToNeighbor onFixed onSuperposition cell tilemap =
                                     onSuperposition neighborUpdateContext options
 
                         Nothing ->
-                            Ok ( steps, nextTilemap )
+                            Ok steps
 
                 Nothing ->
-                    Ok ( steps, nextTilemap )
+                    Ok steps
         )
-        ( [], tilemap )
+        []
         orthogonalDirections
 
 
@@ -530,8 +577,10 @@ nextCandidates tilemap =
 --
 
 
-attemptPlaceLargeTile : Tilemap -> Cell -> LargeTile -> Result PropagationFailure ( List PropagationStep, Tilemap )
-attemptPlaceLargeTile tilemap anchorCell tile =
+{-| Tries to build a list of PlaceSubgridTile steps to build the a large tile subgrid
+-}
+attemptPlanLargeTilePlacement : Tilemap -> Cell -> LargeTile -> Result PropagationFailure (List PropagationStep)
+attemptPlanLargeTilePlacement tilemap anchorCell tile =
     let
         tilemapConstraints =
             Tilemap.config tilemap
@@ -573,47 +622,37 @@ attemptPlaceLargeTile tilemap anchorCell tile =
                             in
                             case cellInGlobalCoordinates of
                                 Just cell ->
-                                    Ok ( cell, singleTile )
+                                    Ok (PlaceSubgridTile cell singleTile tile.id)
 
                                 Nothing ->
                                     Err "Cannot translate cell to global coordinates"
                         )
             )
-        |> Result.andThen (attemptPlaceLargeTileHelper [] tilemap)
-        |> Result.mapError (\_ -> InvalidBigTilePlacement anchorCell tile)
+        |> Result.mapError (\_ -> InvalidBigTilePlacement anchorCell tile.id)
 
 
-attemptPlaceLargeTileHelper : List PropagationStep -> Tilemap -> List ( Cell, SingleTile ) -> Result String ( List PropagationStep, Tilemap )
-attemptPlaceLargeTileHelper steps tilemap tileList =
-    case tileList of
-        [] ->
-            Ok ( steps, tilemap )
-
-        ( cell, currentTile ) :: remainingTiles ->
-            let
-                nextTilemapResult =
-                    tilemap
-                        |> attemptSubTileNeighborUpdate currentTile cell
-                        |> Result.map
-                            (\( nextSteps, tilemapWithNeighborUpdate ) ->
-                                let
-                                    -- TODO: ignoring actions
-                                    ( tile, _ ) =
-                                        Tile.new currentTile.id Tile.BuildInstantly
-                                in
-                                ( nextSteps, Tilemap.setTile cell tile tilemapWithNeighborUpdate )
-                            )
-            in
-            case nextTilemapResult of
-                Err _ ->
-                    nextTilemapResult
-
-                Ok ( nextSteps, nextTilemap ) ->
-                    attemptPlaceLargeTileHelper (steps ++ nextSteps) nextTilemap remainingTiles
+{-| Try to place a subgrid tile (of a large tile), generating more propagation steps
+-}
+attemptPlaceSubgridTile : Tilemap -> TileId -> Cell -> SingleTile -> Result PropagationFailure ( List PropagationStep, Tilemap )
+attemptPlaceSubgridTile tilemap largeTileId cell currentTile =
+    tilemap
+        |> attemptTileNeighborUpdate currentTile cell
+        |> Result.map
+            (\neighborSteps ->
+                let
+                    -- TODO: ignoring actions
+                    ( tile, _ ) =
+                        Tile.new currentTile.id Tile.BuildInstantly
+                in
+                ( neighborSteps, Tilemap.setTile cell tile tilemap )
+            )
+        |> Result.mapError (\_ -> InvalidBigTilePlacement cell largeTileId)
 
 
-attemptSubTileNeighborUpdate : SingleTile -> Cell -> Tilemap -> Result String ( List PropagationStep, Tilemap )
-attemptSubTileNeighborUpdate currentTile originCell tilemap =
+{-| Try to build a list of propagation steps for the tile's neighbor
+-}
+attemptTileNeighborUpdate : SingleTile -> Cell -> Tilemap -> Result String (List PropagationStep)
+attemptTileNeighborUpdate currentTile originCell tilemap =
     applyToNeighbor
         (\nuCtx neighborTileId ->
             let
@@ -622,16 +661,13 @@ attemptSubTileNeighborUpdate currentTile originCell tilemap =
             in
             if canDock nuCtx.tilemap (oppositeOrthogonalDirection nuCtx.dir) originSocket neighborTileId then
                 -- Tiles can dock, no tilemap update needed = skip
-                Ok ( nuCtx.steps, nuCtx.tilemap )
+                Ok nuCtx.steps
 
             else
                 Err "Can't dock fixed neighbor"
         )
         (\nuCtx _ ->
-            Ok
-                ( KeepMatching originCell nuCtx.neighborCell :: nuCtx.steps
-                , nuCtx.tilemap
-                )
+            Ok (KeepMatching originCell nuCtx.neighborCell :: nuCtx.steps)
         )
         originCell
         tilemap
@@ -717,6 +753,7 @@ propagationContextDebug :
     ->
         { position : List String
         , openSteps : List String
+        , previousSteps : List String
         }
 propagationContextDebug (Model modelDetails) =
     { position =
@@ -725,6 +762,7 @@ propagationContextDebug (Model modelDetails) =
         , Maybe.map orthogonalDirectionToString modelDetails.propagationDirection |> Maybe.withDefault "-"
         ]
     , openSteps = List.map stepDebug modelDetails.openSteps
+    , previousSteps = modelDetails.previousSteps |> Stack.toList |> List.map previousStepDebug
     }
 
 
@@ -733,11 +771,32 @@ stepDebug step =
     case step of
         PickTile cell tileConfig ->
             String.join " "
-                [ "PickTile"
+                [ "PickTile        "
                 , Cell.toString cell
-                , "tile config:"
                 , TileConfig.toString tileConfig
                 ]
 
+        PlaceSubgridTile cell singleTile largeTileId ->
+            String.join " "
+                [ "PlaceSubgridTile"
+                , Cell.toString cell
+                , "tile ID:"
+                , String.fromInt singleTile.id
+                , "large tile ID: "
+                , String.fromInt largeTileId
+                ]
+
         KeepMatching fromCell toCell ->
-            String.join " " [ "KeepMatching from:", Cell.toString fromCell, "to:", Cell.toString toCell ]
+            "KeepMatching     " ++ Cell.toString fromCell ++ " -> " ++ Cell.toString toCell
+
+
+previousStepDebug : ( PropagationStep, Nonempty TileId ) -> String
+previousStepDebug ( step, superpositionOptions ) =
+    let
+        optionsDebug =
+            superpositionOptions
+                |> List.Nonempty.toList
+                |> List.map String.fromInt
+                |> String.join ", "
+    in
+    stepDebug step ++ " / " ++ optionsDebug

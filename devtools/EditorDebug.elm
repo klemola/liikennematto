@@ -89,6 +89,16 @@ init _ =
     )
 
 
+propagateFrequencyMs : Float
+propagateFrequencyMs =
+    17
+
+
+propagateN : Int
+propagateN =
+    8
+
+
 tilemapConfig : TilemapConfig
 tilemapConfig =
     { horizontalCellsAmount = 14
@@ -106,7 +116,7 @@ subscriptions { mode } =
             Sub.none
 
         AutoPropagate ->
-            Time.every 17 (\_ -> Step)
+            Time.every propagateFrequencyMs (\_ -> Step)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -120,7 +130,7 @@ update msg model =
                             WFC.propagate model.wfcModel
 
                         AutoPropagate ->
-                            WFC.propagateN 5 model.wfcModel
+                            WFC.propagateN propagateN model.wfcModel
 
                 tilemap =
                     WFC.toTilemap wfcModel
@@ -254,7 +264,8 @@ view model =
     in
     Element.column
         [ Element.spacing 8 ]
-        [ Element.row [ Element.spacing 8 ]
+        [ Element.row
+            [ Element.spacing 8 ]
             [ render
             , sidePanel model.mode model.wfcModel
             ]
@@ -334,16 +345,29 @@ wfcState wfcModel =
 wfcPropagationContext : WFC.Model -> Element.Element Msg
 wfcPropagationContext wfcModel =
     let
-        { position, openSteps } =
+        { position, openSteps, previousSteps } =
             WFC.propagationContextDebug wfcModel
     in
-    Element.column [ Element.spacing 8 ]
+    Element.column
+        [ Element.width (Element.px 420)
+        , Element.spacing 8
+        , Element.Font.family [ Element.Font.monospace ]
+        , Element.Font.size 14
+        ]
         [ Element.column
             []
             (position |> List.map (\step -> Element.el [] (Element.text step)))
         , Element.column
             []
             (openSteps |> List.map (\step -> Element.el [] (Element.text step)))
+        , Element.column
+            [ Element.height (Element.fill |> Element.maximum 420)
+            , Element.width Element.fill
+            , Element.scrollbars
+            , Element.paddingXY 0 8
+            , Element.spacing 4
+            ]
+            (previousSteps |> List.map (\step -> Element.el [] (Element.text step)))
         ]
 
 
