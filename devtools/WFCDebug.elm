@@ -1,4 +1,4 @@
-module EditorDebug exposing (main)
+module WFCDebug exposing (main)
 
 import Browser
 import Data.Assets exposing (assetById, roads)
