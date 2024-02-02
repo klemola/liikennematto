@@ -96,7 +96,7 @@ stepFrequencyMs =
 
 stepN : Int
 stepN =
-    8
+    35
 
 
 tilemapConfig : TilemapConfig

@@ -50,7 +50,7 @@ type alias ModelDetails =
     , currentCell : Maybe Cell
     , targetCell : Maybe Cell
     , openSteps : List Step
-    , previousSteps : PreviousSteps
+    , previousSteps : Stack ( Step, Nonempty TileId )
     , state : WFCState
     , seed : Seed
     }
@@ -60,10 +60,6 @@ type Step
     = Collapse Cell TileConfig
     | CollapseSubgridCell Cell SingleTile TileId
     | PropagateConstraints Cell Cell
-
-
-type alias PreviousSteps =
-    Stack ( Step, Nonempty TileId )
 
 
 type WFCState
@@ -80,6 +76,7 @@ type WFCFailure
     | InvalidDirection
     | NoCandidates
     | TileNotFound
+    | BacktrackFailed
 
 
 init : TilemapConfig -> Model
@@ -128,21 +125,19 @@ step model =
                     -- Aknowledge failure, can resume
                     Model { modelDetails | state = Solving }
 
-                InvalidBigTilePlacement cell largeTileId ->
-                    case Tilemap.removeSuperpositionOption cell largeTileId modelDetails.tilemap of
-                        Ok tilemapWithRecovery ->
+                _ ->
+                    case backtrack modelDetails.previousSteps modelDetails.tilemap of
+                        Ok tilemapAfterBacktrack ->
                             Model
                                 { modelDetails
                                     | state = Solving
-                                    , tilemap = tilemapWithRecovery
+                                    , openSteps = []
+                                    , tilemap = tilemapAfterBacktrack
                                 }
 
                         Err _ ->
+                            -- Backtracking failed, no way to continue
                             Model { modelDetails | state = Failed wfcFailure }
-
-                -- No recovery strategy yet
-                _ ->
-                    Model { modelDetails | state = Failed wfcFailure }
 
         _ ->
             afterStep
@@ -373,19 +368,7 @@ solvedPredicate tile =
 
 stepSuperposition : Tilemap -> Step -> Maybe (Nonempty TileId)
 stepSuperposition tilemap theStep =
-    let
-        stepCell =
-            case theStep of
-                Collapse cell _ ->
-                    cell
-
-                CollapseSubgridCell cell _ _ ->
-                    cell
-
-                PropagateConstraints _ toCell ->
-                    toCell
-    in
-    Tilemap.tileAtAny tilemap stepCell
+    Tilemap.tileAtAny tilemap (stepCell theStep)
         |> Maybe.andThen
             (\tile ->
                 case tile.kind of
@@ -395,6 +378,93 @@ stepSuperposition tilemap theStep =
                     Tile.Superposition options ->
                         List.Nonempty.fromList options
             )
+
+
+stepCell : Step -> Cell
+stepCell theStep =
+    case theStep of
+        Collapse cell _ ->
+            cell
+
+        CollapseSubgridCell cell _ _ ->
+            cell
+
+        PropagateConstraints _ toCell ->
+            toCell
+
+
+stepTileId : Step -> Maybe TileId
+stepTileId theStep =
+    case theStep of
+        Collapse _ tileConfig ->
+            Just <| TileConfig.tileConfigId tileConfig
+
+        CollapseSubgridCell _ _ largeTileId ->
+            Just largeTileId
+
+        PropagateConstraints _ _ ->
+            Nothing
+
+
+
+--
+-- Backtracking
+--
+
+
+backtrack : Stack ( Step, Nonempty TileId ) -> Tilemap -> Result WFCFailure Tilemap
+backtrack previousSteps tilemap =
+    let
+        ( stepCtx, previousSteps_ ) =
+            Stack.pop previousSteps
+    in
+    case stepCtx of
+        Nothing ->
+            Err BacktrackFailed
+
+        Just ( theStep, previousSuperposition ) ->
+            let
+                ( remainingSuperposition, reverted ) =
+                    revertStep theStep previousSuperposition tilemap
+
+                backtrackedEnough =
+                    case theStep of
+                        Collapse _ _ ->
+                            not <| List.isEmpty remainingSuperposition
+
+                        _ ->
+                            False
+            in
+            if backtrackedEnough then
+                Ok reverted
+
+            else
+                backtrack previousSteps_ reverted
+
+
+revertStep : Step -> Nonempty TileId -> Tilemap -> ( List TileId, Tilemap )
+revertStep theStep previousSuperposition tilemap =
+    let
+        targetCell =
+            stepCell theStep
+
+        maybeTileId =
+            stepTileId theStep
+
+        psList =
+            List.Nonempty.toList previousSuperposition
+
+        nextSuperpositionOptions =
+            case maybeTileId of
+                Just tileId ->
+                    List.filter (\superpositionOption -> superpositionOption /= tileId) psList
+
+                Nothing ->
+                    psList
+    in
+    ( nextSuperpositionOptions
+    , Tilemap.setSuperpositionOptions targetCell nextSuperpositionOptions tilemap
+    )
 
 
 
@@ -732,6 +802,9 @@ wfcFailureToString wfcFailure =
 
         NoCandidates ->
             "No candidates available"
+
+        BacktrackFailed ->
+            "Backtrack failed"
 
 
 contextDebug :
