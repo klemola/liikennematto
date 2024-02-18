@@ -3,7 +3,7 @@ module WFCDebug exposing (main)
 import Browser
 import Data.Assets exposing (assetById, roads)
 import Data.Colors
-import Data.TileSet exposing (allTiles, defaultTile, pairingsForSocket)
+import Data.TileSet exposing (allTiles, pairingsForSocket)
 import Editor.WFC as WFC
 import Element
 import Element.Background
@@ -70,6 +70,10 @@ main =
         }
 
 
+initialSeed =
+    Random.initialSeed 131
+
+
 init : () -> ( Model, Cmd Msg )
 init _ =
     let
@@ -80,7 +84,7 @@ init _ =
             RenderCache.new world roads
                 |> RenderCache.setTileListFilter Tilemap.NoFilter
     in
-    ( { wfcModel = WFC.init tilemapConfig
+    ( { wfcModel = WFC.init tilemapConfig initialSeed
       , mode = Manual
       , world = world
       , cache = cache
@@ -96,16 +100,13 @@ stepFrequencyMs =
 
 stepN : Int
 stepN =
-    35
+    6
 
 
 tilemapConfig : TilemapConfig
 tilemapConfig =
     { horizontalCellsAmount = 14
     , verticalCellsAmount = 10
-    , initialSeed = Random.initialSeed 131
-    , defaultTile = defaultTile
-    , tiles = allTiles
     }
 
 
@@ -178,13 +179,8 @@ update msg model =
             let
                 seed =
                     Random.initialSeed <| Time.posixToMillis posix
-
-                tilemapConfigWithSeed =
-                    { tilemapConfig
-                        | initialSeed = seed
-                    }
             in
-            ( { model | wfcModel = WFC.init tilemapConfigWithSeed }
+            ( { model | wfcModel = WFC.init tilemapConfig seed }
             , Task.succeed () |> Task.perform (\_ -> Step)
             )
 
@@ -203,13 +199,8 @@ update msg model =
                 seed =
                     Random.initialSeed <| Time.posixToMillis posix
 
-                tilemapConfigWithSeed =
-                    { tilemapConfig
-                        | initialSeed = seed
-                    }
-
                 solveResult =
-                    WFC.solve tilemapConfigWithSeed
+                    WFC.solve tilemapConfig seed
 
                 tilemap =
                     WFC.toTilemap solveResult

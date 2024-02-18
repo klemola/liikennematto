@@ -1,8 +1,18 @@
 module Data.TileSet exposing
-    ( allTiles
+    ( allTileIds
+    , allTiles
     , allTilesAndMetaTiles
+    , bottomEdgeTileIds
+    , bottomLeftCornerTileIds
+    , bottomRightCornerTileIds
+    , defaultSocket
     , defaultTile
+    , leftEdgeTileIds
     , pairingsForSocket
+    , rightEdgeTileIds
+    , topEdgeTileIds
+    , topLeftCornerTileIds
+    , topRightCornerTileIds
     )
 
 import Array
@@ -10,7 +20,13 @@ import Model.TileConfig as TileConfig
     exposing
         ( Socket(..)
         , TileConfig
+        , TileId
         )
+
+
+defaultSocket : Socket
+defaultSocket =
+    Green
 
 
 largeTileInnerEdgeSocket : Socket
@@ -62,7 +78,17 @@ pairingsForSocket socket =
             []
 
 
-mirroredHorizontally : Int -> TileConfig -> TileConfig
+defaultTile : TileConfig
+defaultTile =
+    grass
+
+
+defaultTileId : TileId
+defaultTileId =
+    0
+
+
+mirroredHorizontally : TileId -> TileConfig -> TileConfig
 mirroredHorizontally id tileConfig =
     case tileConfig of
         TileConfig.Single { sockets, complexity, baseTileId } ->
@@ -77,7 +103,7 @@ mirroredHorizontally id tileConfig =
             tileConfig
 
 
-mirroredVertically : Int -> TileConfig -> TileConfig
+mirroredVertically : TileId -> TileConfig -> TileConfig
 mirroredVertically id tileConfig =
     case tileConfig of
         TileConfig.Single { sockets, complexity, baseTileId } ->
@@ -92,7 +118,7 @@ mirroredVertically id tileConfig =
             tileConfig
 
 
-rotatedClockwise : Int -> TileConfig -> TileConfig
+rotatedClockwise : TileId -> TileConfig -> TileConfig
 rotatedClockwise id tileConfig =
     case tileConfig of
         TileConfig.Single { sockets, complexity, baseTileId } ->
@@ -158,14 +184,90 @@ allTilesAndMetaTiles =
            ]
 
 
-defaultTile : TileConfig
-defaultTile =
-    grass
+allTileIds : List TileId
+allTileIds =
+    List.map TileConfig.tileConfigId allTiles
 
 
-defaultTileId : Int
-defaultTileId =
-    0
+topLeftCornerTileIds : List TileId
+topLeftCornerTileIds =
+    List.filterMap
+        (compatibleTileId
+            (\sockets -> sockets.top == defaultSocket && sockets.left == defaultSocket)
+        )
+        allTiles
+
+
+topRightCornerTileIds : List TileId
+topRightCornerTileIds =
+    List.filterMap
+        (compatibleTileId
+            (\sockets -> sockets.top == defaultSocket && sockets.right == defaultSocket)
+        )
+        allTiles
+
+
+bottomLeftCornerTileIds : List TileId
+bottomLeftCornerTileIds =
+    List.filterMap
+        (compatibleTileId
+            (\sockets -> sockets.bottom == defaultSocket && sockets.left == defaultSocket)
+        )
+        allTiles
+
+
+bottomRightCornerTileIds : List TileId
+bottomRightCornerTileIds =
+    List.filterMap
+        (compatibleTileId
+            (\sockets -> sockets.bottom == defaultSocket && sockets.right == defaultSocket)
+        )
+        allTiles
+
+
+leftEdgeTileIds : List TileId
+leftEdgeTileIds =
+    List.filterMap
+        (compatibleTileId
+            (\sockets -> sockets.left == defaultSocket)
+        )
+        allTiles
+
+
+rightEdgeTileIds : List TileId
+rightEdgeTileIds =
+    List.filterMap
+        (compatibleTileId
+            (\sockets -> sockets.right == defaultSocket)
+        )
+        allTiles
+
+
+topEdgeTileIds : List TileId
+topEdgeTileIds =
+    List.filterMap
+        (compatibleTileId
+            (\sockets -> sockets.top == defaultSocket)
+        )
+        allTiles
+
+
+bottomEdgeTileIds : List TileId
+bottomEdgeTileIds =
+    List.filterMap
+        (compatibleTileId
+            (\sockets -> sockets.bottom == defaultSocket)
+        )
+        allTiles
+
+
+compatibleTileId : (TileConfig.Sockets -> Bool) -> TileConfig -> Maybe TileId
+compatibleTileId matcher tc =
+    if matcher (TileConfig.sockets tc) then
+        Just (TileConfig.tileConfigId tc)
+
+    else
+        Nothing
 
 
 

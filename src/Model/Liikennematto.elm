@@ -15,7 +15,6 @@ module Model.Liikennematto exposing
 
 import Data.Assets exposing (roadsLegacy)
 import Data.Defaults exposing (horizontalCellsAmount, verticalCellsAmount)
-import Data.TileSet exposing (allTiles, defaultTile)
 import Duration exposing (Duration)
 import FSM exposing (FSM)
 import Model.Debug exposing (DebugState, initialDebugState)
@@ -24,7 +23,6 @@ import Model.Flags exposing (Flags, RuntimeEnvironment(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Screen as Screen exposing (Screen)
 import Model.World as World exposing (World)
-import Random
 import Time
 
 
@@ -210,9 +208,6 @@ triggerLoading model =
 tilemapConfig =
     { horizontalCellsAmount = horizontalCellsAmount
     , verticalCellsAmount = verticalCellsAmount
-    , initialSeed = Random.initialSeed 0
-    , defaultTile = defaultTile
-    , tiles = allTiles
     }
 
 

@@ -14,7 +14,7 @@ module Editor.WFC exposing
 
 import Array
 import Common exposing (attemptFoldList, attemptMapList)
-import Data.TileSet exposing (allTilesAndMetaTiles, defaultTile, pairingsForSocket)
+import Data.TileSet exposing (allTiles, allTilesAndMetaTiles, defaultTile, pairingsForSocket)
 import List.Extra
 import List.Nonempty exposing (Nonempty)
 import Model.Cell as Cell exposing (Cell)
@@ -79,8 +79,8 @@ type WFCFailure
     | BacktrackFailed
 
 
-init : TilemapConfig -> Model
-init tilemapConfig =
+init : TilemapConfig -> Random.Seed -> Model
+init tilemapConfig initialSeed =
     Model
         { tilemap = Tilemap.empty tilemapConfig
         , currentCell = Nothing
@@ -88,17 +88,17 @@ init tilemapConfig =
         , openSteps = []
         , previousSteps = Stack.empty
         , state = Solving
-        , seed = tilemapConfig.initialSeed
+        , seed = initialSeed
         }
 
 
 {-| Tries to solve/fill the whole grid in one go by assigning a tile to each position
 -}
-solve : TilemapConfig -> Model
-solve tilemapConfig =
+solve : TilemapConfig -> Random.Seed -> Model
+solve tilemapConfig initialSeed =
     let
         nextModel =
-            step <| init tilemapConfig
+            step <| init tilemapConfig initialSeed
     in
     solve_ nextModel
 
@@ -561,7 +561,7 @@ nextCandidates tilemap =
                             ( candidates, minEntropy )
     in
     tilemap
-        |> Tilemap.fold toCandidate ( [], List.length tilemapConfig.tiles + 1 )
+        |> Tilemap.fold toCandidate ( [], List.length allTiles + 1 )
         |> Tuple.first
 
 

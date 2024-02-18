@@ -14,7 +14,6 @@ import CubicSpline2d exposing (ArcLengthParameterized, Nondegenerate)
 import Data.Assets exposing (roadsLegacy)
 import Data.Cars exposing (testCar)
 import Data.Colors as Colors
-import Data.TileSet exposing (allTiles, defaultTile)
 import Direction2d
 import Duration exposing (Duration)
 import Html exposing (Html)
@@ -25,7 +24,6 @@ import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.World as World exposing (World)
 import Point2d
 import Quantity
-import Random
 import Render
 import Render.Conversion exposing (toPixelsValue)
 import Render.Shape
@@ -60,9 +58,6 @@ world =
     World.empty
         { horizontalCellsAmount = 4
         , verticalCellsAmount = 4
-        , initialSeed = Random.initialSeed 0
-        , defaultTile = defaultTile
-        , tiles = allTiles
         }
 
 

@@ -35,16 +35,17 @@ import Array.Extra as Array
 import BoundingBox2d
 import Collection exposing (Id)
 import Common
+import Data.TileSet as TileSet
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Duration exposing (Duration)
 import FSM
 import Length exposing (Length)
 import Maybe.Extra as Maybe
-import Model.Cell as Cell exposing (Cell, CellCoordinates)
+import Model.Cell as Cell exposing (Boundary(..), Cell, CellCoordinates)
 import Model.Geometry
     exposing
-        ( DiagonalDirection
+        ( DiagonalDirection(..)
         , LMBoundingBox2d
         , OrthogonalDirection(..)
         , diagonalDirections
@@ -56,10 +57,9 @@ import Model.Tile as Tile
         , TileOperation
         , chooseTileKind
         )
-import Model.TileConfig exposing (TileConfig, TileId, tileConfigId)
+import Model.TileConfig exposing (TileId)
 import Point2d
 import Quantity
-import Random
 
 
 type Tilemap
@@ -76,9 +76,6 @@ type Tilemap
 type alias TilemapConfig =
     { horizontalCellsAmount : Int
     , verticalCellsAmount : Int
-    , initialSeed : Random.Seed
-    , defaultTile : TileConfig
-    , tiles : List TileConfig
     }
 
 
@@ -93,12 +90,9 @@ empty tilemapConfig =
 
         arrSize =
             tilemapConfig.horizontalCellsAmount * tilemapConfig.verticalCellsAmount
-
-        tileFill =
-            Tile.init (superposition tilemapConfig.tiles)
     in
     Tilemap
-        { cells = Array.initialize arrSize (always tileFill)
+        { cells = Array.initialize arrSize (initTile tilemapConfig)
         , anchors = Dict.empty
         , width = width
         , height = height
@@ -107,11 +101,44 @@ empty tilemapConfig =
         }
 
 
-superposition : List TileConfig -> TileKind
-superposition tileConfigs =
-    tileConfigs
-        |> List.map tileConfigId
-        |> Superposition
+initTile : TilemapConfig -> Int -> Tile
+initTile tilemapConfig index =
+    index
+        |> Cell.fromArray1DIndexUnsafe tilemapConfig
+        |> Cell.connectedBounds tilemapConfig
+        |> Maybe.map boundarySuperposition
+        |> Maybe.withDefault (Superposition TileSet.allTileIds)
+        |> Tile.init
+
+
+boundarySuperposition : Cell.Boundary -> TileKind
+boundarySuperposition boundary =
+    Superposition
+        (case boundary of
+            Corner TopLeft ->
+                TileSet.topLeftCornerTileIds
+
+            Corner TopRight ->
+                TileSet.topRightCornerTileIds
+
+            Corner BottomLeft ->
+                TileSet.bottomLeftCornerTileIds
+
+            Corner BottomRight ->
+                TileSet.bottomRightCornerTileIds
+
+            Edge Left ->
+                TileSet.leftEdgeTileIds
+
+            Edge Right ->
+                TileSet.rightEdgeTileIds
+
+            Edge Up ->
+                TileSet.topEdgeTileIds
+
+            Edge Down ->
+                TileSet.bottomEdgeTileIds
+        )
 
 
 fromCells : TilemapConfig -> List Cell -> Tilemap
@@ -420,7 +447,7 @@ update delta tilemap =
 
         cellsUpdate =
             Array.foldl
-                (updateTile delta currentTilemap.config)
+                (updateTile delta)
                 { nextTiles = Array.empty
                 , actions = []
                 , emptiedIndices = []
@@ -459,8 +486,8 @@ update delta tilemap =
     }
 
 
-updateTile : Duration -> TilemapConfig -> Tile -> TilemapUpdate -> TilemapUpdate
-updateTile delta tilemapConfig tile tilemapUpdate =
+updateTile : Duration -> Tile -> TilemapUpdate -> TilemapUpdate
+updateTile delta tile tilemapUpdate =
     let
         idx =
             Array.length tilemapUpdate.nextTiles
@@ -473,7 +500,7 @@ updateTile delta tilemapConfig tile tilemapUpdate =
 
         nextTile =
             if isRemoved then
-                Tile.init (superposition tilemapConfig.tiles)
+                Tile.init (Superposition TileSet.allTileIds)
 
             else
                 { kind = tile.kind

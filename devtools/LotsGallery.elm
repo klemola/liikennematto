@@ -5,7 +5,6 @@ import Color
 import Data.Assets exposing (roadsLegacy)
 import Data.Colors as Colors
 import Data.Lots exposing (NewLot)
-import Data.TileSet exposing (allTiles, defaultTile)
 import Model.Cell as Cell
 import Model.Geometry exposing (OrthogonalDirection(..))
 import Model.Lot exposing (Lot, ParkingSpot)
@@ -13,7 +12,6 @@ import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Tilemap exposing (TilemapConfig)
 import Model.World as World exposing (World)
 import Quantity
-import Random
 import Render
 import Render.Shape
 import Svg exposing (Svg)
@@ -33,9 +31,6 @@ tilemapConfig =
             |> List.map lotHeightCells
             |> List.map ((+) 1)
             |> List.sum
-    , initialSeed = Random.initialSeed 0
-    , defaultTile = defaultTile
-    , tiles = allTiles
     }
 
 

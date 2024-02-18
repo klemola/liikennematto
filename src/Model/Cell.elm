@@ -1,11 +1,13 @@
 module Model.Cell exposing
-    ( Cell
+    ( Boundary(..)
+    , Cell
     , CellCoordinates
     , Constraints
     , array1DIndex
     , bottomLeftCorner
     , boundingBox
     , centerPoint
+    , connectedBounds
     , coordinates
     , fromArray1DIndex
     , fromArray1DIndexUnsafe
@@ -65,6 +67,16 @@ type alias Constraints a =
 size : Length
 size =
     Length.meters 16
+
+
+minX : Int
+minX =
+    1
+
+
+minY : Int
+minY =
+    1
 
 
 
@@ -286,6 +298,60 @@ placeIn globalConstraints globalOrigin (Cell cellProperties) =
 isValidCoordinate : Int -> Int -> Bool
 isValidCoordinate coordinate cellsAmount =
     coordinate > 0 && coordinate <= cellsAmount
+
+
+type Boundary
+    = Corner DiagonalDirection
+    | Edge OrthogonalDirection
+
+
+{-| Defines the the connected bounds, if the cell is positioned at the edge of the bounding grid.
+-}
+connectedBounds : Constraints a -> Cell -> Maybe Boundary
+connectedBounds constraints (Cell cellProperties) =
+    let
+        leftBoundConnects =
+            cellProperties.x == minX
+
+        rightBoundConnects =
+            cellProperties.x == constraints.horizontalCellsAmount
+
+        topBoundConnects =
+            cellProperties.y == minY
+
+        bottomBoundConnects =
+            cellProperties.y == constraints.verticalCellsAmount
+    in
+    case [ leftBoundConnects, rightBoundConnects, topBoundConnects, bottomBoundConnects ] of
+        -- Check corners
+        [ True, False, True, False ] ->
+            Just (Corner TopLeft)
+
+        [ False, True, True, False ] ->
+            Just (Corner TopRight)
+
+        [ True, False, False, True ] ->
+            Just (Corner BottomLeft)
+
+        [ False, True, False, True ] ->
+            Just (Corner BottomRight)
+
+        -- Otherwise, check the edges
+        [ True, False, False, False ] ->
+            Just (Edge Left)
+
+        [ False, True, False, False ] ->
+            Just (Edge Right)
+
+        [ False, False, True, False ] ->
+            Just (Edge Up)
+
+        [ False, False, False, True ] ->
+            Just (Edge Down)
+
+        -- No contact (or illogical contact e.g. all sides)
+        _ ->
+            Nothing
 
 
 coordinates : Cell -> CellCoordinates
