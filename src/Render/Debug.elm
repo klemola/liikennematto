@@ -363,20 +363,21 @@ renderWFC cache =
 renderTile : RenderCache -> Cell -> TileKind -> Svg ()
 renderTile cache cell tileKind =
     let
-        tileSizePixels =
-            toPixelsValue cache.pixelsToMetersRatio Cell.size
-
         { x, y } =
             Cell.bottomLeftCorner cell |> pointToPixels cache.pixelsToMetersRatio
-
-        yAdjusted =
-            cache.tilemapHeightPixels - tileSizePixels - y
     in
     case tileKind of
         Fixed _ ->
             nothing
 
         Superposition tileIds ->
+            let
+                tileSizePixels =
+                    toPixelsValue cache.pixelsToMetersRatio Cell.size
+
+                yAdjusted =
+                    cache.tilemapHeightPixels - tileSizePixels - y
+            in
             renderSuperposition { size = tileSizePixels, x = x, y = yAdjusted } tileIds
 
 

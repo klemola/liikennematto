@@ -1,4 +1,4 @@
-module CellTests exposing (..)
+module CellTests exposing (suite)
 
 import Expect
 import Model.Cell as Cell exposing (Boundary(..))

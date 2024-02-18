@@ -22,7 +22,6 @@ module Model.Tile exposing
     , potentialConnections
     , transitionTimer
     , updateTileId
-    , updateTileKind
     )
 
 import Audio exposing (Sound)
@@ -107,20 +106,6 @@ updateTileId nextTileId tile =
     case FSM.transitionTo (FSM.getId changing) tile.fsm of
         Ok ( nextFSM, actions ) ->
             ( { kind = Fixed nextTileId
-              , fsm = nextFSM
-              }
-            , actions
-            )
-
-        Err _ ->
-            ( tile, [] )
-
-
-updateTileKind : TileKind -> Tile -> ( Tile, List Action )
-updateTileKind nextKind tile =
-    case FSM.transitionTo (FSM.getId changing) tile.fsm of
-        Ok ( nextFSM, actions ) ->
-            ( { kind = nextKind
               , fsm = nextFSM
               }
             , actions

@@ -5,7 +5,6 @@ module Data.TileSet exposing
     , bottomEdgeTileIds
     , bottomLeftCornerTileIds
     , bottomRightCornerTileIds
-    , defaultSocket
     , defaultTile
     , leftEdgeTileIds
     , pairingsForSocket

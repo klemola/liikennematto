@@ -529,9 +529,6 @@ toWeightedOptions tilemap options =
 nextCandidates : Tilemap -> List Candidate
 nextCandidates tilemap =
     let
-        tilemapConfig =
-            Tilemap.config tilemap
-
         toCandidate cell tile ( candidates, minEntropy ) =
             case tile.kind of
                 Fixed _ ->

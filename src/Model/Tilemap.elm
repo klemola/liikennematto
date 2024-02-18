@@ -19,7 +19,6 @@ module Model.Tilemap exposing
     , inBounds
     , intersects
     , removeAnchor
-    , removeSuperpositionOption
     , removeTile
     , setSuperpositionOptions
     , setTile
@@ -371,34 +370,6 @@ updateCell cell tile tilemap =
             Cell.array1DIndex tilemapContents.config cell
     in
     Tilemap { tilemapContents | cells = tilemapContents.cells |> Array.set idx tile }
-
-
-removeSuperpositionOption : Cell -> TileId -> Tilemap -> Result String Tilemap
-removeSuperpositionOption cell tileId tilemap =
-    case tileAtAny tilemap cell of
-        Just tile ->
-            case tile.kind of
-                Fixed _ ->
-                    -- No need to fail here, can continue
-                    Ok tilemap
-
-                Superposition options ->
-                    let
-                        nextOptions =
-                            List.filter (\optionTileId -> optionTileId /= tileId) options
-                    in
-                    if List.isEmpty nextOptions then
-                        Err "Superposition option was removed but there are no options left"
-
-                    else
-                        Ok
-                            (updateCell cell
-                                { tile | kind = Superposition nextOptions }
-                                tilemap
-                            )
-
-        Nothing ->
-            Err "Tile not found"
 
 
 setSuperpositionOptions : Cell -> List TileId -> Tilemap -> Tilemap
