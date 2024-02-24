@@ -1,4 +1,4 @@
-module Editor.WFC exposing
+module WFC exposing
     ( Model
     , contextDebug
     , failed

@@ -4,7 +4,6 @@ import Browser
 import Data.Assets exposing (assetById, roads)
 import Data.Colors
 import Data.TileSet exposing (allTiles, pairingsForSocket)
-import Editor.WFC as WFC
 import Element
 import Element.Background
 import Element.Border as Border
@@ -35,6 +34,7 @@ import Svg
 import Svg.Attributes
 import Task
 import Time
+import WFC
 
 
 type Msg
