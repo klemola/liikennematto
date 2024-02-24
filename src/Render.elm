@@ -7,10 +7,10 @@ module Render exposing
 import Angle
 import Collection exposing (Collection)
 import Color
+import Data.Assets exposing (assetById)
 import Data.Cars exposing (CarMake, carAsset)
 import Data.Colors as Colors
 import Data.Lots exposing (lotAsset)
-import Data.Roads exposing (roadAsset)
 import Graph exposing (Node)
 import Html exposing (Html)
 import Length exposing (Length)
@@ -30,7 +30,7 @@ import Model.RoadNetwork
         , RoadNetwork
         , TrafficControl(..)
         )
-import Model.Tile exposing (TileKind)
+import Model.Tile exposing (TileKind(..))
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..))
 import Model.World exposing (World)
 import Quantity
@@ -73,7 +73,7 @@ styles =
 --
 
 
-view : World -> RenderCache -> DynamicTilesPresentation -> Html msg
+view : World -> RenderCache -> DynamicTilesPresentation -> Html ()
 view { cars, lots, roadNetwork, trafficLights } cache dynamicTiles =
     let
         tilemapWidth =
@@ -104,7 +104,7 @@ view { cars, lots, roadNetwork, trafficLights } cache dynamicTiles =
 --
 
 
-renderTilemap : RenderCache -> Svg msg
+renderTilemap : RenderCache -> Svg ()
 renderTilemap cache =
     cache.tilemap
         |> List.map
@@ -116,46 +116,52 @@ renderTilemap cache =
         |> Svg.Keyed.node "g" []
 
 
-renderTile : RenderCache -> Cell -> TileKind -> Svg msg
+renderTile : RenderCache -> Cell -> TileKind -> Svg ()
 renderTile cache cell tileKind =
     let
-        tileSizePixels =
-            toPixelsValue cache.pixelsToMetersRatio Cell.size
-
         { x, y } =
             Cell.bottomLeftCorner cell |> pointToPixels cache.pixelsToMetersRatio
-
-        yAdjusted =
-            cache.tilemapHeightPixels - tileSizePixels - y
     in
-    tileElement
-        tileSizePixels
-        { x = x
-        , y = yAdjusted
-        , tileIndex = tileKind
-        , tileStyles = ""
-        }
+    case tileKind of
+        Fixed tileId ->
+            let
+                tileSizePixels =
+                    toPixelsValue cache.pixelsToMetersRatio Cell.size
+
+                yAdjusted =
+                    cache.tilemapHeightPixels - tileSizePixels - y
+            in
+            tileElement
+                tileSizePixels
+                { x = x
+                , y = yAdjusted
+                , asset = assetById cache.roadAssets tileId
+                , tileStyles = ""
+                }
+
+        Superposition _ ->
+            nothing
 
 
-renderDynamicTiles : RenderCache -> DynamicTilesPresentation -> Svg msg
+renderDynamicTiles : RenderCache -> DynamicTilesPresentation -> Svg ()
 renderDynamicTiles cache tiles =
     tiles
         |> List.map
-            (\( cell, tileKind, maybeAnimation ) ->
+            (\( cell, tileId, maybeAnimation ) ->
                 ( Cell.toString cell
                 , case maybeAnimation of
                     Just animation ->
-                        renderAnimatedTile cache cell tileKind animation
+                        renderAnimatedTile cache cell (assetById cache.roadAssets tileId) animation
 
                     Nothing ->
-                        renderTile cache cell tileKind
+                        renderTile cache cell (Fixed tileId)
                 )
             )
         |> Svg.Keyed.node "g" []
 
 
-renderAnimatedTile : RenderCache -> Cell -> TileKind -> Animation -> Svg msg
-renderAnimatedTile cache cell tileKind animation =
+renderAnimatedTile : RenderCache -> Cell -> List (Svg msg) -> Animation -> Svg msg
+renderAnimatedTile cache cell asset animation =
     let
         tileSizePixels =
             toPixelsValue cache.pixelsToMetersRatio Cell.size
@@ -194,7 +200,7 @@ renderAnimatedTile cache cell tileKind animation =
             tileSizePixels
             { x = x
             , y = yAdjusted
-            , tileIndex = tileKind
+            , asset = asset
             , tileStyles = tileStyles
             }
         , overflowTile
@@ -252,8 +258,8 @@ animationOverflowTile { tileSizePixels, baseX, baseY } animationDirection =
     )
 
 
-tileElement : Float -> { x : Float, y : Float, tileIndex : Int, tileStyles : String } -> Svg msg
-tileElement tileSizePixels { x, y, tileIndex, tileStyles } =
+tileElement : Float -> { x : Float, y : Float, asset : List (Svg msg), tileStyles : String } -> Svg msg
+tileElement tileSizePixels { x, y, asset, tileStyles } =
     Svg.g
         [ Attributes.style tileStyles
         ]
@@ -264,7 +270,7 @@ tileElement tileSizePixels { x, y, tileIndex, tileStyles } =
             , Attributes.height (String.fromFloat tileSizePixels)
             , Attributes.viewBox "0 0 256 256"
             ]
-            (roadAsset tileIndex)
+            asset
         ]
 
 

@@ -59,7 +59,7 @@ attemptBuildLot time world newLot =
                         else
                             Nothing
                     )
-                    Tilemap.NoFilter
+                    Tilemap.StaticTiles
                 |> Maybe.values
 
         ( shuffledAnchors, _ ) =

@@ -2,12 +2,14 @@ module LotsGallery exposing (main)
 
 import Collection exposing (Id, nextId)
 import Color
+import Data.Assets exposing (roadsLegacy)
 import Data.Colors as Colors
 import Data.Lots exposing (NewLot)
 import Model.Cell as Cell
 import Model.Geometry exposing (OrthogonalDirection(..))
 import Model.Lot exposing (Lot, ParkingSpot)
 import Model.RenderCache as RenderCache exposing (RenderCache)
+import Model.Tilemap exposing (TilemapConfig)
 import Model.World as World exposing (World)
 import Quantity
 import Render
@@ -21,7 +23,7 @@ gallerySpotWidth =
     6
 
 
-tilemapConfig : { horizontalCellsAmount : Int, verticalCellsAmount : Int }
+tilemapConfig : TilemapConfig
 tilemapConfig =
     { horizontalCellsAmount = gallerySpotWidth
     , verticalCellsAmount =
@@ -39,7 +41,7 @@ world =
 
 renderCache : RenderCache
 renderCache =
-    RenderCache.new world
+    RenderCache.new world roadsLegacy
 
 
 tilemapWidthStr : String

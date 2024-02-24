@@ -1,18 +1,27 @@
 module Model.Cell exposing
-    ( Cell
+    ( Boundary(..)
+    , Cell
     , CellCoordinates
     , Constraints
+    , array1DIndex
     , bottomLeftCorner
     , boundingBox
     , centerPoint
+    , connectedBounds
     , coordinates
+    , fromArray1DIndex
+    , fromArray1DIndexUnsafe
     , fromCoordinates
     , fromCoordinatesSet
+    , fromCoordinatesUnsafe
     , identical
     , nextOrthogonalCell
+    , orthogonalDirection
+    , placeIn
     , quadrantNeighbors
     , size
     , toString
+    , translateBy
     )
 
 import Common
@@ -50,14 +59,24 @@ type alias CellCoordinates =
 type alias Constraints a =
     -- The partial record definition allows one to pass a larger config record as constraints, for convenience
     { a
-        | verticalCellsAmount : Int
-        , horizontalCellsAmount : Int
+        | horizontalCellsAmount : Int
+        , verticalCellsAmount : Int
     }
 
 
 size : Length
 size =
     Length.meters 16
+
+
+minX : Int
+minX =
+    1
+
+
+minY : Int
+minY =
+    1
 
 
 
@@ -76,36 +95,43 @@ fromCoordinates constraints cellCoordinates =
         isValidCoordinate x constraints.horizontalCellsAmount
             && isValidCoordinate y constraints.verticalCellsAmount
     then
-        let
-            bottomLeftCornerPoint =
-                if x > 0 && y > 0 then
-                    let
-                        yMultiplier =
-                            (constraints.verticalCellsAmount - y) |> toFloat
-
-                        xMultiplier =
-                            (x - 1) |> toFloat
-                    in
-                    Point2d.xy
-                        (size |> Quantity.multiplyBy xMultiplier)
-                        (size |> Quantity.multiplyBy yMultiplier)
-
-                else
-                    -- When Cells are built from coordinates, the coordinates are required to be positive.
-                    -- Invalid input results in a fallback value that is guaranteed to be outside the tilemap.
-                    Point2d.xy negativeInfinity negativeInfinity
-
-            cellProperties =
-                { x = x
-                , y = y
-                , bottomLeftCorner = bottomLeftCornerPoint
-                , boundingBox = Common.boundingBoxWithDimensions size size bottomLeftCornerPoint
-                }
-        in
-        Just (Cell cellProperties)
+        Just (Cell (buildCellProperties constraints cellCoordinates))
 
     else
         Nothing
+
+
+fromCoordinatesUnsafe : Constraints a -> CellCoordinates -> Cell
+fromCoordinatesUnsafe constraints cellCoordinates =
+    Cell (buildCellProperties constraints cellCoordinates)
+
+
+buildCellProperties : Constraints a -> CellCoordinates -> CellProperties
+buildCellProperties constraints ( x, y ) =
+    let
+        bottomLeftCornerPoint =
+            if x > 0 && y > 0 then
+                let
+                    yMultiplier =
+                        (constraints.verticalCellsAmount - y) |> toFloat
+
+                    xMultiplier =
+                        (x - 1) |> toFloat
+                in
+                Point2d.xy
+                    (size |> Quantity.multiplyBy xMultiplier)
+                    (size |> Quantity.multiplyBy yMultiplier)
+
+            else
+                -- When Cells are built from coordinates, the coordinates are required to be positive.
+                -- Invalid input results in a fallback value that is guaranteed to be outside the tilemap.
+                Point2d.xy negativeInfinity negativeInfinity
+    in
+    { x = x
+    , y = y
+    , bottomLeftCorner = bottomLeftCornerPoint
+    , boundingBox = Common.boundingBoxWithDimensions size size bottomLeftCornerPoint
+    }
 
 
 fromCoordinatesSet : Constraints a -> Set CellCoordinates -> List Cell
@@ -121,6 +147,50 @@ fromCoordinatesSet constraints set =
         )
         []
         set
+
+
+fromArray1DIndex : Constraints a -> Int -> Maybe Cell
+fromArray1DIndex constraints idx =
+    let
+        coordinatesZeroIndexed =
+            { x = idx |> remainderBy constraints.horizontalCellsAmount
+            , y = idx // constraints.horizontalCellsAmount
+            }
+
+        yPadding =
+            if coordinatesZeroIndexed.y == constraints.verticalCellsAmount then
+                0
+
+            else
+                1
+    in
+    -- Cells are 1-indexed - map the coordinates to match
+    fromCoordinates constraints
+        ( coordinatesZeroIndexed.x + 1
+        , coordinatesZeroIndexed.y + yPadding
+        )
+
+
+fromArray1DIndexUnsafe : Constraints a -> Int -> Cell
+fromArray1DIndexUnsafe constraints idx =
+    let
+        coordinatesZeroIndexed =
+            { x = idx |> remainderBy constraints.horizontalCellsAmount
+            , y = idx // constraints.horizontalCellsAmount
+            }
+
+        yPadding =
+            if coordinatesZeroIndexed.y == constraints.verticalCellsAmount then
+                0
+
+            else
+                1
+    in
+    -- Cells are 1-indexed - map the coordinates to match
+    fromCoordinatesUnsafe constraints
+        ( coordinatesZeroIndexed.x + 1
+        , coordinatesZeroIndexed.y + yPadding
+        )
 
 
 nextOrthogonalCell : Constraints a -> OrthogonalDirection -> Cell -> Maybe Cell
@@ -200,6 +270,25 @@ quadrantNeighbors constraints dir origin =
                 ]
 
 
+translateBy : Constraints a -> CellCoordinates -> Cell -> Maybe Cell
+translateBy constraints ( offsetX, offsetY ) (Cell cellProperties) =
+    fromCoordinates constraints
+        ( cellProperties.x + offsetX
+        , cellProperties.y + offsetY
+        )
+
+
+{-| Given a global grid and (local) subgrid, place subgrid cell into global space relative to the global origin
+-}
+placeIn : Constraints a -> Cell -> Cell -> Maybe Cell
+placeIn globalConstraints globalOrigin (Cell cellProperties) =
+    let
+        offset =
+            ( cellProperties.x - 1, cellProperties.y - 1 )
+    in
+    translateBy globalConstraints offset globalOrigin
+
+
 
 --
 -- Queries & interop
@@ -209,6 +298,60 @@ quadrantNeighbors constraints dir origin =
 isValidCoordinate : Int -> Int -> Bool
 isValidCoordinate coordinate cellsAmount =
     coordinate > 0 && coordinate <= cellsAmount
+
+
+type Boundary
+    = Corner DiagonalDirection
+    | Edge OrthogonalDirection
+
+
+{-| Defines the the connected bounds, if the cell is positioned at the edge of the bounding grid.
+-}
+connectedBounds : Constraints a -> Cell -> Maybe Boundary
+connectedBounds constraints (Cell cellProperties) =
+    let
+        leftBoundConnects =
+            cellProperties.x == minX
+
+        rightBoundConnects =
+            cellProperties.x == constraints.horizontalCellsAmount
+
+        topBoundConnects =
+            cellProperties.y == minY
+
+        bottomBoundConnects =
+            cellProperties.y == constraints.verticalCellsAmount
+    in
+    case [ leftBoundConnects, rightBoundConnects, topBoundConnects, bottomBoundConnects ] of
+        -- Check corners
+        [ True, False, True, False ] ->
+            Just (Corner TopLeft)
+
+        [ False, True, True, False ] ->
+            Just (Corner TopRight)
+
+        [ True, False, False, True ] ->
+            Just (Corner BottomLeft)
+
+        [ False, True, False, True ] ->
+            Just (Corner BottomRight)
+
+        -- Otherwise, check the edges
+        [ True, False, False, False ] ->
+            Just (Edge Left)
+
+        [ False, True, False, False ] ->
+            Just (Edge Right)
+
+        [ False, False, True, False ] ->
+            Just (Edge Up)
+
+        [ False, False, False, True ] ->
+            Just (Edge Down)
+
+        -- No contact (or illogical contact e.g. all sides)
+        _ ->
+            Nothing
 
 
 coordinates : Cell -> CellCoordinates
@@ -232,6 +375,20 @@ centerPoint (Cell cellProperties) =
     cellProperties.bottomLeftCorner |> Point2d.translateBy displacement
 
 
+array1DIndex : Constraints a -> Cell -> Int
+array1DIndex constraints cell =
+    let
+        ( cellX, cellY ) =
+            coordinates cell
+
+        xyZeroIndexed =
+            { x = cellX - 1
+            , y = cellY - 1
+            }
+    in
+    xyZeroIndexed.x + (xyZeroIndexed.y * constraints.horizontalCellsAmount)
+
+
 boundingBox : Cell -> LMBoundingBox2d
 boundingBox (Cell cellProperties) =
     cellProperties.boundingBox
@@ -240,6 +397,35 @@ boundingBox (Cell cellProperties) =
 identical : Cell -> Cell -> Bool
 identical (Cell cellA) (Cell cellB) =
     cellA.x == cellB.x && cellA.y == cellB.y
+
+
+orthogonalDirection : Cell -> Cell -> Maybe OrthogonalDirection
+orthogonalDirection from to =
+    if identical from to then
+        Nothing
+
+    else
+        let
+            ( x0, y0 ) =
+                coordinates from
+
+            ( x1, y1 ) =
+                coordinates to
+
+            dir =
+                if x1 > x0 then
+                    Right
+
+                else if y1 > y0 then
+                    Down
+
+                else if y0 > y1 then
+                    Up
+
+                else
+                    Left
+        in
+        Just dir
 
 
 toString : Cell -> String

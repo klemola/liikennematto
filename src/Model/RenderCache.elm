@@ -7,16 +7,19 @@ module Model.RenderCache exposing
     , new
     , refreshTilemapCache
     , setPixelsToMetersRatio
+    , setTileListFilter
     , setTilemapCache
     )
 
+import Data.Assets exposing (Assets)
 import FSM
 import Length
 import Model.Animation as Animation exposing (Animation)
 import Model.Cell exposing (Cell)
 import Model.Editor as Editor
 import Model.Geometry exposing (OrthogonalDirection, oppositeOrthogonalDirection)
-import Model.Tile as Tile exposing (Tile, TileKind)
+import Model.Tile as Tile exposing (Tile, TileKind(..))
+import Model.TileConfig exposing (TileId)
 import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.World exposing (World)
 import Pixels
@@ -31,6 +34,8 @@ type alias RenderCache =
     , tilemapHeightPixels : Float
     , tilemapWidth : Length.Length
     , tilemapHeight : Length.Length
+    , tileListFilter : Tilemap.TileListFilter
+    , roadAssets : Assets ()
     }
 
 
@@ -47,11 +52,11 @@ type alias DynamicTilesPresentation =
 
 
 type alias DynamicTilePresentation =
-    ( Cell, TileKind, Maybe Animation )
+    ( Cell, TileId, Maybe Animation )
 
 
-new : World -> RenderCache
-new { tilemap } =
+new : World -> Assets () -> RenderCache
+new { tilemap } roadAssets =
     let
         tilemapDimensions =
             Tilemap.dimensions tilemap
@@ -61,14 +66,19 @@ new { tilemap } =
 
         tilemapHeigthPixels =
             toPixelsValue defaultPixelsToMetersRatio tilemapDimensions.height
+
+        initialTileListFilter =
+            Tilemap.StaticTiles
     in
     { pixelsToMetersRatio = defaultPixelsToMetersRatio
-    , tilemap = toTilemapCache tilemap
+    , tilemap = toTilemapCache initialTileListFilter tilemap
     , tilemapWidthPixels =
         tilemapWidthPixels
     , tilemapHeightPixels = tilemapHeigthPixels
     , tilemapWidth = tilemapDimensions.width
     , tilemapHeight = tilemapDimensions.height
+    , tileListFilter = initialTileListFilter
+    , roadAssets = roadAssets
     }
 
 
@@ -103,7 +113,12 @@ zoomLevelToPixelsPerMeterValue zoomLevel =
 
 setTilemapCache : Tilemap -> RenderCache -> RenderCache
 setTilemapCache tilemap cache =
-    { cache | tilemap = toTilemapCache tilemap }
+    { cache | tilemap = toTilemapCache cache.tileListFilter tilemap }
+
+
+setTileListFilter : Tilemap.TileListFilter -> RenderCache -> RenderCache
+setTileListFilter tileListFilter cache =
+    { cache | tileListFilter = tileListFilter }
 
 
 refreshTilemapCache : Tilemap.TilemapUpdateResult -> RenderCache -> ( RenderCache, DynamicTilesPresentation )
@@ -114,7 +129,7 @@ refreshTilemapCache tilemapUpdateResult cache =
                 cache
 
             else
-                { cache | tilemap = toTilemapCache tilemapUpdateResult.tilemap }
+                { cache | tilemap = toTilemapCache cache.tileListFilter tilemapUpdateResult.tilemap }
 
         nextDynamicTiles =
             if List.isEmpty tilemapUpdateResult.dynamicCells then
@@ -128,9 +143,9 @@ refreshTilemapCache tilemapUpdateResult cache =
     ( nextCache, nextDynamicTiles )
 
 
-toTilemapCache : Tilemap -> List StaticTilePresentation
-toTilemapCache tilemap =
-    Tilemap.toList tileMapper Tilemap.StaticTiles tilemap
+toTilemapCache : Tilemap.TileListFilter -> Tilemap -> List StaticTilePresentation
+toTilemapCache tileListFilter tilemap =
+    Tilemap.toList tileMapper tileListFilter tilemap
 
 
 tileMapper : Cell -> Tile -> StaticTilePresentation
@@ -144,8 +159,15 @@ toDynamicTiles tilemap changingCells =
         |> List.filterMap
             (\cell ->
                 Tilemap.tileAt tilemap cell
-                    |> Maybe.map
-                        (\tile -> ( cell, tile.kind, tileAnimation tile ))
+                    |> Maybe.andThen
+                        (\tile ->
+                            case tile.kind of
+                                Fixed tileId ->
+                                    Just ( cell, tileId, tileAnimation tile )
+
+                                Superposition _ ->
+                                    Nothing
+                        )
             )
 
 

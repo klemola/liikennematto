@@ -1,6 +1,8 @@
 module Common exposing
     ( andCarry
     , angleFromDirection
+    , attemptFoldList
+    , attemptMapList
     , boundingBoxOverlaps
     , boundingBoxToFrame
     , boundingBoxWithDimensions
@@ -201,3 +203,44 @@ andCarry nextFn carried =
     Maybe.map2 Tuple.pair
         carried
         (carried |> Maybe.andThen nextFn)
+
+
+
+--
+-- Result utility
+--
+
+
+attemptMapList : (a -> Result x b) -> List a -> Result x (List b)
+attemptMapList fn list =
+    case list of
+        [] ->
+            Ok []
+
+        x :: xs ->
+            case fn x of
+                Err e ->
+                    Err e
+
+                Ok y ->
+                    Result.map (\acc -> y :: acc) (attemptMapList fn xs)
+
+
+attemptFoldList : (a -> b -> Result x b) -> b -> List a -> Result x b
+attemptFoldList fn acc list =
+    case list of
+        [] ->
+            Ok acc
+
+        head :: tail ->
+            case fn head acc of
+                Ok result ->
+                    case attemptFoldList fn result tail of
+                        Ok results ->
+                            Ok results
+
+                        Err err ->
+                            Err err
+
+                Err err ->
+                    Err err

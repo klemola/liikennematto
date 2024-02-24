@@ -20,6 +20,7 @@ module Model.Geometry exposing
     , left
     , oppositeOrthogonalDirection
     , orthogonalDirectionToLmDirection
+    , orthogonalDirectionToString
     , orthogonalDirections
     , right
     , up
@@ -195,3 +196,23 @@ orthogonalDirectionToLmDirection dir =
 
         Left ->
             left
+
+
+orthogonalDirectionToString : OrthogonalDirection -> String
+orthogonalDirectionToString dir =
+    let
+        dirString =
+            case dir of
+                Up ->
+                    "up"
+
+                Right ->
+                    "right"
+
+                Down ->
+                    "down"
+
+                Left ->
+                    "left"
+    in
+    "OrthogonalDirection " ++ dirString

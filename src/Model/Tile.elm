@@ -3,22 +3,24 @@ module Model.Tile exposing
     , OrthogonalNeighbors
     , Tile
     , TileFSM
-    , TileKind
+    , TileKind(..)
     , TileOperation(..)
     , TileState(..)
     , attemptRemove
     , chooseTileKind
+    , fromTileId
+    , init
     , isBasicRoad
     , isBuilt
     , isCurve
     , isDeadend
     , isDynamic
+    , isFixed
     , isIntersection
     , isLotEntry
-    , new
     , potentialConnections
     , transitionTimer
-    , updateTileKind
+    , updateTileId
     )
 
 import Audio exposing (Sound)
@@ -30,6 +32,7 @@ import Model.Geometry
         , crossOrthogonalDirection
         , orthogonalDirections
         )
+import Model.TileConfig exposing (TileId)
 import Set exposing (Set)
 
 
@@ -39,14 +42,9 @@ type alias Tile =
     }
 
 
-type alias TileKind =
-    Int
-
-
-type TileOperation
-    = BuildInstantly
-    | Add
-    | Change
+type TileKind
+    = Fixed TileId
+    | Superposition (List TileId)
 
 
 type alias TileFSM =
@@ -58,20 +56,34 @@ type Action
 
 
 type TileState
-    = Constructing
+    = Initialized
+    | Constructing
     | Built
     | Changing
     | Removing
     | Removed
 
 
-new : TileKind -> TileOperation -> ( Tile, List Action )
-new kind op =
+type TileOperation
+    = BuildInstantly
+    | Add
+    | Change
+
+
+init : TileKind -> Tile
+init kind =
+    { kind = kind
+    , fsm = FSM.initialize initialized |> Tuple.first
+    }
+
+
+fromTileId : TileId -> TileOperation -> ( Tile, List Action )
+fromTileId kind op =
     let
         ( fsm, initialActions ) =
             initializeFSM op
     in
-    ( { kind = kind
+    ( { kind = Fixed kind
       , fsm = fsm
       }
     , initialActions
@@ -88,14 +100,28 @@ attemptRemove tile =
             ( tile, [] )
 
 
-updateTileKind : TileKind -> Tile -> ( Tile, List Action )
-updateTileKind nextKind tile =
+updateTileId : TileId -> Tile -> ( Tile, List Action )
+updateTileId nextTileId tile =
     case FSM.transitionTo (FSM.getId changing) tile.fsm of
         Ok ( nextFSM, actions ) ->
-            ( Tile nextKind nextFSM, actions )
+            ( { kind = Fixed nextTileId
+              , fsm = nextFSM
+              }
+            , actions
+            )
 
         Err _ ->
             ( tile, [] )
+
+
+isFixed : Tile -> Bool
+isFixed tile =
+    case tile.kind of
+        Fixed _ ->
+            True
+
+        Superposition _ ->
+            False
 
 
 isBuilt : Tile -> Bool
@@ -121,6 +147,26 @@ isDynamic tile =
 transitionTimer : Duration
 transitionTimer =
     Duration.milliseconds 250
+
+
+initialized : State TileState Action ()
+initialized =
+    FSM.createState
+        { id = FSM.createStateId "tile-initialized"
+        , kind = Initialized
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> changing)
+                []
+                FSM.Direct
+            , FSM.createTransition
+                (\_ -> constructing)
+                []
+                FSM.Direct
+            ]
+        , entryActions = []
+        , exitActions = []
+        }
 
 
 constructing : State TileState Action ()
@@ -245,7 +291,7 @@ type alias OrthogonalNeighbors =
     }
 
 
-chooseTileKind : OrthogonalNeighbors -> Bool -> TileKind
+chooseTileKind : OrthogonalNeighbors -> Bool -> TileId
 chooseTileKind =
     fiveBitBitmask
 
@@ -288,17 +334,17 @@ boolToBinary booleanValue =
 --
 
 
-horizontalRoad : TileKind
+horizontalRoad : TileId
 horizontalRoad =
     6
 
 
-verticalRoad : TileKind
+verticalRoad : TileId
 verticalRoad =
     9
 
 
-basicRoadTiles : Set TileKind
+basicRoadTiles : Set TileId
 basicRoadTiles =
     Set.fromList
         [ horizontalRoad
@@ -308,30 +354,35 @@ basicRoadTiles =
 
 isBasicRoad : Tile -> Bool
 isBasicRoad tile =
-    Set.member tile.kind basicRoadTiles
+    case tile.kind of
+        Fixed tileId ->
+            Set.member tileId basicRoadTiles
+
+        Superposition _ ->
+            False
 
 
-curveBottomRight : TileKind
+curveBottomRight : TileId
 curveBottomRight =
     3
 
 
-curveBottomLeft : TileKind
+curveBottomLeft : TileId
 curveBottomLeft =
     5
 
 
-curveTopRight : TileKind
+curveTopRight : TileId
 curveTopRight =
     10
 
 
-curveTopLeft : TileKind
+curveTopLeft : TileId
 curveTopLeft =
     12
 
 
-curveTiles : Set TileKind
+curveTiles : Set TileId
 curveTiles =
     Set.fromList
         [ curveTopLeft
@@ -343,30 +394,35 @@ curveTiles =
 
 isCurve : Tile -> Bool
 isCurve tile =
-    Set.member tile.kind curveTiles
+    case tile.kind of
+        Fixed tileId ->
+            Set.member tileId curveTiles
+
+        Superposition _ ->
+            False
 
 
-deadendDown : TileKind
+deadendDown : TileId
 deadendDown =
     1
 
 
-deadendRight : TileKind
+deadendRight : TileId
 deadendRight =
     2
 
 
-deadendLeft : TileKind
+deadendLeft : TileId
 deadendLeft =
     4
 
 
-deadendUp : TileKind
+deadendUp : TileId
 deadendUp =
     8
 
 
-deadendTiles : Set TileKind
+deadendTiles : Set TileId
 deadendTiles =
     Set.fromList
         [ deadendDown
@@ -378,35 +434,40 @@ deadendTiles =
 
 isDeadend : Tile -> Bool
 isDeadend tile =
-    Set.member tile.kind deadendTiles
+    case tile.kind of
+        Fixed tileId ->
+            Set.member tileId deadendTiles
+
+        Superposition _ ->
+            False
 
 
-intersectionTUp : TileKind
+intersectionTUp : TileId
 intersectionTUp =
     7
 
 
-intersectionTLeft : TileKind
+intersectionTLeft : TileId
 intersectionTLeft =
     11
 
 
-intersectionTRight : TileKind
+intersectionTRight : TileId
 intersectionTRight =
     13
 
 
-intersectionTDown : TileKind
+intersectionTDown : TileId
 intersectionTDown =
     14
 
 
-intersectionCross : TileKind
+intersectionCross : TileId
 intersectionCross =
     15
 
 
-intersectionTiles : Set TileKind
+intersectionTiles : Set TileId
 intersectionTiles =
     Set.fromList
         [ intersectionTUp
@@ -419,25 +480,30 @@ intersectionTiles =
 
 isIntersection : Tile -> Bool
 isIntersection tile =
-    Set.member tile.kind intersectionTiles
+    case tile.kind of
+        Fixed tileId ->
+            Set.member tileId intersectionTiles
+
+        Superposition _ ->
+            False
 
 
-lotEntryTUp : TileKind
+lotEntryTUp : TileId
 lotEntryTUp =
     23
 
 
-lotEntryTLeft : TileKind
+lotEntryTLeft : TileId
 lotEntryTLeft =
     27
 
 
-lotEntryTRight : TileKind
+lotEntryTRight : TileId
 lotEntryTRight =
     29
 
 
-lotEntryTiles : Set TileKind
+lotEntryTiles : Set TileId
 lotEntryTiles =
     Set.fromList
         [ lotEntryTUp
@@ -448,59 +514,65 @@ lotEntryTiles =
 
 isLotEntry : Tile -> Bool
 isLotEntry tile =
-    Set.member tile.kind lotEntryTiles
+    case tile.kind of
+        Fixed tileId ->
+            Set.member tileId lotEntryTiles
+
+        Superposition _ ->
+            False
 
 
 potentialConnections : Tile -> List OrthogonalDirection
-potentialConnections tile =
-    let
-        { kind } =
-            tile
-    in
-    if kind == verticalRoad then
-        [ Up, Down ]
+potentialConnections { kind } =
+    case kind of
+        Fixed tileId ->
+            if tileId == verticalRoad then
+                [ Up, Down ]
 
-    else if kind == horizontalRoad then
-        [ Left, Right ]
+            else if tileId == horizontalRoad then
+                [ Left, Right ]
 
-    else if kind == curveTopRight then
-        [ Left, Down ]
+            else if tileId == curveTopRight then
+                [ Left, Down ]
 
-    else if kind == curveTopLeft then
-        [ Right, Down ]
+            else if tileId == curveTopLeft then
+                [ Right, Down ]
 
-    else if kind == curveBottomRight then
-        [ Left, Up ]
+            else if tileId == curveBottomRight then
+                [ Left, Up ]
 
-    else if kind == curveBottomLeft then
-        [ Right, Up ]
+            else if tileId == curveBottomLeft then
+                [ Right, Up ]
 
-    else if kind == deadendUp then
-        [ Down ]
+            else if tileId == deadendUp then
+                [ Down ]
 
-    else if kind == deadendRight then
-        [ Left ]
+            else if tileId == deadendRight then
+                [ Left ]
 
-    else if kind == deadendDown then
-        [ Up ]
+            else if tileId == deadendDown then
+                [ Up ]
 
-    else if kind == deadendLeft then
-        [ Right ]
+            else if tileId == deadendLeft then
+                [ Right ]
 
-    else if kind == intersectionTUp || kind == lotEntryTUp then
-        Up :: crossOrthogonalDirection Up
+            else if tileId == intersectionTUp || tileId == lotEntryTUp then
+                Up :: crossOrthogonalDirection Up
 
-    else if kind == intersectionTRight || kind == lotEntryTRight then
-        Right :: crossOrthogonalDirection Right
+            else if tileId == intersectionTRight || tileId == lotEntryTRight then
+                Right :: crossOrthogonalDirection Right
 
-    else if kind == intersectionTDown then
-        Down :: crossOrthogonalDirection Down
+            else if tileId == intersectionTDown then
+                Down :: crossOrthogonalDirection Down
 
-    else if kind == intersectionTLeft || kind == lotEntryTLeft then
-        Left :: crossOrthogonalDirection Left
+            else if tileId == intersectionTLeft || tileId == lotEntryTLeft then
+                Left :: crossOrthogonalDirection Left
 
-    else if kind == intersectionCross then
-        orthogonalDirections
+            else if tileId == intersectionCross then
+                orthogonalDirections
 
-    else
-        []
+            else
+                []
+
+        Superposition _ ->
+            []

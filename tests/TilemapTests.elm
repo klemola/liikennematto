@@ -11,6 +11,7 @@ import Expect
 import Maybe.Extra as Maybe
 import Model.Cell as Cell
 import Model.Geometry exposing (OrthogonalDirection(..))
+import Model.Tile exposing (TileKind(..))
 import Model.Tilemap as Tilemap exposing (Tilemap)
 import Test exposing (Test, describe, test)
 
@@ -68,7 +69,12 @@ suite =
                         |> Maybe.andThen (Tilemap.tileAt tilemap)
                         |> Maybe.map
                             (\tile ->
-                                tile.kind == 14
+                                case tile.kind of
+                                    Fixed tileId ->
+                                        tileId == 14
+
+                                    Superposition _ ->
+                                        False
                             )
                         |> Maybe.unwrap
                             (Expect.fail "Could not find the tile")
@@ -87,7 +93,12 @@ suite =
                         |> Maybe.andThen (Tilemap.tileAt tilemap)
                         |> Maybe.map
                             (\tile ->
-                                tile.kind == 12
+                                case tile.kind of
+                                    Fixed tileId ->
+                                        tileId == 12
+
+                                    Superposition _ ->
+                                        False
                             )
                         |> Maybe.unwrap
                             (Expect.fail "Could not find the tile")
@@ -106,7 +117,12 @@ suite =
                         |> Maybe.andThen (Tilemap.tileAt tilemapWithAnchor)
                         |> Maybe.map
                             (\tile ->
-                                tile.kind == 29
+                                case tile.kind of
+                                    Fixed tileId ->
+                                        tileId == 29
+
+                                    Superposition _ ->
+                                        False
                             )
                         |> Maybe.unwrap
                             (Expect.fail "Could not find the tile")

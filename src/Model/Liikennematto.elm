@@ -13,6 +13,7 @@ module Model.Liikennematto exposing
     , triggerLoading
     )
 
+import Data.Assets exposing (roadsLegacy)
 import Data.Defaults exposing (horizontalCellsAmount, verticalCellsAmount)
 import Duration exposing (Duration)
 import FSM exposing (FSM)
@@ -204,12 +205,15 @@ triggerLoading model =
 --
 
 
+tilemapConfig =
+    { horizontalCellsAmount = horizontalCellsAmount
+    , verticalCellsAmount = verticalCellsAmount
+    }
+
+
 initialWorld : World
 initialWorld =
-    World.empty
-        { horizontalCellsAmount = horizontalCellsAmount
-        , verticalCellsAmount = verticalCellsAmount
-        }
+    World.empty tilemapConfig
 
 
 initial : Flags -> Liikennematto
@@ -232,7 +236,7 @@ initial flags =
     , world = initialWorld
     , simulation = Running
     , editor = Editor.initial
-    , renderCache = RenderCache.new initialWorld
+    , renderCache = RenderCache.new initialWorld roadsLegacy
     , dynamicTiles = []
     , debug = initialDebugState
     , errorMessage = Nothing
@@ -247,18 +251,11 @@ initial flags =
 
 fromNewGame : Maybe World -> Liikennematto -> Liikennematto
 fromNewGame previousWorld model =
-    let
-        nextWorld =
-            World.empty
-                { horizontalCellsAmount = Data.Defaults.horizontalCellsAmount
-                , verticalCellsAmount = Data.Defaults.verticalCellsAmount
-                }
-    in
     { model
-        | world = nextWorld
+        | world = initialWorld
         , previousWorld = previousWorld
         , editor = Editor.reset model.editor
-        , renderCache = RenderCache.new nextWorld
+        , renderCache = RenderCache.new initialWorld roadsLegacy
         , simulation = Paused
         , debug = initialDebugState
     }
@@ -272,7 +269,7 @@ fromPreviousGame model =
                 | world = previousWorld
                 , previousWorld = Nothing
                 , editor = Editor.reset model.editor
-                , renderCache = RenderCache.new previousWorld
+                , renderCache = RenderCache.new previousWorld roadsLegacy
                 , simulation = Paused
                 , debug = initialDebugState
             }

@@ -46,11 +46,12 @@ devtools:
 	elm make devtools/LotsGallery.elm --output build/lots_debug.html
 	elm make devtools/PathfindingVisualization.elm --output build/pathfinding_visualization.html
 	elm make devtools/RouteVisualization.elm --output build/route_visualization.html
+	elm make devtools/WFCDebug.elm --output build/wfc_debug.html
 
 review:
 	elm-review --fix
 
 stats:
-	cloc --exclude-dir=Data,Vendor,assets src
+	cloc --exclude-dir=Data,Vendor,assets src devtools
 
 .PHONY: build check dev serve test benchmark devtools review stats

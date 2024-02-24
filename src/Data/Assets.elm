@@ -1,13 +1,31 @@
-module Data.Roads exposing
-    ( innerLaneOffset
+module Data.Assets exposing
+    ( Assets
+    , assetById
+    , innerLaneOffset
     , outerLaneOffset
-    , roadAsset
+    , roads
+    , roadsLegacy
     )
 
 import Data.Colors as Colors
+import Dict exposing (Dict)
 import Length exposing (Length)
 import Svg exposing (Svg, path)
 import Svg.Attributes as Attributes
+
+
+type alias Assets msg =
+    Dict Int (List (Svg msg))
+
+
+assetById : Assets msg -> Int -> List (Svg msg)
+assetById assets assetId =
+    case Dict.get assetId assets of
+        Just asset ->
+            asset
+
+        Nothing ->
+            []
 
 
 innerLaneOffset : Length
@@ -22,68 +40,66 @@ outerLaneOffset =
     Length.meters 10
 
 
-roadAsset : Int -> List (Svg msg)
-roadAsset tileIndex =
-    case tileIndex of
-        0 ->
-            defaultRoad
+roads : Assets ()
+roads =
+    Dict.fromList
+        [ ( 17, defaultRoad )
+        , ( 1, deadendDown )
+        , ( 2, deadendRight )
+        , ( 3, curveBottomRight )
+        , ( 4, deadendLeft )
+        , ( 5, curveBottomLeft )
+        , ( 6, regularHorizontal )
+        , ( 7, intersectionTUp )
+        , ( 8, deadendUp )
+        , ( 9, regularVertical )
+        , ( 10, curveTopRight )
+        , ( 11, intersectionTLeft )
+        , ( 12, curveTopLeft )
+        , ( 13, intersectionTRight )
+        , ( 14, intersectionTDown )
+        , ( 15, intersectionCrossroads )
+        , ( 20, lotEntryTUp )
+        , ( 21, lotEntryTRight )
+        , ( 22, lotEntryTLeft )
+        , ( 30, lotDebugCornerTopLeft )
+        , ( 31, lotDebugCornerTopRight )
+        , ( 32, lotDebugCornerBottomRight )
+        , ( 33, lotDebugCornerBottomLeft )
+        , ( 34, lotDebugCenter )
+        , ( 35, lotDebugCenter )
+        , ( 36, lotDebugCenter )
+        , ( 37, lotDebugCenter )
+        , ( 38, lotDebugCenter )
+        , ( 40, lotDebugDrivewayRight )
+        , ( 41, lotDebugDrivewayLeft )
+        , ( 42, lotDebugDrivewayUp )
+        ]
 
-        1 ->
-            deadendDown
 
-        2 ->
-            deadendRight
-
-        3 ->
-            curveBottomRight
-
-        4 ->
-            deadendLeft
-
-        5 ->
-            curveBottomLeft
-
-        6 ->
-            regularHorizontal
-
-        7 ->
-            intersectionTUp
-
-        8 ->
-            deadendUp
-
-        9 ->
-            regularVertical
-
-        10 ->
-            curveTopRight
-
-        11 ->
-            intersectionTLeft
-
-        12 ->
-            curveTopLeft
-
-        13 ->
-            intersectionTRight
-
-        14 ->
-            intersectionTDown
-
-        15 ->
-            intersectionCrossroads
-
-        23 ->
-            lotEntryTUp
-
-        27 ->
-            lotEntryTLeft
-
-        29 ->
-            lotEntryTRight
-
-        _ ->
-            defaultRoad
+roadsLegacy : Assets ()
+roadsLegacy =
+    Dict.fromList
+        [ ( 0, defaultRoad )
+        , ( 1, deadendDown )
+        , ( 2, deadendRight )
+        , ( 3, curveBottomRight )
+        , ( 4, deadendLeft )
+        , ( 5, curveBottomLeft )
+        , ( 6, regularHorizontal )
+        , ( 7, intersectionTUp )
+        , ( 8, deadendUp )
+        , ( 9, regularVertical )
+        , ( 10, curveTopRight )
+        , ( 11, intersectionTLeft )
+        , ( 12, curveTopLeft )
+        , ( 13, intersectionTRight )
+        , ( 14, intersectionTDown )
+        , ( 15, intersectionCrossroads )
+        , ( 23, lotEntryTUp )
+        , ( 27, lotEntryTLeft )
+        , ( 29, lotEntryTRight )
+        ]
 
 
 defaultRoad : List (Svg msg)
@@ -600,6 +616,179 @@ lotEntryTRight =
     , path
         [ Attributes.d "M125.8 243.2V217.6H129.8V243.2H125.8ZM125.8 192V166.4H129.8V192H125.8ZM125.8 140.8L125.8 115.2H129.8V140.8H125.8ZM125.8 89.5999V63.9999H129.8V89.5999H125.8ZM125.8 38.3999V12.7999H129.8V38.3999H125.8Z"
         , Attributes.fill Colors.gray6CSS
+        ]
+        []
+    ]
+
+
+lotDebugCornerTopLeft : List (Svg msg)
+lotDebugCornerTopLeft =
+    [ Svg.rect
+        [ Attributes.x "12"
+        , Attributes.y "12"
+        , Attributes.width "232"
+        , Attributes.height "232"
+        , Attributes.fill "#F9F9E9"
+        ]
+        []
+    , path
+        [ Attributes.d "M30 210V30H210"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "10"
+        , Attributes.strokeLinecap "round"
+        , Attributes.strokeLinejoin "round"
+        , Attributes.fill "none"
+        ]
+        []
+    ]
+
+
+lotDebugCornerTopRight : List (Svg msg)
+lotDebugCornerTopRight =
+    [ Svg.rect
+        [ Attributes.x "244"
+        , Attributes.y "12"
+        , Attributes.width "232"
+        , Attributes.height "232"
+        , Attributes.transform "rotate(90 244 12)"
+        , Attributes.fill "#F9F9E9"
+        ]
+        []
+    , path
+        [ Attributes.d "M46 30L226 30L226 210"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "10"
+        , Attributes.strokeLinecap "round"
+        , Attributes.strokeLinejoin "round"
+        , Attributes.fill "none"
+        ]
+        []
+    ]
+
+
+lotDebugCornerBottomRight : List (Svg msg)
+lotDebugCornerBottomRight =
+    [ Svg.rect
+        [ Attributes.x "244"
+        , Attributes.y "244"
+        , Attributes.width "232"
+        , Attributes.height "232"
+        , Attributes.transform "rotate(-180 244 244)"
+        , Attributes.fill "#F9F9E9"
+        ]
+        []
+    , path
+        [ Attributes.d "M226 46L226 226L46 226"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "10"
+        , Attributes.strokeLinecap "round"
+        , Attributes.strokeLinejoin "round"
+        , Attributes.fill "none"
+        ]
+        []
+    ]
+
+
+lotDebugCornerBottomLeft : List (Svg msg)
+lotDebugCornerBottomLeft =
+    [ Svg.rect
+        [ Attributes.x "12"
+        , Attributes.y "244"
+        , Attributes.width "232"
+        , Attributes.height "232"
+        , Attributes.transform "rotate(-90 12 244)"
+        , Attributes.fill "#F9F9E9"
+        ]
+        []
+    , path
+        [ Attributes.d "M210 226L30 226L30 46"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "10"
+        , Attributes.strokeLinecap "round"
+        , Attributes.strokeLinejoin "round"
+        , Attributes.fill "none"
+        ]
+        []
+    ]
+
+
+lotDebugCenter : List (Svg msg)
+lotDebugCenter =
+    [ Svg.rect
+        [ Attributes.x "12"
+        , Attributes.y "12"
+        , Attributes.width "232"
+        , Attributes.height "232"
+        , Attributes.fill "#F9F9E9"
+        ]
+        []
+    ]
+
+
+lotDebugDrivewayRight : List (Svg msg)
+lotDebugDrivewayRight =
+    [ Svg.rect
+        [ Attributes.x "244"
+        , Attributes.y "244"
+        , Attributes.width "232"
+        , Attributes.height "232"
+        , Attributes.transform "rotate(-180 244 244)"
+        , Attributes.fill "#766565"
+        ]
+        []
+    , path
+        [ Attributes.d "M226 46L226 226L46 226"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "10"
+        , Attributes.strokeLinecap "round"
+        , Attributes.strokeLinejoin "round"
+        , Attributes.fill "none"
+        ]
+        []
+    ]
+
+
+lotDebugDrivewayLeft : List (Svg msg)
+lotDebugDrivewayLeft =
+    [ Svg.rect
+        [ Attributes.x "12"
+        , Attributes.y "244"
+        , Attributes.width "232"
+        , Attributes.height "232"
+        , Attributes.transform "rotate(-90 12 244)"
+        , Attributes.fill "#766565"
+        ]
+        []
+    , path
+        [ Attributes.d "M210 226L30 226L30 46"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "10"
+        , Attributes.strokeLinecap "round"
+        , Attributes.strokeLinejoin "round"
+        , Attributes.fill "none"
+        ]
+        []
+    ]
+
+
+lotDebugDrivewayUp : List (Svg msg)
+lotDebugDrivewayUp =
+    [ Svg.rect
+        [ Attributes.x "12"
+        , Attributes.y "244"
+        , Attributes.width "232"
+        , Attributes.height "232"
+        , Attributes.transform "rotate(-90 12 244)"
+        , Attributes.fill "#766565"
+        ]
+        []
+    , path
+        [ Attributes.d "M210 226L30 226L30 46"
+        , Attributes.stroke "#3D3434"
+        , Attributes.strokeWidth "10"
+        , Attributes.strokeLinecap "round"
+        , Attributes.strokeLinejoin "round"
+        , Attributes.fill "none"
         ]
         []
     ]
