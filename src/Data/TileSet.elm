@@ -1,20 +1,20 @@
 module Data.TileSet exposing
-    ( allTileIds
-    , allTiles
-    , allTilesAndMetaTiles
+    ( allTiles
     , bottomEdgeTileIds
     , bottomLeftCornerTileIds
     , bottomRightCornerTileIds
-    , defaultTile
     , leftEdgeTileIds
     , pairingsForSocket
     , rightEdgeTileIds
+    , tileById
+    , tileIds
     , topEdgeTileIds
     , topLeftCornerTileIds
     , topRightCornerTileIds
     )
 
 import Array
+import Dict exposing (Dict)
 import Model.TileConfig as TileConfig
     exposing
         ( Socket(..)
@@ -183,8 +183,23 @@ allTilesAndMetaTiles =
            ]
 
 
-allTileIds : List TileId
-allTileIds =
+tiles : Dict TileId TileConfig
+tiles =
+    Dict.fromList (List.map (\tileConfig -> ( TileConfig.tileConfigId tileConfig, tileConfig )) allTilesAndMetaTiles)
+
+
+tileById : TileId -> TileConfig
+tileById tileId =
+    case Dict.get tileId tiles of
+        Just tileConfig ->
+            tileConfig
+
+        Nothing ->
+            defaultTile
+
+
+tileIds : List TileId
+tileIds =
     List.map TileConfig.tileConfigId allTiles
 
 

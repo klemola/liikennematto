@@ -14,8 +14,7 @@ module Editor.WFC exposing
 
 import Array
 import Common exposing (attemptFoldList, attemptMapList)
-import Data.TileSet exposing (allTiles, allTilesAndMetaTiles, defaultTile, pairingsForSocket)
-import List.Extra
+import Data.TileSet exposing (pairingsForSocket, tileById, tileIds)
 import List.Nonempty exposing (Nonempty)
 import Model.Cell as Cell exposing (Cell)
 import Model.Geometry
@@ -34,7 +33,6 @@ import Model.TileConfig as TileConfig
         , TileId
         , socketByDirection
         , socketByDirectionWithConfig
-        , tileConfigId
         )
 import Model.Tilemap as Tilemap exposing (Tilemap, TilemapConfig)
 import Random exposing (Seed)
@@ -284,10 +282,7 @@ updateSuperpositionOptions tilemap from to tilePair =
     Cell.orthogonalDirection from to
         |> Result.fromMaybe InvalidDirection
         |> Result.andThen
-            (superpositionOptionsForTile
-                tilemap
-                tilePair
-            )
+            (superpositionOptionsForTile tilePair)
         |> Result.map
             (\superpositionOptions ->
                 Tilemap.setSuperpositionOptions to superpositionOptions tilemap
@@ -295,16 +290,15 @@ updateSuperpositionOptions tilemap from to tilePair =
 
 
 superpositionOptionsForTile :
-    Tilemap
-    -> ( Tile, Tile )
+    ( Tile, Tile )
     -> OrthogonalDirection
     -> Result WFCFailure (List Int)
-superpositionOptionsForTile tilemap ( originTile, targetTile ) dir =
+superpositionOptionsForTile ( originTile, targetTile ) dir =
     case ( originTile.kind, targetTile.kind ) of
         ( Fixed originTileId, Superposition options ) ->
             let
                 revisedOptions =
-                    matchingSuperpositionOptions tilemap dir originTileId options
+                    matchingSuperpositionOptions dir originTileId options
             in
             if List.isEmpty revisedOptions then
                 Err NoSuperpositionOptions
@@ -316,29 +310,28 @@ superpositionOptionsForTile tilemap ( originTile, targetTile ) dir =
             Err NoPotentialMatch
 
 
-matchingSuperpositionOptions : Tilemap -> OrthogonalDirection -> TileId -> List TileId -> List TileId
-matchingSuperpositionOptions tilemap dir originTileId options =
+matchingSuperpositionOptions : OrthogonalDirection -> TileId -> List TileId -> List TileId
+matchingSuperpositionOptions dir originTileId options =
     let
         originTileConfig =
-            tileConfigById tilemap originTileId
+            tileById originTileId
 
         originSocket =
             socketByDirectionWithConfig originTileConfig dir
     in
     List.filter
         (canDock
-            tilemap
             (oppositeOrthogonalDirection dir)
             originSocket
         )
         options
 
 
-canDock : Tilemap -> OrthogonalDirection -> Socket -> Int -> Bool
-canDock tilemap dockDir dockSocket dockTileId =
+canDock : OrthogonalDirection -> Socket -> Int -> Bool
+canDock dockDir dockSocket dockTileId =
     let
         dockTileConfig =
-            tileConfigById tilemap dockTileId
+            tileById dockTileId
 
         matchSocket =
             socketByDirectionWithConfig dockTileConfig dockDir
@@ -493,7 +486,7 @@ pickRandom ({ openSteps, tilemap, seed } as modelDetails) =
                     Random.step (List.Nonempty.sample candidates) seed
 
                 randomOptionGen =
-                    toWeightedOptions tilemap randomCandidate.options
+                    toWeightedOptions randomCandidate.options
 
                 ( randomOption, nextSeed ) =
                     Random.step randomOptionGen seedAfterCandidateGen
@@ -509,15 +502,15 @@ pickRandom ({ openSteps, tilemap, seed } as modelDetails) =
             }
 
 
-toWeightedOptions : Tilemap -> Nonempty TileId -> Random.Generator TileConfig
-toWeightedOptions tilemap options =
+toWeightedOptions : Nonempty TileId -> Random.Generator TileConfig
+toWeightedOptions options =
     let
         withWeights =
             List.Nonempty.map
                 (\option ->
                     let
                         tileConfig =
-                            tileConfigById tilemap option
+                            tileById option
                     in
                     ( 1.0 - TileConfig.complexity tileConfig, tileConfig )
                 )
@@ -558,7 +551,7 @@ nextCandidates tilemap =
                             ( candidates, minEntropy )
     in
     tilemap
-        |> Tilemap.fold toCandidate ( [], List.length allTiles + 1 )
+        |> Tilemap.fold toCandidate ( [], List.length tileIds + 1 )
         |> Tuple.first
 
 
@@ -650,7 +643,7 @@ attemptTileNeighborUpdate currentTile originCell tilemap =
                 originSocket =
                     socketByDirection currentTile.sockets nuCtx.dir
             in
-            if canDock nuCtx.tilemap (oppositeOrthogonalDirection nuCtx.dir) originSocket neighborTileId then
+            if canDock (oppositeOrthogonalDirection nuCtx.dir) originSocket neighborTileId then
                 -- Tiles can dock, no tilemap update needed = skip
                 Ok nuCtx.steps
 
@@ -736,15 +729,6 @@ failed (Model modelDetails) =
 
         _ ->
             False
-
-
-tileConfigById : Tilemap -> Int -> TileConfig
-tileConfigById tilemap tileId =
-    -- TODO: optimize?
-    -- TODO: fix: hardcoded tileset, dangerous default tile
-    allTilesAndMetaTiles
-        |> List.Extra.find (\tileConfig -> tileConfigId tileConfig == tileId)
-        |> Maybe.withDefault defaultTile
 
 
 toCurrentCell : Model -> Maybe Cell

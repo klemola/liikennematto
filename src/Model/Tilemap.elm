@@ -106,7 +106,7 @@ initTile tilemapConfig index =
         |> Cell.fromArray1DIndexUnsafe tilemapConfig
         |> Cell.connectedBounds tilemapConfig
         |> Maybe.map boundarySuperposition
-        |> Maybe.withDefault (Superposition TileSet.allTileIds)
+        |> Maybe.withDefault (Superposition TileSet.tileIds)
         |> Tile.init
 
 
@@ -471,7 +471,7 @@ updateTile delta tile tilemapUpdate =
 
         nextTile =
             if isRemoved then
-                Tile.init (Superposition TileSet.allTileIds)
+                Tile.init (Superposition TileSet.tileIds)
 
             else
                 { kind = tile.kind
