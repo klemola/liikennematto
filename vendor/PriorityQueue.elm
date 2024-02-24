@@ -1,4 +1,4 @@
-module Vendor.PriorityQueue exposing
+module PriorityQueue exposing
     ( PriorityQueue
     , empty, insert, fromList
     , head, tail, pop, take, drop, isEmpty
@@ -40,7 +40,7 @@ Throughout this package `priority` will mean a function `a -> Int` that assigns 
 
 -}
 
-import Vendor.PriorityQueue.Kernel as Kernel
+import PriorityQueue.Kernel as Kernel
 
 
 {-| The abstract datatype of this package.

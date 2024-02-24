@@ -11,8 +11,8 @@ module EventQueue exposing
     , update
     )
 
+import PriorityQueue exposing (PriorityQueue)
 import Time
-import Vendor.PriorityQueue as PriorityQueue exposing (PriorityQueue)
 
 
 maxRetryBackoffMillis : Int

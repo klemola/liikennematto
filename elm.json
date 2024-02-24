@@ -3,7 +3,8 @@
     "source-directories": [
         "src",
         "benchmarks",
-        "devtools"
+        "devtools",
+        "vendor"
     ],
     "elm-version": "0.19.1",
     "dependencies": {

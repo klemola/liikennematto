@@ -1,4 +1,4 @@
-module Vendor.PriorityQueue.Kernel exposing
+module PriorityQueue.Kernel exposing
     ( PriorityQueue, Priority
     , empty, insert
     , isEmpty, head, tail

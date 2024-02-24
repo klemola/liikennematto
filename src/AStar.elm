@@ -4,7 +4,7 @@ import Dict exposing (Dict)
 import Length exposing (Length)
 import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext, RoadNetwork)
 import Point2d
-import Vendor.PriorityQueue as PriorityQueue exposing (PriorityQueue)
+import PriorityQueue exposing (PriorityQueue)
 
 
 type alias Path =
