@@ -2,6 +2,7 @@ module Editor.WFC exposing
     ( Model
     , contextDebug
     , failed
+    , flushPendingActions
     , init
     , solve
     , stateDebug
@@ -50,6 +51,7 @@ type alias ModelDetails =
     , openSteps : List Step
     , previousSteps : Stack ( Step, Nonempty TileId )
     , state : WFCState
+    , pendingActions : List Tile.Action
     , seed : Seed
     }
 
@@ -86,6 +88,7 @@ init tilemapConfig initialSeed =
         , openSteps = []
         , previousSteps = Stack.empty
         , state = Solving
+        , pendingActions = []
         , seed = initialSeed
         }
 
@@ -162,7 +165,7 @@ stepN nTimes model =
 or propagating constraints resulting from the last placement of a tile
 -}
 step_ : Model -> Model
-step_ (Model ({ openSteps, previousSteps, tilemap } as modelDetails)) =
+step_ (Model ({ openSteps, previousSteps, tilemap, pendingActions } as modelDetails)) =
     case openSteps of
         currentStep :: otherSteps ->
             let
@@ -184,7 +187,7 @@ step_ (Model ({ openSteps, previousSteps, tilemap } as modelDetails)) =
                     }
             in
             case processStep tilemap currentStep of
-                Ok ( additionalSteps, nextTilemap ) ->
+                Ok ( additionalSteps, tileActions, nextTilemap ) ->
                     Model
                         { withPosition
                             | tilemap = nextTilemap
@@ -197,6 +200,7 @@ step_ (Model ({ openSteps, previousSteps, tilemap } as modelDetails)) =
 
                                     Nothing ->
                                         previousSteps
+                            , pendingActions = pendingActions ++ tileActions
                         }
 
                 Err wfcFailure ->
@@ -232,14 +236,14 @@ step_ (Model ({ openSteps, previousSteps, tilemap } as modelDetails)) =
 --
 
 
-processStep : Tilemap -> Step -> Result WFCFailure ( List Step, Tilemap )
+processStep : Tilemap -> Step -> Result WFCFailure ( List Step, List Tile.Action, Tilemap )
 processStep tilemap currentStep =
     case currentStep of
         Collapse cell tileConfig ->
             case tileConfig of
                 TileConfig.Large largeTile ->
                     attemptPlanLargeTilePlacement tilemap cell largeTile
-                        |> Result.map (\steps -> ( steps, tilemap ))
+                        |> Result.map (\steps -> ( steps, [], tilemap ))
 
                 TileConfig.Single singleTile ->
                     let
@@ -253,20 +257,13 @@ processStep tilemap currentStep =
                         nextSteps =
                             List.filterMap stepInDirection orthogonalDirections
 
-                        -- TODO: ignoring actions
-                        ( tile, _ ) =
+                        ( tile, tileActions ) =
                             Tile.fromTileId singleTile.id Tile.BuildInstantly
                     in
-                    Ok ( nextSteps, Tilemap.setTile cell tile tilemap )
+                    Ok ( nextSteps, tileActions, Tilemap.setTile cell tile tilemap )
 
         CollapseSubgridCell cell singleTile largeTileId ->
             attemptPlaceSubgridTile tilemap largeTileId cell singleTile
-                |> Result.map
-                    (\( neighborSteps, nextTilemap ) ->
-                        ( neighborSteps
-                        , nextTilemap
-                        )
-                    )
 
         PropagateConstraints from to ->
             Maybe.map2 Tuple.pair
@@ -274,7 +271,7 @@ processStep tilemap currentStep =
                 (Tilemap.tileAtAny tilemap to)
                 |> Result.fromMaybe TileNotFound
                 |> Result.andThen (updateSuperpositionOptions tilemap from to)
-                |> Result.map (\nextTilemap -> ( [], nextTilemap ))
+                |> Result.map (\nextTilemap -> ( [], [], nextTilemap ))
 
 
 updateSuperpositionOptions : Tilemap -> Cell -> Cell -> ( Tile, Tile ) -> Result WFCFailure Tilemap
@@ -617,18 +614,17 @@ attemptPlanLargeTilePlacement tilemap anchorCell tile =
 
 {-| Try to place a subgrid tile (of a large tile), generating more steps
 -}
-attemptPlaceSubgridTile : Tilemap -> TileId -> Cell -> SingleTile -> Result WFCFailure ( List Step, Tilemap )
+attemptPlaceSubgridTile : Tilemap -> TileId -> Cell -> SingleTile -> Result WFCFailure ( List Step, List Tile.Action, Tilemap )
 attemptPlaceSubgridTile tilemap largeTileId cell currentTile =
     tilemap
         |> attemptTileNeighborUpdate currentTile cell
         |> Result.map
             (\neighborSteps ->
                 let
-                    -- TODO: ignoring actions
-                    ( tile, _ ) =
+                    ( tile, tileActions ) =
                         Tile.fromTileId currentTile.id Tile.BuildInstantly
                 in
-                ( neighborSteps, Tilemap.setTile cell tile tilemap )
+                ( neighborSteps, tileActions, Tilemap.setTile cell tile tilemap )
             )
         |> Result.mapError (\_ -> InvalidBigTilePlacement cell largeTileId)
 
@@ -729,6 +725,13 @@ failed (Model modelDetails) =
 
         _ ->
             False
+
+
+flushPendingActions : Model -> ( Model, List Tile.Action )
+flushPendingActions (Model modelDetails) =
+    ( Model { modelDetails | pendingActions = [] }
+    , modelDetails.pendingActions
+    )
 
 
 toCurrentCell : Model -> Maybe Cell
