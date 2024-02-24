@@ -255,7 +255,7 @@ processStep tilemap currentStep =
 
                         -- TODO: ignoring actions
                         ( tile, _ ) =
-                            Tile.new singleTile.id Tile.BuildInstantly
+                            Tile.fromTileId singleTile.id Tile.BuildInstantly
                     in
                     Ok ( nextSteps, Tilemap.setTile cell tile tilemap )
 
@@ -626,7 +626,7 @@ attemptPlaceSubgridTile tilemap largeTileId cell currentTile =
                 let
                     -- TODO: ignoring actions
                     ( tile, _ ) =
-                        Tile.new currentTile.id Tile.BuildInstantly
+                        Tile.fromTileId currentTile.id Tile.BuildInstantly
                 in
                 ( neighborSteps, Tilemap.setTile cell tile tilemap )
             )

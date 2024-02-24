@@ -8,6 +8,7 @@ module Model.Tile exposing
     , TileState(..)
     , attemptRemove
     , chooseTileKind
+    , fromTileId
     , init
     , isBasicRoad
     , isBuilt
@@ -17,8 +18,6 @@ module Model.Tile exposing
     , isFixed
     , isIntersection
     , isLotEntry
-    , isPropagating
-    , new
     , potentialConnections
     , transitionTimer
     , updateTileId
@@ -57,7 +56,7 @@ type Action
 
 
 type TileState
-    = Propagating
+    = Initialized
     | Constructing
     | Built
     | Changing
@@ -72,14 +71,14 @@ type TileOperation
 
 
 init : TileKind -> Tile
-init propagationTile =
-    { kind = propagationTile
-    , fsm = FSM.initialize propagating |> Tuple.first
+init kind =
+    { kind = kind
+    , fsm = FSM.initialize initialized |> Tuple.first
     }
 
 
-new : TileId -> TileOperation -> ( Tile, List Action )
-new kind op =
+fromTileId : TileId -> TileOperation -> ( Tile, List Action )
+fromTileId kind op =
     let
         ( fsm, initialActions ) =
             initializeFSM op
@@ -125,11 +124,6 @@ isFixed tile =
             False
 
 
-isPropagating : Tile -> Bool
-isPropagating tile =
-    FSM.toCurrentState tile.fsm == Propagating
-
-
 isBuilt : Tile -> Bool
 isBuilt tile =
     FSM.toCurrentState tile.fsm == Built
@@ -155,14 +149,18 @@ transitionTimer =
     Duration.milliseconds 250
 
 
-propagating : State TileState Action ()
-propagating =
+initialized : State TileState Action ()
+initialized =
     FSM.createState
-        { id = FSM.createStateId "tile-propagating"
-        , kind = Propagating
+        { id = FSM.createStateId "tile-initialized"
+        , kind = Initialized
         , transitions =
             [ FSM.createTransition
                 (\_ -> changing)
+                []
+                FSM.Direct
+            , FSM.createTransition
+                (\_ -> constructing)
                 []
                 FSM.Direct
             ]

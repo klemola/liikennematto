@@ -338,7 +338,7 @@ size : Tilemap -> Int
 size (Tilemap tilemapContents) =
     Array.foldl
         (\tile count ->
-            if not <| Tile.isPropagating tile then
+            if Tile.isFixed tile then
                 count + 1
 
             else
@@ -559,13 +559,13 @@ setAnchorTile anchor tilemap =
 
 
 applyTilemapOperation : TileOperation -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
-applyTilemapOperation tileChange origin tilemap =
+applyTilemapOperation operation origin tilemap =
     let
         originTileKind =
             chooseTile tilemap origin
 
         ( originTile, initialActions ) =
-            Tile.new originTileKind tileChange
+            Tile.fromTileId originTileKind operation
 
         tilemapWithOriginChange =
             updateCell origin originTile tilemap
