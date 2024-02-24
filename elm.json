@@ -21,19 +21,19 @@
             "elm-community/dict-extra": "2.4.0",
             "elm-community/graph": "6.0.0",
             "elm-community/intdict": "3.0.0",
-            "elm-community/list-extra": "8.5.2",
+            "elm-community/list-extra": "8.7.0",
             "elm-community/maybe-extra": "5.3.0",
-            "elm-community/random-extra": "3.1.0",
+            "elm-community/random-extra": "3.2.0",
             "elm-community/result-extra": "2.4.0",
             "elm-explorations/benchmark": "1.0.2",
             "evelios/elm-geometry-quadtree": "1.0.0",
             "ianmackenzie/elm-geometry": "3.9.1",
             "ianmackenzie/elm-geometry-svg": "3.0.0",
-            "ianmackenzie/elm-units": "2.9.0",
+            "ianmackenzie/elm-units": "2.10.0",
             "mdgriffith/elm-ui": "1.1.7",
             "mgold/elm-nonempty-list": "4.2.0",
-            "mpizenberg/elm-pointer-events": "4.0.2",
-            "myrho/elm-round": "1.0.4",
+            "mpizenberg/elm-pointer-events": "5.0.0",
+            "myrho/elm-round": "1.0.5",
             "ntreu14/elm-stack": "1.1.0"
         },
         "indirect": {
@@ -51,7 +51,6 @@
             "ianmackenzie/elm-triangular-mesh": "1.1.0",
             "ianmackenzie/elm-units-interval": "2.3.0",
             "mdgriffith/style-elements": "5.0.2",
-            "owanturist/elm-union-find": "1.0.0",
             "pzp1997/assoc-list": "1.0.0",
             "robinheghan/murmur3": "1.0.0"
         }
