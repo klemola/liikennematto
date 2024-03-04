@@ -13,7 +13,6 @@ import Common
 import Direction2d
 import Length exposing (Length)
 import LineSegment2d
-import Model.Car as Car exposing (Car)
 import Model.Geometry
     exposing
         ( LMArc2d
@@ -22,10 +21,11 @@ import Model.Geometry
         , LMPoint2d
         , LMShape2d
         )
-import Model.Route as Route
 import Point2d
 import Polygon2d
 import Quantity
+import Simulation.Car as Car exposing (Car)
+import Simulation.Route as Route
 import Speed
 
 

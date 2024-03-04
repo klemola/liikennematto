@@ -13,9 +13,7 @@ import Common exposing (andCarry)
 import Data.Cars exposing (CarRole(..))
 import Duration exposing (Duration)
 import Length exposing (Length)
-import Model.Car as Car exposing (Car)
 import Model.Geometry exposing (LMPoint2d)
-import Model.Lot as Lot exposing (ParkingReservation, ParkingSpot)
 import Model.RoadNetwork as RoadNetwork
     exposing
         ( ConnectionKind(..)
@@ -23,11 +21,13 @@ import Model.RoadNetwork as RoadNetwork
         , RNNodeContext
         , TrafficControl
         )
-import Model.Route as Route exposing (Route)
 import Model.World as World exposing (World)
 import Point2d
 import Quantity
 import Random
+import Simulation.Car as Car exposing (Car)
+import Simulation.Lot as Lot exposing (ParkingReservation, ParkingSpot)
+import Simulation.Route as Route exposing (Route)
 import Speed exposing (Speed)
 
 

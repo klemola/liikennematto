@@ -15,7 +15,7 @@ import Model.Liikennematto as Liikennematto
 import Model.Screen as Screen
 import Render
 import Render.Debug
-import Simulation.Simulation as Simulation exposing (worldAfterTilemapChange)
+import Simulation.Update as Simulation exposing (worldAfterTilemapChange)
 import Subscriptions exposing (subscriptions)
 import Task
 import Tilemap.Update as Tilemap

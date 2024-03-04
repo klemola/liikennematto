@@ -1,4 +1,4 @@
-module Model.Route exposing
+module Simulation.Route exposing
     ( Destination(..)
     , Path
     , Route(..)
@@ -41,11 +41,6 @@ import Model.Geometry
         , LMDirection2d
         , LMPoint2d
         )
-import Model.Lot as Lot
-    exposing
-        ( Lot
-        , ParkingReservation
-        )
 import Model.RoadNetwork as RoadNetwork
     exposing
         ( RNNodeContext
@@ -54,6 +49,11 @@ import Model.RoadNetwork as RoadNetwork
 import Quantity
 import Random
 import Random.List
+import Simulation.Lot as Lot
+    exposing
+        ( Lot
+        , ParkingReservation
+        )
 import Splines
 
 

@@ -1,4 +1,4 @@
-module Model.Car exposing
+module Simulation.Car exposing
     ( Car
     , CarEvent(..)
     , CarFSM
@@ -37,11 +37,11 @@ import Model.Geometry
         , LMPoint2d
         , LMShape2d
         )
-import Model.Lot exposing (ParkingReservation)
-import Model.Route as Route exposing (Route)
 import Point2d
 import Polygon2d
 import Quantity
+import Simulation.Lot exposing (ParkingReservation)
+import Simulation.Route as Route exposing (Route)
 import Speed exposing (Speed)
 
 

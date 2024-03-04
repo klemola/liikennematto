@@ -8,7 +8,7 @@ import Data.Lots
         )
 import Data.Worlds exposing (lotTestWorld)
 import Expect
-import Model.Lot as Lot exposing (Lot)
+import Simulation.Lot as Lot exposing (Lot)
 import Test exposing (Test, describe, test)
 import Tilemap.Cell as Cell
 import Tilemap.Core exposing (getTilemapConfig)

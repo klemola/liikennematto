@@ -20,23 +20,23 @@ import Duration exposing (Duration)
 import FSM
 import Length exposing (Length)
 import Maybe.Extra as Maybe
-import Model.Car as Car exposing (Car, CarState(..))
 import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
-import Model.Lot as Lot exposing (Lot)
 import Model.RoadNetwork as RoadNetwork
     exposing
         ( RNNodeContext
         , TrafficControl(..)
         )
-import Model.Route as Route
-import Model.TrafficLight as TrafficLight exposing (TrafficLight)
 import Model.World as World exposing (World, WorldEvent)
 import Point2d
 import Quantity
 import Random
+import Simulation.Car as Car exposing (Car, CarState(..))
 import Simulation.Collision as Collision
+import Simulation.Lot as Lot exposing (Lot)
 import Simulation.Pathfinding as Pathfinding
+import Simulation.Route as Route
 import Simulation.Steering as Steering exposing (Steering)
+import Simulation.TrafficLight as TrafficLight exposing (TrafficLight)
 import Speed
 import Time
 

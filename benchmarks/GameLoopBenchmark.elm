@@ -7,7 +7,7 @@ import Duration
 import Message
 import Model.Flags exposing (RuntimeEnvironment(..))
 import Model.Liikennematto as Liikennematto
-import Simulation.Simulation as Simulation
+import Simulation.Update as Simulation
 import UI.Editor as Editor
 
 

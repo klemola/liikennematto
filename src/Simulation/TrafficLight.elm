@@ -1,4 +1,4 @@
-module Model.TrafficLight exposing
+module Simulation.TrafficLight exposing
     ( NewTrafficLight
     , TrafficLight
     , TrafficLightColor(..)

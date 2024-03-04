@@ -18,7 +18,6 @@ import Direction2d
 import Duration exposing (Duration)
 import Html exposing (Html)
 import Length
-import Model.Car as Car exposing (Car)
 import Model.Geometry exposing (GlobalCoordinates, LMDirection2d, LMPoint2d)
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.World as World exposing (World)
@@ -28,6 +27,7 @@ import Render
 import Render.Conversion exposing (toPixelsValue)
 import Render.Shape
 import Round
+import Simulation.Car as Car exposing (Car)
 import Simulation.Steering as Steering
 import Speed exposing (Speed)
 import Splines

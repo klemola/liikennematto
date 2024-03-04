@@ -28,14 +28,14 @@ import Data.Worlds
         )
 import Duration
 import Length exposing (Length)
-import Model.Car as Car exposing (Car)
 import Model.Geometry exposing (LMPoint2d)
 import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext)
-import Model.Route as Route
 import Model.World as World exposing (World)
 import Point2d
 import Random
+import Simulation.Car as Car exposing (Car)
 import Simulation.Events exposing (updateEventQueue)
+import Simulation.Route as Route
 import Simulation.Steering as Steering
 import Simulation.Traffic as Traffic exposing (RuleSetup)
 import Speed exposing (Speed)

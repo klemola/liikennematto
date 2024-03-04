@@ -8,17 +8,17 @@ import Element
 import Html exposing (Html)
 import Html.Events.Extra.Mouse as MouseEvents
 import Maybe.Extra as Maybe
-import Model.Car exposing (Car)
 import Model.Debug
 import Model.Geometry exposing (LMPoint2d)
 import Model.RenderCache as RenderCache exposing (RenderCache)
-import Model.Route as Route
 import Model.World as World exposing (World)
 import Point2d
 import Quantity
 import Render
 import Render.Conversion
 import Render.Debug
+import Simulation.Car exposing (Car)
+import Simulation.Route as Route
 import Simulation.Traffic exposing (RuleSetup)
 
 

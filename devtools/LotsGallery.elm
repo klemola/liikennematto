@@ -6,12 +6,12 @@ import Data.Assets exposing (roadsLegacy)
 import Data.Colors as Colors
 import Data.Lots exposing (NewLot)
 import Model.Geometry exposing (OrthogonalDirection(..))
-import Model.Lot exposing (Lot, ParkingSpot)
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.World as World exposing (World)
 import Quantity
 import Render
 import Render.Shape
+import Simulation.Lot exposing (Lot, ParkingSpot)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Tilemap.Cell as Cell
@@ -94,7 +94,7 @@ buildLot newLot acc =
     in
     case
         Cell.fromCoordinates tilemapConfig ( x, y )
-            |> Maybe.map (Model.Lot.build newLot)
+            |> Maybe.map (Simulation.Lot.build newLot)
             |> Maybe.map (\builderFn -> builderFn acc.id)
     of
         Just lot ->

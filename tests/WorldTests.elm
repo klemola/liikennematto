@@ -10,9 +10,9 @@ import Data.Worlds
         )
 import Expect
 import Length
-import Model.Lot as Lot
 import Model.World as World
 import Point2d
+import Simulation.Lot as Lot
 import Test exposing (Test, describe, test)
 import Tilemap.Cell as Cell
 import Tilemap.Core exposing (getTilemapConfig)

@@ -8,11 +8,11 @@ import Expect
 import Length
 import List.Extra as List
 import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext)
-import Model.Route as Route exposing (Route)
 import Model.World exposing (World)
 import Point2d
 import Quantity
 import Random
+import Simulation.Route as Route exposing (Route)
 import Test exposing (Test, describe, test)
 import Tilemap.Cell as Cell
 

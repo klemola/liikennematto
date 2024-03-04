@@ -32,10 +32,10 @@ import Model.RoadNetwork as RoadNetwork
         , RoadNetwork
         , TrafficControl(..)
         )
-import Model.TrafficLight as TrafficLight exposing (TrafficLight)
 import Model.World as World exposing (World)
 import Point2d
 import Quantity
+import Simulation.TrafficLight as TrafficLight exposing (TrafficLight)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing

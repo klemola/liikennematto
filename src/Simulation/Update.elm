@@ -1,4 +1,4 @@
-module Simulation.Simulation exposing (update, worldAfterTilemapChange)
+module Simulation.Update exposing (update, worldAfterTilemapChange)
 
 import Audio
 import Collection
@@ -10,13 +10,13 @@ import Model.Liikennematto
         ( Liikennematto
         , SimulationState(..)
         )
-import Model.TrafficLight exposing (TrafficLight)
 import Model.World as World exposing (World)
 import Process
 import Random
 import Simulation.Events exposing (updateEventQueue)
 import Simulation.Infrastructure exposing (updateRoadNetwork)
 import Simulation.Traffic as Traffic
+import Simulation.TrafficLight exposing (TrafficLight)
 import Simulation.Zoning exposing (generateLot)
 import Task
 import Tilemap.Core exposing (tilemapSize)

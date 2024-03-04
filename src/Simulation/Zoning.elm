@@ -4,11 +4,11 @@ import Collection exposing (Id)
 import Data.Lots exposing (NewLot, allLots)
 import Maybe.Extra as Maybe
 import Model.Geometry exposing (oppositeOrthogonalDirection)
-import Model.Lot as Lot exposing (Lot)
 import Model.World as World exposing (World)
 import Random
 import Random.List
 import Simulation.Infrastructure as Infrastructure
+import Simulation.Lot as Lot exposing (Lot)
 import Simulation.Traffic exposing (addLotResidents)
 import Tilemap.Cell exposing (Cell)
 import Tilemap.Core

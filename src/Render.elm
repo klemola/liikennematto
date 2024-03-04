@@ -15,13 +15,11 @@ import Graph exposing (Node)
 import Html exposing (Html)
 import Length exposing (Length)
 import Model.Animation as Animation exposing (Animation)
-import Model.Car exposing (Car)
 import Model.Geometry
     exposing
         ( LMPoint2d
         , OrthogonalDirection(..)
         )
-import Model.Lot exposing (Lot)
 import Model.RenderCache exposing (DynamicTilesPresentation, RenderCache)
 import Model.RoadNetwork
     exposing
@@ -29,10 +27,12 @@ import Model.RoadNetwork
         , RoadNetwork
         , TrafficControl(..)
         )
-import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..))
 import Model.World exposing (World)
 import Quantity
 import Render.Conversion exposing (pointToPixels, toPixelsValue, toViewBoxValue)
+import Simulation.Car exposing (Car)
+import Simulation.Lot exposing (Lot)
+import Simulation.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..))
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Svg.Keyed

@@ -7,7 +7,6 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Message exposing (Message(..))
-import Model.Car as Car exposing (Car)
 import Model.Debug exposing (DebugLayerKind(..), toggleDebugPanel, toggleLayer)
 import Model.Geometry exposing (LMPoint2d)
 import Model.Liikennematto exposing (Liikennematto)
@@ -16,6 +15,7 @@ import Model.World exposing (World, formatEvents)
 import Point2d
 import Quantity
 import Round
+import Simulation.Car as Car exposing (Car)
 import Speed exposing (Speed)
 import Time
 import UI.Core

@@ -24,9 +24,9 @@ import Common exposing (isCloseToZeroVelocity)
 import Duration
 import Length exposing (Length)
 import Model.Geometry exposing (LMPoint2d)
-import Model.Route as Route exposing (Route)
 import Point2d
 import Quantity exposing (Quantity(..))
+import Simulation.Route as Route exposing (Route)
 import Speed exposing (Speed)
 
 

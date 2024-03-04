@@ -6,24 +6,24 @@ import Data.Colors as Colors
 import Data.Lots exposing (ParkingRestriction(..))
 import Graph
 import Length exposing (Length)
-import Model.Car exposing (Car)
 import Model.Debug exposing (DebugLayerKind(..), DebugState, isLayerEnabled)
 import Model.Geometry exposing (LMPoint2d)
-import Model.Lot exposing (Lot, ParkingSpot)
 import Model.RenderCache exposing (RenderCache)
 import Model.RoadNetwork
     exposing
         ( ConnectionKind(..)
         , RoadNetwork
         )
-import Model.Route as Route
 import Model.World exposing (World)
 import Point2d
 import Polygon2d
 import Quantity
 import Render.Conversion exposing (pointToPixels, toPixelsValue)
 import Render.Shape
+import Simulation.Car exposing (Car)
 import Simulation.Collision as Collision
+import Simulation.Lot exposing (Lot, ParkingSpot)
+import Simulation.Route as Route
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Svg.Keyed

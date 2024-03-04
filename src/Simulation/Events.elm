@@ -4,12 +4,12 @@ import Collection exposing (Id)
 import Common exposing (randomFutureTime)
 import Direction2d
 import EventQueue
-import Model.Car as Car exposing (Car, CarEvent(..))
 import Model.Geometry exposing (orthogonalDirectionToLmDirection)
-import Model.Lot as Lot exposing (Lot)
 import Model.World as World exposing (World, WorldEvent(..))
 import Random
 import Result.Extra
+import Simulation.Car as Car exposing (Car, CarEvent(..))
+import Simulation.Lot as Lot exposing (Lot)
 import Simulation.Pathfinding
     exposing
         ( attemptBeginParking

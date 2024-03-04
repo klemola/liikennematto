@@ -1,4 +1,4 @@
-module Model.Lot exposing
+module Simulation.Lot exposing
     ( Lot
     , ParkingReservation
     , ParkingSpot
