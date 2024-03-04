@@ -1,4 +1,4 @@
-module Model.Tile exposing
+module Tilemap.Tile exposing
     ( Action(..)
     , OrthogonalNeighbors
     , Tile
@@ -32,8 +32,8 @@ import Model.Geometry
         , crossOrthogonalDirection
         , orthogonalDirections
         )
-import Model.TileConfig exposing (TileId)
 import Set exposing (Set)
+import Tilemap.TileConfig exposing (TileId)
 
 
 type alias Tile =

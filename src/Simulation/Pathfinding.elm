@@ -378,7 +378,7 @@ attemptBeginParking car lotId world =
                                 , parkingSpotId = parkingSpot.id
                                 }
                         in
-                        Route.arriveToParkingSpot parkingReservation world.lots car.route
+                        Route.arriveToParkingSpot parkingReservation world.lots
                             |> Maybe.map
                                 (\route ->
                                     world

@@ -1,9 +1,9 @@
 module CellTests exposing (suite)
 
 import Expect
-import Model.Cell as Cell exposing (Boundary(..))
 import Model.Geometry exposing (DiagonalDirection(..), OrthogonalDirection(..))
 import Test exposing (Test, describe, test)
+import Tilemap.Cell as Cell exposing (Boundary(..))
 
 
 constraints =

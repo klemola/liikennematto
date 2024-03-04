@@ -33,17 +33,28 @@ import Duration exposing (Duration)
 import EventQueue exposing (EventQueue)
 import Length exposing (Length)
 import Model.Car as Car exposing (Car)
-import Model.Cell as Cell exposing (Cell, CellCoordinates)
 import Model.Geometry exposing (GlobalCoordinates, LMBoundingBox2d, LMPoint2d)
 import Model.Lot as Lot exposing (Lot)
 import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext, RoadNetwork)
-import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.TrafficLight exposing (TrafficLight)
 import QuadTree exposing (Bounded, QuadTree)
 import Quantity
 import Random
 import Round
 import Set exposing (Set)
+import Tilemap.Cell as Cell exposing (Cell, CellCoordinates)
+import Tilemap.Core
+    exposing
+        ( Tilemap
+        , TilemapConfig
+        , TilemapUpdateResult
+        , createTilemap
+        , getTilemapConfig
+        , inTilemapBounds
+        , removeAnchor
+        , tilemapBoundingBox
+        , tilemapIntersects
+        )
 import Time
 
 
@@ -98,14 +109,14 @@ initialSeed =
     Random.initialSeed 42
 
 
-empty : Tilemap.TilemapConfig -> World
+empty : TilemapConfig -> World
 empty tilemapConfig =
     let
         tilemap =
-            Tilemap.empty tilemapConfig
+            createTilemap tilemapConfig
 
         worldBB =
-            Tilemap.boundingBox tilemap
+            tilemapBoundingBox tilemap
     in
     { tilemap = tilemap
     , pendingTilemapChange = Nothing
@@ -129,7 +140,7 @@ empty tilemapConfig =
 
 boundingBox : World -> LMBoundingBox2d
 boundingBox world =
-    Tilemap.boundingBox world.tilemap
+    tilemapBoundingBox world.tilemap
 
 
 hasLot : Cell -> World -> Bool
@@ -141,13 +152,13 @@ isEmptyArea : LMBoundingBox2d -> World -> Bool
 isEmptyArea testAreaBB world =
     let
         tilemapOverlap =
-            Tilemap.intersects testAreaBB world.tilemap
+            tilemapIntersects testAreaBB world.tilemap
 
         lotOverlap =
             Collection.foldl (\_ lot acc -> lot.boundingBox :: acc) [] world.lots
                 |> List.any (Common.boundingBoxOverlaps testAreaBB)
     in
-    Tilemap.inBounds world.tilemap testAreaBB && not lotOverlap && not tilemapOverlap
+    inTilemapBounds world.tilemap testAreaBB && not lotOverlap && not tilemapOverlap
 
 
 findCarById : Id -> World -> Maybe Car
@@ -293,7 +304,7 @@ removeLot lotId world =
                     Collection.remove lotId world.lots
 
                 nextTilemap =
-                    Tilemap.removeAnchor lotId world.tilemap
+                    removeAnchor lotId world.tilemap
 
                 nextLookup =
                     createLookup (Collection.values nextLots) world
@@ -331,7 +342,7 @@ setSeed seed world =
 --
 
 
-resolveTilemapUpdate : Duration -> Tilemap.TilemapUpdateResult -> World -> ( World, List Cell )
+resolveTilemapUpdate : Duration -> TilemapUpdateResult -> World -> ( World, List Cell )
 resolveTilemapUpdate delta tilemapUpdateResult world =
     case world.pendingTilemapChange of
         Nothing ->
@@ -367,7 +378,7 @@ resolveTilemapUpdate delta tilemapUpdateResult world =
             in
             if Quantity.lessThanOrEqualToZero nextTimer then
                 ( { world | pendingTilemapChange = Nothing }
-                , Cell.fromCoordinatesSet (Tilemap.config world.tilemap) nextChangedCells
+                , Cell.fromCoordinatesSet (getTilemapConfig world.tilemap) nextChangedCells
                 )
 
             else

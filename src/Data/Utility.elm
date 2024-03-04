@@ -6,12 +6,12 @@ module Data.Utility exposing
     )
 
 import Collection exposing (Id)
-import Model.Cell as Cell
 import Model.Geometry exposing (OrthogonalDirection)
 import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext)
-import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.World as World exposing (World)
-import Simulation.Infrastructure as Infrastructure
+import Simulation.Infrastructure exposing (createRoadNetwork)
+import Tilemap.Cell as Cell
+import Tilemap.Core exposing (Tilemap, TilemapConfig, addAnchor, tilemapFromCells)
 
 
 type alias AnchorDef =
@@ -21,7 +21,7 @@ type alias AnchorDef =
     }
 
 
-tilemapConfig : Tilemap.TilemapConfig
+tilemapConfig : TilemapConfig
 tilemapConfig =
     { horizontalCellsAmount = 10
     , verticalCellsAmount = 10
@@ -35,7 +35,7 @@ tilemapFromCoordinates cellCoordinates anchorDefs =
             List.filterMap (Cell.fromCoordinates tilemapConfig) cellCoordinates
 
         withCells =
-            Tilemap.fromCells tilemapConfig cells
+            tilemapFromCells tilemapConfig cells
     in
     addAnchors withCells anchorDefs
 
@@ -46,7 +46,7 @@ addAnchors tilemap anchorDefs =
         (\{ cellCoordinates, lotId, anchorDirection } nextTilemap ->
             case Cell.fromCoordinates tilemapConfig cellCoordinates of
                 Just cell ->
-                    Tilemap.addAnchor cell lotId anchorDirection nextTilemap
+                    addAnchor cell lotId anchorDirection nextTilemap
 
                 Nothing ->
                     nextTilemap
@@ -57,7 +57,7 @@ addAnchors tilemap anchorDefs =
 
 worldFromTilemap : Tilemap -> World
 worldFromTilemap tilemap =
-    World.empty tilemapConfig |> Infrastructure.createRoadNetwork tilemap
+    World.empty tilemapConfig |> createRoadNetwork tilemap
 
 
 getStartAndEndNode : World -> Int -> Int -> Maybe ( RNNodeContext, RNNodeContext )

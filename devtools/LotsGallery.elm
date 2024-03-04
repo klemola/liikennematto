@@ -5,17 +5,17 @@ import Color
 import Data.Assets exposing (roadsLegacy)
 import Data.Colors as Colors
 import Data.Lots exposing (NewLot)
-import Model.Cell as Cell
 import Model.Geometry exposing (OrthogonalDirection(..))
 import Model.Lot exposing (Lot, ParkingSpot)
 import Model.RenderCache as RenderCache exposing (RenderCache)
-import Model.Tilemap exposing (TilemapConfig)
 import Model.World as World exposing (World)
 import Quantity
 import Render
 import Render.Shape
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
+import Tilemap.Cell as Cell
+import Tilemap.Core exposing (TilemapConfig)
 
 
 gallerySpotWidth : Int

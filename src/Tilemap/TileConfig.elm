@@ -1,4 +1,4 @@
-module Model.TileConfig exposing
+module Tilemap.TileConfig exposing
     ( LargeTile
     , SingleTile
     , Socket(..)

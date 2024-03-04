@@ -14,7 +14,6 @@ import Direction2d
 import Graph exposing (Edge, Node)
 import Length
 import Maybe.Extra as Maybe
-import Model.Cell as Cell exposing (Cell)
 import Model.Geometry as Geometry
     exposing
         ( LMBoundingBox2d
@@ -33,12 +32,21 @@ import Model.RoadNetwork as RoadNetwork
         , RoadNetwork
         , TrafficControl(..)
         )
-import Model.Tile as Tile exposing (Tile)
-import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.TrafficLight as TrafficLight exposing (TrafficLight)
 import Model.World as World exposing (World)
 import Point2d
 import Quantity
+import Tilemap.Cell as Cell exposing (Cell)
+import Tilemap.Core
+    exposing
+        ( TileListFilter(..)
+        , Tilemap
+        , anchorByCell
+        , fixedTileByCell
+        , getTilemapConfig
+        , tilemapToList
+        )
+import Tilemap.Tile as Tile exposing (Tile)
 import Vector2d exposing (Vector2d)
 
 
@@ -157,7 +165,7 @@ buildRoadNetwork { tilemap, trafficLights } =
                 , nodes = Dict.empty
                 , remainingTiles =
                     tilemap
-                        |> Tilemap.toList Tuple.pair Tilemap.NoFilter
+                        |> tilemapToList Tuple.pair NoFilter
                         |> List.sortBy tilePriority
                 }
                 |> Dict.values
@@ -291,7 +299,7 @@ connectionsByTileEntryDirection tilemap cell tile direction =
             Cell.bottomLeftCorner cell
 
         anchor =
-            Tilemap.anchorAt tilemap cell
+            anchorByCell tilemap cell
 
         startDirection =
             Geometry.orthogonalDirectionToLmDirection direction
@@ -378,12 +386,12 @@ chooseConnectionCell tilemap tile direction startConnectionKind baseCell =
     else
         let
             tilemapConfig =
-                Tilemap.config tilemap
+                getTilemapConfig tilemap
         in
         case Cell.nextOrthogonalCell tilemapConfig direction baseCell of
             Just nextCell ->
                 if
-                    Tilemap.tileAt tilemap nextCell
+                    fixedTileByCell tilemap nextCell
                         |> Maybe.unwrap False (hasOverlappingConnections tile)
                 then
                     -- Some tile combinations have overlapping connections on their edges.

@@ -15,9 +15,10 @@ import Model.Liikennematto as Liikennematto
 import Model.Screen as Screen
 import Render
 import Render.Debug
-import Simulation.Simulation as Simulation
+import Simulation.Simulation as Simulation exposing (worldAfterTilemapChange)
 import Subscriptions exposing (subscriptions)
 import Task
+import Tilemap.Update as Tilemap
 import UI
 import UI.ErrorScreen
 import UI.SplashScreen
@@ -52,6 +53,7 @@ init flags =
 update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
 update msg model =
     updateBase msg model
+        |> withUpdate Tilemap.update msg
         |> withUpdate Simulation.update msg
         |> withUpdate UI.update msg
 
@@ -119,7 +121,7 @@ updateBase msg model =
         NewGame ->
             let
                 previousWorld =
-                    Just (Simulation.worldAfterTilemapChange model.world)
+                    Just (worldAfterTilemapChange model.world)
 
                 ( modelWithTransition, transitionActions ) =
                     Liikennematto.triggerLoading model

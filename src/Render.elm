@@ -16,7 +16,6 @@ import Html exposing (Html)
 import Length exposing (Length)
 import Model.Animation as Animation exposing (Animation)
 import Model.Car exposing (Car)
-import Model.Cell as Cell exposing (Cell)
 import Model.Geometry
     exposing
         ( LMPoint2d
@@ -30,7 +29,6 @@ import Model.RoadNetwork
         , RoadNetwork
         , TrafficControl(..)
         )
-import Model.Tile exposing (TileKind(..))
 import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..))
 import Model.World exposing (World)
 import Quantity
@@ -39,6 +37,8 @@ import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Svg.Keyed
 import Svg.Lazy
+import Tilemap.Cell as Cell exposing (Cell)
+import Tilemap.Tile exposing (TileKind(..))
 
 
 

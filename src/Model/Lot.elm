@@ -25,7 +25,6 @@ import Common
 import Data.Lots exposing (LotKind, NewLot, ParkingRestriction(..))
 import Direction2d
 import Length exposing (Length)
-import Model.Cell as Cell exposing (Cell)
 import Model.Geometry
     exposing
         ( LMBoundingBox2d
@@ -39,6 +38,7 @@ import Model.Geometry
 import Point2d
 import Quantity
 import Splines
+import Tilemap.Cell as Cell exposing (Cell)
 import Vector2d
 
 

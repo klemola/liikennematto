@@ -214,8 +214,8 @@ stopAtSplineEnd route =
         |> Maybe.map (ArrivingToDestination RoadNetworkNode)
 
 
-arriveToParkingSpot : ParkingReservation -> Collection Lot -> Route -> Maybe Route
-arriveToParkingSpot parkingReservation lots route =
+arriveToParkingSpot : ParkingReservation -> Collection Lot -> Maybe Route
+arriveToParkingSpot parkingReservation lots =
     Collection.get parkingReservation.lotId lots
         |> Maybe.andThen (\lot -> Lot.parkingSpotById lot parkingReservation.parkingSpotId)
         |> Maybe.map .pathFromLotEntry

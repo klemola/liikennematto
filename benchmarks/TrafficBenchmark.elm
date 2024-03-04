@@ -11,10 +11,10 @@ import Data.RuleSetups
         , noCollisionSetupDifferentLanes
         , redTrafficLightsSetup
         )
-import Model.Cell as Cell
 import Model.World as World
 import QuadTree
 import Simulation.Traffic as Traffic exposing (RuleSetup)
+import Tilemap.Cell as Cell
 
 
 suite : Benchmark

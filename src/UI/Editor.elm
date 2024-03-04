@@ -16,16 +16,24 @@ import Html.Events.Extra.Mouse as Mouse
 import Html.Events.Extra.Pointer as Pointer
 import Maybe.Extra as Maybe
 import Message exposing (Message(..))
-import Model.Cell as Cell exposing (Cell)
 import Model.Editor as Editor exposing (Editor)
 import Model.Liikennematto exposing (Liikennematto)
 import Model.RenderCache as RenderCache exposing (RenderCache, setTilemapCache)
-import Model.Tile as Tile
-import Model.Tilemap as Tilemap
 import Model.World as World exposing (World)
 import Quantity
 import Render.Conversion
 import Task
+import Tilemap.Cell as Cell exposing (Cell)
+import Tilemap.Core
+    exposing
+        ( TilemapConfig
+        , addTile
+        , canBuildRoadAt
+        , cellHasFixedTile
+        , fixedTileByCell
+        , getTilemapConfig
+        )
+import Tilemap.Tile as Tile
 import UI.Core
     exposing
         ( borderRadiusButton
@@ -76,7 +84,7 @@ update msg model =
             model
 
         tilemapConfig =
-            Tilemap.config world.tilemap
+            getTilemapConfig world.tilemap
     in
     case msg of
         InGame ->
@@ -174,7 +182,7 @@ update msg model =
                 Just eventCell ->
                     let
                         cellHasTile =
-                            Tilemap.exists eventCell world.tilemap
+                            cellHasFixedTile eventCell world.tilemap
                     in
                     ( { model | editor = Editor.selectCell event eventCell cellHasTile editor }
                     , Cmd.none
@@ -254,7 +262,7 @@ centerView =
         |> Task.attempt (\_ -> NoOp)
 
 
-pointerEventToCell : RenderCache -> Tilemap.TilemapConfig -> Pointer.Event -> Maybe Cell
+pointerEventToCell : RenderCache -> TilemapConfig -> Pointer.Event -> Maybe Cell
 pointerEventToCell cache constraints event =
     let
         ( overlayX, overlayY ) =
@@ -314,9 +322,9 @@ choosePrimaryIntent : Cell -> World -> OverlayIntent
 choosePrimaryIntent cell world =
     let
         alreadyExists =
-            Tilemap.exists cell world.tilemap
+            cellHasFixedTile cell world.tilemap
     in
-    if not alreadyExists && Tilemap.canBuildRoadAt cell world.tilemap then
+    if not alreadyExists && canBuildRoadAt cell world.tilemap then
         AddTile
 
     else
@@ -327,7 +335,7 @@ chooseSecondaryIntent : Cell -> World -> OverlayIntent
 chooseSecondaryIntent cell world =
     let
         tile =
-            Tilemap.tileAt world.tilemap cell
+            fixedTileByCell world.tilemap cell
     in
     if Maybe.unwrap False Tile.isBuilt tile then
         RemoveTile
@@ -356,7 +364,7 @@ addTile cell model =
             model
 
         ( nextTilemap, tileActions ) =
-            Tilemap.addTile cell world.tilemap
+            Tilemap.Core.addTile cell world.tilemap
 
         nextWorld =
             { world | tilemap = nextTilemap }
@@ -377,7 +385,7 @@ removeTile cell model =
             model
 
         ( nextTilemap, tileActions ) =
-            Tilemap.removeTile cell world.tilemap
+            Tilemap.Core.removeTile cell world.tilemap
 
         nextWorld =
             { world | tilemap = nextTilemap }
@@ -470,7 +478,7 @@ highlightColor : World -> Cell -> Maybe Color
 highlightColor world cell =
     let
         canBuildHere =
-            Tilemap.canBuildRoadAt cell world.tilemap
+            canBuildRoadAt cell world.tilemap
 
         mightDestroyLot =
             World.hasLot cell world

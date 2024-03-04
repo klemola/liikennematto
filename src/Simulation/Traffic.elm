@@ -200,7 +200,7 @@ rerouteCarsIfNeeded world =
                         Ok validatedRoute ->
                             { car | route = validatedRoute }
 
-                        Err reason ->
+                        Err _ ->
                             Car.triggerDespawn car
                 )
                 world.cars

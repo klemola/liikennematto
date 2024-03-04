@@ -10,12 +10,12 @@ import Data.Worlds
         )
 import Expect
 import Length
-import Model.Cell as Cell
 import Model.Lot as Lot
-import Model.Tilemap as Tilemap
 import Model.World as World
 import Point2d
 import Test exposing (Test, describe, test)
+import Tilemap.Cell as Cell
+import Tilemap.Core exposing (getTilemapConfig)
 
 
 suite : Test
@@ -37,7 +37,7 @@ suite =
                 (\_ ->
                     let
                         tilemapConfig =
-                            Tilemap.config worldThatHasAVerticalRoadAtLeftSide.tilemap
+                            getTilemapConfig worldThatHasAVerticalRoadAtLeftSide.tilemap
 
                         testLot =
                             Cell.fromCoordinates tilemapConfig ( 1, 8 )

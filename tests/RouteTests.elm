@@ -7,7 +7,6 @@ import Data.Worlds as Worlds
 import Expect
 import Length
 import List.Extra as List
-import Model.Cell as Cell
 import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext)
 import Model.Route as Route exposing (Route)
 import Model.World exposing (World)
@@ -15,6 +14,7 @@ import Point2d
 import Quantity
 import Random
 import Test exposing (Test, describe, test)
+import Tilemap.Cell as Cell
 
 
 seed =

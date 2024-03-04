@@ -1,9 +1,6 @@
-module Simulation.Simulation exposing
-    ( update
-    , worldAfterTilemapChange
-    )
+module Simulation.Simulation exposing (update, worldAfterTilemapChange)
 
-import Audio exposing (playSound)
+import Audio
 import Collection
 import Duration
 import FSM
@@ -13,18 +10,16 @@ import Model.Liikennematto
         ( Liikennematto
         , SimulationState(..)
         )
-import Model.RenderCache exposing (refreshTilemapCache)
-import Model.Tile as Tile
-import Model.Tilemap as Tilemap
 import Model.TrafficLight exposing (TrafficLight)
 import Model.World as World exposing (World)
 import Process
 import Random
 import Simulation.Events exposing (updateEventQueue)
-import Simulation.Infrastructure as Infrastructure
+import Simulation.Infrastructure exposing (updateRoadNetwork)
 import Simulation.Traffic as Traffic
-import Simulation.Zoning as Zoning
+import Simulation.Zoning exposing (generateLot)
 import Task
+import Tilemap.Core exposing (tilemapSize)
 import Time
 
 
@@ -75,41 +70,6 @@ update msg model =
             , Cmd.none
             )
 
-        SetSimulation simulation ->
-            ( { model | simulation = simulation }, Cmd.none )
-
-        UpdateTilemap delta ->
-            let
-                { world, renderCache } =
-                    model
-
-                tilemapUpdateResult =
-                    Tilemap.update delta world.tilemap
-
-                ( nextWorld, changedCells ) =
-                    { world | tilemap = tilemapUpdateResult.tilemap }
-                        |> Zoning.removeInvalidLots tilemapUpdateResult.transitionedCells
-                        |> World.resolveTilemapUpdate delta tilemapUpdateResult
-
-                tilemapChangedEffects =
-                    if List.isEmpty changedCells then
-                        Cmd.none
-
-                    else
-                        Task.succeed changedCells
-                            |> Task.perform TilemapChanged
-
-                ( nextRenderCache, dynamicTiles ) =
-                    refreshTilemapCache tilemapUpdateResult renderCache
-            in
-            ( { model
-                | world = nextWorld
-                , renderCache = nextRenderCache
-                , dynamicTiles = dynamicTiles
-              }
-            , Cmd.batch (tilemapChangedEffects :: tileActionsToCmds tilemapUpdateResult.actions)
-            )
-
         TilemapChanged _ ->
             ( { model | world = worldAfterTilemapChange model.world }
             , Cmd.none
@@ -119,6 +79,9 @@ update msg model =
             ( { model | world = updateTrafficLights model.world }
             , Cmd.none
             )
+
+        SetSimulation simulation ->
+            ( { model | simulation = simulation }, Cmd.none )
 
         GenerateEnvironment ->
             let
@@ -160,16 +123,6 @@ generateEnvironmentAfterDelay world =
         |> Task.perform (always GenerateEnvironment)
 
 
-tileActionsToCmds : List Tile.Action -> List (Cmd Message)
-tileActionsToCmds =
-    List.map
-        (\action ->
-            case action of
-                Tile.PlayAudio sound ->
-                    playSound sound
-        )
-
-
 
 --
 -- World effects
@@ -194,7 +147,7 @@ processWorldEvents time events world =
 worldAfterTilemapChange : World -> World
 worldAfterTilemapChange world =
     world
-        |> Infrastructure.updateRoadNetwork
+        |> updateRoadNetwork
         |> Traffic.rerouteCarsIfNeeded
 
 
@@ -228,10 +181,10 @@ attemptGenerateLot : Time.Posix -> SimulationState -> World -> World
 attemptGenerateLot time simulation world =
     let
         largeEnoughRoadNetwork =
-            Tilemap.size world.tilemap > 4 * (Collection.size world.lots + 1)
+            tilemapSize world.tilemap > 4 * (Collection.size world.lots + 1)
     in
     if simulation == Paused || not largeEnoughRoadNetwork || World.hasPendingTilemapChange world then
         world
 
     else
-        Zoning.generateLot time world
+        generateLot time world

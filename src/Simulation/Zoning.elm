@@ -3,16 +3,24 @@ module Simulation.Zoning exposing (generateLot, removeInvalidLots)
 import Collection exposing (Id)
 import Data.Lots exposing (NewLot, allLots)
 import Maybe.Extra as Maybe
-import Model.Cell exposing (Cell)
 import Model.Geometry exposing (oppositeOrthogonalDirection)
 import Model.Lot as Lot exposing (Lot)
-import Model.Tile as Tile
-import Model.Tilemap as Tilemap
 import Model.World as World exposing (World)
 import Random
 import Random.List
 import Simulation.Infrastructure as Infrastructure
-import Simulation.Traffic as Traffic
+import Simulation.Traffic exposing (addLotResidents)
+import Tilemap.Cell exposing (Cell)
+import Tilemap.Core
+    exposing
+        ( TileListFilter(..)
+        , addAnchor
+        , anchorByCell
+        , cellHasAnchor
+        , fixedTileByCell
+        , tilemapToList
+        )
+import Tilemap.Tile as Tile
 import Time
 
 
@@ -48,7 +56,7 @@ attemptBuildLot time world newLot =
     let
         anchorOptions =
             world.tilemap
-                |> Tilemap.toList
+                |> tilemapToList
                     (\cell tile ->
                         if
                             Tile.isBasicRoad tile
@@ -59,7 +67,7 @@ attemptBuildLot time world newLot =
                         else
                             Nothing
                     )
-                    Tilemap.StaticTiles
+                    StaticTiles
                 |> Maybe.values
 
         ( shuffledAnchors, _ ) =
@@ -79,13 +87,13 @@ attemptBuildLot time world newLot =
                 world
                     |> World.refreshLots lot nextLots
                     |> World.setTilemap
-                        (Tilemap.addAnchor anchor
+                        (addAnchor anchor
                             lot.id
                             (oppositeOrthogonalDirection lot.drivewayExitDirection)
                             world.tilemap
                         )
                     |> Infrastructure.connectLotToRoadNetwork
-                    |> Traffic.addLotResidents time lot.id newLot.residents
+                    |> addLotResidents time lot.id newLot.residents
             )
 
 
@@ -97,7 +105,7 @@ validateAnchor newLot world anchor =
     in
     if
         World.isEmptyArea lotBoundingBox world
-            && not (Tilemap.hasAnchor world.tilemap anchor)
+            && not (cellHasAnchor world.tilemap anchor)
     then
         Just anchor
 
@@ -111,7 +119,7 @@ removeInvalidLots changedCells world =
         changedAnchors =
             List.filterMap
                 (\cell ->
-                    Tilemap.anchorAt world.tilemap cell
+                    anchorByCell world.tilemap cell
                         |> Maybe.map (Tuple.mapSecond (always cell))
                 )
                 changedCells
@@ -131,7 +139,7 @@ validateLot changedCells changedAnchors lotId lot world =
         lotAnchorWasRemoved =
             List.any
                 (\( id, cell ) ->
-                    case Tilemap.tileAt world.tilemap cell of
+                    case fixedTileByCell world.tilemap cell of
                         Just tile ->
                             id == lotId && not (Tile.isLotEntry tile)
 

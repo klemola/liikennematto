@@ -17,8 +17,8 @@ module Model.Editor exposing
 
 import Duration exposing (Duration)
 import Html.Events.Extra.Pointer as Pointer
-import Model.Cell as Cell exposing (Cell)
 import Quantity
+import Tilemap.Cell as Cell exposing (Cell)
 
 
 type alias Editor =

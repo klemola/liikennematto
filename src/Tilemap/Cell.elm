@@ -1,4 +1,4 @@
-module Model.Cell exposing
+module Tilemap.Cell exposing
     ( Boundary(..)
     , Cell
     , CellCoordinates

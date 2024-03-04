@@ -8,14 +8,14 @@ import Data.Lots
         )
 import Data.Worlds exposing (lotTestWorld)
 import Expect
-import Model.Cell as Cell
 import Model.Lot as Lot exposing (Lot)
-import Model.Tilemap as Tilemap
 import Test exposing (Test, describe, test)
+import Tilemap.Cell as Cell
+import Tilemap.Core exposing (getTilemapConfig)
 
 
 tilemapConfig =
-    Tilemap.config lotTestWorld.tilemap
+    getTilemapConfig lotTestWorld.tilemap
 
 
 id1 : Id

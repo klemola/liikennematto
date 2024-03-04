@@ -4,10 +4,10 @@ import Browser.Dom
 import Browser.Events exposing (Visibility)
 import Duration exposing (Duration)
 import Html.Events.Extra.Pointer as Pointer
-import Model.Cell exposing (Cell)
 import Model.Debug exposing (DebugLayerKind)
 import Model.Liikennematto exposing (SimulationState)
 import Task
+import Tilemap.Cell exposing (Cell)
 import Time
 
 

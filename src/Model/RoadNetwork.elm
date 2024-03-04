@@ -26,10 +26,10 @@ import Collection exposing (Id, idMatches)
 import Graph exposing (Graph, NodeContext, NodeId)
 import IntDict
 import Length exposing (Length)
-import Model.Cell exposing (Cell)
 import Model.Geometry exposing (LMBoundingBox2d, LMDirection2d, LMPoint2d)
 import Random
 import Random.Extra
+import Tilemap.Cell exposing (Cell)
 
 
 type alias RoadNetwork =

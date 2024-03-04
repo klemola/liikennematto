@@ -24,7 +24,12 @@ import Model.Geometry
         , LMPoint2d
         , LMPoint2dLocal
         )
-import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
+import Model.RoadNetwork
+    exposing
+        ( ConnectionEnvironment(..)
+        , ConnectionKind(..)
+        , RNNodeContext
+        )
 import Point2d exposing (Point2d)
 import Quantity
 
@@ -42,7 +47,7 @@ asGlobalSpline frame localSpline =
 type alias PathParameters =
     { origin : LMPoint2d
     , direction : LMDirection2d
-    , environment : RoadNetwork.ConnectionEnvironment
+    , environment : ConnectionEnvironment
     }
 
 
@@ -68,7 +73,7 @@ toNode { direction, origin, environment } { node } =
         else
             let
                 parameter =
-                    if environment == RoadNetwork.Intersection then
+                    if environment == Intersection then
                         0.75
 
                     else

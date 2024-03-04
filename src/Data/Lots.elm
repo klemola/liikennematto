@@ -13,12 +13,12 @@ import Data.Assets exposing (innerLaneOffset, outerLaneOffset)
 import Data.Cars as Cars exposing (CarMake)
 import Data.Colors as Colors
 import Length exposing (Length)
-import Model.Cell as Cell
 import Model.Geometry exposing (LMPoint2dLocal, OrthogonalDirection(..))
 import Point2d
 import Quantity
 import Svg exposing (Svg, path)
 import Svg.Attributes as Attributes
+import Tilemap.Cell as Cell
 
 
 type alias NewLot =
