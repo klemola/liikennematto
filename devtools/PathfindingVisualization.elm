@@ -28,9 +28,9 @@ import Render.Conversion exposing (toPixelsValue)
 import Render.Shape
 import Round
 import Simulation.Car as Car exposing (Car)
+import Simulation.Splines as Splines
 import Simulation.Steering as Steering
 import Speed exposing (Speed)
-import Splines
 import Svg
 import Svg.Attributes as Attributes
 import Svg.Lazy

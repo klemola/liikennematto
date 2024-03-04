@@ -7,9 +7,9 @@ module Data.Utility exposing
 
 import Collection exposing (Id)
 import Model.Geometry exposing (OrthogonalDirection)
-import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext)
 import Model.World as World exposing (World)
 import Simulation.Infrastructure exposing (createRoadNetwork)
+import Simulation.RoadNetwork as RoadNetwork exposing (RNNodeContext)
 import Tilemap.Cell as Cell
 import Tilemap.Core exposing (Tilemap, TilemapConfig, addAnchor, tilemapFromCells)
 

@@ -1,6 +1,5 @@
 module RouteVisualization exposing (Clicked, Model, Msg, main)
 
-import AStar
 import Browser
 import Data.Assets exposing (roadsLegacy)
 import Data.RuleSetups as RuleSetups
@@ -17,6 +16,7 @@ import Quantity
 import Render
 import Render.Conversion
 import Render.Debug
+import Simulation.AStar as AStar
 import Simulation.Car exposing (Car)
 import Simulation.Route as Route
 import Simulation.Traffic exposing (RuleSetup)

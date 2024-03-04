@@ -37,7 +37,7 @@ import Model.Geometry
         )
 import Point2d
 import Quantity
-import Splines
+import Simulation.Splines as Splines
 import Tilemap.Cell as Cell exposing (Cell)
 import Vector2d
 

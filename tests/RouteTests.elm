@@ -1,17 +1,17 @@
 module RouteTests exposing (suite)
 
-import AStar
 import Data.RuleSetups
 import Data.Utility exposing (getStartAndEndNode)
 import Data.Worlds as Worlds
 import Expect
 import Length
 import List.Extra as List
-import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext)
 import Model.World exposing (World)
 import Point2d
 import Quantity
 import Random
+import Simulation.AStar as AStar
+import Simulation.RoadNetwork as RoadNetwork exposing (RNNodeContext)
 import Simulation.Route as Route exposing (Route)
 import Test exposing (Test, describe, test)
 import Tilemap.Cell as Cell

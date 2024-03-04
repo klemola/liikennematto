@@ -33,7 +33,6 @@ import Duration exposing (Duration)
 import EventQueue exposing (EventQueue)
 import Length exposing (Length)
 import Model.Geometry exposing (GlobalCoordinates, LMBoundingBox2d, LMPoint2d)
-import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext, RoadNetwork)
 import QuadTree exposing (Bounded, QuadTree)
 import Quantity
 import Random
@@ -41,6 +40,7 @@ import Round
 import Set exposing (Set)
 import Simulation.Car as Car exposing (Car)
 import Simulation.Lot as Lot exposing (Lot)
+import Simulation.RoadNetwork as RoadNetwork exposing (RNNodeContext, RoadNetwork)
 import Simulation.TrafficLight exposing (TrafficLight)
 import Tilemap.Cell as Cell exposing (Cell, CellCoordinates)
 import Tilemap.Core

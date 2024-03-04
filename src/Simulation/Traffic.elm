@@ -21,11 +21,6 @@ import FSM
 import Length exposing (Length)
 import Maybe.Extra as Maybe
 import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
-import Model.RoadNetwork as RoadNetwork
-    exposing
-        ( RNNodeContext
-        , TrafficControl(..)
-        )
 import Model.World as World exposing (World, WorldEvent)
 import Point2d
 import Quantity
@@ -34,6 +29,11 @@ import Simulation.Car as Car exposing (Car, CarState(..))
 import Simulation.Collision as Collision
 import Simulation.Lot as Lot exposing (Lot)
 import Simulation.Pathfinding as Pathfinding
+import Simulation.RoadNetwork as RoadNetwork
+    exposing
+        ( RNNodeContext
+        , TrafficControl(..)
+        )
 import Simulation.Route as Route
 import Simulation.Steering as Steering exposing (Steering)
 import Simulation.TrafficLight as TrafficLight exposing (TrafficLight)

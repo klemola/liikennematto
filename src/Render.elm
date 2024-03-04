@@ -21,17 +21,17 @@ import Model.Geometry
         , OrthogonalDirection(..)
         )
 import Model.RenderCache exposing (DynamicTilesPresentation, RenderCache)
-import Model.RoadNetwork
-    exposing
-        ( Connection
-        , RoadNetwork
-        , TrafficControl(..)
-        )
 import Model.World exposing (World)
 import Quantity
 import Render.Conversion exposing (pointToPixels, toPixelsValue, toViewBoxValue)
 import Simulation.Car exposing (Car)
 import Simulation.Lot exposing (Lot)
+import Simulation.RoadNetwork
+    exposing
+        ( Connection
+        , RoadNetwork
+        , TrafficControl(..)
+        )
 import Simulation.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..))
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes

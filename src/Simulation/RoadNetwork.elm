@@ -1,4 +1,4 @@
-module Model.RoadNetwork exposing
+module Simulation.RoadNetwork exposing
     ( Connection
     , ConnectionEnvironment(..)
     , ConnectionKind(..)

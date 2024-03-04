@@ -28,7 +28,6 @@ module Simulation.Route exposing
     , stopAtSplineEnd
     )
 
-import AStar
 import Array exposing (Array)
 import Collection exposing (Collection)
 import CubicSpline2d exposing (ArcLengthParameterized)
@@ -41,20 +40,21 @@ import Model.Geometry
         , LMDirection2d
         , LMPoint2d
         )
-import Model.RoadNetwork as RoadNetwork
-    exposing
-        ( RNNodeContext
-        , RoadNetwork
-        )
 import Quantity
 import Random
 import Random.List
+import Simulation.AStar as AStar
 import Simulation.Lot as Lot
     exposing
         ( Lot
         , ParkingReservation
         )
-import Splines
+import Simulation.RoadNetwork as RoadNetwork
+    exposing
+        ( RNNodeContext
+        , RoadNetwork
+        )
+import Simulation.Splines as Splines
 
 
 type Route

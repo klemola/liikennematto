@@ -1,4 +1,4 @@
-module Splines exposing
+module Simulation.Splines exposing
     ( LotSplineProperties
     , PathParameters
     , asGlobalSpline
@@ -24,14 +24,14 @@ import Model.Geometry
         , LMPoint2d
         , LMPoint2dLocal
         )
-import Model.RoadNetwork
+import Point2d exposing (Point2d)
+import Quantity
+import Simulation.RoadNetwork
     exposing
         ( ConnectionEnvironment(..)
         , ConnectionKind(..)
         , RNNodeContext
         )
-import Point2d exposing (Point2d)
-import Quantity
 
 
 uTurnDistance : Length

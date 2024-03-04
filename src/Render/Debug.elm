@@ -9,11 +9,6 @@ import Length exposing (Length)
 import Model.Debug exposing (DebugLayerKind(..), DebugState, isLayerEnabled)
 import Model.Geometry exposing (LMPoint2d)
 import Model.RenderCache exposing (RenderCache)
-import Model.RoadNetwork
-    exposing
-        ( ConnectionKind(..)
-        , RoadNetwork
-        )
 import Model.World exposing (World)
 import Point2d
 import Polygon2d
@@ -23,6 +18,11 @@ import Render.Shape
 import Simulation.Car exposing (Car)
 import Simulation.Collision as Collision
 import Simulation.Lot exposing (Lot, ParkingSpot)
+import Simulation.RoadNetwork
+    exposing
+        ( ConnectionKind(..)
+        , RoadNetwork
+        )
 import Simulation.Route as Route
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes

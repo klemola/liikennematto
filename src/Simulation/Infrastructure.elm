@@ -23,7 +23,10 @@ import Model.Geometry as Geometry
         , oppositeOrthogonalDirection
         , orthogonalDirectionToLmDirection
         )
-import Model.RoadNetwork as RoadNetwork
+import Model.World as World exposing (World)
+import Point2d
+import Quantity
+import Simulation.RoadNetwork as RoadNetwork
     exposing
         ( Connection
         , ConnectionKind(..)
@@ -32,9 +35,6 @@ import Model.RoadNetwork as RoadNetwork
         , RoadNetwork
         , TrafficControl(..)
         )
-import Model.World as World exposing (World)
-import Point2d
-import Quantity
 import Simulation.TrafficLight as TrafficLight exposing (TrafficLight)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
