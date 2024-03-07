@@ -4,7 +4,9 @@ module Model.World exposing
     , World
     , WorldEvent(..)
     , addEvent
+    , connectLotToRoadNetwork
     , createLookup
+    , createRoadNetwork
     , empty
     , findCarById
     , findLotById
@@ -23,6 +25,7 @@ module Model.World exposing
     , setSeed
     , setTilemap
     , updateLot
+    , updateRoadNetwork
     )
 
 import BoundingBox2d
@@ -31,6 +34,7 @@ import Common
 import Data.Cars exposing (CarMake)
 import Duration exposing (Duration)
 import EventQueue exposing (EventQueue)
+import Graph
 import Length exposing (Length)
 import Model.Geometry exposing (GlobalCoordinates, LMBoundingBox2d, LMPoint2d)
 import QuadTree exposing (Bounded, QuadTree)
@@ -40,7 +44,7 @@ import Round
 import Set exposing (Set)
 import Simulation.Car as Car exposing (Car)
 import Simulation.Lot as Lot exposing (Lot)
-import Simulation.RoadNetwork as RoadNetwork exposing (RNNodeContext, RoadNetwork)
+import Simulation.RoadNetwork as RoadNetwork exposing (RNNodeContext, RoadNetwork, buildRoadNetwork)
 import Simulation.TrafficLight exposing (TrafficLight)
 import Tilemap.Cell as Cell exposing (Cell, CellCoordinates)
 import Tilemap.Core
@@ -72,12 +76,12 @@ type alias World =
     { tilemap : Tilemap
     , pendingTilemapChange : Maybe PendingTilemapChange
     , roadNetwork : RoadNetwork
+    , roadNetworkLookup : QuadTree Length.Meters GlobalCoordinates RNLookupEntry
     , trafficLights : Collection TrafficLight
-    , cars : Collection Car
     , lots : Collection Lot
+    , cars : Collection Car
     , carLookup : QuadTree Length.Meters GlobalCoordinates Car
     , lotLookup : QuadTree Length.Meters GlobalCoordinates Lot
-    , roadNetworkLookup : QuadTree Length.Meters GlobalCoordinates RNLookupEntry
     , eventQueue : EventQueue WorldEvent
     , seed : Random.Seed
     }
@@ -185,7 +189,7 @@ findNodeByPosition { roadNetworkLookup, roadNetwork } nodePosition =
             (Length.meters 1)
             (BoundingBox2d.singleton nodePosition)
         |> List.head
-        |> Maybe.andThen (.id >> RoadNetwork.findNodeByNodeId roadNetwork)
+        |> Maybe.andThen (.id >> RoadNetwork.nodeById roadNetwork)
 
 
 findNearbyEntities : Length -> LMBoundingBox2d -> QuadTree Length.Meters GlobalCoordinates (Bounded Length.Meters GlobalCoordinates a) -> List (Bounded Length.Meters GlobalCoordinates a)
@@ -334,6 +338,47 @@ createLookup lookupItems world =
 setSeed : Random.Seed -> World -> World
 setSeed seed world =
     { world | seed = seed }
+
+
+createRoadNetwork : Tilemap -> World -> World
+createRoadNetwork tilemap world =
+    let
+        nextWorld =
+            { world | tilemap = tilemap }
+    in
+    updateRoadNetwork nextWorld
+
+
+connectLotToRoadNetwork : World -> World
+connectLotToRoadNetwork =
+    -- Room for improvement: re-building the whole roadnetwork when a new lot is added is not optimal
+    updateRoadNetwork
+
+
+updateRoadNetwork : World -> World
+updateRoadNetwork world =
+    -- Room for improvement: the road network should be updated with minimal changes instead of being replaced
+    let
+        ( nextRoadNetwork, nextTrafficLights ) =
+            buildRoadNetwork world.tilemap world.trafficLights
+
+        nodeLookupList =
+            Graph.fold
+                (\nodeCtx acc ->
+                    { id = nodeCtx.node.id
+                    , position = nodeCtx.node.label.position
+                    , boundingBox = BoundingBox2d.singleton nodeCtx.node.label.position
+                    }
+                        :: acc
+                )
+                []
+                nextRoadNetwork
+    in
+    { world
+        | roadNetwork = nextRoadNetwork
+        , trafficLights = nextTrafficLights
+        , roadNetworkLookup = createLookup nodeLookupList world
+    }
 
 
 

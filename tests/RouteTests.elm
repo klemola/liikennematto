@@ -124,7 +124,7 @@ createRoute : World -> Route
 createRoute world =
     let
         originNode =
-            RoadNetwork.findNodeByNodeId world.roadNetwork 1
+            RoadNetwork.nodeById world.roadNetwork 1
     in
     originNode
         |> Maybe.map

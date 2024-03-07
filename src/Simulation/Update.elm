@@ -10,12 +10,11 @@ import Model.Liikennematto
         ( Liikennematto
         , SimulationState(..)
         )
-import Model.World as World exposing (World)
+import Model.World as World exposing (World, updateRoadNetwork)
 import Process
 import Random
 import Simulation.Events exposing (updateEventQueue)
-import Simulation.Infrastructure exposing (updateRoadNetwork)
-import Simulation.Traffic as Traffic
+import Simulation.Traffic as Traffic exposing (rerouteCarsIfNeeded)
 import Simulation.TrafficLight exposing (TrafficLight)
 import Simulation.Zoning exposing (generateLot)
 import Task
@@ -148,7 +147,7 @@ worldAfterTilemapChange : World -> World
 worldAfterTilemapChange world =
     world
         |> updateRoadNetwork
-        |> Traffic.rerouteCarsIfNeeded
+        |> rerouteCarsIfNeeded
 
 
 

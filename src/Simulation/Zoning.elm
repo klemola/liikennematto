@@ -4,10 +4,9 @@ import Collection exposing (Id)
 import Data.Lots exposing (NewLot, allLots)
 import Maybe.Extra as Maybe
 import Model.Geometry exposing (oppositeOrthogonalDirection)
-import Model.World as World exposing (World)
+import Model.World as World exposing (World, connectLotToRoadNetwork)
 import Random
 import Random.List
-import Simulation.Infrastructure as Infrastructure
 import Simulation.Lot as Lot exposing (Lot)
 import Simulation.Traffic exposing (addLotResidents)
 import Tilemap.Cell exposing (Cell)
@@ -92,7 +91,7 @@ attemptBuildLot time world newLot =
                             (oppositeOrthogonalDirection lot.drivewayExitDirection)
                             world.tilemap
                         )
-                    |> Infrastructure.connectLotToRoadNetwork
+                    |> connectLotToRoadNetwork
                     |> addLotResidents time lot.id newLot.residents
             )
 

@@ -378,7 +378,7 @@ chooseRandomOutgoingConnection roadNetwork nodeCtx =
     RoadNetwork.getOutgoingConnectionIds nodeCtx
         |> List.filterMap
             (\outgoingNodeCtx ->
-                RoadNetwork.findNodeByNodeId roadNetwork outgoingNodeCtx
+                RoadNetwork.nodeById roadNetwork outgoingNodeCtx
                     |> Maybe.andThen discardLotNode
             )
         |> Random.List.choose

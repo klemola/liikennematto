@@ -7,11 +7,16 @@ module Data.Utility exposing
 
 import Collection exposing (Id)
 import Model.Geometry exposing (OrthogonalDirection)
-import Model.World as World exposing (World)
-import Simulation.Infrastructure exposing (createRoadNetwork)
+import Model.World as World exposing (World, createRoadNetwork)
 import Simulation.RoadNetwork as RoadNetwork exposing (RNNodeContext)
 import Tilemap.Cell as Cell
-import Tilemap.Core exposing (Tilemap, TilemapConfig, addAnchor, tilemapFromCells)
+import Tilemap.Core
+    exposing
+        ( Tilemap
+        , TilemapConfig
+        , addAnchor
+        , tilemapFromCells
+        )
 
 
 type alias AnchorDef =
@@ -64,9 +69,9 @@ getStartAndEndNode : World -> Int -> Int -> Maybe ( RNNodeContext, RNNodeContext
 getStartAndEndNode world startId endId =
     let
         start =
-            RoadNetwork.findNodeByNodeId world.roadNetwork startId
+            RoadNetwork.nodeById world.roadNetwork startId
 
         end =
-            RoadNetwork.findNodeByNodeId world.roadNetwork endId
+            RoadNetwork.nodeById world.roadNetwork endId
     in
     Maybe.map2 Tuple.pair start end

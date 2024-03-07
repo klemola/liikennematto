@@ -540,7 +540,7 @@ routeCarByDestination : World -> LMPoint2d -> Car -> Car
 routeCarByDestination world position car =
     let
         destination =
-            RoadNetwork.findNodeByPosition world.roadNetwork position
+            RoadNetwork.nodeByPosition world.roadNetwork position
     in
     case destination of
         Just nodeCtx ->
@@ -564,7 +564,7 @@ positionsToNodes : World -> List LMPoint2d -> Maybe ( RNNodeContext, List RNNode
 positionsToNodes world nodePositions =
     case
         nodePositions
-            |> List.filterMap (RoadNetwork.findNodeByPosition world.roadNetwork)
+            |> List.filterMap (RoadNetwork.nodeByPosition world.roadNetwork)
     of
         firstNode :: others ->
             Just ( firstNode, others )
