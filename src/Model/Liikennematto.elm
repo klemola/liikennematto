@@ -5,7 +5,6 @@ module Model.Liikennematto exposing
     , GameUpdateContext
     , InitSteps
     , Liikennematto
-    , SimulationState(..)
     , currentState
     , fromNewGame
     , fromPreviousGame
@@ -18,12 +17,13 @@ import Data.Defaults exposing (horizontalCellsAmount, verticalCellsAmount)
 import Duration exposing (Duration)
 import FSM exposing (FSM)
 import Model.Debug exposing (DebugState, initialDebugState)
-import Model.Editor as Editor exposing (Editor)
 import Model.Flags exposing (Flags, RuntimeEnvironment(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Screen as Screen exposing (Screen)
 import Model.World as World exposing (World)
 import Time
+import UI.Editor
+import UI.ZoomControl
 
 
 type alias Liikennematto =
@@ -33,22 +33,18 @@ type alias Liikennematto =
     , time : Time.Posix
     , world : World
     , previousWorld : Maybe World
-    , simulation : SimulationState
-    , editor : Editor
+    , simulationActive : Bool
     , renderCache : RenderCache
     , dynamicTiles : RenderCache.DynamicTilesPresentation
     , debug : DebugState
     , errorMessage : Maybe String
+    , editor : UI.Editor.Model
+    , zoomControl : UI.ZoomControl.Model
     }
 
 
 type alias GameFSM =
     FSM GameState GameAction GameUpdateContext
-
-
-type SimulationState
-    = Running
-    | Paused
 
 
 type alias InitSteps =
@@ -234,12 +230,13 @@ initial flags =
     , time = Time.millisToPosix 0
     , previousWorld = Nothing
     , world = initialWorld
-    , simulation = Running
-    , editor = Editor.initial
+    , simulationActive = True
     , renderCache = RenderCache.new initialWorld roadsLegacy
     , dynamicTiles = []
     , debug = initialDebugState
     , errorMessage = Nothing
+    , editor = UI.Editor.initialModel
+    , zoomControl = UI.ZoomControl.initialModel
     }
 
 
@@ -254,9 +251,8 @@ fromNewGame previousWorld model =
     { model
         | world = initialWorld
         , previousWorld = previousWorld
-        , editor = Editor.reset model.editor
         , renderCache = RenderCache.new initialWorld roadsLegacy
-        , simulation = Paused
+        , simulationActive = True
         , debug = initialDebugState
     }
 
@@ -268,9 +264,8 @@ fromPreviousGame model =
             { model
                 | world = previousWorld
                 , previousWorld = Nothing
-                , editor = Editor.reset model.editor
                 , renderCache = RenderCache.new previousWorld roadsLegacy
-                , simulation = Paused
+                , simulationActive = True
                 , debug = initialDebugState
             }
 

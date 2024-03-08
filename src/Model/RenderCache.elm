@@ -15,7 +15,6 @@ import Data.Assets exposing (Assets)
 import FSM
 import Length
 import Model.Animation as Animation exposing (Animation)
-import Model.Editor as Editor
 import Model.Geometry exposing (OrthogonalDirection, oppositeOrthogonalDirection)
 import Model.World exposing (World)
 import Pixels
@@ -33,6 +32,7 @@ import Tilemap.Core
         )
 import Tilemap.Tile as Tile exposing (Tile, TileKind(..))
 import Tilemap.TileConfig exposing (TileId)
+import UI.Core
 
 
 type alias RenderCache =
@@ -90,7 +90,7 @@ new { tilemap } roadAssets =
     }
 
 
-setPixelsToMetersRatio : Editor.ZoomLevel -> RenderCache -> RenderCache
+setPixelsToMetersRatio : UI.Core.ZoomLevel -> RenderCache -> RenderCache
 setPixelsToMetersRatio zoomLevel cache =
     let
         nextPixelsPerMeter =
@@ -106,16 +106,16 @@ setPixelsToMetersRatio zoomLevel cache =
     }
 
 
-zoomLevelToPixelsPerMeterValue : Editor.ZoomLevel -> Float
+zoomLevelToPixelsPerMeterValue : UI.Core.ZoomLevel -> Float
 zoomLevelToPixelsPerMeterValue zoomLevel =
     case zoomLevel of
-        Editor.VeryFar ->
+        UI.Core.VeryFar ->
             4
 
-        Editor.Far ->
+        UI.Core.Far ->
             6
 
-        Editor.Near ->
+        UI.Core.Near ->
             8
 
 

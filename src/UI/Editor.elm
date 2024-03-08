@@ -1,66 +1,86 @@
 module UI.Editor exposing
-    ( overlay
+    ( Model
+    , Msg
+    , initialModel
+    , reset
+    , subscriptions
     , update
-    , zoomControl
+    , usingTouchDevice
+    , view
     )
 
-import Audio exposing (playSound)
-import Browser.Dom
+import Browser.Events as Events
 import Duration exposing (Duration)
 import Element exposing (Color, Element)
-import Element.Background as Background
 import Element.Border as Border
-import Element.Input as Input
 import Html.Attributes
 import Html.Events.Extra.Mouse as Mouse
 import Html.Events.Extra.Pointer as Pointer
 import Maybe.Extra as Maybe
-import Message exposing (Message(..))
-import Model.Editor as Editor exposing (Editor)
-import Model.Liikennematto exposing (Liikennematto)
-import Model.RenderCache as RenderCache exposing (RenderCache, setTilemapCache)
+import Model.RenderCache exposing (RenderCache)
 import Model.World as World exposing (World)
 import Quantity
 import Render.Conversion
-import Task
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
         ( TilemapConfig
-        , addTile
         , canBuildRoadAt
         , cellHasFixedTile
-        , fixedTileByCell
         , getTilemapConfig
         )
-import Tilemap.Tile as Tile
 import UI.Core
     exposing
-        ( borderRadiusButton
-        , borderSize
+        ( InputEvent
+        , InputKind(..)
+        , ZoomLevel(..)
+        , borderRadiusButton
         , cellHighlightWidth
-        , colorBorder
-        , colorMenuBackground
         , colorTransparent
-        , colorZoomStepGuide
-        , colorZoomThumbBackground
-        , colorZoomTrackBackground
-        , containerId
         , overlayId
-        , renderSafeAreaYSize
-        , whitespaceRegular
-        , whitespaceTight
-        , zoomControlWidth
-        , zoomTrackHeight
-        , zoomTrackWidth
         )
 import UI.TimerIndicator
 
 
-type OverlayIntent
-    = AddTile
-    | RemoveTile
-    | NoIntent
+type alias Model =
+    { activeCell : Maybe Cell
+    , longPressTimer : Maybe Duration
+    , pointerDownEvent : Maybe Pointer.Event
+    , lastEventDevice : Pointer.DeviceType
+    }
+
+
+initialModel : Model
+initialModel =
+    { activeCell = Nothing
+    , longPressTimer = Nothing
+    , pointerDownEvent = Nothing
+    , lastEventDevice = Pointer.MouseType
+    }
+
+
+reset : Model -> Model
+reset editor =
+    { editor
+        | activeCell = initialModel.activeCell
+        , longPressTimer = initialModel.longPressTimer
+        , pointerDownEvent = initialModel.pointerDownEvent
+    }
+
+
+type Msg
+    = OverlayPointerMove Pointer.Event
+    | OverlayPointerLeave Pointer.Event
+    | OverlayPointerDown Pointer.Event
+    | OverlayPointerUp Pointer.Event
+    | OverlayPointerCancel Pointer.Event
+    | AnimationFrameReceived Duration
+    | NoOp
+
+
+usingTouchDevice : Model -> Bool
+usingTouchDevice model =
+    model.lastEventDevice == Pointer.MouseType
 
 
 longTapThreshold : Duration
@@ -73,83 +93,25 @@ longTapIndicatorShowDelay =
     Duration.milliseconds 300
 
 
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameReceived)
+
+
 
 -- Update
 
 
-update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
-update msg model =
+update : World -> RenderCache -> Msg -> Model -> ( Model, Maybe InputEvent )
+update world renderCache msg model =
     let
-        { editor, world, renderCache } =
-            model
-
         tilemapConfig =
             getTilemapConfig world.tilemap
     in
     case msg of
-        InGame ->
-            ( model, centerView )
-
-        GameSetupComplete ->
-            case
-                Cell.fromCoordinates tilemapConfig
-                    ( tilemapConfig.horizontalCellsAmount // 2
-                    , tilemapConfig.verticalCellsAmount // 2
-                    )
-            of
-                Just cell ->
-                    addTile cell model
-
-                Nothing ->
-                    ( model, Cmd.none )
-
-        ChangeZoomLevel nextLevel ->
-            let
-                nextEditor =
-                    Editor.setZoomLevel nextLevel editor
-
-                nextRenderCache =
-                    RenderCache.setPixelsToMetersRatio nextEditor.zoomLevel renderCache
-            in
-            ( { model
-                | editor = nextEditor
-                , renderCache = nextRenderCache
-              }
-            , Browser.Dom.getViewportOf containerId
-                |> Task.andThen
-                    (\domViewport ->
-                        let
-                            mapSizeChangeX =
-                                nextRenderCache.tilemapWidthPixels - renderCache.tilemapWidthPixels
-
-                            mapSizeChangeY =
-                                nextRenderCache.tilemapHeightPixels - renderCache.tilemapHeightPixels
-
-                            nextScrollX =
-                                (mapSizeChangeX / 2) + domViewport.viewport.x
-
-                            nextScrollY =
-                                (mapSizeChangeY / 2) + domViewport.viewport.y
-                        in
-                        Browser.Dom.setViewportOf containerId (max nextScrollX 0) (max nextScrollY 0)
-                    )
-                |> Task.attempt (\_ -> NoOp)
-            )
-
-        SpawnTestCar ->
-            ( { model
-                | world =
-                    World.addEvent
-                        World.SpawnTestCar
-                        model.time
-                        model.world
-              }
-            , Cmd.none
-            )
-
         AnimationFrameReceived delta ->
-            ( { model | editor = Editor.advanceLongPressTimer delta editor }
-            , Cmd.none
+            ( advanceLongPressTimer delta model
+            , Nothing
             )
 
         OverlayPointerMove event ->
@@ -160,21 +122,18 @@ update msg model =
                     event
             of
                 Just activeCell ->
-                    ( { model | editor = Editor.activateCell activeCell editor }
-                    , Cmd.none
+                    ( activateCell activeCell model
+                    , Nothing
                     )
 
                 Nothing ->
-                    ( model, Cmd.none )
+                    ( model, Nothing )
 
         OverlayPointerLeave event ->
-            ( { model
-                | editor =
-                    editor
-                        |> Editor.setLastEventDevice event.pointerType
-                        |> Editor.deactivateCell
-              }
-            , Cmd.none
+            ( model
+                |> setLastEventDevice event.pointerType
+                |> deactivateCell
+            , Nothing
             )
 
         OverlayPointerDown event ->
@@ -184,82 +143,114 @@ update msg model =
                         cellHasTile =
                             cellHasFixedTile eventCell world.tilemap
                     in
-                    ( { model | editor = Editor.selectCell event eventCell cellHasTile editor }
-                    , Cmd.none
+                    ( selectCell event eventCell cellHasTile model
+                    , Nothing
                     )
 
                 Nothing ->
-                    ( { model | editor = Editor.deactivateCell editor }
-                    , Cmd.none
+                    ( deactivateCell model
+                    , Nothing
                     )
 
         OverlayPointerUp event ->
             let
-                modelWithEditorUpdate =
-                    { model
-                        | editor =
-                            editor
-                                |> Editor.clearPointerDownEvent
-                                |> Editor.resetLongPressTimer
-                    }
+                baseModel =
+                    model
+                        |> clearPointerDownEvent
+                        |> resetLongPressTimer
             in
             case pointerEventToCell renderCache tilemapConfig event of
                 Just pointerUpCell ->
                     let
                         pointerDownCell =
-                            editor.pointerDownEvent |> Maybe.andThen (pointerEventToCell renderCache tilemapConfig)
+                            model.pointerDownEvent |> Maybe.andThen (pointerEventToCell renderCache tilemapConfig)
+
+                        inputEvent =
+                            resolvePointerUp
+                                pointerDownCell
+                                pointerUpCell
+                                event
+                                model
                     in
-                    applyOverlayIntent
-                        (resolvePointerUp
-                            pointerDownCell
-                            pointerUpCell
-                            event
-                            world
-                            editor
-                        )
-                        pointerUpCell
-                        modelWithEditorUpdate
+                    ( activateCell pointerUpCell baseModel
+                    , inputEvent
+                    )
 
                 Nothing ->
-                    ( modelWithEditorUpdate, Cmd.none )
+                    ( baseModel, Nothing )
 
         OverlayPointerCancel event ->
-            ( { model
-                | editor =
+            ( model
+                |> clearPointerDownEvent
+                |> resetLongPressTimer
+                |> deactivateCell
+                |> setLastEventDevice event.pointerType
+            , Nothing
+            )
+
+        NoOp ->
+            ( model, Nothing )
+
+
+activateCell : Cell -> Model -> Model
+activateCell cell model =
+    if
+        -- Cell already active?
+        model.activeCell
+            |> Maybe.map (Cell.identical cell)
+            |> Maybe.withDefault False
+    then
+        model
+
+    else
+        { model | activeCell = Just cell }
+
+
+deactivateCell : Model -> Model
+deactivateCell model =
+    { model | activeCell = Nothing }
+
+
+storePointerDownEvent : Pointer.Event -> Model -> Model
+storePointerDownEvent event model =
+    { model | pointerDownEvent = Just event }
+
+
+clearPointerDownEvent : Model -> Model
+clearPointerDownEvent model =
+    { model | pointerDownEvent = Nothing }
+
+
+resetLongPressTimer : Model -> Model
+resetLongPressTimer model =
+    { model | longPressTimer = Nothing }
+
+
+advanceLongPressTimer : Duration -> Model -> Model
+advanceLongPressTimer delta model =
+    { model
+        | longPressTimer = model.longPressTimer |> Maybe.map (Quantity.plus delta)
+    }
+
+
+setLastEventDevice : Pointer.DeviceType -> Model -> Model
+setLastEventDevice deviceType model =
+    { model | lastEventDevice = deviceType }
+
+
+selectCell : Pointer.Event -> Cell -> Bool -> Model -> Model
+selectCell event eventCell hasTile initialEditor =
+    initialEditor
+        |> setLastEventDevice event.pointerType
+        |> storePointerDownEvent event
+        |> activateCell eventCell
+        |> (\editor ->
+                if event.pointerType == Pointer.MouseType || not hasTile then
                     editor
-                        |> Editor.clearPointerDownEvent
-                        |> Editor.resetLongPressTimer
-                        |> Editor.deactivateCell
-                        |> Editor.setLastEventDevice event.pointerType
-              }
-            , Cmd.none
-            )
 
-        _ ->
-            ( model, Cmd.none )
-
-
-tileActionsToCmds : List Tile.Action -> List (Cmd Message)
-tileActionsToCmds =
-    List.map
-        (\action ->
-            case action of
-                Tile.PlayAudio sound ->
-                    playSound sound
-        )
-
-
-centerView : Cmd Message
-centerView =
-    Browser.Dom.getViewportOf containerId
-        |> Task.andThen
-            (\domViewport ->
-                Browser.Dom.setViewportOf
-                    containerId
-                    ((domViewport.scene.width - domViewport.viewport.width) / 2)
-                    ((domViewport.scene.height - domViewport.viewport.height - toFloat renderSafeAreaYSize) / 2)
-            )
-        |> Task.attempt (\_ -> NoOp)
+                else
+                    { editor | longPressTimer = Just Quantity.zero }
+           )
 
 
 pointerEventToCell : RenderCache -> TilemapConfig -> Pointer.Event -> Maybe Cell
@@ -289,8 +280,8 @@ pointerEventToCell cache constraints event =
     Cell.fromCoordinates constraints coordinates
 
 
-resolvePointerUp : Maybe Cell -> Cell -> Pointer.Event -> World -> Editor -> OverlayIntent
-resolvePointerUp pointerDownCell pointerUpCell pointerUpEvent world editor =
+resolvePointerUp : Maybe Cell -> Cell -> Pointer.Event -> Model -> Maybe InputEvent
+resolvePointerUp pointerDownCell pointerUpCell pointerUpEvent model =
     let
         validRelease =
             pointerDownCell
@@ -301,7 +292,7 @@ resolvePointerUp pointerDownCell pointerUpCell pointerUpEvent world editor =
             pointerUpEvent.pointer.button == Mouse.SecondButton
 
         isLongTap =
-            case editor.longPressTimer of
+            case model.longPressTimer of
                 Just elapsed ->
                     validRelease && (elapsed |> Quantity.greaterThanOrEqualTo longTapThreshold)
 
@@ -309,102 +300,21 @@ resolvePointerUp pointerDownCell pointerUpCell pointerUpEvent world editor =
                     False
     in
     if isLongTap || isRightClick then
-        chooseSecondaryIntent pointerUpCell world
+        Just { cell = pointerUpCell, kind = Secondary }
 
     else if validRelease then
-        choosePrimaryIntent pointerUpCell world
+        Just { cell = pointerUpCell, kind = Primary }
 
     else
-        NoIntent
-
-
-choosePrimaryIntent : Cell -> World -> OverlayIntent
-choosePrimaryIntent cell world =
-    let
-        alreadyExists =
-            cellHasFixedTile cell world.tilemap
-    in
-    if not alreadyExists && canBuildRoadAt cell world.tilemap then
-        AddTile
-
-    else
-        NoIntent
-
-
-chooseSecondaryIntent : Cell -> World -> OverlayIntent
-chooseSecondaryIntent cell world =
-    let
-        tile =
-            fixedTileByCell world.tilemap cell
-    in
-    if Maybe.unwrap False Tile.isBuilt tile then
-        RemoveTile
-
-    else
-        NoIntent
-
-
-applyOverlayIntent : OverlayIntent -> Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
-applyOverlayIntent intent activeCell model =
-    case intent of
-        AddTile ->
-            addTile activeCell model
-
-        RemoveTile ->
-            removeTile activeCell model
-
-        NoIntent ->
-            ( model, Cmd.none )
-
-
-addTile : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
-addTile cell model =
-    let
-        { world, renderCache } =
-            model
-
-        ( nextTilemap, tileActions ) =
-            Tilemap.Core.addTile cell world.tilemap
-
-        nextWorld =
-            { world | tilemap = nextTilemap }
-    in
-    ( { model
-        | world = nextWorld
-        , editor = Editor.activateCell cell model.editor
-        , renderCache = setTilemapCache nextTilemap renderCache
-      }
-    , Cmd.batch (tileActionsToCmds tileActions)
-    )
-
-
-removeTile : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
-removeTile cell model =
-    let
-        { world, renderCache } =
-            model
-
-        ( nextTilemap, tileActions ) =
-            Tilemap.Core.removeTile cell world.tilemap
-
-        nextWorld =
-            { world | tilemap = nextTilemap }
-    in
-    ( { model
-        | world = nextWorld
-        , editor = Editor.activateCell cell model.editor
-        , renderCache = setTilemapCache nextTilemap renderCache
-      }
-    , Cmd.batch (tileActionsToCmds tileActions)
-    )
+        Nothing
 
 
 
 -- Views
 
 
-overlay : RenderCache -> World -> Editor -> Element Message
-overlay cache world editor =
+view : RenderCache -> World -> Model -> Element Msg
+view cache world model =
     Element.el
         [ Element.width Element.fill
         , Element.height Element.fill
@@ -423,13 +333,13 @@ overlay cache world editor =
                 Element.none
             )
         ]
-        (case editor.activeCell of
+        (case model.activeCell of
             Just cell ->
-                if editor.lastEventDevice == Pointer.MouseType then
+                if model.lastEventDevice == Pointer.MouseType then
                     cellHighlight cache world cell
 
                 else
-                    case editor.longPressTimer of
+                    case model.longPressTimer of
                         Just elapsed ->
                             UI.TimerIndicator.view
                                 longTapThreshold
@@ -446,7 +356,7 @@ overlay cache world editor =
         )
 
 
-cellHighlight : RenderCache -> World -> Cell -> Element Message
+cellHighlight : RenderCache -> World -> Cell -> Element Msg
 cellHighlight cache world activeCell =
     let
         tileSizePixels =
@@ -491,100 +401,3 @@ highlightColor world cell =
 
     else
         Just UI.Core.colorNotAllowed
-
-
-zoomControl : Editor -> Element Message
-zoomControl editor =
-    let
-        baseWidth =
-            zoomControlWidth
-
-        baseHeight =
-            zoomTrackHeight
-
-        paddingX =
-            whitespaceTight
-
-        paddingY =
-            whitespaceTight
-
-        sliderWidth =
-            baseWidth - (2 * paddingX)
-
-        sliderHeight =
-            baseHeight - (2 * paddingY)
-
-        thumbWidth =
-            zoomTrackWidth + (2 * paddingX)
-
-        thumbHeight =
-            zoomTrackWidth
-    in
-    Element.el
-        [ Element.paddingXY paddingX paddingY
-        , Element.width (Element.px baseWidth)
-        , Element.height (Element.px baseHeight)
-        , Element.alignLeft
-        , Element.alignBottom
-        , Background.color colorMenuBackground
-        , Border.rounded borderRadiusButton
-        ]
-        (Input.slider
-            [ Element.width (Element.px sliderWidth)
-            , Element.height (Element.px sliderHeight)
-            , Element.behindContent track
-            ]
-            { onChange = ChangeZoomLevel
-            , label = Input.labelHidden "Zoom"
-            , min = 1
-            , max = 3
-            , step = Just 1
-            , value = Editor.zoomLevelToUIValue editor.zoomLevel
-            , thumb =
-                Input.thumb
-                    [ Element.width (Element.px thumbWidth)
-                    , Element.height (Element.px thumbHeight)
-                    , Background.color colorZoomThumbBackground
-                    , Border.rounded borderRadiusButton
-                    , Border.solid
-                    , Border.width borderSize
-                    , Border.color colorBorder
-                    ]
-            }
-        )
-
-
-track : Element Message
-track =
-    let
-        stepGuide =
-            Element.el
-                [ Element.width Element.fill
-                , Element.height (Element.px whitespaceRegular)
-                , Background.color colorZoomStepGuide
-                ]
-                Element.none
-    in
-    Element.el
-        [ Element.width (Element.px zoomTrackWidth)
-        , Element.height Element.fill
-        , Element.centerX
-        , Element.clip
-        , Background.color colorZoomTrackBackground
-        , Border.solid
-        , Border.width borderSize
-        , Border.color colorBorder
-        , Border.rounded borderRadiusButton
-        , Element.inFront
-            (Element.column
-                [ Element.height Element.fill
-                , Element.width Element.fill
-                , Element.spaceEvenly
-                ]
-                [ stepGuide
-                , stepGuide
-                , stepGuide
-                ]
-            )
-        ]
-        Element.none

@@ -8,7 +8,6 @@ import Message exposing (Message(..))
 import Model.Liikennematto
     exposing
         ( Liikennematto
-        , SimulationState(..)
         )
 import Model.World as World exposing (World, updateRoadNetwork)
 import Process
@@ -79,15 +78,12 @@ update msg model =
             , Cmd.none
             )
 
-        SetSimulation simulation ->
-            ( { model | simulation = simulation }, Cmd.none )
-
         GenerateEnvironment ->
             let
                 nextWorld =
                     attemptGenerateLot
                         model.time
-                        model.simulation
+                        model.simulationActive
                         model.world
 
                 cmds =
@@ -102,6 +98,17 @@ update msg model =
             in
             ( { model | world = nextWorld }
             , cmds
+            )
+
+        SpawnTestCar ->
+            ( { model
+                | world =
+                    World.addEvent
+                        World.SpawnTestCar
+                        model.time
+                        model.world
+              }
+            , Cmd.none
             )
 
         _ ->
@@ -176,13 +183,13 @@ updateTrafficLight trafficLight =
     { trafficLight | fsm = nextFsm }
 
 
-attemptGenerateLot : Time.Posix -> SimulationState -> World -> World
-attemptGenerateLot time simulation world =
+attemptGenerateLot : Time.Posix -> Bool -> World -> World
+attemptGenerateLot time simulationActive world =
     let
         largeEnoughRoadNetwork =
             tilemapSize world.tilemap > 4 * (Collection.size world.lots + 1)
     in
-    if simulation == Paused || not largeEnoughRoadNetwork || World.hasPendingTilemapChange world then
+    if not simulationActive || not largeEnoughRoadNetwork || World.hasPendingTilemapChange world then
         world
 
     else

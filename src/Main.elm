@@ -1,27 +1,27 @@
 module Main exposing (main)
 
+import Audio
 import Browser
 import Browser.Dom exposing (getViewport)
 import Browser.Events as Events
+import Duration
 import Element exposing (Element)
 import FSM
 import Message exposing (Message(..))
 import Model.Flags as Flags exposing (FlagsJson)
-import Model.Liikennematto as Liikennematto
-    exposing
-        ( Liikennematto
-        , SimulationState(..)
-        )
+import Model.Liikennematto as Liikennematto exposing (Liikennematto)
+import Model.RenderCache exposing (setPixelsToMetersRatio)
 import Model.Screen as Screen
 import Render
 import Render.Debug
 import Simulation.Update as Simulation exposing (worldAfterTilemapChange)
-import Subscriptions exposing (subscriptions)
 import Task
 import Tilemap.Update as Tilemap
-import UI
+import Time
+import UI.Core exposing (containerId, renderSafeAreaYSize)
 import UI.ErrorScreen
 import UI.SplashScreen
+import UI.UI
 
 
 main : Program FlagsJson Liikennematto Message
@@ -50,12 +50,48 @@ init flags =
     ( initialModel, initCmds )
 
 
+environmentUpdateFrequencyMs : Float
+environmentUpdateFrequencyMs =
+    1000
+
+
+secondarySystemFrequencyMs : Float
+secondarySystemFrequencyMs =
+    -- 30 FPS/UPS
+    1000 / 30
+
+
+subscriptions : Liikennematto -> Sub Message
+subscriptions model =
+    let
+        defaultSubs =
+            [ Events.onResize (\_ _ -> ResizeTriggered)
+            , Events.onVisibilityChange VisibilityChanged
+            , Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameReceived)
+            , Time.every secondarySystemFrequencyMs (always (UpdateTilemap (Duration.milliseconds secondarySystemFrequencyMs)))
+            , Audio.onAudioInitComplete (\_ -> AudioInitComplete)
+            , UI.UI.subscriptions model
+            ]
+    in
+    if not model.simulationActive then
+        Sub.batch defaultSubs
+
+    else
+        Sub.batch
+            (defaultSubs
+                ++ [ Events.onAnimationFrameDelta (Duration.milliseconds >> UpdateTraffic)
+                   , Time.every environmentUpdateFrequencyMs (always UpdateEnvironment)
+                   , Time.every secondarySystemFrequencyMs CheckQueues
+                   ]
+            )
+
+
 update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
 update msg model =
     updateBase msg model
+        |> withUpdate UI.UI.update msg
         |> withUpdate Tilemap.update msg
         |> withUpdate Simulation.update msg
-        |> withUpdate UI.update msg
 
 
 updateBase : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
@@ -63,13 +99,13 @@ updateBase msg model =
     case msg of
         VisibilityChanged newVisibility ->
             ( { model
-                | simulation =
+                | simulationActive =
                     case newVisibility of
                         Events.Visible ->
-                            model.simulation
+                            model.simulationActive
 
                         Events.Hidden ->
-                            Paused
+                            False
               }
             , Cmd.none
             )
@@ -139,6 +175,36 @@ updateBase msg model =
             , gameActionsToCmd transitionActions
             )
 
+        ToggleSimulationActive ->
+            ( { model | simulationActive = not model.simulationActive }, Cmd.none )
+
+        ZoomLevelChanged nextLevel ->
+            let
+                nextRenderCache =
+                    setPixelsToMetersRatio nextLevel model.renderCache
+            in
+            ( { model | renderCache = nextRenderCache }
+            , Browser.Dom.getViewportOf containerId
+                |> Task.andThen
+                    (\domViewport ->
+                        let
+                            mapSizeChangeX =
+                                nextRenderCache.tilemapWidthPixels - nextRenderCache.tilemapWidthPixels
+
+                            mapSizeChangeY =
+                                nextRenderCache.tilemapHeightPixels - nextRenderCache.tilemapHeightPixels
+
+                            nextScrollX =
+                                (mapSizeChangeX / 2) + domViewport.viewport.x
+
+                            nextScrollY =
+                                (mapSizeChangeY / 2) + domViewport.viewport.y
+                        in
+                        Browser.Dom.setViewportOf containerId (max nextScrollX 0) (max nextScrollY 0)
+                    )
+                |> Task.attempt (\_ -> NoOp)
+            )
+
         _ ->
             ( model, Cmd.none )
 
@@ -174,10 +240,18 @@ gameActionToCmd action =
             Message.asCmd GameSetupComplete
 
         Liikennematto.TriggerPostLoadingEffects ->
-            Message.asCmd (SetSimulation Liikennematto.Running)
+            Message.asCmd ToggleSimulationActive
 
         Liikennematto.TriggerInGameEffects ->
-            Message.asCmd Message.InGame
+            Browser.Dom.getViewportOf containerId
+                |> Task.andThen
+                    (\domViewport ->
+                        Browser.Dom.setViewportOf
+                            containerId
+                            ((domViewport.scene.width - domViewport.viewport.width) / 2)
+                            ((domViewport.scene.height - domViewport.viewport.height - toFloat renderSafeAreaYSize) / 2)
+                    )
+                |> Task.attempt (\_ -> NoOp)
 
 
 view : Liikennematto -> Browser.Document Message
@@ -186,7 +260,7 @@ view model =
     , body =
         [ case Liikennematto.currentState model of
             Liikennematto.InGame ->
-                UI.layout
+                UI.UI.view
                     model
                     (render model)
                     (renderDebug model)
