@@ -16,7 +16,6 @@ import Element.Border as Border
 import Html.Attributes
 import Html.Events.Extra.Mouse as Mouse
 import Html.Events.Extra.Pointer as Pointer
-import Maybe.Extra as Maybe
 import Model.RenderCache exposing (RenderCache)
 import Model.World as World exposing (World)
 import Quantity
@@ -33,7 +32,6 @@ import UI.Core
     exposing
         ( InputEvent
         , InputKind(..)
-        , ZoomLevel(..)
         , borderRadiusButton
         , cellHighlightWidth
         , colorTransparent

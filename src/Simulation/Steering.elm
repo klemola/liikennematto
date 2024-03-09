@@ -20,7 +20,7 @@ import Acceleration exposing (Acceleration)
 import Angle exposing (Angle)
 import AngularAcceleration exposing (AngularAcceleration)
 import AngularSpeed exposing (AngularSpeed)
-import Common exposing (GlobalCoordinates, LocalCoordinates, isCloseToZeroVelocity)
+import Common exposing (GlobalCoordinates, isCloseToZeroVelocity)
 import Duration
 import Length exposing (Length)
 import Point2d exposing (Point2d)
