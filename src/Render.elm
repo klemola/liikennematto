@@ -5,8 +5,8 @@ module Render exposing
     )
 
 import Angle
-import Collection exposing (Collection)
 import Color
+import Common exposing (GlobalCoordinates)
 import Data.Assets exposing (assetById)
 import Data.Cars exposing (CarMake, carAsset)
 import Data.Colors as Colors
@@ -14,31 +14,29 @@ import Data.Lots exposing (lotAsset)
 import Graph exposing (Node)
 import Html exposing (Html)
 import Length exposing (Length)
+import Lib.Collection as Collection exposing (Collection)
+import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Model.Animation as Animation exposing (Animation)
-import Model.Car exposing (Car)
-import Model.Cell as Cell exposing (Cell)
-import Model.Geometry
-    exposing
-        ( LMPoint2d
-        , OrthogonalDirection(..)
-        )
-import Model.Lot exposing (Lot)
 import Model.RenderCache exposing (DynamicTilesPresentation, RenderCache)
-import Model.RoadNetwork
+import Model.World exposing (World)
+import Point2d exposing (Point2d)
+import Quantity
+import Render.Conversion exposing (pointToPixels, toPixelsValue, toViewBoxValue)
+import Simulation.Car exposing (Car)
+import Simulation.Lot exposing (Lot)
+import Simulation.RoadNetwork
     exposing
         ( Connection
         , RoadNetwork
         , TrafficControl(..)
         )
-import Model.Tile exposing (TileKind(..))
-import Model.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..))
-import Model.World exposing (World)
-import Quantity
-import Render.Conversion exposing (pointToPixels, toPixelsValue, toViewBoxValue)
+import Simulation.TrafficLight as TrafficLight exposing (TrafficLight, TrafficLightColor(..))
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Svg.Keyed
 import Svg.Lazy
+import Tilemap.Cell as Cell exposing (Cell)
+import Tilemap.Tile exposing (TileKind(..))
 
 
 
@@ -387,7 +385,7 @@ renderCar cache car =
     Svg.Lazy.lazy4 carSvg cache car.position car.orientation car.make
 
 
-carSvg : RenderCache -> LMPoint2d -> Angle.Angle -> CarMake -> Svg msg
+carSvg : RenderCache -> Point2d Length.Meters GlobalCoordinates -> Angle.Angle -> CarMake -> Svg msg
 carSvg cache position orientation make =
     let
         { x, y } =

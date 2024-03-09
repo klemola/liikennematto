@@ -6,7 +6,7 @@ module Model.Animation exposing
     )
 
 import Duration exposing (Duration)
-import Model.Geometry exposing (OrthogonalDirection)
+import Lib.OrthogonalDirection exposing (OrthogonalDirection)
 
 
 type alias Animation =

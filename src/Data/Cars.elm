@@ -14,11 +14,11 @@ module Data.Cars exposing
     )
 
 import Color exposing (Color)
+import Common exposing (GlobalCoordinates)
 import Data.Colors as Colors
 import Length exposing (Length)
-import Model.Geometry exposing (LMShape2d)
 import Point2d
-import Polygon2d
+import Polygon2d exposing (Polygon2d)
 import Quantity
 import Random
 import Random.Extra
@@ -32,7 +32,7 @@ type alias CarMake =
     , accentColor : Color
     , length : Length
     , width : Length
-    , shapeAtOrigin : LMShape2d
+    , shapeAtOrigin : Polygon2d Length.Meters GlobalCoordinates
     , style : CarStyle
     , role : CarRole
     }

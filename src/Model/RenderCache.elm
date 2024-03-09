@@ -12,19 +12,27 @@ module Model.RenderCache exposing
     )
 
 import Data.Assets exposing (Assets)
-import FSM
 import Length
+import Lib.FSM as FSM
+import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import Model.Animation as Animation exposing (Animation)
-import Model.Cell exposing (Cell)
-import Model.Editor as Editor
-import Model.Geometry exposing (OrthogonalDirection, oppositeOrthogonalDirection)
-import Model.Tile as Tile exposing (Tile, TileKind(..))
-import Model.TileConfig exposing (TileId)
-import Model.Tilemap as Tilemap exposing (Tilemap)
 import Model.World exposing (World)
 import Pixels
 import Quantity
 import Render.Conversion exposing (PixelsToMetersRatio, defaultPixelsToMetersRatio, toPixelsValue)
+import Tilemap.Cell exposing (Cell)
+import Tilemap.Core
+    exposing
+        ( TileListFilter(..)
+        , Tilemap
+        , TilemapUpdateResult
+        , fixedTileByCell
+        , getTilemapDimensions
+        , tilemapToList
+        )
+import Tilemap.Tile as Tile exposing (Tile, TileKind(..))
+import Tilemap.TileConfig exposing (TileId)
+import UI.Core
 
 
 type alias RenderCache =
@@ -34,7 +42,7 @@ type alias RenderCache =
     , tilemapHeightPixels : Float
     , tilemapWidth : Length.Length
     , tilemapHeight : Length.Length
-    , tileListFilter : Tilemap.TileListFilter
+    , tileListFilter : TileListFilter
     , roadAssets : Assets ()
     }
 
@@ -59,7 +67,7 @@ new : World -> Assets () -> RenderCache
 new { tilemap } roadAssets =
     let
         tilemapDimensions =
-            Tilemap.dimensions tilemap
+            getTilemapDimensions tilemap
 
         tilemapWidthPixels =
             toPixelsValue defaultPixelsToMetersRatio tilemapDimensions.width
@@ -68,7 +76,7 @@ new { tilemap } roadAssets =
             toPixelsValue defaultPixelsToMetersRatio tilemapDimensions.height
 
         initialTileListFilter =
-            Tilemap.StaticTiles
+            StaticTiles
     in
     { pixelsToMetersRatio = defaultPixelsToMetersRatio
     , tilemap = toTilemapCache initialTileListFilter tilemap
@@ -82,7 +90,7 @@ new { tilemap } roadAssets =
     }
 
 
-setPixelsToMetersRatio : Editor.ZoomLevel -> RenderCache -> RenderCache
+setPixelsToMetersRatio : UI.Core.ZoomLevel -> RenderCache -> RenderCache
 setPixelsToMetersRatio zoomLevel cache =
     let
         nextPixelsPerMeter =
@@ -98,16 +106,16 @@ setPixelsToMetersRatio zoomLevel cache =
     }
 
 
-zoomLevelToPixelsPerMeterValue : Editor.ZoomLevel -> Float
+zoomLevelToPixelsPerMeterValue : UI.Core.ZoomLevel -> Float
 zoomLevelToPixelsPerMeterValue zoomLevel =
     case zoomLevel of
-        Editor.VeryFar ->
+        UI.Core.VeryFar ->
             4
 
-        Editor.Far ->
+        UI.Core.Far ->
             6
 
-        Editor.Near ->
+        UI.Core.Near ->
             8
 
 
@@ -116,12 +124,12 @@ setTilemapCache tilemap cache =
     { cache | tilemap = toTilemapCache cache.tileListFilter tilemap }
 
 
-setTileListFilter : Tilemap.TileListFilter -> RenderCache -> RenderCache
+setTileListFilter : TileListFilter -> RenderCache -> RenderCache
 setTileListFilter tileListFilter cache =
     { cache | tileListFilter = tileListFilter }
 
 
-refreshTilemapCache : Tilemap.TilemapUpdateResult -> RenderCache -> ( RenderCache, DynamicTilesPresentation )
+refreshTilemapCache : TilemapUpdateResult -> RenderCache -> ( RenderCache, DynamicTilesPresentation )
 refreshTilemapCache tilemapUpdateResult cache =
     let
         nextCache =
@@ -143,9 +151,9 @@ refreshTilemapCache tilemapUpdateResult cache =
     ( nextCache, nextDynamicTiles )
 
 
-toTilemapCache : Tilemap.TileListFilter -> Tilemap -> List StaticTilePresentation
+toTilemapCache : TileListFilter -> Tilemap -> List StaticTilePresentation
 toTilemapCache tileListFilter tilemap =
-    Tilemap.toList tileMapper tileListFilter tilemap
+    tilemapToList tileMapper tileListFilter tilemap
 
 
 tileMapper : Cell -> Tile -> StaticTilePresentation
@@ -158,7 +166,7 @@ toDynamicTiles tilemap changingCells =
     changingCells
         |> List.filterMap
             (\cell ->
-                Tilemap.tileAt tilemap cell
+                fixedTileByCell tilemap cell
                     |> Maybe.andThen
                         (\tile ->
                             case tile.kind of
@@ -198,7 +206,7 @@ animationDirectionFromTile : Tile -> Maybe OrthogonalDirection
 animationDirectionFromTile tile =
     case Tile.potentialConnections tile of
         [ connection ] ->
-            Just (oppositeOrthogonalDirection connection)
+            Just (OrthogonalDirection.opposite connection)
 
         _ ->
             Nothing

@@ -1,4 +1,4 @@
-module UI exposing (layout, update)
+module UI.UI exposing (subscriptions, update, view)
 
 import Data.Icons as Icons
 import Element exposing (Element)
@@ -7,8 +7,7 @@ import Element.Border as Border
 import Html exposing (Html)
 import Html.Attributes as HtmlAttribute
 import Message exposing (Message(..))
-import Model.Editor exposing (mouseDetected)
-import Model.Liikennematto exposing (Liikennematto, SimulationState(..))
+import Model.Liikennematto exposing (Liikennematto)
 import Model.World exposing (World)
 import UI.Core
     exposing
@@ -28,18 +27,7 @@ import UI.Core
         )
 import UI.DebugPanel as DebugPanel
 import UI.Editor as Editor
-
-
-update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
-update msg model =
-    let
-        ( modelWithDebugChanges, debugCmd ) =
-            DebugPanel.update msg model
-
-        ( modelWithEditorChanges, editorCmd ) =
-            Editor.update msg modelWithDebugChanges
-    in
-    ( modelWithEditorChanges, Cmd.batch [ debugCmd, editorCmd ] )
+import UI.ZoomControl as ZoomControl
 
 
 baseLayoutOptions : List Element.Option
@@ -58,11 +46,43 @@ touchLayoutOptions =
     Element.noHover :: baseLayoutOptions
 
 
-layout : Liikennematto -> Element Message -> Element Message -> Html Message
-layout model render renderDebugLayers =
+subscriptions : Liikennematto -> Sub Message
+subscriptions model =
+    Sub.map EditorMsg (Editor.subscriptions model.editor)
+
+
+update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
+update msg model =
+    case msg of
+        EditorMsg editorMsg ->
+            let
+                ( editorModel, inputEvent ) =
+                    Editor.update model.world model.renderCache editorMsg model.editor
+            in
+            ( { model | editor = editorModel }
+            , inputEvent
+                |> Maybe.map (InputReceived >> Message.asCmd)
+                |> Maybe.withDefault Cmd.none
+            )
+
+        ZoomControlMsg zoomControlMsg ->
+            let
+                ( zoomControlModel, zoomLevel ) =
+                    ZoomControl.update zoomControlMsg model.zoomControl
+            in
+            ( { model | zoomControl = zoomControlModel }
+            , Message.asCmd (ZoomLevelChanged zoomLevel)
+            )
+
+        _ ->
+            DebugPanel.update msg model
+
+
+view : Liikennematto -> Element Message -> Element Message -> Html Message
+view model render renderDebugLayers =
     Element.layoutWith
         { options =
-            if mouseDetected model.editor then
+            if Editor.usingTouchDevice model.editor then
                 baseLayoutOptions
 
             else
@@ -130,10 +150,11 @@ renderWrapper model render debugLayers =
             , Border.color colorRenderEdge
             , Element.inFront debugLayers
             , Element.inFront
-                (Editor.overlay
+                (Editor.view
                     model.renderCache
                     model.world
                     model.editor
+                    |> Element.map EditorMsg
                 )
             ]
             render
@@ -149,7 +170,8 @@ leftControls model =
         , Element.moveUp scrollbarAwareOffsetF
         , Element.moveRight scrollbarAwareOffsetF
         ]
-        [ Editor.zoomControl model.editor
+        [ ZoomControl.view model.zoomControl
+            |> Element.map ZoomControlMsg
         , Element.el
             [ Element.padding whitespaceTight
             , Element.spacing whitespaceTight
@@ -157,7 +179,7 @@ leftControls model =
             , Background.color colorMenuBackground
             , Border.rounded borderRadiusPanel
             ]
-            (simulationControl model.simulation)
+            (simulationControl model.simulationActive)
         ]
 
 
@@ -192,20 +214,19 @@ rightControls model =
         ]
 
 
-simulationControl : SimulationState -> Element Message
-simulationControl simulation =
+simulationControl : Bool -> Element Message
+simulationControl simulationActive =
     let
-        ( iconKind, selected, msg ) =
-            case simulation of
-                Running ->
-                    ( Icons.Pause, False, SetSimulation Paused )
+        ( iconKind, selected ) =
+            if simulationActive then
+                ( Icons.Pause, False )
 
-                Paused ->
-                    ( Icons.Resume, True, SetSimulation Running )
+            else
+                ( Icons.Resume, True )
     in
     controlButton
         { iconKind = iconKind
-        , onPress = msg
+        , onPress = ToggleSimulationActive
         , selected = selected
         , disabled = False
         }

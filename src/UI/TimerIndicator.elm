@@ -3,11 +3,11 @@ module UI.TimerIndicator exposing (view)
 import Data.Colors as Colors
 import Duration exposing (Duration)
 import Element exposing (Element)
-import Model.Cell as Cell
 import Quantity
 import Render.Conversion exposing (PixelsToMetersRatio)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
+import Tilemap.Cell as Cell
 
 
 view : Duration -> Duration -> PixelsToMetersRatio -> Cell.CellCoordinates -> Duration -> Element msg

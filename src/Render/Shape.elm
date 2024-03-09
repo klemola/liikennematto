@@ -7,17 +7,17 @@ module Render.Shape exposing
     , line
     )
 
-import Arc2d
+import Arc2d exposing (Arc2d)
 import Axis2d
-import BoundingBox2d
+import BoundingBox2d exposing (BoundingBox2d)
 import Circle2d
 import Color exposing (Color)
+import Common exposing (GlobalCoordinates)
 import CubicSpline2d exposing (CubicSpline2d)
 import Data.Colors as Colors
 import Geometry.Svg as Svg
 import Length
-import LineSegment2d
-import Model.Geometry exposing (LMArc2d, LMBoundingBox2d, LMCubicSpline2d, LMLineSegment2d, LMPoint2d)
+import LineSegment2d exposing (LineSegment2d)
 import Model.RenderCache exposing (RenderCache)
 import Point2d exposing (Point2d)
 import Polyline2d
@@ -30,7 +30,7 @@ type SVGCoordinates
     = SVGCoordinates -- Y down instead of up
 
 
-cubicSpline : RenderCache -> Color -> LMCubicSpline2d -> Svg msg
+cubicSpline : RenderCache -> Color -> CubicSpline2d Length.Meters GlobalCoordinates -> Svg msg
 cubicSpline cache color spline =
     let
         splineInSVGCoords =
@@ -64,7 +64,7 @@ cubicSpline cache color spline =
         ]
 
 
-cubicSplineDebug : RenderCache -> Color -> LMCubicSpline2d -> Svg msg
+cubicSplineDebug : RenderCache -> Color -> CubicSpline2d Length.Meters GlobalCoordinates -> Svg msg
 cubicSplineDebug cache color spline =
     let
         splineInSVGCoords =
@@ -115,7 +115,7 @@ cubicSplineDebug cache color spline =
         ]
 
 
-circle : RenderCache -> Color -> Maybe ( Color, Float ) -> Length.Length -> LMPoint2d -> Svg msg
+circle : RenderCache -> Color -> Maybe ( Color, Float ) -> Length.Length -> Point2d Length.Meters GlobalCoordinates -> Svg msg
 circle cache fillColor strokeProperties radius centerPoint =
     let
         centerPointInSVGCoords =
@@ -141,7 +141,7 @@ circle cache fillColor strokeProperties radius centerPoint =
         (Circle2d.atPoint centerPointInSVGCoords radiusPixels)
 
 
-line : RenderCache -> Color -> LMLineSegment2d -> Svg msg
+line : RenderCache -> Color -> LineSegment2d Length.Meters GlobalCoordinates -> Svg msg
 line cache color lineSegment =
     let
         rayInSVGCoords =
@@ -161,7 +161,7 @@ line cache color lineSegment =
         rayInSVGCoords
 
 
-arc : RenderCache -> Color -> LMArc2d -> Svg msg
+arc : RenderCache -> Color -> Arc2d Length.Meters GlobalCoordinates -> Svg msg
 arc cache color theArc =
     let
         start =
@@ -188,7 +188,7 @@ arc cache color theArc =
         arcInSVGCoords
 
 
-boundingBox : RenderCache -> Color -> LMBoundingBox2d -> Svg msg
+boundingBox : RenderCache -> Color -> BoundingBox2d Length.Meters GlobalCoordinates -> Svg msg
 boundingBox cache color bb =
     let
         centerPointPixels =
@@ -212,7 +212,7 @@ boundingBox cache color bb =
 --
 
 
-flipSplineYCoordinate : Length.Length -> LMCubicSpline2d -> CubicSpline2d Length.Meters SVGCoordinates
+flipSplineYCoordinate : Length.Length -> CubicSpline2d Length.Meters GlobalCoordinates -> CubicSpline2d Length.Meters SVGCoordinates
 flipSplineYCoordinate renderAreaHeight spline =
     let
         cp1 =
@@ -230,7 +230,7 @@ flipSplineYCoordinate renderAreaHeight spline =
     CubicSpline2d.fromControlPoints cp1 cp2 cp3 cp4
 
 
-flipPointYCoordinate : Length.Length -> LMPoint2d -> Point2d Length.Meters SVGCoordinates
+flipPointYCoordinate : Length.Length -> Point2d Length.Meters GlobalCoordinates -> Point2d Length.Meters SVGCoordinates
 flipPointYCoordinate renderAreaHeight originalPoint =
     let
         newY =

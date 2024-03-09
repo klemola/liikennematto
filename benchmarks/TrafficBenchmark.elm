@@ -2,7 +2,6 @@ module TrafficBenchmark exposing (main)
 
 import Benchmark exposing (Benchmark, benchmark, describe, scale)
 import Benchmark.Runner exposing (BenchmarkProgram, program)
-import Collection
 import Data.RuleSetups
     exposing
         ( collisionSetupNearCollision
@@ -11,10 +10,11 @@ import Data.RuleSetups
         , noCollisionSetupDifferentLanes
         , redTrafficLightsSetup
         )
-import Model.Cell as Cell
+import Lib.Collection as Collection
 import Model.World as World
 import QuadTree
 import Simulation.Traffic as Traffic exposing (RuleSetup)
+import Tilemap.Cell as Cell
 
 
 suite : Benchmark

@@ -1,21 +1,21 @@
 module LotsGallery exposing (main)
 
-import Collection exposing (Id, nextId)
 import Color
 import Data.Assets exposing (roadsLegacy)
 import Data.Colors as Colors
 import Data.Lots exposing (NewLot)
-import Model.Cell as Cell
-import Model.Geometry exposing (OrthogonalDirection(..))
-import Model.Lot exposing (Lot, ParkingSpot)
+import Lib.Collection as Collection exposing (Id, nextId)
+import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
-import Model.Tilemap exposing (TilemapConfig)
 import Model.World as World exposing (World)
 import Quantity
 import Render
 import Render.Shape
+import Simulation.Lot exposing (Lot, ParkingSpot)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
+import Tilemap.Cell as Cell
+import Tilemap.Core exposing (TilemapConfig)
 
 
 gallerySpotWidth : Int
@@ -94,7 +94,7 @@ buildLot newLot acc =
     in
     case
         Cell.fromCoordinates tilemapConfig ( x, y )
-            |> Maybe.map (Model.Lot.build newLot)
+            |> Maybe.map (Simulation.Lot.build newLot)
             |> Maybe.map (\builderFn -> builderFn acc.id)
     of
         Just lot ->

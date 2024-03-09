@@ -1,64 +1,59 @@
-module Model.Tilemap exposing
+module Tilemap.Core exposing
     ( TileListFilter(..)
     , Tilemap
     , TilemapConfig
     , TilemapUpdateResult
     , addAnchor
     , addTile
-    , all
-    , anchorAt
-    , boundingBox
+    , anchorByCell
     , canBuildRoadAt
-    , config
-    , dimensions
-    , empty
-    , exists
-    , fold
-    , fromCells
-    , hasAnchor
-    , inBounds
-    , intersects
+    , cellHasAnchor
+    , cellHasFixedTile
+    , createTilemap
+    , fixedTileByCell
+    , foldTiles
+    , forAllTiles
+    , getTilemapConfig
+    , getTilemapDimensions
+    , inTilemapBounds
     , removeAnchor
     , removeTile
     , setSuperpositionOptions
     , setTile
-    , size
-    , tileAt
-    , tileAtAny
-    , toList
-    , update
+    , tileByCell
+    , tilemapBoundingBox
+    , tilemapFromCells
+    , tilemapIntersects
+    , tilemapSize
+    , tilemapToList
+    , updateTilemap
     )
 
 import Array exposing (Array)
 import Array.Extra as Array
-import BoundingBox2d
-import Collection exposing (Id)
-import Common
+import BoundingBox2d exposing (BoundingBox2d)
+import Common exposing (GlobalCoordinates)
 import Data.TileSet as TileSet
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Duration exposing (Duration)
-import FSM
 import Length exposing (Length)
+import Lib.Collection exposing (Id)
+import Lib.DiagonalDirection as DiagonalDirection exposing (DiagonalDirection(..))
+import Lib.FSM as FSM
+import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Maybe.Extra as Maybe
-import Model.Cell as Cell exposing (Boundary(..), Cell, CellCoordinates)
-import Model.Geometry
-    exposing
-        ( DiagonalDirection(..)
-        , LMBoundingBox2d
-        , OrthogonalDirection(..)
-        , diagonalDirections
-        )
-import Model.Tile as Tile
+import Point2d
+import Quantity
+import Tilemap.Cell as Cell exposing (Boundary(..), Cell, CellCoordinates)
+import Tilemap.Tile as Tile
     exposing
         ( Tile
         , TileKind(..)
         , TileOperation
         , chooseTileKind
         )
-import Model.TileConfig exposing (TileId)
-import Point2d
-import Quantity
+import Tilemap.TileConfig exposing (TileId)
 
 
 type Tilemap
@@ -67,7 +62,7 @@ type Tilemap
         , anchors : Dict CellCoordinates ( Id, OrthogonalDirection )
         , width : Length
         , height : Length
-        , boundingBox : LMBoundingBox2d
+        , boundingBox : BoundingBox2d Length.Meters GlobalCoordinates
         , config : TilemapConfig
         }
 
@@ -78,8 +73,8 @@ type alias TilemapConfig =
     }
 
 
-empty : TilemapConfig -> Tilemap
-empty tilemapConfig =
+createTilemap : TilemapConfig -> Tilemap
+createTilemap tilemapConfig =
     let
         width =
             Cell.size |> Quantity.multiplyBy (toFloat tilemapConfig.horizontalCellsAmount)
@@ -98,6 +93,29 @@ empty tilemapConfig =
         , boundingBox = Common.boundingBoxWithDimensions width height Point2d.origin
         , config = tilemapConfig
         }
+
+
+tilemapFromCells : TilemapConfig -> List Cell -> Tilemap
+tilemapFromCells tilemapConfig cells =
+    fromCellsHelper cells (createTilemap tilemapConfig)
+
+
+fromCellsHelper : List Cell -> Tilemap -> Tilemap
+fromCellsHelper remainingCells tilemap =
+    case remainingCells of
+        [] ->
+            tilemap
+
+        cell :: others ->
+            let
+                tilemapUpdateResult =
+                    tilemap
+                        |> applyTilemapOperation Tile.BuildInstantly cell
+                        |> Tuple.first
+                        -- run a FSM update cycle to make sure that tiles are not transitioning
+                        |> updateTilemap (Duration.milliseconds 1000)
+            in
+            fromCellsHelper others tilemapUpdateResult.tilemap
 
 
 initTile : TilemapConfig -> Int -> Tile
@@ -140,31 +158,8 @@ boundarySuperposition boundary =
         )
 
 
-fromCells : TilemapConfig -> List Cell -> Tilemap
-fromCells tilemapConfig cells =
-    fromCellsHelper cells (empty tilemapConfig)
-
-
-fromCellsHelper : List Cell -> Tilemap -> Tilemap
-fromCellsHelper remainingCells tilemap =
-    case remainingCells of
-        [] ->
-            tilemap
-
-        cell :: others ->
-            let
-                tilemapUpdateResult =
-                    tilemap
-                        |> applyTilemapOperation Tile.BuildInstantly cell
-                        |> Tuple.first
-                        -- run a FSM update cycle to make sure that tiles are not transitioning
-                        |> update (Duration.milliseconds 1000)
-            in
-            fromCellsHelper others tilemapUpdateResult.tilemap
-
-
-tileAt : Tilemap -> Cell -> Maybe Tile
-tileAt tilemap cell =
+fixedTileByCell : Tilemap -> Cell -> Maybe Tile
+fixedTileByCell tilemap cell =
     let
         (Tilemap tilemapContents) =
             tilemap
@@ -176,8 +171,8 @@ tileAt tilemap cell =
         |> Maybe.andThen extractFixedTile
 
 
-tileAtAny : Tilemap -> Cell -> Maybe Tile
-tileAtAny tilemap cell =
+tileByCell : Tilemap -> Cell -> Maybe Tile
+tileByCell tilemap cell =
     let
         (Tilemap tilemapContents) =
             tilemap
@@ -198,8 +193,8 @@ extractFixedTile tile =
             Nothing
 
 
-anchorAt : Tilemap -> Cell -> Maybe ( Id, OrthogonalDirection )
-anchorAt tilemap cell =
+anchorByCell : Tilemap -> Cell -> Maybe ( Id, OrthogonalDirection )
+anchorByCell tilemap cell =
     let
         (Tilemap tilemapContents) =
             tilemap
@@ -207,43 +202,43 @@ anchorAt tilemap cell =
     Dict.get (Cell.coordinates cell) tilemapContents.anchors
 
 
-hasAnchor : Tilemap -> Cell -> Bool
-hasAnchor (Tilemap tilemapContents) cell =
+cellHasAnchor : Tilemap -> Cell -> Bool
+cellHasAnchor (Tilemap tilemapContents) cell =
     Dict.member (Cell.coordinates cell) tilemapContents.anchors
 
 
-inBounds : Tilemap -> LMBoundingBox2d -> Bool
-inBounds (Tilemap tilemap) testBB =
+inTilemapBounds : Tilemap -> BoundingBox2d Length.Meters GlobalCoordinates -> Bool
+inTilemapBounds (Tilemap tilemap) testBB =
     BoundingBox2d.isContainedIn tilemap.boundingBox testBB
 
 
-intersects : LMBoundingBox2d -> Tilemap -> Bool
-intersects testBB tilemap =
+tilemapIntersects : BoundingBox2d Length.Meters GlobalCoordinates -> Tilemap -> Bool
+tilemapIntersects testBB tilemap =
     -- FIXME : upoptimized, skips dynamic tiles
-    toList (\cell _ -> Cell.boundingBox cell) StaticTiles tilemap
+    tilemapToList (\cell _ -> Cell.boundingBox cell) StaticTiles tilemap
         |> List.any (Common.boundingBoxOverlaps testBB)
 
 
-exists : Cell -> Tilemap -> Bool
-exists cell tilemap =
-    tileAt tilemap cell
+cellHasFixedTile : Cell -> Tilemap -> Bool
+cellHasFixedTile cell tilemap =
+    fixedTileByCell tilemap cell
         |> Maybe.andThen extractFixedTile
         |> Maybe.isJust
 
 
 canBuildRoadAt : Cell -> Tilemap -> Bool
 canBuildRoadAt cell tilemap =
-    List.all (hasLowComplexity cell tilemap) diagonalDirections
+    List.all (hasLowComplexity cell tilemap) DiagonalDirection.all
 
 
 hasLowComplexity : Cell -> Tilemap -> DiagonalDirection -> Bool
 hasLowComplexity cell tilemap diagonalDirection =
     let
         tilemapConfig =
-            config tilemap
+            getTilemapConfig tilemap
     in
     Cell.quadrantNeighbors tilemapConfig diagonalDirection cell
-        |> List.filterMap (tileAt tilemap)
+        |> List.filterMap (fixedTileByCell tilemap)
         |> (\tiles -> List.length tiles < 3)
 
 
@@ -252,8 +247,8 @@ type TileListFilter
     | NoFilter
 
 
-toList : (Cell -> Tile -> a) -> TileListFilter -> Tilemap -> List a
-toList mapperFn listFilter tilemap =
+tilemapToList : (Cell -> Tile -> a) -> TileListFilter -> Tilemap -> List a
+tilemapToList mapperFn listFilter tilemap =
     let
         (Tilemap tilemapContents) =
             tilemap
@@ -291,8 +286,8 @@ toList mapperFn listFilter tilemap =
     mappedAcc.acc
 
 
-fold : (Cell -> Tile -> b -> b) -> b -> Tilemap -> b
-fold foldFn b tilemap =
+foldTiles : (Cell -> Tile -> b -> b) -> b -> Tilemap -> b
+foldTiles foldFn b tilemap =
     let
         (Tilemap tilemapContents) =
             tilemap
@@ -323,19 +318,19 @@ fold foldFn b tilemap =
     mappedAcc.acc
 
 
-all : (Tile -> Bool) -> Tilemap -> Bool
-all predicate (Tilemap tilemapContents) =
+forAllTiles : (Tile -> Bool) -> Tilemap -> Bool
+forAllTiles predicate (Tilemap tilemapContents) =
     -- Room for improvement: early exit if any cell does not satisfy the predicate
     Array.all predicate tilemapContents.cells
 
 
-config : Tilemap -> TilemapConfig
-config (Tilemap tilemapContents) =
+getTilemapConfig : Tilemap -> TilemapConfig
+getTilemapConfig (Tilemap tilemapContents) =
     tilemapContents.config
 
 
-size : Tilemap -> Int
-size (Tilemap tilemapContents) =
+tilemapSize : Tilemap -> Int
+tilemapSize (Tilemap tilemapContents) =
     Array.foldl
         (\tile count ->
             if Tile.isFixed tile then
@@ -348,15 +343,15 @@ size (Tilemap tilemapContents) =
         tilemapContents.cells
 
 
-dimensions : Tilemap -> { width : Length, height : Length }
-dimensions (Tilemap tilemapContents) =
+getTilemapDimensions : Tilemap -> { width : Length, height : Length }
+getTilemapDimensions (Tilemap tilemapContents) =
     { width = tilemapContents.width
     , height = tilemapContents.height
     }
 
 
-boundingBox : Tilemap -> LMBoundingBox2d
-boundingBox (Tilemap tilemapContents) =
+tilemapBoundingBox : Tilemap -> BoundingBox2d Length.Meters GlobalCoordinates
+tilemapBoundingBox (Tilemap tilemapContents) =
     tilemapContents.boundingBox
 
 
@@ -374,7 +369,7 @@ updateCell cell tile tilemap =
 
 setSuperpositionOptions : Cell -> List TileId -> Tilemap -> Tilemap
 setSuperpositionOptions cell nextOptions tilemap =
-    case tileAtAny tilemap cell of
+    case tileByCell tilemap cell of
         Just tile ->
             -- Either retains superposition with next set of tileIds or unfixes the tile, no need to match on the kind
             updateCell cell
@@ -410,8 +405,8 @@ type alias TilemapUpdateResult =
     }
 
 
-update : Duration -> Tilemap -> TilemapUpdateResult
-update delta tilemap =
+updateTilemap : Duration -> Tilemap -> TilemapUpdateResult
+updateTilemap delta tilemap =
     let
         (Tilemap currentTilemap) =
             tilemap
@@ -525,7 +520,7 @@ changeTile =
 removeTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )
 removeTile origin tilemap =
     case
-        tileAt tilemap origin
+        fixedTileByCell tilemap origin
             |> Maybe.map Tile.attemptRemove
     of
         Just ( tile, actions ) ->
@@ -543,7 +538,7 @@ removeTile origin tilemap =
 
 setAnchorTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )
 setAnchorTile anchor tilemap =
-    case tileAt tilemap anchor of
+    case fixedTileByCell tilemap anchor of
         Just tile ->
             let
                 anchorTileKind =
@@ -637,7 +632,7 @@ removeAnchor lotId tilemap =
                 tilemapWithAnchorRemoved =
                     Tilemap { tilemapContents | anchors = Dict.remove cellCoordinates tilemapContents.anchors }
             in
-            case tileAt tilemap cell of
+            case fixedTileByCell tilemap cell of
                 Just _ ->
                     -- Temporarily ignore Tile actions. Revisit when the Lot FSM is designed.
                     changeTile cell tilemapWithAnchorRemoved |> Tuple.first
@@ -653,7 +648,7 @@ anchorCell : Tilemap -> ( CellCoordinates, ( Id, OrthogonalDirection ) ) -> Mayb
 anchorCell tilemap ( cellCoordinates, _ ) =
     let
         tilemapConfig =
-            config tilemap
+            getTilemapConfig tilemap
     in
     Cell.fromCoordinates tilemapConfig cellCoordinates
 
@@ -662,14 +657,14 @@ nextOrthogonalTile : OrthogonalDirection -> Cell -> Tilemap -> Maybe ( Cell, Til
 nextOrthogonalTile dir cell tilemap =
     let
         tilemapConfig =
-            config tilemap
+            getTilemapConfig tilemap
 
         maybeCell =
             Cell.nextOrthogonalCell tilemapConfig dir cell
 
         maybeTile =
             maybeCell
-                |> Maybe.andThen (tileAt tilemap)
+                |> Maybe.andThen (fixedTileByCell tilemap)
                 |> Maybe.andThen
                     (\tile ->
                         let
@@ -700,7 +695,7 @@ chooseTile tilemap origin =
             }
 
         lotModifier =
-            hasAnchor tilemap origin
+            cellHasAnchor tilemap origin
     in
     chooseTileKind orthogonalNeighbors lotModifier
 
@@ -719,7 +714,7 @@ hasNeighborTileAt dir cell tilemap =
 
 hasLotAt : OrthogonalDirection -> Cell -> Tilemap -> Bool
 hasLotAt anchorDir anchor tilemap =
-    case anchorAt tilemap anchor of
+    case anchorByCell tilemap anchor of
         Just ( _, dir ) ->
             dir == anchorDir
 

@@ -15,7 +15,7 @@ module Data.TileSet exposing
 
 import Array
 import Dict exposing (Dict)
-import Model.TileConfig as TileConfig
+import Tilemap.TileConfig as TileConfig
     exposing
         ( Socket(..)
         , TileConfig

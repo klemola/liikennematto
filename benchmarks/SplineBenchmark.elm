@@ -7,7 +7,7 @@ import Direction2d
 import Length
 import Point2d
 import Polyline2d
-import Splines
+import Simulation.Splines as Splines
 
 
 testSpline : CubicSpline2d.CubicSpline2d Length.Meters coordinates

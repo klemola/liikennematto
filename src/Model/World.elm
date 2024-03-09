@@ -4,7 +4,9 @@ module Model.World exposing
     , World
     , WorldEvent(..)
     , addEvent
+    , connectLotToRoadNetwork
     , createLookup
+    , createRoadNetwork
     , empty
     , findCarById
     , findLotById
@@ -23,27 +25,43 @@ module Model.World exposing
     , setSeed
     , setTilemap
     , updateLot
+    , updateRoadNetwork
     )
 
-import BoundingBox2d
-import Collection exposing (Collection, Id)
-import Common
+import BoundingBox2d exposing (BoundingBox2d)
+import Common exposing (GlobalCoordinates)
 import Data.Cars exposing (CarMake)
 import Duration exposing (Duration)
-import EventQueue exposing (EventQueue)
+import Graph
 import Length exposing (Length)
-import Model.Car as Car exposing (Car)
-import Model.Cell as Cell exposing (Cell, CellCoordinates)
-import Model.Geometry exposing (GlobalCoordinates, LMBoundingBox2d, LMPoint2d)
-import Model.Lot as Lot exposing (Lot)
-import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext, RoadNetwork)
-import Model.Tilemap as Tilemap exposing (Tilemap)
-import Model.TrafficLight exposing (TrafficLight)
+import Lib.Collection as Collection exposing (Collection, Id)
+import Lib.EventQueue as EventQueue exposing (EventQueue)
+import Point2d
+    exposing
+        ( Point2d
+        )
 import QuadTree exposing (Bounded, QuadTree)
 import Quantity
 import Random
 import Round
 import Set exposing (Set)
+import Simulation.Car as Car exposing (Car)
+import Simulation.Lot as Lot exposing (Lot)
+import Simulation.RoadNetwork as RoadNetwork exposing (RNNodeContext, RoadNetwork, buildRoadNetwork)
+import Simulation.TrafficLight exposing (TrafficLight)
+import Tilemap.Cell as Cell exposing (Cell, CellCoordinates)
+import Tilemap.Core
+    exposing
+        ( Tilemap
+        , TilemapConfig
+        , TilemapUpdateResult
+        , createTilemap
+        , getTilemapConfig
+        , inTilemapBounds
+        , removeAnchor
+        , tilemapBoundingBox
+        , tilemapIntersects
+        )
 import Time
 
 
@@ -61,12 +79,12 @@ type alias World =
     { tilemap : Tilemap
     , pendingTilemapChange : Maybe PendingTilemapChange
     , roadNetwork : RoadNetwork
+    , roadNetworkLookup : QuadTree Length.Meters GlobalCoordinates RNLookupEntry
     , trafficLights : Collection TrafficLight
-    , cars : Collection Car
     , lots : Collection Lot
+    , cars : Collection Car
     , carLookup : QuadTree Length.Meters GlobalCoordinates Car
     , lotLookup : QuadTree Length.Meters GlobalCoordinates Lot
-    , roadNetworkLookup : QuadTree Length.Meters GlobalCoordinates RNLookupEntry
     , eventQueue : EventQueue WorldEvent
     , seed : Random.Seed
     }
@@ -78,8 +96,8 @@ type alias PendingTilemapChange =
 
 type alias RNLookupEntry =
     { id : Int
-    , position : LMPoint2d
-    , boundingBox : LMBoundingBox2d
+    , position : Point2d Length.Meters GlobalCoordinates
+    , boundingBox : BoundingBox2d Length.Meters GlobalCoordinates
     }
 
 
@@ -98,14 +116,14 @@ initialSeed =
     Random.initialSeed 42
 
 
-empty : Tilemap.TilemapConfig -> World
+empty : TilemapConfig -> World
 empty tilemapConfig =
     let
         tilemap =
-            Tilemap.empty tilemapConfig
+            createTilemap tilemapConfig
 
         worldBB =
-            Tilemap.boundingBox tilemap
+            tilemapBoundingBox tilemap
     in
     { tilemap = tilemap
     , pendingTilemapChange = Nothing
@@ -127,9 +145,9 @@ empty tilemapConfig =
 --
 
 
-boundingBox : World -> LMBoundingBox2d
+boundingBox : World -> BoundingBox2d Length.Meters GlobalCoordinates
 boundingBox world =
-    Tilemap.boundingBox world.tilemap
+    tilemapBoundingBox world.tilemap
 
 
 hasLot : Cell -> World -> Bool
@@ -137,17 +155,17 @@ hasLot cell { lots } =
     List.any (Lot.inBounds cell) (Collection.values lots)
 
 
-isEmptyArea : LMBoundingBox2d -> World -> Bool
+isEmptyArea : BoundingBox2d Length.Meters GlobalCoordinates -> World -> Bool
 isEmptyArea testAreaBB world =
     let
         tilemapOverlap =
-            Tilemap.intersects testAreaBB world.tilemap
+            tilemapIntersects testAreaBB world.tilemap
 
         lotOverlap =
             Collection.foldl (\_ lot acc -> lot.boundingBox :: acc) [] world.lots
                 |> List.any (Common.boundingBoxOverlaps testAreaBB)
     in
-    Tilemap.inBounds world.tilemap testAreaBB && not lotOverlap && not tilemapOverlap
+    inTilemapBounds world.tilemap testAreaBB && not lotOverlap && not tilemapOverlap
 
 
 findCarById : Id -> World -> Maybe Car
@@ -167,22 +185,30 @@ findLotByCarPosition car world =
         |> List.head
 
 
-findNodeByPosition : World -> LMPoint2d -> Maybe RNNodeContext
+findNodeByPosition : World -> Point2d Length.Meters GlobalCoordinates -> Maybe RNNodeContext
 findNodeByPosition { roadNetworkLookup, roadNetwork } nodePosition =
     roadNetworkLookup
         |> QuadTree.neighborsWithin
             (Length.meters 1)
             (BoundingBox2d.singleton nodePosition)
         |> List.head
-        |> Maybe.andThen (.id >> RoadNetwork.findNodeByNodeId roadNetwork)
+        |> Maybe.andThen (.id >> RoadNetwork.nodeById roadNetwork)
 
 
-findNearbyEntities : Length -> LMBoundingBox2d -> QuadTree Length.Meters GlobalCoordinates (Bounded Length.Meters GlobalCoordinates a) -> List (Bounded Length.Meters GlobalCoordinates a)
+findNearbyEntities :
+    Length
+    -> BoundingBox2d Length.Meters GlobalCoordinates
+    -> QuadTree Length.Meters GlobalCoordinates (Bounded Length.Meters GlobalCoordinates a)
+    -> List (Bounded Length.Meters GlobalCoordinates a)
 findNearbyEntities radius bb quadTree =
     QuadTree.neighborsWithin radius bb quadTree
 
 
-findNearbyEntitiesFromPoint : Length -> LMPoint2d -> QuadTree Length.Meters GlobalCoordinates (Bounded Length.Meters GlobalCoordinates a) -> List (Bounded Length.Meters GlobalCoordinates a)
+findNearbyEntitiesFromPoint :
+    Length
+    -> Point2d Length.Meters GlobalCoordinates
+    -> QuadTree Length.Meters GlobalCoordinates (Bounded Length.Meters GlobalCoordinates a)
+    -> List (Bounded Length.Meters GlobalCoordinates a)
 findNearbyEntitiesFromPoint radius point quadTree =
     findNearbyEntities
         radius
@@ -293,7 +319,7 @@ removeLot lotId world =
                     Collection.remove lotId world.lots
 
                 nextTilemap =
-                    Tilemap.removeAnchor lotId world.tilemap
+                    removeAnchor lotId world.tilemap
 
                 nextLookup =
                     createLookup (Collection.values nextLots) world
@@ -325,13 +351,54 @@ setSeed seed world =
     { world | seed = seed }
 
 
+createRoadNetwork : Tilemap -> World -> World
+createRoadNetwork tilemap world =
+    let
+        nextWorld =
+            { world | tilemap = tilemap }
+    in
+    updateRoadNetwork nextWorld
+
+
+connectLotToRoadNetwork : World -> World
+connectLotToRoadNetwork =
+    -- Room for improvement: re-building the whole roadnetwork when a new lot is added is not optimal
+    updateRoadNetwork
+
+
+updateRoadNetwork : World -> World
+updateRoadNetwork world =
+    -- Room for improvement: the road network should be updated with minimal changes instead of being replaced
+    let
+        ( nextRoadNetwork, nextTrafficLights ) =
+            buildRoadNetwork world.tilemap world.trafficLights
+
+        nodeLookupList =
+            Graph.fold
+                (\nodeCtx acc ->
+                    { id = nodeCtx.node.id
+                    , position = nodeCtx.node.label.position
+                    , boundingBox = BoundingBox2d.singleton nodeCtx.node.label.position
+                    }
+                        :: acc
+                )
+                []
+                nextRoadNetwork
+    in
+    { world
+        | roadNetwork = nextRoadNetwork
+        , trafficLights = nextTrafficLights
+        , roadNetworkLookup = createLookup nodeLookupList world
+    }
+
+
 
 --
 -- Tilemap change
 --
 
 
-resolveTilemapUpdate : Duration -> Tilemap.TilemapUpdateResult -> World -> ( World, List Cell )
+resolveTilemapUpdate : Duration -> TilemapUpdateResult -> World -> ( World, List Cell )
 resolveTilemapUpdate delta tilemapUpdateResult world =
     case world.pendingTilemapChange of
         Nothing ->
@@ -367,7 +434,7 @@ resolveTilemapUpdate delta tilemapUpdateResult world =
             in
             if Quantity.lessThanOrEqualToZero nextTimer then
                 ( { world | pendingTilemapChange = Nothing }
-                , Cell.fromCoordinatesSet (Tilemap.config world.tilemap) nextChangedCells
+                , Cell.fromCoordinatesSet (getTilemapConfig world.tilemap) nextChangedCells
                 )
 
             else

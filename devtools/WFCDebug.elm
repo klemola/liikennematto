@@ -12,18 +12,8 @@ import Element.Input as Input
 import Html exposing (Html)
 import Html.Attributes
 import List.Extra
-import Model.Cell as Cell
 import Model.Debug
 import Model.RenderCache as RenderCache exposing (RenderCache)
-import Model.TileConfig as TileConfig
-    exposing
-        ( Socket(..)
-        , Sockets
-        , TileConfig
-        , allSockets
-        , tileConfigId
-        )
-import Model.Tilemap as Tilemap exposing (TilemapConfig)
 import Model.World as World
 import Process
 import Random
@@ -33,8 +23,18 @@ import Render.Debug
 import Svg
 import Svg.Attributes
 import Task
+import Tilemap.Cell as Cell
+import Tilemap.Core exposing (TileListFilter(..), TilemapConfig)
+import Tilemap.TileConfig as TileConfig
+    exposing
+        ( Socket(..)
+        , Sockets
+        , TileConfig
+        , allSockets
+        , tileConfigId
+        )
+import Tilemap.WFC as WFC
 import Time
-import WFC
 
 
 type Msg
@@ -82,7 +82,7 @@ init _ =
 
         cache =
             RenderCache.new world roads
-                |> RenderCache.setTileListFilter Tilemap.NoFilter
+                |> RenderCache.setTileListFilter NoFilter
     in
     ( { wfcModel = WFC.init tilemapConfig initialSeed
       , mode = Manual

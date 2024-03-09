@@ -1,6 +1,5 @@
 module TilemapTests exposing (suite)
 
-import Collection exposing (initialId)
 import Data.Utility exposing (tilemapFromCoordinates)
 import Data.Worlds
     exposing
@@ -8,12 +7,13 @@ import Data.Worlds
         , lowComplexityWorld
         )
 import Expect
+import Lib.Collection exposing (initialId)
+import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Maybe.Extra as Maybe
-import Model.Cell as Cell
-import Model.Geometry exposing (OrthogonalDirection(..))
-import Model.Tile exposing (TileKind(..))
-import Model.Tilemap as Tilemap exposing (Tilemap)
 import Test exposing (Test, describe, test)
+import Tilemap.Cell as Cell
+import Tilemap.Core exposing (Tilemap, canBuildRoadAt, fixedTileByCell, getTilemapConfig)
+import Tilemap.Tile exposing (TileKind(..))
 
 
 tilemapThatResemblesAIntersection : Tilemap
@@ -63,10 +63,10 @@ suite =
                             tilemapThatResemblesAIntersection
 
                         tilemapConfig =
-                            Tilemap.config tilemap
+                            getTilemapConfig tilemap
                     in
                     Cell.fromCoordinates tilemapConfig ( 2, 1 )
-                        |> Maybe.andThen (Tilemap.tileAt tilemap)
+                        |> Maybe.andThen (fixedTileByCell tilemap)
                         |> Maybe.map
                             (\tile ->
                                 case tile.kind of
@@ -87,10 +87,10 @@ suite =
                             tilemapThatResemblesACurve
 
                         tilemapConfig =
-                            Tilemap.config tilemap
+                            getTilemapConfig tilemap
                     in
                     Cell.fromCoordinates tilemapConfig ( 1, 1 )
-                        |> Maybe.andThen (Tilemap.tileAt tilemap)
+                        |> Maybe.andThen (fixedTileByCell tilemap)
                         |> Maybe.map
                             (\tile ->
                                 case tile.kind of
@@ -111,10 +111,10 @@ suite =
                             tilemapWithAnchor
 
                         tilemapConfig =
-                            Tilemap.config tilemap
+                            getTilemapConfig tilemap
                     in
                     Cell.fromCoordinates tilemapConfig ( 1, 3 )
-                        |> Maybe.andThen (Tilemap.tileAt tilemapWithAnchor)
+                        |> Maybe.andThen (fixedTileByCell tilemapWithAnchor)
                         |> Maybe.map
                             (\tile ->
                                 case tile.kind of
@@ -137,10 +137,10 @@ suite =
                             lowComplexityWorld.tilemap
 
                         tilemapConfig =
-                            Tilemap.config tilemap
+                            getTilemapConfig tilemap
                     in
                     Cell.fromCoordinates tilemapConfig ( 2, 2 )
-                        |> Maybe.map (\cell -> Tilemap.canBuildRoadAt cell lowComplexityWorld.tilemap)
+                        |> Maybe.map (\cell -> canBuildRoadAt cell lowComplexityWorld.tilemap)
                         |> Maybe.withDefault False
                         |> Expect.true "Expected valid world."
                 )
@@ -151,10 +151,10 @@ suite =
                             highComplexityWorld.tilemap
 
                         tilemapConfig =
-                            Tilemap.config tilemap
+                            getTilemapConfig tilemap
                     in
                     Cell.fromCoordinates tilemapConfig ( 2, 2 )
-                        |> Maybe.map (\cell -> Tilemap.canBuildRoadAt cell tilemap)
+                        |> Maybe.map (\cell -> canBuildRoadAt cell tilemap)
                         |> Maybe.withDefault False
                         |> Expect.false "Expected invalid world."
                 )

@@ -9,16 +9,17 @@ module Data.Lots exposing
     , school
     )
 
+import Common exposing (LocalCoordinates)
 import Data.Assets exposing (innerLaneOffset, outerLaneOffset)
 import Data.Cars as Cars exposing (CarMake)
 import Data.Colors as Colors
 import Length exposing (Length)
-import Model.Cell as Cell
-import Model.Geometry exposing (LMPoint2dLocal, OrthogonalDirection(..))
-import Point2d
+import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
+import Point2d exposing (Point2d)
 import Quantity
 import Svg exposing (Svg, path)
 import Svg.Attributes as Attributes
+import Tilemap.Cell as Cell
 
 
 type alias NewLot =
@@ -26,11 +27,11 @@ type alias NewLot =
     , width : Length
     , height : Length
     , parkingSpotExitDirection : OrthogonalDirection
-    , parkingSpots : List ( LMPoint2dLocal, ParkingRestriction )
+    , parkingSpots : List ( Point2d Length.Meters LocalCoordinates, ParkingRestriction )
     , drivewayExitDirection : OrthogonalDirection
-    , entryPosition : LMPoint2dLocal
-    , exitPosition : LMPoint2dLocal
-    , parkingLaneStartPosition : LMPoint2dLocal
+    , entryPosition : Point2d Length.Meters LocalCoordinates
+    , exitPosition : Point2d Length.Meters LocalCoordinates
+    , parkingLaneStartPosition : Point2d Length.Meters LocalCoordinates
     , parkingLaneStartDirection : OrthogonalDirection
     , residents : List CarMake
     }
@@ -67,7 +68,7 @@ drivewayOffset =
     Cell.size |> Quantity.multiplyBy 0.2
 
 
-toRoadConnectionPosition : Length -> OrthogonalDirection -> Length -> LMPoint2dLocal
+toRoadConnectionPosition : Length -> OrthogonalDirection -> Length -> Point2d Length.Meters LocalCoordinates
 toRoadConnectionPosition laneOffset drivewayExitDirection lotWidth =
     case drivewayExitDirection of
         Right ->
@@ -95,12 +96,12 @@ toRoadConnectionPosition laneOffset drivewayExitDirection lotWidth =
             Point2d.origin
 
 
-residentParking : LMPoint2dLocal -> ( LMPoint2dLocal, ParkingRestriction )
+residentParking : Point2d Length.Meters LocalCoordinates -> ( Point2d Length.Meters LocalCoordinates, ParkingRestriction )
 residentParking position =
     ( position, ResidentParkingOnly )
 
 
-noRestrictions : LMPoint2dLocal -> ( LMPoint2dLocal, ParkingRestriction )
+noRestrictions : Point2d Length.Meters LocalCoordinates -> ( Point2d Length.Meters LocalCoordinates, ParkingRestriction )
 noRestrictions position =
     ( position, NoRestriction )
 

@@ -1,6 +1,9 @@
 module UI.Core exposing
     ( ControlButtonProperties
     , ControlButtonSize(..)
+    , InputEvent
+    , InputKind(..)
+    , ZoomLevel(..)
     , borderRadiusButton
     , borderRadiusPanel
     , borderSize
@@ -43,6 +46,24 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Input as Input
+import Tilemap.Cell exposing (Cell)
+
+
+type ZoomLevel
+    = Near
+    | Far
+    | VeryFar
+
+
+type alias InputEvent =
+    { cell : Cell
+    , kind : InputKind
+    }
+
+
+type InputKind
+    = Primary
+    | Secondary
 
 
 containerId : String

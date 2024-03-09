@@ -1,4 +1,4 @@
-module Model.TileConfig exposing
+module Tilemap.TileConfig exposing
     ( LargeTile
     , SingleTile
     , Socket(..)
@@ -15,7 +15,7 @@ module Model.TileConfig exposing
     )
 
 import Array exposing (Array)
-import Model.Geometry exposing (OrthogonalDirection(..))
+import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 
 
 type alias TileId =

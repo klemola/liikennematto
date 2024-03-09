@@ -1,6 +1,5 @@
 module WorldTests exposing (suite)
 
-import Collection exposing (initialId)
 import Common exposing (boundingBoxWithDimensions)
 import Data.Lots exposing (school)
 import Data.Worlds
@@ -10,12 +9,13 @@ import Data.Worlds
         )
 import Expect
 import Length
-import Model.Cell as Cell
-import Model.Lot as Lot
-import Model.Tilemap as Tilemap
+import Lib.Collection as Collection exposing (initialId)
 import Model.World as World
 import Point2d
+import Simulation.Lot as Lot
 import Test exposing (Test, describe, test)
+import Tilemap.Cell as Cell
+import Tilemap.Core exposing (getTilemapConfig)
 
 
 suite : Test
@@ -37,7 +37,7 @@ suite =
                 (\_ ->
                     let
                         tilemapConfig =
-                            Tilemap.config worldThatHasAVerticalRoadAtLeftSide.tilemap
+                            getTilemapConfig worldThatHasAVerticalRoadAtLeftSide.tilemap
 
                         testLot =
                             Cell.fromCoordinates tilemapConfig ( 1, 8 )

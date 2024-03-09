@@ -1,6 +1,5 @@
 module LotTests exposing (suite)
 
-import Collection exposing (Id, initialId, nextId)
 import Data.Lots
     exposing
         ( residentialSingle1
@@ -8,14 +7,15 @@ import Data.Lots
         )
 import Data.Worlds exposing (lotTestWorld)
 import Expect
-import Model.Cell as Cell
-import Model.Lot as Lot exposing (Lot)
-import Model.Tilemap as Tilemap
+import Lib.Collection exposing (Id, initialId, nextId)
+import Simulation.Lot as Lot exposing (Lot)
 import Test exposing (Test, describe, test)
+import Tilemap.Cell as Cell
+import Tilemap.Core exposing (getTilemapConfig)
 
 
 tilemapConfig =
-    Tilemap.config lotTestWorld.tilemap
+    getTilemapConfig lotTestWorld.tilemap
 
 
 id1 : Id

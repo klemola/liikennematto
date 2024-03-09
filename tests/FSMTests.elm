@@ -2,7 +2,7 @@ module FSMTests exposing (suite)
 
 import Duration exposing (Duration)
 import Expect
-import FSM exposing (State, StateId)
+import Lib.FSM as FSM exposing (State, StateId)
 import Quantity
 import Test exposing (Test, describe, test)
 
@@ -87,7 +87,8 @@ suite =
              [ test "are updated when the FSM is updated"
                 (\_ ->
                     testFSM
-                        |> (FSM.updateWithoutContext (Duration.milliseconds 20) >> Tuple.first)
+                        |> FSM.updateWithoutContext (Duration.milliseconds 20)
+                        |> Tuple.first
                         |> FSM.potentialTransitions
                         |> List.head
                         |> Maybe.andThen FSM.timeToStateChange
@@ -98,15 +99,18 @@ suite =
              , test "transition the FSM to the target state (single update)"
                 (\_ ->
                     testFSM
-                        |> (FSM.updateWithoutContext (Duration.milliseconds 200) >> Tuple.first)
+                        |> FSM.updateWithoutContext (Duration.milliseconds 200)
+                        |> Tuple.first
                         |> FSM.toCurrentState
                         |> Expect.equal Two
                 )
              , test "transition the FSM to the target state (multiple updates)"
                 (\_ ->
                     testFSM
-                        |> (FSM.updateWithoutContext (Duration.milliseconds 200) >> Tuple.first)
-                        |> (FSM.updateWithoutContext (Duration.milliseconds 200) >> Tuple.first)
+                        |> FSM.updateWithoutContext (Duration.milliseconds 200)
+                        |> Tuple.first
+                        |> FSM.updateWithoutContext (Duration.milliseconds 200)
+                        |> Tuple.first
                         |> FSM.toCurrentState
                         |> Expect.equal Three
                 )
@@ -193,14 +197,16 @@ suite =
              [ test "transition the FSM to target state when the condition is met"
                 (\_ ->
                     testFSM
-                        |> (FSM.update (Duration.milliseconds 16) 42 >> Tuple.first)
+                        |> FSM.update (Duration.milliseconds 16) 42
+                        |> Tuple.first
                         |> FSM.toCurrentState
                         |> Expect.equal Two
                 )
              , test "does not transition the FSM to target state when the condition fails"
                 (\_ ->
                     testFSM
-                        |> (FSM.update (Duration.milliseconds 16) 0 >> Tuple.first)
+                        |> FSM.update (Duration.milliseconds 16) 0
+                        |> Tuple.first
                         |> FSM.toCurrentState
                         |> Expect.equal One
                 )

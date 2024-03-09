@@ -1,35 +1,35 @@
 module Render.Debug exposing (view)
 
-import Collection exposing (Collection)
 import Color
+import Common exposing (GlobalCoordinates)
 import Data.Colors as Colors
 import Data.Lots exposing (ParkingRestriction(..))
 import Graph
 import Length exposing (Length)
-import Model.Car exposing (Car)
-import Model.Cell as Cell exposing (Cell)
+import Lib.Collection as Collection exposing (Collection)
 import Model.Debug exposing (DebugLayerKind(..), DebugState, isLayerEnabled)
-import Model.Geometry exposing (LMPoint2d)
-import Model.Lot exposing (Lot, ParkingSpot)
 import Model.RenderCache exposing (RenderCache)
-import Model.RoadNetwork
-    exposing
-        ( ConnectionKind(..)
-        , RoadNetwork
-        )
-import Model.Route as Route
-import Model.Tile exposing (TileKind(..))
-import Model.TileConfig exposing (TileId)
 import Model.World exposing (World)
-import Point2d
+import Point2d exposing (Point2d)
 import Polygon2d
 import Quantity
 import Render.Conversion exposing (pointToPixels, toPixelsValue)
 import Render.Shape
+import Simulation.Car exposing (Car)
 import Simulation.Collision as Collision
+import Simulation.Lot exposing (Lot, ParkingSpot)
+import Simulation.RoadNetwork
+    exposing
+        ( ConnectionKind(..)
+        , RoadNetwork
+        )
+import Simulation.Route as Route
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Svg.Keyed
+import Tilemap.Cell as Cell exposing (Cell)
+import Tilemap.Tile exposing (TileKind(..))
+import Tilemap.TileConfig exposing (TileId)
 
 
 nothing : Svg msg
@@ -275,7 +275,7 @@ renderCarFieldOfView cache car =
         (Collision.rightSideFOV (Collision.pathRay car Collision.maxCarCollisionTestDistance))
 
 
-toPointsString : RenderCache -> List LMPoint2d -> String
+toPointsString : RenderCache -> List (Point2d Length.Meters GlobalCoordinates) -> String
 toPointsString cache points =
     List.foldl
         (\point acc ->

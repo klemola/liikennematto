@@ -1,4 +1,4 @@
-module Model.TrafficLight exposing
+module Simulation.TrafficLight exposing
     ( NewTrafficLight
     , TrafficLight
     , TrafficLightColor(..)
@@ -10,12 +10,13 @@ module Model.TrafficLight exposing
     , withPosition
     )
 
-import Collection exposing (Id)
-import Direction2d
+import Common exposing (GlobalCoordinates)
+import Direction2d exposing (Direction2d)
 import Duration
-import FSM exposing (FSM, State)
-import Model.Geometry exposing (LMDirection2d, LMPoint2d)
-import Point2d
+import Length
+import Lib.Collection exposing (Id)
+import Lib.FSM as FSM exposing (FSM)
+import Point2d exposing (Point2d)
 
 
 type TrafficLightColor
@@ -27,18 +28,18 @@ type TrafficLightColor
 type alias TrafficLight =
     { id : Id
     , fsm : FSM TrafficLightColor () ()
-    , position : LMPoint2d
-    , facing : LMDirection2d
+    , position : Point2d Length.Meters GlobalCoordinates
+    , facing : Direction2d GlobalCoordinates
     }
 
 
 type alias NewTrafficLight =
-    { position : LMPoint2d
-    , facing : LMDirection2d
+    { position : Point2d Length.Meters GlobalCoordinates
+    , facing : Direction2d GlobalCoordinates
     }
 
 
-green : State TrafficLightColor actionType updateContext
+green : FSM.State TrafficLightColor actionType updateContext
 green =
     FSM.createState
         { id = FSM.createStateId "traffic-light-green"
@@ -54,7 +55,7 @@ green =
         }
 
 
-yellow : State TrafficLightColor actionType updateContext
+yellow : FSM.State TrafficLightColor actionType updateContext
 yellow =
     FSM.createState
         { id = FSM.createStateId "traffic-light-yellow"
@@ -70,7 +71,7 @@ yellow =
         }
 
 
-red : State TrafficLightColor actionType updateContext
+red : FSM.State TrafficLightColor actionType updateContext
 red =
     FSM.createState
         { id = FSM.createStateId "traffic-light-red"
@@ -93,12 +94,12 @@ new =
     }
 
 
-withPosition : LMPoint2d -> NewTrafficLight -> NewTrafficLight
+withPosition : Point2d Length.Meters GlobalCoordinates -> NewTrafficLight -> NewTrafficLight
 withPosition position newTrafficLight =
     { newTrafficLight | position = position }
 
 
-withFacing : LMDirection2d -> NewTrafficLight -> NewTrafficLight
+withFacing : Direction2d GlobalCoordinates -> NewTrafficLight -> NewTrafficLight
 withFacing direction newTrafficLight =
     { newTrafficLight | facing = direction }
 

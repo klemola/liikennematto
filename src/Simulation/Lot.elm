@@ -1,4 +1,4 @@
-module Model.Lot exposing
+module Simulation.Lot exposing
     ( Lot
     , ParkingReservation
     , ParkingSpot
@@ -19,26 +19,19 @@ module Model.Lot exposing
     )
 
 import Angle exposing (Angle)
-import BoundingBox2d
-import Collection exposing (Id)
-import Common
+import BoundingBox2d exposing (BoundingBox2d)
+import Common exposing (GlobalCoordinates, LocalCoordinates)
+import CubicSpline2d exposing (CubicSpline2d)
 import Data.Lots exposing (LotKind, NewLot, ParkingRestriction(..))
 import Direction2d
+import Frame2d exposing (Frame2d)
 import Length exposing (Length)
-import Model.Cell as Cell exposing (Cell)
-import Model.Geometry
-    exposing
-        ( LMBoundingBox2d
-        , LMCubicSpline2d
-        , LMFrame2d
-        , LMPoint2d
-        , LMPoint2dLocal
-        , OrthogonalDirection(..)
-        , orthogonalDirectionToLmDirection
-        )
-import Point2d
+import Lib.Collection exposing (Id)
+import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
+import Point2d exposing (Point2d)
 import Quantity
-import Splines
+import Simulation.Splines as Splines
+import Tilemap.Cell as Cell exposing (Cell)
 import Vector2d
 
 
@@ -47,10 +40,10 @@ type alias Lot =
     , kind : LotKind
     , width : Length
     , height : Length
-    , position : LMPoint2d
-    , boundingBox : LMBoundingBox2d
-    , entryPosition : LMPoint2d
-    , exitPosition : LMPoint2d
+    , position : Point2d Length.Meters GlobalCoordinates
+    , boundingBox : BoundingBox2d Length.Meters GlobalCoordinates
+    , entryPosition : Point2d Length.Meters GlobalCoordinates
+    , exitPosition : Point2d Length.Meters GlobalCoordinates
     , drivewayExitDirection : OrthogonalDirection
     , parkingSpotExitDirection : OrthogonalDirection
     , parkingSpots : List ParkingSpot
@@ -93,7 +86,7 @@ build newLot anchor lotId =
     }
 
 
-constructionSite : Cell -> NewLot -> LMBoundingBox2d
+constructionSite : Cell -> NewLot -> BoundingBox2d Length.Meters GlobalCoordinates
 constructionSite anchor { width, height, drivewayExitDirection } =
     let
         origin =
@@ -189,9 +182,9 @@ releaseParkingLock carId lot =
 
 type alias ParkingSpot =
     { id : Int
-    , position : LMPoint2d
-    , pathFromLotEntry : List LMCubicSpline2d
-    , pathToLotExit : List LMCubicSpline2d
+    , position : Point2d Length.Meters GlobalCoordinates
+    , pathFromLotEntry : List (CubicSpline2d Length.Meters GlobalCoordinates)
+    , pathToLotExit : List (CubicSpline2d Length.Meters GlobalCoordinates)
     , parkingRestriction : ParkingRestriction
     , reservedBy : Maybe Id
     }
@@ -203,17 +196,22 @@ type alias ParkingReservation =
     }
 
 
-createParkingSpot : Int -> NewLot -> LMFrame2d -> ( LMPoint2dLocal, ParkingRestriction ) -> ParkingSpot
+createParkingSpot :
+    Int
+    -> NewLot
+    -> Frame2d Length.Meters GlobalCoordinates { defines : LocalCoordinates }
+    -> ( Point2d Length.Meters LocalCoordinates, ParkingRestriction )
+    -> ParkingSpot
 createParkingSpot id newLot lotFrame ( position, parkingRestriction ) =
     let
         splineProps =
             { parkingSpotPosition = position
             , lotEntryPosition = newLot.entryPosition
             , lotExitPosition = newLot.exitPosition
-            , parkingSpotExitDirection = orthogonalDirectionToLmDirection newLot.parkingSpotExitDirection
-            , drivewayExitDirection = orthogonalDirectionToLmDirection newLot.drivewayExitDirection
+            , parkingSpotExitDirection = OrthogonalDirection.toDirection2d newLot.parkingSpotExitDirection
+            , drivewayExitDirection = OrthogonalDirection.toDirection2d newLot.drivewayExitDirection
             , parkingLaneStartPosition = newLot.parkingLaneStartPosition
-            , parkingLaneStartDirection = orthogonalDirectionToLmDirection newLot.parkingLaneStartDirection
+            , parkingLaneStartDirection = OrthogonalDirection.toDirection2d newLot.parkingLaneStartDirection
             }
 
         entrySpline =
@@ -234,7 +232,7 @@ createParkingSpot id newLot lotFrame ( position, parkingRestriction ) =
 parkingSpotOrientation : Lot -> Angle
 parkingSpotOrientation lot =
     lot.parkingSpotExitDirection
-        |> orthogonalDirectionToLmDirection
+        |> OrthogonalDirection.toDirection2d
         |> Direction2d.toAngle
 
 

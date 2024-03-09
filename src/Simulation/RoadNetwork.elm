@@ -1,66 +1,115 @@
-module Simulation.Infrastructure exposing
-    ( connectLotToRoadNetwork
-    , createRoadNetwork
-    , updateRoadNetwork
+module Simulation.RoadNetwork exposing
+    ( Connection
+    , ConnectionEnvironment(..)
+    , ConnectionKind(..)
+    , Lane
+    , RNNode
+    , RNNodeContext
+    , RoadNetwork
+    , TrafficControl(..)
+    , buildRoadNetwork
+    , empty
+    , findLotExitNodeByLotId
+    , getOutgoingConnectionIds
+    , getOutgoingConnectionsAndCosts
+    , getRandomNode
+    , nodeById
+    , nodeByPosition
+    , nodeDirection
+    , nodeLotId
+    , nodePosition
+    , nodeTrafficControl
+    , outgoingConnectionsAmount
+    , size
     )
 
-import BoundingBox2d
-import Collection exposing (Collection, Id)
-import Common
+import BoundingBox2d exposing (BoundingBox2d)
+import Common exposing (GlobalCoordinates)
 import Data.Assets exposing (innerLaneOffset, outerLaneOffset)
 import Data.Lots exposing (drivewayOffset)
 import Dict exposing (Dict)
-import Direction2d
-import Graph exposing (Edge, Node)
-import Length
+import Direction2d exposing (Direction2d)
+import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
+import IntDict
+import Length exposing (Length)
+import Lib.Collection as Collection exposing (Collection, Id, idMatches)
+import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
 import Maybe.Extra as Maybe
-import Model.Cell as Cell exposing (Cell)
-import Model.Geometry as Geometry
-    exposing
-        ( LMBoundingBox2d
-        , LMDirection2d
-        , LMPoint2d
-        , OrthogonalDirection(..)
-        , oppositeOrthogonalDirection
-        , orthogonalDirectionToLmDirection
-        )
-import Model.RoadNetwork as RoadNetwork
-    exposing
-        ( Connection
-        , ConnectionKind(..)
-        , Lane
-        , RNNodeContext
-        , RoadNetwork
-        , TrafficControl(..)
-        )
-import Model.Tile as Tile exposing (Tile)
-import Model.Tilemap as Tilemap exposing (Tilemap)
-import Model.TrafficLight as TrafficLight exposing (TrafficLight)
-import Model.World as World exposing (World)
-import Point2d
+import Point2d exposing (Point2d)
 import Quantity
+import Random
+import Random.Extra
+import Simulation.TrafficLight as TrafficLight exposing (TrafficLight)
+import Tilemap.Cell as Cell exposing (Cell)
+import Tilemap.Core
+    exposing
+        ( TileListFilter(..)
+        , Tilemap
+        , anchorByCell
+        , fixedTileByCell
+        , getTilemapConfig
+        , tilemapToList
+        )
+import Tilemap.Tile
+    exposing
+        ( Tile
+        , isBasicRoad
+        , isCurve
+        , isDeadend
+        , isIntersection
+        , isLotEntry
+        , potentialConnections
+        )
 import Vector2d exposing (Vector2d)
 
 
-
---
--- Tilemap
---
+type alias RoadNetwork =
+    Graph Connection Lane
 
 
-createRoadNetwork : Tilemap -> World -> World
-createRoadNetwork tilemap world =
-    let
-        nextWorld =
-            { world | tilemap = tilemap }
-    in
-    updateRoadNetwork nextWorld
+type alias RNNodeContext =
+    NodeContext Connection Lane
 
 
+type alias RNNode =
+    Graph.Node Connection
 
---
--- Road network
---
+
+type alias Connection =
+    { kind : ConnectionKind
+    , position : Point2d Length.Meters GlobalCoordinates
+    , direction : Direction2d GlobalCoordinates
+    , cell : Cell
+    , trafficControl : TrafficControl
+    }
+
+
+type ConnectionKind
+    = LaneConnector
+    | DeadendEntry
+    | DeadendExit
+    | LotEntry Id
+    | LotExit Id
+
+
+type ConnectionEnvironment
+    = Road
+    | Intersection
+
+
+type TrafficControl
+    = Signal Id
+    | Yield (BoundingBox2d Length.Meters GlobalCoordinates)
+    | NoTrafficControl
+
+
+type alias Lane =
+    Length
+
+
+empty : RoadNetwork
+empty =
+    Graph.empty
 
 
 laneStartOffsetUp : Vector2d Length.Meters coordinates
@@ -103,49 +152,151 @@ laneEndOffsetLeft =
     Vector2d.xy Quantity.zero innerLaneOffset
 
 
-connectLotToRoadNetwork : World -> World
-connectLotToRoadNetwork =
-    -- Room for improvement: re-building the whole roadnetwork when a new lot is added is not optimal
-    updateRoadNetwork
+
+--
+-- Queries
+--
 
 
-updateRoadNetwork : World -> World
-updateRoadNetwork world =
-    -- Room for improvement: the road network should be updated with minimal changes instead of being replaced
+size : RoadNetwork -> Int
+size =
+    Graph.size
+
+
+findLotExitNodeByLotId : RoadNetwork -> Id -> Maybe RNNodeContext
+findLotExitNodeByLotId roadNetwork lotId =
+    Graph.fold
+        (\ctx acc ->
+            case ctx.node.label.kind of
+                LotExit id ->
+                    if idMatches id lotId then
+                        Just ctx
+
+                    else
+                        acc
+
+                _ ->
+                    acc
+        )
+        Nothing
+        roadNetwork
+
+
+nodeById : RoadNetwork -> NodeId -> Maybe RNNodeContext
+nodeById roadNetwork nodeId =
+    Graph.get nodeId roadNetwork
+
+
+nodeByPosition : RoadNetwork -> Point2d Length.Meters GlobalCoordinates -> Maybe RNNodeContext
+nodeByPosition roadNetwork position =
+    Graph.nodes roadNetwork
+        |> List.filterMap
+            (\{ id, label } ->
+                if label.position == position then
+                    Just id
+
+                else
+                    Nothing
+            )
+        |> List.head
+        |> Maybe.andThen (\matchId -> Graph.get matchId roadNetwork)
+
+
+getRandomNode : RoadNetwork -> Random.Seed -> (RNNode -> Bool) -> Maybe RNNodeContext
+getRandomNode roadNetwork seed predicate =
     let
-        ( nextRoadNetwork, nextTrafficLights ) =
-            buildRoadNetwork world
+        randomNodeGenerator =
+            roadNetwork
+                |> Graph.nodes
+                |> List.filterMap
+                    (\node ->
+                        if predicate node then
+                            Just node.id
 
-        nodeLookupList =
-            Graph.fold
-                (\nodeCtx acc ->
-                    { id = nodeCtx.node.id
-                    , position = nodeCtx.node.label.position
-                    , boundingBox = BoundingBox2d.singleton nodeCtx.node.label.position
-                    }
-                        :: acc
-                )
-                []
-                nextRoadNetwork
+                        else
+                            Nothing
+                    )
+                |> Random.Extra.sample
+                |> Random.map (Maybe.andThen (nodeById roadNetwork))
     in
-    { world
-        | roadNetwork = nextRoadNetwork
-        , trafficLights = nextTrafficLights
-        , roadNetworkLookup = World.createLookup nodeLookupList world
-    }
+    Random.step randomNodeGenerator seed
+        |> Tuple.first
 
 
-buildRoadNetwork : World -> ( RoadNetwork, Collection TrafficLight )
-buildRoadNetwork { tilemap, trafficLights } =
+outgoingConnectionsAmount : RNNodeContext -> Int
+outgoingConnectionsAmount nodeCtx =
+    IntDict.size nodeCtx.outgoing
+
+
+getOutgoingConnectionIds : RNNodeContext -> List NodeId
+getOutgoingConnectionIds nodeCtx =
+    Graph.alongOutgoingEdges nodeCtx
+
+
+getOutgoingConnectionsAndCosts : RoadNetwork -> RNNodeContext -> List ( RNNodeContext, Length )
+getOutgoingConnectionsAndCosts roadNetwork nodeCtx =
+    IntDict.foldl
+        (\k lane acc ->
+            case nodeById roadNetwork k of
+                Just connection ->
+                    ( connection, lane ) :: acc
+
+                Nothing ->
+                    acc
+        )
+        []
+        nodeCtx.outgoing
+
+
+nodeTrafficControl : RNNodeContext -> TrafficControl
+nodeTrafficControl nodeCtx =
+    nodeCtx.node.label.trafficControl
+
+
+nodeLotId : RNNodeContext -> Maybe Id
+nodeLotId nodeCtx =
+    case nodeCtx.node.label.kind of
+        LotEntry id ->
+            Just id
+
+        LotExit id ->
+            Just id
+
+        _ ->
+            Nothing
+
+
+nodePosition : RNNodeContext -> Point2d Length.Meters GlobalCoordinates
+nodePosition nodeCtx =
+    nodeCtx.node.label.position
+
+
+nodeDirection : RNNodeContext -> Direction2d GlobalCoordinates
+nodeDirection nodeCtx =
+    nodeCtx.node.label.direction
+
+
+connectionPosition : Node Connection -> Point2d Length.Meters GlobalCoordinates
+connectionPosition node =
+    node.label.position
+
+
+connectionDirection : Node Connection -> Direction2d GlobalCoordinates
+connectionDirection node =
+    node.label.direction
+
+
+buildRoadNetwork : Tilemap -> Collection TrafficLight -> ( RoadNetwork, Collection TrafficLight )
+buildRoadNetwork tilemap trafficLights =
     let
         tilePriority ( _, tile ) =
-            if Tile.isDeadend tile then
+            if isDeadend tile then
                 0
 
-            else if Tile.isLotEntry tile then
+            else if isLotEntry tile then
                 1
 
-            else if Tile.isIntersection tile then
+            else if isIntersection tile then
                 2
 
             else
@@ -157,7 +308,7 @@ buildRoadNetwork { tilemap, trafficLights } =
                 , nodes = Dict.empty
                 , remainingTiles =
                     tilemap
-                        |> Tilemap.toList Tuple.pair Tilemap.NoFilter
+                        |> tilemapToList Tuple.pair NoFilter
                         |> List.sortBy tilePriority
                 }
                 |> Dict.values
@@ -171,8 +322,18 @@ buildRoadNetwork { tilemap, trafficLights } =
     roadNetwork |> setupTrafficControl trafficLights
 
 
+setupTrafficControl : Collection TrafficLight -> RoadNetwork -> ( RoadNetwork, Collection TrafficLight )
+setupTrafficControl currentTrafficLights roadNetwork =
+    Graph.fold
+        (updateNodeTrafficControl currentTrafficLights)
+        ( roadNetwork, Collection.empty )
+        roadNetwork
 
+
+
+--
 -- Connections
+--
 
 
 type alias NodesMemo =
@@ -219,23 +380,23 @@ createConnections { nodes, tilemap, remainingTiles } =
 
 toConnections : Tilemap -> Cell -> Tile -> List Connection
 toConnections tilemap cell tile =
-    if Tile.isBasicRoad tile then
+    if isBasicRoad tile then
         []
 
-    else if Tile.isDeadend tile then
-        Tile.potentialConnections tile
+    else if isDeadend tile then
+        potentialConnections tile
             |> List.concatMap
-                (oppositeOrthogonalDirection
-                    >> orthogonalDirectionToLmDirection
+                (OrthogonalDirection.opposite
+                    >> OrthogonalDirection.toDirection2d
                     >> deadendConnections cell
                 )
 
     else
-        Tile.potentialConnections tile
+        potentialConnections tile
             |> List.concatMap (connectionsByTileEntryDirection tilemap cell tile)
 
 
-deadendConnections : Cell -> LMDirection2d -> List Connection
+deadendConnections : Cell -> Direction2d GlobalCoordinates -> List Connection
 deadendConnections cell trafficDirection =
     let
         ( entryPosition, exitPosition ) =
@@ -262,7 +423,7 @@ deadendConnections cell trafficDirection =
     ]
 
 
-laneCenterPositionsByDirection : Cell -> LMDirection2d -> ( LMPoint2d, LMPoint2d )
+laneCenterPositionsByDirection : Cell -> Direction2d GlobalCoordinates -> ( Point2d Length.Meters GlobalCoordinates, Point2d Length.Meters GlobalCoordinates )
 laneCenterPositionsByDirection cell trafficDirection =
     let
         connectionOffsetFromTileCenter =
@@ -291,10 +452,10 @@ connectionsByTileEntryDirection tilemap cell tile direction =
             Cell.bottomLeftCorner cell
 
         anchor =
-            Tilemap.anchorAt tilemap cell
+            anchorByCell tilemap cell
 
         startDirection =
-            Geometry.orthogonalDirectionToLmDirection direction
+            OrthogonalDirection.toDirection2d direction
 
         endDirection =
             Direction2d.reverse startDirection
@@ -378,12 +539,12 @@ chooseConnectionCell tilemap tile direction startConnectionKind baseCell =
     else
         let
             tilemapConfig =
-                Tilemap.config tilemap
+                getTilemapConfig tilemap
         in
         case Cell.nextOrthogonalCell tilemapConfig direction baseCell of
             Just nextCell ->
                 if
-                    Tilemap.tileAt tilemap nextCell
+                    fixedTileByCell tilemap nextCell
                         |> Maybe.unwrap False (hasOverlappingConnections tile)
                 then
                     -- Some tile combinations have overlapping connections on their edges.
@@ -404,11 +565,13 @@ hasOverlappingConnections tileA tileB =
 
 hasConnectionsInMultipleDirections : Tile -> Bool
 hasConnectionsInMultipleDirections tile =
-    Tile.isCurve tile || Tile.isIntersection tile || Tile.isLotEntry tile
+    isCurve tile || isIntersection tile || isLotEntry tile
 
 
 
+--
 -- Lanes
+--
 
 
 connect : Node Connection -> Node Connection -> Edge Lane
@@ -448,7 +611,11 @@ toEdges nodes current =
                     findLanesInsideCell nodes
 
                 _ ->
-                    if Cell.centerPoint current.label.cell |> Common.isInTheNormalPlaneOf current.label.direction current.label.position then
+                    if
+                        current.label.cell
+                            |> Cell.centerPoint
+                            |> Common.isInTheNormalPlaneOf current.label.direction current.label.position
+                    then
                         findLanesInsideCell nodes
 
                     else
@@ -556,7 +723,12 @@ connectsWithinCell current other =
     canContinueLeft || canContinueRight
 
 
-connectionLookupArea : Node Connection -> ( LMBoundingBox2d, LMBoundingBox2d )
+connectionLookupArea :
+    Node Connection
+    ->
+        ( BoundingBox2d Length.Meters GlobalCoordinates
+        , BoundingBox2d Length.Meters GlobalCoordinates
+        )
 connectionLookupArea node =
     let
         bb =
@@ -571,16 +743,16 @@ connectionLookupArea node =
         dir =
             connectionDirection node
     in
-    if dir == Geometry.up then
+    if dir == Direction2d.positiveY then
         ( left, right )
 
-    else if dir == Geometry.right then
+    else if dir == Direction2d.positiveX then
         ( upper, lower )
 
-    else if dir == Geometry.down then
+    else if dir == Direction2d.negativeY then
         ( right, left )
 
-    else if dir == Geometry.left then
+    else if dir == Direction2d.negativeX then
         ( lower, upper )
 
     else
@@ -600,17 +772,13 @@ connectDeadendEntryWithExit entry =
 --
 
 
-setupTrafficControl : Collection TrafficLight -> RoadNetwork -> ( RoadNetwork, Collection TrafficLight )
-setupTrafficControl currentTrafficLights roadNetwork =
-    Graph.fold
-        (updateNodeTrafficControl currentTrafficLights)
-        ( roadNetwork, Collection.empty )
-        roadNetwork
-
-
-updateNodeTrafficControl : Collection TrafficLight -> RNNodeContext -> ( RoadNetwork, Collection TrafficLight ) -> ( RoadNetwork, Collection TrafficLight )
+updateNodeTrafficControl :
+    Collection TrafficLight
+    -> RNNodeContext
+    -> ( RoadNetwork, Collection TrafficLight )
+    -> ( RoadNetwork, Collection TrafficLight )
 updateNodeTrafficControl currentTrafficLights nodeCtx ( roadNetwork, trafficLights ) =
-    case RoadNetwork.outgoingConnectionsAmount nodeCtx of
+    case outgoingConnectionsAmount nodeCtx of
         -- Four-way intersection (or crossroads)
         3 ->
             let
@@ -664,7 +832,7 @@ isOnPriorityRoad : RoadNetwork -> RNNodeContext -> Bool
 isOnPriorityRoad roadNetwork nodeCtx =
     let
         otherNodeCtxs =
-            RoadNetwork.getOutgoingConnectionIds nodeCtx
+            getOutgoingConnectionIds nodeCtx
                 |> List.filterMap (\nodeId -> Graph.get nodeId roadNetwork)
     in
     List.any (.node >> isParallel nodeCtx.node) otherNodeCtxs
@@ -717,7 +885,10 @@ setTrafficControl trafficControl nodeCtx =
     { nodeCtx | node = nextNode }
 
 
-yieldCheckArea : LMPoint2d -> LMDirection2d -> LMBoundingBox2d
+yieldCheckArea :
+    Point2d Length.Meters GlobalCoordinates
+    -> Direction2d GlobalCoordinates
+    -> BoundingBox2d Length.Meters GlobalCoordinates
 yieldCheckArea yieldSignPosition centerOfYieldAreaDirection =
     let
         bbPoint1 =
@@ -734,19 +905,3 @@ yieldCheckArea yieldSignPosition centerOfYieldAreaDirection =
                     (Cell.size |> Quantity.twice)
     in
     BoundingBox2d.from bbPoint1 bbPoint2
-
-
-
---
--- Utility
---
-
-
-connectionPosition : Node Connection -> LMPoint2d
-connectionPosition node =
-    node.label.position
-
-
-connectionDirection : Node Connection -> LMDirection2d
-connectionDirection node =
-    node.label.direction

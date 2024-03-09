@@ -8,26 +8,25 @@ module Simulation.Pathfinding exposing
     )
 
 import Array
-import Collection exposing (Id)
-import Common exposing (andCarry)
+import Common exposing (GlobalCoordinates, andCarry)
 import Data.Cars exposing (CarRole(..))
 import Duration exposing (Duration)
 import Length exposing (Length)
-import Model.Car as Car exposing (Car)
-import Model.Geometry exposing (LMPoint2d)
-import Model.Lot as Lot exposing (ParkingReservation, ParkingSpot)
-import Model.RoadNetwork as RoadNetwork
+import Lib.Collection as Collection exposing (Id)
+import Model.World as World exposing (World)
+import Point2d exposing (Point2d)
+import Quantity
+import Random
+import Simulation.Car as Car exposing (Car)
+import Simulation.Lot as Lot exposing (ParkingReservation, ParkingSpot)
+import Simulation.RoadNetwork as RoadNetwork
     exposing
         ( ConnectionKind(..)
         , RNNode
         , RNNodeContext
         , TrafficControl
         )
-import Model.Route as Route exposing (Route)
-import Model.World as World exposing (World)
-import Point2d
-import Quantity
-import Random
+import Simulation.Route as Route exposing (Route)
 import Speed exposing (Speed)
 
 
@@ -139,7 +138,7 @@ updateParameter velocity delta parameter =
     parameter |> Quantity.plus deltaMeters
 
 
-routeTrafficControl : World -> Route -> Maybe ( TrafficControl, LMPoint2d )
+routeTrafficControl : World -> Route -> Maybe ( TrafficControl, Point2d Length.Meters GlobalCoordinates )
 routeTrafficControl world route =
     route
         |> Route.splineEndPoint
@@ -186,7 +185,7 @@ restoreRoute world car =
                 )
 
 
-validateNodeByPosition : World -> LMPoint2d -> Result String RNNodeContext
+validateNodeByPosition : World -> Point2d Length.Meters GlobalCoordinates -> Result String RNNodeContext
 validateNodeByPosition world position =
     World.findNodeByPosition world position
         |> Result.fromMaybe "Node not found"
@@ -378,7 +377,7 @@ attemptBeginParking car lotId world =
                                 , parkingSpotId = parkingSpot.id
                                 }
                         in
-                        Route.arriveToParkingSpot parkingReservation world.lots car.route
+                        Route.arriveToParkingSpot parkingReservation world.lots
                             |> Maybe.map
                                 (\route ->
                                     world

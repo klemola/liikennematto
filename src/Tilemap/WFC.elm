@@ -1,4 +1,4 @@
-module WFC exposing
+module Tilemap.WFC exposing
     ( Model
     , contextDebug
     , failed
@@ -16,16 +16,25 @@ module WFC exposing
 import Array
 import Common exposing (attemptFoldList, attemptMapList)
 import Data.TileSet exposing (pairingsForSocket, tileById, tileIds)
+import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import List.Nonempty exposing (Nonempty)
-import Model.Cell as Cell exposing (Cell)
-import Model.Geometry
+import Random exposing (Seed)
+import Stack exposing (Stack)
+import Tilemap.Cell as Cell exposing (Cell)
+import Tilemap.Core
     exposing
-        ( OrthogonalDirection
-        , oppositeOrthogonalDirection
-        , orthogonalDirections
+        ( Tilemap
+        , TilemapConfig
+        , createTilemap
+        , foldTiles
+        , forAllTiles
+        , getTilemapConfig
+        , setSuperpositionOptions
+        , setTile
+        , tileByCell
         )
-import Model.Tile as Tile exposing (Tile, TileKind(..))
-import Model.TileConfig as TileConfig
+import Tilemap.Tile as Tile exposing (Tile, TileKind(..))
+import Tilemap.TileConfig as TileConfig
     exposing
         ( LargeTile
         , SingleTile
@@ -35,9 +44,6 @@ import Model.TileConfig as TileConfig
         , socketByDirection
         , socketByDirectionWithConfig
         )
-import Model.Tilemap as Tilemap exposing (Tilemap, TilemapConfig)
-import Random exposing (Seed)
-import Stack exposing (Stack)
 
 
 type Model
@@ -82,7 +88,7 @@ type WFCFailure
 init : TilemapConfig -> Random.Seed -> Model
 init tilemapConfig initialSeed =
     Model
-        { tilemap = Tilemap.empty tilemapConfig
+        { tilemap = createTilemap tilemapConfig
         , currentCell = Nothing
         , targetCell = Nothing
         , openSteps = []
@@ -248,27 +254,27 @@ processStep tilemap currentStep =
                 TileConfig.Single singleTile ->
                     let
                         tilemapConfig =
-                            Tilemap.config tilemap
+                            getTilemapConfig tilemap
 
                         stepInDirection dir =
                             Cell.nextOrthogonalCell tilemapConfig dir cell
                                 |> Maybe.map (PropagateConstraints cell)
 
                         nextSteps =
-                            List.filterMap stepInDirection orthogonalDirections
+                            List.filterMap stepInDirection OrthogonalDirection.all
 
                         ( tile, tileActions ) =
                             Tile.fromTileId singleTile.id Tile.BuildInstantly
                     in
-                    Ok ( nextSteps, tileActions, Tilemap.setTile cell tile tilemap )
+                    Ok ( nextSteps, tileActions, setTile cell tile tilemap )
 
         CollapseSubgridCell cell singleTile largeTileId ->
             attemptPlaceSubgridTile tilemap largeTileId cell singleTile
 
         PropagateConstraints from to ->
             Maybe.map2 Tuple.pair
-                (Tilemap.tileAtAny tilemap from)
-                (Tilemap.tileAtAny tilemap to)
+                (tileByCell tilemap from)
+                (tileByCell tilemap to)
                 |> Result.fromMaybe TileNotFound
                 |> Result.andThen (updateSuperpositionOptions tilemap from to)
                 |> Result.map (\nextTilemap -> ( [], [], nextTilemap ))
@@ -282,7 +288,7 @@ updateSuperpositionOptions tilemap from to tilePair =
             (superpositionOptionsForTile tilePair)
         |> Result.map
             (\superpositionOptions ->
-                Tilemap.setSuperpositionOptions to superpositionOptions tilemap
+                setSuperpositionOptions to superpositionOptions tilemap
             )
 
 
@@ -318,7 +324,7 @@ matchingSuperpositionOptions dir originTileId options =
     in
     List.filter
         (canDock
-            (oppositeOrthogonalDirection dir)
+            (OrthogonalDirection.opposite dir)
             originSocket
         )
         options
@@ -343,7 +349,7 @@ canDock dockDir dockSocket dockTileId =
 -}
 solved : ModelDetails -> Bool
 solved { tilemap, openSteps } =
-    List.isEmpty openSteps && Tilemap.all solvedPredicate tilemap
+    List.isEmpty openSteps && forAllTiles solvedPredicate tilemap
 
 
 solvedPredicate : Tile -> Bool
@@ -358,7 +364,7 @@ solvedPredicate tile =
 
 stepSuperposition : Tilemap -> Step -> Maybe (Nonempty TileId)
 stepSuperposition tilemap theStep =
-    Tilemap.tileAtAny tilemap (stepCell theStep)
+    tileByCell tilemap (stepCell theStep)
         |> Maybe.andThen
             (\tile ->
                 case tile.kind of
@@ -453,7 +459,7 @@ revertStep theStep previousSuperposition tilemap =
                     psList
     in
     ( nextSuperpositionOptions
-    , Tilemap.setSuperpositionOptions targetCell nextSuperpositionOptions tilemap
+    , setSuperpositionOptions targetCell nextSuperpositionOptions tilemap
     )
 
 
@@ -548,7 +554,7 @@ nextCandidates tilemap =
                             ( candidates, minEntropy )
     in
     tilemap
-        |> Tilemap.fold toCandidate ( [], List.length tileIds + 1 )
+        |> foldTiles toCandidate ( [], List.length tileIds + 1 )
         |> Tuple.first
 
 
@@ -564,7 +570,7 @@ attemptPlanLargeTilePlacement : Tilemap -> Cell -> LargeTile -> Result WFCFailur
 attemptPlanLargeTilePlacement tilemap anchorCell tile =
     let
         tilemapConstraints =
-            Tilemap.config tilemap
+            getTilemapConfig tilemap
 
         -- The large tile is a subgrid in the main grid; the tilemap
         subgridDimensions =
@@ -624,7 +630,7 @@ attemptPlaceSubgridTile tilemap largeTileId cell currentTile =
                     ( tile, tileActions ) =
                         Tile.fromTileId currentTile.id Tile.BuildInstantly
                 in
-                ( neighborSteps, tileActions, Tilemap.setTile cell tile tilemap )
+                ( neighborSteps, tileActions, setTile cell tile tilemap )
             )
         |> Result.mapError (\_ -> InvalidBigTilePlacement cell largeTileId)
 
@@ -639,7 +645,7 @@ attemptTileNeighborUpdate currentTile originCell tilemap =
                 originSocket =
                     socketByDirection currentTile.sockets nuCtx.dir
             in
-            if canDock (oppositeOrthogonalDirection nuCtx.dir) originSocket neighborTileId then
+            if canDock (OrthogonalDirection.opposite nuCtx.dir) originSocket neighborTileId then
                 -- Tiles can dock, no tilemap update needed = skip
                 Ok nuCtx.steps
 
@@ -677,13 +683,13 @@ applyToNeighbor :
 applyToNeighbor onFixed onSuperposition cell tilemap =
     let
         tilemapConfig =
-            Tilemap.config tilemap
+            getTilemapConfig tilemap
     in
     attemptFoldList
         (\dir steps ->
             case Cell.nextOrthogonalCell tilemapConfig dir cell of
                 Just toCell ->
-                    case Tilemap.tileAtAny tilemap toCell of
+                    case tileByCell tilemap toCell of
                         Just toTile ->
                             let
                                 neighborUpdateContext =
@@ -703,7 +709,7 @@ applyToNeighbor onFixed onSuperposition cell tilemap =
                     Ok steps
         )
         []
-        orthogonalDirections
+        OrthogonalDirection.all
 
 
 

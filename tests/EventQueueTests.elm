@@ -1,7 +1,7 @@
 module EventQueueTests exposing (suite)
 
-import EventQueue
 import Expect
+import Lib.EventQueue as EventQueue
 import Test exposing (Test, describe, test)
 import Time
 

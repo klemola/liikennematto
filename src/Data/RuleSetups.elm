@@ -16,7 +16,7 @@ module Data.RuleSetups exposing
     )
 
 import Angle exposing (Angle)
-import Collection exposing (Id)
+import Common exposing (GlobalCoordinates)
 import Data.Cars exposing (testCar)
 import Data.Worlds
     exposing
@@ -28,14 +28,14 @@ import Data.Worlds
         )
 import Duration
 import Length exposing (Length)
-import Model.Car as Car exposing (Car)
-import Model.Geometry exposing (LMPoint2d)
-import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext)
-import Model.Route as Route
+import Lib.Collection as Collection exposing (Id)
 import Model.World as World exposing (World)
-import Point2d
+import Point2d exposing (Point2d)
 import Random
+import Simulation.Car as Car exposing (Car)
 import Simulation.Events exposing (updateEventQueue)
+import Simulation.RoadNetwork as RoadNetwork exposing (RNNodeContext)
+import Simulation.Route as Route
 import Simulation.Steering as Steering
 import Simulation.Traffic as Traffic exposing (RuleSetup)
 import Speed exposing (Speed)
@@ -517,7 +517,7 @@ id2 =
     Collection.nextId id1
 
 
-buildCar : TestCar -> LMPoint2d -> Angle -> Speed -> Car
+buildCar : TestCar -> Point2d Length.Meters GlobalCoordinates -> Angle -> Speed -> Car
 buildCar option position orientation velocity =
     let
         id =
@@ -536,11 +536,11 @@ buildCar option position orientation velocity =
         |> (\builderFn -> builderFn id)
 
 
-routeCarByDestination : World -> LMPoint2d -> Car -> Car
+routeCarByDestination : World -> Point2d Length.Meters GlobalCoordinates -> Car -> Car
 routeCarByDestination world position car =
     let
         destination =
-            RoadNetwork.findNodeByPosition world.roadNetwork position
+            RoadNetwork.nodeByPosition world.roadNetwork position
     in
     case destination of
         Just nodeCtx ->
@@ -560,11 +560,11 @@ routeCarByDestination world position car =
             car
 
 
-positionsToNodes : World -> List LMPoint2d -> Maybe ( RNNodeContext, List RNNodeContext )
+positionsToNodes : World -> List (Point2d Length.Meters GlobalCoordinates) -> Maybe ( RNNodeContext, List RNNodeContext )
 positionsToNodes world nodePositions =
     case
         nodePositions
-            |> List.filterMap (RoadNetwork.findNodeByPosition world.roadNetwork)
+            |> List.filterMap (RoadNetwork.nodeByPosition world.roadNetwork)
     of
         firstNode :: others ->
             Just ( firstNode, others )

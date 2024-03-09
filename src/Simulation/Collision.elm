@@ -8,29 +8,21 @@ module Simulation.Collision exposing
     )
 
 import Angle exposing (Angle)
-import Arc2d
-import Common
-import Direction2d
+import Arc2d exposing (Arc2d)
+import Common exposing (GlobalCoordinates)
+import Direction2d exposing (Direction2d)
 import Length exposing (Length)
-import LineSegment2d
-import Model.Car as Car exposing (Car)
-import Model.Geometry
-    exposing
-        ( LMArc2d
-        , LMDirection2d
-        , LMLineSegment2d
-        , LMPoint2d
-        , LMShape2d
-        )
-import Model.Route as Route
-import Point2d
-import Polygon2d
+import LineSegment2d exposing (LineSegment2d)
+import Point2d exposing (Point2d)
+import Polygon2d exposing (Polygon2d)
 import Quantity
+import Simulation.Car as Car exposing (Car)
+import Simulation.Route as Route
 import Speed
 
 
 type CollisionCheckResult
-    = PotentialCollision LMPoint2d
+    = PotentialCollision (Point2d Length.Meters GlobalCoordinates)
     | Caution
     | NoCollision
 
@@ -78,7 +70,11 @@ checkFutureCollision activeCar otherCar =
                     NoCollision
 
 
-rayCollisionAt : LMPoint2d -> LMShape2d -> LMLineSegment2d -> Maybe LMPoint2d
+rayCollisionAt :
+    Point2d Length.Meters GlobalCoordinates
+    -> Polygon2d Length.Meters GlobalCoordinates
+    -> LineSegment2d Length.Meters GlobalCoordinates
+    -> Maybe (Point2d Length.Meters GlobalCoordinates)
 rayCollisionAt origin shape ray =
     Polygon2d.edges shape
         |> List.filterMap (LineSegment2d.intersectionPoint ray)
@@ -103,7 +99,7 @@ shouldCheckFov activeCar otherCar =
            )
 
 
-fieldOfViewCheck : LMArc2d -> LMPoint2d -> Bool
+fieldOfViewCheck : Arc2d Length.Meters GlobalCoordinates -> Point2d Length.Meters GlobalCoordinates -> Bool
 fieldOfViewCheck fieldOfView target =
     let
         origin =
@@ -129,14 +125,14 @@ fieldOfViewCheck fieldOfView target =
         |> Maybe.withDefault False
 
 
-rightSideFOV : LMLineSegment2d -> LMArc2d
+rightSideFOV : LineSegment2d Length.Meters GlobalCoordinates -> Arc2d Length.Meters GlobalCoordinates
 rightSideFOV ray =
     LineSegment2d.endPoint ray
         |> Arc2d.sweptAround (LineSegment2d.startPoint ray)
             (Quantity.negate fovRadius)
 
 
-pathRay : Car -> Length -> LMLineSegment2d
+pathRay : Car -> Length -> LineSegment2d Length.Meters GlobalCoordinates
 pathRay car maxDistance =
     let
         origin =
@@ -176,7 +172,11 @@ pathRay car maxDistance =
         distance
 
 
-buildRay : LMPoint2d -> LMDirection2d -> Length -> LMLineSegment2d
+buildRay :
+    Point2d Length.Meters GlobalCoordinates
+    -> Direction2d GlobalCoordinates
+    -> Length
+    -> LineSegment2d Length.Meters GlobalCoordinates
 buildRay origin direction distance =
     LineSegment2d.from
         origin

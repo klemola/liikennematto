@@ -1,4 +1,4 @@
-module EventQueue exposing
+module Lib.EventQueue exposing
     ( Event
     , EventQueue
     , addEvent

@@ -1,10 +1,10 @@
-module AStar exposing (Path, findPath)
+module Simulation.AStar exposing (Path, findPath)
 
 import Dict exposing (Dict)
 import Length exposing (Length)
-import Model.RoadNetwork as RoadNetwork exposing (RNNodeContext, RoadNetwork)
 import Point2d
 import PriorityQueue exposing (PriorityQueue)
+import Simulation.RoadNetwork as RoadNetwork exposing (RNNodeContext, RoadNetwork)
 
 
 type alias Path =

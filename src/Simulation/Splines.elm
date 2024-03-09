@@ -1,4 +1,4 @@
-module Splines exposing
+module Simulation.Splines exposing
     ( LotSplineProperties
     , PathParameters
     , asGlobalSpline
@@ -10,23 +10,19 @@ module Splines exposing
     )
 
 import Angle
-import Common
+import Common exposing (GlobalCoordinates, LocalCoordinates)
 import CubicSpline2d exposing (CubicSpline2d)
 import Direction2d exposing (Direction2d)
+import Frame2d exposing (Frame2d)
 import Length exposing (Length)
-import Model.Geometry
-    exposing
-        ( LMCubicSpline2d
-        , LMCubicSpline2dLocal
-        , LMDirection2d
-        , LMDirection2dLocal
-        , LMFrame2d
-        , LMPoint2d
-        , LMPoint2dLocal
-        )
-import Model.RoadNetwork as RoadNetwork exposing (ConnectionKind(..), RNNodeContext)
 import Point2d exposing (Point2d)
 import Quantity
+import Simulation.RoadNetwork
+    exposing
+        ( ConnectionEnvironment(..)
+        , ConnectionKind(..)
+        , RNNodeContext
+        )
 
 
 uTurnDistance : Length
@@ -34,19 +30,22 @@ uTurnDistance =
     Length.meters 3
 
 
-asGlobalSpline : LMFrame2d -> LMCubicSpline2dLocal -> LMCubicSpline2d
+asGlobalSpline :
+    Frame2d Length.Meters GlobalCoordinates { defines : LocalCoordinates }
+    -> CubicSpline2d Length.Meters LocalCoordinates
+    -> CubicSpline2d Length.Meters GlobalCoordinates
 asGlobalSpline frame localSpline =
     CubicSpline2d.placeIn frame localSpline
 
 
 type alias PathParameters =
-    { origin : LMPoint2d
-    , direction : LMDirection2d
-    , environment : RoadNetwork.ConnectionEnvironment
+    { origin : Point2d Length.Meters GlobalCoordinates
+    , direction : Direction2d GlobalCoordinates
+    , environment : ConnectionEnvironment
     }
 
 
-toNode : PathParameters -> RNNodeContext -> LMCubicSpline2d
+toNode : PathParameters -> RNNodeContext -> CubicSpline2d Length.Meters GlobalCoordinates
 toNode { direction, origin, environment } { node } =
     let
         target =
@@ -68,7 +67,7 @@ toNode { direction, origin, environment } { node } =
         else
             let
                 parameter =
-                    if environment == RoadNetwork.Intersection then
+                    if environment == Intersection then
                         0.75
 
                     else
@@ -148,17 +147,17 @@ curveSpline origin target direction parameter =
 
 
 type alias LotSplineProperties =
-    { parkingSpotPosition : LMPoint2dLocal
-    , lotEntryPosition : LMPoint2dLocal
-    , lotExitPosition : LMPoint2dLocal
-    , parkingLaneStartPosition : LMPoint2dLocal
-    , parkingLaneStartDirection : LMDirection2dLocal
-    , parkingSpotExitDirection : LMDirection2dLocal
-    , drivewayExitDirection : LMDirection2dLocal
+    { parkingSpotPosition : Point2d Length.Meters LocalCoordinates
+    , lotEntryPosition : Point2d Length.Meters LocalCoordinates
+    , lotExitPosition : Point2d Length.Meters LocalCoordinates
+    , parkingLaneStartPosition : Point2d Length.Meters LocalCoordinates
+    , parkingLaneStartDirection : Direction2d LocalCoordinates
+    , parkingSpotExitDirection : Direction2d LocalCoordinates
+    , drivewayExitDirection : Direction2d LocalCoordinates
     }
 
 
-lotEntrySpline : LotSplineProperties -> List LMCubicSpline2dLocal
+lotEntrySpline : LotSplineProperties -> List (CubicSpline2d Length.Meters LocalCoordinates)
 lotEntrySpline { parkingSpotPosition, lotEntryPosition, parkingSpotExitDirection, parkingLaneStartPosition, parkingLaneStartDirection, drivewayExitDirection } =
     let
         startDirection =
@@ -193,7 +192,7 @@ lotEntrySpline { parkingSpotPosition, lotEntryPosition, parkingSpotExitDirection
         ]
 
 
-lotExitSpline : LotSplineProperties -> List LMCubicSpline2dLocal
+lotExitSpline : LotSplineProperties -> List (CubicSpline2d Length.Meters LocalCoordinates)
 lotExitSpline { parkingSpotPosition, lotExitPosition, parkingSpotExitDirection, parkingLaneStartPosition, parkingLaneStartDirection, drivewayExitDirection } =
     let
         startDirection =

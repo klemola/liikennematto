@@ -1,4 +1,4 @@
-module FSM exposing
+module Lib.FSM exposing
     ( FSM
     , State
     , StateId
@@ -247,7 +247,7 @@ updateTransition delta (State currentState) queuedTransitions context transition
                     ( trs, predicate context currentState.kind )
 
                 Direct ->
-                    ( trs, queuedTransitions |> List.any (\queuedStateId -> queuedStateId == targetState.id) )
+                    ( trs, queuedTransitions |> List.member targetState.id )
 
         stateChange =
             if isTriggered then

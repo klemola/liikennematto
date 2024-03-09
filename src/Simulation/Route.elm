@@ -1,4 +1,4 @@
-module Model.Route exposing
+module Simulation.Route exposing
     ( Destination(..)
     , Path
     , Route(..)
@@ -28,33 +28,29 @@ module Model.Route exposing
     , stopAtSplineEnd
     )
 
-import AStar
 import Array exposing (Array)
-import Collection exposing (Collection)
-import CubicSpline2d exposing (ArcLengthParameterized)
+import Common exposing (GlobalCoordinates)
+import CubicSpline2d exposing (ArcLengthParameterized, CubicSpline2d)
+import Direction2d exposing (Direction2d)
 import Length exposing (Length)
+import Lib.Collection as Collection exposing (Collection)
 import List.Extra as List
-import Model.Geometry
-    exposing
-        ( GlobalCoordinates
-        , LMCubicSpline2d
-        , LMDirection2d
-        , LMPoint2d
-        )
-import Model.Lot as Lot
+import Point2d exposing (Point2d)
+import Quantity
+import Random
+import Random.List
+import Simulation.AStar as AStar
+import Simulation.Lot as Lot
     exposing
         ( Lot
         , ParkingReservation
         )
-import Model.RoadNetwork as RoadNetwork
+import Simulation.RoadNetwork as RoadNetwork
     exposing
         ( RNNodeContext
         , RoadNetwork
         )
-import Quantity
-import Random
-import Random.List
-import Splines
+import Simulation.Splines as Splines
 
 
 type Route
@@ -69,7 +65,7 @@ type Destination
 
 
 type alias RouteMeta =
-    { startNodePosition : LMPoint2d
+    { startNodePosition : Point2d Length.Meters GlobalCoordinates
     , startNode : RNNodeContext
     , endNode : RNNodeContext
     , path : Path
@@ -81,8 +77,8 @@ type alias Path =
     , currentSplineIdx : Int
     , currentSpline : Maybe SplineMeta
     , parameter : Length
-    , startPoint : LMPoint2d
-    , endPoint : LMPoint2d
+    , startPoint : Point2d Length.Meters GlobalCoordinates
+    , endPoint : Point2d Length.Meters GlobalCoordinates
     , finished : Bool
     }
 
@@ -90,7 +86,7 @@ type alias Path =
 type alias SplineMeta =
     { spline : ArcLengthParameterized Length.Meters GlobalCoordinates
     , length : Length
-    , endPoint : LMPoint2d
+    , endPoint : Point2d Length.Meters GlobalCoordinates
     }
 
 
@@ -156,7 +152,7 @@ reroute currentRoute roadNetwork nextNodeCtx endNodeCtx =
         |> Result.fromMaybe "Could not find a route to the destination"
 
 
-splinesToNode : RNNodeContext -> Path -> List LMCubicSpline2d
+splinesToNode : RNNodeContext -> Path -> List (CubicSpline2d Length.Meters GlobalCoordinates)
 splinesToNode nodeCtx path =
     let
         nextNodePosition =
@@ -169,7 +165,12 @@ splinesToNode nodeCtx path =
         []
 
 
-splinesToNodeHelper : (SplineMeta -> Bool) -> Length -> Array SplineMeta -> List LMCubicSpline2d -> List LMCubicSpline2d
+splinesToNodeHelper :
+    (SplineMeta -> Bool)
+    -> Length
+    -> Array SplineMeta
+    -> List (CubicSpline2d Length.Meters GlobalCoordinates)
+    -> List (CubicSpline2d Length.Meters GlobalCoordinates)
 splinesToNodeHelper stopPredicate parameter splinesSlice results =
     let
         idx =
@@ -214,8 +215,8 @@ stopAtSplineEnd route =
         |> Maybe.map (ArrivingToDestination RoadNetworkNode)
 
 
-arriveToParkingSpot : ParkingReservation -> Collection Lot -> Route -> Maybe Route
-arriveToParkingSpot parkingReservation lots route =
+arriveToParkingSpot : ParkingReservation -> Collection Lot -> Maybe Route
+arriveToParkingSpot parkingReservation lots =
     Collection.get parkingReservation.lotId lots
         |> Maybe.andThen (\lot -> Lot.parkingSpotById lot parkingReservation.parkingSpotId)
         |> Maybe.map .pathFromLotEntry
@@ -223,7 +224,7 @@ arriveToParkingSpot parkingReservation lots route =
         |> Maybe.map (ArrivingToDestination LotParkingSpot)
 
 
-buildRoute : RNNodeContext -> List RNNodeContext -> List LMCubicSpline2d -> Route
+buildRoute : RNNodeContext -> List RNNodeContext -> List (CubicSpline2d Length.Meters GlobalCoordinates) -> Route
 buildRoute startNodeCtx nodes initialSplines =
     let
         nodeSplines =
@@ -249,7 +250,11 @@ buildRoute startNodeCtx nodes initialSplines =
         |> Maybe.withDefault initialRoute
 
 
-nodesToSplines : RNNodeContext -> List RNNodeContext -> List LMCubicSpline2d -> List LMCubicSpline2d
+nodesToSplines :
+    RNNodeContext
+    -> List RNNodeContext
+    -> List (CubicSpline2d Length.Meters GlobalCoordinates)
+    -> List (CubicSpline2d Length.Meters GlobalCoordinates)
 nodesToSplines current remaining splines =
     case remaining of
         [] ->
@@ -276,7 +281,7 @@ nodesToSplines current remaining splines =
 
 
 createPath :
-    List LMCubicSpline2d
+    List (CubicSpline2d Length.Meters GlobalCoordinates)
     -> Maybe Path
 createPath splines =
     let
@@ -304,7 +309,7 @@ createPath splines =
         (Array.get (Array.length pathSplines - 1) pathSplines)
 
 
-toPathSplines : List LMCubicSpline2d -> Array SplineMeta -> Array SplineMeta
+toPathSplines : List (CubicSpline2d Length.Meters GlobalCoordinates) -> Array SplineMeta -> Array SplineMeta
 toPathSplines remaining acc =
     case remaining of
         current :: rest ->
@@ -378,7 +383,7 @@ chooseRandomOutgoingConnection roadNetwork nodeCtx =
     RoadNetwork.getOutgoingConnectionIds nodeCtx
         |> List.filterMap
             (\outgoingNodeCtx ->
-                RoadNetwork.findNodeByNodeId roadNetwork outgoingNodeCtx
+                RoadNetwork.nodeById roadNetwork outgoingNodeCtx
                     |> Maybe.andThen discardLotNode
             )
         |> Random.List.choose
@@ -445,7 +450,7 @@ hasPath route =
             True
 
 
-startNodePosition : Route -> Maybe LMPoint2d
+startNodePosition : Route -> Maybe (Point2d Length.Meters GlobalCoordinates)
 startNodePosition route =
     case route of
         Routed meta ->
@@ -475,19 +480,19 @@ startNode route =
             Nothing
 
 
-endPoint : Route -> Maybe LMPoint2d
+endPoint : Route -> Maybe (Point2d Length.Meters GlobalCoordinates)
 endPoint route =
     toPath route |> Maybe.map .endPoint
 
 
-splineEndPoint : Route -> Maybe LMPoint2d
+splineEndPoint : Route -> Maybe (Point2d Length.Meters GlobalCoordinates)
 splineEndPoint route =
     toPath route
         |> Maybe.andThen .currentSpline
         |> Maybe.map .endPoint
 
 
-pathToSplines : Route -> List LMCubicSpline2d
+pathToSplines : Route -> List (CubicSpline2d Length.Meters GlobalCoordinates)
 pathToSplines route =
     toPath route
         |> Maybe.map (pathRemaining >> .splines)
@@ -545,7 +550,7 @@ pathFromCurrentSpline currentPath =
 
 type alias PathRemaining =
     { length : Length
-    , splines : List LMCubicSpline2d
+    , splines : List (CubicSpline2d Length.Meters GlobalCoordinates)
     }
 
 
@@ -595,7 +600,7 @@ remainingSplines path =
     Array.slice path.currentSplineIdx (Array.length path.splines) path.splines
 
 
-distanceToSplineEnd : SplineMeta -> Length -> ( Length, LMCubicSpline2d )
+distanceToSplineEnd : SplineMeta -> Length -> ( Length, CubicSpline2d Length.Meters GlobalCoordinates )
 distanceToSplineEnd splineMeta parameter =
     let
         remaining =
@@ -614,7 +619,7 @@ distanceToSplineEnd splineMeta parameter =
     ( distance, remaining )
 
 
-currentSplineRemaining : Length -> SplineMeta -> LMCubicSpline2d
+currentSplineRemaining : Length -> SplineMeta -> CubicSpline2d Length.Meters GlobalCoordinates
 currentSplineRemaining parameter splineMeta =
     let
         spline =
@@ -660,7 +665,7 @@ setParameter parameter route =
 --
 
 
-sample : Route -> Maybe ( LMPoint2d, LMDirection2d )
+sample : Route -> Maybe ( Point2d Length.Meters GlobalCoordinates, Direction2d GlobalCoordinates )
 sample route =
     case toPath route of
         Just path ->
@@ -671,7 +676,7 @@ sample route =
             Nothing
 
 
-sampleAhead : Route -> Length -> Maybe ( LMPoint2d, LMDirection2d )
+sampleAhead : Route -> Length -> Maybe ( Point2d Length.Meters GlobalCoordinates, Direction2d GlobalCoordinates )
 sampleAhead route lookAheadAmount =
     case toPath route of
         Just path ->
@@ -681,7 +686,7 @@ sampleAhead route lookAheadAmount =
             Nothing
 
 
-sampleAheadWithPath : Path -> Length -> SplineMeta -> ( LMPoint2d, LMDirection2d )
+sampleAheadWithPath : Path -> Length -> SplineMeta -> ( Point2d Length.Meters GlobalCoordinates, Direction2d GlobalCoordinates )
 sampleAheadWithPath path lookAheadAmount currentSplineMeta =
     let
         parameterWithLookAhead =

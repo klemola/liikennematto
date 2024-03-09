@@ -1,4 +1,4 @@
-module Model.Tile exposing
+module Tilemap.Tile exposing
     ( Action(..)
     , OrthogonalNeighbors
     , Tile
@@ -25,15 +25,10 @@ module Model.Tile exposing
 
 import Audio exposing (Sound)
 import Duration exposing (Duration)
-import FSM exposing (FSM, State)
-import Model.Geometry
-    exposing
-        ( OrthogonalDirection(..)
-        , crossOrthogonalDirection
-        , orthogonalDirections
-        )
-import Model.TileConfig exposing (TileId)
+import Lib.FSM as FSM exposing (FSM, State)
+import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
 import Set exposing (Set)
+import Tilemap.TileConfig exposing (TileId)
 
 
 type alias Tile =
@@ -557,19 +552,19 @@ potentialConnections { kind } =
                 [ Right ]
 
             else if tileId == intersectionTUp || tileId == lotEntryTUp then
-                Up :: crossOrthogonalDirection Up
+                Up :: OrthogonalDirection.cross Up
 
             else if tileId == intersectionTRight || tileId == lotEntryTRight then
-                Right :: crossOrthogonalDirection Right
+                Right :: OrthogonalDirection.cross Right
 
             else if tileId == intersectionTDown then
-                Down :: crossOrthogonalDirection Down
+                Down :: OrthogonalDirection.cross Down
 
             else if tileId == intersectionTLeft || tileId == lotEntryTLeft then
-                Left :: crossOrthogonalDirection Left
+                Left :: OrthogonalDirection.cross Left
 
             else if tileId == intersectionCross then
-                orthogonalDirections
+                OrthogonalDirection.all
 
             else
                 []

@@ -7,8 +7,8 @@ import Duration
 import Message
 import Model.Flags exposing (RuntimeEnvironment(..))
 import Model.Liikennematto as Liikennematto
-import Simulation.Simulation as Simulation
-import UI.Editor as Editor
+import Simulation.Update as Simulation
+import Tilemap.Update as Tilemap
 
 
 baseModel =
@@ -31,7 +31,7 @@ suite =
                         { baseModel | world = setup.world }
                 in
                 \_ ->
-                    Editor.update msg model
+                    Tilemap.update msg model
             ]
         , describe "Traffic update"
             [ benchmark "large world, cars n=1" <|
