@@ -10,12 +10,13 @@ module Simulation.TrafficLight exposing
     , withPosition
     )
 
-import Direction2d
+import Common exposing (GlobalCoordinates)
+import Direction2d exposing (Direction2d)
 import Duration
+import Length
 import Lib.Collection exposing (Id)
 import Lib.FSM as FSM exposing (FSM)
-import Model.Geometry exposing (LMDirection2d, LMPoint2d)
-import Point2d
+import Point2d exposing (Point2d)
 
 
 type TrafficLightColor
@@ -27,14 +28,14 @@ type TrafficLightColor
 type alias TrafficLight =
     { id : Id
     , fsm : FSM TrafficLightColor () ()
-    , position : LMPoint2d
-    , facing : LMDirection2d
+    , position : Point2d Length.Meters GlobalCoordinates
+    , facing : Direction2d GlobalCoordinates
     }
 
 
 type alias NewTrafficLight =
-    { position : LMPoint2d
-    , facing : LMDirection2d
+    { position : Point2d Length.Meters GlobalCoordinates
+    , facing : Direction2d GlobalCoordinates
     }
 
 
@@ -93,12 +94,12 @@ new =
     }
 
 
-withPosition : LMPoint2d -> NewTrafficLight -> NewTrafficLight
+withPosition : Point2d Length.Meters GlobalCoordinates -> NewTrafficLight -> NewTrafficLight
 withPosition position newTrafficLight =
     { newTrafficLight | position = position }
 
 
-withFacing : LMDirection2d -> NewTrafficLight -> NewTrafficLight
+withFacing : Direction2d GlobalCoordinates -> NewTrafficLight -> NewTrafficLight
 withFacing direction newTrafficLight =
     { newTrafficLight | facing = direction }
 

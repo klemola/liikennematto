@@ -20,11 +20,10 @@ import Acceleration exposing (Acceleration)
 import Angle exposing (Angle)
 import AngularAcceleration exposing (AngularAcceleration)
 import AngularSpeed exposing (AngularSpeed)
-import Common exposing (isCloseToZeroVelocity)
+import Common exposing (GlobalCoordinates, LocalCoordinates, isCloseToZeroVelocity)
 import Duration
 import Length exposing (Length)
-import Model.Geometry exposing (LMPoint2d)
-import Point2d
+import Point2d exposing (Point2d)
 import Quantity exposing (Quantity(..))
 import Simulation.Route as Route exposing (Route)
 import Speed exposing (Speed)
@@ -219,7 +218,7 @@ stopAtDistance distanceFromTarget threshold currentVelocity =
     }
 
 
-stopAtPathEnd : LMPoint2d -> Speed -> Route -> Length -> Steering
+stopAtPathEnd : Point2d Length.Meters GlobalCoordinates -> Speed -> Route -> Length -> Steering
 stopAtPathEnd currentPosition velocity route stopRadius =
     case route of
         Route.Unrouted ->

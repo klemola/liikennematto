@@ -24,21 +24,15 @@ module Simulation.Car exposing
 
 import Angle exposing (Angle)
 import AngularSpeed exposing (AngularSpeed)
-import BoundingBox2d
-import Common exposing (isCloseToZeroVelocity)
+import BoundingBox2d exposing (BoundingBox2d)
+import Common exposing (GlobalCoordinates, isCloseToZeroVelocity)
 import Data.Cars exposing (CarMake)
 import Frame2d
 import Length
 import Lib.Collection exposing (Id)
 import Lib.FSM as FSM exposing (FSM)
-import Model.Geometry
-    exposing
-        ( LMBoundingBox2d
-        , LMPoint2d
-        , LMShape2d
-        )
-import Point2d
-import Polygon2d
+import Point2d exposing (Point2d)
+import Polygon2d exposing (Polygon2d)
 import Quantity
 import Simulation.Lot exposing (ParkingReservation)
 import Simulation.Route as Route exposing (Route)
@@ -49,12 +43,12 @@ type alias Car =
     { id : Id
     , make : CarMake
     , fsm : CarFSM
-    , position : LMPoint2d
+    , position : Point2d Length.Meters GlobalCoordinates
     , orientation : Angle
     , velocity : Speed
     , rotation : AngularSpeed
-    , shape : LMShape2d
-    , boundingBox : LMBoundingBox2d
+    , shape : Polygon2d Length.Meters GlobalCoordinates
+    , boundingBox : BoundingBox2d Length.Meters GlobalCoordinates
     , route : Route
     , homeLotId : Maybe Id
     , parkingReservation : Maybe ParkingReservation
@@ -63,7 +57,7 @@ type alias Car =
 
 type alias NewCar =
     { make : CarMake
-    , position : LMPoint2d
+    , position : Point2d Length.Meters GlobalCoordinates
     , orientation : Angle
     , velocity : Speed
     , rotation : AngularSpeed
@@ -98,7 +92,7 @@ type CarEvent
 
 
 type alias UpdateContext =
-    { currentPosition : LMPoint2d
+    { currentPosition : Point2d Length.Meters GlobalCoordinates
     , currentVelocity : Speed
     , route : Route
     }
@@ -330,7 +324,7 @@ withHome lotId car =
     { car | homeLotId = Just lotId }
 
 
-withPosition : LMPoint2d -> NewCar -> NewCar
+withPosition : Point2d Length.Meters GlobalCoordinates -> NewCar -> NewCar
 withPosition position car =
     { car | position = position }
 
@@ -415,7 +409,11 @@ routedWithParking route parkingReservation car =
 --
 
 
-adjustedShape : CarMake -> LMPoint2d -> Angle -> ( LMShape2d, LMBoundingBox2d )
+adjustedShape :
+    CarMake
+    -> Point2d Length.Meters GlobalCoordinates
+    -> Angle
+    -> ( Polygon2d Length.Meters GlobalCoordinates, BoundingBox2d Length.Meters GlobalCoordinates )
 adjustedShape make nextPosition nextOrientation =
     let
         carFrame =

@@ -24,17 +24,13 @@ module Tilemap.Cell exposing
     , translateBy
     )
 
-import Common
+import BoundingBox2d exposing (BoundingBox2d)
+import Common exposing (GlobalCoordinates)
 import Length exposing (Length)
+import Lib.DiagonalDirection exposing (DiagonalDirection(..))
+import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Maybe.Extra as Maybe
-import Model.Geometry
-    exposing
-        ( DiagonalDirection(..)
-        , LMBoundingBox2d
-        , LMPoint2d
-        , OrthogonalDirection(..)
-        )
-import Point2d
+import Point2d exposing (Point2d)
 import Quantity exposing (negativeInfinity)
 import Set exposing (Set)
 import Vector2d
@@ -47,8 +43,8 @@ type Cell
 type alias CellProperties =
     { x : Int
     , y : Int
-    , bottomLeftCorner : LMPoint2d
-    , boundingBox : LMBoundingBox2d
+    , bottomLeftCorner : Point2d Length.Meters GlobalCoordinates
+    , boundingBox : BoundingBox2d Length.Meters GlobalCoordinates
     }
 
 
@@ -359,12 +355,12 @@ coordinates (Cell cellProperties) =
     ( cellProperties.x, cellProperties.y )
 
 
-bottomLeftCorner : Cell -> LMPoint2d
+bottomLeftCorner : Cell -> Point2d Length.Meters GlobalCoordinates
 bottomLeftCorner (Cell cellProperties) =
     cellProperties.bottomLeftCorner
 
 
-centerPoint : Cell -> LMPoint2d
+centerPoint : Cell -> Point2d Length.Meters GlobalCoordinates
 centerPoint (Cell cellProperties) =
     let
         displacement =
@@ -389,7 +385,7 @@ array1DIndex constraints cell =
     xyZeroIndexed.x + (xyZeroIndexed.y * constraints.horizontalCellsAmount)
 
 
-boundingBox : Cell -> LMBoundingBox2d
+boundingBox : Cell -> BoundingBox2d Length.Meters GlobalCoordinates
 boundingBox (Cell cellProperties) =
     cellProperties.boundingBox
 

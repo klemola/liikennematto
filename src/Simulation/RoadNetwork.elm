@@ -23,27 +23,19 @@ module Simulation.RoadNetwork exposing
     , size
     )
 
-import BoundingBox2d
-import Common
+import BoundingBox2d exposing (BoundingBox2d)
+import Common exposing (GlobalCoordinates)
 import Data.Assets exposing (innerLaneOffset, outerLaneOffset)
 import Data.Lots exposing (drivewayOffset)
 import Dict exposing (Dict)
-import Direction2d
+import Direction2d exposing (Direction2d)
 import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
 import IntDict
 import Length exposing (Length)
 import Lib.Collection as Collection exposing (Collection, Id, idMatches)
+import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
 import Maybe.Extra as Maybe
-import Model.Geometry as Geometry
-    exposing
-        ( LMBoundingBox2d
-        , LMDirection2d
-        , LMPoint2d
-        , OrthogonalDirection(..)
-        , oppositeOrthogonalDirection
-        , orthogonalDirectionToLmDirection
-        )
-import Point2d
+import Point2d exposing (Point2d)
 import Quantity
 import Random
 import Random.Extra
@@ -85,8 +77,8 @@ type alias RNNode =
 
 type alias Connection =
     { kind : ConnectionKind
-    , position : LMPoint2d
-    , direction : LMDirection2d
+    , position : Point2d Length.Meters GlobalCoordinates
+    , direction : Direction2d GlobalCoordinates
     , cell : Cell
     , trafficControl : TrafficControl
     }
@@ -107,7 +99,7 @@ type ConnectionEnvironment
 
 type TrafficControl
     = Signal Id
-    | Yield LMBoundingBox2d
+    | Yield (BoundingBox2d Length.Meters GlobalCoordinates)
     | NoTrafficControl
 
 
@@ -195,7 +187,7 @@ nodeById roadNetwork nodeId =
     Graph.get nodeId roadNetwork
 
 
-nodeByPosition : RoadNetwork -> LMPoint2d -> Maybe RNNodeContext
+nodeByPosition : RoadNetwork -> Point2d Length.Meters GlobalCoordinates -> Maybe RNNodeContext
 nodeByPosition roadNetwork position =
     Graph.nodes roadNetwork
         |> List.filterMap
@@ -274,22 +266,22 @@ nodeLotId nodeCtx =
             Nothing
 
 
-nodePosition : RNNodeContext -> LMPoint2d
+nodePosition : RNNodeContext -> Point2d Length.Meters GlobalCoordinates
 nodePosition nodeCtx =
     nodeCtx.node.label.position
 
 
-nodeDirection : RNNodeContext -> LMDirection2d
+nodeDirection : RNNodeContext -> Direction2d GlobalCoordinates
 nodeDirection nodeCtx =
     nodeCtx.node.label.direction
 
 
-connectionPosition : Node Connection -> LMPoint2d
+connectionPosition : Node Connection -> Point2d Length.Meters GlobalCoordinates
 connectionPosition node =
     node.label.position
 
 
-connectionDirection : Node Connection -> LMDirection2d
+connectionDirection : Node Connection -> Direction2d GlobalCoordinates
 connectionDirection node =
     node.label.direction
 
@@ -394,8 +386,8 @@ toConnections tilemap cell tile =
     else if isDeadend tile then
         potentialConnections tile
             |> List.concatMap
-                (oppositeOrthogonalDirection
-                    >> orthogonalDirectionToLmDirection
+                (OrthogonalDirection.opposite
+                    >> OrthogonalDirection.toDirection2d
                     >> deadendConnections cell
                 )
 
@@ -404,7 +396,7 @@ toConnections tilemap cell tile =
             |> List.concatMap (connectionsByTileEntryDirection tilemap cell tile)
 
 
-deadendConnections : Cell -> LMDirection2d -> List Connection
+deadendConnections : Cell -> Direction2d GlobalCoordinates -> List Connection
 deadendConnections cell trafficDirection =
     let
         ( entryPosition, exitPosition ) =
@@ -431,7 +423,7 @@ deadendConnections cell trafficDirection =
     ]
 
 
-laneCenterPositionsByDirection : Cell -> LMDirection2d -> ( LMPoint2d, LMPoint2d )
+laneCenterPositionsByDirection : Cell -> Direction2d GlobalCoordinates -> ( Point2d Length.Meters GlobalCoordinates, Point2d Length.Meters GlobalCoordinates )
 laneCenterPositionsByDirection cell trafficDirection =
     let
         connectionOffsetFromTileCenter =
@@ -463,7 +455,7 @@ connectionsByTileEntryDirection tilemap cell tile direction =
             anchorByCell tilemap cell
 
         startDirection =
-            Geometry.orthogonalDirectionToLmDirection direction
+            OrthogonalDirection.toDirection2d direction
 
         endDirection =
             Direction2d.reverse startDirection
@@ -619,7 +611,11 @@ toEdges nodes current =
                     findLanesInsideCell nodes
 
                 _ ->
-                    if Cell.centerPoint current.label.cell |> Common.isInTheNormalPlaneOf current.label.direction current.label.position then
+                    if
+                        current.label.cell
+                            |> Cell.centerPoint
+                            |> Common.isInTheNormalPlaneOf current.label.direction current.label.position
+                    then
                         findLanesInsideCell nodes
 
                     else
@@ -727,7 +723,12 @@ connectsWithinCell current other =
     canContinueLeft || canContinueRight
 
 
-connectionLookupArea : Node Connection -> ( LMBoundingBox2d, LMBoundingBox2d )
+connectionLookupArea :
+    Node Connection
+    ->
+        ( BoundingBox2d Length.Meters GlobalCoordinates
+        , BoundingBox2d Length.Meters GlobalCoordinates
+        )
 connectionLookupArea node =
     let
         bb =
@@ -742,16 +743,16 @@ connectionLookupArea node =
         dir =
             connectionDirection node
     in
-    if dir == Geometry.up then
+    if dir == Direction2d.positiveY then
         ( left, right )
 
-    else if dir == Geometry.right then
+    else if dir == Direction2d.positiveX then
         ( upper, lower )
 
-    else if dir == Geometry.down then
+    else if dir == Direction2d.negativeY then
         ( right, left )
 
-    else if dir == Geometry.left then
+    else if dir == Direction2d.negativeX then
         ( lower, upper )
 
     else
@@ -771,7 +772,11 @@ connectDeadendEntryWithExit entry =
 --
 
 
-updateNodeTrafficControl : Collection TrafficLight -> RNNodeContext -> ( RoadNetwork, Collection TrafficLight ) -> ( RoadNetwork, Collection TrafficLight )
+updateNodeTrafficControl :
+    Collection TrafficLight
+    -> RNNodeContext
+    -> ( RoadNetwork, Collection TrafficLight )
+    -> ( RoadNetwork, Collection TrafficLight )
 updateNodeTrafficControl currentTrafficLights nodeCtx ( roadNetwork, trafficLights ) =
     case outgoingConnectionsAmount nodeCtx of
         -- Four-way intersection (or crossroads)
@@ -880,7 +885,10 @@ setTrafficControl trafficControl nodeCtx =
     { nodeCtx | node = nextNode }
 
 
-yieldCheckArea : LMPoint2d -> LMDirection2d -> LMBoundingBox2d
+yieldCheckArea :
+    Point2d Length.Meters GlobalCoordinates
+    -> Direction2d GlobalCoordinates
+    -> BoundingBox2d Length.Meters GlobalCoordinates
 yieldCheckArea yieldSignPosition centerOfYieldAreaDirection =
     let
         bbPoint1 =

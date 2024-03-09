@@ -14,8 +14,8 @@ module Model.RenderCache exposing
 import Data.Assets exposing (Assets)
 import Length
 import Lib.FSM as FSM
+import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import Model.Animation as Animation exposing (Animation)
-import Model.Geometry exposing (OrthogonalDirection, oppositeOrthogonalDirection)
 import Model.World exposing (World)
 import Pixels
 import Quantity
@@ -206,7 +206,7 @@ animationDirectionFromTile : Tile -> Maybe OrthogonalDirection
 animationDirectionFromTile tile =
     case Tile.potentialConnections tile of
         [ connection ] ->
-            Just (oppositeOrthogonalDirection connection)
+            Just (OrthogonalDirection.opposite connection)
 
         _ ->
             Nothing

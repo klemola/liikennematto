@@ -28,15 +28,18 @@ module Model.World exposing
     , updateRoadNetwork
     )
 
-import BoundingBox2d
-import Common
+import BoundingBox2d exposing (BoundingBox2d)
+import Common exposing (GlobalCoordinates)
 import Data.Cars exposing (CarMake)
 import Duration exposing (Duration)
 import Graph
 import Length exposing (Length)
 import Lib.Collection as Collection exposing (Collection, Id)
 import Lib.EventQueue as EventQueue exposing (EventQueue)
-import Model.Geometry exposing (GlobalCoordinates, LMBoundingBox2d, LMPoint2d)
+import Point2d
+    exposing
+        ( Point2d
+        )
 import QuadTree exposing (Bounded, QuadTree)
 import Quantity
 import Random
@@ -93,8 +96,8 @@ type alias PendingTilemapChange =
 
 type alias RNLookupEntry =
     { id : Int
-    , position : LMPoint2d
-    , boundingBox : LMBoundingBox2d
+    , position : Point2d Length.Meters GlobalCoordinates
+    , boundingBox : BoundingBox2d Length.Meters GlobalCoordinates
     }
 
 
@@ -142,7 +145,7 @@ empty tilemapConfig =
 --
 
 
-boundingBox : World -> LMBoundingBox2d
+boundingBox : World -> BoundingBox2d Length.Meters GlobalCoordinates
 boundingBox world =
     tilemapBoundingBox world.tilemap
 
@@ -152,7 +155,7 @@ hasLot cell { lots } =
     List.any (Lot.inBounds cell) (Collection.values lots)
 
 
-isEmptyArea : LMBoundingBox2d -> World -> Bool
+isEmptyArea : BoundingBox2d Length.Meters GlobalCoordinates -> World -> Bool
 isEmptyArea testAreaBB world =
     let
         tilemapOverlap =
@@ -182,7 +185,7 @@ findLotByCarPosition car world =
         |> List.head
 
 
-findNodeByPosition : World -> LMPoint2d -> Maybe RNNodeContext
+findNodeByPosition : World -> Point2d Length.Meters GlobalCoordinates -> Maybe RNNodeContext
 findNodeByPosition { roadNetworkLookup, roadNetwork } nodePosition =
     roadNetworkLookup
         |> QuadTree.neighborsWithin
@@ -192,12 +195,20 @@ findNodeByPosition { roadNetworkLookup, roadNetwork } nodePosition =
         |> Maybe.andThen (.id >> RoadNetwork.nodeById roadNetwork)
 
 
-findNearbyEntities : Length -> LMBoundingBox2d -> QuadTree Length.Meters GlobalCoordinates (Bounded Length.Meters GlobalCoordinates a) -> List (Bounded Length.Meters GlobalCoordinates a)
+findNearbyEntities :
+    Length
+    -> BoundingBox2d Length.Meters GlobalCoordinates
+    -> QuadTree Length.Meters GlobalCoordinates (Bounded Length.Meters GlobalCoordinates a)
+    -> List (Bounded Length.Meters GlobalCoordinates a)
 findNearbyEntities radius bb quadTree =
     QuadTree.neighborsWithin radius bb quadTree
 
 
-findNearbyEntitiesFromPoint : Length -> LMPoint2d -> QuadTree Length.Meters GlobalCoordinates (Bounded Length.Meters GlobalCoordinates a) -> List (Bounded Length.Meters GlobalCoordinates a)
+findNearbyEntitiesFromPoint :
+    Length
+    -> Point2d Length.Meters GlobalCoordinates
+    -> QuadTree Length.Meters GlobalCoordinates (Bounded Length.Meters GlobalCoordinates a)
+    -> List (Bounded Length.Meters GlobalCoordinates a)
 findNearbyEntitiesFromPoint radius point quadTree =
     findNearbyEntities
         radius

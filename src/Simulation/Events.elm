@@ -4,7 +4,7 @@ import Common exposing (randomFutureTime)
 import Direction2d
 import Lib.Collection exposing (Id)
 import Lib.EventQueue as EventQueue
-import Model.Geometry exposing (orthogonalDirectionToLmDirection)
+import Lib.OrthogonalDirection as OrthogonalDirection
 import Model.World as World exposing (World, WorldEvent(..))
 import Random
 import Result.Extra
@@ -127,7 +127,7 @@ parkingCompleteEffects time =
                 let
                     nextOrientation =
                         lot.parkingSpotExitDirection
-                            |> orthogonalDirectionToLmDirection
+                            |> OrthogonalDirection.toDirection2d
                             |> Direction2d.toAngle
 
                     nextCar =

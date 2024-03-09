@@ -8,8 +8,8 @@ import Data.Worlds
         )
 import Expect
 import Lib.Collection exposing (initialId)
+import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Maybe.Extra as Maybe
-import Model.Geometry exposing (OrthogonalDirection(..))
 import Test exposing (Test, describe, test)
 import Tilemap.Cell as Cell
 import Tilemap.Core exposing (Tilemap, canBuildRoadAt, fixedTileByCell, getTilemapConfig)

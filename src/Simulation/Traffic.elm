@@ -11,8 +11,8 @@ module Simulation.Traffic exposing
     , updateTraffic
     )
 
-import BoundingBox2d
-import Common exposing (randomFutureTime)
+import BoundingBox2d exposing (BoundingBox2d)
+import Common exposing (GlobalCoordinates, randomFutureTime)
 import Data.Cars exposing (CarMake)
 import Direction2d
 import Duration exposing (Duration)
@@ -20,9 +20,8 @@ import Length exposing (Length)
 import Lib.Collection as Collection exposing (Id)
 import Lib.FSM as FSM
 import Maybe.Extra as Maybe
-import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
 import Model.World as World exposing (World, WorldEvent)
-import Point2d
+import Point2d exposing (Point2d)
 import Quantity
 import Random
 import Simulation.Car as Car exposing (Car, CarState(..))
@@ -537,7 +536,7 @@ checkTrafficLights setup trafficLight =
         Nothing
 
 
-checkYield : RuleSetup -> LMPoint2d -> LMBoundingBox2d -> Maybe Rule
+checkYield : RuleSetup -> Point2d Length.Meters GlobalCoordinates -> BoundingBox2d Length.Meters GlobalCoordinates -> Maybe Rule
 checkYield { activeCar, otherCars } signPosition checkArea =
     let
         distanceFromYieldSign =
@@ -556,7 +555,7 @@ checkYield { activeCar, otherCars } signPosition checkArea =
         Nothing
 
 
-hasPriority : LMBoundingBox2d -> Car -> Bool
+hasPriority : BoundingBox2d Length.Meters GlobalCoordinates -> Car -> Bool
 hasPriority yieldCheckArea otherCar =
     Car.isMoving otherCar
         && BoundingBox2d.contains otherCar.position yieldCheckArea

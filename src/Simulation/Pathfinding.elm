@@ -8,14 +8,13 @@ module Simulation.Pathfinding exposing
     )
 
 import Array
-import Common exposing (andCarry)
+import Common exposing (GlobalCoordinates, andCarry)
 import Data.Cars exposing (CarRole(..))
 import Duration exposing (Duration)
 import Length exposing (Length)
 import Lib.Collection as Collection exposing (Id)
-import Model.Geometry exposing (LMPoint2d)
 import Model.World as World exposing (World)
-import Point2d
+import Point2d exposing (Point2d)
 import Quantity
 import Random
 import Simulation.Car as Car exposing (Car)
@@ -139,7 +138,7 @@ updateParameter velocity delta parameter =
     parameter |> Quantity.plus deltaMeters
 
 
-routeTrafficControl : World -> Route -> Maybe ( TrafficControl, LMPoint2d )
+routeTrafficControl : World -> Route -> Maybe ( TrafficControl, Point2d Length.Meters GlobalCoordinates )
 routeTrafficControl world route =
     route
         |> Route.splineEndPoint
@@ -186,7 +185,7 @@ restoreRoute world car =
                 )
 
 
-validateNodeByPosition : World -> LMPoint2d -> Result String RNNodeContext
+validateNodeByPosition : World -> Point2d Length.Meters GlobalCoordinates -> Result String RNNodeContext
 validateNodeByPosition world position =
     World.findNodeByPosition world position
         |> Result.fromMaybe "Node not found"

@@ -1,5 +1,7 @@
 module Common exposing
-    ( andCarry
+    ( GlobalCoordinates
+    , LocalCoordinates
+    , andCarry
     , angleFromDirection
     , attemptFoldList
     , attemptMapList
@@ -15,17 +17,24 @@ module Common exposing
     )
 
 import Angle exposing (Angle)
-import BoundingBox2d
+import BoundingBox2d exposing (BoundingBox2d)
 import Direction2d exposing (Direction2d)
-import Frame2d
+import Frame2d exposing (Frame2d)
 import Length exposing (Length)
-import Model.Geometry exposing (LMBoundingBox2d, LMFrame2d, LMPoint2d)
 import Point2d exposing (Point2d)
 import Quantity
 import Random
 import Speed exposing (Speed)
 import Time
 import Vector2d
+
+
+type GlobalCoordinates
+    = GlobalCoordinates
+
+
+type LocalCoordinates
+    = LocalCoordinates
 
 
 angleFromDirection :
@@ -60,7 +69,7 @@ rightAnglePosition origin target direction =
     Point2d.translateIn direction distanceToRightAnglePosition origin
 
 
-boundingBoxWithDimensions : Length -> Length -> LMPoint2d -> LMBoundingBox2d
+boundingBoxWithDimensions : Length -> Length -> Point2d Length.Meters GlobalCoordinates -> BoundingBox2d Length.Meters GlobalCoordinates
 boundingBoxWithDimensions width height origin =
     let
         otherCorner =
@@ -71,12 +80,14 @@ boundingBoxWithDimensions width height origin =
     BoundingBox2d.from origin otherCorner
 
 
-boundingBoxOverlaps : LMBoundingBox2d -> LMBoundingBox2d -> Bool
+boundingBoxOverlaps : BoundingBox2d Length.Meters GlobalCoordinates -> BoundingBox2d Length.Meters GlobalCoordinates -> Bool
 boundingBoxOverlaps bb1 bb2 =
     BoundingBox2d.overlappingByAtLeast (Length.meters 0.1) bb1 bb2
 
 
-splitBoundingBoxHorizontally : LMBoundingBox2d -> { left : LMBoundingBox2d, right : LMBoundingBox2d }
+splitBoundingBoxHorizontally :
+    BoundingBox2d Length.Meters GlobalCoordinates
+    -> { left : BoundingBox2d Length.Meters GlobalCoordinates, right : BoundingBox2d Length.Meters GlobalCoordinates }
 splitBoundingBoxHorizontally bb =
     let
         leftHalf =
@@ -93,7 +104,7 @@ splitBoundingBoxHorizontally bb =
     }
 
 
-boundingBoxLeftHalf : LMBoundingBox2d -> LMBoundingBox2d
+boundingBoxLeftHalf : BoundingBox2d Length.Meters GlobalCoordinates -> BoundingBox2d Length.Meters GlobalCoordinates
 boundingBoxLeftHalf bb =
     let
         { minX, minY, maxX, maxY } =
@@ -113,7 +124,9 @@ boundingBoxLeftHalf bb =
         }
 
 
-splitBoundingBoxVertically : LMBoundingBox2d -> { lower : LMBoundingBox2d, upper : LMBoundingBox2d }
+splitBoundingBoxVertically :
+    BoundingBox2d Length.Meters GlobalCoordinates
+    -> { lower : BoundingBox2d Length.Meters GlobalCoordinates, upper : BoundingBox2d Length.Meters GlobalCoordinates }
 splitBoundingBoxVertically bb =
     let
         lowerHalf =
@@ -130,7 +143,7 @@ splitBoundingBoxVertically bb =
     }
 
 
-boundingBoxLowerHalf : LMBoundingBox2d -> LMBoundingBox2d
+boundingBoxLowerHalf : BoundingBox2d Length.Meters GlobalCoordinates -> BoundingBox2d Length.Meters GlobalCoordinates
 boundingBoxLowerHalf bb =
     let
         { minX, minY, maxX, maxY } =
@@ -150,7 +163,9 @@ boundingBoxLowerHalf bb =
         }
 
 
-boundingBoxToFrame : LMBoundingBox2d -> LMFrame2d
+boundingBoxToFrame :
+    BoundingBox2d Length.Meters GlobalCoordinates
+    -> Frame2d Length.Meters GlobalCoordinates { defines : LocalCoordinates }
 boundingBoxToFrame bb =
     let
         bbExtrema =

@@ -2,8 +2,8 @@ module Simulation.Zoning exposing (generateLot, removeInvalidLots)
 
 import Data.Lots exposing (NewLot, allLots)
 import Lib.Collection as Collection exposing (Id)
+import Lib.OrthogonalDirection as OrthogonalDirection
 import Maybe.Extra as Maybe
-import Model.Geometry exposing (oppositeOrthogonalDirection)
 import Model.World as World exposing (World, connectLotToRoadNetwork)
 import Random
 import Random.List
@@ -88,7 +88,7 @@ attemptBuildLot time world newLot =
                     |> World.setTilemap
                         (addAnchor anchor
                             lot.id
-                            (oppositeOrthogonalDirection lot.drivewayExitDirection)
+                            (OrthogonalDirection.opposite lot.drivewayExitDirection)
                             world.tilemap
                         )
                     |> connectLotToRoadNetwork

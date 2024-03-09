@@ -31,23 +31,18 @@ module Tilemap.Core exposing
 
 import Array exposing (Array)
 import Array.Extra as Array
-import BoundingBox2d
-import Common
+import BoundingBox2d exposing (BoundingBox2d)
+import Common exposing (GlobalCoordinates)
 import Data.TileSet as TileSet
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Duration exposing (Duration)
 import Length exposing (Length)
 import Lib.Collection exposing (Id)
+import Lib.DiagonalDirection as DiagonalDirection exposing (DiagonalDirection(..))
 import Lib.FSM as FSM
+import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Maybe.Extra as Maybe
-import Model.Geometry
-    exposing
-        ( DiagonalDirection(..)
-        , LMBoundingBox2d
-        , OrthogonalDirection(..)
-        , diagonalDirections
-        )
 import Point2d
 import Quantity
 import Tilemap.Cell as Cell exposing (Boundary(..), Cell, CellCoordinates)
@@ -67,7 +62,7 @@ type Tilemap
         , anchors : Dict CellCoordinates ( Id, OrthogonalDirection )
         , width : Length
         , height : Length
-        , boundingBox : LMBoundingBox2d
+        , boundingBox : BoundingBox2d Length.Meters GlobalCoordinates
         , config : TilemapConfig
         }
 
@@ -212,12 +207,12 @@ cellHasAnchor (Tilemap tilemapContents) cell =
     Dict.member (Cell.coordinates cell) tilemapContents.anchors
 
 
-inTilemapBounds : Tilemap -> LMBoundingBox2d -> Bool
+inTilemapBounds : Tilemap -> BoundingBox2d Length.Meters GlobalCoordinates -> Bool
 inTilemapBounds (Tilemap tilemap) testBB =
     BoundingBox2d.isContainedIn tilemap.boundingBox testBB
 
 
-tilemapIntersects : LMBoundingBox2d -> Tilemap -> Bool
+tilemapIntersects : BoundingBox2d Length.Meters GlobalCoordinates -> Tilemap -> Bool
 tilemapIntersects testBB tilemap =
     -- FIXME : upoptimized, skips dynamic tiles
     tilemapToList (\cell _ -> Cell.boundingBox cell) StaticTiles tilemap
@@ -233,7 +228,7 @@ cellHasFixedTile cell tilemap =
 
 canBuildRoadAt : Cell -> Tilemap -> Bool
 canBuildRoadAt cell tilemap =
-    List.all (hasLowComplexity cell tilemap) diagonalDirections
+    List.all (hasLowComplexity cell tilemap) DiagonalDirection.all
 
 
 hasLowComplexity : Cell -> Tilemap -> DiagonalDirection -> Bool
@@ -355,7 +350,7 @@ getTilemapDimensions (Tilemap tilemapContents) =
     }
 
 
-tilemapBoundingBox : Tilemap -> LMBoundingBox2d
+tilemapBoundingBox : Tilemap -> BoundingBox2d Length.Meters GlobalCoordinates
 tilemapBoundingBox (Tilemap tilemapContents) =
     tilemapContents.boundingBox
 

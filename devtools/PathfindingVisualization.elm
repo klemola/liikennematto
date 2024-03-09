@@ -9,19 +9,19 @@ module PathfindingVisualization exposing
 import Array exposing (Array)
 import Browser
 import Browser.Events as Events
+import Common exposing (GlobalCoordinates)
 import CubicSpline2d exposing (ArcLengthParameterized, Nondegenerate)
 import Data.Assets exposing (roadsLegacy)
 import Data.Cars exposing (testCar)
 import Data.Colors as Colors
-import Direction2d
+import Direction2d exposing (Direction2d)
 import Duration exposing (Duration)
 import Html exposing (Html)
 import Length
 import Lib.Collection exposing (initialId)
-import Model.Geometry exposing (GlobalCoordinates, LMDirection2d, LMPoint2d)
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.World as World exposing (World)
-import Point2d
+import Point2d exposing (Point2d)
 import Quantity
 import Render
 import Render.Conversion exposing (toPixelsValue)
@@ -42,8 +42,8 @@ type alias Path =
     , currentSplineIdx : Int
     , currentSpline : Maybe SplineMeta
     , parameter : Length.Length
-    , pointOnSpline : LMPoint2d
-    , tangentDirection : LMDirection2d
+    , pointOnSpline : Point2d Length.Meters GlobalCoordinates
+    , tangentDirection : Direction2d GlobalCoordinates
     }
 
 
@@ -81,7 +81,7 @@ renderAreaHeightStr =
     String.fromFloat (toPixelsValue renderCache.pixelsToMetersRatio renderArea)
 
 
-nodes : List ( LMPoint2d, LMDirection2d )
+nodes : List ( Point2d Length.Meters GlobalCoordinates, Direction2d GlobalCoordinates )
 nodes =
     [ ( Point2d.fromMeters { x = 30, y = 20 }, Direction2d.positiveY )
     , ( Point2d.fromMeters { x = 20, y = 35 }, Direction2d.negativeX )
@@ -93,12 +93,12 @@ nodes =
     ]
 
 
-initialStart : LMPoint2d
+initialStart : Point2d Length.Meters GlobalCoordinates
 initialStart =
     Point2d.fromMeters { x = 2, y = 2 }
 
 
-initialTangentDirection : LMDirection2d
+initialTangentDirection : Direction2d GlobalCoordinates
 initialTangentDirection =
     Direction2d.positiveX
 
@@ -123,9 +123,9 @@ initialPath =
 
 
 createPath :
-    LMPoint2d
-    -> LMDirection2d
-    -> List ( LMPoint2d, LMDirection2d )
+    Point2d Length.Meters GlobalCoordinates
+    -> Direction2d GlobalCoordinates
+    -> List ( Point2d Length.Meters GlobalCoordinates, Direction2d GlobalCoordinates )
     -> Array SplineMeta
     -> Array SplineMeta
 createPath start startTangentDirection others acc =
@@ -170,7 +170,7 @@ createPath start startTangentDirection others acc =
             acc
 
 
-parallel : LMPoint2d -> LMPoint2d -> Bool
+parallel : Point2d Length.Meters GlobalCoordinates -> Point2d Length.Meters GlobalCoordinates -> Bool
 parallel p1 p2 =
     let
         p1v =

@@ -16,13 +16,8 @@ module Tilemap.WFC exposing
 import Array
 import Common exposing (attemptFoldList, attemptMapList)
 import Data.TileSet exposing (pairingsForSocket, tileById, tileIds)
+import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import List.Nonempty exposing (Nonempty)
-import Model.Geometry
-    exposing
-        ( OrthogonalDirection
-        , oppositeOrthogonalDirection
-        , orthogonalDirections
-        )
 import Random exposing (Seed)
 import Stack exposing (Stack)
 import Tilemap.Cell as Cell exposing (Cell)
@@ -266,7 +261,7 @@ processStep tilemap currentStep =
                                 |> Maybe.map (PropagateConstraints cell)
 
                         nextSteps =
-                            List.filterMap stepInDirection orthogonalDirections
+                            List.filterMap stepInDirection OrthogonalDirection.all
 
                         ( tile, tileActions ) =
                             Tile.fromTileId singleTile.id Tile.BuildInstantly
@@ -329,7 +324,7 @@ matchingSuperpositionOptions dir originTileId options =
     in
     List.filter
         (canDock
-            (oppositeOrthogonalDirection dir)
+            (OrthogonalDirection.opposite dir)
             originSocket
         )
         options
@@ -650,7 +645,7 @@ attemptTileNeighborUpdate currentTile originCell tilemap =
                 originSocket =
                     socketByDirection currentTile.sockets nuCtx.dir
             in
-            if canDock (oppositeOrthogonalDirection nuCtx.dir) originSocket neighborTileId then
+            if canDock (OrthogonalDirection.opposite nuCtx.dir) originSocket neighborTileId then
                 -- Tiles can dock, no tilemap update needed = skip
                 Ok nuCtx.steps
 
@@ -714,7 +709,7 @@ applyToNeighbor onFixed onSuperposition cell tilemap =
                     Ok steps
         )
         []
-        orthogonalDirections
+        OrthogonalDirection.all
 
 
 

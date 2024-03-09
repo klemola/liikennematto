@@ -5,14 +5,14 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Length
 import Lib.Collection as Collection
 import Message exposing (Message(..))
 import Model.Debug exposing (DebugLayerKind(..), toggleDebugPanel, toggleLayer)
-import Model.Geometry exposing (LMPoint2d)
 import Model.Liikennematto exposing (Liikennematto)
 import Model.RenderCache exposing (RenderCache)
 import Model.World exposing (World, formatEvents)
-import Point2d
+import Point2d exposing (Point2d)
 import Quantity
 import Round
 import Simulation.Car as Car exposing (Car)
@@ -190,7 +190,7 @@ speedToString speed =
     "Speed: " ++ speedValue ++ " m/s"
 
 
-pointToString : RenderCache -> LMPoint2d -> String
+pointToString : RenderCache -> Point2d Length.Meters a -> String
 pointToString cache point =
     let
         { x, y } =

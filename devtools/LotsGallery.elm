@@ -5,7 +5,7 @@ import Data.Assets exposing (roadsLegacy)
 import Data.Colors as Colors
 import Data.Lots exposing (NewLot)
 import Lib.Collection as Collection exposing (Id, nextId)
-import Model.Geometry exposing (OrthogonalDirection(..))
+import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.World as World exposing (World)
 import Quantity

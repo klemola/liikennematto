@@ -1,16 +1,16 @@
 module Render.Debug exposing (view)
 
 import Color
+import Common exposing (GlobalCoordinates)
 import Data.Colors as Colors
 import Data.Lots exposing (ParkingRestriction(..))
 import Graph
 import Length exposing (Length)
 import Lib.Collection as Collection exposing (Collection)
 import Model.Debug exposing (DebugLayerKind(..), DebugState, isLayerEnabled)
-import Model.Geometry exposing (LMPoint2d)
 import Model.RenderCache exposing (RenderCache)
 import Model.World exposing (World)
-import Point2d
+import Point2d exposing (Point2d)
 import Polygon2d
 import Quantity
 import Render.Conversion exposing (pointToPixels, toPixelsValue)
@@ -275,7 +275,7 @@ renderCarFieldOfView cache car =
         (Collision.rightSideFOV (Collision.pathRay car Collision.maxCarCollisionTestDistance))
 
 
-toPointsString : RenderCache -> List LMPoint2d -> String
+toPointsString : RenderCache -> List (Point2d Length.Meters GlobalCoordinates) -> String
 toPointsString cache points =
     List.foldl
         (\point acc ->

@@ -6,7 +6,7 @@ module Data.Utility exposing
     )
 
 import Lib.Collection exposing (Id)
-import Model.Geometry exposing (OrthogonalDirection)
+import Lib.OrthogonalDirection exposing (OrthogonalDirection)
 import Model.World as World exposing (World, createRoadNetwork)
 import Simulation.RoadNetwork as RoadNetwork exposing (RNNodeContext)
 import Tilemap.Cell as Cell

@@ -1,17 +1,18 @@
 module RouteVisualization exposing (Clicked, Model, Msg, main)
 
 import Browser
+import Common exposing (GlobalCoordinates)
 import Data.Assets exposing (roadsLegacy)
 import Data.RuleSetups as RuleSetups
 import Element
 import Html exposing (Html)
 import Html.Events.Extra.Mouse as MouseEvents
+import Length
 import Maybe.Extra as Maybe
 import Model.Debug
-import Model.Geometry exposing (LMPoint2d)
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.World as World exposing (World)
-import Point2d
+import Point2d exposing (Point2d)
 import Quantity
 import Render
 import Render.Conversion
@@ -31,7 +32,7 @@ type alias Model =
 
 
 type alias Clicked =
-    { position : LMPoint2d
+    { position : Point2d Length.Meters GlobalCoordinates
     , nodeId : Maybe Int
     }
 
