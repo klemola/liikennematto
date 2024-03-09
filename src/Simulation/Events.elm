@@ -1,9 +1,9 @@
 module Simulation.Events exposing (updateEventQueue)
 
-import Collection exposing (Id)
 import Common exposing (randomFutureTime)
 import Direction2d
-import EventQueue
+import Lib.Collection exposing (Id)
+import Lib.EventQueue as EventQueue
 import Model.Geometry exposing (orthogonalDirectionToLmDirection)
 import Model.World as World exposing (World, WorldEvent(..))
 import Random

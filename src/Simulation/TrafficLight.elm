@@ -10,10 +10,10 @@ module Simulation.TrafficLight exposing
     , withPosition
     )
 
-import Collection exposing (Id)
 import Direction2d
 import Duration
-import FSM exposing (FSM, State)
+import Lib.Collection exposing (Id)
+import Lib.FSM as FSM exposing (FSM)
 import Model.Geometry exposing (LMDirection2d, LMPoint2d)
 import Point2d
 
@@ -38,7 +38,7 @@ type alias NewTrafficLight =
     }
 
 
-green : State TrafficLightColor actionType updateContext
+green : FSM.State TrafficLightColor actionType updateContext
 green =
     FSM.createState
         { id = FSM.createStateId "traffic-light-green"
@@ -54,7 +54,7 @@ green =
         }
 
 
-yellow : State TrafficLightColor actionType updateContext
+yellow : FSM.State TrafficLightColor actionType updateContext
 yellow =
     FSM.createState
         { id = FSM.createStateId "traffic-light-yellow"
@@ -70,7 +70,7 @@ yellow =
         }
 
 
-red : State TrafficLightColor actionType updateContext
+red : FSM.State TrafficLightColor actionType updateContext
 red =
     FSM.createState
         { id = FSM.createStateId "traffic-light-red"

@@ -5,7 +5,7 @@ module Data.Utility exposing
     , worldFromTilemap
     )
 
-import Collection exposing (Id)
+import Lib.Collection exposing (Id)
 import Model.Geometry exposing (OrthogonalDirection)
 import Model.World as World exposing (World, createRoadNetwork)
 import Simulation.RoadNetwork as RoadNetwork exposing (RNNodeContext)

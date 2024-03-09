@@ -15,7 +15,7 @@ module Model.Liikennematto exposing
 import Data.Assets exposing (roadsLegacy)
 import Data.Defaults exposing (horizontalCellsAmount, verticalCellsAmount)
 import Duration exposing (Duration)
-import FSM exposing (FSM)
+import Lib.FSM as FSM exposing (FSM)
 import Model.Debug exposing (DebugState, initialDebugState)
 import Model.Flags exposing (Flags, RuntimeEnvironment(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)

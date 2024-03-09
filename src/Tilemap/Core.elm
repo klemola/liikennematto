@@ -13,7 +13,6 @@ module Tilemap.Core exposing
     , fixedTileByCell
     , foldTiles
     , forAllTiles
-    , tilemapFromCells
     , getTilemapConfig
     , getTilemapDimensions
     , inTilemapBounds
@@ -23,6 +22,7 @@ module Tilemap.Core exposing
     , setTile
     , tileByCell
     , tilemapBoundingBox
+    , tilemapFromCells
     , tilemapIntersects
     , tilemapSize
     , tilemapToList
@@ -32,14 +32,14 @@ module Tilemap.Core exposing
 import Array exposing (Array)
 import Array.Extra as Array
 import BoundingBox2d
-import Collection exposing (Id)
 import Common
 import Data.TileSet as TileSet
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Duration exposing (Duration)
-import FSM
 import Length exposing (Length)
+import Lib.Collection exposing (Id)
+import Lib.FSM as FSM
 import Maybe.Extra as Maybe
 import Model.Geometry
     exposing
@@ -99,6 +99,7 @@ createTilemap tilemapConfig =
         , config = tilemapConfig
         }
 
+
 tilemapFromCells : TilemapConfig -> List Cell -> Tilemap
 tilemapFromCells tilemapConfig cells =
     fromCellsHelper cells (createTilemap tilemapConfig)
@@ -120,6 +121,7 @@ fromCellsHelper remainingCells tilemap =
                         |> updateTilemap (Duration.milliseconds 1000)
             in
             fromCellsHelper others tilemapUpdateResult.tilemap
+
 
 initTile : TilemapConfig -> Int -> Tile
 initTile tilemapConfig index =

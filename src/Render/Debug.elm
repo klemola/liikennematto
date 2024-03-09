@@ -1,11 +1,11 @@
 module Render.Debug exposing (view)
 
-import Collection exposing (Collection)
 import Color
 import Data.Colors as Colors
 import Data.Lots exposing (ParkingRestriction(..))
 import Graph
 import Length exposing (Length)
+import Lib.Collection as Collection exposing (Collection)
 import Model.Debug exposing (DebugLayerKind(..), DebugState, isLayerEnabled)
 import Model.Geometry exposing (LMPoint2d)
 import Model.RenderCache exposing (RenderCache)

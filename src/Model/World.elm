@@ -29,13 +29,13 @@ module Model.World exposing
     )
 
 import BoundingBox2d
-import Collection exposing (Collection, Id)
 import Common
 import Data.Cars exposing (CarMake)
 import Duration exposing (Duration)
-import EventQueue exposing (EventQueue)
 import Graph
 import Length exposing (Length)
+import Lib.Collection as Collection exposing (Collection, Id)
+import Lib.EventQueue as EventQueue exposing (EventQueue)
 import Model.Geometry exposing (GlobalCoordinates, LMBoundingBox2d, LMPoint2d)
 import QuadTree exposing (Bounded, QuadTree)
 import Quantity

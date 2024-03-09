@@ -6,7 +6,7 @@ import Browser.Dom exposing (getViewport)
 import Browser.Events as Events
 import Duration
 import Element exposing (Element)
-import FSM
+import Lib.FSM as FSM
 import Message exposing (Message(..))
 import Model.Flags as Flags exposing (FlagsJson)
 import Model.Liikennematto as Liikennematto exposing (Liikennematto)

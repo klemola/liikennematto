@@ -1,6 +1,5 @@
 module TilemapTests exposing (suite)
 
-import Collection exposing (initialId)
 import Data.Utility exposing (tilemapFromCoordinates)
 import Data.Worlds
     exposing
@@ -8,6 +7,7 @@ import Data.Worlds
         , lowComplexityWorld
         )
 import Expect
+import Lib.Collection exposing (initialId)
 import Maybe.Extra as Maybe
 import Model.Geometry exposing (OrthogonalDirection(..))
 import Test exposing (Test, describe, test)

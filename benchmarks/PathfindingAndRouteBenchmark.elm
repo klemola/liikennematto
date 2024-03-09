@@ -2,9 +2,9 @@ module PathfindingAndRouteBenchmark exposing (main)
 
 import Benchmark exposing (Benchmark, benchmark, describe)
 import Benchmark.Runner exposing (BenchmarkProgram, program)
-import Collection
 import Data.RuleSetups
 import Data.Utility exposing (getStartAndEndNode)
+import Lib.Collection as Collection
 import Simulation.AStar as AStar
 import Simulation.Pathfinding as Pathfinding
 

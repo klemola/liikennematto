@@ -9,7 +9,6 @@ module PathfindingVisualization exposing
 import Array exposing (Array)
 import Browser
 import Browser.Events as Events
-import Collection exposing (initialId)
 import CubicSpline2d exposing (ArcLengthParameterized, Nondegenerate)
 import Data.Assets exposing (roadsLegacy)
 import Data.Cars exposing (testCar)
@@ -18,6 +17,7 @@ import Direction2d
 import Duration exposing (Duration)
 import Html exposing (Html)
 import Length
+import Lib.Collection exposing (initialId)
 import Model.Geometry exposing (GlobalCoordinates, LMDirection2d, LMPoint2d)
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.World as World exposing (World)

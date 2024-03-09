@@ -1,7 +1,7 @@
 module Simulation.Zoning exposing (generateLot, removeInvalidLots)
 
-import Collection exposing (Id)
 import Data.Lots exposing (NewLot, allLots)
+import Lib.Collection as Collection exposing (Id)
 import Maybe.Extra as Maybe
 import Model.Geometry exposing (oppositeOrthogonalDirection)
 import Model.World as World exposing (World, connectLotToRoadNetwork)

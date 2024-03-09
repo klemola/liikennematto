@@ -25,7 +25,7 @@ module Tilemap.Tile exposing
 
 import Audio exposing (Sound)
 import Duration exposing (Duration)
-import FSM exposing (FSM, State)
+import Lib.FSM as FSM exposing (FSM, State)
 import Model.Geometry
     exposing
         ( OrthogonalDirection(..)

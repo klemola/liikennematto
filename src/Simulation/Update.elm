@@ -1,9 +1,9 @@
 module Simulation.Update exposing (update, worldAfterTilemapChange)
 
 import Audio
-import Collection
 import Duration
-import FSM
+import Lib.Collection as Collection
+import Lib.FSM as FSM
 import Message exposing (Message(..))
 import Model.Liikennematto
     exposing

@@ -29,9 +29,9 @@ module Simulation.Route exposing
     )
 
 import Array exposing (Array)
-import Collection exposing (Collection)
 import CubicSpline2d exposing (ArcLengthParameterized)
 import Length exposing (Length)
+import Lib.Collection as Collection exposing (Collection)
 import List.Extra as List
 import Model.Geometry
     exposing

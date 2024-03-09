@@ -1,4 +1,4 @@
-module Collection exposing
+module Lib.Collection exposing
     ( Collection
     , Id
     , addFromBuilder

@@ -8,11 +8,11 @@ module Simulation.Pathfinding exposing
     )
 
 import Array
-import Collection exposing (Id)
 import Common exposing (andCarry)
 import Data.Cars exposing (CarRole(..))
 import Duration exposing (Duration)
 import Length exposing (Length)
+import Lib.Collection as Collection exposing (Id)
 import Model.Geometry exposing (LMPoint2d)
 import Model.World as World exposing (World)
 import Point2d

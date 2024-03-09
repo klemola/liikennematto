@@ -1,4 +1,4 @@
-module FSM exposing
+module Lib.FSM exposing
     ( FSM
     , State
     , StateId

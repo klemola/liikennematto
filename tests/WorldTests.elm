@@ -1,6 +1,5 @@
 module WorldTests exposing (suite)
 
-import Collection exposing (initialId)
 import Common exposing (boundingBoxWithDimensions)
 import Data.Lots exposing (school)
 import Data.Worlds
@@ -10,6 +9,7 @@ import Data.Worlds
         )
 import Expect
 import Length
+import Lib.Collection as Collection exposing (initialId)
 import Model.World as World
 import Point2d
 import Simulation.Lot as Lot

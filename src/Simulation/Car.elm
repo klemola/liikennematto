@@ -25,12 +25,12 @@ module Simulation.Car exposing
 import Angle exposing (Angle)
 import AngularSpeed exposing (AngularSpeed)
 import BoundingBox2d
-import Collection exposing (Id)
 import Common exposing (isCloseToZeroVelocity)
 import Data.Cars exposing (CarMake)
-import FSM exposing (FSM)
 import Frame2d
 import Length
+import Lib.Collection exposing (Id)
+import Lib.FSM as FSM exposing (FSM)
 import Model.Geometry
     exposing
         ( LMBoundingBox2d

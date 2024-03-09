@@ -24,7 +24,6 @@ module Simulation.RoadNetwork exposing
     )
 
 import BoundingBox2d
-import Collection exposing (Collection, Id, idMatches)
 import Common
 import Data.Assets exposing (innerLaneOffset, outerLaneOffset)
 import Data.Lots exposing (drivewayOffset)
@@ -33,6 +32,7 @@ import Direction2d
 import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
 import IntDict
 import Length exposing (Length)
+import Lib.Collection as Collection exposing (Collection, Id, idMatches)
 import Maybe.Extra as Maybe
 import Model.Geometry as Geometry
     exposing

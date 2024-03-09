@@ -16,7 +16,6 @@ module Data.RuleSetups exposing
     )
 
 import Angle exposing (Angle)
-import Collection exposing (Id)
 import Data.Cars exposing (testCar)
 import Data.Worlds
     exposing
@@ -28,6 +27,7 @@ import Data.Worlds
         )
 import Duration
 import Length exposing (Length)
+import Lib.Collection as Collection exposing (Id)
 import Model.Geometry exposing (LMPoint2d)
 import Model.World as World exposing (World)
 import Point2d

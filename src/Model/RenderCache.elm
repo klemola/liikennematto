@@ -12,8 +12,8 @@ module Model.RenderCache exposing
     )
 
 import Data.Assets exposing (Assets)
-import FSM
 import Length
+import Lib.FSM as FSM
 import Model.Animation as Animation exposing (Animation)
 import Model.Geometry exposing (OrthogonalDirection, oppositeOrthogonalDirection)
 import Model.World exposing (World)

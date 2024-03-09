@@ -1,11 +1,11 @@
 module UI.DebugPanel exposing (update, view)
 
-import Collection
 import Data.Icons as Icons
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Lib.Collection as Collection
 import Message exposing (Message(..))
 import Model.Debug exposing (DebugLayerKind(..), toggleDebugPanel, toggleLayer)
 import Model.Geometry exposing (LMPoint2d)

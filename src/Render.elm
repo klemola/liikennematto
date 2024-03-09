@@ -5,7 +5,6 @@ module Render exposing
     )
 
 import Angle
-import Collection exposing (Collection)
 import Color
 import Data.Assets exposing (assetById)
 import Data.Cars exposing (CarMake, carAsset)
@@ -14,6 +13,7 @@ import Data.Lots exposing (lotAsset)
 import Graph exposing (Node)
 import Html exposing (Html)
 import Length exposing (Length)
+import Lib.Collection as Collection exposing (Collection)
 import Model.Animation as Animation exposing (Animation)
 import Model.Geometry
     exposing

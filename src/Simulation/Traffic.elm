@@ -12,13 +12,13 @@ module Simulation.Traffic exposing
     )
 
 import BoundingBox2d
-import Collection exposing (Id)
 import Common exposing (randomFutureTime)
 import Data.Cars exposing (CarMake)
 import Direction2d
 import Duration exposing (Duration)
-import FSM
 import Length exposing (Length)
+import Lib.Collection as Collection exposing (Id)
+import Lib.FSM as FSM
 import Maybe.Extra as Maybe
 import Model.Geometry exposing (LMBoundingBox2d, LMPoint2d)
 import Model.World as World exposing (World, WorldEvent)

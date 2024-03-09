@@ -20,11 +20,11 @@ module Simulation.Lot exposing
 
 import Angle exposing (Angle)
 import BoundingBox2d
-import Collection exposing (Id)
 import Common
 import Data.Lots exposing (LotKind, NewLot, ParkingRestriction(..))
 import Direction2d
 import Length exposing (Length)
+import Lib.Collection exposing (Id)
 import Model.Geometry
     exposing
         ( LMBoundingBox2d
