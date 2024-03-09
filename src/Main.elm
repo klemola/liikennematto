@@ -189,10 +189,10 @@ updateBase msg model =
                     (\domViewport ->
                         let
                             mapSizeChangeX =
-                                nextRenderCache.tilemapWidthPixels - nextRenderCache.tilemapWidthPixels
+                                nextRenderCache.tilemapWidthPixels - model.renderCache.tilemapWidthPixels
 
                             mapSizeChangeY =
-                                nextRenderCache.tilemapHeightPixels - nextRenderCache.tilemapHeightPixels
+                                nextRenderCache.tilemapHeightPixels - model.renderCache.tilemapHeightPixels
 
                             nextScrollX =
                                 (mapSizeChangeX / 2) + domViewport.viewport.x

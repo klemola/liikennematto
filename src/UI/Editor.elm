@@ -2,7 +2,6 @@ module UI.Editor exposing
     ( Model
     , Msg
     , initialModel
-    , reset
     , subscriptions
     , update
     , usingTouchDevice
@@ -54,15 +53,6 @@ initialModel =
     , longPressTimer = Nothing
     , pointerDownEvent = Nothing
     , lastEventDevice = Pointer.MouseType
-    }
-
-
-reset : Model -> Model
-reset editor =
-    { editor
-        | activeCell = initialModel.activeCell
-        , longPressTimer = initialModel.longPressTimer
-        , pointerDownEvent = initialModel.pointerDownEvent
     }
 
 
