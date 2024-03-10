@@ -3,9 +3,11 @@ module Data.TileSet exposing
     , bottomEdgeTileIds
     , bottomLeftCornerTileIds
     , bottomRightCornerTileIds
+    , isTileLotEntryTile
     , leftEdgeTileIds
     , pairingsForSocket
     , rightEdgeTileIds
+    , roadConnectionDirectionsByTile
     , tileById
     , tileIds
     , topEdgeTileIds
@@ -15,11 +17,14 @@ module Data.TileSet exposing
 
 import Array
 import Dict exposing (Dict)
+import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
+import List.Nonempty
 import Tilemap.TileConfig as TileConfig
     exposing
         ( Socket(..)
         , TileConfig
         , TileId
+        , socketByDirection
         )
 
 
@@ -41,6 +46,11 @@ lotEntrySocket =
 lotDrivewaySocket : Socket
 lotDrivewaySocket =
     LightBrown
+
+
+roadConnectionSockets : List Socket
+roadConnectionSockets =
+    [ Red, Pink, Yellow, Blue, lotEntrySocket ]
 
 
 pairingsForSocket : Socket -> List Socket
@@ -136,7 +146,8 @@ allTiles : List TileConfig
 allTiles =
     [ grass
 
-    -- , loneRoad
+    --
+    , loneRoad
     , horizontalRoad
     , verticalRoad
     , deadendUp
@@ -185,7 +196,11 @@ allTilesAndMetaTiles =
 
 tiles : Dict TileId TileConfig
 tiles =
-    Dict.fromList (List.map (\tileConfig -> ( TileConfig.tileConfigId tileConfig, tileConfig )) allTilesAndMetaTiles)
+    Dict.fromList
+        (List.map
+            (\tileConfig -> ( TileConfig.tileConfigId tileConfig, tileConfig ))
+            allTilesAndMetaTiles
+        )
 
 
 tileById : TileId -> TileConfig
@@ -196,6 +211,27 @@ tileById tileId =
 
         Nothing ->
             defaultTile
+
+
+isTileLotEntryTile : TileId -> Bool
+isTileLotEntryTile =
+    tileById
+        >> TileConfig.socketsList
+        >> List.Nonempty.any ((==) lotEntrySocket)
+
+
+roadConnectionDirectionsByTile : TileConfig -> List OrthogonalDirection
+roadConnectionDirectionsByTile tileConfig =
+    let
+        sockets_ =
+            TileConfig.sockets tileConfig
+    in
+    OrthogonalDirection.all
+        |> List.filter
+            (\dir ->
+                -- TODO: optimize, using List instead of Set due to non-comparable Socket
+                List.member (socketByDirection sockets_ dir) roadConnectionSockets
+            )
 
 
 tileIds : List TileId

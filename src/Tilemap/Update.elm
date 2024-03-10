@@ -110,8 +110,12 @@ addTile cell model =
         { world, renderCache } =
             model
 
+        -- TODO: get this with WFC
+        tileId =
+            0
+
         ( nextTilemap, tileActions ) =
-            Tilemap.Core.addTile cell world.tilemap
+            Tilemap.Core.addTile cell tileId world.tilemap
 
         nextWorld =
             { world | tilemap = nextTilemap }

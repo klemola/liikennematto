@@ -33,6 +33,7 @@ module Model.World exposing
 import BoundingBox2d exposing (BoundingBox2d)
 import Common exposing (GlobalCoordinates)
 import Data.Cars exposing (CarMake)
+import Data.TileSet exposing (isTileLotEntryTile)
 import Duration exposing (Duration)
 import Graph
 import Length exposing (Length)
@@ -67,7 +68,7 @@ import Tilemap.Core
         , tilemapBoundingBox
         , tilemapIntersects
         )
-import Tilemap.Tile exposing (isLotEntry)
+import Tilemap.Tile as Tile
 import Time
 
 
@@ -513,13 +514,20 @@ validateLot changedCells changedAnchors lotId lot world =
 
         lotAnchorWasRemoved =
             List.any
-                (\( id, cell ) ->
+                (\( anchorLotId, cell ) ->
                     case fixedTileByCell world.tilemap cell of
                         Just tile ->
-                            id == lotId && not (isLotEntry tile)
+                            let
+                                isLotEntry =
+                                    tile
+                                        |> Tile.id
+                                        |> Maybe.map isTileLotEntryTile
+                                        |> Maybe.withDefault False
+                            in
+                            anchorLotId == lotId && not isLotEntry
 
                         Nothing ->
-                            id == lotId
+                            anchorLotId == lotId
                 )
                 changedAnchors
     in

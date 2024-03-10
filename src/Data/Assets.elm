@@ -4,7 +4,6 @@ module Data.Assets exposing
     , innerLaneOffset
     , outerLaneOffset
     , roads
-    , roadsLegacy
     )
 
 import Data.Colors as Colors
@@ -74,31 +73,6 @@ roads =
         , ( 40, lotDebugDrivewayRight )
         , ( 41, lotDebugDrivewayLeft )
         , ( 42, lotDebugDrivewayUp )
-        ]
-
-
-roadsLegacy : Assets ()
-roadsLegacy =
-    Dict.fromList
-        [ ( 0, defaultRoad )
-        , ( 1, deadendDown )
-        , ( 2, deadendRight )
-        , ( 3, curveBottomRight )
-        , ( 4, deadendLeft )
-        , ( 5, curveBottomLeft )
-        , ( 6, regularHorizontal )
-        , ( 7, intersectionTUp )
-        , ( 8, deadendUp )
-        , ( 9, regularVertical )
-        , ( 10, curveTopRight )
-        , ( 11, intersectionTLeft )
-        , ( 12, curveTopLeft )
-        , ( 13, intersectionTRight )
-        , ( 14, intersectionTDown )
-        , ( 15, intersectionCrossroads )
-        , ( 23, lotEntryTUp )
-        , ( 27, lotEntryTLeft )
-        , ( 29, lotEntryTRight )
         ]
 
 

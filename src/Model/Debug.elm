@@ -34,6 +34,7 @@ initialDebugState =
     { showDebugPanel = False
     , layers = 0
     }
+        |> toggleLayer WFCDebug
 
 
 toggleDebugPanel : DebugState -> DebugState

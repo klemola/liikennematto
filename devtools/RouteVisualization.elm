@@ -2,7 +2,7 @@ module RouteVisualization exposing (Clicked, Model, Msg, main)
 
 import Browser
 import Common exposing (GlobalCoordinates)
-import Data.Assets exposing (roadsLegacy)
+import Data.Assets exposing (roads)
 import Data.RuleSetups as RuleSetups
 import Element
 import Html exposing (Html)
@@ -46,7 +46,7 @@ initialModel : Model
 initialModel =
     { world = ruleSetup.world
     , activeCar = ruleSetup.activeCar
-    , cache = RenderCache.new ruleSetup.world roadsLegacy
+    , cache = RenderCache.new ruleSetup.world roads
     , clicked = Nothing
     }
 

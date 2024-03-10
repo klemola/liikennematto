@@ -10,12 +10,14 @@ module Tilemap.TileConfig exposing
     , socketByDirection
     , socketByDirectionWithConfig
     , sockets
+    , socketsList
     , tileConfigId
     , toString
     )
 
 import Array exposing (Array)
 import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
+import List.Nonempty exposing (Nonempty)
 
 
 type alias TileId =
@@ -118,6 +120,15 @@ sockets tileConfig =
                     , bottom = Green
                     , left = Green
                     }
+
+
+socketsList : TileConfig -> Nonempty Socket
+socketsList tileConfig =
+    let
+        sockets_ =
+            sockets tileConfig
+    in
+    List.Nonempty.Nonempty sockets_.top [ sockets_.right, sockets_.bottom, sockets_.left ]
 
 
 socketByDirectionWithConfig : TileConfig -> OrthogonalDirection -> Socket

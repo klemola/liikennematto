@@ -11,7 +11,7 @@ import Browser
 import Browser.Events as Events
 import Common exposing (GlobalCoordinates)
 import CubicSpline2d exposing (ArcLengthParameterized, Nondegenerate)
-import Data.Assets exposing (roadsLegacy)
+import Data.Assets exposing (roads)
 import Data.Cars exposing (testCar)
 import Data.Colors as Colors
 import Direction2d exposing (Direction2d)
@@ -63,7 +63,7 @@ world =
 
 renderCache : RenderCache
 renderCache =
-    RenderCache.new world roadsLegacy
+    RenderCache.new world roads
 
 
 renderArea : Length.Length

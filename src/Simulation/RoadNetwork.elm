@@ -27,6 +27,7 @@ import BoundingBox2d exposing (BoundingBox2d)
 import Common exposing (GlobalCoordinates)
 import Data.Assets exposing (innerLaneOffset, outerLaneOffset)
 import Data.Lots exposing (drivewayOffset)
+import Data.TileSet exposing (roadConnectionDirectionsByTile, tileById)
 import Dict exposing (Dict)
 import Direction2d exposing (Direction2d)
 import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
@@ -50,16 +51,7 @@ import Tilemap.Core
         , getTilemapConfig
         , tilemapToList
         )
-import Tilemap.Tile
-    exposing
-        ( Tile
-        , isBasicRoad
-        , isCurve
-        , isDeadend
-        , isIntersection
-        , isLotEntry
-        , potentialConnections
-        )
+import Tilemap.Tile as Tile exposing (Tile)
 import Vector2d exposing (Vector2d)
 
 
@@ -290,18 +282,17 @@ buildRoadNetwork : Tilemap -> Collection TrafficLight -> ( RoadNetwork, Collecti
 buildRoadNetwork tilemap trafficLights =
     let
         tilePriority ( _, tile ) =
-            if isDeadend tile then
-                0
+            -- TODO: Reimplement with WFC
+            0
 
-            else if isLotEntry tile then
-                1
-
-            else if isIntersection tile then
-                2
-
-            else
-                3
-
+        -- if isDeadend tile then
+        --     0
+        -- else if isLotEntry tile then
+        --     1
+        -- else if isIntersection tile then
+        --     2
+        -- else
+        --     3
         nodes =
             createConnections
                 { tilemap = tilemap
@@ -380,20 +371,23 @@ createConnections { nodes, tilemap, remainingTiles } =
 
 toConnections : Tilemap -> Cell -> Tile -> List Connection
 toConnections tilemap cell tile =
-    if isBasicRoad tile then
-        []
+    case Tile.id tile of
+        Just tileId ->
+            case roadConnectionDirectionsByTile (tileById tileId) of
+                [] ->
+                    []
 
-    else if isDeadend tile then
-        potentialConnections tile
-            |> List.concatMap
-                (OrthogonalDirection.opposite
-                    >> OrthogonalDirection.toDirection2d
-                    >> deadendConnections cell
-                )
+                [ single ] ->
+                    single
+                        |> OrthogonalDirection.opposite
+                        |> OrthogonalDirection.toDirection2d
+                        |> deadendConnections cell
 
-    else
-        potentialConnections tile
-            |> List.concatMap (connectionsByTileEntryDirection tilemap cell tile)
+                multiple ->
+                    List.concatMap (connectionsByTileEntryDirection tilemap cell tile) multiple
+
+        Nothing ->
+            []
 
 
 deadendConnections : Cell -> Direction2d GlobalCoordinates -> List Connection
@@ -560,12 +554,9 @@ chooseConnectionCell tilemap tile direction startConnectionKind baseCell =
 
 hasOverlappingConnections : Tile -> Tile -> Bool
 hasOverlappingConnections tileA tileB =
-    hasConnectionsInMultipleDirections tileA && hasConnectionsInMultipleDirections tileB
-
-
-hasConnectionsInMultipleDirections : Tile -> Bool
-hasConnectionsInMultipleDirections tile =
-    isCurve tile || isIntersection tile || isLotEntry tile
+    -- TODO: use WFC to check edge compatibility?
+    -- hasConnectionsInMultipleDirections tileA && hasConnectionsInMultipleDirections tileB
+    False
 
 
 
