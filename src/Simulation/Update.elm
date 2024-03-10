@@ -1,6 +1,5 @@
-module Simulation.Update exposing (update, worldAfterTilemapChange)
+module Simulation.Update exposing (update)
 
-import Audio
 import Duration
 import Lib.Collection as Collection
 import Lib.FSM as FSM
@@ -9,15 +8,17 @@ import Model.Liikennematto
     exposing
         ( Liikennematto
         )
-import Model.World as World exposing (World, updateRoadNetwork)
-import Process
+import Model.World as World
+    exposing
+        ( TilemapChange
+        , World
+        , removeInvalidLots
+        , updateRoadNetwork
+        )
 import Random
 import Simulation.Events exposing (updateEventQueue)
 import Simulation.Traffic as Traffic exposing (rerouteCarsIfNeeded)
 import Simulation.TrafficLight exposing (TrafficLight)
-import Simulation.Zoning exposing (generateLot)
-import Task
-import Tilemap.Core exposing (tilemapSize)
 import Time
 
 
@@ -31,7 +32,8 @@ update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
 update msg model =
     case msg of
         GameSetupComplete ->
-            ( model, generateEnvironmentAfterDelay model.world )
+            -- TODO: trigger WFC?
+            ( model, Cmd.none )
 
         UpdateTraffic delta ->
             let
@@ -68,36 +70,14 @@ update msg model =
             , Cmd.none
             )
 
-        TilemapChanged _ ->
-            ( { model | world = worldAfterTilemapChange model.world }
+        TilemapChanged tilemapChange ->
+            ( { model | world = worldAfterTilemapChange tilemapChange model.world }
             , Cmd.none
             )
 
         UpdateEnvironment ->
             ( { model | world = updateTrafficLights model.world }
             , Cmd.none
-            )
-
-        GenerateEnvironment ->
-            let
-                nextWorld =
-                    attemptGenerateLot
-                        model.time
-                        model.simulationActive
-                        model.world
-
-                cmds =
-                    if Collection.size nextWorld.lots > Collection.size model.world.lots then
-                        Cmd.batch
-                            [ generateEnvironmentAfterDelay nextWorld
-                            , Audio.playSound Audio.BuildLot
-                            ]
-
-                    else
-                        generateEnvironmentAfterDelay nextWorld
-            in
-            ( { model | world = nextWorld }
-            , cmds
             )
 
         SpawnTestCar ->
@@ -113,20 +93,6 @@ update msg model =
 
         _ ->
             ( model, Cmd.none )
-
-
-generateEnvironmentAfterDelay : World -> Cmd Message
-generateEnvironmentAfterDelay world =
-    let
-        randomMillis =
-            world.seed
-                |> Random.step (Random.int 1000 3500)
-                |> Tuple.first
-    in
-    randomMillis
-        |> toFloat
-        |> Process.sleep
-        |> Task.perform (always GenerateEnvironment)
 
 
 
@@ -150,9 +116,10 @@ processWorldEvents time events world =
         events
 
 
-worldAfterTilemapChange : World -> World
-worldAfterTilemapChange world =
+worldAfterTilemapChange : TilemapChange -> World -> World
+worldAfterTilemapChange tilemapChange world =
     world
+        |> removeInvalidLots tilemapChange
         |> updateRoadNetwork
         |> rerouteCarsIfNeeded
 
@@ -181,16 +148,3 @@ updateTrafficLight trafficLight =
             FSM.updateWithoutContext (Duration.seconds 1) trafficLight.fsm
     in
     { trafficLight | fsm = nextFsm }
-
-
-attemptGenerateLot : Time.Posix -> Bool -> World -> World
-attemptGenerateLot time simulationActive world =
-    let
-        largeEnoughRoadNetwork =
-            tilemapSize world.tilemap > 4 * (Collection.size world.lots + 1)
-    in
-    if not simulationActive || not largeEnoughRoadNetwork || World.hasPendingTilemapChange world then
-        world
-
-    else
-        generateLot time world

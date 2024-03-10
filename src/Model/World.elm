@@ -1,6 +1,7 @@
 module Model.World exposing
     ( PendingTilemapChange
     , RNLookupEntry
+    , TilemapChange
     , World
     , WorldEvent(..)
     , addEvent
@@ -19,6 +20,7 @@ module Model.World exposing
     , refreshCars
     , refreshLots
     , removeCar
+    , removeInvalidLots
     , removeLot
     , resolveTilemapUpdate
     , setCar
@@ -36,6 +38,7 @@ import Graph
 import Length exposing (Length)
 import Lib.Collection as Collection exposing (Collection, Id)
 import Lib.EventQueue as EventQueue exposing (EventQueue)
+import List.Nonempty exposing (Nonempty)
 import Point2d
     exposing
         ( Point2d
@@ -55,13 +58,16 @@ import Tilemap.Core
         ( Tilemap
         , TilemapConfig
         , TilemapUpdateResult
+        , anchorByCell
         , createTilemap
+        , fixedTileByCell
         , getTilemapConfig
         , inTilemapBounds
         , removeAnchor
         , tilemapBoundingBox
         , tilemapIntersects
         )
+import Tilemap.Tile exposing (isLotEntry)
 import Time
 
 
@@ -92,6 +98,12 @@ type alias World =
 
 type alias PendingTilemapChange =
     ( Duration, Set CellCoordinates )
+
+
+type alias TilemapChange =
+    { changedCells : Nonempty Cell
+    , transitionedCells : List Cell
+    }
 
 
 type alias RNLookupEntry =
@@ -398,7 +410,7 @@ updateRoadNetwork world =
 --
 
 
-resolveTilemapUpdate : Duration -> TilemapUpdateResult -> World -> ( World, List Cell )
+resolveTilemapUpdate : Duration -> TilemapUpdateResult -> World -> ( World, Maybe TilemapChange )
 resolveTilemapUpdate delta tilemapUpdateResult world =
     case world.pendingTilemapChange of
         Nothing ->
@@ -411,7 +423,7 @@ resolveTilemapUpdate delta tilemapUpdateResult world =
                         createPendingTilemapChange tilemapUpdateResult.transitionedCells world
             in
             ( nextWorld
-            , []
+            , Nothing
             )
 
         Just pendingTilemapChange ->
@@ -434,12 +446,20 @@ resolveTilemapUpdate delta tilemapUpdateResult world =
             in
             if Quantity.lessThanOrEqualToZero nextTimer then
                 ( { world | pendingTilemapChange = Nothing }
-                , Cell.fromCoordinatesSet (getTilemapConfig world.tilemap) nextChangedCells
+                , nextChangedCells
+                    |> Cell.fromCoordinatesSet (getTilemapConfig world.tilemap)
+                    |> List.Nonempty.fromList
+                    |> Maybe.map
+                        (\changedCells ->
+                            { changedCells = changedCells
+                            , transitionedCells = tilemapUpdateResult.transitionedCells
+                            }
+                        )
                 )
 
             else
                 ( { world | pendingTilemapChange = Just ( nextTimer, nextChangedCells ) }
-                , []
+                , Nothing
                 )
 
 
@@ -463,8 +483,57 @@ combineChangedCells changedCells currentChanges =
         |> Set.union currentChanges
 
 
+removeInvalidLots : TilemapChange -> World -> World
+removeInvalidLots tilemapChange world =
+    let
+        changedAnchors =
+            List.Nonempty.foldl
+                (\cell anchors ->
+                    case anchorByCell world.tilemap cell of
+                        Just ( id, _ ) ->
+                            ( id, cell ) :: anchors
 
+                        Nothing ->
+                            anchors
+                )
+                []
+                tilemapChange.changedCells
+    in
+    Collection.foldl
+        (validateLot tilemapChange.changedCells changedAnchors)
+        world
+        world.lots
+
+
+validateLot : Nonempty Cell -> List ( Id, Cell ) -> Id -> Lot -> World -> World
+validateLot changedCells changedAnchors lotId lot world =
+    let
+        lotOverlapsWithRoad =
+            List.Nonempty.any (\cell -> Lot.inBounds cell lot) changedCells
+
+        lotAnchorWasRemoved =
+            List.any
+                (\( id, cell ) ->
+                    case fixedTileByCell world.tilemap cell of
+                        Just tile ->
+                            id == lotId && not (isLotEntry tile)
+
+                        Nothing ->
+                            id == lotId
+                )
+                changedAnchors
+    in
+    if lotAnchorWasRemoved || lotOverlapsWithRoad then
+        removeLot lotId world
+
+    else
+        world
+
+
+
+--
 -- Utility
+--
 
 
 formatEvents : Time.Posix -> World -> List ( String, String, String )

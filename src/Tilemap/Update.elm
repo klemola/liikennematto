@@ -9,8 +9,6 @@ import Model.Liikennematto
         )
 import Model.RenderCache exposing (refreshTilemapCache, setTilemapCache)
 import Model.World as World
-import Simulation.Zoning exposing (removeInvalidLots)
-import Task
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core exposing (canBuildRoadAt, cellHasFixedTile, fixedTileByCell, getTilemapConfig, updateTilemap)
 import Tilemap.Tile exposing (Action(..), isBuilt)
@@ -28,18 +26,17 @@ update msg model =
                 tilemapUpdateResult =
                     updateTilemap delta world.tilemap
 
-                ( nextWorld, changedCells ) =
+                ( nextWorld, maybeTilemapChange ) =
                     { world | tilemap = tilemapUpdateResult.tilemap }
-                        |> removeInvalidLots tilemapUpdateResult.transitionedCells
                         |> World.resolveTilemapUpdate delta tilemapUpdateResult
 
                 tilemapChangedEffects =
-                    if List.isEmpty changedCells then
-                        Cmd.none
+                    case maybeTilemapChange of
+                        Just tilemapChange ->
+                            Message.asCmd (TilemapChanged tilemapChange)
 
-                    else
-                        Task.succeed changedCells
-                            |> Task.perform TilemapChanged
+                        Nothing ->
+                            Cmd.none
 
                 ( nextRenderCache, dynamicTiles ) =
                     refreshTilemapCache tilemapUpdateResult renderCache

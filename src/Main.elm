@@ -14,7 +14,7 @@ import Model.RenderCache exposing (setPixelsToMetersRatio)
 import Model.Screen as Screen
 import Render
 import Render.Debug
-import Simulation.Update as Simulation exposing (worldAfterTilemapChange)
+import Simulation.Update as Simulation
 import Task
 import Tilemap.Update as Tilemap
 import Time
@@ -157,7 +157,7 @@ updateBase msg model =
         NewGame ->
             let
                 previousWorld =
-                    Just (worldAfterTilemapChange model.world)
+                    Just model.world
 
                 ( modelWithTransition, transitionActions ) =
                     Liikennematto.triggerLoading model

@@ -4,8 +4,8 @@ import Browser.Dom
 import Browser.Events exposing (Visibility)
 import Duration exposing (Duration)
 import Model.Debug exposing (DebugLayerKind)
+import Model.World exposing (TilemapChange)
 import Task
-import Tilemap.Cell exposing (Cell)
 import Time
 import UI.Core
 import UI.Editor
@@ -24,17 +24,16 @@ type Message
     | ToggleSimulationActive
     | NewGame
     | RestoreGame
-      -- Simulation / World
+      -- Tilemap & Simulation
     | UpdateTraffic Duration
     | CheckQueues Time.Posix
     | UpdateEnvironment
-    | GenerateEnvironment
+    | SpawnTestCar
     | UpdateTilemap Duration
-    | TilemapChanged (List Cell)
-      -- UI / Editor
+    | TilemapChanged TilemapChange
+      -- UI
     | InputReceived UI.Core.InputEvent
     | ZoomLevelChanged UI.Core.ZoomLevel
-    | SpawnTestCar
     | ToggleDebugPanel
     | ToggleDebugLayer DebugLayerKind
     | EditorMsg UI.Editor.Msg
