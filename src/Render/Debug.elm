@@ -42,7 +42,7 @@ nodeRadius =
     Length.meters 0.8
 
 
-view : World -> RenderCache -> DebugState -> Svg ()
+view : World -> RenderCache msg -> DebugState -> Svg msg
 view world cache debugState =
     let
         tilemapWidth =
@@ -63,7 +63,7 @@ view world cache debugState =
         )
 
 
-debugLayerViews : World -> RenderCache -> DebugState -> List (Svg ())
+debugLayerViews : World -> RenderCache msg -> DebugState -> List (Svg msg)
 debugLayerViews world cache debugState =
     let
         carsLayer =
@@ -101,7 +101,7 @@ debugLayerViews world cache debugState =
     ]
 
 
-renderRoadNetwork : RenderCache -> RoadNetwork -> Svg msg
+renderRoadNetwork : RenderCache msg -> RoadNetwork -> Svg msg
 renderRoadNetwork cache roadNetwork =
     let
         nodeColor kind =
@@ -211,7 +211,7 @@ renderRoadNetwork cache roadNetwork =
         ]
 
 
-renderCarsDebug : RenderCache -> Collection Car -> Svg msg
+renderCarsDebug : RenderCache msg -> Collection Car -> Svg msg
 renderCarsDebug cache cars =
     cars
         |> Collection.foldl
@@ -222,7 +222,7 @@ renderCarsDebug cache cars =
         |> Svg.Keyed.node "g" []
 
 
-renderCarDebug : RenderCache -> Car -> Svg msg
+renderCarDebug : RenderCache msg -> Car -> Svg msg
 renderCarDebug cache car =
     Svg.g []
         [ renderCarFieldOfView cache car
@@ -231,7 +231,7 @@ renderCarDebug cache car =
         ]
 
 
-renderCarPath : RenderCache -> Car -> Svg msg
+renderCarPath : RenderCache msg -> Car -> Svg msg
 renderCarPath cache car =
     Svg.g []
         (car.route
@@ -244,7 +244,7 @@ renderCarPath cache car =
         )
 
 
-renderCarCollisionDetection : RenderCache -> Car -> Svg msg
+renderCarCollisionDetection : RenderCache msg -> Car -> Svg msg
 renderCarCollisionDetection cache car =
     let
         points =
@@ -267,7 +267,7 @@ renderCarCollisionDetection cache car =
         ]
 
 
-renderCarFieldOfView : RenderCache -> Car -> Svg msg
+renderCarFieldOfView : RenderCache msg -> Car -> Svg msg
 renderCarFieldOfView cache car =
     Render.Shape.arc
         cache
@@ -275,7 +275,7 @@ renderCarFieldOfView cache car =
         (Collision.rightSideFOV (Collision.pathRay car Collision.maxCarCollisionTestDistance))
 
 
-toPointsString : RenderCache -> List (Point2d Length.Meters GlobalCoordinates) -> String
+toPointsString : RenderCache msg -> List (Point2d Length.Meters GlobalCoordinates) -> String
 toPointsString cache points =
     List.foldl
         (\point acc ->
@@ -292,7 +292,7 @@ toPointsString cache points =
         points
 
 
-renderLotsDebug : RenderCache -> Collection Lot -> Svg msg
+renderLotsDebug : RenderCache msg -> Collection Lot -> Svg msg
 renderLotsDebug cache lots =
     lots
         |> Collection.foldl
@@ -303,7 +303,7 @@ renderLotsDebug cache lots =
         |> Svg.Keyed.node "g" []
 
 
-renderLotDebug : RenderCache -> Lot -> Svg msg
+renderLotDebug : RenderCache msg -> Lot -> Svg msg
 renderLotDebug cache lot =
     let
         parkingSpots =
@@ -327,7 +327,7 @@ renderLotDebug cache lot =
         (parkingSpots ++ parkingLockIndicator)
 
 
-renderParkingSpotDebug : RenderCache -> ParkingSpot -> Svg msg
+renderParkingSpotDebug : RenderCache msg -> ParkingSpot -> Svg msg
 renderParkingSpotDebug cache parkingSpot =
     let
         spotIndicatorColor =
@@ -348,7 +348,7 @@ renderParkingSpotDebug cache parkingSpot =
         parkingSpot.position
 
 
-renderWFC : RenderCache -> Svg ()
+renderWFC : RenderCache msg -> Svg msg
 renderWFC cache =
     cache.tilemap
         |> List.map
@@ -360,7 +360,7 @@ renderWFC cache =
         |> Svg.Keyed.node "g" []
 
 
-renderTile : RenderCache -> Cell -> TileKind -> Svg ()
+renderTile : RenderCache msg -> Cell -> TileKind -> Svg msg
 renderTile cache cell tileKind =
     let
         { x, y } =

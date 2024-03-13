@@ -166,7 +166,7 @@ eventQueueView time world =
         )
 
 
-carStateView : RenderCache -> Car -> Element msg
+carStateView : RenderCache msg -> Car -> Element msg
 carStateView cache car =
     Element.row
         cardAttributes
@@ -190,7 +190,7 @@ speedToString speed =
     "Speed: " ++ speedValue ++ " m/s"
 
 
-pointToString : RenderCache -> Point2d Length.Meters a -> String
+pointToString : RenderCache msg -> Point2d Length.Meters a -> String
 pointToString cache point =
     let
         { x, y } =

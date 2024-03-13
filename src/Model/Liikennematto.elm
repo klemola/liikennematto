@@ -16,6 +16,7 @@ import Data.Assets exposing (roads)
 import Data.Defaults exposing (horizontalCellsAmount, verticalCellsAmount)
 import Duration exposing (Duration)
 import Lib.FSM as FSM exposing (FSM)
+import Message exposing (Message)
 import Model.Debug exposing (DebugState, initialDebugState)
 import Model.Flags exposing (Flags, RuntimeEnvironment(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
@@ -35,7 +36,7 @@ type alias Liikennematto =
     , world : World
     , previousWorld : Maybe World
     , simulationActive : Bool
-    , renderCache : RenderCache
+    , renderCache : RenderCache Message
     , dynamicTiles : RenderCache.DynamicTilesPresentation
     , debug : DebugState
     , errorMessage : Maybe String

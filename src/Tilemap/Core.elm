@@ -5,6 +5,7 @@ module Tilemap.Core exposing
     , TilemapUpdateResult
     , addAnchor
     , addTile
+    , addTileInstantly
     , anchorByCell
     , canBuildRoadAt
     , cellHasAnchor
@@ -19,7 +20,6 @@ module Tilemap.Core exposing
     , removeAnchor
     , removeTile
     , setSuperpositionOptions
-    , setTile
     , tileByCell
     , tilemapBoundingBox
     , tilemapFromCells
@@ -495,9 +495,9 @@ addTile =
     applyTilemapOperation Tile.Add
 
 
-setTile : Cell -> Tile -> Tilemap -> Tilemap
-setTile cell tile tilemap =
-    updateCell cell tile tilemap
+addTileInstantly : Cell -> TileId -> Tilemap -> ( Tilemap, List Tile.Action )
+addTileInstantly =
+    applyTilemapOperation Tile.BuildInstantly
 
 
 removeTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )

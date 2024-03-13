@@ -39,7 +39,7 @@ outerLaneOffset =
     Length.meters 10
 
 
-roads : Assets ()
+roads : Assets msg
 roads =
     Dict.fromList
         [ ( 17, defaultRoad )

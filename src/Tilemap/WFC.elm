@@ -1,5 +1,7 @@
 module Tilemap.WFC exposing
     ( Model
+    , StepEndCondition(..)
+    , collapse
     , contextDebug
     , failed
     , flushPendingActions
@@ -19,18 +21,19 @@ import Data.TileSet exposing (pairingsForSocket, tileById, tileIds)
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import List.Nonempty exposing (Nonempty)
 import Random exposing (Seed)
+import Random.Extra
 import Stack exposing (Stack)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
         ( Tilemap
         , TilemapConfig
+        , addTileInstantly
         , createTilemap
         , foldTiles
         , forAllTiles
         , getTilemapConfig
         , setSuperpositionOptions
-        , setTile
         , tileByCell
         )
 import Tilemap.Tile as Tile exposing (Tile, TileKind(..))
@@ -105,7 +108,7 @@ solve : TilemapConfig -> Random.Seed -> Model
 solve tilemapConfig initialSeed =
     let
         nextModel =
-            step <| init tilemapConfig initialSeed
+            step StopAtSolved <| init tilemapConfig initialSeed
     in
     solve_ nextModel
 
@@ -116,14 +119,19 @@ solve_ model =
         model
 
     else
-        solve_ (step model)
+        solve_ (step StopAtSolved model)
 
 
-step : Model -> Model
-step model =
+type StepEndCondition
+    = StopAtSolved
+    | StopAtEmptySteps
+
+
+step : StepEndCondition -> Model -> Model
+step endCondition model =
     let
         ((Model modelDetails) as afterStep) =
-            step_ model
+            step_ endCondition model
     in
     case modelDetails.state of
         Recovering wfcFailure ->
@@ -150,28 +158,28 @@ step model =
             afterStep
 
 
-stepN : Int -> Model -> Model
-stepN nTimes model =
+stepN : StepEndCondition -> Int -> Model -> Model
+stepN endCondition nTimes model =
     if nTimes == 0 then
         model
 
     else
         let
             stepResult =
-                step model
+                step endCondition model
         in
         if failed stepResult then
             stepResult
 
         else
-            stepN (nTimes - 1) stepResult
+            stepN endCondition (nTimes - 1) stepResult
 
 
 {-| Execute a single step. This can mean picking the next random tile
 or propagating constraints resulting from the last placement of a tile
 -}
-step_ : Model -> Model
-step_ (Model ({ openSteps, previousSteps, tilemap, pendingActions } as modelDetails)) =
+step_ : StepEndCondition -> Model -> Model
+step_ endCondition (Model ({ openSteps, previousSteps, tilemap, pendingActions } as modelDetails)) =
     case openSteps of
         currentStep :: otherSteps ->
             let
@@ -219,21 +227,73 @@ step_ (Model ({ openSteps, previousSteps, tilemap, pendingActions } as modelDeta
         [] ->
             let
                 nextModelDetails =
-                    if not (solved modelDetails) then
-                        let
-                            withPick =
-                                pickRandom modelDetails
-                        in
-                        { withPick | state = Solving }
+                    case endCondition of
+                        StopAtEmptySteps ->
+                            { modelDetails
+                                | currentCell = Nothing
+                                , targetCell = Nothing
+                            }
 
-                    else
-                        { modelDetails
-                            | state = Done
-                            , currentCell = Nothing
-                            , targetCell = Nothing
-                        }
+                        StopAtSolved ->
+                            if not (solved modelDetails) then
+                                let
+                                    withPick =
+                                        pickRandom modelDetails
+                                in
+                                { withPick | state = Solving }
+
+                            else
+                                { modelDetails
+                                    | state = Done
+                                    , currentCell = Nothing
+                                    , targetCell = Nothing
+                                }
             in
             Model nextModelDetails
+
+
+collapse : Cell -> Model -> Model
+collapse cell model =
+    let
+        withCurrentStepsSolved =
+            step StopAtEmptySteps model
+
+        (Model modelDetails) =
+            withCurrentStepsSolved
+    in
+    case tileByCell modelDetails.tilemap cell |> Maybe.map .kind of
+        Just (Superposition options) ->
+            let
+                ( randomTileId, nextSeed ) =
+                    Random.step (Random.Extra.sample options) modelDetails.seed
+            in
+            case randomTileId |> Maybe.map tileById of
+                Just tileConfig ->
+                    let
+                        withCollapsedCell =
+                            Model
+                                { modelDetails
+                                    | openSteps = Collapse cell tileConfig :: modelDetails.openSteps
+                                    , seed = nextSeed
+                                    , state = Solving
+                                }
+                    in
+                    flushOpenSteps withCollapsedCell
+
+                _ ->
+                    model
+
+        _ ->
+            model
+
+
+flushOpenSteps : Model -> Model
+flushOpenSteps ((Model modelContents) as model) =
+    if List.isEmpty modelContents.openSteps then
+        model
+
+    else
+        flushOpenSteps (step StopAtEmptySteps model)
 
 
 
@@ -263,10 +323,10 @@ processStep tilemap currentStep =
                         nextSteps =
                             List.filterMap stepInDirection OrthogonalDirection.all
 
-                        ( tile, tileActions ) =
-                            Tile.fromTileId singleTile.id Tile.BuildInstantly
+                        ( nextTilemap, tileActions ) =
+                            addTileInstantly cell singleTile.id tilemap
                     in
-                    Ok ( nextSteps, tileActions, setTile cell tile tilemap )
+                    Ok ( nextSteps, tileActions, nextTilemap )
 
         CollapseSubgridCell cell singleTile largeTileId ->
             attemptPlaceSubgridTile tilemap largeTileId cell singleTile
@@ -627,10 +687,10 @@ attemptPlaceSubgridTile tilemap largeTileId cell currentTile =
         |> Result.map
             (\neighborSteps ->
                 let
-                    ( tile, tileActions ) =
-                        Tile.fromTileId currentTile.id Tile.BuildInstantly
+                    ( nextTilemap, tileActions ) =
+                        addTileInstantly cell currentTile.id tilemap
                 in
-                ( neighborSteps, tileActions, setTile cell tile tilemap )
+                ( neighborSteps, tileActions, nextTilemap )
             )
         |> Result.mapError (\_ -> InvalidBigTilePlacement cell largeTileId)
 

@@ -12,7 +12,7 @@ module Model.RenderCache exposing
     )
 
 import Data.Assets exposing (Assets)
-import Data.TileSet exposing (roadConnectionDirectionsByTile, tileById)
+import Data.TileSet exposing (roadConnectionDirectionsByTile)
 import Length
 import Lib.FSM as FSM
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
@@ -29,6 +29,7 @@ import Tilemap.Core
         , TilemapUpdateResult
         , fixedTileByCell
         , getTilemapDimensions
+        , tileToConfig
         , tilemapToList
         )
 import Tilemap.Tile as Tile exposing (Tile, TileKind(..))
@@ -36,7 +37,7 @@ import Tilemap.TileConfig exposing (TileId)
 import UI.Core
 
 
-type alias RenderCache =
+type alias RenderCache msg =
     { pixelsToMetersRatio : PixelsToMetersRatio
     , tilemap : TilemapPresentation
     , tilemapWidthPixels : Float
@@ -44,7 +45,7 @@ type alias RenderCache =
     , tilemapWidth : Length.Length
     , tilemapHeight : Length.Length
     , tileListFilter : TileListFilter
-    , roadAssets : Assets ()
+    , roadAssets : Assets msg
     }
 
 
@@ -64,7 +65,7 @@ type alias DynamicTilePresentation =
     ( Cell, TileId, Maybe Animation )
 
 
-new : World -> Assets () -> RenderCache
+new : World -> Assets msg -> RenderCache msg
 new { tilemap } roadAssets =
     let
         tilemapDimensions =
@@ -91,7 +92,7 @@ new { tilemap } roadAssets =
     }
 
 
-setPixelsToMetersRatio : UI.Core.ZoomLevel -> RenderCache -> RenderCache
+setPixelsToMetersRatio : UI.Core.ZoomLevel -> RenderCache msg -> RenderCache msg
 setPixelsToMetersRatio zoomLevel cache =
     let
         nextPixelsPerMeter =
@@ -120,17 +121,17 @@ zoomLevelToPixelsPerMeterValue zoomLevel =
             8
 
 
-setTilemapCache : Tilemap -> RenderCache -> RenderCache
+setTilemapCache : Tilemap -> RenderCache msg -> RenderCache msg
 setTilemapCache tilemap cache =
     { cache | tilemap = toTilemapCache cache.tileListFilter tilemap }
 
 
-setTileListFilter : TileListFilter -> RenderCache -> RenderCache
+setTileListFilter : TileListFilter -> RenderCache msg -> RenderCache msg
 setTileListFilter tileListFilter cache =
     { cache | tileListFilter = tileListFilter }
 
 
-refreshTilemapCache : TilemapUpdateResult -> RenderCache -> ( RenderCache, DynamicTilesPresentation )
+refreshTilemapCache : TilemapUpdateResult -> RenderCache msg -> ( RenderCache msg, DynamicTilesPresentation )
 refreshTilemapCache tilemapUpdateResult cache =
     let
         nextCache =
@@ -206,8 +207,8 @@ tileAnimation tile =
 animationDirectionFromTile : Tile -> Maybe OrthogonalDirection
 animationDirectionFromTile tile =
     case
-        Tile.id tile
-            |> Maybe.map (tileById >> roadConnectionDirectionsByTile)
+        tileToConfig tile
+            |> Maybe.map roadConnectionDirectionsByTile
     of
         Just [ connection ] ->
             Just (OrthogonalDirection.opposite connection)
