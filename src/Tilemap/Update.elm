@@ -1,6 +1,8 @@
 module Tilemap.Update exposing (update)
 
 import Audio exposing (playSound)
+import Data.TileSet exposing (tileIdByBitmask)
+import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import Maybe.Extra as Maybe
 import Message exposing (Message(..))
 import Model.Liikennematto
@@ -10,8 +12,19 @@ import Model.Liikennematto
 import Model.RenderCache exposing (refreshTilemapCache, setTilemapCache)
 import Model.World as World
 import Tilemap.Cell as Cell exposing (Cell)
-import Tilemap.Core exposing (canBuildRoadAt, cellHasFixedTile, fixedTileByCell, getTilemapConfig, updateTilemap)
-import Tilemap.Tile exposing (Action(..), isBuilt)
+import Tilemap.Core
+    exposing
+        ( Tilemap
+        , canBuildRoadAt
+        , cellBitmask
+        , cellHasFixedTile
+        , fixedTileByCell
+        , getTilemapConfig
+        , tileNeighborIn
+        , updateTilemap
+        )
+import Tilemap.Tile exposing (Action(..), Tile, TileKind(..), isBuilt)
+import Tilemap.WFC as WFC
 import UI.Core exposing (InputKind(..))
 
 
@@ -110,22 +123,88 @@ addTile cell model =
         { world, renderCache } =
             model
 
-        -- TODO: get this with WFC
-        tileId =
-            0
-
-        ( nextTilemap, tileActions ) =
-            Tilemap.Core.addTile cell tileId world.tilemap
-
-        nextWorld =
-            { world | tilemap = nextTilemap }
+        bitmask =
+            cellBitmask cell world.tilemap
     in
-    ( { model
-        | world = nextWorld
-        , renderCache = setTilemapCache nextTilemap renderCache
-      }
-    , Cmd.batch (tileActionsToCmds tileActions)
+    case tileIdByBitmask bitmask of
+        Just tileId ->
+            let
+                _ =
+                    Debug.log "add tile" ( bitmask, tileId, Cell.toString cell )
+
+                ( tilemapWithTile, addTileActions ) =
+                    Tilemap.Core.addTile cell tileId world.tilemap
+
+                wfcModel =
+                    WFC.fromTilemap tilemapWithTile model.world.seed
+                        |> WFC.propagateConstraints cell
+
+                ( withWFC, wfcTileActions ) =
+                    collapseNewTileNeighbors cell wfcModel
+
+                nextWorld =
+                    { world | tilemap = withWFC }
+            in
+            ( { model
+                | world = nextWorld
+                , renderCache = setTilemapCache nextWorld.tilemap renderCache
+              }
+            , Cmd.batch (tileActionsToCmds (addTileActions ++ wfcTileActions))
+            )
+
+        Nothing ->
+            ( model, Cmd.none )
+
+
+collapseNewTileNeighbors : Cell -> WFC.Model -> ( Tilemap, List Action )
+collapseNewTileNeighbors cell wfcModel =
+    let
+        wfcModelAfterCollapse =
+            collapseNewTileNeighborsHelper
+                cell
+                OrthogonalDirection.all
+                wfcModel
+
+        ( nextWfcModel, wfcActions ) =
+            WFC.flushPendingActions wfcModelAfterCollapse
+    in
+    ( WFC.toTilemap nextWfcModel
+    , wfcActions
     )
+
+
+collapseNewTileNeighborsHelper : Cell -> List OrthogonalDirection -> WFC.Model -> WFC.Model
+collapseNewTileNeighborsHelper origin remainingDirs wfcModel =
+    case remainingDirs of
+        [] ->
+            wfcModel
+
+        dir :: otherDirs ->
+            let
+                maybeTile =
+                    tileNeighborIn dir origin (WFC.toTilemap wfcModel)
+
+                nextWFCModel =
+                    processTileNeighbor maybeTile wfcModel
+            in
+            collapseNewTileNeighborsHelper origin otherDirs nextWFCModel
+
+
+processTileNeighbor : Maybe ( Cell, Tile ) -> WFC.Model -> WFC.Model
+processTileNeighbor maybeTile wfcModel =
+    case maybeTile of
+        Just ( cell, tile ) ->
+            case tile.kind of
+                Fixed _ ->
+                    wfcModel
+                        |> WFC.resetCell cell
+                        |> WFC.collapse cell
+
+                Superposition _ ->
+                    wfcModel
+
+        Nothing ->
+            wfcModel
 
 
 removeTile : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )

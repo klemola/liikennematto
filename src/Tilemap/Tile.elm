@@ -1,6 +1,5 @@
 module Tilemap.Tile exposing
     ( Action(..)
-    , OrthogonalNeighbors
     , Tile
     , TileFSM
     , TileKind(..)
@@ -268,49 +267,3 @@ initializeFSM op =
                     constructing
     in
     FSM.initialize initialState
-
-
-
---
--- Bit mask
---
-
-
-type alias OrthogonalNeighbors =
-    { up : Bool
-    , left : Bool
-    , right : Bool
-    , down : Bool
-    }
-
-
-{-| Calculates tile number (ID) based on surrounding tiles, with terrain variation taken into account (e.g. Lots)
-
-    Up = 2^0 = 1
-    Left = 2^1 = 2
-    Right = 2^2 = 4
-    Down = 2^3 = 8
-    Terrain modifier = 2^4 = 16
-
-    e.g. tile bordered by tiles in Up, Left and Right directions, with the modifier on
-
-    1*1 + 2*1 + 4*1 + 8*0 + 16 * 1 = 10111 = 23
-
--}
-fiveBitBitmask : OrthogonalNeighbors -> Bool -> Int
-fiveBitBitmask { up, left, right, down } terrainModifier =
-    -- 1 * up
-    boolToBinary up
-        + (2 * boolToBinary left)
-        + (4 * boolToBinary right)
-        + (8 * boolToBinary down)
-        + (16 * boolToBinary terrainModifier)
-
-
-boolToBinary : Bool -> Int
-boolToBinary booleanValue =
-    if booleanValue then
-        1
-
-    else
-        0

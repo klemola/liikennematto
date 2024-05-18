@@ -5,7 +5,10 @@ module Tilemap.WFC exposing
     , contextDebug
     , failed
     , flushPendingActions
+    , fromTilemap
     , init
+    , propagateConstraints
+    , resetCell
     , solve
     , stateDebug
     , step
@@ -33,6 +36,7 @@ import Tilemap.Core
         , foldTiles
         , forAllTiles
         , getTilemapConfig
+        , resetTileBySurroundings
         , setSuperpositionOptions
         , tileByCell
         )
@@ -46,6 +50,7 @@ import Tilemap.TileConfig as TileConfig
         , TileId
         , socketByDirection
         , socketByDirectionWithConfig
+        , tileConfigId
         )
 
 
@@ -90,8 +95,13 @@ type WFCFailure
 
 init : TilemapConfig -> Random.Seed -> Model
 init tilemapConfig initialSeed =
+    fromTilemap (createTilemap tilemapConfig) initialSeed
+
+
+fromTilemap : Tilemap -> Random.Seed -> Model
+fromTilemap tilemap initialSeed =
     Model
-        { tilemap = createTilemap tilemapConfig
+        { tilemap = tilemap
         , currentCell = Nothing
         , targetCell = Nothing
         , openSteps = []
@@ -255,11 +265,8 @@ step_ endCondition (Model ({ openSteps, previousSteps, tilemap, pendingActions }
 collapse : Cell -> Model -> Model
 collapse cell model =
     let
-        withCurrentStepsSolved =
-            step StopAtEmptySteps model
-
         (Model modelDetails) =
-            withCurrentStepsSolved
+            step StopAtEmptySteps model
     in
     case tileByCell modelDetails.tilemap cell |> Maybe.map .kind of
         Just (Superposition options) ->
@@ -270,6 +277,9 @@ collapse cell model =
             case randomTileId |> Maybe.map tileById of
                 Just tileConfig ->
                     let
+                        _ =
+                            Debug.log "collapse -> superposition options" ( options, tileConfigId tileConfig )
+
                         withCollapsedCell =
                             Model
                                 { modelDetails
@@ -287,6 +297,21 @@ collapse cell model =
             model
 
 
+propagateConstraints : Cell -> Model -> Model
+propagateConstraints cell (Model modelDetails) =
+    let
+        newSteps =
+            propagateConstraintsSteps modelDetails.tilemap cell
+
+        withSteps =
+            Model
+                { modelDetails
+                    | openSteps = modelDetails.openSteps ++ newSteps
+                }
+    in
+    flushOpenSteps withSteps
+
+
 flushOpenSteps : Model -> Model
 flushOpenSteps ((Model modelContents) as model) =
     if List.isEmpty modelContents.openSteps then
@@ -294,6 +319,15 @@ flushOpenSteps ((Model modelContents) as model) =
 
     else
         flushOpenSteps (step StopAtEmptySteps model)
+
+
+resetCell : Cell -> Model -> Model
+resetCell cell (Model modelContents) =
+    let
+        _ =
+            Debug.log "resetCell" (Cell.toString cell)
+    in
+    Model { modelContents | tilemap = resetTileBySurroundings cell modelContents.tilemap }
 
 
 
@@ -313,15 +347,8 @@ processStep tilemap currentStep =
 
                 TileConfig.Single singleTile ->
                     let
-                        tilemapConfig =
-                            getTilemapConfig tilemap
-
-                        stepInDirection dir =
-                            Cell.nextOrthogonalCell tilemapConfig dir cell
-                                |> Maybe.map (PropagateConstraints cell)
-
                         nextSteps =
-                            List.filterMap stepInDirection OrthogonalDirection.all
+                            propagateConstraintsSteps tilemap cell
 
                         ( nextTilemap, tileActions ) =
                             addTileInstantly cell singleTile.id tilemap
@@ -338,6 +365,19 @@ processStep tilemap currentStep =
                 |> Result.fromMaybe TileNotFound
                 |> Result.andThen (updateSuperpositionOptions tilemap from to)
                 |> Result.map (\nextTilemap -> ( [], [], nextTilemap ))
+
+
+propagateConstraintsSteps : Tilemap -> Cell -> List Step
+propagateConstraintsSteps tilemap cell =
+    let
+        tilemapConfig =
+            getTilemapConfig tilemap
+
+        stepInDirection dir =
+            Cell.nextOrthogonalCell tilemapConfig dir cell
+                |> Maybe.map (PropagateConstraints cell)
+    in
+    List.filterMap stepInDirection OrthogonalDirection.all
 
 
 updateSuperpositionOptions : Tilemap -> Cell -> Cell -> ( Tile, Tile ) -> Result WFCFailure Tilemap

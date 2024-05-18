@@ -17,6 +17,7 @@ module Tilemap.Cell exposing
     , identical
     , nextOrthogonalCell
     , orthogonalDirection
+    , orthogonalNeighbors
     , placeIn
     , quadrantNeighbors
     , size
@@ -28,7 +29,7 @@ import BoundingBox2d exposing (BoundingBox2d)
 import Common exposing (GlobalCoordinates)
 import Length exposing (Length)
 import Lib.DiagonalDirection exposing (DiagonalDirection(..))
-import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
+import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
 import Maybe.Extra as Maybe
 import Point2d exposing (Point2d)
 import Quantity exposing (negativeInfinity)
@@ -227,6 +228,11 @@ nextDiagonalCell constraints dir cell =
 
         BottomRight ->
             fromCoordinates constraints ( x + 1, y + 1 )
+
+
+orthogonalNeighbors : Constraints a -> Cell -> List Cell
+orthogonalNeighbors constraints cell =
+    List.filterMap (\dir -> nextOrthogonalCell constraints dir cell) OrthogonalDirection.all
 
 
 {-| Corner plus natural neighbors (clockwise).

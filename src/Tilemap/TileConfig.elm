@@ -3,10 +3,15 @@ module Tilemap.TileConfig exposing
     , SingleTile
     , Socket(..)
     , Sockets
+    , TileBiome(..)
     , TileConfig(..)
     , TileId
     , allSockets
+    , biome
     , complexity
+    , mirroredHorizontally
+    , mirroredVertically
+    , rotatedClockwise
     , socketByDirection
     , socketByDirectionWithConfig
     , sockets
@@ -24,35 +29,29 @@ type alias TileId =
     Int
 
 
-type alias Sockets =
-    { top : Socket
-    , right : Socket
-    , bottom : Socket
-    , left : Socket
-    }
+type TileConfig
+    = Single SingleTile
+    | Large LargeTile
 
 
 type alias SingleTile =
     { id : TileId
-    , sockets : Sockets
     , complexity : Float -- 0.0 to 1.0
+    , biome : TileBiome
+    , sockets : Sockets
     , baseTileId : Maybe TileId
     }
 
 
 type alias LargeTile =
     { id : TileId
+    , complexity : Float -- 0.0 to 1.0
+    , biome : TileBiome
     , tiles : Array SingleTile
     , width : Int
     , height : Int
     , anchorIndex : Int
-    , complexity : Float -- 0.0 to 1.0
     }
-
-
-type TileConfig
-    = Single SingleTile
-    | Large LargeTile
 
 
 type Socket
@@ -66,6 +65,20 @@ type Socket
     | White
     | LightBrown
     | DarkBrown
+
+
+type alias Sockets =
+    { top : Socket
+    , right : Socket
+    , bottom : Socket
+    , left : Socket
+    }
+
+
+type TileBiome
+    = Road
+    | Lot
+    | Nature
 
 
 allSockets : List Socket
@@ -101,6 +114,16 @@ complexity tileConfig =
 
         Large largeTile ->
             largeTile.complexity
+
+
+biome : TileConfig -> TileBiome
+biome tileConfig =
+    case tileConfig of
+        Single singleTile ->
+            singleTile.biome
+
+        Large largeTile ->
+            largeTile.biome
 
 
 sockets : TileConfig -> Sockets
@@ -164,3 +187,58 @@ toString tileConfig =
 
         Large largeTile ->
             "Large " ++ String.fromInt largeTile.id
+
+
+mirroredHorizontally : TileId -> TileConfig -> TileConfig
+mirroredHorizontally id tileConfig =
+    case tileConfig of
+        Single st ->
+            let
+                sockets_ =
+                    st.sockets
+            in
+            Single
+                { st
+                    | id = id
+                    , sockets = { sockets_ | left = sockets_.right, right = sockets_.left }
+                }
+
+        Large _ ->
+            tileConfig
+
+
+mirroredVertically : TileId -> TileConfig -> TileConfig
+mirroredVertically id tileConfig =
+    case tileConfig of
+        Single st ->
+            let
+                sockets_ =
+                    st.sockets
+            in
+            Single
+                { st
+                    | id = id
+                    , sockets = { sockets_ | top = sockets_.bottom, bottom = sockets_.top }
+                }
+
+        Large _ ->
+            tileConfig
+
+
+rotatedClockwise : TileId -> TileConfig -> TileConfig
+rotatedClockwise id tileConfig =
+    case tileConfig of
+        Single st ->
+            Single
+                { st
+                    | id = id
+                    , sockets =
+                        { top = st.sockets.left
+                        , right = st.sockets.top
+                        , bottom = st.sockets.right
+                        , left = st.sockets.bottom
+                        }
+                }
+
+        Large _ ->
+            tileConfig

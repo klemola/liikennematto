@@ -8,8 +8,10 @@ module Tilemap.Core exposing
     , addTileInstantly
     , anchorByCell
     , canBuildRoadAt
+    , cellBitmask
     , cellHasAnchor
     , cellHasFixedTile
+    , cellOrthogonalNeighbors
     , createTilemap
     , fixedTileByCell
     , foldTiles
@@ -19,8 +21,11 @@ module Tilemap.Core exposing
     , inTilemapBounds
     , removeAnchor
     , removeTile
+    , resetTileBySurroundings
     , setSuperpositionOptions
     , tileByCell
+    , tileNeighborIn
+    , tileToConfig
     , tilemapBoundingBox
     , tilemapFromCells
     , tilemapIntersects
@@ -32,12 +37,13 @@ module Tilemap.Core exposing
 import Array exposing (Array)
 import Array.Extra as Array
 import BoundingBox2d exposing (BoundingBox2d)
-import Common exposing (GlobalCoordinates)
-import Data.TileSet as TileSet
+import Common exposing (GlobalCoordinates, andCarry)
+import Data.TileSet as TileSet exposing (tileById, tileIdsFromBitmask)
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Duration exposing (Duration)
 import Length exposing (Length)
+import Lib.Bitmask exposing (OrthogonalNeighbors, fourBitMask)
 import Lib.Collection exposing (Id)
 import Lib.DiagonalDirection as DiagonalDirection exposing (DiagonalDirection(..))
 import Lib.FSM as FSM
@@ -52,7 +58,7 @@ import Tilemap.Tile as Tile
         , TileKind(..)
         , TileOperation
         )
-import Tilemap.TileConfig exposing (TileId)
+import Tilemap.TileConfig as TileConfig exposing (TileBiome, TileConfig, TileId)
 
 
 type Tilemap
@@ -124,39 +130,54 @@ initTile tilemapConfig index =
     index
         |> Cell.fromArray1DIndexUnsafe tilemapConfig
         |> Cell.connectedBounds tilemapConfig
-        |> Maybe.map boundarySuperposition
+        |> Maybe.map (boundarySuperposition >> Superposition)
         |> Maybe.withDefault (Superposition TileSet.tileIds)
         |> Tile.init
 
 
-boundarySuperposition : Cell.Boundary -> TileKind
+resetTileBySurroundings : Cell -> Tilemap -> Tilemap
+resetTileBySurroundings cell tilemap =
+    let
+        tileIds =
+            cellBitmask cell tilemap
+                |> tileIdsFromBitmask
+    in
+    setSuperpositionOptions cell tileIds tilemap
+
+
+cellBitmask : Cell -> Tilemap -> Int
+cellBitmask cell tilemap =
+    tilemap
+        |> cellOrthogonalNeighbors cell TileConfig.Road
+        |> fourBitMask
+
+
+boundarySuperposition : Cell.Boundary -> List TileId
 boundarySuperposition boundary =
-    Superposition
-        (case boundary of
-            Corner TopLeft ->
-                TileSet.topLeftCornerTileIds
+    case boundary of
+        Corner TopLeft ->
+            TileSet.topLeftCornerTileIds
 
-            Corner TopRight ->
-                TileSet.topRightCornerTileIds
+        Corner TopRight ->
+            TileSet.topRightCornerTileIds
 
-            Corner BottomLeft ->
-                TileSet.bottomLeftCornerTileIds
+        Corner BottomLeft ->
+            TileSet.bottomLeftCornerTileIds
 
-            Corner BottomRight ->
-                TileSet.bottomRightCornerTileIds
+        Corner BottomRight ->
+            TileSet.bottomRightCornerTileIds
 
-            Edge Left ->
-                TileSet.leftEdgeTileIds
+        Edge Left ->
+            TileSet.leftEdgeTileIds
 
-            Edge Right ->
-                TileSet.rightEdgeTileIds
+        Edge Right ->
+            TileSet.rightEdgeTileIds
 
-            Edge Up ->
-                TileSet.topEdgeTileIds
+        Edge Up ->
+            TileSet.topEdgeTileIds
 
-            Edge Down ->
-                TileSet.bottomEdgeTileIds
-        )
+        Edge Down ->
+            TileSet.bottomEdgeTileIds
 
 
 fixedTileByCell : Tilemap -> Cell -> Maybe Tile
@@ -182,6 +203,11 @@ tileByCell tilemap cell =
             Cell.array1DIndex tilemapContents.config cell
     in
     Array.get idx tilemapContents.cells
+
+
+tileToConfig : Tile -> Maybe TileConfig
+tileToConfig =
+    Tile.id >> Maybe.map tileById
 
 
 extractFixedTile : Tile -> Maybe Tile
@@ -356,29 +382,55 @@ tilemapBoundingBox (Tilemap tilemapContents) =
     tilemapContents.boundingBox
 
 
-updateCell : Cell -> Tile -> Tilemap -> Tilemap
-updateCell cell tile tilemap =
+cellOrthogonalNeighbors : Cell -> TileBiome -> Tilemap -> OrthogonalNeighbors
+cellOrthogonalNeighbors origin byBiome tilemap =
     let
-        (Tilemap tilemapContents) =
-            tilemap
-
-        idx =
-            Cell.array1DIndex tilemapContents.config cell
+        predicate =
+            \tileConfig -> TileConfig.biome tileConfig == byBiome
     in
-    Tilemap { tilemapContents | cells = tilemapContents.cells |> Array.set idx tile }
+    { up = cellOrthogonalNeighborIn Up origin predicate tilemap
+    , left = cellOrthogonalNeighborIn Left origin predicate tilemap
+    , right = cellOrthogonalNeighborIn Right origin predicate tilemap
+    , down = cellOrthogonalNeighborIn Down origin predicate tilemap
+    }
 
 
-setSuperpositionOptions : Cell -> List TileId -> Tilemap -> Tilemap
-setSuperpositionOptions cell nextOptions tilemap =
-    case tileByCell tilemap cell of
-        Just tile ->
-            -- Either retains superposition with next set of tileIds or unfixes the tile, no need to match on the kind
-            updateCell cell
-                { tile | kind = Superposition nextOptions }
-                tilemap
+cellOrthogonalNeighborIn : OrthogonalDirection -> Cell -> (TileConfig -> Bool) -> Tilemap -> Bool
+cellOrthogonalNeighborIn dir cell tilePredicate tilemap =
+    tilemap
+        |> tileNeighborIn dir cell
+        |> Maybe.andThen (Tuple.second >> Tile.id)
+        |> Maybe.map (tileById >> tilePredicate)
+        |> Maybe.withDefault False
 
-        Nothing ->
-            tilemap
+
+tileNeighborIn : OrthogonalDirection -> Cell -> Tilemap -> Maybe ( Cell, Tile )
+tileNeighborIn dir origin tilemap =
+    let
+        tilemapConfig =
+            getTilemapConfig tilemap
+
+        maybeCell =
+            Cell.nextOrthogonalCell tilemapConfig dir origin
+
+        maybeTile =
+            maybeCell
+                |> andCarry (fixedTileByCell tilemap)
+                |> Maybe.andThen
+                    (\( neighborCell, tile ) ->
+                        let
+                            state =
+                                FSM.toCurrentState tile.fsm
+                        in
+                        -- tiles pending removal should not be used when checking tile neighbors
+                        if state == Tile.Removing || state == Tile.Removed then
+                            Nothing
+
+                        else
+                            Just ( neighborCell, tile )
+                    )
+    in
+    maybeTile
 
 
 
@@ -524,6 +576,37 @@ applyTilemapOperation operation origin tileId tilemap =
     ( updateCell origin originTile tilemap
     , tileActions
     )
+
+
+updateCell : Cell -> Tile -> Tilemap -> Tilemap
+updateCell cell tile tilemap =
+    let
+        (Tilemap tilemapContents) =
+            tilemap
+
+        idx =
+            Cell.array1DIndex tilemapContents.config cell
+    in
+    Tilemap { tilemapContents | cells = tilemapContents.cells |> Array.set idx tile }
+
+
+setSuperpositionOptions : Cell -> List TileId -> Tilemap -> Tilemap
+setSuperpositionOptions cell nextOptions tilemap =
+    case tileByCell tilemap cell of
+        Just tile ->
+            -- Either retains superposition with next set of tileIds or unfixes the tile, no need to match on the kind
+            updateCell cell
+                { tile | kind = Superposition nextOptions }
+                tilemap
+
+        Nothing ->
+            tilemap
+
+
+
+--
+-- Anchors
+--
 
 
 addAnchor : Cell -> Id -> OrthogonalDirection -> Tilemap -> Tilemap

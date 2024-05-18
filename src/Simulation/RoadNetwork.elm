@@ -49,9 +49,11 @@ import Tilemap.Core
         , anchorByCell
         , fixedTileByCell
         , getTilemapConfig
+        , tileToConfig
         , tilemapToList
         )
 import Tilemap.Tile as Tile exposing (Tile)
+import Tilemap.TileConfig as TileConfig
 import Vector2d exposing (Vector2d)
 
 
@@ -282,17 +284,14 @@ buildRoadNetwork : Tilemap -> Collection TrafficLight -> ( RoadNetwork, Collecti
 buildRoadNetwork tilemap trafficLights =
     let
         tilePriority ( _, tile ) =
-            -- TODO: Reimplement with WFC
-            0
+            -- TODO: Check if lot entry needs special priority
+            case tileToConfig tile of
+                Just tileConfig ->
+                    1 - TileConfig.complexity tileConfig
 
-        -- if isDeadend tile then
-        --     0
-        -- else if isLotEntry tile then
-        --     1
-        -- else if isIntersection tile then
-        --     2
-        -- else
-        --     3
+                Nothing ->
+                    0
+
         nodes =
             createConnections
                 { tilemap = tilemap
