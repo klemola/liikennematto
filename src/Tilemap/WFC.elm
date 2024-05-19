@@ -277,9 +277,6 @@ collapse cell model =
             case randomTileId |> Maybe.map tileById of
                 Just tileConfig ->
                     let
-                        _ =
-                            Debug.log "collapse -> superposition options" ( options, tileConfigId tileConfig )
-
                         withCollapsedCell =
                             Model
                                 { modelDetails
@@ -323,10 +320,6 @@ flushOpenSteps ((Model modelContents) as model) =
 
 resetCell : Cell -> Model -> Model
 resetCell cell (Model modelContents) =
-    let
-        _ =
-            Debug.log "resetCell" (Cell.toString cell)
-    in
     Model { modelContents | tilemap = resetTileBySurroundings cell modelContents.tilemap }
 
 
@@ -351,7 +344,7 @@ processStep tilemap currentStep =
                             propagateConstraintsSteps tilemap cell
 
                         ( nextTilemap, tileActions ) =
-                            addTileInstantly cell singleTile.id tilemap
+                            addTileInstantly singleTile.id cell tilemap
                     in
                     Ok ( nextSteps, tileActions, nextTilemap )
 
@@ -728,7 +721,7 @@ attemptPlaceSubgridTile tilemap largeTileId cell currentTile =
             (\neighborSteps ->
                 let
                     ( nextTilemap, tileActions ) =
-                        addTileInstantly cell currentTile.id tilemap
+                        addTileInstantly currentTile.id cell tilemap
                 in
                 ( neighborSteps, tileActions, nextTilemap )
             )

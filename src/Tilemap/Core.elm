@@ -542,12 +542,12 @@ updateTile delta tile tilemapUpdate =
     }
 
 
-addTile : Cell -> TileId -> Tilemap -> ( Tilemap, List Tile.Action )
+addTile : TileId -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
 addTile =
     applyTilemapOperation Tile.Add
 
 
-addTileInstantly : Cell -> TileId -> Tilemap -> ( Tilemap, List Tile.Action )
+addTileInstantly : TileId -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
 addTileInstantly =
     applyTilemapOperation Tile.BuildInstantly
 
@@ -567,8 +567,8 @@ removeTile origin tilemap =
             ( tilemap, [] )
 
 
-applyTilemapOperation : TileOperation -> Cell -> TileId -> Tilemap -> ( Tilemap, List Tile.Action )
-applyTilemapOperation operation origin tileId tilemap =
+applyTilemapOperation : TileOperation -> TileId -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
+applyTilemapOperation operation tileId origin tilemap =
     let
         ( originTile, tileActions ) =
             Tile.fromTileId tileId operation

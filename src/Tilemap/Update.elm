@@ -117,50 +117,63 @@ onSecondaryInput cell model =
         ( model, Cmd.none )
 
 
+
+--
+-- Tile modification
+--
+
+
 addTile : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
 addTile cell model =
     let
-        { world, renderCache } =
-            model
-
         bitmask =
-            cellBitmask cell world.tilemap
+            cellBitmask cell model.world.tilemap
     in
     case tileIdByBitmask bitmask of
         Just tileId ->
-            let
-                _ =
-                    Debug.log "add tile" ( bitmask, tileId, Cell.toString cell )
-
-                ( tilemapWithTile, addTileActions ) =
-                    Tilemap.Core.addTile cell tileId world.tilemap
-
-                wfcModel =
-                    WFC.fromTilemap tilemapWithTile model.world.seed
-                        |> WFC.propagateConstraints cell
-
-                ( withWFC, wfcTileActions ) =
-                    collapseNewTileNeighbors cell wfcModel
-
-                nextWorld =
-                    { world | tilemap = withWFC }
-            in
-            ( { model
-                | world = nextWorld
-                , renderCache = setTilemapCache nextWorld.tilemap renderCache
-              }
-            , Cmd.batch (tileActionsToCmds (addTileActions ++ wfcTileActions))
-            )
+            modifyTile cell model (Tilemap.Core.addTile tileId)
 
         Nothing ->
             ( model, Cmd.none )
 
 
-collapseNewTileNeighbors : Cell -> WFC.Model -> ( Tilemap, List Action )
-collapseNewTileNeighbors cell wfcModel =
+removeTile : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
+removeTile cell model =
+    modifyTile cell model Tilemap.Core.removeTile
+
+
+modifyTile : Cell -> Liikennematto -> (Cell -> Tilemap -> ( Tilemap, List Action )) -> ( Liikennematto, Cmd Message )
+modifyTile cell model tilemapChangeFn =
+    let
+        { world, renderCache } =
+            model
+
+        ( tilemapWithTile, tilemapChangeActions ) =
+            tilemapChangeFn cell world.tilemap
+
+        wfcModel =
+            WFC.fromTilemap tilemapWithTile model.world.seed
+                |> WFC.propagateConstraints cell
+
+        ( withWFC, wfcTileActions ) =
+            collapseTileNeighbors cell wfcModel
+
+        nextWorld =
+            { world | tilemap = withWFC }
+    in
+    ( { model
+        | world = nextWorld
+        , renderCache = setTilemapCache nextWorld.tilemap renderCache
+      }
+    , Cmd.batch (tileActionsToCmds (tilemapChangeActions ++ wfcTileActions))
+    )
+
+
+collapseTileNeighbors : Cell -> WFC.Model -> ( Tilemap, List Action )
+collapseTileNeighbors cell wfcModel =
     let
         wfcModelAfterCollapse =
-            collapseNewTileNeighborsHelper
+            collapseTileNeighborsHelper
                 cell
                 OrthogonalDirection.all
                 wfcModel
@@ -173,8 +186,8 @@ collapseNewTileNeighbors cell wfcModel =
     )
 
 
-collapseNewTileNeighborsHelper : Cell -> List OrthogonalDirection -> WFC.Model -> WFC.Model
-collapseNewTileNeighborsHelper origin remainingDirs wfcModel =
+collapseTileNeighborsHelper : Cell -> List OrthogonalDirection -> WFC.Model -> WFC.Model
+collapseTileNeighborsHelper origin remainingDirs wfcModel =
     case remainingDirs of
         [] ->
             wfcModel
@@ -187,7 +200,7 @@ collapseNewTileNeighborsHelper origin remainingDirs wfcModel =
                 nextWFCModel =
                     processTileNeighbor maybeTile wfcModel
             in
-            collapseNewTileNeighborsHelper origin otherDirs nextWFCModel
+            collapseTileNeighborsHelper origin otherDirs nextWFCModel
 
 
 processTileNeighbor : Maybe ( Cell, Tile ) -> WFC.Model -> WFC.Model
@@ -207,24 +220,10 @@ processTileNeighbor maybeTile wfcModel =
             wfcModel
 
 
-removeTile : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
-removeTile cell model =
-    let
-        { world, renderCache } =
-            model
 
-        ( nextTilemap, tileActions ) =
-            Tilemap.Core.removeTile cell world.tilemap
-
-        nextWorld =
-            { world | tilemap = nextTilemap }
-    in
-    ( { model
-        | world = nextWorld
-        , renderCache = setTilemapCache nextTilemap renderCache
-      }
-    , Cmd.batch (tileActionsToCmds tileActions)
-    )
+--
+-- Helpers
+--
 
 
 tileActionsToCmds : List Action -> List (Cmd Message)
