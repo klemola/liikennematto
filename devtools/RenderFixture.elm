@@ -31,6 +31,7 @@ main =
                 cache
                 (Model.Debug.initialDebugState
                     |> Model.Debug.toggleLayer Model.Debug.CarDebug
+                    |> Model.Debug.toggleLayer Model.Debug.RoadNetworkDebug
                 )
                 |> Element.html
     in

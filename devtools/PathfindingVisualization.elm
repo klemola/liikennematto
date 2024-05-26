@@ -61,7 +61,7 @@ world =
         }
 
 
-renderCache : RenderCache
+renderCache : RenderCache Msg
 renderCache =
     RenderCache.new world roads
 

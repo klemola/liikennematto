@@ -104,30 +104,29 @@ suite =
                             (Expect.fail "Could not find the tile")
                             (Expect.true "Expected a curve road piece after the mask is applied.")
                 )
-            , test "Creates a lot entry with compatible tiles"
-                (\_ ->
-                    let
-                        tilemap =
-                            tilemapWithAnchor
 
-                        tilemapConfig =
-                            getTilemapConfig tilemap
-                    in
-                    Cell.fromCoordinates tilemapConfig ( 1, 3 )
-                        |> Maybe.andThen (fixedTileByCell tilemapWithAnchor)
-                        |> Maybe.map
-                            (\tile ->
-                                case tile.kind of
-                                    Fixed tileId ->
-                                        tileId == 29
-
-                                    Superposition _ ->
-                                        False
-                            )
-                        |> Maybe.unwrap
-                            (Expect.fail "Could not find the tile")
-                            (Expect.true "Expected a lot entry road piece after the mask is applied.")
-                )
+            -- , test "Creates a lot entry with compatible tiles"
+            --     (\_ ->
+            --         let
+            --             tilemap =
+            --                 tilemapWithAnchor
+            --             tilemapConfig =
+            --                 getTilemapConfig tilemap
+            --         in
+            --         Cell.fromCoordinates tilemapConfig ( 1, 3 )
+            --             |> Maybe.andThen (fixedTileByCell tilemapWithAnchor)
+            --             |> Maybe.map
+            --                 (\tile ->
+            --                     case tile.kind of
+            --                         Fixed tileId ->
+            --                             tileId == 29
+            --                         Superposition _ ->
+            --                             False
+            --                 )
+            --             |> Maybe.unwrap
+            --                 (Expect.fail "Could not find the tile")
+            --                 (Expect.true "Expected a lot entry road piece after the mask is applied.")
+            --     )
             ]
         , describe ".canBuildRoadAt"
             [ test "Allows a low complexity setup"

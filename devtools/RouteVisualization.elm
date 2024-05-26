@@ -26,7 +26,7 @@ import Simulation.Traffic exposing (RuleSetup)
 type alias Model =
     { world : World
     , activeCar : Car
-    , cache : RenderCache
+    , cache : RenderCache Msg
     , clicked : Maybe Clicked
     }
 

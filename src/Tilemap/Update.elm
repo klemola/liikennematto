@@ -1,4 +1,4 @@
-module Tilemap.Update exposing (update)
+module Tilemap.Update exposing (modifyTile, update)
 
 import Audio exposing (playSound)
 import Data.TileSet exposing (tileIdByBitmask)
@@ -11,6 +11,7 @@ import Model.Liikennematto
         )
 import Model.RenderCache exposing (refreshTilemapCache, setTilemapCache)
 import Model.World as World
+import Random
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
@@ -131,7 +132,7 @@ addTile cell model =
     in
     case tileIdByBitmask bitmask of
         Just tileId ->
-            modifyTile cell model (Tilemap.Core.addTile tileId)
+            modifyTileAndUpdate cell model (Tilemap.Core.addTile tileId)
 
         Nothing ->
             ( model, Cmd.none )
@@ -139,24 +140,17 @@ addTile cell model =
 
 removeTile : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
 removeTile cell model =
-    modifyTile cell model Tilemap.Core.removeTile
+    modifyTileAndUpdate cell model Tilemap.Core.removeTile
 
 
-modifyTile : Cell -> Liikennematto -> (Cell -> Tilemap -> ( Tilemap, List Action )) -> ( Liikennematto, Cmd Message )
-modifyTile cell model tilemapChangeFn =
+modifyTileAndUpdate : Cell -> Liikennematto -> (Cell -> Tilemap -> ( Tilemap, List Action )) -> ( Liikennematto, Cmd Message )
+modifyTileAndUpdate cell model tilemapChangeFn =
     let
         { world, renderCache } =
             model
 
-        ( tilemapWithTile, tilemapChangeActions ) =
-            tilemapChangeFn cell world.tilemap
-
-        wfcModel =
-            WFC.fromTilemap tilemapWithTile model.world.seed
-                |> WFC.propagateConstraints cell
-
-        ( withWFC, wfcTileActions ) =
-            collapseTileNeighbors cell wfcModel
+        ( withWFC, actions ) =
+            modifyTile cell world.tilemap world.seed tilemapChangeFn
 
         nextWorld =
             { world | tilemap = withWFC }
@@ -165,7 +159,25 @@ modifyTile cell model tilemapChangeFn =
         | world = nextWorld
         , renderCache = setTilemapCache nextWorld.tilemap renderCache
       }
-    , Cmd.batch (tileActionsToCmds (tilemapChangeActions ++ wfcTileActions))
+    , Cmd.batch (tileActionsToCmds actions)
+    )
+
+
+modifyTile : Cell -> Tilemap -> Random.Seed -> (Cell -> Tilemap -> ( Tilemap, List Action )) -> ( Tilemap, List Action )
+modifyTile cell tilemap seed tilemapChangeFn =
+    let
+        ( tilemapWithTile, tilemapChangeActions ) =
+            tilemapChangeFn cell tilemap
+
+        wfcModel =
+            WFC.fromTilemap tilemapWithTile seed
+                |> WFC.propagateConstraints cell
+
+        ( withWFC, wfcTileActions ) =
+            collapseTileNeighbors cell wfcModel
+    in
+    ( withWFC
+    , tilemapChangeActions ++ wfcTileActions
     )
 
 

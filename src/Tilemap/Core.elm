@@ -27,7 +27,6 @@ module Tilemap.Core exposing
     , tileNeighborIn
     , tileToConfig
     , tilemapBoundingBox
-    , tilemapFromCells
     , tilemapIntersects
     , tilemapSize
     , tilemapToList
@@ -98,31 +97,6 @@ createTilemap tilemapConfig =
         , boundingBox = Common.boundingBoxWithDimensions width height Point2d.origin
         , config = tilemapConfig
         }
-
-
-tilemapFromCells : TilemapConfig -> List Cell -> Tilemap
-tilemapFromCells tilemapConfig cells =
-    -- fromCellsHelper cells (createTilemap tilemapConfig)
-    -- TODO: Reimplement with WFC
-    createTilemap tilemapConfig
-
-
-
--- fromCellsHelper : List Cell -> Tilemap -> Tilemap
--- fromCellsHelper remainingCells tilemap =
---     case remainingCells of
---         [] ->
---             tilemap
---         cell :: others ->
---             let
---                 tilemapUpdateResult =
---                     tilemap
---                         |> applyTilemapOperation Tile.BuildInstantly cell
---                         |> Tuple.first
---                         -- run a FSM update cycle to make sure that tiles are not transitioning
---                         |> updateTilemap (Duration.milliseconds 1000)
---             in
---             fromCellsHelper others tilemapUpdateResult.tilemap
 
 
 initTile : TilemapConfig -> Int -> Tile

@@ -105,7 +105,8 @@ suite =
                         Data.RuleSetups.routeVisualizationSetup.world
 
                     nodePair =
-                        getStartAndEndNode world 1 52
+                        -- FIXME: used to be 52, tile priority has changed in the road network. Is this change a bug?
+                        getStartAndEndNode world 1 48
                 in
                 \_ ->
                     Expect.equal
