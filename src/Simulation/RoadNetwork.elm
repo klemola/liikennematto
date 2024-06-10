@@ -53,7 +53,7 @@ import Tilemap.Core
         , tilemapToList
         )
 import Tilemap.Tile as Tile exposing (Tile)
-import Tilemap.TileConfig as TileConfig
+import Tilemap.TileConfig as TileConfig exposing (TileConfig)
 import Vector2d exposing (Vector2d)
 
 
@@ -284,13 +284,12 @@ buildRoadNetwork : Tilemap -> Collection TrafficLight -> ( RoadNetwork, Collecti
 buildRoadNetwork tilemap trafficLights =
     let
         tilePriority ( _, tile ) =
-            -- TODO: Check if lot entry needs special priority
             case tileToConfig tile of
                 Just tileConfig ->
-                    1 - TileConfig.complexity tileConfig
+                    TileConfig.graphPriority tileConfig
 
                 Nothing ->
-                    0
+                    TileConfig.maxGraphPriority
 
         nodes =
             createConnections
@@ -372,7 +371,11 @@ toConnections : Tilemap -> Cell -> Tile -> List Connection
 toConnections tilemap cell tile =
     case Tile.id tile of
         Just tileId ->
-            case roadConnectionDirectionsByTile (tileById tileId) of
+            let
+                tileConfig =
+                    tileById tileId
+            in
+            case roadConnectionDirectionsByTile tileConfig of
                 [] ->
                     []
 
@@ -383,7 +386,11 @@ toConnections tilemap cell tile =
                         |> deadendConnections cell
 
                 multiple ->
-                    List.concatMap (connectionsByTileEntryDirection tilemap cell tile) multiple
+                    if shouldIgnoreConnections tileConfig then
+                        []
+
+                    else
+                        List.concatMap (connectionsByTileEntryDirection tilemap cell tile) multiple
 
         Nothing ->
             []
@@ -553,9 +560,32 @@ chooseConnectionCell tilemap tile direction startConnectionKind baseCell =
 
 hasOverlappingConnections : Tile -> Tile -> Bool
 hasOverlappingConnections tileA tileB =
-    -- TODO: use WFC to check edge compatibility?
-    -- hasConnectionsInMultipleDirections tileA && hasConnectionsInMultipleDirections tileB
-    False
+    hasConnectionsInMultipleDirections tileA && hasConnectionsInMultipleDirections tileB
+
+
+hasConnectionsInMultipleDirections : Tile -> Bool
+hasConnectionsInMultipleDirections tile =
+    case Tile.id tile of
+        Just tileId ->
+            let
+                tileConfig =
+                    tileById tileId
+            in
+            not (shouldIgnoreConnections tileConfig) && List.length (roadConnectionDirectionsByTile tileConfig) > 1
+
+        Nothing ->
+            False
+
+
+{-| "basic road tiles" should not create nodes, because they are always connected
+to a tile that has overlapping connections.
+
+TODO: unstable implementation don't rely on complexity alone
+
+-}
+shouldIgnoreConnections : TileConfig -> Bool
+shouldIgnoreConnections tileConfig =
+    TileConfig.complexity tileConfig < 0.2
 
 
 

@@ -26,6 +26,7 @@ import Tilemap.TileConfig as TileConfig
         ( Socket(..)
         , TileConfig
         , TileId
+        , maxGraphPriority
         , mirroredHorizontally
         , mirroredVertically
         , rotatedClockwise
@@ -329,6 +330,7 @@ grass =
     TileConfig.Single
         { id = defaultTileId
         , complexity = 0.1
+        , graphPriority = maxGraphPriority
         , biome = TileConfig.Nature
         , sockets =
             { top = Green
@@ -351,6 +353,7 @@ loneRoad =
     TileConfig.Single
         { id = 17
         , complexity = 0.1
+        , graphPriority = maxGraphPriority
         , biome = TileConfig.Road
         , sockets =
             { top = Green
@@ -367,6 +370,7 @@ horizontalRoad =
     TileConfig.Single
         { id = 6
         , complexity = 0.1
+        , graphPriority = maxGraphPriority
         , biome = TileConfig.Road
         , sockets =
             { top = Green
@@ -388,6 +392,7 @@ deadendUp =
     TileConfig.Single
         { id = 8
         , complexity = 0.1
+        , graphPriority = 0
         , biome = TileConfig.Road
         , sockets =
             { top = Green
@@ -419,6 +424,7 @@ curveBottomRight =
     TileConfig.Single
         { id = 3
         , complexity = 0.2
+        , graphPriority = maxGraphPriority
         , biome = TileConfig.Road
         , sockets =
             { top = Yellow
@@ -454,6 +460,7 @@ intersectionTUp =
     TileConfig.Single
         { id = 7
         , complexity = 0.4
+        , graphPriority = 0.2
         , biome = TileConfig.Road
         , sockets =
             { top = Pink
@@ -475,6 +482,7 @@ intersectionTLeft =
     TileConfig.Single
         { id = 11
         , complexity = 0.4
+        , graphPriority = 0.2
         , biome = TileConfig.Road
         , sockets =
             { top = Pink
@@ -496,6 +504,7 @@ intersectionCross =
     TileConfig.Single
         { id = 15
         , complexity = 0.4
+        , graphPriority = 0.2
         , biome = TileConfig.Road
         , sockets =
             { top = Pink
@@ -512,6 +521,7 @@ lotEntryTUp =
     TileConfig.Single
         { id = 20
         , complexity = 0.8
+        , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
             { top = lotEntrySocket
@@ -528,6 +538,7 @@ lotEntryTRight =
     TileConfig.Single
         { id = 21
         , complexity = 0.8
+        , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
             { top = Red
@@ -544,6 +555,7 @@ lotEntryTLeft =
     TileConfig.Single
         { id = 22
         , complexity = 0.8
+        , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
             { top = Red
@@ -565,6 +577,7 @@ lotTopLeftCorner : TileConfig.SingleTile
 lotTopLeftCorner =
     { id = 30
     , complexity = 0.6
+    , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
         { top = Green
@@ -580,6 +593,7 @@ lotTopRightCorner : TileConfig.SingleTile
 lotTopRightCorner =
     { id = 31
     , complexity = 0.6
+    , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
         { top = Green
@@ -595,6 +609,7 @@ lotBottomRightCorner : TileConfig.SingleTile
 lotBottomRightCorner =
     { id = 32
     , complexity = 0.6
+    , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
         { top = largeTileInnerEdgeSocket
@@ -610,6 +625,7 @@ lotBottomLeftCorner : TileConfig.SingleTile
 lotBottomLeftCorner =
     { id = 33
     , complexity = 0.6
+    , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
         { top = largeTileInnerEdgeSocket
@@ -625,6 +641,7 @@ lotTopEdge : TileConfig.SingleTile
 lotTopEdge =
     { id = 34
     , complexity = 0.6
+    , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
         { top = Green
@@ -640,6 +657,7 @@ lotRightEdge : TileConfig.SingleTile
 lotRightEdge =
     { id = 35
     , complexity = 0.6
+    , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
         { top = largeTileInnerEdgeSocket
@@ -655,6 +673,7 @@ lotBottomEdge : TileConfig.SingleTile
 lotBottomEdge =
     { id = 36
     , complexity = 0.6
+    , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
         { top = largeTileInnerEdgeSocket
@@ -670,6 +689,7 @@ lotLeftEdge : TileConfig.SingleTile
 lotLeftEdge =
     { id = 37
     , complexity = 0.6
+    , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
         { top = largeTileInnerEdgeSocket
@@ -685,6 +705,7 @@ lotInnerSpace : TileConfig.SingleTile
 lotInnerSpace =
     { id = 38
     , complexity = 0.6
+    , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
         { top = largeTileInnerEdgeSocket
@@ -700,6 +721,7 @@ lotDrivewayRight : TileConfig.SingleTile
 lotDrivewayRight =
     { id = 40
     , complexity = 0.6
+    , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
         { top = largeTileInnerEdgeSocket
@@ -715,6 +737,7 @@ lotDrivewayLeft : TileConfig.SingleTile
 lotDrivewayLeft =
     { id = 41
     , complexity = 0.6
+    , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
         { top = largeTileInnerEdgeSocket
@@ -730,6 +753,7 @@ lotDrivewayUp : TileConfig.SingleTile
 lotDrivewayUp =
     { id = 42
     , complexity = 0.8
+    , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
         { top = largeTileInnerEdgeSocket

@@ -9,6 +9,8 @@ module Tilemap.TileConfig exposing
     , allSockets
     , biome
     , complexity
+    , graphPriority
+    , maxGraphPriority
     , mirroredHorizontally
     , mirroredVertically
     , rotatedClockwise
@@ -37,6 +39,7 @@ type TileConfig
 type alias SingleTile =
     { id : TileId
     , complexity : Float -- 0.0 to 1.0
+    , graphPriority : Float -- 0.0. to 1.0
     , biome : TileBiome
     , sockets : Sockets
     , baseTileId : Maybe TileId
@@ -114,6 +117,21 @@ complexity tileConfig =
 
         Large largeTile ->
             largeTile.complexity
+
+
+maxGraphPriority : Float
+maxGraphPriority =
+    1.0
+
+
+graphPriority : TileConfig -> Float
+graphPriority tileConfig =
+    case tileConfig of
+        Single singleTile ->
+            singleTile.graphPriority
+
+        Large _ ->
+            maxGraphPriority
 
 
 biome : TileConfig -> TileBiome
