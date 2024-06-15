@@ -137,7 +137,7 @@ renderTile cache cell tileKind =
                 , tileStyles = ""
                 }
 
-        Superposition _ ->
+        _ ->
             nothing
 
 

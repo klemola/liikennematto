@@ -1,25 +1,20 @@
 module Data.TileSet exposing
     ( allTiles
-    , bottomEdgeTileIds
-    , bottomLeftCornerTileIds
-    , bottomRightCornerTileIds
     , isTileLotEntryTile
-    , leftEdgeTileIds
     , pairingsForSocket
-    , rightEdgeTileIds
     , roadConnectionDirectionsByTile
     , tileById
     , tileIdByBitmask
     , tileIds
+    , tileIdsByOrthogonalMatch
     , tileIdsFromBitmask
-    , topEdgeTileIds
-    , topLeftCornerTileIds
-    , topRightCornerTileIds
     )
 
 import Array
 import Dict exposing (Dict)
-import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
+import Lib.Bitmask exposing (OrthogonalMatch)
+import Lib.DiagonalDirection exposing (DiagonalDirection(..))
+import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
 import List.Nonempty
 import Tilemap.TileConfig as TileConfig
     exposing
@@ -231,76 +226,34 @@ tileIds =
     List.map TileConfig.tileConfigId allTiles
 
 
-topLeftCornerTileIds : List TileId
-topLeftCornerTileIds =
-    List.filterMap
-        (compatibleTileId
-            (\sockets -> sockets.top == defaultSocket && sockets.left == defaultSocket)
-        )
-        allTiles
+noOrthogonalMatch : OrthogonalMatch
+noOrthogonalMatch =
+    { up = False
+    , left = False
+    , right = False
+    , down = False
+    }
 
 
-topRightCornerTileIds : List TileId
-topRightCornerTileIds =
-    List.filterMap
-        (compatibleTileId
-            (\sockets -> sockets.top == defaultSocket && sockets.right == defaultSocket)
-        )
-        allTiles
+tileIdsByOrthogonalMatch : OrthogonalMatch -> List TileId
+tileIdsByOrthogonalMatch ({ up, left, right, down } as neighbors) =
+    if neighbors == noOrthogonalMatch then
+        tileIds
 
+    else
+        let
+            conditions sockets =
+                [ ( up, sockets.top ), ( left, sockets.left ), ( right, sockets.right ), ( down, sockets.bottom ) ]
+                    |> List.all
+                        (\( hasNeighbor, socket ) ->
+                            if hasNeighbor then
+                                socket == defaultSocket
 
-bottomLeftCornerTileIds : List TileId
-bottomLeftCornerTileIds =
-    List.filterMap
-        (compatibleTileId
-            (\sockets -> sockets.bottom == defaultSocket && sockets.left == defaultSocket)
-        )
-        allTiles
-
-
-bottomRightCornerTileIds : List TileId
-bottomRightCornerTileIds =
-    List.filterMap
-        (compatibleTileId
-            (\sockets -> sockets.bottom == defaultSocket && sockets.right == defaultSocket)
-        )
-        allTiles
-
-
-leftEdgeTileIds : List TileId
-leftEdgeTileIds =
-    List.filterMap
-        (compatibleTileId
-            (\sockets -> sockets.left == defaultSocket)
-        )
-        allTiles
-
-
-rightEdgeTileIds : List TileId
-rightEdgeTileIds =
-    List.filterMap
-        (compatibleTileId
-            (\sockets -> sockets.right == defaultSocket)
-        )
-        allTiles
-
-
-topEdgeTileIds : List TileId
-topEdgeTileIds =
-    List.filterMap
-        (compatibleTileId
-            (\sockets -> sockets.top == defaultSocket)
-        )
-        allTiles
-
-
-bottomEdgeTileIds : List TileId
-bottomEdgeTileIds =
-    List.filterMap
-        (compatibleTileId
-            (\sockets -> sockets.bottom == defaultSocket)
-        )
-        allTiles
+                            else
+                                True
+                        )
+        in
+        List.filterMap (compatibleTileId conditions) allTiles
 
 
 compatibleTileId : (TileConfig.Sockets -> Bool) -> TileConfig -> Maybe TileId

@@ -19,6 +19,7 @@ module Tilemap.Tile exposing
 import Audio exposing (Sound)
 import Duration exposing (Duration)
 import Lib.FSM as FSM exposing (FSM, State)
+import Tilemap.Cell exposing (Cell)
 import Tilemap.TileConfig exposing (TileId)
 
 
@@ -29,7 +30,8 @@ type alias Tile =
 
 
 type TileKind
-    = Fixed TileId
+    = Unintialized
+    | Fixed TileId
     | Superposition (List TileId)
 
 
@@ -39,6 +41,7 @@ type alias TileFSM =
 
 type Action
     = PlayAudio Sound
+    | OnRemoved Cell
 
 
 type TileState
@@ -105,7 +108,7 @@ isFixed tile =
         Fixed _ ->
             True
 
-        Superposition _ ->
+        _ ->
             False
 
 
@@ -129,7 +132,7 @@ id tile =
         Fixed tileId ->
             Just tileId
 
-        Superposition _ ->
+        _ ->
             Nothing
 
 

@@ -209,6 +209,10 @@ tilemapConfig =
     }
 
 
+debugState =
+    initialDebugState |> Model.Debug.toggleLayer Model.Debug.WFCDebug
+
+
 initialWorld : World
 initialWorld =
     World.empty tilemapConfig
@@ -237,7 +241,7 @@ initial flags =
         RenderCache.new initialWorld roads
             |> RenderCache.setTileListFilter NoFilter
     , dynamicTiles = []
-    , debug = initialDebugState
+    , debug = debugState
     , errorMessage = Nothing
     , editor = UI.Editor.initialModel
     , zoomControl = UI.ZoomControl.initialModel
@@ -257,7 +261,7 @@ fromNewGame previousWorld model =
         , previousWorld = previousWorld
         , renderCache = RenderCache.new initialWorld roads
         , simulationActive = True
-        , debug = initialDebugState
+        , debug = debugState
     }
 
 
@@ -270,7 +274,7 @@ fromPreviousGame model =
                 , previousWorld = Nothing
                 , renderCache = RenderCache.new previousWorld roads
                 , simulationActive = True
-                , debug = initialDebugState
+                , debug = debugState
             }
 
         Nothing ->

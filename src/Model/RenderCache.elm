@@ -11,6 +11,7 @@ module Model.RenderCache exposing
     , setTilemapCache
     )
 
+import Common exposing (andCarry)
 import Data.Assets exposing (Assets)
 import Data.TileSet exposing (roadConnectionDirectionsByTile)
 import Length
@@ -169,15 +170,8 @@ toDynamicTiles tilemap changingCells =
         |> List.filterMap
             (\cell ->
                 fixedTileByCell tilemap cell
-                    |> Maybe.andThen
-                        (\tile ->
-                            case tile.kind of
-                                Fixed tileId ->
-                                    Just ( cell, tileId, tileAnimation tile )
-
-                                Superposition _ ->
-                                    Nothing
-                        )
+                    |> andCarry Tile.id
+                    |> Maybe.map (\( tile, tileId ) -> ( cell, tileId, tileAnimation tile ))
             )
 
 

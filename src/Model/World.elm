@@ -133,7 +133,7 @@ empty : TilemapConfig -> World
 empty tilemapConfig =
     let
         tilemap =
-            createTilemap tilemapConfig
+            createTilemap tilemapConfig (\_ -> Tile.init Tile.Unintialized)
 
         worldBB =
             tilemapBoundingBox tilemap
@@ -465,7 +465,7 @@ resolveTilemapUpdate delta tilemapUpdateResult world =
 
 
 createPendingTilemapChange : List Cell -> World -> World
-createPendingTilemapChange changedCells editor =
+createPendingTilemapChange changedCells world =
     let
         pendingTilemapChange =
             Just
@@ -473,7 +473,7 @@ createPendingTilemapChange changedCells editor =
                 , combineChangedCells changedCells Set.empty
                 )
     in
-    { editor | pendingTilemapChange = pendingTilemapChange }
+    { world | pendingTilemapChange = pendingTilemapChange }
 
 
 combineChangedCells : List Cell -> Set CellCoordinates -> Set CellCoordinates

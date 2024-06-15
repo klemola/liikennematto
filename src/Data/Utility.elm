@@ -23,6 +23,7 @@ import Tilemap.Core
         , getTilemapConfig
         , updateTilemap
         )
+import Tilemap.Tile as Tile
 import Tilemap.Update exposing (modifyTile)
 
 
@@ -74,7 +75,7 @@ worldFromTilemap tilemap =
 
 tilemapFromCells : TilemapConfig -> List Cell -> Tilemap
 tilemapFromCells tilemapConfig cells =
-    fromCellsHelper cells (createTilemap tilemapConfig)
+    fromCellsHelper cells (createTilemap tilemapConfig (\_ -> Tile.init Tile.Unintialized))
 
 
 fromCellsHelper : List Cell -> Tilemap -> Tilemap

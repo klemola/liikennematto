@@ -21,10 +21,13 @@ import Tilemap.Core
         , cellHasFixedTile
         , fixedTileByCell
         , getTilemapConfig
+        , resetSuperposition
+        , setSuperpositionOptions
+        , tileByCell
         , tileNeighborIn
         , updateTilemap
         )
-import Tilemap.Tile exposing (Action(..), Tile, TileKind(..), isBuilt)
+import Tilemap.Tile as Tile exposing (Action(..), Tile, TileKind(..), isBuilt)
 import Tilemap.WFC as WFC
 import UI.Core exposing (InputKind(..))
 
@@ -40,9 +43,24 @@ update msg model =
                 tilemapUpdateResult =
                     updateTilemap delta world.tilemap
 
+                -- TODO: this is a hack around FSM actions not being able to include variable data
+                withRemovedEffects =
+                    { tilemapUpdateResult
+                        | tilemap =
+                            List.foldl
+                                (\removedCell nextTilemap ->
+                                    setSuperpositionOptions
+                                        removedCell
+                                        (resetSuperposition removedCell nextTilemap)
+                                        nextTilemap
+                                )
+                                tilemapUpdateResult.tilemap
+                                tilemapUpdateResult.emptiedCells
+                    }
+
                 ( nextWorld, maybeTilemapChange ) =
-                    { world | tilemap = tilemapUpdateResult.tilemap }
-                        |> World.resolveTilemapUpdate delta tilemapUpdateResult
+                    { world | tilemap = withRemovedEffects.tilemap }
+                        |> World.resolveTilemapUpdate delta withRemovedEffects
 
                 tilemapChangedEffects =
                     case maybeTilemapChange of
@@ -53,14 +71,14 @@ update msg model =
                             Cmd.none
 
                 ( nextRenderCache, dynamicTiles ) =
-                    refreshTilemapCache tilemapUpdateResult renderCache
+                    refreshTilemapCache withRemovedEffects renderCache
             in
             ( { model
                 | world = nextWorld
                 , renderCache = nextRenderCache
                 , dynamicTiles = dynamicTiles
               }
-            , Cmd.batch (tilemapChangedEffects :: tileActionsToCmds tilemapUpdateResult.actions)
+            , Cmd.batch (tilemapChangedEffects :: tileActionsToCmds withRemovedEffects.actions)
             )
 
         GameSetupComplete ->
@@ -166,40 +184,32 @@ modifyTileAndUpdate cell model tilemapChangeFn =
 modifyTile : Cell -> Tilemap -> Random.Seed -> (Cell -> Tilemap -> ( Tilemap, List Action )) -> ( Tilemap, List Action )
 modifyTile cell tilemap seed tilemapChangeFn =
     let
-        ( tilemapWithTile, tilemapChangeActions ) =
+        ( updatedTilemap, tilemapChangeActions ) =
             tilemapChangeFn cell tilemap
 
         wfcModel =
-            WFC.fromTilemap tilemapWithTile seed
+            WFC.fromTilemap updatedTilemap seed
                 |> WFC.propagateConstraints cell
 
-        ( withWFC, wfcTileActions ) =
-            collapseTileNeighbors cell wfcModel
+        ( updatedWfcModel, wfcTileActions ) =
+            updateTileNeighbors cell wfcModel
     in
-    ( withWFC
+    ( WFC.toTilemap updatedWfcModel
     , tilemapChangeActions ++ wfcTileActions
     )
 
 
-collapseTileNeighbors : Cell -> WFC.Model -> ( Tilemap, List Action )
-collapseTileNeighbors cell wfcModel =
-    let
-        wfcModelAfterCollapse =
-            collapseTileNeighborsHelper
-                cell
-                OrthogonalDirection.all
-                wfcModel
-
-        ( nextWfcModel, wfcActions ) =
-            WFC.flushPendingActions wfcModelAfterCollapse
-    in
-    ( WFC.toTilemap nextWfcModel
-    , wfcActions
-    )
+updateTileNeighbors : Cell -> WFC.Model -> ( WFC.Model, List Action )
+updateTileNeighbors cell wfcModel =
+    updateTileNeighborsHelper
+        cell
+        OrthogonalDirection.all
+        wfcModel
+        |> WFC.flushPendingActions
 
 
-collapseTileNeighborsHelper : Cell -> List OrthogonalDirection -> WFC.Model -> WFC.Model
-collapseTileNeighborsHelper origin remainingDirs wfcModel =
+updateTileNeighborsHelper : Cell -> List OrthogonalDirection -> WFC.Model -> WFC.Model
+updateTileNeighborsHelper origin remainingDirs wfcModel =
     case remainingDirs of
         [] ->
             wfcModel
@@ -207,12 +217,12 @@ collapseTileNeighborsHelper origin remainingDirs wfcModel =
         dir :: otherDirs ->
             let
                 maybeTile =
-                    tileNeighborIn dir origin (WFC.toTilemap wfcModel)
+                    tileNeighborIn dir origin tileByCell (WFC.toTilemap wfcModel)
 
                 nextWFCModel =
                     processTileNeighbor maybeTile wfcModel
             in
-            collapseTileNeighborsHelper origin otherDirs nextWFCModel
+            updateTileNeighborsHelper origin otherDirs nextWFCModel
 
 
 processTileNeighbor : Maybe ( Cell, Tile ) -> WFC.Model -> WFC.Model
@@ -222,11 +232,14 @@ processTileNeighbor maybeTile wfcModel =
             case tile.kind of
                 Fixed _ ->
                     wfcModel
-                        |> WFC.resetCell cell
+                        |> WFC.resetCell cell tile.kind
                         |> WFC.collapse cell
 
                 Superposition _ ->
                     wfcModel
+
+                Unintialized ->
+                    WFC.resetCell cell tile.kind wfcModel
 
         Nothing ->
             wfcModel
@@ -245,4 +258,7 @@ tileActionsToCmds =
             case action of
                 PlayAudio sound ->
                     playSound sound
+
+                Tile.OnRemoved _ ->
+                    Cmd.none
         )

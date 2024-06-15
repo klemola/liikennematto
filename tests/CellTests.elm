@@ -4,7 +4,7 @@ import Expect
 import Lib.DiagonalDirection exposing (DiagonalDirection(..))
 import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Test exposing (Test, describe, test)
-import Tilemap.Cell as Cell exposing (Boundary(..))
+import Tilemap.Cell as Cell
 
 
 constraints =
@@ -163,56 +163,56 @@ suite =
                 (\_ ->
                     Expect.equal
                         (Cell.connectedBounds constraints (Cell.fromCoordinatesUnsafe constraints ( 1, 1 )))
-                        (Just (Corner TopLeft))
+                        { up = True, left = True, right = False, down = False }
                 )
             , test
                 "topRightCorner"
                 (\_ ->
                     Expect.equal
                         (Cell.connectedBounds constraints (Cell.fromCoordinatesUnsafe constraints ( 10, 1 )))
-                        (Just (Corner TopRight))
+                        { up = True, left = False, right = True, down = False }
                 )
             , test
                 "bottomLeftCorner"
                 (\_ ->
                     Expect.equal
                         (Cell.connectedBounds constraints (Cell.fromCoordinatesUnsafe constraints ( 1, 10 )))
-                        (Just (Corner BottomLeft))
+                        { up = False, left = True, right = False, down = True }
                 )
             , test
                 "bottomRightCorner"
                 (\_ ->
                     Expect.equal
                         (Cell.connectedBounds constraints (Cell.fromCoordinatesUnsafe constraints ( 10, 10 )))
-                        (Just (Corner BottomRight))
+                        { up = False, left = False, right = True, down = True }
                 )
             , test
                 "leftEdge"
                 (\_ ->
                     Expect.equal
                         (Cell.connectedBounds constraints (Cell.fromCoordinatesUnsafe constraints ( 1, 2 )))
-                        (Just (Edge Left))
+                        { up = False, left = True, right = False, down = False }
                 )
             , test
                 "rightEdge"
                 (\_ ->
                     Expect.equal
                         (Cell.connectedBounds constraints (Cell.fromCoordinatesUnsafe constraints ( 10, 2 )))
-                        (Just (Edge Right))
+                        { up = False, left = False, right = True, down = False }
                 )
             , test
                 "topEdge"
                 (\_ ->
                     Expect.equal
                         (Cell.connectedBounds constraints (Cell.fromCoordinatesUnsafe constraints ( 5, 1 )))
-                        (Just (Edge Up))
+                        { up = True, left = False, right = False, down = False }
                 )
             , test
                 "bottomEdge"
                 (\_ ->
                     Expect.equal
                         (Cell.connectedBounds constraints (Cell.fromCoordinatesUnsafe constraints ( 5, 10 )))
-                        (Just (Edge Down))
+                        { up = False, left = False, right = False, down = True }
                 )
             ]
         ]

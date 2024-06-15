@@ -367,9 +367,6 @@ renderTile cache cell tileKind =
             Cell.bottomLeftCorner cell |> pointToPixels cache.pixelsToMetersRatio
     in
     case tileKind of
-        Fixed _ ->
-            nothing
-
         Superposition tileIds ->
             let
                 tileSizePixels =
@@ -379,6 +376,9 @@ renderTile cache cell tileKind =
                     cache.tilemapHeightPixels - tileSizePixels - y
             in
             renderSuperposition { size = tileSizePixels, x = x, y = yAdjusted } tileIds
+
+        _ ->
+            nothing
 
 
 renderSuperposition : { size : Float, x : Float, y : Float } -> List TileId -> Svg msg

@@ -1,11 +1,20 @@
-module Lib.Bitmask exposing (OrthogonalNeighbors, fiveBitMask, fourBitMask)
+module Lib.Bitmask exposing (OrthogonalMatch, fiveBitMask, fourBitMask, mergeMatches)
 
 
-type alias OrthogonalNeighbors =
+type alias OrthogonalMatch =
     { up : Bool
     , left : Bool
     , right : Bool
     , down : Bool
+    }
+
+
+mergeMatches : OrthogonalMatch -> OrthogonalMatch -> OrthogonalMatch
+mergeMatches n1 n2 =
+    { up = n1.up || n2.up
+    , left = n1.left || n2.left
+    , right = n1.right || n2.right
+    , down = n1.down || n2.down
     }
 
 
@@ -21,7 +30,7 @@ type alias OrthogonalNeighbors =
     1*1 + 2*1 + 4*1 + 8*0  = 111 = 7
 
 -}
-fourBitMask : OrthogonalNeighbors -> Int
+fourBitMask : OrthogonalMatch -> Int
 fourBitMask { up, left, right, down } =
     -- 1 * up
     boolToBinary up
@@ -32,7 +41,7 @@ fourBitMask { up, left, right, down } =
 
 {-| Calculates tile Id like the four-bit variant, with extra modifier to allow two variants per ID
 -}
-fiveBitMask : OrthogonalNeighbors -> Bool -> Int
+fiveBitMask : OrthogonalMatch -> Bool -> Int
 fiveBitMask { up, left, right, down } modifier =
     -- 1 * up
     boolToBinary up

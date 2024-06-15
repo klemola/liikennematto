@@ -20,7 +20,13 @@ module Tilemap.WFC exposing
 
 import Array
 import Common exposing (attemptFoldList, attemptMapList)
-import Data.TileSet exposing (pairingsForSocket, tileById, tileIds)
+import Data.TileSet
+    exposing
+        ( pairingsForSocket
+        , tileById
+        , tileIds
+        , tileIdsByOrthogonalMatch
+        )
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import List.Nonempty exposing (Nonempty)
 import Random exposing (Seed)
@@ -50,7 +56,6 @@ import Tilemap.TileConfig as TileConfig
         , TileId
         , socketByDirection
         , socketByDirectionWithConfig
-        , tileConfigId
         )
 
 
@@ -95,7 +100,17 @@ type WFCFailure
 
 init : TilemapConfig -> Random.Seed -> Model
 init tilemapConfig initialSeed =
-    fromTilemap (createTilemap tilemapConfig) initialSeed
+    fromTilemap (createTilemap tilemapConfig (initTileWithSuperposition tilemapConfig)) initialSeed
+
+
+initTileWithSuperposition : TilemapConfig -> Int -> Tile
+initTileWithSuperposition tilemapConfig index =
+    index
+        |> Cell.fromArray1DIndexUnsafe tilemapConfig
+        |> Cell.connectedBounds tilemapConfig
+        |> tileIdsByOrthogonalMatch
+        |> Superposition
+        |> Tile.init
 
 
 fromTilemap : Tilemap -> Random.Seed -> Model
@@ -318,9 +333,9 @@ flushOpenSteps ((Model modelContents) as model) =
         flushOpenSteps (step StopAtEmptySteps model)
 
 
-resetCell : Cell -> Model -> Model
-resetCell cell (Model modelContents) =
-    Model { modelContents | tilemap = resetTileBySurroundings cell modelContents.tilemap }
+resetCell : Cell -> TileKind -> Model -> Model
+resetCell cell tileKind (Model modelContents) =
+    Model { modelContents | tilemap = resetTileBySurroundings cell tileKind modelContents.tilemap }
 
 
 
@@ -442,17 +457,7 @@ canDock dockDir dockSocket dockTileId =
 -}
 solved : ModelDetails -> Bool
 solved { tilemap, openSteps } =
-    List.isEmpty openSteps && forAllTiles solvedPredicate tilemap
-
-
-solvedPredicate : Tile -> Bool
-solvedPredicate tile =
-    case tile.kind of
-        Superposition _ ->
-            False
-
-        Fixed _ ->
-            True
+    List.isEmpty openSteps && forAllTiles Tile.isFixed tilemap
 
 
 stepSuperposition : Tilemap -> Step -> Maybe (Nonempty TileId)
@@ -461,11 +466,11 @@ stepSuperposition tilemap theStep =
         |> Maybe.andThen
             (\tile ->
                 case tile.kind of
-                    Tile.Fixed _ ->
-                        Nothing
-
                     Tile.Superposition options ->
                         List.Nonempty.fromList options
+
+                    _ ->
+                        Nothing
             )
 
 
@@ -620,9 +625,6 @@ nextCandidates tilemap =
     let
         toCandidate cell tile ( candidates, minEntropy ) =
             case tile.kind of
-                Fixed _ ->
-                    ( candidates, minEntropy )
-
                 Superposition options ->
                     case List.Nonempty.fromList options of
                         Just nonemptyOptions ->
@@ -645,6 +647,9 @@ nextCandidates tilemap =
 
                         Nothing ->
                             ( candidates, minEntropy )
+
+                _ ->
+                    ( candidates, minEntropy )
     in
     tilemap
         |> foldTiles toCandidate ( [], List.length tileIds + 1 )
@@ -794,6 +799,9 @@ applyToNeighbor onFixed onSuperposition cell tilemap =
 
                                 Superposition options ->
                                     onSuperposition neighborUpdateContext options
+
+                                Unintialized ->
+                                    Ok steps
 
                         Nothing ->
                             Ok steps

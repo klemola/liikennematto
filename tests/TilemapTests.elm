@@ -73,7 +73,7 @@ suite =
                                     Fixed tileId ->
                                         tileId == 14
 
-                                    Superposition _ ->
+                                    _ ->
                                         False
                             )
                         |> Maybe.unwrap
@@ -97,7 +97,7 @@ suite =
                                     Fixed tileId ->
                                         tileId == 12
 
-                                    Superposition _ ->
+                                    _ ->
                                         False
                             )
                         |> Maybe.unwrap
