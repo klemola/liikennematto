@@ -142,6 +142,18 @@ onSecondaryInput cell model =
 --
 
 
+type alias ModifyTileConfig =
+    { cell : Cell
+    , tilemapChangeFn : Cell -> Tilemap -> ( Tilemap, List Action )
+    , postModifyFn : Cell -> WFC.Model -> WFC.Model
+    }
+
+
+addTileNeighborInitDistance : Int
+addTileNeighborInitDistance =
+    2
+
+
 addTile : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
 addTile cell model =
     let
@@ -150,7 +162,12 @@ addTile cell model =
     in
     case tileIdByBitmask bitmask of
         Just tileId ->
-            modifyTileAndUpdate cell model (Tilemap.Core.addTile tileId)
+            modifyTileAndUpdate
+                { cell = cell
+                , tilemapChangeFn = Tilemap.Core.addTile tileId
+                , postModifyFn = initializeArea
+                }
+                model
 
         Nothing ->
             ( model, Cmd.none )
@@ -158,17 +175,22 @@ addTile cell model =
 
 removeTile : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
 removeTile cell model =
-    modifyTileAndUpdate cell model Tilemap.Core.removeTile
+    modifyTileAndUpdate
+        { cell = cell
+        , tilemapChangeFn = Tilemap.Core.removeTile
+        , postModifyFn = \_ wfcModel -> wfcModel
+        }
+        model
 
 
-modifyTileAndUpdate : Cell -> Liikennematto -> (Cell -> Tilemap -> ( Tilemap, List Action )) -> ( Liikennematto, Cmd Message )
-modifyTileAndUpdate cell model tilemapChangeFn =
+modifyTileAndUpdate : ModifyTileConfig -> Liikennematto -> ( Liikennematto, Cmd Message )
+modifyTileAndUpdate modifyTileConfig model =
     let
         { world, renderCache } =
             model
 
         ( withWFC, actions ) =
-            modifyTile cell world.tilemap world.seed tilemapChangeFn
+            modifyTile modifyTileConfig world.tilemap world.seed
 
         nextWorld =
             { world | tilemap = withWFC }
@@ -181,8 +203,8 @@ modifyTileAndUpdate cell model tilemapChangeFn =
     )
 
 
-modifyTile : Cell -> Tilemap -> Random.Seed -> (Cell -> Tilemap -> ( Tilemap, List Action )) -> ( Tilemap, List Action )
-modifyTile cell tilemap seed tilemapChangeFn =
+modifyTile : ModifyTileConfig -> Tilemap -> Random.Seed -> ( Tilemap, List Action )
+modifyTile { cell, tilemapChangeFn, postModifyFn } tilemap seed =
     let
         ( updatedTilemap, tilemapChangeActions ) =
             tilemapChangeFn cell tilemap
@@ -193,8 +215,11 @@ modifyTile cell tilemap seed tilemapChangeFn =
 
         ( updatedWfcModel, wfcTileActions ) =
             updateTileNeighbors cell wfcModel
+
+        withInit =
+            postModifyFn cell updatedWfcModel
     in
-    ( WFC.toTilemap updatedWfcModel
+    ( WFC.toTilemap withInit
     , tilemapChangeActions ++ wfcTileActions
     )
 
@@ -243,6 +268,40 @@ processTileNeighbor maybeTile wfcModel =
 
         Nothing ->
             wfcModel
+
+
+initializeArea : Cell -> WFC.Model -> WFC.Model
+initializeArea origin wfcModel =
+    let
+        ( baseX, baseY ) =
+            Cell.coordinates origin
+
+        bounds =
+            { minX = baseX - addTileNeighborInitDistance
+            , maxX = baseX + addTileNeighborInitDistance
+            , minY = baseY - addTileNeighborInitDistance
+            , maxY = baseY + addTileNeighborInitDistance
+            }
+
+        tilemap =
+            WFC.toTilemap wfcModel
+    in
+    List.foldl
+        (\cell nextWfcModel ->
+            case tileByCell tilemap cell of
+                Just tile ->
+                    case tile.kind of
+                        Unintialized ->
+                            WFC.resetCell cell tile.kind nextWfcModel
+
+                        _ ->
+                            nextWfcModel
+
+                Nothing ->
+                    nextWfcModel
+        )
+        wfcModel
+        (Cell.fromArea (getTilemapConfig tilemap) bounds)
 
 
 

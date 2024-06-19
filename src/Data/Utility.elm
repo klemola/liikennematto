@@ -92,10 +92,13 @@ fromCellsHelper remainingCells tilemap =
                 ( tilemapWithTile, _ ) =
                     case tileIdByBitmask bitmask of
                         Just tileId ->
-                            modifyTile cell
+                            modifyTile
+                                { cell = cell
+                                , tilemapChangeFn = Tilemap.Core.addTile tileId
+                                , postModifyFn = \_ wfcModel -> wfcModel
+                                }
                                 tilemap
                                 (Random.initialSeed 42)
-                                (Tilemap.Core.addTile tileId)
 
                         Nothing ->
                             ( tilemap, [] )

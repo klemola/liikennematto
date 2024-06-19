@@ -8,6 +8,7 @@ module Tilemap.Cell exposing
     , centerPoint
     , connectedBounds
     , coordinates
+    , fromArea
     , fromArray1DIndex
     , fromArray1DIndexUnsafe
     , fromCoordinates
@@ -144,6 +145,26 @@ fromCoordinatesSet constraints set =
         )
         []
         set
+
+
+fromArea : Constraints a -> { minX : Int, maxX : Int, minY : Int, maxY : Int } -> List Cell
+fromArea constraints bounds =
+    let
+        xValues =
+            List.range bounds.minX bounds.maxX
+
+        yValues =
+            List.range bounds.minY bounds.maxY
+    in
+    List.concatMap
+        (\yVal ->
+            List.filterMap
+                (\xVal ->
+                    fromCoordinates constraints ( xVal, yVal )
+                )
+                xValues
+        )
+        yValues
 
 
 fromArray1DIndex : Constraints a -> Int -> Maybe Cell

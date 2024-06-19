@@ -60,6 +60,37 @@ suite =
                         (Just <| Cell.fromArray1DIndexUnsafe constraints 5)
                 )
             ]
+        , describe "fromArea"
+            [ test "creates a list of coordinates from the bounds"
+                (\_ ->
+                    Expect.equal
+                        (Cell.fromArea constraints { minX = 3, maxX = 5, minY = 3, maxY = 5 })
+                        (List.map (Cell.fromCoordinatesUnsafe constraints)
+                            [ ( 3, 3 )
+                            , ( 4, 3 )
+                            , ( 5, 3 )
+                            , ( 3, 4 )
+                            , ( 4, 4 )
+                            , ( 5, 4 )
+                            , ( 3, 5 )
+                            , ( 4, 5 )
+                            , ( 5, 5 )
+                            ]
+                        )
+                )
+            , test "creates a list of coordinates, ignoring values outside grid"
+                (\_ ->
+                    Expect.equal
+                        (Cell.fromArea constraints { minX = 9, maxX = 11, minY = 9, maxY = 11 })
+                        (List.map (Cell.fromCoordinatesUnsafe constraints)
+                            [ ( 9, 9 )
+                            , ( 10, 9 )
+                            , ( 9, 10 )
+                            , ( 10, 10 )
+                            ]
+                        )
+                )
+            ]
         , describe "array1DIndex"
             [ test "matches coordinates constructor"
                 (\_ ->
