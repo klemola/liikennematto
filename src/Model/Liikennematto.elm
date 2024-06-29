@@ -10,6 +10,7 @@ module Model.Liikennematto exposing
     , fromPreviousGame
     , initial
     , triggerLoading
+    , withTilemap
     )
 
 import Data.Assets exposing (roads)
@@ -21,7 +22,7 @@ import Model.Flags exposing (Flags, RuntimeEnvironment(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Screen as Screen exposing (Screen)
 import Model.World as World exposing (World)
-import Tilemap.Core exposing (TileListFilter(..))
+import Tilemap.Core exposing (TileListFilter(..), Tilemap)
 import Time
 import UI.Editor
 import UI.ZoomControl
@@ -254,6 +255,24 @@ initial flags =
     , errorMessage = Nothing
     , editor = UI.Editor.initialModel
     , zoomControl = UI.ZoomControl.initialModel
+    }
+
+
+
+--
+-- Synchronized changes to multiple root level fields
+--
+
+
+withTilemap : Tilemap -> Liikennematto -> Liikennematto
+withTilemap tilemap model =
+    let
+        nextWorld =
+            World.setTilemap tilemap model.world
+    in
+    { model
+        | world = nextWorld
+        , renderCache = RenderCache.setTilemapCache nextWorld.tilemap model.renderCache
     }
 
 

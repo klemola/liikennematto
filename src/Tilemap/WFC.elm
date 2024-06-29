@@ -99,9 +99,20 @@ type WFCFailure
     | BacktrackFailed
 
 
+
+--
+-- Init
+--
+
+
 init : TilemapConfig -> Random.Seed -> Model
 init tilemapConfig initialSeed =
-    fromTilemap (createTilemap tilemapConfig (initTileWithSuperposition tilemapConfig)) initialSeed
+    fromTilemap
+        (createTilemap
+            tilemapConfig
+            (initTileWithSuperposition tilemapConfig)
+        )
+        initialSeed
 
 
 initTileWithSuperposition : TilemapConfig -> Int -> Tile
@@ -126,6 +137,12 @@ fromTilemap tilemap initialSeed =
         , pendingActions = []
         , seed = initialSeed
         }
+
+
+
+--
+-- Automated solving
+--
 
 
 {-| Tries to solve/fill the whole grid in one go by assigning a tile to each position
@@ -157,7 +174,7 @@ step : StepEndCondition -> Model -> Model
 step endCondition model =
     let
         ((Model modelDetails) as afterStep) =
-            step_ endCondition model
+            processOpenSteps endCondition model
     in
     case modelDetails.state of
         Recovering wfcFailure ->
@@ -201,81 +218,10 @@ stepN endCondition nTimes model =
             stepN endCondition (nTimes - 1) stepResult
 
 
-{-| Execute a single step. This can mean picking the next random tile
-or propagating constraints resulting from the last placement of a tile
--}
-step_ : StepEndCondition -> Model -> Model
-step_ endCondition (Model ({ openSteps, previousSteps, tilemap, pendingActions } as modelDetails)) =
-    case openSteps of
-        currentStep :: otherSteps ->
-            let
-                ( currentCell, targetCell ) =
-                    case currentStep of
-                        Collapse cell _ ->
-                            ( Just cell, Nothing )
 
-                        CollapseSubgridCell cell _ _ ->
-                            ( Just cell, Nothing )
-
-                        PropagateConstraints cellA cellB ->
-                            ( Just cellA, Just cellB )
-
-                withPosition =
-                    { modelDetails
-                        | currentCell = currentCell
-                        , targetCell = targetCell
-                    }
-            in
-            case processStep tilemap currentStep of
-                Ok ( additionalSteps, tileActions, nextTilemap ) ->
-                    Model
-                        { withPosition
-                            | tilemap = nextTilemap
-                            , state = Solving
-                            , openSteps = otherSteps ++ additionalSteps
-                            , previousSteps =
-                                case stepSuperposition tilemap currentStep of
-                                    Just superpositionOptions ->
-                                        Stack.push ( currentStep, superpositionOptions ) previousSteps
-
-                                    Nothing ->
-                                        previousSteps
-                            , pendingActions = pendingActions ++ tileActions
-                        }
-
-                Err wfcFailure ->
-                    Model
-                        { withPosition
-                            | state = Recovering wfcFailure
-                            , openSteps = otherSteps
-                        }
-
-        [] ->
-            let
-                nextModelDetails =
-                    case endCondition of
-                        StopAtEmptySteps ->
-                            { modelDetails
-                                | currentCell = Nothing
-                                , targetCell = Nothing
-                            }
-
-                        StopAtSolved ->
-                            if not (solved modelDetails) then
-                                let
-                                    withPick =
-                                        pickRandom modelDetails
-                                in
-                                { withPick | state = Solving }
-
-                            else
-                                { modelDetails
-                                    | state = Done
-                                    , currentCell = Nothing
-                                    , targetCell = Nothing
-                                }
-            in
-            Model nextModelDetails
+--
+-- Driven WFC
+--
 
 
 collapse : Cell -> Model -> Model
@@ -374,6 +320,80 @@ resetCell tileSet cell tileKind (Model modelContents) =
 --
 -- Steps and propagation
 --
+
+
+processOpenSteps : StepEndCondition -> Model -> Model
+processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap, pendingActions } as modelDetails)) =
+    case openSteps of
+        currentStep :: otherSteps ->
+            let
+                ( currentCell, targetCell ) =
+                    case currentStep of
+                        Collapse cell _ ->
+                            ( Just cell, Nothing )
+
+                        CollapseSubgridCell cell _ _ ->
+                            ( Just cell, Nothing )
+
+                        PropagateConstraints cellA cellB ->
+                            ( Just cellA, Just cellB )
+
+                withPosition =
+                    { modelDetails
+                        | currentCell = currentCell
+                        , targetCell = targetCell
+                    }
+            in
+            case processStep tilemap currentStep of
+                Ok ( additionalSteps, tileActions, nextTilemap ) ->
+                    Model
+                        { withPosition
+                            | tilemap = nextTilemap
+                            , state = Solving
+                            , openSteps = otherSteps ++ additionalSteps
+                            , previousSteps =
+                                case stepSuperposition tilemap currentStep of
+                                    Just superpositionOptions ->
+                                        Stack.push ( currentStep, superpositionOptions ) previousSteps
+
+                                    Nothing ->
+                                        previousSteps
+                            , pendingActions = pendingActions ++ tileActions
+                        }
+
+                Err wfcFailure ->
+                    Model
+                        { withPosition
+                            | state = Recovering wfcFailure
+                            , openSteps = otherSteps
+                        }
+
+        [] ->
+            let
+                nextModelDetails =
+                    case endCondition of
+                        StopAtEmptySteps ->
+                            { modelDetails
+                                | currentCell = Nothing
+                                , targetCell = Nothing
+                            }
+
+                        StopAtSolved ->
+                            if not (solved modelDetails) then
+                                let
+                                    withPick =
+                                        pickRandom modelDetails
+                                in
+                                { withPick | state = Solving }
+
+                            else
+                                { modelDetails
+                                    | state = Done
+                                    , currentCell = Nothing
+                                    , targetCell = Nothing
+                                }
+            in
+            Model nextModelDetails
 
 
 processStep : Tilemap -> Step -> Result WFCFailure ( List Step, List Tile.Action, Tilemap )

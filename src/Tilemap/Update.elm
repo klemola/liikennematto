@@ -9,8 +9,9 @@ import Model.Debug exposing (DevAction(..))
 import Model.Liikennematto
     exposing
         ( Liikennematto
+        , withTilemap
         )
-import Model.RenderCache exposing (refreshTilemapCache, setTilemapCache)
+import Model.RenderCache exposing (refreshTilemapCache)
 import Model.World as World
 import Random
 import Tilemap.Cell as Cell exposing (Cell)
@@ -60,7 +61,8 @@ update msg model =
                     }
 
                 ( nextWorld, maybeTilemapChange ) =
-                    { world | tilemap = withRemovedEffects.tilemap }
+                    world
+                        |> World.setTilemap withRemovedEffects.tilemap
                         |> World.resolveTilemapUpdate delta withRemovedEffects
 
                 tilemapChangedEffects =
@@ -195,19 +197,13 @@ removeTile cell model =
 modifyTileAndUpdate : ModifyTileConfig -> Liikennematto -> ( Liikennematto, Cmd Message )
 modifyTileAndUpdate modifyTileConfig model =
     let
-        { world, renderCache } =
+        { world } =
             model
 
         ( withWFC, actions ) =
             modifyTile modifyTileConfig world.tilemap world.seed
-
-        nextWorld =
-            { world | tilemap = withWFC }
     in
-    ( { model
-        | world = nextWorld
-        , renderCache = setTilemapCache nextWorld.tilemap renderCache
-      }
+    ( withTilemap withWFC model
     , Cmd.batch (tileActionsToCmds actions)
     )
 
@@ -288,21 +284,17 @@ processTileNeighbor maybeTile wfcModel =
 runWFC : Liikennematto -> ( Liikennematto, Cmd Message )
 runWFC model =
     let
-        { world, renderCache } =
+        { world } =
             model
 
         ( updatedWfcModel, wfcTileActions ) =
             WFC.fromTilemap world.tilemap world.seed
                 |> WFC.stepN WFC.StopAtSolved 10
                 |> WFC.flushPendingActions
-
-        nextWorld =
-            { world | tilemap = WFC.toTilemap updatedWfcModel }
     in
-    ( { model
-        | world = nextWorld
-        , renderCache = setTilemapCache nextWorld.tilemap renderCache
-      }
+    ( withTilemap
+        (WFC.toTilemap updatedWfcModel)
+        model
     , Cmd.batch (tileActionsToCmds wfcTileActions)
     )
 

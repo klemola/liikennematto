@@ -366,11 +366,7 @@ setSeed seed world =
 
 createRoadNetwork : Tilemap -> World -> World
 createRoadNetwork tilemap world =
-    let
-        nextWorld =
-            { world | tilemap = tilemap }
-    in
-    updateRoadNetwork nextWorld
+    updateRoadNetwork (setTilemap tilemap world)
 
 
 connectLotToRoadNetwork : World -> World
