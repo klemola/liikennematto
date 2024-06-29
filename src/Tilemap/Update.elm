@@ -1,10 +1,11 @@
 module Tilemap.Update exposing (modifyTile, update)
 
 import Audio exposing (playSound)
-import Data.TileSet exposing (tileIdByBitmask)
+import Data.TileSet exposing (allTiles, nonRoadTiles, tileIdByBitmask)
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import Maybe.Extra as Maybe
 import Message exposing (Message(..))
+import Model.Debug exposing (DevAction(..))
 import Model.Liikennematto
     exposing
         ( Liikennematto
@@ -51,7 +52,7 @@ update msg model =
                                 (\removedCell nextTilemap ->
                                     setSuperpositionOptions
                                         removedCell
-                                        (resetSuperposition removedCell nextTilemap)
+                                        (resetSuperposition removedCell allTiles nextTilemap)
                                         nextTilemap
                                 )
                                 tilemapUpdateResult.tilemap
@@ -105,6 +106,14 @@ update msg model =
 
                 Secondary ->
                     onSecondaryInput inputEvent.cell model
+
+        TriggerDevAction action ->
+            case action of
+                RunWFC ->
+                    runWFC model
+
+                _ ->
+                    ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -165,7 +174,7 @@ addTile cell model =
             modifyTileAndUpdate
                 { cell = cell
                 , tilemapChangeFn = Tilemap.Core.addTile tileId
-                , postModifyFn = initializeArea
+                , postModifyFn = WFC.initializeArea addTileNeighborInitDistance nonRoadTiles
                 }
                 model
 
@@ -257,51 +266,45 @@ processTileNeighbor maybeTile wfcModel =
             case tile.kind of
                 Fixed _ ->
                     wfcModel
-                        |> WFC.resetCell cell tile.kind
+                        |> WFC.resetCell allTiles cell tile.kind
                         |> WFC.collapse cell
 
                 Superposition _ ->
                     wfcModel
 
                 Unintialized ->
-                    WFC.resetCell cell tile.kind wfcModel
+                    WFC.resetCell nonRoadTiles cell tile.kind wfcModel
 
         Nothing ->
             wfcModel
 
 
-initializeArea : Cell -> WFC.Model -> WFC.Model
-initializeArea origin wfcModel =
+
+--
+-- Procgen
+--
+
+
+runWFC : Liikennematto -> ( Liikennematto, Cmd Message )
+runWFC model =
     let
-        ( baseX, baseY ) =
-            Cell.coordinates origin
+        { world, renderCache } =
+            model
 
-        bounds =
-            { minX = baseX - addTileNeighborInitDistance
-            , maxX = baseX + addTileNeighborInitDistance
-            , minY = baseY - addTileNeighborInitDistance
-            , maxY = baseY + addTileNeighborInitDistance
-            }
+        ( updatedWfcModel, wfcTileActions ) =
+            WFC.fromTilemap world.tilemap world.seed
+                |> WFC.stepN WFC.StopAtSolved 10
+                |> WFC.flushPendingActions
 
-        tilemap =
-            WFC.toTilemap wfcModel
+        nextWorld =
+            { world | tilemap = WFC.toTilemap updatedWfcModel }
     in
-    List.foldl
-        (\cell nextWfcModel ->
-            case tileByCell tilemap cell of
-                Just tile ->
-                    case tile.kind of
-                        Unintialized ->
-                            WFC.resetCell cell tile.kind nextWfcModel
-
-                        _ ->
-                            nextWfcModel
-
-                Nothing ->
-                    nextWfcModel
-        )
-        wfcModel
-        (Cell.fromArea (getTilemapConfig tilemap) bounds)
+    ( { model
+        | world = nextWorld
+        , renderCache = setTilemapCache nextWorld.tilemap renderCache
+      }
+    , Cmd.batch (tileActionsToCmds wfcTileActions)
+    )
 
 
 

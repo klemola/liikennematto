@@ -4,6 +4,7 @@ import Duration
 import Lib.Collection as Collection
 import Lib.FSM as FSM
 import Message exposing (Message(..))
+import Model.Debug exposing (DevAction(..))
 import Model.Liikennematto
     exposing
         ( Liikennematto
@@ -80,16 +81,21 @@ update msg model =
             , Cmd.none
             )
 
-        SpawnTestCar ->
-            ( { model
-                | world =
-                    World.addEvent
-                        World.SpawnTestCar
-                        model.time
-                        model.world
-              }
-            , Cmd.none
-            )
+        TriggerDevAction action ->
+            case action of
+                SpawnTestCar ->
+                    ( { model
+                        | world =
+                            World.addEvent
+                                World.SpawnTestCar
+                                model.time
+                                model.world
+                      }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )

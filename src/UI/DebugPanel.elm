@@ -8,7 +8,7 @@ import Element.Font as Font
 import Length
 import Lib.Collection as Collection
 import Message exposing (Message(..))
-import Model.Debug exposing (DebugLayerKind(..), toggleDebugPanel, toggleLayer)
+import Model.Debug exposing (DebugLayerKind(..), DevAction(..), toggleDebugPanel, toggleLayer)
 import Model.Liikennematto exposing (Liikennematto)
 import Model.RenderCache exposing (RenderCache)
 import Model.World exposing (World, formatEvents)
@@ -20,7 +20,9 @@ import Speed exposing (Speed)
 import Time
 import UI.Core
     exposing
-        ( borderRadiusButton
+        ( ControlButtonContent(..)
+        , ControlButtonSize(..)
+        , borderRadiusButton
         , borderRadiusPanel
         , borderSize
         , colorCardBackground
@@ -29,7 +31,6 @@ import UI.Core
         , colorTextInverse
         , controlButton
         , scrollbarAwareOffsetF
-        , smallControlButton
         , textSize
         , whitespaceRegular
         , whitespaceTight
@@ -73,11 +74,12 @@ view model =
                 ]
                 (Element.text "Debug")
             , Element.el [ Element.alignRight ]
-                (smallControlButton
-                    { iconKind = Icons.Close
+                (controlButton
+                    { content = Icon Icons.Close
                     , onPress = ToggleDebugPanel
                     , selected = False
                     , disabled = False
+                    , size = Small
                     }
                 )
             ]
@@ -109,34 +111,52 @@ cardAttributes =
 
 controls : Liikennematto -> Element Message
 controls model =
-    Element.row
-        [ Element.spacing whitespaceTight
-        , Font.size textSize
-        ]
-        [ controlButton
-            { iconKind = Icons.CarDebug
-            , onPress = ToggleDebugLayer CarDebug
-            , selected = Model.Debug.isLayerEnabled CarDebug model.debug
-            , disabled = False
-            }
-        , controlButton
-            { iconKind = Icons.SpawnCar
-            , onPress = SpawnTestCar
-            , selected = False
-            , disabled = False
-            }
-        , controlButton
-            { iconKind = Icons.LotDebug
-            , onPress = ToggleDebugLayer LotDebug
-            , selected = Model.Debug.isLayerEnabled LotDebug model.debug
-            , disabled = False
-            }
-        , controlButton
-            { iconKind = Icons.GraphDebug
-            , onPress = ToggleDebugLayer RoadNetworkDebug
-            , selected = Model.Debug.isLayerEnabled RoadNetworkDebug model.debug
-            , disabled = False
-            }
+    Element.column [ Element.spacing whitespaceTight ]
+        [ Element.row
+            [ Element.spacing whitespaceTight
+            , Font.size textSize
+            ]
+            [ controlButton
+                { content = Icon Icons.CarDebug
+                , onPress = ToggleDebugLayer CarDebug
+                , selected = Model.Debug.isLayerEnabled CarDebug model.debug
+                , disabled = False
+                , size = Large
+                }
+            , controlButton
+                { content = Icon Icons.SpawnCar
+                , onPress = TriggerDevAction SpawnTestCar
+                , selected = False
+                , disabled = False
+                , size = Large
+                }
+            , controlButton
+                { content = Icon Icons.LotDebug
+                , onPress = ToggleDebugLayer LotDebug
+                , selected = Model.Debug.isLayerEnabled LotDebug model.debug
+                , disabled = False
+                , size = Large
+                }
+            , controlButton
+                { content = Icon Icons.GraphDebug
+                , onPress = ToggleDebugLayer RoadNetworkDebug
+                , selected = Model.Debug.isLayerEnabled RoadNetworkDebug model.debug
+                , disabled = False
+                , size = Large
+                }
+            ]
+        , Element.row
+            [ Element.spacing whitespaceTight
+            , Font.size textSize
+            ]
+            [ controlButton
+                { content = Text "Run WFC"
+                , onPress = TriggerDevAction RunWFC
+                , selected = False
+                , disabled = False
+                , size = FitToContent
+                }
+            ]
         ]
 
 

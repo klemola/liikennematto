@@ -1,11 +1,12 @@
 module Data.TileSet exposing
     ( allTiles
+    , allTilesAmount
     , isTileLotEntryTile
+    , nonRoadTiles
     , pairingsForSocket
     , roadConnectionDirectionsByTile
     , tileById
     , tileIdByBitmask
-    , tileIds
     , tileIdsByOrthogonalMatch
     , tileIdsFromBitmask
     )
@@ -27,6 +28,12 @@ import Tilemap.TileConfig as TileConfig
         , rotatedClockwise
         , socketByDirection
         )
+
+
+
+--
+-- Sockets definition
+--
 
 
 defaultSocket : Socket
@@ -88,6 +95,10 @@ pairingsForSocket socket =
             []
 
 
+
+-- Tile sets and lookup
+
+
 defaultTile : TileConfig
 defaultTile =
     grass
@@ -101,6 +112,8 @@ defaultTileId =
 allTiles : List TileConfig
 allTiles =
     [ grass
+    , singleNature
+    , twoByTwoNature
 
     --
     , loneRoad
@@ -124,12 +137,15 @@ allTiles =
     , lotEntryTUp
     , lotEntryTLeft
     , lotEntryTRight
-
-    --
     , twoByTwoLot
     , threeByThreeLot
     , fourByTwoLot
     ]
+
+
+allTilesAmount : Int
+allTilesAmount =
+    List.length allTiles
 
 
 allTilesAndMetaTiles : List TileConfig
@@ -147,6 +163,10 @@ allTilesAndMetaTiles =
            , TileConfig.Single lotDrivewayLeft
            , TileConfig.Single lotDrivewayRight
            , TileConfig.Single lotDrivewayUp
+           , TileConfig.Single natureTopLeftCorner
+           , TileConfig.Single natureTopRightCorner
+           , TileConfig.Single natureBottomLeftCorner
+           , TileConfig.Single natureBottomRightCorner
            ]
 
 
@@ -157,6 +177,25 @@ tileLookup =
             (\tileConfig -> ( TileConfig.tileConfigId tileConfig, tileConfig ))
             allTilesAndMetaTiles
         )
+
+
+tileById : TileId -> TileConfig
+tileById tileId =
+    case Dict.get tileId tileLookup of
+        Just tileConfig ->
+            tileConfig
+
+        Nothing ->
+            defaultTile
+
+
+nonRoadTiles : List TileConfig
+nonRoadTiles =
+    List.filter (\tileConfig -> TileConfig.biome tileConfig /= TileConfig.Road) allTiles
+
+
+
+-- Bitmask based lookup
 
 
 bitmaskToTileIdLookup : Dict Int TileId
@@ -185,19 +224,65 @@ bitmaskToTileIdLookup =
         ]
 
 
-tileById : TileId -> TileConfig
-tileById tileId =
-    case Dict.get tileId tileLookup of
-        Just tileConfig ->
-            tileConfig
-
-        Nothing ->
-            defaultTile
-
-
 tileIdByBitmask : Int -> Maybe TileId
 tileIdByBitmask bitmask =
     Dict.get bitmask bitmaskToTileIdLookup
+
+
+tileIdsFromBitmask : Int -> List TileId
+tileIdsFromBitmask bitmask =
+    tileIdByBitmask bitmask
+        |> Maybe.withDefault defaultTileId
+        |> List.singleton
+
+
+
+-- Orthogonal neighbor based lookup
+
+
+noOrthogonalMatch : OrthogonalMatch
+noOrthogonalMatch =
+    { up = False
+    , left = False
+    , right = False
+    , down = False
+    }
+
+
+tileIdsByOrthogonalMatch : List TileConfig -> OrthogonalMatch -> List TileId
+tileIdsByOrthogonalMatch tileSet ({ up, left, right, down } as neighbors) =
+    if neighbors == noOrthogonalMatch then
+        List.map TileConfig.tileConfigId tileSet
+
+    else
+        let
+            conditions sockets =
+                [ ( up, sockets.top ), ( left, sockets.left ), ( right, sockets.right ), ( down, sockets.bottom ) ]
+                    |> List.all
+                        (\( hasNeighbor, socket ) ->
+                            if hasNeighbor then
+                                socket == defaultSocket
+
+                            else
+                                True
+                        )
+        in
+        List.filterMap (compatibleTileId conditions) tileSet
+
+
+compatibleTileId : (TileConfig.Sockets -> Bool) -> TileConfig -> Maybe TileId
+compatibleTileId matcher tc =
+    if matcher (TileConfig.sockets tc) then
+        Just (TileConfig.tileConfigId tc)
+
+    else
+        Nothing
+
+
+
+--
+-- Queries
+--
 
 
 isTileLotEntryTile : TileId -> Bool
@@ -221,60 +306,9 @@ roadConnectionDirectionsByTile tileConfig =
             )
 
 
-tileIds : List TileId
-tileIds =
-    List.map TileConfig.tileConfigId allTiles
-
-
-noOrthogonalMatch : OrthogonalMatch
-noOrthogonalMatch =
-    { up = False
-    , left = False
-    , right = False
-    , down = False
-    }
-
-
-tileIdsByOrthogonalMatch : OrthogonalMatch -> List TileId
-tileIdsByOrthogonalMatch ({ up, left, right, down } as neighbors) =
-    if neighbors == noOrthogonalMatch then
-        tileIds
-
-    else
-        let
-            conditions sockets =
-                [ ( up, sockets.top ), ( left, sockets.left ), ( right, sockets.right ), ( down, sockets.bottom ) ]
-                    |> List.all
-                        (\( hasNeighbor, socket ) ->
-                            if hasNeighbor then
-                                socket == defaultSocket
-
-                            else
-                                True
-                        )
-        in
-        List.filterMap (compatibleTileId conditions) allTiles
-
-
-compatibleTileId : (TileConfig.Sockets -> Bool) -> TileConfig -> Maybe TileId
-compatibleTileId matcher tc =
-    if matcher (TileConfig.sockets tc) then
-        Just (TileConfig.tileConfigId tc)
-
-    else
-        Nothing
-
-
-tileIdsFromBitmask : Int -> List TileId
-tileIdsFromBitmask bitmask =
-    tileIdByBitmask bitmask
-        |> Maybe.withDefault defaultTileId
-        |> List.singleton
-
-
 
 --
--- Terrain
+-- Terrain tiles
 --
 
 
@@ -297,7 +331,7 @@ grass =
 
 
 --
--- Road
+-- Road tiles
 --
 
 
@@ -522,7 +556,7 @@ lotEntryTLeft =
 
 
 --
--- Lots
+-- Lot tiles
 --
 
 
@@ -789,4 +823,112 @@ fourByTwoLot =
         , width = 4
         , height = 2
         , anchorIndex = 4
+        }
+
+
+
+--
+-- Nature tiles
+--
+
+
+natureTopLeftCorner : TileConfig.SingleTile
+natureTopLeftCorner =
+    { id = 50
+    , complexity = 0.3
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Nature
+    , sockets =
+        { top = Green
+        , right = largeTileInnerEdgeSocket
+        , bottom = largeTileInnerEdgeSocket
+        , left = Green
+        }
+    , baseTileId = Nothing
+    }
+
+
+natureTopRightCorner : TileConfig.SingleTile
+natureTopRightCorner =
+    { id = 51
+    , complexity = 0.3
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Nature
+    , sockets =
+        { top = Green
+        , right = Green
+        , bottom = largeTileInnerEdgeSocket
+        , left = largeTileInnerEdgeSocket
+        }
+    , baseTileId = Nothing
+    }
+
+
+natureBottomRightCorner : TileConfig.SingleTile
+natureBottomRightCorner =
+    { id = 52
+    , complexity = 0.3
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Nature
+    , sockets =
+        { top = largeTileInnerEdgeSocket
+        , right = Green
+        , bottom = Green
+        , left = largeTileInnerEdgeSocket
+        }
+    , baseTileId = Nothing
+    }
+
+
+natureBottomLeftCorner : TileConfig.SingleTile
+natureBottomLeftCorner =
+    { id = 53
+    , complexity = 0.3
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Nature
+    , sockets =
+        { top = largeTileInnerEdgeSocket
+        , right = largeTileInnerEdgeSocket
+        , bottom = Green
+        , left = Green
+        }
+    , baseTileId = Nothing
+    }
+
+
+singleNature : TileConfig
+singleNature =
+    TileConfig.Single
+        { id = 200
+        , complexity = 0.1
+        , graphPriority = maxGraphPriority
+        , biome = TileConfig.Nature
+        , sockets =
+            { top = Green
+            , right = Green
+            , bottom = Green
+            , left = Green
+            }
+        , baseTileId = Nothing
+        }
+
+
+twoByTwoNature : TileConfig
+twoByTwoNature =
+    TileConfig.Large
+        { id = 201
+        , complexity = 0.2
+        , biome = TileConfig.Nature
+        , tiles =
+            Array.fromList
+                [ natureTopLeftCorner
+                , natureTopRightCorner
+
+                --
+                , natureBottomLeftCorner
+                , natureBottomRightCorner
+                ]
+        , width = 2
+        , height = 2
+        , anchorIndex = 0
         }

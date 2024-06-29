@@ -3,7 +3,7 @@ module Message exposing (Message(..), asCmd)
 import Browser.Dom
 import Browser.Events exposing (Visibility)
 import Duration exposing (Duration)
-import Model.Debug exposing (DebugLayerKind)
+import Model.Debug exposing (DebugLayerKind, DevAction)
 import Model.World exposing (TilemapChange)
 import Task
 import Time
@@ -28,9 +28,9 @@ type Message
     | UpdateTraffic Duration
     | CheckQueues Time.Posix
     | UpdateEnvironment
-    | SpawnTestCar
     | UpdateTilemap Duration
     | TilemapChanged TilemapChange
+    | TriggerDevAction DevAction
       -- UI
     | InputReceived UI.Core.InputEvent
     | ZoomLevelChanged UI.Core.ZoomLevel

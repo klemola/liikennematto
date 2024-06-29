@@ -7,6 +7,7 @@ module Tilemap.WFC exposing
     , flushPendingActions
     , fromTilemap
     , init
+    , initializeArea
     , propagateConstraints
     , resetCell
     , solve
@@ -20,11 +21,11 @@ module Tilemap.WFC exposing
 
 import Array
 import Common exposing (attemptFoldList, attemptMapList)
-import Data.TileSet
+import Data.TileSet as TileSet
     exposing
-        ( pairingsForSocket
+        ( allTiles
+        , pairingsForSocket
         , tileById
-        , tileIds
         , tileIdsByOrthogonalMatch
         )
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
@@ -108,7 +109,7 @@ initTileWithSuperposition tilemapConfig index =
     index
         |> Cell.fromArray1DIndexUnsafe tilemapConfig
         |> Cell.connectedBounds tilemapConfig
-        |> tileIdsByOrthogonalMatch
+        |> tileIdsByOrthogonalMatch allTiles
         |> Superposition
         |> Tile.init
 
@@ -333,9 +334,40 @@ flushOpenSteps ((Model modelContents) as model) =
         flushOpenSteps (step StopAtEmptySteps model)
 
 
-resetCell : Cell -> TileKind -> Model -> Model
-resetCell cell tileKind (Model modelContents) =
-    Model { modelContents | tilemap = resetTileBySurroundings cell tileKind modelContents.tilemap }
+initializeArea : Int -> List TileConfig -> Cell -> Model -> Model
+initializeArea distance tileSet origin ((Model modelContents) as model) =
+    let
+        ( baseX, baseY ) =
+            Cell.coordinates origin
+
+        bounds =
+            { minX = baseX - distance
+            , maxX = baseX + distance
+            , minY = baseY - distance
+            , maxY = baseY + distance
+            }
+    in
+    List.foldl
+        (\cell nextWfcModel ->
+            case tileByCell modelContents.tilemap cell of
+                Just tile ->
+                    case tile.kind of
+                        Unintialized ->
+                            resetCell tileSet cell tile.kind nextWfcModel
+
+                        _ ->
+                            nextWfcModel
+
+                Nothing ->
+                    nextWfcModel
+        )
+        model
+        (Cell.fromArea (getTilemapConfig modelContents.tilemap) bounds)
+
+
+resetCell : List TileConfig -> Cell -> TileKind -> Model -> Model
+resetCell tileSet cell tileKind (Model modelContents) =
+    Model { modelContents | tilemap = resetTileBySurroundings cell tileSet tileKind modelContents.tilemap }
 
 
 
@@ -652,7 +684,7 @@ nextCandidates tilemap =
                     ( candidates, minEntropy )
     in
     tilemap
-        |> foldTiles toCandidate ( [], List.length tileIds + 1 )
+        |> foldTiles toCandidate ( [], TileSet.allTilesAmount + 1 )
         |> Tuple.first
 
 

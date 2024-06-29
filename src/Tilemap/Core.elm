@@ -99,8 +99,8 @@ createTilemap tilemapConfig initTileFn =
         }
 
 
-resetTileBySurroundings : Cell -> TileKind -> Tilemap -> Tilemap
-resetTileBySurroundings cell tileKind tilemap =
+resetTileBySurroundings : Cell -> List TileConfig -> TileKind -> Tilemap -> Tilemap
+resetTileBySurroundings cell tileSet tileKind tilemap =
     let
         options =
             case tileKind of
@@ -108,16 +108,16 @@ resetTileBySurroundings cell tileKind tilemap =
                     tileIdsFromBitmask (cellBitmask cell tilemap)
 
                 _ ->
-                    resetSuperposition cell tilemap
+                    resetSuperposition cell tileSet tilemap
     in
     setSuperpositionOptions cell options tilemap
 
 
-resetSuperposition : Cell -> Tilemap -> List TileId
-resetSuperposition cell ((Tilemap tilemapContents) as tilemap) =
+resetSuperposition : Cell -> List TileConfig -> Tilemap -> List TileId
+resetSuperposition cell tileSet ((Tilemap tilemapContents) as tilemap) =
     Cell.connectedBounds tilemapContents.config cell
         |> Lib.Bitmask.mergeMatches (cellOrthogonalNeighbors cell (\_ -> True) tilemap)
-        |> tileIdsByOrthogonalMatch
+        |> tileIdsByOrthogonalMatch tileSet
 
 
 cellBitmask : Cell -> Tilemap -> Int

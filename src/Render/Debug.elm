@@ -7,6 +7,7 @@ import Data.Lots exposing (ParkingRestriction(..))
 import Graph
 import Length exposing (Length)
 import Lib.Collection as Collection exposing (Collection)
+import List.Extra
 import Model.Debug exposing (DebugLayerKind(..), DebugState, isLayerEnabled)
 import Model.RenderCache exposing (RenderCache)
 import Model.World exposing (World)
@@ -385,7 +386,7 @@ renderSuperposition : { size : Float, x : Float, y : Float } -> List TileId -> S
 renderSuperposition { size, x, y } tileIds =
     let
         idsDebug =
-            List.map String.fromInt tileIds
+            (List.sort >> List.map String.fromInt) tileIds
     in
     Svg.svg
         [ Attributes.x (String.fromFloat x)
@@ -394,14 +395,17 @@ renderSuperposition { size, x, y } tileIds =
         , Attributes.height (String.fromFloat size)
         , Attributes.viewBox "0 0 256 256"
         ]
-        [ Svg.text_
-            [ Attributes.fill "black"
-            , Attributes.x "32"
-            , Attributes.y "128"
-            , Attributes.style "font: italic 24px sans-serif;"
-            ]
-            [ ("S" :: idsDebug)
-                |> String.join " "
-                |> Svg.text
-            ]
-        ]
+        (idsDebug
+            |> List.Extra.greedyGroupsOf 4
+            |> List.indexedMap
+                (\idx values ->
+                    Svg.text_
+                        [ Attributes.fill "black"
+                        , Attributes.x "24"
+                        , Attributes.y (String.fromInt (28 + (idx * 28)))
+                        , Attributes.style "font: italic 24px sans-serif;"
+                        ]
+                        [ Svg.text (String.join " " values)
+                        ]
+                )
+        )
