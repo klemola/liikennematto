@@ -12,6 +12,7 @@ module Tilemap.Tile exposing
     , isBuilt
     , isDynamic
     , isFixed
+    , isSuperposition
     , transitionTimer
     , updateTileId
     )
@@ -100,6 +101,16 @@ updateTileId nextTileId tile =
 
         Err _ ->
             ( tile, [] )
+
+
+isSuperposition : Tile -> Bool
+isSuperposition tile =
+    case tile.kind of
+        Superposition _ ->
+            True
+
+        _ ->
+            False
 
 
 isFixed : Tile -> Bool

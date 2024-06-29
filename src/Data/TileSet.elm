@@ -9,6 +9,7 @@ module Data.TileSet exposing
     , tileIdByBitmask
     , tileIdsByOrthogonalMatch
     , tileIdsFromBitmask
+    , tilesByBaseTileId
     )
 
 import Array
@@ -192,6 +193,32 @@ tileById tileId =
 nonRoadTiles : List TileConfig
 nonRoadTiles =
     List.filter (\tileConfig -> TileConfig.biome tileConfig /= TileConfig.Road) allTiles
+
+
+baseTileLookup : Dict TileId (List TileConfig)
+baseTileLookup =
+    List.foldl
+        (\tileConfig groups ->
+            case TileConfig.baseTileId tileConfig of
+                Just baseTileId ->
+                    let
+                        currentTiles =
+                            Dict.get baseTileId groups
+                                |> Maybe.withDefault []
+                    in
+                    groups |> Dict.insert baseTileId (tileConfig :: currentTiles)
+
+                Nothing ->
+                    groups
+        )
+        Dict.empty
+        allTiles
+
+
+tilesByBaseTileId : TileId -> List TileConfig
+tilesByBaseTileId baseTileId =
+    Dict.get baseTileId baseTileLookup
+        |> Maybe.withDefault []
 
 
 
@@ -917,7 +944,7 @@ twoByTwoNature : TileConfig
 twoByTwoNature =
     TileConfig.Large
         { id = 201
-        , complexity = 0.2
+        , complexity = 0.1
         , biome = TileConfig.Nature
         , tiles =
             Array.fromList

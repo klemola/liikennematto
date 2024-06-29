@@ -387,6 +387,10 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap, pendi
                                 { withPick | state = Solving }
 
                             else
+                                let
+                                    _ =
+                                        Debug.log "solved" ()
+                                in
                                 { modelDetails
                                     | state = Done
                                     , currentCell = Nothing
@@ -509,7 +513,7 @@ canDock dockDir dockSocket dockTileId =
 -}
 solved : ModelDetails -> Bool
 solved { tilemap, openSteps } =
-    List.isEmpty openSteps && forAllTiles Tile.isFixed tilemap
+    List.isEmpty openSteps && forAllTiles (Tile.isSuperposition >> not) tilemap
 
 
 stepSuperposition : Tilemap -> Step -> Maybe (Nonempty TileId)

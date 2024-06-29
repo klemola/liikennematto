@@ -23,6 +23,7 @@ import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Screen as Screen exposing (Screen)
 import Model.World as World exposing (World)
 import Tilemap.Core exposing (TileListFilter(..), Tilemap)
+import Tilemap.WFC as WFC
 import Time
 import UI.Editor
 import UI.ZoomControl
@@ -34,6 +35,7 @@ type alias Liikennematto =
     , screen : Screen
     , time : Time.Posix
     , world : World
+    , wfc : WFC.Model
     , previousWorld : Maybe World
     , simulationActive : Bool
     , renderCache : RenderCache Message
@@ -246,6 +248,7 @@ initial flags =
     , time = Time.millisToPosix 0
     , previousWorld = Nothing
     , world = initialWorld
+    , wfc = WFC.fromTilemap initialWorld.tilemap initialWorld.seed
     , simulationActive = True
     , renderCache =
         RenderCache.new initialWorld roads
@@ -272,6 +275,7 @@ withTilemap tilemap model =
     in
     { model
         | world = nextWorld
+        , wfc = WFC.fromTilemap nextWorld.tilemap nextWorld.seed
         , renderCache = RenderCache.setTilemapCache nextWorld.tilemap model.renderCache
     }
 
@@ -286,6 +290,7 @@ fromNewGame : Maybe World -> Liikennematto -> Liikennematto
 fromNewGame previousWorld model =
     { model
         | world = initialWorld
+        , wfc = WFC.fromTilemap initialWorld.tilemap initialWorld.seed
         , previousWorld = previousWorld
         , renderCache = RenderCache.new initialWorld roads
         , simulationActive = True
@@ -299,6 +304,7 @@ fromPreviousGame model =
         Just previousWorld ->
             { model
                 | world = previousWorld
+                , wfc = WFC.fromTilemap previousWorld.tilemap previousWorld.seed
                 , previousWorld = Nothing
                 , renderCache = RenderCache.new previousWorld roads
                 , simulationActive = True

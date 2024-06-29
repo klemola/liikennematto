@@ -7,6 +7,7 @@ module Tilemap.TileConfig exposing
     , TileConfig(..)
     , TileId
     , allSockets
+    , baseTileId
     , biome
     , complexity
     , graphPriority
@@ -142,6 +143,16 @@ biome tileConfig =
 
         Large largeTile ->
             largeTile.biome
+
+
+baseTileId : TileConfig -> Maybe TileId
+baseTileId tileConfig =
+    case tileConfig of
+        Single singleTile ->
+            singleTile.baseTileId
+
+        Large _ ->
+            Nothing
 
 
 sockets : TileConfig -> Sockets

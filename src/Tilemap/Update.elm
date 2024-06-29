@@ -1,7 +1,7 @@
 module Tilemap.Update exposing (modifyTile, update)
 
 import Audio exposing (playSound)
-import Data.TileSet exposing (allTiles, nonRoadTiles, tileIdByBitmask)
+import Data.TileSet exposing (allTiles, nonRoadTiles, tileIdByBitmask, tilesByBaseTileId)
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import Maybe.Extra as Maybe
 import Message exposing (Message(..))
@@ -23,6 +23,7 @@ import Tilemap.Core
         , cellHasFixedTile
         , fixedTileByCell
         , getTilemapConfig
+        , mapTiles
         , resetSuperposition
         , setSuperpositionOptions
         , tileByCell
@@ -30,6 +31,7 @@ import Tilemap.Core
         , updateTilemap
         )
 import Tilemap.Tile as Tile exposing (Action(..), Tile, TileKind(..), isBuilt)
+import Tilemap.TileConfig as TileConfig
 import Tilemap.WFC as WFC
 import UI.Core exposing (InputKind(..))
 
@@ -284,12 +286,16 @@ processTileNeighbor maybeTile wfcModel =
 runWFC : Liikennematto -> ( Liikennematto, Cmd Message )
 runWFC model =
     let
-        { world } =
-            model
+        wfc =
+            if WFC.stopped model.wfc then
+                WFC.fromTilemap (reopenRoads model.world.tilemap) model.world.seed
+
+            else
+                model.wfc
 
         ( updatedWfcModel, wfcTileActions ) =
-            WFC.fromTilemap world.tilemap world.seed
-                |> WFC.stepN WFC.StopAtSolved 10
+            wfc
+                |> WFC.stepN WFC.StopAtSolved 100
                 |> WFC.flushPendingActions
     in
     ( withTilemap
@@ -297,6 +303,33 @@ runWFC model =
         model
     , Cmd.batch (tileActionsToCmds wfcTileActions)
     )
+
+
+reopenRoads : Tilemap -> Tilemap
+reopenRoads tilemap =
+    mapTiles
+        (\_ tile ->
+            Tile.id tile
+                |> Maybe.andThen
+                    (\baseTileId ->
+                        case tilesByBaseTileId baseTileId of
+                            [] ->
+                                Nothing
+
+                            options ->
+                                let
+                                    tileVariations =
+                                        -- TODO: filter by compatibility, e.g. check for tilemap edge and neighbor
+                                        List.map TileConfig.tileConfigId options
+
+                                    nextTile =
+                                        { tile | kind = Superposition (baseTileId :: tileVariations) }
+                                in
+                                Just nextTile
+                    )
+                |> Maybe.withDefault tile
+        )
+        tilemap
 
 
 

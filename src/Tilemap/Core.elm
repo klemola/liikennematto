@@ -18,6 +18,7 @@ module Tilemap.Core exposing
     , getTilemapConfig
     , getTilemapDimensions
     , inTilemapBounds
+    , mapTiles
     , removeAnchor
     , removeTile
     , resetSuperposition
@@ -228,41 +229,19 @@ type TileListFilter
 
 tilemapToList : (Cell -> Tile -> a) -> TileListFilter -> Tilemap -> List a
 tilemapToList mapperFn listFilter tilemap =
-    let
-        (Tilemap tilemapContents) =
-            tilemap
+    foldTiles
+        (\cell tile acc ->
+            if
+                (listFilter == StaticTiles)
+                    && (Tile.isDynamic tile || not (Tile.isFixed tile))
+            then
+                acc
 
-        -- Keep track of the array index, which Array.foldl does not
-        initialAcc =
-            { acc = []
-            , index = 0
-            }
-
-        mappedAcc =
-            -- This is an optimization - Array.indexedMap would require double iteration (cell mapping + Nothing values discarded)
-            Array.foldl
-                (\tile { acc, index } ->
-                    { acc =
-                        Cell.fromArray1DIndex tilemapContents.config index
-                            |> Maybe.map
-                                (\cell ->
-                                    if
-                                        (listFilter == StaticTiles)
-                                            && (Tile.isDynamic tile || not (Tile.isFixed tile))
-                                    then
-                                        acc
-
-                                    else
-                                        mapperFn cell tile :: acc
-                                )
-                            |> Maybe.withDefault acc
-                    , index = index + 1
-                    }
-                )
-                initialAcc
-                tilemapContents.cells
-    in
-    mappedAcc.acc
+            else
+                mapperFn cell tile :: acc
+        )
+        []
+        tilemap
 
 
 foldTiles : (Cell -> Tile -> b -> b) -> b -> Tilemap -> b
@@ -282,12 +261,10 @@ foldTiles foldFn b tilemap =
             Array.foldl
                 (\tile { acc, index } ->
                     { acc =
-                        Cell.fromArray1DIndex tilemapContents.config index
-                            |> Maybe.map
-                                (\cell ->
-                                    foldFn cell tile acc
-                                )
-                            |> Maybe.withDefault acc
+                        foldFn
+                            (Cell.fromArray1DIndexUnsafe tilemapContents.config index)
+                            tile
+                            acc
                     , index = index + 1
                     }
                 )
@@ -295,6 +272,19 @@ foldTiles foldFn b tilemap =
                 tilemapContents.cells
     in
     mappedAcc.acc
+
+
+mapTiles : (Cell -> Tile -> Tile) -> Tilemap -> Tilemap
+mapTiles mapperFn (Tilemap tilemapContents) =
+    let
+        mappedCells =
+            Array.indexedMap
+                (\index tile ->
+                    mapperFn (Cell.fromArray1DIndexUnsafe tilemapContents.config index) tile
+                )
+                tilemapContents.cells
+    in
+    Tilemap { tilemapContents | cells = mappedCells }
 
 
 forAllTiles : (Tile -> Bool) -> Tilemap -> Bool
@@ -534,11 +524,8 @@ applyTilemapOperation operation tileId origin tilemap =
 
 
 updateCell : Cell -> Tile -> Tilemap -> Tilemap
-updateCell cell tile tilemap =
+updateCell cell tile (Tilemap tilemapContents) =
     let
-        (Tilemap tilemapContents) =
-            tilemap
-
         idx =
             Cell.array1DIndex tilemapContents.config cell
     in
