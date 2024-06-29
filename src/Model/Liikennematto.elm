@@ -13,7 +13,6 @@ module Model.Liikennematto exposing
     )
 
 import Data.Assets exposing (roads)
-import Data.Defaults exposing (horizontalCellsAmount, verticalCellsAmount)
 import Duration exposing (Duration)
 import Lib.FSM as FSM exposing (FSM)
 import Message exposing (Message)
@@ -201,6 +200,16 @@ triggerLoading model =
 --
 -- Init
 --
+
+
+horizontalCellsAmount : Int
+horizontalCellsAmount =
+    16
+
+
+verticalCellsAmount : Int
+verticalCellsAmount =
+    12
 
 
 tilemapConfig =
