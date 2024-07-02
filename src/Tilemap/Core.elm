@@ -18,7 +18,6 @@ module Tilemap.Core exposing
     , getTilemapConfig
     , getTilemapDimensions
     , inTilemapBounds
-    , mapTiles
     , removeAnchor
     , removeTile
     , resetSuperposition
@@ -272,19 +271,6 @@ foldTiles foldFn b tilemap =
                 tilemapContents.cells
     in
     mappedAcc.acc
-
-
-mapTiles : (Cell -> Tile -> Tile) -> Tilemap -> Tilemap
-mapTiles mapperFn (Tilemap tilemapContents) =
-    let
-        mappedCells =
-            Array.indexedMap
-                (\index tile ->
-                    mapperFn (Cell.fromArray1DIndexUnsafe tilemapContents.config index) tile
-                )
-                tilemapContents.cells
-    in
-    Tilemap { tilemapContents | cells = mappedCells }
 
 
 forAllTiles : (Tile -> Bool) -> Tilemap -> Bool

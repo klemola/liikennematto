@@ -387,10 +387,6 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap, pendi
                                 { withPick | state = Solving }
 
                             else
-                                let
-                                    _ =
-                                        Debug.log "solved" ()
-                                in
                                 { modelDetails
                                     | state = Done
                                     , currentCell = Nothing

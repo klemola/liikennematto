@@ -1,7 +1,9 @@
 module Data.TileSet exposing
     ( allTiles
     , allTilesAmount
+    , defaultSocket
     , isTileLotEntryTile
+    , lotEntrySocket
     , nonRoadTiles
     , pairingsForSocket
     , roadConnectionDirectionsByTile
@@ -316,7 +318,7 @@ isTileLotEntryTile : TileId -> Bool
 isTileLotEntryTile =
     tileById
         >> TileConfig.socketsList
-        >> List.Nonempty.any ((==) lotEntrySocket)
+        >> List.Nonempty.any (\( _, socket ) -> socket == lotEntrySocket)
 
 
 roadConnectionDirectionsByTile : TileConfig -> List OrthogonalDirection

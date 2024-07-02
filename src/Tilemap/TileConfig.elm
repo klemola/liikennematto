@@ -174,13 +174,18 @@ sockets tileConfig =
                     }
 
 
-socketsList : TileConfig -> Nonempty Socket
+socketsList : TileConfig -> Nonempty ( OrthogonalDirection, Socket )
 socketsList tileConfig =
     let
         sockets_ =
             sockets tileConfig
     in
-    List.Nonempty.Nonempty sockets_.top [ sockets_.right, sockets_.bottom, sockets_.left ]
+    List.Nonempty.Nonempty
+        ( Up, sockets_.top )
+        [ ( Right, sockets_.right )
+        , ( Down, sockets_.bottom )
+        , ( Left, sockets_.left )
+        ]
 
 
 socketByDirectionWithConfig : TileConfig -> OrthogonalDirection -> Socket

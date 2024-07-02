@@ -1,14 +1,22 @@
 module Tilemap.Update exposing (modifyTile, update)
 
 import Audio exposing (playSound)
-import Data.TileSet exposing (allTiles, nonRoadTiles, tileIdByBitmask, tilesByBaseTileId)
+import Data.TileSet
+    exposing
+        ( allTiles
+        , nonRoadTiles
+        , tileIdByBitmask
+        , tilesByBaseTileId
+        )
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
+import List.Nonempty
 import Maybe.Extra as Maybe
 import Message exposing (Message(..))
 import Model.Debug exposing (DevAction(..))
 import Model.Liikennematto
     exposing
-        ( Liikennematto
+        ( DrivenWFC(..)
+        , Liikennematto
         , withTilemap
         )
 import Model.RenderCache exposing (refreshTilemapCache)
@@ -22,16 +30,17 @@ import Tilemap.Core
         , cellBitmask
         , cellHasFixedTile
         , fixedTileByCell
+        , foldTiles
         , getTilemapConfig
-        , mapTiles
         , resetSuperposition
+        , resetTileBySurroundings
         , setSuperpositionOptions
         , tileByCell
         , tileNeighborIn
         , updateTilemap
         )
 import Tilemap.Tile as Tile exposing (Action(..), Tile, TileKind(..), isBuilt)
-import Tilemap.TileConfig as TileConfig
+import Tilemap.TileConfig as TileConfig exposing (TileConfig, TileId)
 import Tilemap.WFC as WFC
 import UI.Core exposing (InputKind(..))
 
@@ -205,7 +214,7 @@ modifyTileAndUpdate modifyTileConfig model =
         ( withWFC, actions ) =
             modifyTile modifyTileConfig world.tilemap world.seed
     in
-    ( withTilemap withWFC model
+    ( withTilemap withWFC Nothing model
     , Cmd.batch (tileActionsToCmds actions)
     )
 
@@ -287,11 +296,12 @@ runWFC : Liikennematto -> ( Liikennematto, Cmd Message )
 runWFC model =
     let
         wfc =
-            if WFC.stopped model.wfc then
-                WFC.fromTilemap (reopenRoads model.world.tilemap) model.world.seed
+            case model.wfc of
+                WFCPaused ->
+                    WFC.fromTilemap (reopenRoads model.world.tilemap) model.world.seed
 
-            else
-                model.wfc
+                WFCActive wfcModel ->
+                    wfcModel
 
         ( updatedWfcModel, wfcTileActions ) =
             wfc
@@ -300,6 +310,7 @@ runWFC model =
     in
     ( withTilemap
         (WFC.toTilemap updatedWfcModel)
+        (Just updatedWfcModel)
         model
     , Cmd.batch (tileActionsToCmds wfcTileActions)
     )
@@ -307,29 +318,101 @@ runWFC model =
 
 reopenRoads : Tilemap -> Tilemap
 reopenRoads tilemap =
-    mapTiles
-        (\_ tile ->
-            Tile.id tile
-                |> Maybe.andThen
-                    (\baseTileId ->
-                        case tilesByBaseTileId baseTileId of
-                            [] ->
-                                Nothing
+    foldTiles
+        (\cell tile nextTilemap ->
+            case Tile.id tile of
+                Just baseTileId ->
+                    reopenRoadsStep baseTileId cell nextTilemap
 
-                            options ->
-                                let
-                                    tileVariations =
-                                        -- TODO: filter by compatibility, e.g. check for tilemap edge and neighbor
-                                        List.map TileConfig.tileConfigId options
-
-                                    nextTile =
-                                        { tile | kind = Superposition (baseTileId :: tileVariations) }
-                                in
-                                Just nextTile
-                    )
-                |> Maybe.withDefault tile
+                Nothing ->
+                    nextTilemap
         )
         tilemap
+        tilemap
+
+
+reopenRoadsStep : TileId -> Cell -> Tilemap -> Tilemap
+reopenRoadsStep baseTileId origin tilemap =
+    case tilesByBaseTileId baseTileId of
+        [] ->
+            tilemap
+
+        options ->
+            let
+                ( tileVariations, drivewayNeighbors ) =
+                    findVariations origin options tilemap
+
+                _ =
+                    Debug.log "drivewayNeighbors" ( Cell.toString origin, List.map Cell.toString drivewayNeighbors )
+            in
+            case tileVariations of
+                [] ->
+                    -- No valid variations, keep the tile fixed
+                    tilemap
+
+                variations ->
+                    tilemap
+                        |> setSuperpositionOptions origin (baseTileId :: variations)
+                        |> resetDrivewayNeighbors drivewayNeighbors
+
+
+findVariations : Cell -> List TileConfig -> Tilemap -> ( List TileConfig.TileId, List Cell )
+findVariations origin options tilemap =
+    List.foldl
+        (\option (( filteredOptionsAcc, drivewayNeighborsAcc ) as acc) ->
+            let
+                tileConfigId =
+                    TileConfig.tileConfigId option
+
+                sockets =
+                    TileConfig.socketsList option
+
+                toDrivewayNeighbor ( dir, socket ) =
+                    if socket == Data.TileSet.lotEntrySocket then
+                        tilemap
+                            |> tileNeighborIn dir origin tileByCell
+                            |> Maybe.andThen
+                                (\( neighborCell, neighborTile ) ->
+                                    case neighborTile.kind of
+                                        Fixed _ ->
+                                            Nothing
+
+                                        _ ->
+                                            Just neighborCell
+                                )
+
+                    else
+                        Nothing
+
+                drivewayNeighbors =
+                    sockets
+                        |> List.Nonempty.toList
+                        |> List.filterMap toDrivewayNeighbor
+            in
+            if List.length drivewayNeighbors > 0 then
+                ( tileConfigId :: filteredOptionsAcc
+                , drivewayNeighborsAcc ++ drivewayNeighbors
+                )
+
+            else
+                acc
+        )
+        ( [], [] )
+        options
+
+
+resetDrivewayNeighbors : List Cell -> Tilemap -> Tilemap
+resetDrivewayNeighbors drivewayNeighbors tilemap =
+    List.foldl
+        (\neighbor nextTilemap ->
+            resetTileBySurroundings neighbor
+                nonRoadTiles
+                -- TODO: this fake tile definition is wrong, maybe make the fn use different param
+                (Superposition [])
+                nextTilemap
+        )
+        tilemap
+        drivewayNeighbors
 
 
 

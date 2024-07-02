@@ -1,5 +1,6 @@
 module Model.Liikennematto exposing
-    ( GameAction(..)
+    ( DrivenWFC(..)
+    , GameAction(..)
     , GameFSM
     , GameState(..)
     , GameUpdateContext
@@ -22,6 +23,7 @@ import Model.Flags exposing (Flags, RuntimeEnvironment(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Screen as Screen exposing (Screen)
 import Model.World as World exposing (World)
+import Simulation.Car exposing (CarState(..))
 import Tilemap.Core exposing (TileListFilter(..), Tilemap)
 import Tilemap.WFC as WFC
 import Time
@@ -35,7 +37,7 @@ type alias Liikennematto =
     , screen : Screen
     , time : Time.Posix
     , world : World
-    , wfc : WFC.Model
+    , wfc : DrivenWFC
     , previousWorld : Maybe World
     , simulationActive : Bool
     , renderCache : RenderCache Message
@@ -47,8 +49,9 @@ type alias Liikennematto =
     }
 
 
-type alias GameFSM =
-    FSM GameState GameAction GameUpdateContext
+type DrivenWFC
+    = WFCPaused
+    | WFCActive WFC.Model
 
 
 type alias InitSteps =
@@ -61,6 +64,10 @@ type alias InitSteps =
 --
 -- Game level FSM
 --
+
+
+type alias GameFSM =
+    FSM GameState GameAction GameUpdateContext
 
 
 type GameState
@@ -248,7 +255,7 @@ initial flags =
     , time = Time.millisToPosix 0
     , previousWorld = Nothing
     , world = initialWorld
-    , wfc = WFC.fromTilemap initialWorld.tilemap initialWorld.seed
+    , wfc = WFCPaused
     , simulationActive = True
     , renderCache =
         RenderCache.new initialWorld roads
@@ -267,15 +274,23 @@ initial flags =
 --
 
 
-withTilemap : Tilemap -> Liikennematto -> Liikennematto
-withTilemap tilemap model =
+withTilemap : Tilemap -> Maybe WFC.Model -> Liikennematto -> Liikennematto
+withTilemap tilemap wfc model =
     let
         nextWorld =
             World.setTilemap tilemap model.world
+
+        nextWFC =
+            case wfc of
+                Just wfcModel ->
+                    WFCActive wfcModel
+
+                Nothing ->
+                    WFCPaused
     in
     { model
         | world = nextWorld
-        , wfc = WFC.fromTilemap nextWorld.tilemap nextWorld.seed
+        , wfc = nextWFC
         , renderCache = RenderCache.setTilemapCache nextWorld.tilemap model.renderCache
     }
 
@@ -290,7 +305,7 @@ fromNewGame : Maybe World -> Liikennematto -> Liikennematto
 fromNewGame previousWorld model =
     { model
         | world = initialWorld
-        , wfc = WFC.fromTilemap initialWorld.tilemap initialWorld.seed
+        , wfc = WFCPaused
         , previousWorld = previousWorld
         , renderCache = RenderCache.new initialWorld roads
         , simulationActive = True
@@ -304,7 +319,7 @@ fromPreviousGame model =
         Just previousWorld ->
             { model
                 | world = previousWorld
-                , wfc = WFC.fromTilemap previousWorld.tilemap previousWorld.seed
+                , wfc = WFCPaused
                 , previousWorld = Nothing
                 , renderCache = RenderCache.new previousWorld roads
                 , simulationActive = True
