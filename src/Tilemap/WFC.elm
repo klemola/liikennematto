@@ -805,6 +805,9 @@ attemptTileNeighborUpdate currentTile originCell tilemap =
         (\nuCtx _ ->
             Ok (PropagateConstraints originCell nuCtx.neighborCell :: nuCtx.steps)
         )
+        (\_ ->
+            Err "Can't update uninitialized neighbor"
+        )
         originCell
         tilemap
 
@@ -827,10 +830,11 @@ type alias NeighborUpdateContext =
 applyToNeighbor :
     (NeighborUpdateContext -> TileId -> Result error (List Step))
     -> (NeighborUpdateContext -> List TileId -> Result error (List Step))
+    -> (NeighborUpdateContext -> Result error (List Step))
     -> Cell
     -> Tilemap
     -> Result error (List Step)
-applyToNeighbor onFixed onSuperposition cell tilemap =
+applyToNeighbor onFixed onSuperposition onUninitialized cell tilemap =
     let
         tilemapConfig =
             getTilemapConfig tilemap
@@ -853,7 +857,7 @@ applyToNeighbor onFixed onSuperposition cell tilemap =
                                     onSuperposition neighborUpdateContext options
 
                                 Unintialized ->
-                                    Ok steps
+                                    onUninitialized neighborUpdateContext
 
                         Nothing ->
                             Ok steps
