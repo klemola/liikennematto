@@ -2,6 +2,7 @@ module Data.TileSet exposing
     ( allTiles
     , allTilesAmount
     , defaultSocket
+    , defaultTiles
     , isTileLotEntryTile
     , lotEntrySocket
     , nonRoadTiles
@@ -112,6 +113,11 @@ defaultTileId =
     0
 
 
+loneRoadTileId : TileId
+loneRoadTileId =
+    17
+
+
 allTiles : List TileConfig
 allTiles =
     [ grass
@@ -195,6 +201,11 @@ tileById tileId =
 nonRoadTiles : List TileConfig
 nonRoadTiles =
     List.filter (\tileConfig -> TileConfig.biome tileConfig /= TileConfig.Road) allTiles
+
+
+defaultTiles : List TileConfig
+defaultTiles =
+    List.filter (\tileConfig -> TileConfig.tileConfigId tileConfig /= loneRoadTileId) allTiles
 
 
 baseTileLookup : Dict TileId (List TileConfig)
@@ -367,7 +378,7 @@ grass =
 loneRoad : TileConfig
 loneRoad =
     TileConfig.Single
-        { id = 17
+        { id = loneRoadTileId
         , complexity = 0.1
         , graphPriority = maxGraphPriority
         , biome = TileConfig.Road

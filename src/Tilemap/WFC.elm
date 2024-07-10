@@ -23,7 +23,7 @@ import Array
 import Common exposing (attemptFoldList, attemptMapList)
 import Data.TileSet as TileSet
     exposing
-        ( allTiles
+        ( defaultTiles
         , pairingsForSocket
         , tileById
         , tileIdsByOrthogonalMatch
@@ -120,7 +120,7 @@ initTileWithSuperposition tilemapConfig index =
     index
         |> Cell.fromArray1DIndexUnsafe tilemapConfig
         |> Cell.connectedBounds tilemapConfig
-        |> tileIdsByOrthogonalMatch allTiles
+        |> tileIdsByOrthogonalMatch defaultTiles
         |> Superposition
         |> Tile.init
 

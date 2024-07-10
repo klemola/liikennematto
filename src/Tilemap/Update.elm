@@ -3,7 +3,7 @@ module Tilemap.Update exposing (modifyTile, update)
 import Audio exposing (playSound)
 import Data.TileSet
     exposing
-        ( allTiles
+        ( defaultTiles
         , nonRoadTiles
         , tileById
         , tileIdByBitmask
@@ -65,7 +65,7 @@ update msg model =
                                 (\removedCell nextTilemap ->
                                     setSuperpositionOptions
                                         removedCell
-                                        (resetSuperposition removedCell allTiles nextTilemap)
+                                        (resetSuperposition removedCell defaultTiles nextTilemap)
                                         nextTilemap
                                 )
                                 tilemapUpdateResult.tilemap
@@ -271,7 +271,7 @@ processTileNeighbor maybeTile wfcModel =
                 Fixed tileId ->
                     if TileConfig.biome (tileById tileId) == TileConfig.Road then
                         wfcModel
-                            |> WFC.resetCell allTiles cell tile.kind
+                            |> WFC.resetCell defaultTiles cell tile.kind
                             |> WFC.collapse cell
 
                     else
