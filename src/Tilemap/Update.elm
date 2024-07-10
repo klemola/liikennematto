@@ -5,6 +5,7 @@ import Data.TileSet
     exposing
         ( allTiles
         , nonRoadTiles
+        , tileById
         , tileIdByBitmask
         , tilesByBaseTileId
         )
@@ -26,9 +27,9 @@ import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
         ( Tilemap
-        , canBuildRoadAt
         , cellBitmask
-        , cellHasFixedTile
+        , cellHasRoad
+        , cellSupportsRoadPlacement
         , fixedTileByCell
         , foldTiles
         , getTilemapConfig
@@ -134,11 +135,7 @@ update msg model =
 
 onPrimaryInput : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
 onPrimaryInput cell model =
-    let
-        alreadyExists =
-            cellHasFixedTile cell model.world.tilemap
-    in
-    if not alreadyExists && canBuildRoadAt cell model.world.tilemap then
+    if not (cellHasRoad cell model.world.tilemap) && cellSupportsRoadPlacement cell model.world.tilemap then
         addTile cell model
 
     else
@@ -271,10 +268,14 @@ processTileNeighbor maybeTile wfcModel =
     case maybeTile of
         Just ( cell, tile ) ->
             case tile.kind of
-                Fixed _ ->
-                    wfcModel
-                        |> WFC.resetCell allTiles cell tile.kind
-                        |> WFC.collapse cell
+                Fixed tileId ->
+                    if TileConfig.biome (tileById tileId) == TileConfig.Road then
+                        wfcModel
+                            |> WFC.resetCell allTiles cell tile.kind
+                            |> WFC.collapse cell
+
+                    else
+                        wfcModel
 
                 Superposition _ ->
                     wfcModel
@@ -341,9 +342,6 @@ reopenRoadsStep baseTileId origin tilemap =
             let
                 ( tileVariations, drivewayNeighbors ) =
                     findVariations origin options tilemap
-
-                _ =
-                    Debug.log "drivewayNeighbors" ( Cell.toString origin, List.map Cell.toString drivewayNeighbors )
             in
             case tileVariations of
                 [] ->

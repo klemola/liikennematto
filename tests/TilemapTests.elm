@@ -12,7 +12,7 @@ import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Maybe.Extra as Maybe
 import Test exposing (Test, describe, test)
 import Tilemap.Cell as Cell
-import Tilemap.Core exposing (Tilemap, canBuildRoadAt, fixedTileByCell, getTilemapConfig)
+import Tilemap.Core exposing (Tilemap, cellSupportsRoadPlacement, fixedTileByCell, getTilemapConfig)
 import Tilemap.Tile exposing (TileKind(..))
 
 
@@ -139,7 +139,7 @@ suite =
                             getTilemapConfig tilemap
                     in
                     Cell.fromCoordinates tilemapConfig ( 2, 2 )
-                        |> Maybe.map (\cell -> canBuildRoadAt cell lowComplexityWorld.tilemap)
+                        |> Maybe.map (\cell -> cellSupportsRoadPlacement cell lowComplexityWorld.tilemap)
                         |> Maybe.withDefault False
                         |> Expect.true "Expected valid world."
                 )
@@ -153,7 +153,7 @@ suite =
                             getTilemapConfig tilemap
                     in
                     Cell.fromCoordinates tilemapConfig ( 2, 2 )
-                        |> Maybe.map (\cell -> canBuildRoadAt cell tilemap)
+                        |> Maybe.map (\cell -> cellSupportsRoadPlacement cell tilemap)
                         |> Maybe.withDefault False
                         |> Expect.false "Expected invalid world."
                 )

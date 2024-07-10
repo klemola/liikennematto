@@ -23,8 +23,8 @@ import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
         ( TilemapConfig
-        , canBuildRoadAt
-        , cellHasFixedTile
+        , cellHasRoad
+        , cellSupportsRoadPlacement
         , getTilemapConfig
         )
 import UI.Core
@@ -128,10 +128,10 @@ update world renderCache msg model =
             case pointerEventToCell renderCache tilemapConfig event of
                 Just eventCell ->
                     let
-                        cellHasTile =
-                            cellHasFixedTile eventCell world.tilemap
+                        cellHasRoadTile =
+                            cellHasRoad eventCell world.tilemap
                     in
-                    ( selectCell event eventCell cellHasTile model
+                    ( selectCell event eventCell cellHasRoadTile model
                     , Nothing
                     )
 
@@ -227,13 +227,13 @@ setLastEventDevice deviceType model =
 
 
 selectCell : Pointer.Event -> Cell -> Bool -> Model -> Model
-selectCell event eventCell hasTile initialEditor =
+selectCell event eventCell hasRoadTile initialEditor =
     initialEditor
         |> setLastEventDevice event.pointerType
         |> storePointerDownEvent event
         |> activateCell eventCell
         |> (\editor ->
-                if event.pointerType == Pointer.MouseType || not hasTile then
+                if event.pointerType == Pointer.MouseType || not hasRoadTile then
                     editor
 
                 else
@@ -376,7 +376,7 @@ highlightColor : World -> Cell -> Maybe Color
 highlightColor world cell =
     let
         canBuildHere =
-            canBuildRoadAt cell world.tilemap
+            cellSupportsRoadPlacement cell world.tilemap
 
         mightDestroyLot =
             World.hasLot cell world

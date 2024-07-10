@@ -7,10 +7,10 @@ module Tilemap.Core exposing
     , addTile
     , addTileInstantly
     , anchorByCell
-    , canBuildRoadAt
     , cellBitmask
     , cellHasAnchor
-    , cellHasFixedTile
+    , cellHasRoad
+    , cellSupportsRoadPlacement
     , createTilemap
     , fixedTileByCell
     , foldTiles
@@ -198,26 +198,42 @@ tilemapIntersects testBB tilemap =
         |> List.any (Common.boundingBoxOverlaps testBB)
 
 
-cellHasFixedTile : Cell -> Tilemap -> Bool
-cellHasFixedTile cell tilemap =
-    fixedTileByCell tilemap cell
-        |> Maybe.andThen extractFixedTile
-        |> Maybe.isJust
+cellSupportsRoadPlacement : Cell -> Tilemap -> Bool
+cellSupportsRoadPlacement cell tilemap =
+    List.all (cellHasLowComplexity cell tilemap) DiagonalDirection.all
 
 
-canBuildRoadAt : Cell -> Tilemap -> Bool
-canBuildRoadAt cell tilemap =
-    List.all (hasLowComplexity cell tilemap) DiagonalDirection.all
+cellHasRoad : Cell -> Tilemap -> Bool
+cellHasRoad cell tilemap =
+    let
+        tileBiome =
+            tileByCell tilemap cell
+                |> Maybe.andThen Tile.id
+                |> Maybe.map (tileById >> TileConfig.biome)
+    in
+    case tileBiome of
+        Just biome ->
+            biome == TileConfig.Road
+
+        Nothing ->
+            False
 
 
-hasLowComplexity : Cell -> Tilemap -> DiagonalDirection -> Bool
-hasLowComplexity cell tilemap diagonalDirection =
+cellHasLowComplexity : Cell -> Tilemap -> DiagonalDirection -> Bool
+cellHasLowComplexity cell tilemap diagonalDirection =
     let
         tilemapConfig =
             getTilemapConfig tilemap
     in
     Cell.quadrantNeighbors tilemapConfig diagonalDirection cell
-        |> List.filterMap (fixedTileByCell tilemap)
+        |> List.filterMap
+            (\quadrantNeighbor ->
+                if cellHasRoad quadrantNeighbor tilemap then
+                    Just quadrantNeighbor
+
+                else
+                    Nothing
+            )
         |> (\tiles -> List.length tiles < 3)
 
 
