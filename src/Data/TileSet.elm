@@ -536,7 +536,7 @@ lotEntryTUp : TileConfig
 lotEntryTUp =
     TileConfig.Single
         { id = 20
-        , complexity = 0.8
+        , complexity = 0.75
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -553,7 +553,7 @@ lotEntryTRight : TileConfig
 lotEntryTRight =
     TileConfig.Single
         { id = 21
-        , complexity = 0.8
+        , complexity = 0.5
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -570,7 +570,7 @@ lotEntryTLeft : TileConfig
 lotEntryTLeft =
     TileConfig.Single
         { id = 22
-        , complexity = 0.8
+        , complexity = 0.5
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -592,7 +592,7 @@ lotEntryTLeft =
 lotTopLeftCorner : TileConfig.SingleTile
 lotTopLeftCorner =
     { id = 30
-    , complexity = 0.6
+    , complexity = 0.5
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -608,7 +608,7 @@ lotTopLeftCorner =
 lotTopRightCorner : TileConfig.SingleTile
 lotTopRightCorner =
     { id = 31
-    , complexity = 0.6
+    , complexity = 0.5
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -624,7 +624,7 @@ lotTopRightCorner =
 lotBottomRightCorner : TileConfig.SingleTile
 lotBottomRightCorner =
     { id = 32
-    , complexity = 0.6
+    , complexity = 0.5
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -640,7 +640,7 @@ lotBottomRightCorner =
 lotBottomLeftCorner : TileConfig.SingleTile
 lotBottomLeftCorner =
     { id = 33
-    , complexity = 0.6
+    , complexity = 0.5
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -656,7 +656,7 @@ lotBottomLeftCorner =
 lotTopEdge : TileConfig.SingleTile
 lotTopEdge =
     { id = 34
-    , complexity = 0.6
+    , complexity = 0.5
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -672,7 +672,7 @@ lotTopEdge =
 lotRightEdge : TileConfig.SingleTile
 lotRightEdge =
     { id = 35
-    , complexity = 0.6
+    , complexity = 0.5
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -688,7 +688,7 @@ lotRightEdge =
 lotBottomEdge : TileConfig.SingleTile
 lotBottomEdge =
     { id = 36
-    , complexity = 0.6
+    , complexity = 0.5
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -704,7 +704,7 @@ lotBottomEdge =
 lotLeftEdge : TileConfig.SingleTile
 lotLeftEdge =
     { id = 37
-    , complexity = 0.6
+    , complexity = 0.5
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -720,7 +720,7 @@ lotLeftEdge =
 lotInnerSpace : TileConfig.SingleTile
 lotInnerSpace =
     { id = 38
-    , complexity = 0.6
+    , complexity = 0.5
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -736,7 +736,7 @@ lotInnerSpace =
 lotDrivewayRight : TileConfig.SingleTile
 lotDrivewayRight =
     { id = 40
-    , complexity = 0.6
+    , complexity = 0.5
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -752,7 +752,7 @@ lotDrivewayRight =
 lotDrivewayLeft : TileConfig.SingleTile
 lotDrivewayLeft =
     { id = 41
-    , complexity = 0.6
+    , complexity = 0.5
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -768,7 +768,7 @@ lotDrivewayLeft =
 lotDrivewayUp : TileConfig.SingleTile
 lotDrivewayUp =
     { id = 42
-    , complexity = 0.8
+    , complexity = 0.5
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -785,7 +785,7 @@ twoByTwoLot : TileConfig
 twoByTwoLot =
     TileConfig.Large
         { id = 100
-        , complexity = 0.75
+        , complexity = 0.5
         , biome = TileConfig.Lot
         , tiles =
             Array.fromList
@@ -806,7 +806,7 @@ threeByThreeLot : TileConfig
 threeByThreeLot =
     TileConfig.Large
         { id = 101
-        , complexity = 0.8
+        , complexity = 0.75
         , biome = TileConfig.Lot
         , tiles =
             Array.fromList
@@ -834,7 +834,7 @@ fourByTwoLot : TileConfig
 fourByTwoLot =
     TileConfig.Large
         { id = 102
-        , complexity = 0.9
+        , complexity = 0.8
         , biome = TileConfig.Lot
         , tiles =
             Array.fromList
@@ -864,7 +864,7 @@ fourByTwoLot =
 natureTopLeftCorner : TileConfig.SingleTile
 natureTopLeftCorner =
     { id = 50
-    , complexity = 0.3
+    , complexity = 0.5
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Nature
     , sockets =
@@ -880,7 +880,7 @@ natureTopLeftCorner =
 natureTopRightCorner : TileConfig.SingleTile
 natureTopRightCorner =
     { id = 51
-    , complexity = 0.3
+    , complexity = 0.5
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Nature
     , sockets =
@@ -896,7 +896,7 @@ natureTopRightCorner =
 natureBottomRightCorner : TileConfig.SingleTile
 natureBottomRightCorner =
     { id = 52
-    , complexity = 0.3
+    , complexity = 0.5
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Nature
     , sockets =
@@ -912,7 +912,7 @@ natureBottomRightCorner =
 natureBottomLeftCorner : TileConfig.SingleTile
 natureBottomLeftCorner =
     { id = 53
-    , complexity = 0.3
+    , complexity = 0.5
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Nature
     , sockets =
@@ -929,7 +929,7 @@ singleNature : TileConfig
 singleNature =
     TileConfig.Single
         { id = 200
-        , complexity = 0.1
+        , complexity = 0.2
         , graphPriority = maxGraphPriority
         , biome = TileConfig.Nature
         , sockets =
@@ -946,7 +946,7 @@ twoByTwoNature : TileConfig
 twoByTwoNature =
     TileConfig.Large
         { id = 201
-        , complexity = 0.1
+        , complexity = 0.4
         , biome = TileConfig.Nature
         , tiles =
             Array.fromList
