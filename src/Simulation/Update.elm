@@ -3,6 +3,7 @@ module Simulation.Update exposing (update)
 import Duration
 import Lib.Collection as Collection
 import Lib.FSM as FSM
+import List.Nonempty as Nonempty
 import Message exposing (Message(..))
 import Model.Debug exposing (DevAction(..))
 import Model.Liikennematto
@@ -20,6 +21,7 @@ import Random
 import Simulation.Events exposing (updateEventQueue)
 import Simulation.Traffic as Traffic exposing (rerouteCarsIfNeeded)
 import Simulation.TrafficLight exposing (TrafficLight)
+import Tilemap.Cell as Cell
 import Time
 
 
@@ -72,6 +74,13 @@ update msg model =
             )
 
         TilemapChanged tilemapChange ->
+            let
+                _ =
+                    Debug.log "TilemapChanged -> changed" (tilemapChange.changedCells |> Nonempty.map Cell.toString)
+
+                _ =
+                    Debug.log "TilemapChanged -> transitioned" (tilemapChange.transitionedCells |> List.map Cell.toString)
+            in
             ( { model | world = worldAfterTilemapChange tilemapChange model.world }
             , Cmd.none
             )

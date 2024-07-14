@@ -10,6 +10,7 @@ module Tilemap.WFC exposing
     , initializeArea
     , propagateConstraints
     , resetCell
+    , setTilemap
     , solve
     , stateDebug
     , step
@@ -38,7 +39,7 @@ import Tilemap.Core
     exposing
         ( Tilemap
         , TilemapConfig
-        , addTileInstantly
+        , addTileFromWFC
         , createTilemap
         , foldTiles
         , forAllTiles
@@ -316,6 +317,11 @@ resetCell tileSet cell tileKind (Model modelContents) =
     Model { modelContents | tilemap = resetTileBySurroundings cell tileSet tileKind modelContents.tilemap }
 
 
+setTilemap : Tilemap -> Model -> Model
+setTilemap tilemap (Model modelContents) =
+    Model { modelContents | tilemap = tilemap }
+
+
 
 --
 -- Steps and propagation
@@ -411,7 +417,7 @@ processStep tilemap currentStep =
                             propagateConstraintsSteps tilemap cell
 
                         ( nextTilemap, tileActions ) =
-                            addTileInstantly singleTile.id cell tilemap
+                            addTileFromWFC singleTile.id cell tilemap
                     in
                     Ok ( nextSteps, tileActions, nextTilemap )
 
@@ -778,7 +784,7 @@ attemptPlaceSubgridTile tilemap largeTileId cell currentTile =
             (\neighborSteps ->
                 let
                     ( nextTilemap, tileActions ) =
-                        addTileInstantly currentTile.id cell tilemap
+                        addTileFromWFC currentTile.id cell tilemap
                 in
                 ( neighborSteps, tileActions, nextTilemap )
             )

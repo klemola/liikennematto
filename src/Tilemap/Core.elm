@@ -5,7 +5,7 @@ module Tilemap.Core exposing
     , TilemapUpdateResult
     , addAnchor
     , addTile
-    , addTileInstantly
+    , addTileFromWFC
     , anchorByCell
     , cellBitmask
     , cellHasAnchor
@@ -494,9 +494,9 @@ addTile =
     applyTilemapOperation Tile.Add
 
 
-addTileInstantly : TileId -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
-addTileInstantly =
-    applyTilemapOperation Tile.BuildInstantly
+addTileFromWFC : TileId -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
+addTileFromWFC =
+    applyTilemapOperation Tile.AddFromWFC
 
 
 removeTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )

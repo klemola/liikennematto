@@ -351,7 +351,7 @@ renderParkingSpotDebug cache parkingSpot =
 
 renderWFC : RenderCache msg -> Svg msg
 renderWFC cache =
-    cache.tilemap
+    cache.tilemapDebug
         |> List.map
             (\( cell, tileKind ) ->
                 ( Cell.toString cell

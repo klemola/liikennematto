@@ -14,6 +14,7 @@ module Tilemap.Tile exposing
     , isFixed
     , isSuperposition
     , transitionTimer
+    , transitionTimerShort
     , updateTileId
     )
 
@@ -48,6 +49,7 @@ type Action
 type TileState
     = Initialized
     | Constructing
+    | Generated
     | Built
     | Changing
     | Removing
@@ -55,7 +57,7 @@ type TileState
 
 
 type TileOperation
-    = BuildInstantly
+    = AddFromWFC
     | Add
 
 
@@ -67,12 +69,20 @@ init kind =
 
 
 fromTileId : TileId -> TileOperation -> ( Tile, List Action )
-fromTileId kind op =
+fromTileId tileId op =
     let
+        initialState =
+            case op of
+                AddFromWFC ->
+                    generated
+
+                Add ->
+                    constructing
+
         ( fsm, initialActions ) =
-            initializeFSM op
+            FSM.initialize initialState
     in
-    ( { kind = Fixed kind
+    ( { kind = Fixed tileId
       , fsm = fsm
       }
     , initialActions
@@ -134,7 +144,7 @@ isDynamic tile =
         currentState =
             FSM.toCurrentState tile.fsm
     in
-    currentState == Constructing || currentState == Removing
+    currentState == Constructing || currentState == Generated || currentState == Removing
 
 
 id : Tile -> Maybe TileId
@@ -158,6 +168,11 @@ transitionTimer =
     Duration.milliseconds 250
 
 
+transitionTimerShort : Duration
+transitionTimerShort =
+    Duration.milliseconds 100
+
+
 initialized : State TileState Action ()
 initialized =
     FSM.createState
@@ -170,6 +185,10 @@ initialized =
                 FSM.Direct
             , FSM.createTransition
                 (\_ -> constructing)
+                []
+                FSM.Direct
+            , FSM.createTransition
+                (\_ -> generated)
                 []
                 FSM.Direct
             ]
@@ -194,6 +213,26 @@ constructing =
                 FSM.Direct
             ]
         , entryActions = [ PlayAudio Audio.BuildRoadStart ]
+        , exitActions = []
+        }
+
+
+generated : State TileState Action ()
+generated =
+    FSM.createState
+        { id = FSM.createStateId "tile-generated"
+        , kind = Generated
+        , transitions =
+            [ FSM.createTransition
+                (\_ -> built)
+                []
+                (FSM.Timer transitionTimerShort)
+            , FSM.createTransition
+                (\_ -> changing)
+                []
+                FSM.Direct
+            ]
+        , entryActions = []
         , exitActions = []
         }
 
@@ -267,17 +306,3 @@ removed =
         , entryActions = []
         , exitActions = []
         }
-
-
-initializeFSM : TileOperation -> ( TileFSM, List Action )
-initializeFSM op =
-    let
-        initialState =
-            case op of
-                BuildInstantly ->
-                    built
-
-                Add ->
-                    constructing
-    in
-    FSM.initialize initialState

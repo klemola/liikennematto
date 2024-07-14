@@ -299,10 +299,15 @@ runWFC model =
         wfc =
             case model.wfc of
                 WFCPaused ->
-                    WFC.fromTilemap (reopenRoads model.world.tilemap) model.world.seed
+                    WFC.fromTilemap
+                        (reopenRoads model.world.tilemap)
+                        model.world.seed
 
                 WFCActive wfcModel ->
-                    wfcModel
+                    -- TODO: this tilemap refresh is a bit icky, how to avoid it?
+                    -- the refresh is required because the tilemap update process may
+                    -- have been run between WFC triggers
+                    WFC.setTilemap model.world.tilemap wfcModel
 
         ( updatedWfcModel, wfcTileActions ) =
             wfc

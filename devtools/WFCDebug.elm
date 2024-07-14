@@ -86,6 +86,7 @@ init _ =
             World.empty tilemapConfig
 
         cache =
+            -- TODO: the tile list filter setup is not required if tile FSMs are updated
             RenderCache.new world roads
                 |> RenderCache.setTileListFilter NoFilter
     in

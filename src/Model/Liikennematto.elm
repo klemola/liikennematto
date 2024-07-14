@@ -257,9 +257,7 @@ initial flags =
     , world = initialWorld
     , wfc = WFCPaused
     , simulationActive = True
-    , renderCache =
-        RenderCache.new initialWorld roads
-            |> RenderCache.setTileListFilter NoFilter
+    , renderCache = RenderCache.new initialWorld roads
     , dynamicTiles = []
     , debug = debugState
     , errorMessage = Nothing

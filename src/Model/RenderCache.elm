@@ -41,6 +41,7 @@ import UI.Core
 type alias RenderCache msg =
     { pixelsToMetersRatio : PixelsToMetersRatio
     , tilemap : TilemapPresentation
+    , tilemapDebug : TilemapPresentation
     , tilemapWidthPixels : Float
     , tilemapHeightPixels : Float
     , tilemapWidth : Length.Length
@@ -83,6 +84,7 @@ new { tilemap } roadAssets =
     in
     { pixelsToMetersRatio = defaultPixelsToMetersRatio
     , tilemap = toTilemapCache initialTileListFilter tilemap
+    , tilemapDebug = toTilemapCache NoFilter tilemap
     , tilemapWidthPixels =
         tilemapWidthPixels
     , tilemapHeightPixels = tilemapHeigthPixels
@@ -122,14 +124,20 @@ zoomLevelToPixelsPerMeterValue zoomLevel =
             8
 
 
-setTilemapCache : Tilemap -> RenderCache msg -> RenderCache msg
-setTilemapCache tilemap cache =
-    { cache | tilemap = toTilemapCache cache.tileListFilter tilemap }
-
-
 setTileListFilter : TileListFilter -> RenderCache msg -> RenderCache msg
 setTileListFilter tileListFilter cache =
     { cache | tileListFilter = tileListFilter }
+
+
+setTilemapCache : Tilemap -> RenderCache msg -> RenderCache msg
+setTilemapCache tilemap cache =
+    { cache
+        | tilemap = toTilemapCache cache.tileListFilter tilemap
+
+        -- TODO: the debug state should only be set if the debug layer is open
+        -- it is costly
+        , tilemapDebug = toTilemapCache NoFilter tilemap
+    }
 
 
 refreshTilemapCache : TilemapUpdateResult -> RenderCache msg -> ( RenderCache msg, DynamicTilesPresentation )
@@ -140,7 +148,7 @@ refreshTilemapCache tilemapUpdateResult cache =
                 cache
 
             else
-                { cache | tilemap = toTilemapCache cache.tileListFilter tilemapUpdateResult.tilemap }
+                setTilemapCache tilemapUpdateResult.tilemap cache
 
         nextDynamicTiles =
             if List.isEmpty tilemapUpdateResult.dynamicCells then
@@ -182,6 +190,14 @@ tileAnimation tile =
             Just
                 (Animation
                     Tile.transitionTimer
+                    Animation.Appear
+                    (animationDirectionFromTile tile)
+                )
+
+        Tile.Generated ->
+            Just
+                (Animation
+                    Tile.transitionTimerShort
                     Animation.Appear
                     (animationDirectionFromTile tile)
                 )
