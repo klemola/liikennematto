@@ -268,7 +268,7 @@ processTileNeighbor maybeTile wfcModel =
     case maybeTile of
         Just ( cell, tile ) ->
             case tile.kind of
-                Fixed tileId ->
+                Fixed ( tileId, _ ) ->
                     if TileConfig.biome (tileById tileId) == TileConfig.Road then
                         wfcModel
                             |> WFC.resetCell defaultTiles cell tile.kind

@@ -16,6 +16,7 @@ module Tilemap.Cell exposing
     , fromCoordinatesUnsafe
     , identical
     , nextOrthogonalCell
+    , nextOrthogonalCellUnsafe
     , orthogonalDirection
     , orthogonalNeighbors
     , placeIn
@@ -213,22 +214,36 @@ fromArray1DIndexUnsafe constraints idx =
 
 nextOrthogonalCell : Constraints a -> OrthogonalDirection -> Cell -> Maybe Cell
 nextOrthogonalCell constraints dir cell =
-    let
-        ( x, y ) =
-            coordinates cell
-    in
+    fromCoordinates
+        constraints
+        (nextCoordinates dir
+            (coordinates cell)
+        )
+
+
+nextOrthogonalCellUnsafe : Constraints a -> OrthogonalDirection -> Cell -> Cell
+nextOrthogonalCellUnsafe constraints dir cell =
+    fromCoordinatesUnsafe
+        constraints
+        (nextCoordinates dir
+            (coordinates cell)
+        )
+
+
+nextCoordinates : OrthogonalDirection -> CellCoordinates -> CellCoordinates
+nextCoordinates dir ( x, y ) =
     case dir of
         Up ->
-            fromCoordinates constraints ( x, y - 1 )
+            ( x, y - 1 )
 
         Right ->
-            fromCoordinates constraints ( x + 1, y )
+            ( x + 1, y )
 
         Down ->
-            fromCoordinates constraints ( x, y + 1 )
+            ( x, y + 1 )
 
         Left ->
-            fromCoordinates constraints ( x - 1, y )
+            ( x - 1, y )
 
 
 nextDiagonalCell : Constraints a -> DiagonalDirection -> Cell -> Maybe Cell

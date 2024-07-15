@@ -5,7 +5,6 @@ module Model.World exposing
     , World
     , WorldEvent(..)
     , addEvent
-    , connectLotToRoadNetwork
     , createLookup
     , createRoadNetwork
     , empty
@@ -369,12 +368,6 @@ createRoadNetwork tilemap world =
     updateRoadNetwork (setTilemap tilemap world)
 
 
-connectLotToRoadNetwork : World -> World
-connectLotToRoadNetwork =
-    -- Room for improvement: re-building the whole roadnetwork when a new lot is added is not optimal
-    updateRoadNetwork
-
-
 updateRoadNetwork : World -> World
 updateRoadNetwork world =
     -- Room for improvement: the road network should be updated with minimal changes instead of being replaced
@@ -482,6 +475,7 @@ combineChangedCells changedCells currentChanges =
 
 removeInvalidLots : TilemapChange -> World -> World
 removeInvalidLots tilemapChange world =
+    -- TODO: remove if unnecessary
     let
         changedAnchors =
             List.Nonempty.foldl

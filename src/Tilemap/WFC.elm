@@ -417,7 +417,7 @@ processStep tilemap currentStep =
                             propagateConstraintsSteps tilemap cell
 
                         ( nextTilemap, tileActions ) =
-                            addTileFromWFC singleTile.id cell tilemap
+                            addTileFromWFC Nothing singleTile.id cell tilemap
                     in
                     Ok ( nextSteps, tileActions, nextTilemap )
 
@@ -464,7 +464,7 @@ superpositionOptionsForTile :
     -> Result WFCFailure (List Int)
 superpositionOptionsForTile ( originTile, targetTile ) dir =
     case ( originTile.kind, targetTile.kind ) of
-        ( Fixed originTileId, Superposition options ) ->
+        ( Fixed ( originTileId, _ ), Superposition options ) ->
             let
                 revisedOptions =
                     matchingSuperpositionOptions dir originTileId options
@@ -784,7 +784,7 @@ attemptPlaceSubgridTile tilemap largeTileId cell currentTile =
             (\neighborSteps ->
                 let
                     ( nextTilemap, tileActions ) =
-                        addTileFromWFC currentTile.id cell tilemap
+                        addTileFromWFC (Just largeTileId) currentTile.id cell tilemap
                 in
                 ( neighborSteps, tileActions, nextTilemap )
             )
@@ -856,7 +856,7 @@ applyToNeighbor onFixed onSuperposition onUninitialized cell tilemap =
                                     NeighborUpdateContext dir toTile toCell tilemap steps
                             in
                             case toTile.kind of
-                                Fixed tileId ->
+                                Fixed ( tileId, _ ) ->
                                     onFixed neighborUpdateContext tileId
 
                                 Superposition options ->

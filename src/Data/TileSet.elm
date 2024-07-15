@@ -4,6 +4,7 @@ module Data.TileSet exposing
     , defaultSocket
     , defaultTiles
     , isTileLotEntryTile
+    , lotDrivewayTileIds
     , lotEntrySocket
     , nonRoadTiles
     , pairingsForSocket
@@ -148,7 +149,7 @@ allTiles =
     , lotEntryTRight
     , twoByTwoLot
     , threeByThreeLot
-    , fourByTwoLot
+    , threeByTwoLot
     ]
 
 
@@ -600,6 +601,12 @@ lotEntryTLeft =
 --
 
 
+lotDrivewayTileIds : List TileId
+lotDrivewayTileIds =
+    [ lotDrivewayLeft, lotDrivewayRight, lotDrivewayUp ]
+        |> List.map .id
+
+
 lotTopLeftCorner : TileConfig.SingleTile
 lotTopLeftCorner =
     { id = 30
@@ -841,8 +848,8 @@ threeByThreeLot =
         }
 
 
-fourByTwoLot : TileConfig
-fourByTwoLot =
+threeByTwoLot : TileConfig
+threeByTwoLot =
     TileConfig.Large
         { id = 102
         , complexity = 0.8
@@ -851,18 +858,16 @@ fourByTwoLot =
             Array.fromList
                 [ lotTopLeftCorner
                 , lotTopEdge
-                , lotTopEdge
                 , lotTopRightCorner
 
                 --
                 , lotDrivewayUp
                 , lotBottomEdge
-                , lotBottomEdge
                 , lotBottomRightCorner
                 ]
-        , width = 4
+        , width = 3
         , height = 2
-        , anchorIndex = 4
+        , anchorIndex = 3
         }
 
 

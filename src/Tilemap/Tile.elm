@@ -15,7 +15,6 @@ module Tilemap.Tile exposing
     , isSuperposition
     , transitionTimer
     , transitionTimerShort
-    , updateTileId
     )
 
 import Audio exposing (Sound)
@@ -33,7 +32,7 @@ type alias Tile =
 
 type TileKind
     = Unintialized
-    | Fixed TileId
+    | Fixed ( TileId, Maybe TileId )
     | Superposition (List TileId)
 
 
@@ -68,8 +67,8 @@ init kind =
     }
 
 
-fromTileId : TileId -> TileOperation -> ( Tile, List Action )
-fromTileId tileId op =
+fromTileId : TileId -> Maybe TileId -> TileOperation -> ( Tile, List Action )
+fromTileId tileId parentTileId op =
     let
         initialState =
             case op of
@@ -82,7 +81,7 @@ fromTileId tileId op =
         ( fsm, initialActions ) =
             FSM.initialize initialState
     in
-    ( { kind = Fixed tileId
+    ( { kind = Fixed ( tileId, parentTileId )
       , fsm = fsm
       }
     , initialActions
@@ -94,20 +93,6 @@ attemptRemove tile =
     case FSM.transitionTo (FSM.getId removing) tile.fsm of
         Ok ( nextFSM, actions ) ->
             ( Tile tile.kind nextFSM, actions )
-
-        Err _ ->
-            ( tile, [] )
-
-
-updateTileId : TileId -> Tile -> ( Tile, List Action )
-updateTileId nextTileId tile =
-    case FSM.transitionTo (FSM.getId changing) tile.fsm of
-        Ok ( nextFSM, actions ) ->
-            ( { kind = Fixed nextTileId
-              , fsm = nextFSM
-              }
-            , actions
-            )
 
         Err _ ->
             ( tile, [] )
@@ -150,7 +135,7 @@ isDynamic tile =
 id : Tile -> Maybe TileId
 id tile =
     case tile.kind of
-        Fixed tileId ->
+        Fixed ( tileId, _ ) ->
             Just tileId
 
         _ ->

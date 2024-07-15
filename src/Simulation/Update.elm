@@ -1,8 +1,11 @@
 module Simulation.Update exposing (update)
 
+import Data.Lots exposing (NewLot)
+import Data.TileSet exposing (lotDrivewayTileIds, tileById)
 import Duration
 import Lib.Collection as Collection
 import Lib.FSM as FSM
+import Lib.OrthogonalDirection as OrthogonalDirection
 import List.Nonempty as Nonempty
 import Message exposing (Message(..))
 import Model.Debug exposing (DevAction(..))
@@ -14,14 +17,17 @@ import Model.World as World
     exposing
         ( TilemapChange
         , World
-        , removeInvalidLots
         , updateRoadNetwork
         )
 import Random
 import Simulation.Events exposing (updateEventQueue)
-import Simulation.Traffic as Traffic exposing (rerouteCarsIfNeeded)
+import Simulation.Lot as Lot
+import Simulation.Traffic as Traffic exposing (addLotResidents, rerouteCarsIfNeeded)
 import Simulation.TrafficLight exposing (TrafficLight)
-import Tilemap.Cell as Cell
+import Tilemap.Cell as Cell exposing (Cell)
+import Tilemap.Core exposing (addAnchor, getTilemapConfig, tileByCell)
+import Tilemap.Tile exposing (TileKind(..))
+import Tilemap.TileConfig as TileConfig exposing (TileConfig)
 import Time
 
 
@@ -74,14 +80,12 @@ update msg model =
             )
 
         TilemapChanged tilemapChange ->
-            let
-                _ =
-                    Debug.log "TilemapChanged -> changed" (tilemapChange.changedCells |> Nonempty.map Cell.toString)
-
-                _ =
-                    Debug.log "TilemapChanged -> transitioned" (tilemapChange.transitionedCells |> List.map Cell.toString)
-            in
-            ( { model | world = worldAfterTilemapChange tilemapChange model.world }
+            ( { model
+                | world =
+                    model.world
+                        |> newLotsFromTilemapChange tilemapChange model.time
+                        |> worldAfterTilemapChange tilemapChange
+              }
             , Cmd.none
             )
 
@@ -134,7 +138,6 @@ processWorldEvents time events world =
 worldAfterTilemapChange : TilemapChange -> World -> World
 worldAfterTilemapChange tilemapChange world =
     world
-        |> removeInvalidLots tilemapChange
         |> updateRoadNetwork
         |> rerouteCarsIfNeeded
 
@@ -163,3 +166,78 @@ updateTrafficLight trafficLight =
             FSM.updateWithoutContext (Duration.seconds 1) trafficLight.fsm
     in
     { trafficLight | fsm = nextFsm }
+
+
+newLotsFromTilemapChange : TilemapChange -> Time.Posix -> World -> World
+newLotsFromTilemapChange tilemapChange time world =
+    let
+        extractDrivewayTile cell tile =
+            case tile.kind of
+                Fixed ( id, parentTileId ) ->
+                    if List.member id lotDrivewayTileIds then
+                        parentTileId
+                            |> Maybe.map tileById
+                            |> Maybe.map (Tuple.pair cell)
+
+                    else
+                        Nothing
+
+                _ ->
+                    Nothing
+    in
+    tilemapChange.changedCells
+        |> Nonempty.toList
+        |> List.filterMap
+            (\cell ->
+                tileByCell world.tilemap cell
+                    |> Maybe.andThen (extractDrivewayTile cell)
+            )
+        |> List.foldl
+            (\( drivewayCell, lotTileConfig ) nextWorld ->
+                addLot time (matchLotToTileConfig lotTileConfig) drivewayCell nextWorld
+            )
+            world
+
+
+matchLotToTileConfig : TileConfig -> NewLot
+matchLotToTileConfig tileConfig =
+    -- TODO: this should be replaced
+    case TileConfig.tileConfigId tileConfig of
+        100 ->
+            Data.Lots.residentialSingle1
+
+        101 ->
+            Data.Lots.school
+
+        102 ->
+            Data.Lots.fireStation
+
+        _ ->
+            Data.Lots.residentialSingle1
+
+
+addLot : Time.Posix -> NewLot -> Cell -> World -> World
+addLot time newLot drivewayCell world =
+    let
+        anchorCell =
+            -- Use of unsafe function: to get here, the next Cell has to exist (it is the lot entry cell)
+            Cell.nextOrthogonalCellUnsafe
+                (getTilemapConfig world.tilemap)
+                newLot.drivewayExitDirection
+                drivewayCell
+
+        builderFn =
+            Lot.build newLot anchorCell
+
+        ( lot, nextLots ) =
+            Collection.addFromBuilder builderFn world.lots
+    in
+    world
+        |> World.refreshLots lot nextLots
+        |> World.setTilemap
+            (addAnchor anchorCell
+                lot.id
+                (OrthogonalDirection.opposite lot.drivewayExitDirection)
+                world.tilemap
+            )
+        |> addLotResidents time lot.id newLot.residents

@@ -491,12 +491,12 @@ updateTile delta tile tilemapUpdate =
 
 addTile : TileId -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
 addTile =
-    applyTilemapOperation Tile.Add
+    applyTilemapOperation Tile.Add Nothing
 
 
-addTileFromWFC : TileId -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
-addTileFromWFC =
-    applyTilemapOperation Tile.AddFromWFC
+addTileFromWFC : Maybe TileId -> TileId -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
+addTileFromWFC parentTileId =
+    applyTilemapOperation Tile.AddFromWFC parentTileId
 
 
 removeTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )
@@ -514,11 +514,11 @@ removeTile origin tilemap =
             ( tilemap, [] )
 
 
-applyTilemapOperation : TileOperation -> TileId -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
-applyTilemapOperation operation tileId origin tilemap =
+applyTilemapOperation : TileOperation -> Maybe TileId -> TileId -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
+applyTilemapOperation operation parentTileId tileId origin tilemap =
     let
         ( originTile, tileActions ) =
-            Tile.fromTileId tileId operation
+            Tile.fromTileId tileId parentTileId operation
     in
     ( updateCell origin originTile tilemap
     , tileActions
