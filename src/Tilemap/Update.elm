@@ -170,7 +170,7 @@ type alias ModifyTileConfig =
 
 addTileNeighborInitDistance : Int
 addTileNeighborInitDistance =
-    2
+    3
 
 
 addTile : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )

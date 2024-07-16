@@ -600,119 +600,154 @@ lotEntryTRight =
     ]
 
 
-lotDebugCornerTopLeft : List (Svg msg)
-lotDebugCornerTopLeft =
+debugCornerTopLeft : ( String, String ) -> List (Svg msg)
+debugCornerTopLeft ( fill, stroke ) =
     [ Svg.rect
-        [ Attributes.x "12"
-        , Attributes.y "12"
-        , Attributes.width "232"
-        , Attributes.height "232"
-        , Attributes.fill "#F9F9E9"
+        [ Attributes.x "6"
+        , Attributes.y "6"
+        , Attributes.width "244"
+        , Attributes.height "244"
+        , Attributes.fill fill
+        , Attributes.opacity "0.5"
         ]
         []
     , path
         [ Attributes.d "M30 210V30H210"
-        , Attributes.stroke "#3D3434"
+        , Attributes.stroke stroke
         , Attributes.strokeWidth "10"
         , Attributes.strokeLinecap "round"
         , Attributes.strokeLinejoin "round"
         , Attributes.fill "none"
+        , Attributes.opacity "0.5"
         ]
         []
     ]
 
 
-lotDebugCornerTopRight : List (Svg msg)
-lotDebugCornerTopRight =
+debugCornerTopRight : ( String, String ) -> List (Svg msg)
+debugCornerTopRight ( fill, stroke ) =
     [ Svg.rect
-        [ Attributes.x "244"
-        , Attributes.y "12"
-        , Attributes.width "232"
-        , Attributes.height "232"
-        , Attributes.transform "rotate(90 244 12)"
-        , Attributes.fill "#F9F9E9"
+        [ Attributes.x "250"
+        , Attributes.y "6"
+        , Attributes.width "244"
+        , Attributes.height "244"
+        , Attributes.transform "rotate(90 250 6)"
+        , Attributes.fill fill
+        , Attributes.opacity "0.5"
         ]
         []
     , path
         [ Attributes.d "M46 30L226 30L226 210"
-        , Attributes.stroke "#3D3434"
+        , Attributes.stroke stroke
         , Attributes.strokeWidth "10"
         , Attributes.strokeLinecap "round"
         , Attributes.strokeLinejoin "round"
         , Attributes.fill "none"
+        , Attributes.opacity "0.5"
         ]
         []
     ]
 
 
-lotDebugCornerBottomRight : List (Svg msg)
-lotDebugCornerBottomRight =
+debugCornerBottomRight : ( String, String ) -> List (Svg msg)
+debugCornerBottomRight ( fill, stroke ) =
     [ Svg.rect
-        [ Attributes.x "244"
-        , Attributes.y "244"
-        , Attributes.width "232"
-        , Attributes.height "232"
-        , Attributes.transform "rotate(-180 244 244)"
-        , Attributes.fill "#F9F9E9"
+        [ Attributes.x "250"
+        , Attributes.y "250"
+        , Attributes.width "244"
+        , Attributes.height "244"
+        , Attributes.transform "rotate(-180 250 250)"
+        , Attributes.fill fill
+        , Attributes.opacity "0.5"
         ]
         []
     , path
         [ Attributes.d "M226 46L226 226L46 226"
-        , Attributes.stroke "#3D3434"
+        , Attributes.stroke stroke
         , Attributes.strokeWidth "10"
         , Attributes.strokeLinecap "round"
         , Attributes.strokeLinejoin "round"
         , Attributes.fill "none"
+        , Attributes.opacity "0.5"
         ]
         []
     ]
 
 
-lotDebugCornerBottomLeft : List (Svg msg)
-lotDebugCornerBottomLeft =
+debugCornerBottomLeft : ( String, String ) -> List (Svg msg)
+debugCornerBottomLeft ( fill, stroke ) =
     [ Svg.rect
-        [ Attributes.x "12"
-        , Attributes.y "244"
-        , Attributes.width "232"
-        , Attributes.height "232"
-        , Attributes.transform "rotate(-90 12 244)"
-        , Attributes.fill "#F9F9E9"
+        [ Attributes.x "6"
+        , Attributes.y "250"
+        , Attributes.width "244"
+        , Attributes.height "244"
+        , Attributes.transform "rotate(-90 6 250)"
+        , Attributes.fill fill
+        , Attributes.opacity "0.5"
         ]
         []
     , path
         [ Attributes.d "M210 226L30 226L30 46"
-        , Attributes.stroke "#3D3434"
+        , Attributes.stroke stroke
         , Attributes.strokeWidth "10"
         , Attributes.strokeLinecap "round"
         , Attributes.strokeLinejoin "round"
         , Attributes.fill "none"
+        , Attributes.opacity "0.5"
         ]
         []
     ]
+
+
+debugTile : String -> List (Svg msg)
+debugTile fill =
+    [ Svg.rect
+        [ Attributes.x "6"
+        , Attributes.y "6"
+        , Attributes.width "244"
+        , Attributes.height "244"
+        , Attributes.fill fill
+        , Attributes.opacity "0.5"
+        ]
+        []
+    ]
+
+
+lotDebugCornerTopLeft : List (Svg msg)
+lotDebugCornerTopLeft =
+    debugCornerTopLeft ( "#F9F9E9", "#3D3434" )
+
+
+lotDebugCornerTopRight : List (Svg msg)
+lotDebugCornerTopRight =
+    debugCornerTopRight ( "#F9F9E9", "#3D3434" )
+
+
+lotDebugCornerBottomRight : List (Svg msg)
+lotDebugCornerBottomRight =
+    debugCornerBottomRight ( "#F9F9E9", "#3D3434" )
+
+
+lotDebugCornerBottomLeft : List (Svg msg)
+lotDebugCornerBottomLeft =
+    debugCornerBottomLeft ( "#F9F9E9", "#3D3434" )
 
 
 lotDebugCenter : List (Svg msg)
 lotDebugCenter =
-    [ Svg.rect
-        [ Attributes.x "12"
-        , Attributes.y "12"
-        , Attributes.width "232"
-        , Attributes.height "232"
-        , Attributes.fill "#F9F9E9"
-        ]
-        []
-    ]
+    debugTile "#F9F9E9"
 
 
 lotDebugDrivewayRight : List (Svg msg)
 lotDebugDrivewayRight =
     [ Svg.rect
-        [ Attributes.x "244"
-        , Attributes.y "244"
-        , Attributes.width "232"
-        , Attributes.height "232"
-        , Attributes.transform "rotate(-180 244 244)"
+        [ Attributes.x "250"
+        , Attributes.y "250"
+        , Attributes.width "244"
+        , Attributes.height "244"
+        , Attributes.transform "rotate(-180 250 250)"
         , Attributes.fill "#766565"
+        , Attributes.opacity "0.5"
         ]
         []
     , path
@@ -722,6 +757,7 @@ lotDebugDrivewayRight =
         , Attributes.strokeLinecap "round"
         , Attributes.strokeLinejoin "round"
         , Attributes.fill "none"
+        , Attributes.opacity "0.5"
         ]
         []
     ]
@@ -730,12 +766,13 @@ lotDebugDrivewayRight =
 lotDebugDrivewayLeft : List (Svg msg)
 lotDebugDrivewayLeft =
     [ Svg.rect
-        [ Attributes.x "12"
-        , Attributes.y "244"
-        , Attributes.width "232"
-        , Attributes.height "232"
-        , Attributes.transform "rotate(-90 12 244)"
+        [ Attributes.x "6"
+        , Attributes.y "250"
+        , Attributes.width "244"
+        , Attributes.height "244"
+        , Attributes.transform "rotate(-90 6 250)"
         , Attributes.fill "#766565"
+        , Attributes.opacity "0.5"
         ]
         []
     , path
@@ -745,6 +782,7 @@ lotDebugDrivewayLeft =
         , Attributes.strokeLinecap "round"
         , Attributes.strokeLinejoin "round"
         , Attributes.fill "none"
+        , Attributes.opacity "0.5"
         ]
         []
     ]
@@ -753,12 +791,13 @@ lotDebugDrivewayLeft =
 lotDebugDrivewayUp : List (Svg msg)
 lotDebugDrivewayUp =
     [ Svg.rect
-        [ Attributes.x "12"
-        , Attributes.y "244"
-        , Attributes.width "232"
-        , Attributes.height "232"
-        , Attributes.transform "rotate(-90 12 244)"
+        [ Attributes.x "6"
+        , Attributes.y "250"
+        , Attributes.width "244"
+        , Attributes.height "244"
+        , Attributes.transform "rotate(-90 6 250)"
         , Attributes.fill "#766565"
+        , Attributes.opacity "0.5"
         ]
         []
     , path
@@ -768,6 +807,7 @@ lotDebugDrivewayUp =
         , Attributes.strokeLinecap "round"
         , Attributes.strokeLinejoin "round"
         , Attributes.fill "none"
+        , Attributes.opacity "0.5"
         ]
         []
     ]
@@ -775,103 +815,24 @@ lotDebugDrivewayUp =
 
 natureDebugCornerTopLeft : List (Svg msg)
 natureDebugCornerTopLeft =
-    [ Svg.rect
-        [ Attributes.x "12"
-        , Attributes.y "12"
-        , Attributes.width "232"
-        , Attributes.height "232"
-        , Attributes.fill "#4C8943"
-        ]
-        []
-    , path
-        [ Attributes.d "M30 210V30H210"
-        , Attributes.stroke "#F9F9F9"
-        , Attributes.strokeWidth "10"
-        , Attributes.strokeLinecap "round"
-        , Attributes.strokeLinejoin "round"
-        , Attributes.fill "none"
-        ]
-        []
-    ]
+    debugCornerTopLeft ( "#4C8943", "#F9F9F9" )
 
 
 natureDebugCornerTopRight : List (Svg msg)
 natureDebugCornerTopRight =
-    [ Svg.rect
-        [ Attributes.x "244"
-        , Attributes.y "12"
-        , Attributes.width "232"
-        , Attributes.height "232"
-        , Attributes.transform "rotate(90 244 12)"
-        , Attributes.fill "#4C8943"
-        ]
-        []
-    , path
-        [ Attributes.d "M46 30L226 30L226 210"
-        , Attributes.stroke "#F9F9F9"
-        , Attributes.strokeWidth "10"
-        , Attributes.strokeLinecap "round"
-        , Attributes.strokeLinejoin "round"
-        , Attributes.fill "none"
-        ]
-        []
-    ]
+    debugCornerTopRight ( "#4C8943", "#F9F9F9" )
 
 
 natureDebugCornerBottomRight : List (Svg msg)
 natureDebugCornerBottomRight =
-    [ Svg.rect
-        [ Attributes.x "244"
-        , Attributes.y "244"
-        , Attributes.width "232"
-        , Attributes.height "232"
-        , Attributes.transform "rotate(-180 244 244)"
-        , Attributes.fill "#4C8943"
-        ]
-        []
-    , path
-        [ Attributes.d "M226 46L226 226L46 226"
-        , Attributes.stroke "#F9F9F9"
-        , Attributes.strokeWidth "10"
-        , Attributes.strokeLinecap "round"
-        , Attributes.strokeLinejoin "round"
-        , Attributes.fill "none"
-        ]
-        []
-    ]
+    debugCornerBottomRight ( "#4C8943", "#F9F9F9" )
 
 
 natureDebugCornerBottomLeft : List (Svg msg)
 natureDebugCornerBottomLeft =
-    [ Svg.rect
-        [ Attributes.x "12"
-        , Attributes.y "244"
-        , Attributes.width "232"
-        , Attributes.height "232"
-        , Attributes.transform "rotate(-90 12 244)"
-        , Attributes.fill "#4C8943"
-        ]
-        []
-    , path
-        [ Attributes.d "M210 226L30 226L30 46"
-        , Attributes.stroke "#F9F9F9"
-        , Attributes.strokeWidth "10"
-        , Attributes.strokeLinecap "round"
-        , Attributes.strokeLinejoin "round"
-        , Attributes.fill "none"
-        ]
-        []
-    ]
+    debugCornerBottomLeft ( "#4C8943", "#F9F9F9" )
 
 
 natureDebugSingle : List (Svg msg)
 natureDebugSingle =
-    [ Svg.rect
-        [ Attributes.x "12"
-        , Attributes.y "12"
-        , Attributes.width "232"
-        , Attributes.height "232"
-        , Attributes.fill "#4C8943"
-        ]
-        []
-    ]
+    debugTile "#4C8943"

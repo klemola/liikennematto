@@ -487,7 +487,7 @@ intersectionTUp : TileConfig
 intersectionTUp =
     TileConfig.Single
         { id = 7
-        , complexity = 0.4
+        , complexity = 0.3
         , graphPriority = 0.2
         , biome = TileConfig.Road
         , sockets =
@@ -509,7 +509,7 @@ intersectionTLeft : TileConfig
 intersectionTLeft =
     TileConfig.Single
         { id = 11
-        , complexity = 0.4
+        , complexity = 0.3
         , graphPriority = 0.2
         , biome = TileConfig.Road
         , sockets =
@@ -531,7 +531,7 @@ intersectionCross : TileConfig
 intersectionCross =
     TileConfig.Single
         { id = 15
-        , complexity = 0.4
+        , complexity = 0.3
         , graphPriority = 0.2
         , biome = TileConfig.Road
         , sockets =
@@ -548,7 +548,7 @@ lotEntryTUp : TileConfig
 lotEntryTUp =
     TileConfig.Single
         { id = 20
-        , complexity = 0.75
+        , complexity = 0.4
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -565,7 +565,7 @@ lotEntryTRight : TileConfig
 lotEntryTRight =
     TileConfig.Single
         { id = 21
-        , complexity = 0.5
+        , complexity = 0.4
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -582,7 +582,7 @@ lotEntryTLeft : TileConfig
 lotEntryTLeft =
     TileConfig.Single
         { id = 22
-        , complexity = 0.5
+        , complexity = 0.4
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -803,7 +803,7 @@ twoByTwoLot : TileConfig
 twoByTwoLot =
     TileConfig.Large
         { id = 100
-        , complexity = 0.5
+        , complexity = 0.4
         , biome = TileConfig.Lot
         , tiles =
             Array.fromList
@@ -824,7 +824,7 @@ threeByThreeLot : TileConfig
 threeByThreeLot =
     TileConfig.Large
         { id = 101
-        , complexity = 0.75
+        , complexity = 0.5
         , biome = TileConfig.Lot
         , tiles =
             Array.fromList
@@ -852,7 +852,7 @@ threeByTwoLot : TileConfig
 threeByTwoLot =
     TileConfig.Large
         { id = 102
-        , complexity = 0.8
+        , complexity = 0.5
         , biome = TileConfig.Lot
         , tiles =
             Array.fromList
@@ -945,7 +945,7 @@ singleNature : TileConfig
 singleNature =
     TileConfig.Single
         { id = 200
-        , complexity = 0.2
+        , complexity = 0.4
         , graphPriority = maxGraphPriority
         , biome = TileConfig.Nature
         , sockets =
@@ -962,7 +962,7 @@ twoByTwoNature : TileConfig
 twoByTwoNature =
     TileConfig.Large
         { id = 201
-        , complexity = 0.4
+        , complexity = 0.5
         , biome = TileConfig.Nature
         , tiles =
             Array.fromList
