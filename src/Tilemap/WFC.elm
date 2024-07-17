@@ -582,7 +582,7 @@ backtrack previousSteps tilemap =
                 backtrackedEnough =
                     case theStep of
                         Collapse _ _ ->
-                            not <| List.isEmpty remainingSuperposition
+                            List.length remainingSuperposition > 1
 
                         _ ->
                             False
