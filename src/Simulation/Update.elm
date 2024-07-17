@@ -212,6 +212,12 @@ matchLotToTileConfig tileConfig =
         102 ->
             Data.Lots.fireStation
 
+        103 ->
+            Data.Lots.residentialRow1
+
+        104 ->
+            Data.Lots.residentialApartments1
+
         _ ->
             Data.Lots.residentialSingle1
 

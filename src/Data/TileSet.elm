@@ -149,7 +149,9 @@ allTiles =
     , lotEntryTRight
     , twoByTwoLot
     , threeByThreeLot
-    , threeByTwoLot
+    , threeByTwoLotA
+    , threeByTwoLotB
+    , twoByThreeLot
     ]
 
 
@@ -258,10 +260,6 @@ bitmaskToTileIdLookup =
         , ( 13, TileConfig.tileConfigId intersectionTRight )
         , ( 14, TileConfig.tileConfigId intersectionTDown )
         , ( 15, TileConfig.tileConfigId intersectionCross )
-
-        -- , ( 23, lotEntryTUp )
-        -- , ( 27, lotEntryTLeft )
-        -- , ( 29, lotEntryTRight )
         ]
 
 
@@ -848,8 +846,8 @@ threeByThreeLot =
         }
 
 
-threeByTwoLot : TileConfig
-threeByTwoLot =
+threeByTwoLotA : TileConfig
+threeByTwoLotA =
     TileConfig.Large
         { id = 102
         , complexity = 0.5
@@ -868,6 +866,54 @@ threeByTwoLot =
         , width = 3
         , height = 2
         , anchorIndex = 3
+        }
+
+
+threeByTwoLotB : TileConfig
+threeByTwoLotB =
+    TileConfig.Large
+        { id = 103
+        , complexity = 0.5
+        , biome = TileConfig.Lot
+        , tiles =
+            Array.fromList
+                [ lotTopLeftCorner
+                , lotTopEdge
+                , lotTopRightCorner
+
+                --
+                , lotDrivewayRight
+                , lotBottomEdge
+                , lotBottomRightCorner
+                ]
+        , width = 3
+        , height = 2
+        , anchorIndex = 3
+        }
+
+
+twoByThreeLot : TileConfig
+twoByThreeLot =
+    TileConfig.Large
+        { id = 104
+        , complexity = 0.5
+        , biome = TileConfig.Lot
+        , tiles =
+            Array.fromList
+                [ lotTopLeftCorner
+                , lotTopRightCorner
+
+                --
+                , lotLeftEdge
+                , lotRightEdge
+
+                --
+                , lotDrivewayUp
+                , lotBottomRightCorner
+                ]
+        , width = 2
+        , height = 3
+        , anchorIndex = 4
         }
 
 

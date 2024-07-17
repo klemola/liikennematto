@@ -6,6 +6,8 @@ module Data.Lots exposing
     , drivewayOffset
     , fireStation
     , lotAsset
+    , residentialApartments1
+    , residentialRow1
     , residentialSingle1
     , school
     )
