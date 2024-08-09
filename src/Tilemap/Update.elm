@@ -1,4 +1,4 @@
-module Tilemap.Update exposing (modifyTile, update)
+module Tilemap.Update exposing (addTileById, update)
 
 import Audio exposing (playSound)
 import Data.TileSet
@@ -161,13 +161,6 @@ onSecondaryInput cell model =
 --
 
 
-type alias ModifyTileConfig =
-    { cell : Cell
-    , tilemapChangeFn : Cell -> Tilemap -> ( Tilemap, List Action )
-    , postModifyFn : Cell -> WFC.Model -> WFC.Model
-    }
-
-
 addTileNeighborInitDistance : Int
 addTileNeighborInitDistance =
     3
@@ -176,51 +169,31 @@ addTileNeighborInitDistance =
 addTile : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
 addTile cell model =
     let
+        { world } =
+            model
+
         bitmask =
-            cellBitmask cell model.world.tilemap
+            cellBitmask cell world.tilemap
     in
     case tileIdByBitmask bitmask of
         Just tileId ->
-            modifyTileAndUpdate
-                { cell = cell
-                , tilemapChangeFn = Tilemap.Core.addTile tileId
-                , postModifyFn = WFC.initializeArea addTileNeighborInitDistance nonRoadTiles
-                }
-                model
+            let
+                ( withWFC, actions ) =
+                    addTileById cell tileId world.tilemap world.seed
+            in
+            ( withTilemap withWFC Nothing model
+            , Cmd.batch (tileActionsToCmds actions)
+            )
 
         Nothing ->
             ( model, Cmd.none )
 
 
-removeTile : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
-removeTile cell model =
-    modifyTileAndUpdate
-        { cell = cell
-        , tilemapChangeFn = Tilemap.Core.removeTile
-        , postModifyFn = \_ wfcModel -> wfcModel
-        }
-        model
-
-
-modifyTileAndUpdate : ModifyTileConfig -> Liikennematto -> ( Liikennematto, Cmd Message )
-modifyTileAndUpdate modifyTileConfig model =
-    let
-        { world } =
-            model
-
-        ( withWFC, actions ) =
-            modifyTile modifyTileConfig world.tilemap world.seed
-    in
-    ( withTilemap withWFC Nothing model
-    , Cmd.batch (tileActionsToCmds actions)
-    )
-
-
-modifyTile : ModifyTileConfig -> Tilemap -> Random.Seed -> ( Tilemap, List Action )
-modifyTile { cell, tilemapChangeFn, postModifyFn } tilemap seed =
+addTileById : Cell -> TileId -> Tilemap -> Random.Seed -> ( Tilemap, List Action )
+addTileById cell tileId tilemap seed =
     let
         ( updatedTilemap, tilemapChangeActions ) =
-            tilemapChangeFn cell tilemap
+            Tilemap.Core.addTile tileId cell tilemap
 
         wfcModel =
             WFC.fromTilemap updatedTilemap seed
@@ -230,19 +203,43 @@ modifyTile { cell, tilemapChangeFn, postModifyFn } tilemap seed =
             updateTileNeighbors cell wfcModel
 
         withInit =
-            postModifyFn cell updatedWfcModel
+            WFC.initializeArea addTileNeighborInitDistance nonRoadTiles cell updatedWfcModel
     in
     ( WFC.toTilemap withInit
     , tilemapChangeActions ++ wfcTileActions
     )
 
 
+removeTile : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
+removeTile cell model =
+    let
+        { world } =
+            model
+
+        ( updatedTilemap, tilemapChangeActions ) =
+            Tilemap.Core.removeTile cell world.tilemap
+
+        wfcModel =
+            WFC.fromTilemap updatedTilemap world.seed
+                |> WFC.propagateConstraints cell
+
+        ( updatedWfcModel, wfcTileActions ) =
+            updateTileNeighbors cell wfcModel
+
+        ( withWFC, actions ) =
+            ( WFC.toTilemap updatedWfcModel
+            , tilemapChangeActions ++ wfcTileActions
+            )
+    in
+    ( withTilemap withWFC Nothing model
+    , Cmd.batch (tileActionsToCmds actions)
+    )
+
+
 updateTileNeighbors : Cell -> WFC.Model -> ( WFC.Model, List Action )
 updateTileNeighbors cell wfcModel =
-    updateTileNeighborsHelper
-        cell
-        OrthogonalDirection.all
-        wfcModel
+    wfcModel
+        |> updateTileNeighborsHelper cell OrthogonalDirection.all
         |> WFC.flushPendingActions
 
 
@@ -296,30 +293,53 @@ processTileNeighbor maybeTile wfcModel =
 runWFC : Liikennematto -> ( Liikennematto, Cmd Message )
 runWFC model =
     let
-        wfc =
+        ( wfc, isSolved ) =
             case model.wfc of
                 WFCPaused ->
-                    WFC.fromTilemap
-                        (reopenRoads model.world.tilemap)
-                        model.world.seed
+                    ( restartWFC model.world, False )
 
                 WFCActive wfcModel ->
-                    -- TODO: this tilemap refresh is a bit icky, how to avoid it?
-                    -- the refresh is required because the tilemap update process may
-                    -- have been run between WFC triggers
-                    WFC.setTilemap model.world.tilemap wfcModel
+                    case WFC.currentState wfcModel of
+                        WFC.Failed _ ->
+                            ( restartWFC model.world, False )
+
+                        WFC.Done ->
+                            ( wfcModel, True )
+
+                        -- Solving, Recovering
+                        _ ->
+                            let
+                                nextWfc =
+                                    WFC.stepN WFC.StopAtSolved 100 wfcModel
+                            in
+                            ( nextWfc, WFC.currentState nextWfc == WFC.Done )
 
         ( updatedWfcModel, wfcTileActions ) =
-            wfc
-                |> WFC.stepN WFC.StopAtSolved 100
-                |> WFC.flushPendingActions
+            if isSolved then
+                WFC.flushPendingActions wfc
+
+            else
+                ( wfc, [] )
+
+        ( nextTilemap, nextDrivenWfc ) =
+            if isSolved then
+                ( WFC.toTilemap updatedWfcModel, Nothing )
+
+            else
+                ( model.world.tilemap, Just updatedWfcModel )
     in
     ( withTilemap
-        (WFC.toTilemap updatedWfcModel)
-        (Just updatedWfcModel)
+        nextTilemap
+        nextDrivenWfc
         model
     , Cmd.batch (tileActionsToCmds wfcTileActions)
     )
+
+
+restartWFC world =
+    WFC.fromTilemap
+        (reopenRoads world.tilemap)
+        world.seed
 
 
 reopenRoads : Tilemap -> Tilemap

@@ -1,8 +1,10 @@
 module Tilemap.WFC exposing
     ( Model
     , StepEndCondition(..)
+    , WFCState(..)
     , collapse
     , contextDebug
+    , currentState
     , failed
     , flushPendingActions
     , fromTilemap
@@ -205,7 +207,7 @@ step endCondition model =
 stepN : StepEndCondition -> Int -> Model -> Model
 stepN endCondition nTimes model =
     if nTimes == 0 then
-        model
+        flushOpenSteps model
 
     else
         let
@@ -586,6 +588,9 @@ backtrack previousSteps tilemap =
 
                         _ ->
                             False
+
+                -- _ =
+                --     Debug.log "backtrack" ( backtrackedEnough, stepDebug theStep )
             in
             if backtrackedEnough then
                 Ok reverted
@@ -771,7 +776,10 @@ attemptPlanLargeTilePlacement tilemap anchorCell tile =
                                     Err "Cannot translate cell to global coordinates"
                         )
             )
-        |> Result.mapError (\_ -> InvalidBigTilePlacement anchorCell tile.id)
+        |> Result.mapError
+            (\_ ->
+                InvalidBigTilePlacement anchorCell tile.id
+            )
 
 
 {-| Try to place a subgrid tile (of a large tile), generating more steps
@@ -881,6 +889,11 @@ applyToNeighbor onFixed onSuperposition onUninitialized cell tilemap =
 --
 
 
+currentState : Model -> WFCState
+currentState (Model modelDetails) =
+    modelDetails.state
+
+
 stopped : Model -> Bool
 stopped (Model modelDetails) =
     modelDetails.state /= Solving
@@ -897,10 +910,14 @@ failed (Model modelDetails) =
 
 
 flushPendingActions : Model -> ( Model, List Tile.Action )
-flushPendingActions (Model modelDetails) =
-    ( Model { modelDetails | pendingActions = [] }
-    , modelDetails.pendingActions
-    )
+flushPendingActions ((Model modelDetails) as model) =
+    if modelDetails.state == Done then
+        ( Model { modelDetails | pendingActions = [] }
+        , modelDetails.pendingActions
+        )
+
+    else
+        ( model, [] )
 
 
 toCurrentCell : Model -> Maybe Cell
@@ -944,8 +961,13 @@ wfcFailureToString wfcFailure =
         NoPotentialMatch ->
             "No potential match"
 
-        InvalidBigTilePlacement _ _ ->
-            "Invalid big tile surroundings (no space or socket mismatch)"
+        InvalidBigTilePlacement cell tileId ->
+            String.join
+                " "
+                [ "Invalid big tile surroundings (no space or socket mismatch)"
+                , Cell.toString cell
+                , String.fromInt tileId
+                ]
 
         InvalidDirection ->
             "Invalid direction (cell to cell)"
@@ -1008,6 +1030,6 @@ previousStepDebug ( theStep, superpositionOptions ) =
             superpositionOptions
                 |> List.Nonempty.toList
                 |> List.map String.fromInt
-                |> String.join ", "
+                |> String.join "|"
     in
     stepDebug theStep ++ " / " ++ optionsDebug

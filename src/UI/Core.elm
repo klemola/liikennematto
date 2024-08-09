@@ -28,6 +28,7 @@ module UI.Core exposing
     , colorZoomTrackBackground
     , containerId
     , controlButton
+    , debugElementSize
     , overlayId
     , renderSafeAreaXSize
     , renderSafeAreaYSize
@@ -111,6 +112,11 @@ borderRadiusButton =
 borderRadiusPanel : Int
 borderRadiusPanel =
     15
+
+
+debugElementSize : Int
+debugElementSize =
+    420
 
 
 scrollbarAwareOffset : Int

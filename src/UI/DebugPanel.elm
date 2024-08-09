@@ -5,35 +5,40 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
-import Length
 import Lib.Collection as Collection
 import Message exposing (Message(..))
-import Model.Debug exposing (DebugLayerKind(..), DevAction(..), toggleDebugPanel, toggleLayer)
-import Model.Liikennematto exposing (Liikennematto)
-import Model.RenderCache exposing (RenderCache)
+import Model.Debug
+    exposing
+        ( DebugLayerKind(..)
+        , DevAction(..)
+        , toggleDebugPanel
+        , toggleLayer
+        )
+import Model.Liikennematto exposing (DrivenWFC(..), Liikennematto)
 import Model.World exposing (World, formatEvents)
-import Point2d exposing (Point2d)
-import Quantity
-import Round
-import Simulation.Car as Car exposing (Car)
-import Speed exposing (Speed)
 import Time
 import UI.Core
     exposing
         ( ControlButtonContent(..)
         , ControlButtonSize(..)
-        , borderRadiusButton
         , borderRadiusPanel
-        , borderSize
         , colorCardBackground
         , colorMenuBackgroundInverse
-        , colorText
         , colorTextInverse
         , controlButton
+        , debugElementSize
         , scrollbarAwareOffsetF
         , textSize
         , whitespaceRegular
         , whitespaceTight
+        )
+import UI.StateDebug
+    exposing
+        ( carStateCard
+        , debugElementLength
+        , eventCard
+        , wfcContext
+        , wfcStateDescription
         )
 
 
@@ -64,6 +69,7 @@ view model =
         , Element.moveDown scrollbarAwareOffsetF
         , Background.color colorMenuBackgroundInverse
         , Border.rounded borderRadiusPanel
+        , Element.width (Element.shrink |> Element.minimum debugElementSize)
         ]
         [ Element.row
             [ Element.width Element.fill ]
@@ -84,29 +90,10 @@ view model =
                 )
             ]
         , controls model
+        , wfcState model.wfc
         , eventQueueView model.time model.world
-        , Element.column
-            [ Element.spacing whitespaceTight
-            , Element.width Element.fill
-            ]
-            (Collection.values model.world.cars |> List.map (carStateView model.renderCache))
+        , carState model
         ]
-
-
-cardAttributes : List (Element.Attribute msg)
-cardAttributes =
-    [ Element.width Element.fill
-    , Element.padding whitespaceTight
-    , Element.spacing UI.Core.whitespaceTight
-    , Element.clipX
-    , Font.color colorText
-    , Font.size 13
-    , Background.color colorCardBackground
-    , Border.solid
-    , Border.rounded borderRadiusButton
-    , Border.width borderSize
-    , Border.color colorCardBackground
-    ]
 
 
 controls : Liikennematto -> Element Message
@@ -160,74 +147,44 @@ controls model =
         ]
 
 
+wfcState : DrivenWFC -> Element msg
+wfcState drivenWfc =
+    case drivenWfc of
+        WFCActive wfcModel ->
+            Element.column
+                [ Element.spacing 16
+                , Element.padding 8
+                , Background.color colorCardBackground
+                , Border.solid
+                , Element.width debugElementLength
+                , Element.scrollbarX
+                ]
+                [ wfcStateDescription wfcModel
+                , wfcContext wfcModel
+                ]
+
+        _ ->
+            Element.none
+
+
+carState : Liikennematto -> Element Message
+carState model =
+    Element.column
+        [ Element.spacing whitespaceTight
+        , Element.width Element.fill
+        ]
+        (Collection.values model.world.cars
+            |> List.map
+                (carStateCard model.renderCache
+                    >> Element.map (\_ -> NoOp)
+                )
+        )
+
+
 eventQueueView : Time.Posix -> World -> Element msg
 eventQueueView time world =
     Element.column
         [ Element.spacing whitespaceTight
         , Element.width Element.fill
         ]
-        (formatEvents time world
-            |> List.map
-                (\queueEvent ->
-                    let
-                        ( kind, triggerAt, retries ) =
-                            queueEvent
-                    in
-                    Element.el
-                        cardAttributes
-                        (Element.column
-                            [ Element.spacing UI.Core.whitespaceTight ]
-                            [ Element.text kind
-                            , Element.text triggerAt
-                            , Element.text retries
-                            ]
-                        )
-                )
-        )
-
-
-carStateView : RenderCache msg -> Car -> Element msg
-carStateView cache car =
-    Element.row
-        cardAttributes
-        [ Element.text ("# " ++ Collection.idToString car.id)
-        , Element.column [ Element.spacing whitespaceTight ]
-            [ Element.text (pointToString cache car.position)
-            , Element.text (speedToString car.velocity)
-            , Element.text (Car.statusDescription car)
-            ]
-        ]
-
-
-speedToString : Speed -> String
-speedToString speed =
-    let
-        speedValue =
-            speed
-                |> Quantity.unwrap
-                |> Round.round 2
-    in
-    "Speed: " ++ speedValue ++ " m/s"
-
-
-pointToString : RenderCache msg -> Point2d Length.Meters a -> String
-pointToString cache point =
-    let
-        { x, y } =
-            point
-                |> Point2d.at cache.pixelsToMetersRatio
-                |> Point2d.toPixels
-
-        format n =
-            n
-                |> truncate
-                |> String.fromInt
-                |> String.padLeft 2 ' '
-    in
-    String.join
-        " "
-        [ "x:"
-        , format x
-        , "y:"
-        , format y
-        ]
+        (List.map eventCard (formatEvents time world))

@@ -6,7 +6,6 @@ import Data.Colors
 import Data.TileSet exposing (allTiles, pairingsForSocket)
 import Element
 import Element.Background
-import Element.Border as Border
 import Element.Font
 import Element.Input as Input
 import Html exposing (Html)
@@ -18,12 +17,10 @@ import Model.World as World
 import Process
 import Random
 import Render
-import Render.Conversion
 import Render.Debug
 import Svg
 import Svg.Attributes
 import Task
-import Tilemap.Cell as Cell
 import Tilemap.Core exposing (TileListFilter(..), TilemapConfig)
 import Tilemap.TileConfig as TileConfig
     exposing
@@ -37,6 +34,7 @@ import Tilemap.WFC as WFC
 import Time
 import UI.Core
 import UI.Editor as Editor
+import UI.StateDebug exposing (wfcContext, wfcCurrentCell, wfcStateDescription)
 
 
 type Msg
@@ -332,7 +330,7 @@ sidePanel mode wfcModel =
         , Element.padding 8
         ]
         [ controls
-        , wfcState wfcModel
+        , wfcStateDescription wfcModel
         , case mode of
             Manual ->
                 wfcContext wfcModel
@@ -372,86 +370,6 @@ bottomPanel cache widthPixels =
         [ tileSetDebug cache (Element.px widthPixels)
         , socketsMatrix
         ]
-
-
-
---
--- WFC state debug
---
-
-
-wfcState : WFC.Model -> Element.Element Msg
-wfcState wfcModel =
-    Element.el
-        []
-        (Element.text (WFC.stateDebug wfcModel))
-
-
-wfcContext : WFC.Model -> Element.Element Msg
-wfcContext wfcModel =
-    let
-        { position, openSteps, previousSteps } =
-            WFC.contextDebug wfcModel
-    in
-    Element.column
-        [ Element.width (Element.px 420)
-        , Element.spacing 8
-        , Element.Font.family [ Element.Font.monospace ]
-        , Element.Font.size 14
-        ]
-        [ Element.column
-            []
-            (position |> List.map (\step -> Element.el [] (Element.text step)))
-        , Element.column
-            []
-            (openSteps |> List.map (\step -> Element.el [] (Element.text step)))
-        , Element.column
-            [ Element.height (Element.fill |> Element.maximum 420)
-            , Element.width Element.fill
-            , Element.scrollbars
-            , Element.paddingXY 0 8
-            , Element.spacing 4
-            ]
-            (previousSteps |> List.map (\step -> Element.el [] (Element.text step)))
-        ]
-
-
-wfcCurrentCell : RenderCache.RenderCache msg -> WFC.Model -> Element.Element Msg
-wfcCurrentCell cache wfcModel =
-    case WFC.toCurrentCell wfcModel of
-        Just cell ->
-            let
-                tileSizePixels =
-                    Render.Conversion.toPixelsValue cache.pixelsToMetersRatio Cell.size
-
-                ( cellX, cellY ) =
-                    Cell.coordinates cell
-
-                cellSize =
-                    Element.px (floor tileSizePixels)
-
-                cursorColor =
-                    if WFC.failed wfcModel then
-                        Data.Colors.red
-
-                    else
-                        Data.Colors.gray7
-            in
-            Element.el
-                [ Element.width cellSize
-                , Element.height cellSize
-                , Element.moveRight (toFloat (cellX - 1) * tileSizePixels)
-                , Element.moveDown (toFloat (cellY - 1) * tileSizePixels)
-                , Border.width 2
-                , Border.rounded 4
-                , Border.solid
-                , Border.color
-                    (Data.Colors.uiCompat cursorColor)
-                ]
-                Element.none
-
-        Nothing ->
-            Element.none
 
 
 

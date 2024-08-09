@@ -24,7 +24,7 @@ import Tilemap.Core
         , updateTilemap
         )
 import Tilemap.Tile as Tile
-import Tilemap.Update exposing (modifyTile)
+import Tilemap.Update exposing (addTileById)
 
 
 type alias AnchorDef =
@@ -92,13 +92,7 @@ fromCellsHelper remainingCells tilemap =
                 ( tilemapWithTile, _ ) =
                     case tileIdByBitmask bitmask of
                         Just tileId ->
-                            modifyTile
-                                { cell = cell
-                                , tilemapChangeFn = Tilemap.Core.addTile tileId
-                                , postModifyFn = \_ wfcModel -> wfcModel
-                                }
-                                tilemap
-                                (Random.initialSeed 42)
+                            addTileById cell tileId tilemap (Random.initialSeed 42)
 
                         Nothing ->
                             ( tilemap, [] )
