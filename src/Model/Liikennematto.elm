@@ -18,7 +18,7 @@ import Data.Assets exposing (roads)
 import Duration exposing (Duration)
 import Lib.FSM as FSM exposing (FSM)
 import Message exposing (Message)
-import Model.Debug exposing (DebugState, initialDebugState)
+import Model.Debug exposing (DebugState, initialDebugState, toggleDebugPanel)
 import Model.Flags exposing (Flags, RuntimeEnvironment(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Screen as Screen exposing (Screen)
@@ -229,7 +229,9 @@ tilemapConfig =
 
 
 debugState =
-    initialDebugState |> Model.Debug.toggleLayer Model.Debug.WFCDebug
+    initialDebugState
+        |> toggleDebugPanel
+        |> Model.Debug.toggleLayer Model.Debug.WFCDebug
 
 
 initialWorld : World
@@ -289,7 +291,7 @@ withTilemap tilemap wfc model =
     { model
         | world = nextWorld
         , wfc = nextWFC
-        , renderCache = RenderCache.setTilemapCache nextWorld.tilemap model.renderCache
+        , renderCache = RenderCache.setTilemapCache nextWorld.tilemap wfc model.renderCache
     }
 
 

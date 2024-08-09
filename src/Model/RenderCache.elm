@@ -35,6 +35,7 @@ import Tilemap.Core
         )
 import Tilemap.Tile as Tile exposing (Tile, TileKind(..))
 import Tilemap.TileConfig exposing (TileId)
+import Tilemap.WFC as WFC
 import UI.Core
 
 
@@ -129,14 +130,20 @@ setTileListFilter tileListFilter cache =
     { cache | tileListFilter = tileListFilter }
 
 
-setTilemapCache : Tilemap -> RenderCache msg -> RenderCache msg
-setTilemapCache tilemap cache =
+setTilemapCache : Tilemap -> Maybe WFC.Model -> RenderCache msg -> RenderCache msg
+setTilemapCache tilemap wfcModel cache =
     { cache
         | tilemap = toTilemapCache cache.tileListFilter tilemap
 
         -- TODO: the debug state should only be set if the debug layer is open
         -- it is costly
-        , tilemapDebug = toTilemapCache NoFilter tilemap
+        , tilemapDebug =
+            case wfcModel of
+                Just wfc ->
+                    toTilemapCache NoFilter (WFC.toTilemap wfc)
+
+                Nothing ->
+                    cache.tilemapDebug
     }
 
 
@@ -148,7 +155,7 @@ refreshTilemapCache tilemapUpdateResult cache =
                 cache
 
             else
-                setTilemapCache tilemapUpdateResult.tilemap cache
+                setTilemapCache tilemapUpdateResult.tilemap Nothing cache
 
         nextDynamicTiles =
             if List.isEmpty tilemapUpdateResult.dynamicCells then

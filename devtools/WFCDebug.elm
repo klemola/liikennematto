@@ -145,7 +145,7 @@ update msg model =
                     World.setTilemap tilemap model.world
 
                 cache =
-                    RenderCache.setTilemapCache tilemap model.cache
+                    RenderCache.setTilemapCache tilemap (Just wfcModel) model.cache
 
                 ( mode, cmd ) =
                     if WFC.stopped model.wfcModel then
@@ -214,7 +214,7 @@ update msg model =
                     World.setTilemap tilemap model.world
 
                 cache =
-                    RenderCache.setTilemapCache tilemap model.cache
+                    RenderCache.setTilemapCache tilemap (Just solveResult) model.cache
             in
             ( { model
                 | wfcModel = solveResult
@@ -241,7 +241,7 @@ update msg model =
                             World.setTilemap tilemap model.world
 
                         cache =
-                            RenderCache.setTilemapCache tilemap model.cache
+                            RenderCache.setTilemapCache tilemap (Just wfcModel) model.cache
                     in
                     ( { model
                         | wfcModel = wfcModel
