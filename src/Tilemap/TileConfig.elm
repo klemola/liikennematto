@@ -3,6 +3,7 @@ module Tilemap.TileConfig exposing
     , SingleTile
     , Socket(..)
     , Sockets
+    , SubgridTileProperties
     , TileBiome(..)
     , TileConfig(..)
     , TileId
@@ -10,6 +11,7 @@ module Tilemap.TileConfig exposing
     , baseTileId
     , biome
     , complexity
+    , directionBySocket
     , graphPriority
     , maxGraphPriority
     , mirroredHorizontally
@@ -55,6 +57,13 @@ type alias LargeTile =
     , width : Int
     , height : Int
     , anchorIndex : Int
+    }
+
+
+type alias SubgridTileProperties =
+    { parentTileId : TileId
+    , singleTile : SingleTile
+    , index : Int
     }
 
 
@@ -211,6 +220,26 @@ socketByDirection sockets_ direction =
 
         Left ->
             sockets_.left
+
+
+directionBySocket : Sockets -> Socket -> Maybe OrthogonalDirection
+directionBySocket sockets_ socket =
+    -- Assuming that there's at most one match...
+    if sockets_.top == socket then
+        Just Up
+
+    else if sockets_.right == socket then
+        Just Right
+
+    else if sockets_.bottom == socket then
+        Just Down
+
+    else if sockets_.left == socket then
+        Just Left
+
+    else
+        -- No match.
+        Nothing
 
 
 toString : TileConfig -> String

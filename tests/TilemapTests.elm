@@ -70,8 +70,8 @@ suite =
                         |> Maybe.map
                             (\tile ->
                                 case tile.kind of
-                                    Fixed ( tileId, _ ) ->
-                                        tileId == 14
+                                    Fixed properties ->
+                                        properties.id == 14
 
                                     _ ->
                                         False
@@ -94,8 +94,8 @@ suite =
                         |> Maybe.map
                             (\tile ->
                                 case tile.kind of
-                                    Fixed ( tileId, _ ) ->
-                                        tileId == 12
+                                    Fixed properties ->
+                                        properties.id == 12
 
                                     _ ->
                                         False

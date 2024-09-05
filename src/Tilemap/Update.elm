@@ -172,17 +172,20 @@ addTile cell model =
         { world } =
             model
 
+        ( tilemapWithClearedCell, clearCellActions ) =
+            Tilemap.Core.removeTile cell world.tilemap
+
         bitmask =
-            cellBitmask cell world.tilemap
+            cellBitmask cell tilemapWithClearedCell
     in
     case tileIdByBitmask bitmask of
         Just tileId ->
             let
-                ( withWFC, actions ) =
-                    addTileById cell tileId world.tilemap world.seed
+                ( withWFC, addTileActions ) =
+                    addTileById cell tileId tilemapWithClearedCell world.seed
             in
             ( withTilemap withWFC Nothing model
-            , Cmd.batch (tileActionsToCmds actions)
+            , Cmd.batch (tileActionsToCmds (clearCellActions ++ addTileActions))
             )
 
         Nothing ->
@@ -265,8 +268,8 @@ processTileNeighbor maybeTile wfcModel =
     case maybeTile of
         Just ( cell, tile ) ->
             case tile.kind of
-                Fixed ( tileId, _ ) ->
-                    if TileConfig.biome (tileById tileId) == TileConfig.Road then
+                Fixed properties ->
+                    if TileConfig.biome (tileById properties.id) == TileConfig.Road then
                         wfcModel
                             |> WFC.resetCell defaultTiles cell tile.kind
                             |> WFC.collapse cell

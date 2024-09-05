@@ -4,6 +4,7 @@ module Data.TileSet exposing
     , defaultSocket
     , defaultTiles
     , isTileLotEntryTile
+    , lotDrivewaySocket
     , lotDrivewayTileIds
     , lotEntrySocket
     , nonRoadTiles

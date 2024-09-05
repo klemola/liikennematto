@@ -121,7 +121,7 @@ renderTile cache cell tileKind =
             Cell.bottomLeftCorner cell |> pointToPixels cache.pixelsToMetersRatio
     in
     case tileKind of
-        Fixed ( tileId, _ ) ->
+        Fixed properties ->
             let
                 tileSizePixels =
                     toPixelsValue cache.pixelsToMetersRatio Cell.size
@@ -133,7 +133,7 @@ renderTile cache cell tileKind =
                 tileSizePixels
                 { x = x
                 , y = yAdjusted
-                , asset = assetById cache.roadAssets tileId
+                , asset = assetById cache.roadAssets properties.id
                 , tileStyles = ""
                 }
 
@@ -152,7 +152,7 @@ renderDynamicTiles cache tiles =
                         renderAnimatedTile cache cell (assetById cache.roadAssets tileId) animation
 
                     Nothing ->
-                        renderTile cache cell (Fixed ( tileId, Nothing ))
+                        renderTile cache cell (Fixed { id = tileId, parentTile = Nothing })
                 )
             )
         |> Svg.Keyed.node "g" []

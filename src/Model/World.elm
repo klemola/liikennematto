@@ -19,7 +19,6 @@ module Model.World exposing
     , refreshCars
     , refreshLots
     , removeCar
-    , removeInvalidLots
     , removeLot
     , resolveTilemapUpdate
     , setCar
@@ -32,7 +31,6 @@ module Model.World exposing
 import BoundingBox2d exposing (BoundingBox2d)
 import Common exposing (GlobalCoordinates)
 import Data.Cars exposing (CarMake)
-import Data.TileSet exposing (isTileLotEntryTile)
 import Duration exposing (Duration)
 import Graph
 import Length exposing (Length)
@@ -58,9 +56,7 @@ import Tilemap.Core
         ( Tilemap
         , TilemapConfig
         , TilemapUpdateResult
-        , anchorByCell
         , createTilemap
-        , fixedTileByCell
         , getTilemapConfig
         , inTilemapBounds
         , removeAnchor
@@ -471,61 +467,6 @@ combineChangedCells changedCells currentChanges =
         |> List.map Cell.coordinates
         |> Set.fromList
         |> Set.union currentChanges
-
-
-removeInvalidLots : TilemapChange -> World -> World
-removeInvalidLots tilemapChange world =
-    -- TODO: remove if unnecessary
-    let
-        changedAnchors =
-            List.Nonempty.foldl
-                (\cell anchors ->
-                    case anchorByCell world.tilemap cell of
-                        Just ( id, _ ) ->
-                            ( id, cell ) :: anchors
-
-                        Nothing ->
-                            anchors
-                )
-                []
-                tilemapChange.changedCells
-    in
-    Collection.foldl
-        (validateLot tilemapChange.changedCells changedAnchors)
-        world
-        world.lots
-
-
-validateLot : Nonempty Cell -> List ( Id, Cell ) -> Id -> Lot -> World -> World
-validateLot changedCells changedAnchors lotId lot world =
-    let
-        lotOverlapsWithRoad =
-            List.Nonempty.any (\cell -> Lot.inBounds cell lot) changedCells
-
-        lotAnchorWasRemoved =
-            List.any
-                (\( anchorLotId, cell ) ->
-                    case fixedTileByCell world.tilemap cell of
-                        Just tile ->
-                            let
-                                isLotEntry =
-                                    tile
-                                        |> Tile.id
-                                        |> Maybe.map isTileLotEntryTile
-                                        |> Maybe.withDefault False
-                            in
-                            anchorLotId == lotId && not isLotEntry
-
-                        Nothing ->
-                            anchorLotId == lotId
-                )
-                changedAnchors
-    in
-    if lotAnchorWasRemoved || lotOverlapsWithRoad then
-        removeLot lotId world
-
-    else
-        world
 
 
 

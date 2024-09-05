@@ -32,8 +32,12 @@ type alias Tile =
 
 type TileKind
     = Unintialized
-    | Fixed ( TileId, Maybe TileId )
+    | Fixed FixedTileProperties
     | Superposition (List TileId)
+
+
+type alias FixedTileProperties =
+    { id : TileId, parentTile : Maybe ( TileId, Int ) }
 
 
 type alias TileFSM =
@@ -67,8 +71,8 @@ init kind =
     }
 
 
-fromTileId : TileId -> Maybe TileId -> TileOperation -> ( Tile, List Action )
-fromTileId tileId parentTileId op =
+fromTileId : TileId -> Maybe ( TileId, Int ) -> TileOperation -> ( Tile, List Action )
+fromTileId tileId parentTileProperties op =
     let
         initialState =
             case op of
@@ -81,7 +85,11 @@ fromTileId tileId parentTileId op =
         ( fsm, initialActions ) =
             FSM.initialize initialState
     in
-    ( { kind = Fixed ( tileId, parentTileId )
+    ( { kind =
+            Fixed
+                { id = tileId
+                , parentTile = parentTileProperties
+                }
       , fsm = fsm
       }
     , initialActions
@@ -135,8 +143,8 @@ isDynamic tile =
 id : Tile -> Maybe TileId
 id tile =
     case tile.kind of
-        Fixed ( tileId, _ ) ->
-            Just tileId
+        Fixed properties ->
+            Just properties.id
 
         _ ->
             Nothing

@@ -1,9 +1,9 @@
 module Simulation.Update exposing (update)
 
 import Data.Lots exposing (NewLot)
-import Data.TileSet exposing (lotDrivewayTileIds, tileById)
+import Data.TileSet exposing (isTileLotEntryTile, lotDrivewayTileIds, tileById)
 import Duration
-import Lib.Collection as Collection
+import Lib.Collection as Collection exposing (Id)
 import Lib.FSM as FSM
 import Lib.OrthogonalDirection as OrthogonalDirection
 import List.Nonempty as Nonempty
@@ -25,7 +25,7 @@ import Simulation.Lot as Lot
 import Simulation.Traffic as Traffic exposing (addLotResidents, rerouteCarsIfNeeded)
 import Simulation.TrafficLight exposing (TrafficLight)
 import Tilemap.Cell as Cell exposing (Cell)
-import Tilemap.Core exposing (addAnchor, getTilemapConfig, tileByCell)
+import Tilemap.Core exposing (addAnchor, anchorByCell, fixedTileByCell, getTilemapConfig, tileByCell)
 import Tilemap.Tile exposing (TileKind(..))
 import Tilemap.TileConfig as TileConfig exposing (TileConfig)
 import Time
@@ -138,8 +138,46 @@ processWorldEvents time events world =
 worldAfterTilemapChange : TilemapChange -> World -> World
 worldAfterTilemapChange tilemapChange world =
     world
+        |> removeOrphanLots tilemapChange
         |> updateRoadNetwork
         |> rerouteCarsIfNeeded
+
+
+removeOrphanLots : TilemapChange -> World -> World
+removeOrphanLots tilemapChange world =
+    tilemapChange.changedCells
+        |> Nonempty.foldl
+            (\cell anchors ->
+                case anchorByCell world.tilemap cell of
+                    Just ( id, _ ) ->
+                        ( id, cell ) :: anchors
+
+                    Nothing ->
+                        anchors
+            )
+            []
+        |> List.foldl
+            (\( anchorLotId, cell ) nextWorld ->
+                case fixedTileByCell world.tilemap cell of
+                    Just tile ->
+                        let
+                            isLotEntry =
+                                tile
+                                    |> Tilemap.Tile.id
+                                    |> Maybe.map isTileLotEntryTile
+                                    |> Maybe.withDefault False
+                        in
+                        if isLotEntry then
+                            nextWorld
+
+                        else
+                            -- The tile used to be a lot entry tile, yet has changed - remove the lot
+                            World.removeLot anchorLotId nextWorld
+
+                    Nothing ->
+                        nextWorld
+            )
+            world
 
 
 
@@ -173,10 +211,10 @@ newLotsFromTilemapChange tilemapChange time world =
     let
         extractDrivewayTile cell tile =
             case tile.kind of
-                Fixed ( id, parentTileId ) ->
-                    if List.member id lotDrivewayTileIds then
-                        parentTileId
-                            |> Maybe.map tileById
+                Fixed properties ->
+                    if List.member properties.id lotDrivewayTileIds then
+                        properties.parentTile
+                            |> Maybe.map (\( parentTileId, _ ) -> tileById parentTileId)
                             |> Maybe.map (Tuple.pair cell)
 
                     else

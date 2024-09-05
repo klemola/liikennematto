@@ -56,6 +56,7 @@ import Tilemap.TileConfig as TileConfig
         ( LargeTile
         , SingleTile
         , Socket
+        , SubgridTileProperties
         , TileConfig
         , TileId
         , socketByDirection
@@ -81,7 +82,7 @@ type alias ModelDetails =
 
 type Step
     = Collapse Cell TileConfig
-    | CollapseSubgridCell Cell SingleTile TileId
+    | CollapseSubgridCell Cell SubgridTileProperties
     | PropagateConstraints Cell Cell
 
 
@@ -340,7 +341,7 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap, pendi
                         Collapse cell _ ->
                             ( Just cell, Nothing )
 
-                        CollapseSubgridCell cell _ _ ->
+                        CollapseSubgridCell cell _ ->
                             ( Just cell, Nothing )
 
                         PropagateConstraints cellA cellB ->
@@ -423,8 +424,8 @@ processStep tilemap currentStep =
                     in
                     Ok ( nextSteps, tileActions, nextTilemap )
 
-        CollapseSubgridCell cell singleTile largeTileId ->
-            attemptPlaceSubgridTile tilemap largeTileId cell singleTile
+        CollapseSubgridCell cell properties ->
+            attemptPlaceSubgridTile tilemap properties.parentTileId cell properties
 
         PropagateConstraints from to ->
             Maybe.map2 Tuple.pair
@@ -466,10 +467,10 @@ superpositionOptionsForTile :
     -> Result WFCFailure (List Int)
 superpositionOptionsForTile ( originTile, targetTile ) dir =
     case ( originTile.kind, targetTile.kind ) of
-        ( Fixed ( originTileId, _ ), Superposition options ) ->
+        ( Fixed tileProperties, Superposition options ) ->
             let
                 revisedOptions =
-                    matchingSuperpositionOptions dir originTileId options
+                    matchingSuperpositionOptions dir tileProperties.id options
             in
             if List.isEmpty revisedOptions then
                 Err NoSuperpositionOptions
@@ -540,7 +541,7 @@ stepCell theStep =
         Collapse cell _ ->
             cell
 
-        CollapseSubgridCell cell _ _ ->
+        CollapseSubgridCell cell _ ->
             cell
 
         PropagateConstraints _ toCell ->
@@ -553,8 +554,8 @@ stepTileId theStep =
         Collapse _ tileConfig ->
             Just <| TileConfig.tileConfigId tileConfig
 
-        CollapseSubgridCell _ _ largeTileId ->
-            Just largeTileId
+        CollapseSubgridCell _ properties ->
+            Just properties.parentTileId
 
         PropagateConstraints _ _ ->
             Nothing
@@ -770,7 +771,13 @@ attemptPlanLargeTilePlacement tilemap anchorCell tile =
                             in
                             case cellInGlobalCoordinates of
                                 Just cell ->
-                                    Ok (CollapseSubgridCell cell singleTile tile.id)
+                                    Ok
+                                        (CollapseSubgridCell cell
+                                            { parentTileId = tile.id
+                                            , singleTile = singleTile
+                                            , index = subgridIdx
+                                            }
+                                        )
 
                                 Nothing ->
                                     Err "Cannot translate cell to global coordinates"
@@ -784,15 +791,23 @@ attemptPlanLargeTilePlacement tilemap anchorCell tile =
 
 {-| Try to place a subgrid tile (of a large tile), generating more steps
 -}
-attemptPlaceSubgridTile : Tilemap -> TileId -> Cell -> SingleTile -> Result WFCFailure ( List Step, List Tile.Action, Tilemap )
-attemptPlaceSubgridTile tilemap largeTileId cell currentTile =
+attemptPlaceSubgridTile :
+    Tilemap
+    -> TileId
+    -> Cell
+    -> SubgridTileProperties
+    -> Result WFCFailure ( List Step, List Tile.Action, Tilemap )
+attemptPlaceSubgridTile tilemap largeTileId cell subgridTileProperties =
     tilemap
-        |> attemptTileNeighborUpdate currentTile cell
+        |> attemptTileNeighborUpdate subgridTileProperties.singleTile cell
         |> Result.map
             (\neighborSteps ->
                 let
+                    parentTileProperties =
+                        ( subgridTileProperties.parentTileId, subgridTileProperties.index )
+
                     ( nextTilemap, tileActions ) =
-                        addTileFromWFC (Just largeTileId) currentTile.id cell tilemap
+                        addTileFromWFC (Just parentTileProperties) subgridTileProperties.singleTile.id cell tilemap
                 in
                 ( neighborSteps, tileActions, nextTilemap )
             )
@@ -864,8 +879,8 @@ applyToNeighbor onFixed onSuperposition onUninitialized cell tilemap =
                                     NeighborUpdateContext dir toTile toCell tilemap steps
                             in
                             case toTile.kind of
-                                Fixed ( tileId, _ ) ->
-                                    onFixed neighborUpdateContext tileId
+                                Fixed properties ->
+                                    onFixed neighborUpdateContext properties.id
 
                                 Superposition options ->
                                     onSuperposition neighborUpdateContext options
@@ -1009,14 +1024,14 @@ stepDebug theStep =
                 , TileConfig.toString tileConfig
                 ]
 
-        CollapseSubgridCell cell singleTile largeTileId ->
+        CollapseSubgridCell cell properties ->
             String.join " "
                 [ "CollapseSubgridCell "
                 , Cell.toString cell
                 , "tile ID:"
-                , String.fromInt singleTile.id
+                , String.fromInt properties.singleTile.id
                 , "large tile ID: "
-                , String.fromInt largeTileId
+                , String.fromInt properties.parentTileId
                 ]
 
         PropagateConstraints fromCell toCell ->
