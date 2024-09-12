@@ -37,7 +37,14 @@ import Array exposing (Array)
 import Array.Extra as Array
 import BoundingBox2d exposing (BoundingBox2d)
 import Common exposing (GlobalCoordinates, andCarry)
-import Data.TileSet exposing (nonRoadTiles, tileById, tileIdsByOrthogonalMatch, tileIdsFromBitmask)
+import Data.TileSet
+    exposing
+        ( extractLotEntryTile
+        , nonRoadTiles
+        , tileById
+        , tileIdsByOrthogonalMatch
+        , tileIdsFromBitmask
+        )
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Duration exposing (Duration)
@@ -50,7 +57,7 @@ import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Maybe.Extra as Maybe
 import Point2d
 import Quantity
-import Tilemap.Cell as Cell exposing (Cell, CellCoordinates)
+import Tilemap.Cell as Cell exposing (Cell, CellCoordinates, nextOrthogonalCell)
 import Tilemap.Tile as Tile
     exposing
         ( Tile
@@ -491,7 +498,7 @@ addTileFromWFC parentTile =
 
 
 removeTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )
-removeTile origin tilemap =
+removeTile origin ((Tilemap tilemapContents) as tilemap) =
     case
         fixedTileByCell tilemap origin
             |> Maybe.map Tile.attemptRemove
@@ -506,8 +513,27 @@ removeTile origin tilemap =
                     )
 
                 Nothing ->
-                    ( updateCell origin tile tilemap
-                    , actions
+                    let
+                        withUpdatedCell =
+                            updateCell origin tile tilemap
+
+                        ( withMaybeConnectedLargeTileRemoved, removeLargeTileActions ) =
+                            Tile.id tile
+                                |> Maybe.andThen extractLotEntryTile
+                                |> Maybe.andThen
+                                    (\( _, directionToLot ) ->
+                                        nextOrthogonalCell tilemapContents.config directionToLot origin
+                                    )
+                                |> Maybe.map
+                                    (\lotDrivewayCell ->
+                                        -- Call removeTile in a recursive way, as this will branch out to the "parent tile" found
+                                        -- case or at least fail on the neighbor not being a lot entry cell
+                                        removeTile lotDrivewayCell withUpdatedCell
+                                    )
+                                |> Maybe.withDefault ( withUpdatedCell, [] )
+                    in
+                    ( withMaybeConnectedLargeTileRemoved
+                    , actions ++ removeLargeTileActions
                     )
 
         Nothing ->

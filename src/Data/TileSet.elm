@@ -3,7 +3,7 @@ module Data.TileSet exposing
     , allTilesAmount
     , defaultSocket
     , defaultTiles
-    , isTileLotEntryTile
+    , extractLotEntryTile
     , lotDrivewaySocket
     , lotDrivewayTileIds
     , lotEntrySocket
@@ -325,11 +325,34 @@ compatibleTileId matcher tc =
 --
 
 
-isTileLotEntryTile : TileId -> Bool
-isTileLotEntryTile =
-    tileById
-        >> TileConfig.socketsList
-        >> List.Nonempty.any (\( _, socket ) -> socket == lotEntrySocket)
+extractLotEntryTile : TileId -> Maybe ( TileConfig, OrthogonalDirection )
+extractLotEntryTile tileId =
+    let
+        tileConfig =
+            tileById tileId
+    in
+    TileConfig.socketsList tileConfig
+        |> List.Nonempty.toList
+        |> findLotEntryDirection
+        |> Maybe.map (Tuple.pair tileConfig)
+
+
+findLotEntryDirection : List ( OrthogonalDirection, Socket ) -> Maybe OrthogonalDirection
+findLotEntryDirection sockets =
+    case sockets of
+        [] ->
+            Nothing
+
+        x :: xs ->
+            let
+                ( dir, socket ) =
+                    x
+            in
+            if socket == lotEntrySocket then
+                Just dir
+
+            else
+                findLotEntryDirection xs
 
 
 roadConnectionDirectionsByTile : TileConfig -> List OrthogonalDirection

@@ -406,7 +406,7 @@ resolveTilemapUpdate delta tilemapUpdateResult world =
                         world
 
                     else
-                        createPendingTilemapChange tilemapUpdateResult.transitionedCells world
+                        createPendingTilemapChange tilemapUpdateResult world
             in
             ( nextWorld
             , Nothing
@@ -428,7 +428,7 @@ resolveTilemapUpdate delta tilemapUpdateResult world =
                             |> Quantity.max Quantity.zero
 
                 nextChangedCells =
-                    combineChangedCells tilemapUpdateResult.transitionedCells currentChangedCells
+                    combineChangedCells tilemapUpdateResult currentChangedCells
             in
             if Quantity.lessThanOrEqualToZero nextTimer then
                 ( { world | pendingTilemapChange = Nothing }
@@ -449,24 +449,28 @@ resolveTilemapUpdate delta tilemapUpdateResult world =
                 )
 
 
-createPendingTilemapChange : List Cell -> World -> World
-createPendingTilemapChange changedCells world =
+createPendingTilemapChange : TilemapUpdateResult -> World -> World
+createPendingTilemapChange tilemapUpdateResult world =
     let
         pendingTilemapChange =
             Just
                 ( minTilemapChangeFrequency
-                , combineChangedCells changedCells Set.empty
+                , combineChangedCells tilemapUpdateResult Set.empty
                 )
     in
     { world | pendingTilemapChange = pendingTilemapChange }
 
 
-combineChangedCells : List Cell -> Set CellCoordinates -> Set CellCoordinates
-combineChangedCells changedCells currentChanges =
-    changedCells
-        |> List.map Cell.coordinates
-        |> Set.fromList
-        |> Set.union currentChanges
+combineChangedCells : TilemapUpdateResult -> Set CellCoordinates -> Set CellCoordinates
+combineChangedCells tilemapUpdateResult currentChanges =
+    let
+        transitioned =
+            Set.fromList (List.map Cell.coordinates tilemapUpdateResult.transitionedCells)
+
+        emptied =
+            Set.fromList (List.map Cell.coordinates tilemapUpdateResult.emptiedCells)
+    in
+    Set.union (Set.union transitioned emptied) currentChanges
 
 
 

@@ -1,9 +1,9 @@
 module Simulation.Update exposing (update)
 
 import Data.Lots exposing (NewLot)
-import Data.TileSet exposing (isTileLotEntryTile, lotDrivewayTileIds, tileById)
+import Data.TileSet exposing (extractLotEntryTile, lotDrivewayTileIds, tileById)
 import Duration
-import Lib.Collection as Collection exposing (Id)
+import Lib.Collection as Collection
 import Lib.FSM as FSM
 import Lib.OrthogonalDirection as OrthogonalDirection
 import List.Nonempty as Nonempty
@@ -146,36 +146,32 @@ worldAfterTilemapChange tilemapChange world =
 removeOrphanLots : TilemapChange -> World -> World
 removeOrphanLots tilemapChange world =
     tilemapChange.changedCells
-        |> Nonempty.foldl
-            (\cell anchors ->
-                case anchorByCell world.tilemap cell of
-                    Just ( id, _ ) ->
-                        ( id, cell ) :: anchors
-
-                    Nothing ->
-                        anchors
+        |> Nonempty.toList
+        |> List.filterMap
+            (\cell ->
+                anchorByCell world.tilemap cell |> Maybe.map (\( id, _ ) -> ( id, cell ))
             )
-            []
         |> List.foldl
             (\( anchorLotId, cell ) nextWorld ->
                 case fixedTileByCell world.tilemap cell of
                     Just tile ->
                         let
-                            isLotEntry =
+                            lotEntryTile =
                                 tile
                                     |> Tilemap.Tile.id
-                                    |> Maybe.map isTileLotEntryTile
-                                    |> Maybe.withDefault False
+                                    |> Maybe.andThen extractLotEntryTile
                         in
-                        if isLotEntry then
-                            nextWorld
+                        case lotEntryTile of
+                            Just _ ->
+                                nextWorld
 
-                        else
-                            -- The tile used to be a lot entry tile, yet has changed - remove the lot
-                            World.removeLot anchorLotId nextWorld
+                            Nothing ->
+                                -- The tile used to be a lot entry tile, yet has changed
+                                World.removeLot anchorLotId nextWorld
 
                     Nothing ->
-                        nextWorld
+                        -- The lot entry tile has been removed
+                        World.removeLot anchorLotId nextWorld
             )
             world
 
