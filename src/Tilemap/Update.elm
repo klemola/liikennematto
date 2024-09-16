@@ -21,7 +21,7 @@ import Model.Liikennematto
         , withTilemap
         )
 import Model.RenderCache exposing (refreshTilemapCache)
-import Model.World as World
+import Model.World as World exposing (World)
 import Random
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
@@ -121,10 +121,18 @@ update msg model =
                 Secondary ->
                     onSecondaryInput inputEvent.cell model
 
+        CheckQueues _ ->
+            case model.world.pendingTilemapChange of
+                Just _ ->
+                    ( model, Cmd.none )
+
+                Nothing ->
+                    runWFCIfNecessary model
+
         TriggerDevAction action ->
             case action of
                 RunWFC ->
-                    runWFC model
+                    runWFCIfNecessary model
 
                 _ ->
                     ( model, Cmd.none )
@@ -184,7 +192,7 @@ addTile cell model =
                 ( withWFC, addTileActions ) =
                     addTileById cell tileId tilemapWithClearedCell world.seed
             in
-            ( withTilemap withWFC Nothing model
+            ( withTilemap withWFC WFCPending model
             , Cmd.batch (tileActionsToCmds (clearCellActions ++ addTileActions))
             )
 
@@ -234,7 +242,7 @@ removeTile cell model =
             , tilemapChangeActions ++ wfcTileActions
             )
     in
-    ( withTilemap withWFC Nothing model
+    ( withTilemap withWFC WFCPending model
     , Cmd.batch (tileActionsToCmds actions)
     )
 
@@ -293,30 +301,35 @@ processTileNeighbor maybeTile wfcModel =
 --
 
 
-runWFC : Liikennematto -> ( Liikennematto, Cmd Message )
-runWFC model =
+runWFCIfNecessary : Liikennematto -> ( Liikennematto, Cmd Message )
+runWFCIfNecessary model =
+    case model.wfc of
+        WFCSolved ->
+            ( model, Cmd.none )
+
+        WFCPending ->
+            runWFC model (restartWFC model.world) False
+
+        WFCActive wfcModel ->
+            case WFC.currentState wfcModel of
+                WFC.Failed _ ->
+                    runWFC model (restartWFC model.world) False
+
+                WFC.Done ->
+                    runWFC model wfcModel True
+
+                -- Solving, Recovering
+                _ ->
+                    let
+                        nextWfc =
+                            WFC.stepN WFC.StopAtSolved 100 wfcModel
+                    in
+                    runWFC model nextWfc False
+
+
+runWFC : Liikennematto -> WFC.Model -> Bool -> ( Liikennematto, Cmd Message )
+runWFC model wfc isSolved =
     let
-        ( wfc, isSolved ) =
-            case model.wfc of
-                WFCPaused ->
-                    ( restartWFC model.world, False )
-
-                WFCActive wfcModel ->
-                    case WFC.currentState wfcModel of
-                        WFC.Failed _ ->
-                            ( restartWFC model.world, False )
-
-                        WFC.Done ->
-                            ( wfcModel, True )
-
-                        -- Solving, Recovering
-                        _ ->
-                            let
-                                nextWfc =
-                                    WFC.stepN WFC.StopAtSolved 100 wfcModel
-                            in
-                            ( nextWfc, WFC.currentState nextWfc == WFC.Done )
-
         ( updatedWfcModel, wfcTileActions ) =
             if isSolved then
                 WFC.flushPendingActions wfc
@@ -326,10 +339,10 @@ runWFC model =
 
         ( nextTilemap, nextDrivenWfc ) =
             if isSolved then
-                ( WFC.toTilemap updatedWfcModel, Nothing )
+                ( WFC.toTilemap updatedWfcModel, WFCSolved )
 
             else
-                ( model.world.tilemap, Just updatedWfcModel )
+                ( model.world.tilemap, WFCActive updatedWfcModel )
     in
     ( withTilemap
         nextTilemap
@@ -339,6 +352,7 @@ runWFC model =
     )
 
 
+restartWFC : World -> WFC.Model
 restartWFC world =
     WFC.fromTilemap
         (reopenRoads world.tilemap)

@@ -50,7 +50,8 @@ type alias Liikennematto =
 
 
 type DrivenWFC
-    = WFCPaused
+    = WFCPending
+    | WFCSolved
     | WFCActive WFC.Model
 
 
@@ -257,7 +258,7 @@ initial flags =
     , time = Time.millisToPosix 0
     , previousWorld = Nothing
     , world = initialWorld
-    , wfc = WFCPaused
+    , wfc = WFCPending
     , simulationActive = True
     , renderCache = RenderCache.new initialWorld roads
     , dynamicTiles = []
@@ -274,24 +275,24 @@ initial flags =
 --
 
 
-withTilemap : Tilemap -> Maybe WFC.Model -> Liikennematto -> Liikennematto
-withTilemap tilemap wfc model =
+withTilemap : Tilemap -> DrivenWFC -> Liikennematto -> Liikennematto
+withTilemap tilemap drivenWFC model =
     let
         nextWorld =
             World.setTilemap tilemap model.world
 
-        nextWFC =
-            case wfc of
-                Just wfcModel ->
-                    WFCActive wfcModel
+        renderCacheWFC =
+            case drivenWFC of
+                WFCActive wfc ->
+                    Just wfc
 
-                Nothing ->
-                    WFCPaused
+                _ ->
+                    Nothing
     in
     { model
         | world = nextWorld
-        , wfc = nextWFC
-        , renderCache = RenderCache.setTilemapCache nextWorld.tilemap wfc model.renderCache
+        , wfc = drivenWFC
+        , renderCache = RenderCache.setTilemapCache nextWorld.tilemap renderCacheWFC model.renderCache
     }
 
 
@@ -305,7 +306,7 @@ fromNewGame : Maybe World -> Liikennematto -> Liikennematto
 fromNewGame previousWorld model =
     { model
         | world = initialWorld
-        , wfc = WFCPaused
+        , wfc = WFCPending
         , previousWorld = previousWorld
         , renderCache = RenderCache.new initialWorld roads
         , simulationActive = True
@@ -319,7 +320,7 @@ fromPreviousGame model =
         Just previousWorld ->
             { model
                 | world = previousWorld
-                , wfc = WFCPaused
+                , wfc = WFCPending
                 , previousWorld = Nothing
                 , renderCache = RenderCache.new previousWorld roads
                 , simulationActive = True

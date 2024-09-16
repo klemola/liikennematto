@@ -197,9 +197,9 @@ step endCondition model =
                                     , tilemap = tilemapAfterBacktrack
                                 }
 
-                        Err _ ->
+                        Err failure ->
                             -- Backtracking failed, no way to continue
-                            Model { modelDetails | state = Failed wfcFailure }
+                            Model { modelDetails | state = Failed failure }
 
         _ ->
             afterStep
@@ -589,9 +589,6 @@ backtrack previousSteps tilemap =
 
                         _ ->
                             False
-
-                -- _ =
-                --     Debug.log "backtrack" ( backtrackedEnough, stepDebug theStep )
             in
             if backtrackedEnough then
                 Ok reverted
