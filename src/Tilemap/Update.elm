@@ -9,6 +9,7 @@ import Data.TileSet
         , tileIdByBitmask
         , tilesByBaseTileId
         )
+import Duration exposing (Duration)
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import List.Nonempty
 import Maybe.Extra as Maybe
@@ -18,10 +19,12 @@ import Model.Liikennematto
     exposing
         ( DrivenWFC(..)
         , Liikennematto
+        , drivenWfcInitialState
         , withTilemap
         )
 import Model.RenderCache exposing (refreshTilemapCache)
 import Model.World as World exposing (World)
+import Quantity
 import Random
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
@@ -121,18 +124,18 @@ update msg model =
                 Secondary ->
                     onSecondaryInput inputEvent.cell model
 
-        CheckQueues _ ->
+        CheckQueues _ delta ->
             case model.world.pendingTilemapChange of
                 Just _ ->
                     ( model, Cmd.none )
 
                 Nothing ->
-                    runWFCIfNecessary model
+                    runWFCIfNecessary model delta
 
         TriggerDevAction action ->
             case action of
                 RunWFC ->
-                    runWFCIfNecessary model
+                    runWFCIfNecessary model (Duration.milliseconds 16)
 
                 _ ->
                     ( model, Cmd.none )
@@ -192,7 +195,7 @@ addTile cell model =
                 ( withWFC, addTileActions ) =
                     addTileById cell tileId tilemapWithClearedCell world.seed
             in
-            ( withTilemap withWFC WFCPending model
+            ( withTilemap withWFC drivenWfcInitialState model
             , Cmd.batch (tileActionsToCmds (clearCellActions ++ addTileActions))
             )
 
@@ -242,7 +245,7 @@ removeTile cell model =
             , tilemapChangeActions ++ wfcTileActions
             )
     in
-    ( withTilemap withWFC WFCPending model
+    ( withTilemap withWFC drivenWfcInitialState model
     , Cmd.batch (tileActionsToCmds actions)
     )
 
@@ -301,14 +304,24 @@ processTileNeighbor maybeTile wfcModel =
 --
 
 
-runWFCIfNecessary : Liikennematto -> ( Liikennematto, Cmd Message )
-runWFCIfNecessary model =
+runWFCIfNecessary : Liikennematto -> Duration -> ( Liikennematto, Cmd Message )
+runWFCIfNecessary model delta =
     case model.wfc of
         WFCSolved ->
             ( model, Cmd.none )
 
-        WFCPending ->
-            runWFC model (restartWFC model.world) False
+        WFCPending timer ->
+            let
+                nextTimer =
+                    timer
+                        |> Quantity.minus delta
+                        |> Quantity.max Quantity.zero
+            in
+            if Quantity.lessThanOrEqualToZero nextTimer then
+                runWFC model (restartWFC model.world) False
+
+            else
+                ( { model | wfc = WFCPending nextTimer }, Cmd.none )
 
         WFCActive wfcModel ->
             case WFC.currentState wfcModel of

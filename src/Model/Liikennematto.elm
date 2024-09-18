@@ -7,6 +7,7 @@ module Model.Liikennematto exposing
     , InitSteps
     , Liikennematto
     , currentState
+    , drivenWfcInitialState
     , fromNewGame
     , fromPreviousGame
     , initial
@@ -50,9 +51,9 @@ type alias Liikennematto =
 
 
 type DrivenWFC
-    = WFCPending
-    | WFCSolved
+    = WFCPending Duration
     | WFCActive WFC.Model
+    | WFCSolved
 
 
 type alias InitSteps =
@@ -223,6 +224,16 @@ verticalCellsAmount =
     12
 
 
+minWfcUpdateFrequency : Duration
+minWfcUpdateFrequency =
+    Duration.milliseconds 500
+
+
+drivenWfcInitialState : DrivenWFC
+drivenWfcInitialState =
+    WFCPending minWfcUpdateFrequency
+
+
 tilemapConfig =
     { horizontalCellsAmount = horizontalCellsAmount
     , verticalCellsAmount = verticalCellsAmount
@@ -258,7 +269,7 @@ initial flags =
     , time = Time.millisToPosix 0
     , previousWorld = Nothing
     , world = initialWorld
-    , wfc = WFCPending
+    , wfc = drivenWfcInitialState
     , simulationActive = True
     , renderCache = RenderCache.new initialWorld roads
     , dynamicTiles = []
@@ -306,7 +317,7 @@ fromNewGame : Maybe World -> Liikennematto -> Liikennematto
 fromNewGame previousWorld model =
     { model
         | world = initialWorld
-        , wfc = WFCPending
+        , wfc = drivenWfcInitialState
         , previousWorld = previousWorld
         , renderCache = RenderCache.new initialWorld roads
         , simulationActive = True
@@ -320,7 +331,7 @@ fromPreviousGame model =
         Just previousWorld ->
             { model
                 | world = previousWorld
-                , wfc = WFCPending
+                , wfc = drivenWfcInitialState
                 , previousWorld = Nothing
                 , renderCache = RenderCache.new previousWorld roads
                 , simulationActive = True

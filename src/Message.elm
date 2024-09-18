@@ -26,7 +26,7 @@ type Message
     | RestoreGame
       -- Tilemap & Simulation
     | UpdateTraffic Duration
-    | CheckQueues Time.Posix
+    | CheckQueues Time.Posix Duration
     | UpdateEnvironment
     | UpdateTilemap Duration
     | TilemapChanged TilemapChange

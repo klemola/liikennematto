@@ -41,7 +41,6 @@ update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
 update msg model =
     case msg of
         GameSetupComplete ->
-            -- TODO: trigger WFC?
             ( model, Cmd.none )
 
         UpdateTraffic delta ->
@@ -68,7 +67,7 @@ update msg model =
             , Cmd.none
             )
 
-        CheckQueues time ->
+        CheckQueues time _ ->
             ( { model
                 | world =
                     model.world
