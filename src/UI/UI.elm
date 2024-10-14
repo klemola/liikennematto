@@ -11,7 +11,9 @@ import Model.Liikennematto exposing (Liikennematto)
 import Model.World exposing (World)
 import UI.Core
     exposing
-        ( borderRadiusButton
+        ( ControlButtonContent(..)
+        , ControlButtonSize(..)
+        , borderRadiusButton
         , borderRadiusPanel
         , borderSize
         , colorMainBackground
@@ -199,16 +201,18 @@ rightControls model =
             [ Element.spacing whitespaceTight
             ]
             [ UI.Core.controlButton
-                { iconKind = Icons.NewGame
+                { content = Icon Icons.NewGame
                 , onPress = NewGame
                 , selected = False
                 , disabled = False
+                , size = Large
                 }
             , UI.Core.controlButton
-                { iconKind = Icons.DebugPanel
+                { content = Icon Icons.DebugPanel
                 , onPress = ToggleDebugPanel
                 , selected = model.debug.showDebugPanel
                 , disabled = False
+                , size = Large
                 }
             ]
         ]
@@ -225,10 +229,11 @@ simulationControl simulationActive =
                 ( Icons.Resume, True )
     in
     controlButton
-        { iconKind = iconKind
+        { content = Icon iconKind
         , onPress = ToggleSimulationActive
         , selected = selected
         , disabled = False
+        , size = Large
         }
 
 
@@ -256,10 +261,11 @@ restoreGameControl previousWorld =
                 , Border.rounded borderRadiusPanel
                 ]
                 (UI.Core.controlButton
-                    { iconKind = Icons.Back
+                    { content = Icon Icons.Back
                     , onPress = RestoreGame
                     , selected = False
                     , disabled = False
+                    , size = Large
                     }
                 )
 

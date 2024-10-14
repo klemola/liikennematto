@@ -1,10 +1,10 @@
 module Model.World exposing
     ( PendingTilemapChange
     , RNLookupEntry
+    , TilemapChange
     , World
     , WorldEvent(..)
     , addEvent
-    , connectLotToRoadNetwork
     , createLookup
     , createRoadNetwork
     , empty
@@ -36,6 +36,7 @@ import Graph
 import Length exposing (Length)
 import Lib.Collection as Collection exposing (Collection, Id)
 import Lib.EventQueue as EventQueue exposing (EventQueue)
+import List.Nonempty exposing (Nonempty)
 import Point2d
     exposing
         ( Point2d
@@ -62,6 +63,7 @@ import Tilemap.Core
         , tilemapBoundingBox
         , tilemapIntersects
         )
+import Tilemap.Tile as Tile
 import Time
 
 
@@ -94,6 +96,12 @@ type alias PendingTilemapChange =
     ( Duration, Set CellCoordinates )
 
 
+type alias TilemapChange =
+    { changedCells : Nonempty Cell
+    , transitionedCells : List Cell
+    }
+
+
 type alias RNLookupEntry =
     { id : Int
     , position : Point2d Length.Meters GlobalCoordinates
@@ -120,7 +128,7 @@ empty : TilemapConfig -> World
 empty tilemapConfig =
     let
         tilemap =
-            createTilemap tilemapConfig
+            createTilemap tilemapConfig (\_ -> Tile.init Tile.Unintialized)
 
         worldBB =
             tilemapBoundingBox tilemap
@@ -353,17 +361,7 @@ setSeed seed world =
 
 createRoadNetwork : Tilemap -> World -> World
 createRoadNetwork tilemap world =
-    let
-        nextWorld =
-            { world | tilemap = tilemap }
-    in
-    updateRoadNetwork nextWorld
-
-
-connectLotToRoadNetwork : World -> World
-connectLotToRoadNetwork =
-    -- Room for improvement: re-building the whole roadnetwork when a new lot is added is not optimal
-    updateRoadNetwork
+    updateRoadNetwork (setTilemap tilemap world)
 
 
 updateRoadNetwork : World -> World
@@ -398,7 +396,7 @@ updateRoadNetwork world =
 --
 
 
-resolveTilemapUpdate : Duration -> TilemapUpdateResult -> World -> ( World, List Cell )
+resolveTilemapUpdate : Duration -> TilemapUpdateResult -> World -> ( World, Maybe TilemapChange )
 resolveTilemapUpdate delta tilemapUpdateResult world =
     case world.pendingTilemapChange of
         Nothing ->
@@ -408,10 +406,10 @@ resolveTilemapUpdate delta tilemapUpdateResult world =
                         world
 
                     else
-                        createPendingTilemapChange tilemapUpdateResult.transitionedCells world
+                        createPendingTilemapChange tilemapUpdateResult world
             in
             ( nextWorld
-            , []
+            , Nothing
             )
 
         Just pendingTilemapChange ->
@@ -430,41 +428,55 @@ resolveTilemapUpdate delta tilemapUpdateResult world =
                             |> Quantity.max Quantity.zero
 
                 nextChangedCells =
-                    combineChangedCells tilemapUpdateResult.transitionedCells currentChangedCells
+                    combineChangedCells tilemapUpdateResult currentChangedCells
             in
             if Quantity.lessThanOrEqualToZero nextTimer then
                 ( { world | pendingTilemapChange = Nothing }
-                , Cell.fromCoordinatesSet (getTilemapConfig world.tilemap) nextChangedCells
+                , nextChangedCells
+                    |> Cell.fromCoordinatesSet (getTilemapConfig world.tilemap)
+                    |> List.Nonempty.fromList
+                    |> Maybe.map
+                        (\changedCells ->
+                            { changedCells = changedCells
+                            , transitionedCells = tilemapUpdateResult.transitionedCells
+                            }
+                        )
                 )
 
             else
                 ( { world | pendingTilemapChange = Just ( nextTimer, nextChangedCells ) }
-                , []
+                , Nothing
                 )
 
 
-createPendingTilemapChange : List Cell -> World -> World
-createPendingTilemapChange changedCells editor =
+createPendingTilemapChange : TilemapUpdateResult -> World -> World
+createPendingTilemapChange tilemapUpdateResult world =
     let
         pendingTilemapChange =
             Just
                 ( minTilemapChangeFrequency
-                , combineChangedCells changedCells Set.empty
+                , combineChangedCells tilemapUpdateResult Set.empty
                 )
     in
-    { editor | pendingTilemapChange = pendingTilemapChange }
+    { world | pendingTilemapChange = pendingTilemapChange }
 
 
-combineChangedCells : List Cell -> Set CellCoordinates -> Set CellCoordinates
-combineChangedCells changedCells currentChanges =
-    changedCells
-        |> List.map Cell.coordinates
-        |> Set.fromList
-        |> Set.union currentChanges
+combineChangedCells : TilemapUpdateResult -> Set CellCoordinates -> Set CellCoordinates
+combineChangedCells tilemapUpdateResult currentChanges =
+    let
+        transitioned =
+            Set.fromList (List.map Cell.coordinates tilemapUpdateResult.transitionedCells)
+
+        emptied =
+            Set.fromList (List.map Cell.coordinates tilemapUpdateResult.emptiedCells)
+    in
+    Set.union (Set.union transitioned emptied) currentChanges
 
 
 
+--
 -- Utility
+--
 
 
 formatEvents : Time.Posix -> World -> List ( String, String, String )

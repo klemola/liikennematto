@@ -1,9 +1,17 @@
 module Tilemap.WFC exposing
     ( Model
+    , StepEndCondition(..)
+    , WFCState(..)
+    , collapse
     , contextDebug
+    , currentState
     , failed
     , flushPendingActions
+    , fromTilemap
     , init
+    , propagateConstraints
+    , resetCell
+    , setTilemap
     , solve
     , stateDebug
     , step
@@ -15,22 +23,30 @@ module Tilemap.WFC exposing
 
 import Array
 import Common exposing (attemptFoldList, attemptMapList)
-import Data.TileSet exposing (pairingsForSocket, tileById, tileIds)
+import Data.TileSet as TileSet
+    exposing
+        ( defaultTiles
+        , pairingsForSocket
+        , tileById
+        , tileIdsByOrthogonalMatch
+        )
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import List.Nonempty exposing (Nonempty)
 import Random exposing (Seed)
+import Random.Extra
 import Stack exposing (Stack)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
         ( Tilemap
         , TilemapConfig
+        , addTileFromWFC
         , createTilemap
         , foldTiles
         , forAllTiles
         , getTilemapConfig
+        , resetTileBySurroundings
         , setSuperpositionOptions
-        , setTile
         , tileByCell
         )
 import Tilemap.Tile as Tile exposing (Tile, TileKind(..))
@@ -39,6 +55,7 @@ import Tilemap.TileConfig as TileConfig
         ( LargeTile
         , SingleTile
         , Socket
+        , SubgridTileProperties
         , TileConfig
         , TileId
         , socketByDirection
@@ -64,7 +81,7 @@ type alias ModelDetails =
 
 type Step
     = Collapse Cell TileConfig
-    | CollapseSubgridCell Cell SingleTile TileId
+    | CollapseSubgridCell Cell SubgridTileProperties
     | PropagateConstraints Cell Cell
 
 
@@ -85,10 +102,36 @@ type WFCFailure
     | BacktrackFailed
 
 
+
+--
+-- Init
+--
+
+
 init : TilemapConfig -> Random.Seed -> Model
 init tilemapConfig initialSeed =
+    fromTilemap
+        (createTilemap
+            tilemapConfig
+            (initTileWithSuperposition tilemapConfig)
+        )
+        initialSeed
+
+
+initTileWithSuperposition : TilemapConfig -> Int -> Tile
+initTileWithSuperposition tilemapConfig index =
+    index
+        |> Cell.fromArray1DIndexUnsafe tilemapConfig
+        |> Cell.connectedBounds tilemapConfig
+        |> tileIdsByOrthogonalMatch defaultTiles
+        |> Superposition
+        |> Tile.init
+
+
+fromTilemap : Tilemap -> Random.Seed -> Model
+fromTilemap tilemap initialSeed =
     Model
-        { tilemap = createTilemap tilemapConfig
+        { tilemap = tilemap
         , currentCell = Nothing
         , targetCell = Nothing
         , openSteps = []
@@ -99,13 +142,19 @@ init tilemapConfig initialSeed =
         }
 
 
+
+--
+-- Automated solving
+--
+
+
 {-| Tries to solve/fill the whole grid in one go by assigning a tile to each position
 -}
 solve : TilemapConfig -> Random.Seed -> Model
 solve tilemapConfig initialSeed =
     let
         nextModel =
-            step <| init tilemapConfig initialSeed
+            step StopAtSolved <| init tilemapConfig initialSeed
     in
     solve_ nextModel
 
@@ -116,14 +165,19 @@ solve_ model =
         model
 
     else
-        solve_ (step model)
+        solve_ (step StopAtSolved model)
 
 
-step : Model -> Model
-step model =
+type StepEndCondition
+    = StopAtSolved
+    | StopAtEmptySteps
+
+
+step : StepEndCondition -> Model -> Model
+step endCondition model =
     let
         ((Model modelDetails) as afterStep) =
-            step_ model
+            processOpenSteps endCondition model
     in
     case modelDetails.state of
         Recovering wfcFailure ->
@@ -142,36 +196,111 @@ step model =
                                     , tilemap = tilemapAfterBacktrack
                                 }
 
-                        Err _ ->
+                        Err failure ->
                             -- Backtracking failed, no way to continue
-                            Model { modelDetails | state = Failed wfcFailure }
+                            Model { modelDetails | state = Failed failure }
 
         _ ->
             afterStep
 
 
-stepN : Int -> Model -> Model
-stepN nTimes model =
+stepN : StepEndCondition -> Int -> Model -> Model
+stepN endCondition nTimes model =
     if nTimes == 0 then
-        model
+        flushOpenSteps model
 
     else
         let
             stepResult =
-                step model
+                step endCondition model
         in
         if failed stepResult then
             stepResult
 
         else
-            stepN (nTimes - 1) stepResult
+            stepN endCondition (nTimes - 1) stepResult
 
 
-{-| Execute a single step. This can mean picking the next random tile
-or propagating constraints resulting from the last placement of a tile
--}
-step_ : Model -> Model
-step_ (Model ({ openSteps, previousSteps, tilemap, pendingActions } as modelDetails)) =
+
+--
+-- Driven WFC
+--
+
+
+collapse : Cell -> Model -> Model
+collapse cell model =
+    let
+        (Model modelDetails) =
+            step StopAtEmptySteps model
+    in
+    case tileByCell modelDetails.tilemap cell |> Maybe.map .kind of
+        Just (Superposition options) ->
+            let
+                ( randomTileId, nextSeed ) =
+                    Random.step (Random.Extra.sample options) modelDetails.seed
+            in
+            case randomTileId |> Maybe.map tileById of
+                Just tileConfig ->
+                    let
+                        withCollapsedCell =
+                            Model
+                                { modelDetails
+                                    | openSteps = Collapse cell tileConfig :: modelDetails.openSteps
+                                    , seed = nextSeed
+                                    , state = Solving
+                                }
+                    in
+                    flushOpenSteps withCollapsedCell
+
+                _ ->
+                    model
+
+        _ ->
+            model
+
+
+propagateConstraints : Cell -> Model -> Model
+propagateConstraints cell (Model modelDetails) =
+    let
+        newSteps =
+            propagateConstraintsSteps modelDetails.tilemap cell
+
+        withSteps =
+            Model
+                { modelDetails
+                    | openSteps = modelDetails.openSteps ++ newSteps
+                }
+    in
+    flushOpenSteps withSteps
+
+
+flushOpenSteps : Model -> Model
+flushOpenSteps ((Model modelContents) as model) =
+    if List.isEmpty modelContents.openSteps then
+        model
+
+    else
+        flushOpenSteps (step StopAtEmptySteps model)
+
+
+resetCell : List TileConfig -> Cell -> TileKind -> Model -> Model
+resetCell tileSet cell tileKind (Model modelContents) =
+    Model { modelContents | tilemap = resetTileBySurroundings cell tileSet tileKind modelContents.tilemap }
+
+
+setTilemap : Tilemap -> Model -> Model
+setTilemap tilemap (Model modelContents) =
+    Model { modelContents | tilemap = tilemap }
+
+
+
+--
+-- Steps and propagation
+--
+
+
+processOpenSteps : StepEndCondition -> Model -> Model
+processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap, pendingActions } as modelDetails)) =
     case openSteps of
         currentStep :: otherSteps ->
             let
@@ -180,7 +309,7 @@ step_ (Model ({ openSteps, previousSteps, tilemap, pendingActions } as modelDeta
                         Collapse cell _ ->
                             ( Just cell, Nothing )
 
-                        CollapseSubgridCell cell _ _ ->
+                        CollapseSubgridCell cell _ ->
                             ( Just cell, Nothing )
 
                         PropagateConstraints cellA cellB ->
@@ -219,27 +348,29 @@ step_ (Model ({ openSteps, previousSteps, tilemap, pendingActions } as modelDeta
         [] ->
             let
                 nextModelDetails =
-                    if not (solved modelDetails) then
-                        let
-                            withPick =
-                                pickRandom modelDetails
-                        in
-                        { withPick | state = Solving }
+                    case endCondition of
+                        StopAtEmptySteps ->
+                            { modelDetails
+                                | currentCell = Nothing
+                                , targetCell = Nothing
+                            }
 
-                    else
-                        { modelDetails
-                            | state = Done
-                            , currentCell = Nothing
-                            , targetCell = Nothing
-                        }
+                        StopAtSolved ->
+                            if not (solved modelDetails) then
+                                let
+                                    withPick =
+                                        pickRandom modelDetails
+                                in
+                                { withPick | state = Solving }
+
+                            else
+                                { modelDetails
+                                    | state = Done
+                                    , currentCell = Nothing
+                                    , targetCell = Nothing
+                                }
             in
             Model nextModelDetails
-
-
-
---
--- Steps and propagation
---
 
 
 processStep : Tilemap -> Step -> Result WFCFailure ( List Step, List Tile.Action, Tilemap )
@@ -253,23 +384,16 @@ processStep tilemap currentStep =
 
                 TileConfig.Single singleTile ->
                     let
-                        tilemapConfig =
-                            getTilemapConfig tilemap
-
-                        stepInDirection dir =
-                            Cell.nextOrthogonalCell tilemapConfig dir cell
-                                |> Maybe.map (PropagateConstraints cell)
-
                         nextSteps =
-                            List.filterMap stepInDirection OrthogonalDirection.all
+                            propagateConstraintsSteps tilemap cell
 
-                        ( tile, tileActions ) =
-                            Tile.fromTileId singleTile.id Tile.BuildInstantly
+                        ( nextTilemap, tileActions ) =
+                            addTileFromWFC Nothing singleTile.id cell tilemap
                     in
-                    Ok ( nextSteps, tileActions, setTile cell tile tilemap )
+                    Ok ( nextSteps, tileActions, nextTilemap )
 
-        CollapseSubgridCell cell singleTile largeTileId ->
-            attemptPlaceSubgridTile tilemap largeTileId cell singleTile
+        CollapseSubgridCell cell properties ->
+            attemptPlaceSubgridTile tilemap properties.parentTileId cell properties
 
         PropagateConstraints from to ->
             Maybe.map2 Tuple.pair
@@ -278,6 +402,19 @@ processStep tilemap currentStep =
                 |> Result.fromMaybe TileNotFound
                 |> Result.andThen (updateSuperpositionOptions tilemap from to)
                 |> Result.map (\nextTilemap -> ( [], [], nextTilemap ))
+
+
+propagateConstraintsSteps : Tilemap -> Cell -> List Step
+propagateConstraintsSteps tilemap cell =
+    let
+        tilemapConfig =
+            getTilemapConfig tilemap
+
+        stepInDirection dir =
+            Cell.nextOrthogonalCell tilemapConfig dir cell
+                |> Maybe.map (PropagateConstraints cell)
+    in
+    List.filterMap stepInDirection OrthogonalDirection.all
 
 
 updateSuperpositionOptions : Tilemap -> Cell -> Cell -> ( Tile, Tile ) -> Result WFCFailure Tilemap
@@ -298,10 +435,10 @@ superpositionOptionsForTile :
     -> Result WFCFailure (List Int)
 superpositionOptionsForTile ( originTile, targetTile ) dir =
     case ( originTile.kind, targetTile.kind ) of
-        ( Fixed originTileId, Superposition options ) ->
+        ( Fixed tileProperties, Superposition options ) ->
             let
                 revisedOptions =
-                    matchingSuperpositionOptions dir originTileId options
+                    matchingSuperpositionOptions dir tileProperties.id options
             in
             if List.isEmpty revisedOptions then
                 Err NoSuperpositionOptions
@@ -349,17 +486,7 @@ canDock dockDir dockSocket dockTileId =
 -}
 solved : ModelDetails -> Bool
 solved { tilemap, openSteps } =
-    List.isEmpty openSteps && forAllTiles solvedPredicate tilemap
-
-
-solvedPredicate : Tile -> Bool
-solvedPredicate tile =
-    case tile.kind of
-        Superposition _ ->
-            False
-
-        Fixed _ ->
-            True
+    List.isEmpty openSteps && forAllTiles (Tile.isSuperposition >> not) tilemap
 
 
 stepSuperposition : Tilemap -> Step -> Maybe (Nonempty TileId)
@@ -368,11 +495,11 @@ stepSuperposition tilemap theStep =
         |> Maybe.andThen
             (\tile ->
                 case tile.kind of
-                    Tile.Fixed _ ->
-                        Nothing
-
                     Tile.Superposition options ->
                         List.Nonempty.fromList options
+
+                    _ ->
+                        Nothing
             )
 
 
@@ -382,7 +509,7 @@ stepCell theStep =
         Collapse cell _ ->
             cell
 
-        CollapseSubgridCell cell _ _ ->
+        CollapseSubgridCell cell _ ->
             cell
 
         PropagateConstraints _ toCell ->
@@ -395,8 +522,8 @@ stepTileId theStep =
         Collapse _ tileConfig ->
             Just <| TileConfig.tileConfigId tileConfig
 
-        CollapseSubgridCell _ _ largeTileId ->
-            Just largeTileId
+        CollapseSubgridCell _ properties ->
+            Just properties.parentTileId
 
         PropagateConstraints _ _ ->
             Nothing
@@ -426,7 +553,7 @@ backtrack previousSteps tilemap =
                 backtrackedEnough =
                     case theStep of
                         Collapse _ _ ->
-                            not <| List.isEmpty remainingSuperposition
+                            List.length remainingSuperposition > 1
 
                         _ ->
                             False
@@ -527,9 +654,6 @@ nextCandidates tilemap =
     let
         toCandidate cell tile ( candidates, minEntropy ) =
             case tile.kind of
-                Fixed _ ->
-                    ( candidates, minEntropy )
-
                 Superposition options ->
                     case List.Nonempty.fromList options of
                         Just nonemptyOptions ->
@@ -552,9 +676,12 @@ nextCandidates tilemap =
 
                         Nothing ->
                             ( candidates, minEntropy )
+
+                _ ->
+                    ( candidates, minEntropy )
     in
     tilemap
-        |> foldTiles toCandidate ( [], List.length tileIds + 1 )
+        |> foldTiles toCandidate ( [], TileSet.allTilesAmount + 1 )
         |> Tuple.first
 
 
@@ -609,28 +736,45 @@ attemptPlanLargeTilePlacement tilemap anchorCell tile =
                             in
                             case cellInGlobalCoordinates of
                                 Just cell ->
-                                    Ok (CollapseSubgridCell cell singleTile tile.id)
+                                    Ok
+                                        (CollapseSubgridCell cell
+                                            { parentTileId = tile.id
+                                            , singleTile = singleTile
+                                            , index = subgridIdx
+                                            }
+                                        )
 
                                 Nothing ->
                                     Err "Cannot translate cell to global coordinates"
                         )
             )
-        |> Result.mapError (\_ -> InvalidBigTilePlacement anchorCell tile.id)
+        |> Result.mapError
+            (\_ ->
+                InvalidBigTilePlacement anchorCell tile.id
+            )
 
 
 {-| Try to place a subgrid tile (of a large tile), generating more steps
 -}
-attemptPlaceSubgridTile : Tilemap -> TileId -> Cell -> SingleTile -> Result WFCFailure ( List Step, List Tile.Action, Tilemap )
-attemptPlaceSubgridTile tilemap largeTileId cell currentTile =
+attemptPlaceSubgridTile :
+    Tilemap
+    -> TileId
+    -> Cell
+    -> SubgridTileProperties
+    -> Result WFCFailure ( List Step, List Tile.Action, Tilemap )
+attemptPlaceSubgridTile tilemap largeTileId cell subgridTileProperties =
     tilemap
-        |> attemptTileNeighborUpdate currentTile cell
+        |> attemptTileNeighborUpdate subgridTileProperties.singleTile cell
         |> Result.map
             (\neighborSteps ->
                 let
-                    ( tile, tileActions ) =
-                        Tile.fromTileId currentTile.id Tile.BuildInstantly
+                    parentTileProperties =
+                        ( subgridTileProperties.parentTileId, subgridTileProperties.index )
+
+                    ( nextTilemap, tileActions ) =
+                        addTileFromWFC (Just parentTileProperties) subgridTileProperties.singleTile.id cell tilemap
                 in
-                ( neighborSteps, tileActions, setTile cell tile tilemap )
+                ( neighborSteps, tileActions, nextTilemap )
             )
         |> Result.mapError (\_ -> InvalidBigTilePlacement cell largeTileId)
 
@@ -655,6 +799,9 @@ attemptTileNeighborUpdate currentTile originCell tilemap =
         (\nuCtx _ ->
             Ok (PropagateConstraints originCell nuCtx.neighborCell :: nuCtx.steps)
         )
+        (\_ ->
+            Err "Can't update uninitialized neighbor"
+        )
         originCell
         tilemap
 
@@ -677,10 +824,11 @@ type alias NeighborUpdateContext =
 applyToNeighbor :
     (NeighborUpdateContext -> TileId -> Result error (List Step))
     -> (NeighborUpdateContext -> List TileId -> Result error (List Step))
+    -> (NeighborUpdateContext -> Result error (List Step))
     -> Cell
     -> Tilemap
     -> Result error (List Step)
-applyToNeighbor onFixed onSuperposition cell tilemap =
+applyToNeighbor onFixed onSuperposition onUninitialized cell tilemap =
     let
         tilemapConfig =
             getTilemapConfig tilemap
@@ -696,11 +844,14 @@ applyToNeighbor onFixed onSuperposition cell tilemap =
                                     NeighborUpdateContext dir toTile toCell tilemap steps
                             in
                             case toTile.kind of
-                                Fixed tileId ->
-                                    onFixed neighborUpdateContext tileId
+                                Fixed properties ->
+                                    onFixed neighborUpdateContext properties.id
 
                                 Superposition options ->
                                     onSuperposition neighborUpdateContext options
+
+                                Unintialized ->
+                                    onUninitialized neighborUpdateContext
 
                         Nothing ->
                             Ok steps
@@ -716,6 +867,11 @@ applyToNeighbor onFixed onSuperposition cell tilemap =
 --
 -- Interop, queries and debug
 --
+
+
+currentState : Model -> WFCState
+currentState (Model modelDetails) =
+    modelDetails.state
 
 
 stopped : Model -> Bool
@@ -734,10 +890,14 @@ failed (Model modelDetails) =
 
 
 flushPendingActions : Model -> ( Model, List Tile.Action )
-flushPendingActions (Model modelDetails) =
-    ( Model { modelDetails | pendingActions = [] }
-    , modelDetails.pendingActions
-    )
+flushPendingActions ((Model modelDetails) as model) =
+    if modelDetails.state == Done then
+        ( Model { modelDetails | pendingActions = [] }
+        , modelDetails.pendingActions
+        )
+
+    else
+        ( model, [] )
 
 
 toCurrentCell : Model -> Maybe Cell
@@ -781,8 +941,13 @@ wfcFailureToString wfcFailure =
         NoPotentialMatch ->
             "No potential match"
 
-        InvalidBigTilePlacement _ _ ->
-            "Invalid big tile surroundings (no space or socket mismatch)"
+        InvalidBigTilePlacement cell tileId ->
+            String.join
+                " "
+                [ "Invalid big tile surroundings (no space or socket mismatch)"
+                , Cell.toString cell
+                , String.fromInt tileId
+                ]
 
         InvalidDirection ->
             "Invalid direction (cell to cell)"
@@ -824,14 +989,14 @@ stepDebug theStep =
                 , TileConfig.toString tileConfig
                 ]
 
-        CollapseSubgridCell cell singleTile largeTileId ->
+        CollapseSubgridCell cell properties ->
             String.join " "
                 [ "CollapseSubgridCell "
                 , Cell.toString cell
                 , "tile ID:"
-                , String.fromInt singleTile.id
+                , String.fromInt properties.singleTile.id
                 , "large tile ID: "
-                , String.fromInt largeTileId
+                , String.fromInt properties.parentTileId
                 ]
 
         PropagateConstraints fromCell toCell ->
@@ -845,6 +1010,6 @@ previousStepDebug ( theStep, superpositionOptions ) =
             superpositionOptions
                 |> List.Nonempty.toList
                 |> List.map String.fromInt
-                |> String.join ", "
+                |> String.join "|"
     in
     stepDebug theStep ++ " / " ++ optionsDebug

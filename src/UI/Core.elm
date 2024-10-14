@@ -1,5 +1,6 @@
 module UI.Core exposing
-    ( ControlButtonProperties
+    ( ControlButtonConfig
+    , ControlButtonContent(..)
     , ControlButtonSize(..)
     , InputEvent
     , InputKind(..)
@@ -27,11 +28,11 @@ module UI.Core exposing
     , colorZoomTrackBackground
     , containerId
     , controlButton
+    , debugElementSize
     , overlayId
     , renderSafeAreaXSize
     , renderSafeAreaYSize
     , scrollbarAwareOffsetF
-    , smallControlButton
     , textSize
     , whitespaceRegular
     , whitespaceTight
@@ -46,6 +47,7 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Input as Input
+import Html
 import Tilemap.Cell exposing (Cell)
 
 
@@ -110,6 +112,11 @@ borderRadiusButton =
 borderRadiusPanel : Int
 borderRadiusPanel =
     15
+
+
+debugElementSize : Int
+debugElementSize =
+    420
 
 
 scrollbarAwareOffset : Int
@@ -264,42 +271,48 @@ colorZoomStepGuide =
 --
 
 
-type alias ControlButtonProperties msg =
-    { iconKind : IconKind
+type ControlButtonContent
+    = Icon IconKind
+    | Text String
+
+
+type alias ControlButtonConfig msg =
+    { content : ControlButtonContent
     , onPress : msg
     , selected : Bool
     , disabled : Bool
+    , size : ControlButtonSize
     }
 
 
 type ControlButtonSize
     = Large
     | Small
+    | FitToContent
 
 
-controlButton : ControlButtonProperties msg -> Element msg
+controlButton : ControlButtonConfig msg -> Element msg
 controlButton =
-    buildControlButton Large
+    buildControlButton
 
 
-smallControlButton : ControlButtonProperties msg -> Element msg
-smallControlButton =
-    buildControlButton Small
+buttonSize baseSize =
+    Element.px (baseSize - (2 * borderSize))
 
 
-buildControlButton : ControlButtonSize -> ControlButtonProperties msg -> Element msg
-buildControlButton size { iconKind, onPress, selected, disabled } =
+buildControlButton : ControlButtonConfig msg -> Element msg
+buildControlButton { content, onPress, selected, disabled, size } =
     let
-        baseSize =
+        ( width, height, padding ) =
             case size of
                 Small ->
-                    controlButtonSize // 2
+                    ( buttonSize (controlButtonSize // 2), buttonSize (controlButtonSize // 2), 0 )
 
                 Large ->
-                    controlButtonSize
+                    ( buttonSize controlButtonSize, buttonSize controlButtonSize, 0 )
 
-        buttonSize =
-            Element.px (baseSize - (2 * borderSize))
+                FitToContent ->
+                    ( Element.fill, Element.fill, 4 )
 
         alpha =
             if disabled then
@@ -308,13 +321,19 @@ buildControlButton size { iconKind, onPress, selected, disabled } =
             else
                 1
 
-        ( iconHtml, backgroundColor, activeBackgroundColor ) =
-            chooseIcon iconKind
+        ( labelHtml, backgroundColor, activeBackgroundColor ) =
+            case content of
+                Icon iconKind ->
+                    chooseIcon iconKind
+
+                Text textContent ->
+                    ( Html.text textContent, Colors.gray5, Colors.gray1 )
     in
     Input.button
         [ Background.color (uiCompat backgroundColor)
-        , Element.width buttonSize
-        , Element.height buttonSize
+        , Element.width width
+        , Element.height height
+        , Element.padding padding
         , Element.alpha alpha
         , Element.clip
         , Element.mouseOver
@@ -344,5 +363,5 @@ buildControlButton size { iconKind, onPress, selected, disabled } =
 
             else
                 Just onPress
-        , label = Element.html iconHtml
+        , label = Element.html labelHtml
         }

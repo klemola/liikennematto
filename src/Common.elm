@@ -3,6 +3,7 @@ module Common exposing
     , LocalCoordinates
     , andCarry
     , angleFromDirection
+    , applyTuple2
     , attemptFoldList
     , attemptMapList
     , boundingBoxOverlaps
@@ -259,3 +260,14 @@ attemptFoldList fn acc list =
 
                 Err err ->
                     Err err
+
+
+
+--
+-- Tuple utility
+--
+
+
+applyTuple2 : (a -> b -> c) -> ( a, b ) -> c
+applyTuple2 fn ( a, b ) =
+    fn a b

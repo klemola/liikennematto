@@ -4,7 +4,10 @@ module Data.Lots exposing
     , ParkingRestriction(..)
     , allLots
     , drivewayOffset
+    , fireStation
     , lotAsset
+    , residentialApartments1
+    , residentialRow1
     , residentialSingle1
     , school
     )
