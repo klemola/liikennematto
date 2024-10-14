@@ -26,6 +26,7 @@ import Model.RenderCache exposing (refreshTilemapCache)
 import Model.World as World exposing (World)
 import Quantity
 import Random
+import Tilemap.Buffer exposing (updateDirectionalBuffer)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
@@ -172,11 +173,6 @@ onSecondaryInput cell model =
 --
 
 
-addTileNeighborInitDistance : Int
-addTileNeighborInitDistance =
-    3
-
-
 addTile : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
 addTile cell model =
     let
@@ -192,10 +188,13 @@ addTile cell model =
     case tileIdByBitmask bitmask of
         Just tileId ->
             let
-                ( withWFC, addTileActions ) =
+                ( withWfc, addTileActions ) =
                     addTileById cell tileId tilemapWithClearedCell world.seed
+
+                withBuffer =
+                    updateDirectionalBuffer cell withWfc
             in
-            ( withTilemap withWFC drivenWfcInitialState model
+            ( withTilemap withBuffer drivenWfcInitialState model
             , Cmd.batch (tileActionsToCmds (clearCellActions ++ addTileActions))
             )
 
@@ -215,11 +214,8 @@ addTileById cell tileId tilemap seed =
 
         ( updatedWfcModel, wfcTileActions ) =
             updateTileNeighbors cell wfcModel
-
-        withInit =
-            WFC.initializeArea addTileNeighborInitDistance nonRoadTiles cell updatedWfcModel
     in
-    ( WFC.toTilemap withInit
+    ( WFC.toTilemap updatedWfcModel
     , tilemapChangeActions ++ wfcTileActions
     )
 
@@ -292,7 +288,7 @@ processTileNeighbor maybeTile wfcModel =
                     wfcModel
 
                 Unintialized ->
-                    WFC.resetCell nonRoadTiles cell tile.kind wfcModel
+                    wfcModel
 
         Nothing ->
             wfcModel
@@ -335,7 +331,7 @@ runWFCIfNecessary model delta =
                 _ ->
                     let
                         nextWfc =
-                            WFC.stepN WFC.StopAtSolved 100 wfcModel
+                            WFC.stepN WFC.StopAtSolved 1000 wfcModel
                     in
                     runWFC model nextWfc False
 

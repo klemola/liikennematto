@@ -185,7 +185,7 @@ activateCell cell model =
     if
         -- Cell already active?
         model.activeCell
-            |> Maybe.map (Cell.identical cell)
+            |> Maybe.map (Cell.isIdentical cell)
             |> Maybe.withDefault False
     then
         model
@@ -273,7 +273,7 @@ resolvePointerUp pointerDownCell pointerUpCell pointerUpEvent model =
     let
         validRelease =
             pointerDownCell
-                |> Maybe.map (Cell.identical pointerUpCell)
+                |> Maybe.map (Cell.isIdentical pointerUpCell)
                 |> Maybe.withDefault False
 
         isRightClick =

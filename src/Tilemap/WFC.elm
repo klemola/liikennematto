@@ -9,7 +9,6 @@ module Tilemap.WFC exposing
     , flushPendingActions
     , fromTilemap
     , init
-    , initializeArea
     , propagateConstraints
     , resetCell
     , setTilemap
@@ -282,37 +281,6 @@ flushOpenSteps ((Model modelContents) as model) =
 
     else
         flushOpenSteps (step StopAtEmptySteps model)
-
-
-initializeArea : Int -> List TileConfig -> Cell -> Model -> Model
-initializeArea distance tileSet origin ((Model modelContents) as model) =
-    let
-        ( baseX, baseY ) =
-            Cell.coordinates origin
-
-        bounds =
-            { minX = baseX - distance
-            , maxX = baseX + distance
-            , minY = baseY - distance
-            , maxY = baseY + distance
-            }
-    in
-    List.foldl
-        (\cell nextWfcModel ->
-            case tileByCell modelContents.tilemap cell of
-                Just tile ->
-                    case tile.kind of
-                        Unintialized ->
-                            resetCell tileSet cell tile.kind nextWfcModel
-
-                        _ ->
-                            nextWfcModel
-
-                Nothing ->
-                    nextWfcModel
-        )
-        model
-        (Cell.fromArea (getTilemapConfig modelContents.tilemap) bounds)
 
 
 resetCell : List TileConfig -> Cell -> TileKind -> Model -> Model

@@ -1,5 +1,6 @@
 module Tilemap.Cell exposing
-    ( Cell
+    ( AreaBounds
+    , Cell
     , CellCoordinates
     , Constraints
     , array1DIndex
@@ -14,7 +15,8 @@ module Tilemap.Cell exposing
     , fromCoordinates
     , fromCoordinatesSet
     , fromCoordinatesUnsafe
-    , identical
+    , isAdjacent
+    , isIdentical
     , nextOrthogonalCell
     , nextOrthogonalCellUnsafe
     , orthogonalDirection
@@ -24,6 +26,7 @@ module Tilemap.Cell exposing
     , size
     , toString
     , translateBy
+    , translateByVector
     )
 
 import BoundingBox2d exposing (BoundingBox2d)
@@ -34,9 +37,9 @@ import Lib.DiagonalDirection exposing (DiagonalDirection(..))
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
 import Maybe.Extra as Maybe
 import Point2d exposing (Point2d)
-import Quantity exposing (negativeInfinity)
+import Quantity exposing (Unitless, negativeInfinity)
 import Set exposing (Set)
-import Vector2d
+import Vector2d exposing (Vector2d)
 
 
 type Cell
@@ -148,7 +151,11 @@ fromCoordinatesSet constraints set =
         set
 
 
-fromArea : Constraints a -> { minX : Int, maxX : Int, minY : Int, maxY : Int } -> List Cell
+type alias AreaBounds =
+    { minX : Int, maxX : Int, minY : Int, maxY : Int }
+
+
+fromArea : Constraints a -> AreaBounds -> List Cell
 fromArea constraints bounds =
     let
         xValues =
@@ -308,12 +315,27 @@ quadrantNeighbors constraints dir origin =
                 ]
 
 
+{-| Safe translation by CellCoordinates displacement, guaranteed to fit into bounds or return Nothing
+-}
 translateBy : Constraints a -> CellCoordinates -> Cell -> Maybe Cell
 translateBy constraints ( offsetX, offsetY ) (Cell cellProperties) =
     fromCoordinates constraints
         ( cellProperties.x + offsetX
         , cellProperties.y + offsetY
         )
+
+
+{-| Raw translation by Vector2d displacement, allows out of bounds coordinates to be returned
+-}
+translateByVector : Vector2d Unitless cellCoordinates -> Cell -> CellCoordinates
+translateByVector displacement (Cell cellProperties) =
+    let
+        { x, y } =
+            Vector2d.toUnitless displacement
+    in
+    ( cellProperties.x + floor x
+    , cellProperties.y + floor y
+    )
 
 
 {-| Given a global grid and (local) subgrid, place subgrid cell into global space relative to the global origin
@@ -389,14 +411,19 @@ boundingBox (Cell cellProperties) =
     cellProperties.boundingBox
 
 
-identical : Cell -> Cell -> Bool
-identical (Cell cellA) (Cell cellB) =
+isIdentical : Cell -> Cell -> Bool
+isIdentical (Cell cellA) (Cell cellB) =
     cellA.x == cellB.x && cellA.y == cellB.y
+
+
+isAdjacent : Cell -> Cell -> Bool
+isAdjacent (Cell cellA) (Cell cellB) =
+    abs (cellA.x - cellB.x) + abs (cellA.y - cellB.y) == 1
 
 
 orthogonalDirection : Cell -> Cell -> Maybe OrthogonalDirection
 orthogonalDirection from to =
-    if identical from to then
+    if isIdentical from to then
         Nothing
 
     else
@@ -420,7 +447,11 @@ orthogonalDirection from to =
                 else
                     Left
         in
-        Just dir
+        if x0 /= x1 && y0 /= y1 then
+            Nothing
+
+        else
+            Just dir
 
 
 toString : Cell -> String

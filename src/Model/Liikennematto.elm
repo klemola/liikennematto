@@ -19,7 +19,7 @@ import Data.Assets exposing (roads)
 import Duration exposing (Duration)
 import Lib.FSM as FSM exposing (FSM)
 import Message exposing (Message)
-import Model.Debug exposing (DebugState, initialDebugState, toggleDebugPanel)
+import Model.Debug exposing (DebugLayerKind(..), DebugState, initialDebugState, toggleDebugPanel, toggleLayer)
 import Model.Flags exposing (Flags, RuntimeEnvironment(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Screen as Screen exposing (Screen)
@@ -242,8 +242,7 @@ tilemapConfig =
 
 debugState =
     initialDebugState
-        |> toggleDebugPanel
-        |> Model.Debug.toggleLayer Model.Debug.WFCDebug
+        |> toggleLayer WFCDebug
 
 
 initialWorld : World

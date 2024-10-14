@@ -15,6 +15,7 @@ module Tilemap.Core exposing
     , fixedTileByCell
     , foldTiles
     , forAllTiles
+    , getBuildHistory
     , getTilemapConfig
     , getTilemapDimensions
     , inTilemapBounds
@@ -22,6 +23,7 @@ module Tilemap.Core exposing
     , removeTile
     , resetSuperposition
     , resetTileBySurroundings
+    , setBuildHistory
     , setSuperpositionOptions
     , tileByCell
     , tileNeighborIn
@@ -75,6 +77,7 @@ type Tilemap
         , height : Length
         , boundingBox : BoundingBox2d Length.Meters GlobalCoordinates
         , config : TilemapConfig
+        , recentPlacements : List Cell
         }
 
 
@@ -103,6 +106,7 @@ createTilemap tilemapConfig initTileFn =
         , height = height
         , boundingBox = Common.boundingBoxWithDimensions width height Point2d.origin
         , config = tilemapConfig
+        , recentPlacements = []
         }
 
 
@@ -177,6 +181,16 @@ extractFixedTile tile =
 
         _ ->
             Nothing
+
+
+setBuildHistory : List Cell -> Tilemap -> Tilemap
+setBuildHistory history (Tilemap tilemapContents) =
+    Tilemap { tilemapContents | recentPlacements = history }
+
+
+getBuildHistory : Tilemap -> List Cell
+getBuildHistory (Tilemap tilemapContents) =
+    tilemapContents.recentPlacements
 
 
 cellHasAnchor : Tilemap -> Cell -> Bool
