@@ -1,4 +1,4 @@
-module Tilemap.Buffer exposing (DirectionHistory, updateDirectionalBuffer)
+module Tilemap.Buffer exposing (DirectionHistory, updateBufferCells)
 
 import Data.TileSet exposing (nonRoadTiles)
 import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
@@ -22,11 +22,11 @@ type alias DirectionHistory =
     List OrthogonalDirection
 
 
-updateDirectionalBuffer : Cell -> Tilemap -> Tilemap
-updateDirectionalBuffer newCell tilemap =
+updateBufferCells : Cell -> Tilemap -> Tilemap
+updateBufferCells newCell tilemap =
     let
         updatedHistory =
-            updateCellHistory newCell (getBuildHistory tilemap)
+            nextCellHistory newCell (getBuildHistory tilemap)
 
         withUpdatedHistory =
             setBuildHistory updatedHistory tilemap
@@ -46,34 +46,34 @@ updateDirectionalBuffer newCell tilemap =
                     nextTilemap
         )
         withUpdatedHistory
-        (generateBufferCells withUpdatedHistory)
+        (bufferCellsFromHistory withUpdatedHistory)
 
 
-generateBufferCells : Tilemap -> List Cell
-generateBufferCells tilemap =
+bufferCellsFromHistory : Tilemap -> List Cell
+bufferCellsFromHistory tilemap =
     case getBuildHistory tilemap of
-        current :: rest ->
-            case getRoadNeighbors current tilemap of
+        current :: _ ->
+            case roadNeighbors current tilemap of
                 [ n1, n2 ] ->
                     case Cell.orthogonalDirection n1 n2 of
                         -- Straight road
                         Just straightRoadDirection ->
                             List.concat
-                                [ generateDirectionalBuffer current straightRoadDirection ( 3, 0 ) tilemap
-                                , checkNeighbor n1 tilemap
-                                , checkNeighbor n2 tilemap
+                                [ directionalBuffer current straightRoadDirection ( 3, 0 ) tilemap
+                                , neighborCellBuffer n1 tilemap
+                                , neighborCellBuffer n2 tilemap
                                 ]
 
                         Nothing ->
                             -- Curve
                             List.concat
-                                [ checkNeighbor n1 tilemap
-                                , checkNeighbor n2 tilemap
+                                [ neighborCellBuffer n1 tilemap
+                                , neighborCellBuffer n2 tilemap
                                 ]
 
                 [ n1 ] ->
                     -- Deadend
-                    checkNeighbor n1 tilemap
+                    neighborCellBuffer n1 tilemap
 
                 _ ->
                     -- Intersection or standalone road
@@ -84,12 +84,13 @@ generateBufferCells tilemap =
             []
 
 
-checkNeighbor neighborCell tilemap =
-    case getRoadNeighbors neighborCell tilemap of
+neighborCellBuffer : Cell -> Tilemap -> List Cell
+neighborCellBuffer neighborCell tilemap =
+    case roadNeighbors neighborCell tilemap of
         [ n1, n2 ] ->
             case Cell.orthogonalDirection n1 n2 of
                 Just straightRoadDirection ->
-                    generateDirectionalBuffer neighborCell straightRoadDirection ( 3, 0 ) tilemap
+                    directionalBuffer neighborCell straightRoadDirection ( 3, 0 ) tilemap
 
                 Nothing ->
                     []
@@ -98,8 +99,8 @@ checkNeighbor neighborCell tilemap =
             []
 
 
-generateDirectionalBuffer : Cell -> OrthogonalDirection -> ( Int, Int ) -> Tilemap -> List Cell
-generateDirectionalBuffer origin direction ( sideDepth, backwardDepth ) tilemap =
+directionalBuffer : Cell -> OrthogonalDirection -> ( Int, Int ) -> Tilemap -> List Cell
+directionalBuffer origin direction ( sideDepth, backwardDepth ) tilemap =
     let
         ( originX, originY ) =
             Cell.coordinates origin
@@ -155,8 +156,8 @@ vector2dFromInt ( x, y ) =
     Vector2d.unitless (toFloat x) (toFloat y)
 
 
-updateCellHistory : Cell -> List Cell -> List Cell
-updateCellHistory newCell history =
+nextCellHistory : Cell -> List Cell -> List Cell
+nextCellHistory newCell history =
     case history of
         previous :: _ ->
             if Cell.isAdjacent newCell previous then
@@ -169,21 +170,11 @@ updateCellHistory newCell history =
             [ newCell ]
 
 
-getRoadNeighbors : Cell -> Tilemap -> List Cell
-getRoadNeighbors cell tilemap =
+roadNeighbors : Cell -> Tilemap -> List Cell
+roadNeighbors cell tilemap =
     let
         tilemapConfig =
             getTilemapConfig tilemap
     in
     Cell.orthogonalNeighbors tilemapConfig cell
         |> List.filter (\neighbor -> cellHasRoad neighbor tilemap)
-
-
-findStraightRoadDirection : List Cell -> Maybe OrthogonalDirection
-findStraightRoadDirection neighbors =
-    case neighbors of
-        [ n1, n2 ] ->
-            Cell.orthogonalDirection n1 n2
-
-        _ ->
-            Nothing

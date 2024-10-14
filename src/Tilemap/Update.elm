@@ -26,7 +26,7 @@ import Model.RenderCache exposing (refreshTilemapCache)
 import Model.World as World exposing (World)
 import Quantity
 import Random
-import Tilemap.Buffer exposing (updateDirectionalBuffer)
+import Tilemap.Buffer exposing (updateBufferCells)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
@@ -192,7 +192,7 @@ addTile cell model =
                     addTileById cell tileId tilemapWithClearedCell world.seed
 
                 withBuffer =
-                    updateDirectionalBuffer cell withWfc
+                    updateBufferCells cell withWfc
             in
             ( withTilemap withBuffer drivenWfcInitialState model
             , Cmd.batch (tileActionsToCmds (clearCellActions ++ addTileActions))

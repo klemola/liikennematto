@@ -11,7 +11,7 @@ import Data.Utility
 import Expect
 import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Test exposing (..)
-import Tilemap.Buffer exposing (updateDirectionalBuffer)
+import Tilemap.Buffer exposing (updateBufferCells)
 import Tilemap.Cell as Cell exposing (Cell, CellCoordinates)
 import Tilemap.Core as Cell
     exposing
@@ -86,7 +86,7 @@ placeRoadAndUpdateBuffer cellsToPlace tilemap =
             in
             nextTilemap
                 |> addTileInstantly cell
-                |> updateDirectionalBuffer cell
+                |> updateBufferCells cell
         )
         tilemap
         cellsToPlace
@@ -99,7 +99,7 @@ placeRoadAndUpdateBuffer cellsToPlace tilemap =
 suite : Test
 suite =
     describe "Tilemap.Buffer"
-        [ describe ".updateDirectionalBuffer"
+        [ describe ".updateBufferCells"
             [ test "First two road tiles should not generate buffer"
                 (\_ ->
                     let
