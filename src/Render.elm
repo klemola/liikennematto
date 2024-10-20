@@ -133,7 +133,7 @@ renderTile cache cell tileKind =
                 tileSizePixels
                 { x = x
                 , y = yAdjusted
-                , asset = assetById cache.roadAssets properties.id
+                , asset = assetById cache.assets properties.id
                 , tileStyles = ""
                 }
 
@@ -149,7 +149,7 @@ renderDynamicTiles cache tiles =
                 ( Cell.toString cell
                 , case maybeAnimation of
                     Just animation ->
-                        renderAnimatedTile cache cell (assetById cache.roadAssets tileId) animation
+                        renderAnimatedTile cache cell (assetById cache.assets tileId) animation
 
                     Nothing ->
                         renderTile cache cell (Fixed { id = tileId, parentTile = Nothing })

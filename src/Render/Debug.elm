@@ -2,6 +2,7 @@ module Render.Debug exposing (view)
 
 import Color
 import Common exposing (GlobalCoordinates)
+import Data.Assets exposing (assetById, debugAssets)
 import Data.Colors as Colors
 import Data.Lots exposing (ParkingRestriction(..))
 import Graph
@@ -366,17 +367,29 @@ renderTile cache cell tileKind =
     let
         { x, y } =
             Cell.bottomLeftCorner cell |> pointToPixels cache.pixelsToMetersRatio
+
+        tileSizePixels =
+            toPixelsValue cache.pixelsToMetersRatio Cell.size
+
+        yAdjusted =
+            cache.tilemapHeightPixels - tileSizePixels - y
     in
     case tileKind of
         Superposition tileIds ->
-            let
-                tileSizePixels =
-                    toPixelsValue cache.pixelsToMetersRatio Cell.size
-
-                yAdjusted =
-                    cache.tilemapHeightPixels - tileSizePixels - y
-            in
             renderSuperposition { size = tileSizePixels, x = x, y = yAdjusted } tileIds
+
+        Fixed properties ->
+            Svg.g
+                []
+                [ Svg.svg
+                    [ Attributes.x (String.fromFloat x)
+                    , Attributes.y (String.fromFloat yAdjusted)
+                    , Attributes.width (String.fromFloat tileSizePixels)
+                    , Attributes.height (String.fromFloat tileSizePixels)
+                    , Attributes.viewBox "0 0 256 256"
+                    ]
+                    (assetById debugAssets properties.id)
+                ]
 
         _ ->
             nothing

@@ -1,7 +1,7 @@
 module WFCDebug exposing (main)
 
 import Browser
-import Data.Assets exposing (assetById, roads)
+import Data.Assets exposing (assetById, debugAssets, roads)
 import Data.Colors
 import Data.TileSet exposing (allTiles, pairingsForSocket)
 import Element
@@ -409,6 +409,14 @@ tileConfigDebug cache tileConfig =
             [ Element.inFront idDebug
             , Element.Font.color (Data.Colors.uiCompat Data.Colors.gray7)
             ]
+
+        assets =
+            case TileConfig.biome tileConfig of
+                TileConfig.Road ->
+                    cache.assets
+
+                _ ->
+                    debugAssets
     in
     Element.el
         (baseAttrs ++ tileSocketsDebug (TileConfig.sockets tileConfig))
@@ -418,7 +426,7 @@ tileConfigDebug cache tileConfig =
                 , Svg.Attributes.width "64"
                 , Svg.Attributes.height "64"
                 ]
-                (assetById cache.roadAssets (tileConfigId tileConfig))
+                (assetById assets (tileConfigId tileConfig))
             )
         )
 

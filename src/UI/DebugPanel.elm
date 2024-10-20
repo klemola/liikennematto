@@ -137,8 +137,8 @@ controls model =
             , Font.size textSize
             ]
             [ controlButton
-                { content = Text "Run WFC"
-                , onPress = TriggerDevAction RunWFC
+                { content = Text "WFC debug"
+                , onPress = ToggleDebugLayer WFCDebug
                 , selected = False
                 , disabled = False
                 , size = FitToContent

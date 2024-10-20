@@ -1,6 +1,7 @@
 module Data.Assets exposing
     ( Assets
     , assetById
+    , debugAssets
     , innerLaneOffset
     , outerLaneOffset
     , roads
@@ -61,23 +62,6 @@ roads =
         , ( 20, lotEntryTUp )
         , ( 21, lotEntryTRight )
         , ( 22, lotEntryTLeft )
-        , ( 30, lotDebugCornerTopLeft )
-        , ( 31, lotDebugCornerTopRight )
-        , ( 32, lotDebugCornerBottomRight )
-        , ( 33, lotDebugCornerBottomLeft )
-        , ( 34, lotDebugCenter )
-        , ( 35, lotDebugCenter )
-        , ( 36, lotDebugCenter )
-        , ( 37, lotDebugCenter )
-        , ( 38, lotDebugCenter )
-        , ( 40, lotDebugDrivewayRight )
-        , ( 41, lotDebugDrivewayLeft )
-        , ( 42, lotDebugDrivewayUp )
-        , ( 50, natureDebugCornerTopLeft )
-        , ( 51, natureDebugCornerTopRight )
-        , ( 52, natureDebugCornerBottomRight )
-        , ( 53, natureDebugCornerBottomLeft )
-        , ( 200, natureDebugSingle )
         ]
 
 
@@ -598,6 +582,35 @@ lotEntryTRight =
         ]
         []
     ]
+
+
+
+--
+-- Debug assets
+--
+
+
+debugAssets : Assets msg
+debugAssets =
+    Dict.fromList
+        [ ( 30, lotDebugCornerTopLeft )
+        , ( 31, lotDebugCornerTopRight )
+        , ( 32, lotDebugCornerBottomRight )
+        , ( 33, lotDebugCornerBottomLeft )
+        , ( 34, lotDebugCenter )
+        , ( 35, lotDebugCenter )
+        , ( 36, lotDebugCenter )
+        , ( 37, lotDebugCenter )
+        , ( 38, lotDebugCenter )
+        , ( 40, lotDebugDrivewayRight )
+        , ( 41, lotDebugDrivewayLeft )
+        , ( 42, lotDebugDrivewayUp )
+        , ( 50, natureDebugCornerTopLeft )
+        , ( 51, natureDebugCornerTopRight )
+        , ( 52, natureDebugCornerBottomRight )
+        , ( 53, natureDebugCornerBottomLeft )
+        , ( 200, natureDebugSingle )
+        ]
 
 
 debugCornerTopLeft : ( String, String ) -> List (Svg msg)

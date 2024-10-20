@@ -48,7 +48,7 @@ type alias RenderCache msg =
     , tilemapWidth : Length.Length
     , tilemapHeight : Length.Length
     , tileListFilter : TileListFilter
-    , roadAssets : Assets msg
+    , assets : Assets msg
     }
 
 
@@ -69,7 +69,7 @@ type alias DynamicTilePresentation =
 
 
 new : World -> Assets msg -> RenderCache msg
-new { tilemap } roadAssets =
+new { tilemap } assets =
     let
         tilemapDimensions =
             getTilemapDimensions tilemap
@@ -92,7 +92,7 @@ new { tilemap } roadAssets =
     , tilemapWidth = tilemapDimensions.width
     , tilemapHeight = tilemapDimensions.height
     , tileListFilter = initialTileListFilter
-    , roadAssets = roadAssets
+    , assets = assets
     }
 
 
