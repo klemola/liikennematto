@@ -4,6 +4,7 @@ module Data.Utility exposing
     , cellsByTileKind
     , cellsByTileKindFromAscii
     , getStartAndEndNode
+    , removeTileInstantly
     , tenByTenTilemap
     , tilemapFromCoordinates
     , tilemapToAscii
@@ -27,6 +28,7 @@ import Tilemap.Core
         , createTilemap
         , foldTiles
         , getTilemapConfig
+        , removeTile
         , updateTilemap
         )
 import Tilemap.Tile as Tile
@@ -123,6 +125,19 @@ addTileInstantly cell tilemap =
         tilemapUpdateResult =
             -- run a FSM update cycle to make sure that tiles are not transitioning
             updateTilemap (Duration.milliseconds 260) tilemapWithTile
+    in
+    tilemapUpdateResult.tilemap
+
+
+removeTileInstantly : Cell -> Tilemap -> Tilemap
+removeTileInstantly cell tilemap =
+    let
+        ( tilemapWithoutTile, _ ) =
+            removeTile cell tilemap
+
+        tilemapUpdateResult =
+            -- run a FSM update cycle to make sure that tiles are not transitioning
+            updateTilemap (Duration.milliseconds 260) tilemapWithoutTile
     in
     tilemapUpdateResult.tilemap
 

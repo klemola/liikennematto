@@ -9,9 +9,10 @@ module Tilemap.Core exposing
     , anchorByCell
     , cellBitmask
     , cellHasAnchor
-    , cellHasRoad
     , cellSupportsRoadPlacement
+    , clearTile
     , createTilemap
+    , extractRoadTile
     , fixedTileByCell
     , foldTiles
     , forAllTiles
@@ -23,6 +24,7 @@ module Tilemap.Core exposing
     , removeTile
     , resetSuperposition
     , resetTileBySurroundings
+    , roadTile
     , setBuildHistory
     , setSuperpositionOptions
     , tileByCell
@@ -215,20 +217,24 @@ cellSupportsRoadPlacement cell tilemap =
     List.all (cellHasLowComplexity cell tilemap) DiagonalDirection.all
 
 
-cellHasRoad : Cell -> Tilemap -> Bool
-cellHasRoad cell tilemap =
-    let
-        tileBiome =
-            tileByCell tilemap cell
-                |> Maybe.andThen Tile.id
-                |> Maybe.map (tileById >> TileConfig.biome)
-    in
-    case tileBiome of
-        Just biome ->
-            biome == TileConfig.Road
+extractRoadTile : Cell -> Tilemap -> Maybe Tile
+extractRoadTile cell tilemap =
+    tileByCell tilemap cell
+        |> Maybe.andThen roadTile
 
-        Nothing ->
-            False
+
+roadTile : Tile -> Maybe Tile
+roadTile tile =
+    Tile.id tile
+        |> Maybe.map tileById
+        |> Maybe.andThen
+            (\tileConfig ->
+                if TileConfig.biome tileConfig == TileConfig.Road then
+                    Just tile
+
+                else
+                    Nothing
+            )
 
 
 cellHasLowComplexity : Cell -> Tilemap -> DiagonalDirection -> Bool
@@ -240,11 +246,7 @@ cellHasLowComplexity cell tilemap diagonalDirection =
     Cell.quadrantNeighbors tilemapConfig diagonalDirection cell
         |> List.filterMap
             (\quadrantNeighbor ->
-                if cellHasRoad quadrantNeighbor tilemap then
-                    Just quadrantNeighbor
-
-                else
-                    Nothing
+                extractRoadTile quadrantNeighbor tilemap |> Maybe.map (\_ -> quadrantNeighbor)
             )
         |> (\tiles -> List.length tiles < 3)
 
@@ -552,6 +554,11 @@ removeTile origin ((Tilemap tilemapContents) as tilemap) =
 
         Nothing ->
             ( tilemap, [] )
+
+
+clearTile : Cell -> Tilemap -> Tilemap
+clearTile cell tilemap =
+    updateCell cell (Tile.init Tile.Unintialized) tilemap
 
 
 applyTilemapOperation : TileOperation -> Maybe ( TileId, Int ) -> TileId -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )

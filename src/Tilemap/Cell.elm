@@ -273,9 +273,11 @@ nextDiagonalCell constraints dir cell =
             fromCoordinates constraints ( x + 1, y + 1 )
 
 
-orthogonalNeighbors : Constraints a -> Cell -> List Cell
+orthogonalNeighbors : Constraints a -> Cell -> List ( OrthogonalDirection, Cell )
 orthogonalNeighbors constraints cell =
-    List.filterMap (\dir -> nextOrthogonalCell constraints dir cell) OrthogonalDirection.all
+    List.filterMap
+        (\dir -> nextOrthogonalCell constraints dir cell |> Maybe.map (Tuple.pair dir))
+        OrthogonalDirection.all
 
 
 {-| Corner plus natural neighbors (clockwise).

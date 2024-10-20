@@ -23,8 +23,8 @@ import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
         ( TilemapConfig
-        , cellHasRoad
         , cellSupportsRoadPlacement
+        , extractRoadTile
         , getTilemapConfig
         )
 import UI.Core
@@ -129,7 +129,12 @@ update world renderCache msg model =
                 Just eventCell ->
                     let
                         cellHasRoadTile =
-                            cellHasRoad eventCell world.tilemap
+                            case extractRoadTile eventCell world.tilemap of
+                                Just _ ->
+                                    True
+
+                                Nothing ->
+                                    False
                     in
                     ( selectCell event eventCell cellHasRoadTile model
                     , Nothing

@@ -32,8 +32,8 @@ import Tilemap.Core
     exposing
         ( Tilemap
         , cellBitmask
-        , cellHasRoad
         , cellSupportsRoadPlacement
+        , extractRoadTile
         , fixedTileByCell
         , foldTiles
         , getTilemapConfig
@@ -147,7 +147,16 @@ update msg model =
 
 onPrimaryInput : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
 onPrimaryInput cell model =
-    if not (cellHasRoad cell model.world.tilemap) && cellSupportsRoadPlacement cell model.world.tilemap then
+    let
+        isRoadTile =
+            case extractRoadTile cell model.world.tilemap of
+                Just _ ->
+                    True
+
+                Nothing ->
+                    False
+    in
+    if not isRoadTile && cellSupportsRoadPlacement cell model.world.tilemap then
         addTile cell model
 
     else
@@ -284,10 +293,8 @@ processTileNeighbor maybeTile wfcModel =
                     else
                         wfcModel
 
-                Superposition _ ->
-                    wfcModel
-
-                Unintialized ->
+                -- Does not change Superposition or Uninitialized
+                _ ->
                     wfcModel
 
         Nothing ->

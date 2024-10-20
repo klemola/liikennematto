@@ -5,13 +5,14 @@ import Data.Utility
         ( addTileInstantly
         , cellsByTileKind
         , cellsByTileKindFromAscii
+        , removeTileInstantly
         , tenByTenTilemap
         , tilemapToAscii
         )
 import Expect
 import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Test exposing (..)
-import Tilemap.Buffer exposing (updateBufferCells)
+import Tilemap.Buffer exposing (removeBuffer, updateBufferCells)
 import Tilemap.Cell as Cell exposing (Cell, CellCoordinates)
 import Tilemap.Core as Cell
     exposing
@@ -53,6 +54,7 @@ expectCellsMatch expectedAsciiTilemap tilemap =
                 |> Expect.onFail
                     (String.join "\n"
                         [ multilineGridDebug "Expected..." withoutLeadingWhitespace
+                        , ""
                         , multilineGridDebug "Actual  ..." (tilemapToAscii tilemap)
                         ]
                     )
@@ -90,6 +92,17 @@ placeRoadAndUpdateBuffer cellsToPlace tilemap =
         )
         tilemap
         cellsToPlace
+
+
+removeRoadAndUpdateBuffer : CellCoordinates -> Tilemap -> Tilemap
+removeRoadAndUpdateBuffer ( x, y ) tilemap =
+    let
+        cell =
+            createCell x y
+    in
+    tilemap
+        |> removeTileInstantly cell
+        |> removeBuffer cell
 
 
 
@@ -380,6 +393,251 @@ suite =
                                 """
                     in
                     expectCellsMatch expectedTilemap tilemap
+                )
+            ]
+        , describe ".removeBuffer"
+            [ test "Should not generate buffer"
+                (\_ ->
+                    let
+                        tilemap =
+                            placeRoadAndUpdateBuffer
+                                [ ( 5, 5 ), ( 6, 5 ) ]
+                                emptyTilemap
+
+                        tilemapAfterRemove =
+                            removeRoadAndUpdateBuffer ( 5, 5 ) tilemap
+                    in
+                    Expect.all
+                        [ \tileKinds -> Expect.equalLists tileKinds.superposition []
+                        , \tileKinds -> Expect.equalLists tileKinds.fixed [ ( 6, 5 ) ]
+                        ]
+                        (cellsByTileKind tilemapAfterRemove)
+                )
+            , test "Should clear history"
+                (\_ ->
+                    let
+                        tilemap =
+                            placeRoadAndUpdateBuffer
+                                [ ( 1, 1 ), ( 2, 1 ), ( 5, 5 ) ]
+                                emptyTilemap
+
+                        tilemapAfterRemove =
+                            removeRoadAndUpdateBuffer ( 5, 5 ) tilemap
+                    in
+                    Expect.equal (List.length (getBuildHistory tilemapAfterRemove)) 0
+                )
+            , test "Should should remove buffer around the removed tile: deadend"
+                (\_ ->
+                    let
+                        tilemap =
+                            placeRoadAndUpdateBuffer
+                                [ ( 3, 3 ), ( 4, 3 ), ( 5, 3 ), ( 6, 3 ) ]
+                                emptyTilemap
+
+                        tilemapAfterRemove =
+                            removeRoadAndUpdateBuffer ( 6, 3 ) tilemap
+
+                        expectedTilemap =
+                            """
+                            ---o------
+                            ---o------
+                            --xxx-----
+                            ---o------
+                            ---o------
+                            ---o------
+                            ----------
+                            ----------
+                            ----------
+                            ----------
+                            """
+                    in
+                    expectCellsMatch expectedTilemap tilemapAfterRemove
+                )
+            , test "Should remove buffer around the removed tile: middle of a straight road"
+                (\_ ->
+                    let
+                        tilemap =
+                            placeRoadAndUpdateBuffer
+                                [ ( 3, 3 )
+                                , ( 4, 3 )
+                                , ( 5, 3 )
+                                , ( 6, 3 )
+                                , ( 7, 3 )
+
+                                -- second road
+                                , ( 3, 7 )
+                                , ( 4, 7 )
+                                , ( 5, 7 )
+                                , ( 6, 7 )
+                                , ( 7, 7 )
+                                ]
+                                emptyTilemap
+
+                        tilemapAfterRemove =
+                            removeRoadAndUpdateBuffer ( 5, 3 ) tilemap
+
+                        expectedTilemap =
+                            """
+                            ----------
+                            ----------
+                            --xx-xx---
+                            ---ooo----
+                            ---ooo----
+                            ---ooo----
+                            --xxxxx---
+                            ---ooo----
+                            ---ooo----
+                            ---ooo----
+                            """
+                    in
+                    expectCellsMatch expectedTilemap tilemapAfterRemove
+                )
+            , test "Should remove buffer around the removed tile: curve"
+                (\_ ->
+                    let
+                        tilemap =
+                            placeRoadAndUpdateBuffer
+                                [ ( 3, 3 )
+                                , ( 4, 3 )
+                                , ( 5, 3 )
+                                , ( 6, 3 )
+                                , -- turn
+                                  ( 6, 4 )
+                                , ( 6, 5 )
+                                ]
+                                emptyTilemap
+
+                        tilemapAfterRemove =
+                            removeRoadAndUpdateBuffer ( 6, 4 ) tilemap
+
+                        expectedTilemap =
+                            """
+                            ---oo-----
+                            ---oo-----
+                            --xxxx----
+                            ---oo-----
+                            ---oox----
+                            ---oo-----
+                            ----------
+                            ----------
+                            ----------
+                            ----------
+                            """
+                    in
+                    expectCellsMatch expectedTilemap tilemapAfterRemove
+                )
+            , test "Should remove buffer around the removed tile: complex road network"
+                (\_ ->
+                    let
+                        tilemap =
+                            placeRoadAndUpdateBuffer
+                                [ -- main street
+                                  ( 3, 3 )
+                                , ( 4, 3 )
+                                , ( 5, 3 )
+                                , ( 6, 3 )
+                                , ( 7, 3 )
+                                , ( 8, 3 )
+
+                                -- side 1
+                                , ( 5, 4 )
+                                , ( 5, 5 )
+                                , ( 5, 6 )
+
+                                -- side 2
+                                , ( 8, 4 )
+                                , ( 8, 5 )
+                                ]
+                                emptyTilemap
+
+                        tilemapAfterRemove =
+                            removeRoadAndUpdateBuffer ( 8, 4 ) tilemap
+
+                        expectedTilemap =
+                            """
+                            ---oooo---
+                            ---oooo---
+                            --xxxxxx--
+                            -oooxoo---
+                            -oooxoox--
+                            ---oxoo---
+                            ----------
+                            ----------
+                            ----------
+                            ----------
+                            """
+                    in
+                    expectCellsMatch expectedTilemap tilemapAfterRemove
+                )
+            , test "Should remove buffer around the removed tile: near the edge of the tilemap"
+                (\_ ->
+                    let
+                        tilemap =
+                            placeRoadAndUpdateBuffer
+                                [ ( 10, 1 )
+                                , ( 10, 2 )
+                                , ( 10, 3 )
+                                , ( 10, 4 )
+                                , ( 10, 5 )
+                                , ( 10, 6 )
+                                , ( 10, 7 )
+                                , ( 10, 8 )
+                                ]
+                                emptyTilemap
+
+                        tilemapAfterRemove =
+                            removeRoadAndUpdateBuffer ( 10, 5 ) tilemap
+
+                        expectedTilemap =
+                            """
+                            ---------x
+                            ------ooox
+                            ------ooox
+                            ---------x
+                            ----------
+                            ---------x
+                            ------ooox
+                            ---------x
+                            ----------
+                            ----------
+                            """
+                    in
+                    expectCellsMatch expectedTilemap tilemapAfterRemove
+                )
+            , test "Should remove buffer around the removed tile: a road loop"
+                (\_ ->
+                    let
+                        tilemap =
+                            placeRoadAndUpdateBuffer
+                                [ ( 4, 4 )
+                                , ( 5, 4 )
+                                , ( 6, 4 )
+                                , ( 6, 5 )
+                                , ( 6, 6 )
+                                , ( 5, 6 )
+                                , ( 4, 6 )
+                                , ( 4, 5 )
+                                ]
+                                emptyTilemap
+
+                        tilemapAfterRemove =
+                            removeRoadAndUpdateBuffer ( 5, 6 ) tilemap
+
+                        expectedTilemap =
+                            """
+                            ----o-----
+                            ----o-----
+                            ----o-----
+                            ---xxx----
+                            oooxoxooo-
+                            ---x-x----
+                            ----------
+                            ----------
+                            ----------
+                            ----------
+                            """
+                    in
+                    expectCellsMatch expectedTilemap tilemapAfterRemove
                 )
             ]
         ]
