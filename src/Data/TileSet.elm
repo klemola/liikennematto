@@ -1,26 +1,45 @@
 module Data.TileSet exposing
     ( allTiles
-    , bottomEdgeTileIds
-    , bottomLeftCornerTileIds
-    , bottomRightCornerTileIds
-    , leftEdgeTileIds
+    , allTilesAmount
+    , defaultSocket
+    , defaultTiles
+    , extractLotEntryTile
+    , lotDrivewaySocket
+    , lotDrivewayTileIds
+    , lotEntrySocket
+    , nonRoadTiles
     , pairingsForSocket
-    , rightEdgeTileIds
+    , roadConnectionDirectionsByTile
     , tileById
-    , tileIds
-    , topEdgeTileIds
-    , topLeftCornerTileIds
-    , topRightCornerTileIds
+    , tileIdByBitmask
+    , tileIdsByOrthogonalMatch
+    , tileIdsFromBitmask
+    , tilesByBaseTileId
     )
 
 import Array
 import Dict exposing (Dict)
+import Lib.Bitmask exposing (OrthogonalMatch)
+import Lib.DiagonalDirection exposing (DiagonalDirection(..))
+import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
+import List.Nonempty
 import Tilemap.TileConfig as TileConfig
     exposing
         ( Socket(..)
         , TileConfig
         , TileId
+        , maxGraphPriority
+        , mirroredHorizontally
+        , mirroredVertically
+        , rotatedClockwise
+        , socketByDirection
         )
+
+
+
+--
+-- Sockets definition
+--
 
 
 defaultSocket : Socket
@@ -41,6 +60,11 @@ lotEntrySocket =
 lotDrivewaySocket : Socket
 lotDrivewaySocket =
     LightBrown
+
+
+roadConnectionSockets : List Socket
+roadConnectionSockets =
+    [ Red, Pink, Yellow, Blue, lotEntrySocket ]
 
 
 pairingsForSocket : Socket -> List Socket
@@ -77,6 +101,10 @@ pairingsForSocket socket =
             []
 
 
+
+-- Tile sets and lookup
+
+
 defaultTile : TileConfig
 defaultTile =
     grass
@@ -87,56 +115,19 @@ defaultTileId =
     0
 
 
-mirroredHorizontally : TileId -> TileConfig -> TileConfig
-mirroredHorizontally id tileConfig =
-    case tileConfig of
-        TileConfig.Single { sockets, complexity, baseTileId } ->
-            TileConfig.Single
-                { id = id
-                , sockets = { sockets | left = sockets.right, right = sockets.left }
-                , complexity = complexity
-                , baseTileId = baseTileId
-                }
-
-        TileConfig.Large _ ->
-            tileConfig
-
-
-mirroredVertically : TileId -> TileConfig -> TileConfig
-mirroredVertically id tileConfig =
-    case tileConfig of
-        TileConfig.Single { sockets, complexity, baseTileId } ->
-            TileConfig.Single
-                { id = id
-                , sockets = { sockets | top = sockets.bottom, bottom = sockets.top }
-                , complexity = complexity
-                , baseTileId = baseTileId
-                }
-
-        TileConfig.Large _ ->
-            tileConfig
-
-
-rotatedClockwise : TileId -> TileConfig -> TileConfig
-rotatedClockwise id tileConfig =
-    case tileConfig of
-        TileConfig.Single { sockets, complexity, baseTileId } ->
-            TileConfig.Single
-                { id = id
-                , sockets = { sockets | top = sockets.left, right = sockets.top, bottom = sockets.right, left = sockets.bottom }
-                , complexity = complexity
-                , baseTileId = baseTileId
-                }
-
-        TileConfig.Large _ ->
-            tileConfig
+loneRoadTileId : TileId
+loneRoadTileId =
+    17
 
 
 allTiles : List TileConfig
 allTiles =
     [ grass
+    , singleNature
+    , twoByTwoNature
 
-    -- , loneRoad
+    --
+    , loneRoad
     , horizontalRoad
     , verticalRoad
     , deadendUp
@@ -157,12 +148,17 @@ allTiles =
     , lotEntryTUp
     , lotEntryTLeft
     , lotEntryTRight
-
-    --
     , twoByTwoLot
     , threeByThreeLot
-    , fourByTwoLot
+    , threeByTwoLotA
+    , threeByTwoLotB
+    , twoByThreeLot
     ]
+
+
+allTilesAmount : Int
+allTilesAmount =
+    List.length allTiles
 
 
 allTilesAndMetaTiles : List TileConfig
@@ -180,17 +176,25 @@ allTilesAndMetaTiles =
            , TileConfig.Single lotDrivewayLeft
            , TileConfig.Single lotDrivewayRight
            , TileConfig.Single lotDrivewayUp
+           , TileConfig.Single natureTopLeftCorner
+           , TileConfig.Single natureTopRightCorner
+           , TileConfig.Single natureBottomLeftCorner
+           , TileConfig.Single natureBottomRightCorner
            ]
 
 
-tiles : Dict TileId TileConfig
-tiles =
-    Dict.fromList (List.map (\tileConfig -> ( TileConfig.tileConfigId tileConfig, tileConfig )) allTilesAndMetaTiles)
+tileLookup : Dict TileId TileConfig
+tileLookup =
+    Dict.fromList
+        (List.map
+            (\tileConfig -> ( TileConfig.tileConfigId tileConfig, tileConfig ))
+            allTilesAndMetaTiles
+        )
 
 
 tileById : TileId -> TileConfig
 tileById tileId =
-    case Dict.get tileId tiles of
+    case Dict.get tileId tileLookup of
         Just tileConfig ->
             tileConfig
 
@@ -198,81 +202,112 @@ tileById tileId =
             defaultTile
 
 
-tileIds : List TileId
-tileIds =
-    List.map TileConfig.tileConfigId allTiles
+nonRoadTiles : List TileConfig
+nonRoadTiles =
+    List.filter (\tileConfig -> TileConfig.biome tileConfig /= TileConfig.Road) allTiles
 
 
-topLeftCornerTileIds : List TileId
-topLeftCornerTileIds =
-    List.filterMap
-        (compatibleTileId
-            (\sockets -> sockets.top == defaultSocket && sockets.left == defaultSocket)
+defaultTiles : List TileConfig
+defaultTiles =
+    List.filter (\tileConfig -> TileConfig.tileConfigId tileConfig /= loneRoadTileId) allTiles
+
+
+baseTileLookup : Dict TileId (List TileConfig)
+baseTileLookup =
+    List.foldl
+        (\tileConfig groups ->
+            case TileConfig.baseTileId tileConfig of
+                Just baseTileId ->
+                    let
+                        currentTiles =
+                            Dict.get baseTileId groups
+                                |> Maybe.withDefault []
+                    in
+                    groups |> Dict.insert baseTileId (tileConfig :: currentTiles)
+
+                Nothing ->
+                    groups
         )
+        Dict.empty
         allTiles
 
 
-topRightCornerTileIds : List TileId
-topRightCornerTileIds =
-    List.filterMap
-        (compatibleTileId
-            (\sockets -> sockets.top == defaultSocket && sockets.right == defaultSocket)
-        )
-        allTiles
+tilesByBaseTileId : TileId -> List TileConfig
+tilesByBaseTileId baseTileId =
+    Dict.get baseTileId baseTileLookup
+        |> Maybe.withDefault []
 
 
-bottomLeftCornerTileIds : List TileId
-bottomLeftCornerTileIds =
-    List.filterMap
-        (compatibleTileId
-            (\sockets -> sockets.bottom == defaultSocket && sockets.left == defaultSocket)
-        )
-        allTiles
+
+-- Bitmask based lookup
 
 
-bottomRightCornerTileIds : List TileId
-bottomRightCornerTileIds =
-    List.filterMap
-        (compatibleTileId
-            (\sockets -> sockets.bottom == defaultSocket && sockets.right == defaultSocket)
-        )
-        allTiles
+bitmaskToTileIdLookup : Dict Int TileId
+bitmaskToTileIdLookup =
+    Dict.fromList
+        [ ( 0, TileConfig.tileConfigId loneRoad )
+        , ( 1, TileConfig.tileConfigId deadendDown )
+        , ( 2, TileConfig.tileConfigId deadendRight )
+        , ( 3, TileConfig.tileConfigId curveBottomRight )
+        , ( 4, TileConfig.tileConfigId deadendLeft )
+        , ( 5, TileConfig.tileConfigId curveBottomLeft )
+        , ( 6, TileConfig.tileConfigId horizontalRoad )
+        , ( 7, TileConfig.tileConfigId intersectionTUp )
+        , ( 8, TileConfig.tileConfigId deadendUp )
+        , ( 9, TileConfig.tileConfigId verticalRoad )
+        , ( 10, TileConfig.tileConfigId curveTopRight )
+        , ( 11, TileConfig.tileConfigId intersectionTLeft )
+        , ( 12, TileConfig.tileConfigId curveTopLeft )
+        , ( 13, TileConfig.tileConfigId intersectionTRight )
+        , ( 14, TileConfig.tileConfigId intersectionTDown )
+        , ( 15, TileConfig.tileConfigId intersectionCross )
+        ]
 
 
-leftEdgeTileIds : List TileId
-leftEdgeTileIds =
-    List.filterMap
-        (compatibleTileId
-            (\sockets -> sockets.left == defaultSocket)
-        )
-        allTiles
+tileIdByBitmask : Int -> Maybe TileId
+tileIdByBitmask bitmask =
+    Dict.get bitmask bitmaskToTileIdLookup
 
 
-rightEdgeTileIds : List TileId
-rightEdgeTileIds =
-    List.filterMap
-        (compatibleTileId
-            (\sockets -> sockets.right == defaultSocket)
-        )
-        allTiles
+tileIdsFromBitmask : Int -> List TileId
+tileIdsFromBitmask bitmask =
+    tileIdByBitmask bitmask
+        |> Maybe.withDefault defaultTileId
+        |> List.singleton
 
 
-topEdgeTileIds : List TileId
-topEdgeTileIds =
-    List.filterMap
-        (compatibleTileId
-            (\sockets -> sockets.top == defaultSocket)
-        )
-        allTiles
+
+-- Orthogonal neighbor based lookup
 
 
-bottomEdgeTileIds : List TileId
-bottomEdgeTileIds =
-    List.filterMap
-        (compatibleTileId
-            (\sockets -> sockets.bottom == defaultSocket)
-        )
-        allTiles
+noOrthogonalMatch : OrthogonalMatch
+noOrthogonalMatch =
+    { up = False
+    , left = False
+    , right = False
+    , down = False
+    }
+
+
+tileIdsByOrthogonalMatch : List TileConfig -> OrthogonalMatch -> List TileId
+tileIdsByOrthogonalMatch tileSet ({ up, left, right, down } as neighbors) =
+    if neighbors == noOrthogonalMatch then
+        List.map TileConfig.tileConfigId tileSet
+
+    else
+        let
+            conditions sockets =
+                [ ( up, sockets.top ), ( left, sockets.left ), ( right, sockets.right ), ( down, sockets.bottom ) ]
+                    |> List.all
+                        (\( hasNeighbor, socket ) ->
+                            if hasNeighbor then
+                                socket == defaultSocket
+
+                            else
+                                True
+                        )
+        in
+        List.filterMap (compatibleTileId conditions) tileSet
 
 
 compatibleTileId : (TileConfig.Sockets -> Bool) -> TileConfig -> Maybe TileId
@@ -286,7 +321,57 @@ compatibleTileId matcher tc =
 
 
 --
--- Terrain
+-- Queries
+--
+
+
+extractLotEntryTile : TileId -> Maybe ( TileConfig, OrthogonalDirection )
+extractLotEntryTile tileId =
+    let
+        tileConfig =
+            tileById tileId
+    in
+    TileConfig.socketsList tileConfig
+        |> List.Nonempty.toList
+        |> findLotEntryDirection
+        |> Maybe.map (Tuple.pair tileConfig)
+
+
+findLotEntryDirection : List ( OrthogonalDirection, Socket ) -> Maybe OrthogonalDirection
+findLotEntryDirection sockets =
+    case sockets of
+        [] ->
+            Nothing
+
+        x :: xs ->
+            let
+                ( dir, socket ) =
+                    x
+            in
+            if socket == lotEntrySocket then
+                Just dir
+
+            else
+                findLotEntryDirection xs
+
+
+roadConnectionDirectionsByTile : TileConfig -> List OrthogonalDirection
+roadConnectionDirectionsByTile tileConfig =
+    let
+        sockets_ =
+            TileConfig.sockets tileConfig
+    in
+    OrthogonalDirection.all
+        |> List.filter
+            (\dir ->
+                -- TODO: optimize, using List instead of Set due to non-comparable Socket
+                List.member (socketByDirection sockets_ dir) roadConnectionSockets
+            )
+
+
+
+--
+-- Terrain tiles
 --
 
 
@@ -294,34 +379,38 @@ grass : TileConfig
 grass =
     TileConfig.Single
         { id = defaultTileId
+        , complexity = 0.1
+        , graphPriority = maxGraphPriority
+        , biome = TileConfig.Nature
         , sockets =
             { top = Green
             , right = Green
             , bottom = Green
             , left = Green
             }
-        , complexity = 0.1
         , baseTileId = Nothing
         }
 
 
 
 --
--- Road
+-- Road tiles
 --
 
 
 loneRoad : TileConfig
 loneRoad =
     TileConfig.Single
-        { id = 17
+        { id = loneRoadTileId
+        , complexity = 0.1
+        , graphPriority = maxGraphPriority
+        , biome = TileConfig.Road
         , sockets =
             { top = Green
             , right = Green
             , bottom = Green
             , left = Green
             }
-        , complexity = 0.1
         , baseTileId = Nothing
         }
 
@@ -330,13 +419,15 @@ horizontalRoad : TileConfig
 horizontalRoad =
     TileConfig.Single
         { id = 6
+        , complexity = 0.1
+        , graphPriority = maxGraphPriority
+        , biome = TileConfig.Road
         , sockets =
             { top = Green
             , right = Red
             , bottom = Green
             , left = Red
             }
-        , complexity = 0.1
         , baseTileId = Nothing
         }
 
@@ -350,13 +441,15 @@ deadendUp : TileConfig
 deadendUp =
     TileConfig.Single
         { id = 8
+        , complexity = 0.1
+        , graphPriority = 0
+        , biome = TileConfig.Road
         , sockets =
             { top = Green
             , right = Green
             , bottom = Blue
             , left = Green
             }
-        , complexity = 0.1
         , baseTileId = Nothing
         }
 
@@ -380,13 +473,15 @@ curveBottomRight : TileConfig
 curveBottomRight =
     TileConfig.Single
         { id = 3
+        , complexity = 0.2
+        , graphPriority = maxGraphPriority
+        , biome = TileConfig.Road
         , sockets =
             { top = Yellow
             , right = Green
             , bottom = Green
             , left = Yellow
             }
-        , complexity = 0.2
         , baseTileId = Nothing
         }
 
@@ -414,13 +509,15 @@ intersectionTUp : TileConfig
 intersectionTUp =
     TileConfig.Single
         { id = 7
+        , complexity = 0.3
+        , graphPriority = 0.2
+        , biome = TileConfig.Road
         , sockets =
             { top = Pink
             , right = Yellow
             , bottom = Green
             , left = Pink
             }
-        , complexity = 0.4
         , baseTileId = Nothing
         }
 
@@ -434,13 +531,15 @@ intersectionTLeft : TileConfig
 intersectionTLeft =
     TileConfig.Single
         { id = 11
+        , complexity = 0.3
+        , graphPriority = 0.2
+        , biome = TileConfig.Road
         , sockets =
             { top = Pink
             , right = Green
             , bottom = Yellow
             , left = Pink
             }
-        , complexity = 0.4
         , baseTileId = Nothing
         }
 
@@ -454,13 +553,15 @@ intersectionCross : TileConfig
 intersectionCross =
     TileConfig.Single
         { id = 15
+        , complexity = 0.3
+        , graphPriority = 0.2
+        , biome = TileConfig.Road
         , sockets =
             { top = Pink
             , right = Pink
             , bottom = Pink
             , left = Pink
             }
-        , complexity = 0.4
         , baseTileId = Nothing
         }
 
@@ -469,13 +570,15 @@ lotEntryTUp : TileConfig
 lotEntryTUp =
     TileConfig.Single
         { id = 20
+        , complexity = 0.4
+        , graphPriority = 0.1
+        , biome = TileConfig.Road
         , sockets =
             { top = lotEntrySocket
             , right = Red
             , bottom = Green
             , left = Red
             }
-        , complexity = 0.8
         , baseTileId = Just 6
         }
 
@@ -484,13 +587,15 @@ lotEntryTRight : TileConfig
 lotEntryTRight =
     TileConfig.Single
         { id = 21
+        , complexity = 0.4
+        , graphPriority = 0.1
+        , biome = TileConfig.Road
         , sockets =
             { top = Red
             , right = lotEntrySocket
             , bottom = Red
             , left = Green
             }
-        , complexity = 0.8
         , baseTileId = Just 9
         }
 
@@ -499,33 +604,43 @@ lotEntryTLeft : TileConfig
 lotEntryTLeft =
     TileConfig.Single
         { id = 22
+        , complexity = 0.4
+        , graphPriority = 0.1
+        , biome = TileConfig.Road
         , sockets =
             { top = Red
             , right = Green
             , bottom = Red
             , left = lotEntrySocket
             }
-        , complexity = 0.8
         , baseTileId = Just 9
         }
 
 
 
 --
--- Lots
+-- Lot tiles
 --
+
+
+lotDrivewayTileIds : List TileId
+lotDrivewayTileIds =
+    [ lotDrivewayLeft, lotDrivewayRight, lotDrivewayUp ]
+        |> List.map .id
 
 
 lotTopLeftCorner : TileConfig.SingleTile
 lotTopLeftCorner =
     { id = 30
+    , complexity = 0.5
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Lot
     , sockets =
         { top = Green
         , right = largeTileInnerEdgeSocket
         , bottom = largeTileInnerEdgeSocket
         , left = Green
         }
-    , complexity = 0.6
     , baseTileId = Nothing
     }
 
@@ -533,13 +648,15 @@ lotTopLeftCorner =
 lotTopRightCorner : TileConfig.SingleTile
 lotTopRightCorner =
     { id = 31
+    , complexity = 0.5
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Lot
     , sockets =
         { top = Green
         , right = Green
         , bottom = largeTileInnerEdgeSocket
         , left = largeTileInnerEdgeSocket
         }
-    , complexity = 0.6
     , baseTileId = Nothing
     }
 
@@ -547,13 +664,15 @@ lotTopRightCorner =
 lotBottomRightCorner : TileConfig.SingleTile
 lotBottomRightCorner =
     { id = 32
+    , complexity = 0.5
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Lot
     , sockets =
         { top = largeTileInnerEdgeSocket
         , right = Green
         , bottom = Green
         , left = largeTileInnerEdgeSocket
         }
-    , complexity = 0.6
     , baseTileId = Nothing
     }
 
@@ -561,13 +680,15 @@ lotBottomRightCorner =
 lotBottomLeftCorner : TileConfig.SingleTile
 lotBottomLeftCorner =
     { id = 33
+    , complexity = 0.5
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Lot
     , sockets =
         { top = largeTileInnerEdgeSocket
         , right = largeTileInnerEdgeSocket
         , bottom = Green
         , left = Green
         }
-    , complexity = 0.6
     , baseTileId = Nothing
     }
 
@@ -575,13 +696,15 @@ lotBottomLeftCorner =
 lotTopEdge : TileConfig.SingleTile
 lotTopEdge =
     { id = 34
+    , complexity = 0.5
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Lot
     , sockets =
         { top = Green
         , right = largeTileInnerEdgeSocket
         , bottom = largeTileInnerEdgeSocket
         , left = largeTileInnerEdgeSocket
         }
-    , complexity = 0.6
     , baseTileId = Nothing
     }
 
@@ -589,13 +712,15 @@ lotTopEdge =
 lotRightEdge : TileConfig.SingleTile
 lotRightEdge =
     { id = 35
+    , complexity = 0.5
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Lot
     , sockets =
         { top = largeTileInnerEdgeSocket
         , right = Green
         , bottom = largeTileInnerEdgeSocket
         , left = largeTileInnerEdgeSocket
         }
-    , complexity = 0.6
     , baseTileId = Nothing
     }
 
@@ -603,13 +728,15 @@ lotRightEdge =
 lotBottomEdge : TileConfig.SingleTile
 lotBottomEdge =
     { id = 36
+    , complexity = 0.5
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Lot
     , sockets =
         { top = largeTileInnerEdgeSocket
         , right = largeTileInnerEdgeSocket
         , bottom = Green
         , left = largeTileInnerEdgeSocket
         }
-    , complexity = 0.6
     , baseTileId = Nothing
     }
 
@@ -617,13 +744,15 @@ lotBottomEdge =
 lotLeftEdge : TileConfig.SingleTile
 lotLeftEdge =
     { id = 37
+    , complexity = 0.5
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Lot
     , sockets =
         { top = largeTileInnerEdgeSocket
         , right = largeTileInnerEdgeSocket
         , bottom = largeTileInnerEdgeSocket
         , left = Green
         }
-    , complexity = 0.6
     , baseTileId = Nothing
     }
 
@@ -631,13 +760,15 @@ lotLeftEdge =
 lotInnerSpace : TileConfig.SingleTile
 lotInnerSpace =
     { id = 38
+    , complexity = 0.5
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Lot
     , sockets =
         { top = largeTileInnerEdgeSocket
         , right = largeTileInnerEdgeSocket
         , bottom = largeTileInnerEdgeSocket
         , left = largeTileInnerEdgeSocket
         }
-    , complexity = 0.6
     , baseTileId = Nothing
     }
 
@@ -645,13 +776,15 @@ lotInnerSpace =
 lotDrivewayRight : TileConfig.SingleTile
 lotDrivewayRight =
     { id = 40
+    , complexity = 0.5
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Lot
     , sockets =
         { top = largeTileInnerEdgeSocket
         , right = lotDrivewaySocket
         , bottom = Green
         , left = largeTileInnerEdgeSocket
         }
-    , complexity = 0.6
     , baseTileId = Nothing
     }
 
@@ -659,13 +792,15 @@ lotDrivewayRight =
 lotDrivewayLeft : TileConfig.SingleTile
 lotDrivewayLeft =
     { id = 41
+    , complexity = 0.5
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Lot
     , sockets =
         { top = largeTileInnerEdgeSocket
         , right = largeTileInnerEdgeSocket
         , bottom = Green
         , left = lotDrivewaySocket
         }
-    , complexity = 0.6
     , baseTileId = Nothing
     }
 
@@ -673,13 +808,15 @@ lotDrivewayLeft =
 lotDrivewayUp : TileConfig.SingleTile
 lotDrivewayUp =
     { id = 42
+    , complexity = 0.5
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Lot
     , sockets =
         { top = largeTileInnerEdgeSocket
         , right = largeTileInnerEdgeSocket
         , bottom = lotDrivewaySocket
         , left = Green
         }
-    , complexity = 0.8
     , baseTileId = Nothing
     }
 
@@ -688,6 +825,8 @@ twoByTwoLot : TileConfig
 twoByTwoLot =
     TileConfig.Large
         { id = 100
+        , complexity = 0.4
+        , biome = TileConfig.Lot
         , tiles =
             Array.fromList
                 [ lotTopLeftCorner
@@ -700,7 +839,6 @@ twoByTwoLot =
         , width = 2
         , height = 2
         , anchorIndex = 3
-        , complexity = 0.75
         }
 
 
@@ -708,6 +846,8 @@ threeByThreeLot : TileConfig
 threeByThreeLot =
     TileConfig.Large
         { id = 101
+        , complexity = 0.5
+        , biome = TileConfig.Lot
         , tiles =
             Array.fromList
                 [ lotTopLeftCorner
@@ -727,29 +867,183 @@ threeByThreeLot =
         , width = 3
         , height = 3
         , anchorIndex = 6
-        , complexity = 0.8
         }
 
 
-fourByTwoLot : TileConfig
-fourByTwoLot =
+threeByTwoLotA : TileConfig
+threeByTwoLotA =
     TileConfig.Large
         { id = 102
+        , complexity = 0.5
+        , biome = TileConfig.Lot
         , tiles =
             Array.fromList
                 [ lotTopLeftCorner
-                , lotTopEdge
                 , lotTopEdge
                 , lotTopRightCorner
 
                 --
                 , lotDrivewayUp
                 , lotBottomEdge
+                , lotBottomRightCorner
+                ]
+        , width = 3
+        , height = 2
+        , anchorIndex = 3
+        }
+
+
+threeByTwoLotB : TileConfig
+threeByTwoLotB =
+    TileConfig.Large
+        { id = 103
+        , complexity = 0.5
+        , biome = TileConfig.Lot
+        , tiles =
+            Array.fromList
+                [ lotTopLeftCorner
+                , lotTopEdge
+                , lotTopRightCorner
+
+                --
+                , lotDrivewayRight
                 , lotBottomEdge
                 , lotBottomRightCorner
                 ]
-        , width = 4
+        , width = 3
         , height = 2
+        , anchorIndex = 3
+        }
+
+
+twoByThreeLot : TileConfig
+twoByThreeLot =
+    TileConfig.Large
+        { id = 104
+        , complexity = 0.5
+        , biome = TileConfig.Lot
+        , tiles =
+            Array.fromList
+                [ lotTopLeftCorner
+                , lotTopRightCorner
+
+                --
+                , lotLeftEdge
+                , lotRightEdge
+
+                --
+                , lotDrivewayUp
+                , lotBottomRightCorner
+                ]
+        , width = 2
+        , height = 3
         , anchorIndex = 4
-        , complexity = 0.9
+        }
+
+
+
+--
+-- Nature tiles
+--
+
+
+natureTopLeftCorner : TileConfig.SingleTile
+natureTopLeftCorner =
+    { id = 50
+    , complexity = 0.5
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Nature
+    , sockets =
+        { top = Green
+        , right = largeTileInnerEdgeSocket
+        , bottom = largeTileInnerEdgeSocket
+        , left = Green
+        }
+    , baseTileId = Nothing
+    }
+
+
+natureTopRightCorner : TileConfig.SingleTile
+natureTopRightCorner =
+    { id = 51
+    , complexity = 0.5
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Nature
+    , sockets =
+        { top = Green
+        , right = Green
+        , bottom = largeTileInnerEdgeSocket
+        , left = largeTileInnerEdgeSocket
+        }
+    , baseTileId = Nothing
+    }
+
+
+natureBottomRightCorner : TileConfig.SingleTile
+natureBottomRightCorner =
+    { id = 52
+    , complexity = 0.5
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Nature
+    , sockets =
+        { top = largeTileInnerEdgeSocket
+        , right = Green
+        , bottom = Green
+        , left = largeTileInnerEdgeSocket
+        }
+    , baseTileId = Nothing
+    }
+
+
+natureBottomLeftCorner : TileConfig.SingleTile
+natureBottomLeftCorner =
+    { id = 53
+    , complexity = 0.5
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Nature
+    , sockets =
+        { top = largeTileInnerEdgeSocket
+        , right = largeTileInnerEdgeSocket
+        , bottom = Green
+        , left = Green
+        }
+    , baseTileId = Nothing
+    }
+
+
+singleNature : TileConfig
+singleNature =
+    TileConfig.Single
+        { id = 200
+        , complexity = 0.4
+        , graphPriority = maxGraphPriority
+        , biome = TileConfig.Nature
+        , sockets =
+            { top = Green
+            , right = Green
+            , bottom = Green
+            , left = Green
+            }
+        , baseTileId = Nothing
+        }
+
+
+twoByTwoNature : TileConfig
+twoByTwoNature =
+    TileConfig.Large
+        { id = 201
+        , complexity = 0.5
+        , biome = TileConfig.Nature
+        , tiles =
+            Array.fromList
+                [ natureTopLeftCorner
+                , natureTopRightCorner
+
+                --
+                , natureBottomLeftCorner
+                , natureBottomRightCorner
+                ]
+        , width = 2
+        , height = 2
+        , anchorIndex = 0
         }

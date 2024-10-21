@@ -1,7 +1,7 @@
 module LotsGallery exposing (main)
 
 import Color
-import Data.Assets exposing (roadsLegacy)
+import Data.Assets exposing (roads)
 import Data.Colors as Colors
 import Data.Lots exposing (NewLot)
 import Lib.Collection as Collection exposing (Id, nextId)
@@ -39,9 +39,9 @@ world =
     World.empty tilemapConfig
 
 
-renderCache : RenderCache
+renderCache : RenderCache ()
 renderCache =
-    RenderCache.new world roadsLegacy
+    RenderCache.new world roads
 
 
 tilemapWidthStr : String
@@ -54,7 +54,7 @@ tilemapHeightStr =
     String.fromFloat renderCache.tilemapHeightPixels
 
 
-main : Svg msg
+main : Svg ()
 main =
     let
         acc =
@@ -114,7 +114,7 @@ lotHeightCells newLot =
         |> floor
 
 
-renderLotDebug : Lot -> Svg msg
+renderLotDebug : Lot -> Svg ()
 renderLotDebug lot =
     Svg.g []
         [ Render.renderLot renderCache lot
@@ -123,7 +123,7 @@ renderLotDebug lot =
         ]
 
 
-renderParkingSpotPaths : List ParkingSpot -> List (Svg msg)
+renderParkingSpotPaths : List ParkingSpot -> List (Svg ())
 renderParkingSpotPaths parkingSpots =
     parkingSpots
         |> List.indexedMap

@@ -23,8 +23,8 @@ import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
         ( TilemapConfig
-        , canBuildRoadAt
-        , cellHasFixedTile
+        , cellSupportsRoadPlacement
+        , extractRoadTile
         , getTilemapConfig
         )
 import UI.Core
@@ -90,7 +90,7 @@ subscriptions _ =
 -- Update
 
 
-update : World -> RenderCache -> Msg -> Model -> ( Model, Maybe InputEvent )
+update : World -> RenderCache msg -> Msg -> Model -> ( Model, Maybe InputEvent )
 update world renderCache msg model =
     let
         tilemapConfig =
@@ -128,10 +128,15 @@ update world renderCache msg model =
             case pointerEventToCell renderCache tilemapConfig event of
                 Just eventCell ->
                     let
-                        cellHasTile =
-                            cellHasFixedTile eventCell world.tilemap
+                        cellHasRoadTile =
+                            case extractRoadTile eventCell world.tilemap of
+                                Just _ ->
+                                    True
+
+                                Nothing ->
+                                    False
                     in
-                    ( selectCell event eventCell cellHasTile model
+                    ( selectCell event eventCell cellHasRoadTile model
                     , Nothing
                     )
 
@@ -185,7 +190,7 @@ activateCell cell model =
     if
         -- Cell already active?
         model.activeCell
-            |> Maybe.map (Cell.identical cell)
+            |> Maybe.map (Cell.isIdentical cell)
             |> Maybe.withDefault False
     then
         model
@@ -227,13 +232,13 @@ setLastEventDevice deviceType model =
 
 
 selectCell : Pointer.Event -> Cell -> Bool -> Model -> Model
-selectCell event eventCell hasTile initialEditor =
+selectCell event eventCell hasRoadTile initialEditor =
     initialEditor
         |> setLastEventDevice event.pointerType
         |> storePointerDownEvent event
         |> activateCell eventCell
         |> (\editor ->
-                if event.pointerType == Pointer.MouseType || not hasTile then
+                if event.pointerType == Pointer.MouseType || not hasRoadTile then
                     editor
 
                 else
@@ -241,7 +246,7 @@ selectCell event eventCell hasTile initialEditor =
            )
 
 
-pointerEventToCell : RenderCache -> TilemapConfig -> Pointer.Event -> Maybe Cell
+pointerEventToCell : RenderCache msg -> TilemapConfig -> Pointer.Event -> Maybe Cell
 pointerEventToCell cache constraints event =
     let
         ( overlayX, overlayY ) =
@@ -273,7 +278,7 @@ resolvePointerUp pointerDownCell pointerUpCell pointerUpEvent model =
     let
         validRelease =
             pointerDownCell
-                |> Maybe.map (Cell.identical pointerUpCell)
+                |> Maybe.map (Cell.isIdentical pointerUpCell)
                 |> Maybe.withDefault False
 
         isRightClick =
@@ -301,7 +306,7 @@ resolvePointerUp pointerDownCell pointerUpCell pointerUpEvent model =
 -- Views
 
 
-view : RenderCache -> World -> Model -> Element Msg
+view : RenderCache msg -> World -> Model -> Element Msg
 view cache world model =
     Element.el
         [ Element.width Element.fill
@@ -344,7 +349,7 @@ view cache world model =
         )
 
 
-cellHighlight : RenderCache -> World -> Cell -> Element Msg
+cellHighlight : RenderCache msg -> World -> Cell -> Element Msg
 cellHighlight cache world activeCell =
     let
         tileSizePixels =
@@ -376,7 +381,7 @@ highlightColor : World -> Cell -> Maybe Color
 highlightColor world cell =
     let
         canBuildHere =
-            canBuildRoadAt cell world.tilemap
+            cellSupportsRoadPlacement cell world.tilemap
 
         mightDestroyLot =
             World.hasLot cell world

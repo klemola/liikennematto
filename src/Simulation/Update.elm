@@ -1,23 +1,33 @@
-module Simulation.Update exposing (update, worldAfterTilemapChange)
+module Simulation.Update exposing (update)
 
-import Audio
+import Data.Lots exposing (NewLot)
+import Data.TileSet exposing (extractLotEntryTile, lotDrivewayTileIds, tileById)
 import Duration
 import Lib.Collection as Collection
 import Lib.FSM as FSM
+import Lib.OrthogonalDirection as OrthogonalDirection
+import List.Nonempty as Nonempty
 import Message exposing (Message(..))
+import Model.Debug exposing (DevAction(..))
 import Model.Liikennematto
     exposing
         ( Liikennematto
         )
-import Model.World as World exposing (World, updateRoadNetwork)
-import Process
+import Model.World as World
+    exposing
+        ( TilemapChange
+        , World
+        , updateRoadNetwork
+        )
 import Random
 import Simulation.Events exposing (updateEventQueue)
-import Simulation.Traffic as Traffic exposing (rerouteCarsIfNeeded)
+import Simulation.Lot as Lot
+import Simulation.Traffic as Traffic exposing (addLotResidents, rerouteCarsIfNeeded)
 import Simulation.TrafficLight exposing (TrafficLight)
-import Simulation.Zoning exposing (generateLot)
-import Task
-import Tilemap.Core exposing (tilemapSize)
+import Tilemap.Cell as Cell exposing (Cell)
+import Tilemap.Core exposing (addAnchor, anchorByCell, fixedTileByCell, getTilemapConfig, tileByCell)
+import Tilemap.Tile exposing (TileKind(..))
+import Tilemap.TileConfig as TileConfig exposing (TileConfig)
 import Time
 
 
@@ -31,7 +41,7 @@ update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
 update msg model =
     case msg of
         GameSetupComplete ->
-            ( model, generateEnvironmentAfterDelay model.world )
+            ( model, Cmd.none )
 
         UpdateTraffic delta ->
             let
@@ -57,7 +67,7 @@ update msg model =
             , Cmd.none
             )
 
-        CheckQueues time ->
+        CheckQueues time _ ->
             ( { model
                 | world =
                     model.world
@@ -68,8 +78,13 @@ update msg model =
             , Cmd.none
             )
 
-        TilemapChanged _ ->
-            ( { model | world = worldAfterTilemapChange model.world }
+        TilemapChanged tilemapChange ->
+            ( { model
+                | world =
+                    model.world
+                        |> newLotsFromTilemapChange tilemapChange model.time
+                        |> worldAfterTilemapChange tilemapChange
+              }
             , Cmd.none
             )
 
@@ -78,55 +93,24 @@ update msg model =
             , Cmd.none
             )
 
-        GenerateEnvironment ->
-            let
-                nextWorld =
-                    attemptGenerateLot
-                        model.time
-                        model.simulationActive
-                        model.world
+        TriggerDevAction action ->
+            case action of
+                SpawnTestCar ->
+                    ( { model
+                        | world =
+                            World.addEvent
+                                World.SpawnTestCar
+                                model.time
+                                model.world
+                      }
+                    , Cmd.none
+                    )
 
-                cmds =
-                    if Collection.size nextWorld.lots > Collection.size model.world.lots then
-                        Cmd.batch
-                            [ generateEnvironmentAfterDelay nextWorld
-                            , Audio.playSound Audio.BuildLot
-                            ]
-
-                    else
-                        generateEnvironmentAfterDelay nextWorld
-            in
-            ( { model | world = nextWorld }
-            , cmds
-            )
-
-        SpawnTestCar ->
-            ( { model
-                | world =
-                    World.addEvent
-                        World.SpawnTestCar
-                        model.time
-                        model.world
-              }
-            , Cmd.none
-            )
+                _ ->
+                    ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
-
-
-generateEnvironmentAfterDelay : World -> Cmd Message
-generateEnvironmentAfterDelay world =
-    let
-        randomMillis =
-            world.seed
-                |> Random.step (Random.int 1000 3500)
-                |> Tuple.first
-    in
-    randomMillis
-        |> toFloat
-        |> Process.sleep
-        |> Task.perform (always GenerateEnvironment)
 
 
 
@@ -150,11 +134,45 @@ processWorldEvents time events world =
         events
 
 
-worldAfterTilemapChange : World -> World
-worldAfterTilemapChange world =
+worldAfterTilemapChange : TilemapChange -> World -> World
+worldAfterTilemapChange tilemapChange world =
     world
+        |> removeOrphanLots tilemapChange
         |> updateRoadNetwork
         |> rerouteCarsIfNeeded
+
+
+removeOrphanLots : TilemapChange -> World -> World
+removeOrphanLots tilemapChange world =
+    tilemapChange.changedCells
+        |> Nonempty.toList
+        |> List.filterMap
+            (\cell ->
+                anchorByCell world.tilemap cell |> Maybe.map (\( id, _ ) -> ( id, cell ))
+            )
+        |> List.foldl
+            (\( anchorLotId, cell ) nextWorld ->
+                case fixedTileByCell world.tilemap cell of
+                    Just tile ->
+                        let
+                            lotEntryTile =
+                                tile
+                                    |> Tilemap.Tile.id
+                                    |> Maybe.andThen extractLotEntryTile
+                        in
+                        case lotEntryTile of
+                            Just _ ->
+                                nextWorld
+
+                            Nothing ->
+                                -- The tile used to be a lot entry tile, yet has changed
+                                World.removeLot anchorLotId nextWorld
+
+                    Nothing ->
+                        -- The lot entry tile has been removed
+                        World.removeLot anchorLotId nextWorld
+            )
+            world
 
 
 
@@ -183,14 +201,82 @@ updateTrafficLight trafficLight =
     { trafficLight | fsm = nextFsm }
 
 
-attemptGenerateLot : Time.Posix -> Bool -> World -> World
-attemptGenerateLot time simulationActive world =
+newLotsFromTilemapChange : TilemapChange -> Time.Posix -> World -> World
+newLotsFromTilemapChange tilemapChange time world =
     let
-        largeEnoughRoadNetwork =
-            tilemapSize world.tilemap > 4 * (Collection.size world.lots + 1)
-    in
-    if not simulationActive || not largeEnoughRoadNetwork || World.hasPendingTilemapChange world then
-        world
+        extractDrivewayTile cell tile =
+            case tile.kind of
+                Fixed properties ->
+                    if List.member properties.id lotDrivewayTileIds then
+                        properties.parentTile
+                            |> Maybe.map (\( parentTileId, _ ) -> tileById parentTileId)
+                            |> Maybe.map (Tuple.pair cell)
 
-    else
-        generateLot time world
+                    else
+                        Nothing
+
+                _ ->
+                    Nothing
+    in
+    tilemapChange.changedCells
+        |> Nonempty.toList
+        |> List.filterMap
+            (\cell ->
+                tileByCell world.tilemap cell
+                    |> Maybe.andThen (extractDrivewayTile cell)
+            )
+        |> List.foldl
+            (\( drivewayCell, lotTileConfig ) nextWorld ->
+                addLot time (matchLotToTileConfig lotTileConfig) drivewayCell nextWorld
+            )
+            world
+
+
+matchLotToTileConfig : TileConfig -> NewLot
+matchLotToTileConfig tileConfig =
+    -- TODO: this should be replaced
+    case TileConfig.tileConfigId tileConfig of
+        100 ->
+            Data.Lots.residentialSingle1
+
+        101 ->
+            Data.Lots.school
+
+        102 ->
+            Data.Lots.fireStation
+
+        103 ->
+            Data.Lots.residentialRow1
+
+        104 ->
+            Data.Lots.residentialApartments1
+
+        _ ->
+            Data.Lots.residentialSingle1
+
+
+addLot : Time.Posix -> NewLot -> Cell -> World -> World
+addLot time newLot drivewayCell world =
+    let
+        anchorCell =
+            -- Use of unsafe function: to get here, the next Cell has to exist (it is the lot entry cell)
+            Cell.nextOrthogonalCellUnsafe
+                (getTilemapConfig world.tilemap)
+                newLot.drivewayExitDirection
+                drivewayCell
+
+        builderFn =
+            Lot.build newLot anchorCell
+
+        ( lot, nextLots ) =
+            Collection.addFromBuilder builderFn world.lots
+    in
+    world
+        |> World.refreshLots lot nextLots
+        |> World.setTilemap
+            (addAnchor anchorCell
+                lot.id
+                (OrthogonalDirection.opposite lot.drivewayExitDirection)
+                world.tilemap
+            )
+        |> addLotResidents time lot.id newLot.residents

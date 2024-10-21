@@ -1,26 +1,32 @@
 module Model.Liikennematto exposing
-    ( GameAction(..)
+    ( DrivenWFC(..)
+    , GameAction(..)
     , GameFSM
     , GameState(..)
     , GameUpdateContext
     , InitSteps
     , Liikennematto
     , currentState
+    , drivenWfcInitialState
     , fromNewGame
     , fromPreviousGame
     , initial
     , triggerLoading
+    , withTilemap
     )
 
-import Data.Assets exposing (roadsLegacy)
-import Data.Defaults exposing (horizontalCellsAmount, verticalCellsAmount)
+import Data.Assets exposing (roads)
 import Duration exposing (Duration)
 import Lib.FSM as FSM exposing (FSM)
-import Model.Debug exposing (DebugState, initialDebugState)
+import Message exposing (Message)
+import Model.Debug exposing (DebugLayerKind(..), DebugState, initialDebugState, toggleDebugPanel, toggleLayer)
 import Model.Flags exposing (Flags, RuntimeEnvironment(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Screen as Screen exposing (Screen)
 import Model.World as World exposing (World)
+import Simulation.Car exposing (CarState(..))
+import Tilemap.Core exposing (TileListFilter(..), Tilemap)
+import Tilemap.WFC as WFC
 import Time
 import UI.Editor
 import UI.ZoomControl
@@ -32,9 +38,10 @@ type alias Liikennematto =
     , screen : Screen
     , time : Time.Posix
     , world : World
+    , wfc : DrivenWFC
     , previousWorld : Maybe World
     , simulationActive : Bool
-    , renderCache : RenderCache
+    , renderCache : RenderCache Message
     , dynamicTiles : RenderCache.DynamicTilesPresentation
     , debug : DebugState
     , errorMessage : Maybe String
@@ -43,8 +50,10 @@ type alias Liikennematto =
     }
 
 
-type alias GameFSM =
-    FSM GameState GameAction GameUpdateContext
+type DrivenWFC
+    = WFCPending Duration
+    | WFCActive WFC.Model
+    | WFCSolved
 
 
 type alias InitSteps =
@@ -57,6 +66,10 @@ type alias InitSteps =
 --
 -- Game level FSM
 --
+
+
+type alias GameFSM =
+    FSM GameState GameAction GameUpdateContext
 
 
 type GameState
@@ -201,6 +214,26 @@ triggerLoading model =
 --
 
 
+horizontalCellsAmount : Int
+horizontalCellsAmount =
+    16
+
+
+verticalCellsAmount : Int
+verticalCellsAmount =
+    12
+
+
+minWfcUpdateFrequency : Duration
+minWfcUpdateFrequency =
+    Duration.milliseconds 500
+
+
+drivenWfcInitialState : DrivenWFC
+drivenWfcInitialState =
+    WFCPending minWfcUpdateFrequency
+
+
 tilemapConfig =
     { horizontalCellsAmount = horizontalCellsAmount
     , verticalCellsAmount = verticalCellsAmount
@@ -230,13 +263,41 @@ initial flags =
     , time = Time.millisToPosix 0
     , previousWorld = Nothing
     , world = initialWorld
+    , wfc = drivenWfcInitialState
     , simulationActive = True
-    , renderCache = RenderCache.new initialWorld roadsLegacy
+    , renderCache = RenderCache.new initialWorld roads
     , dynamicTiles = []
     , debug = initialDebugState
     , errorMessage = Nothing
     , editor = UI.Editor.initialModel
     , zoomControl = UI.ZoomControl.initialModel
+    }
+
+
+
+--
+-- Synchronized changes to multiple root level fields
+--
+
+
+withTilemap : Tilemap -> DrivenWFC -> Liikennematto -> Liikennematto
+withTilemap tilemap drivenWFC model =
+    let
+        nextWorld =
+            World.setTilemap tilemap model.world
+
+        renderCacheWFC =
+            case drivenWFC of
+                WFCActive wfc ->
+                    Just wfc
+
+                _ ->
+                    Nothing
+    in
+    { model
+        | world = nextWorld
+        , wfc = drivenWFC
+        , renderCache = RenderCache.setTilemapCache nextWorld.tilemap renderCacheWFC model.renderCache
     }
 
 
@@ -250,8 +311,9 @@ fromNewGame : Maybe World -> Liikennematto -> Liikennematto
 fromNewGame previousWorld model =
     { model
         | world = initialWorld
+        , wfc = drivenWfcInitialState
         , previousWorld = previousWorld
-        , renderCache = RenderCache.new initialWorld roadsLegacy
+        , renderCache = RenderCache.new initialWorld roads
         , simulationActive = True
         , debug = initialDebugState
     }
@@ -263,8 +325,9 @@ fromPreviousGame model =
         Just previousWorld ->
             { model
                 | world = previousWorld
+                , wfc = drivenWfcInitialState
                 , previousWorld = Nothing
-                , renderCache = RenderCache.new previousWorld roadsLegacy
+                , renderCache = RenderCache.new previousWorld roads
                 , simulationActive = True
                 , debug = initialDebugState
             }

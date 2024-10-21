@@ -1,12 +1,11 @@
 module WFCDebug exposing (main)
 
 import Browser
-import Data.Assets exposing (assetById, roads)
+import Data.Assets exposing (assetById, debugAssets, roads)
 import Data.Colors
 import Data.TileSet exposing (allTiles, pairingsForSocket)
 import Element
 import Element.Background
-import Element.Border as Border
 import Element.Font
 import Element.Input as Input
 import Html exposing (Html)
@@ -18,12 +17,10 @@ import Model.World as World
 import Process
 import Random
 import Render
-import Render.Conversion
 import Render.Debug
 import Svg
 import Svg.Attributes
 import Task
-import Tilemap.Cell as Cell
 import Tilemap.Core exposing (TileListFilter(..), TilemapConfig)
 import Tilemap.TileConfig as TileConfig
     exposing
@@ -35,6 +32,9 @@ import Tilemap.TileConfig as TileConfig
         )
 import Tilemap.WFC as WFC
 import Time
+import UI.Core
+import UI.Editor as Editor
+import UI.StateDebug exposing (wfcContext, wfcCurrentCell, wfcStateDescription)
 
 
 type Msg
@@ -44,14 +44,17 @@ type Msg
     | StopAutoStep
     | InitSolve
     | SolveInitDone Time.Posix
+    | EditorMsg Editor.Msg
+    | InputReceived UI.Core.InputEvent
     | NoOp
 
 
 type alias Model =
     { wfcModel : WFC.Model
     , world : World.World
-    , cache : RenderCache.RenderCache
+    , cache : RenderCache.RenderCache Msg
     , mode : Mode
+    , editor : Editor.Model
     }
 
 
@@ -81,6 +84,7 @@ init _ =
             World.empty tilemapConfig
 
         cache =
+            -- TODO: the tile list filter setup is not required if tile FSMs are updated
             RenderCache.new world roads
                 |> RenderCache.setTileListFilter NoFilter
     in
@@ -88,6 +92,7 @@ init _ =
       , mode = Manual
       , world = world
       , cache = cache
+      , editor = Editor.initialModel
       }
     , Cmd.none
     )
@@ -128,10 +133,10 @@ update msg model =
                 wfcModel =
                     case model.mode of
                         Manual ->
-                            WFC.step model.wfcModel
+                            WFC.step WFC.StopAtSolved model.wfcModel
 
                         AutoStep ->
-                            WFC.stepN stepN model.wfcModel
+                            WFC.stepN WFC.StopAtSolved stepN model.wfcModel
 
                 tilemap =
                     WFC.toTilemap wfcModel
@@ -140,7 +145,7 @@ update msg model =
                     World.setTilemap tilemap model.world
 
                 cache =
-                    RenderCache.setTilemapCache tilemap model.cache
+                    RenderCache.setTilemapCache tilemap (Just wfcModel) model.cache
 
                 ( mode, cmd ) =
                     if WFC.stopped model.wfcModel then
@@ -209,7 +214,7 @@ update msg model =
                     World.setTilemap tilemap model.world
 
                 cache =
-                    RenderCache.setTilemapCache tilemap model.cache
+                    RenderCache.setTilemapCache tilemap (Just solveResult) model.cache
             in
             ( { model
                 | wfcModel = solveResult
@@ -217,6 +222,48 @@ update msg model =
                 , cache = cache
               }
             , Cmd.none
+            )
+
+        InputReceived input ->
+            case input.kind of
+                UI.Core.Secondary ->
+                    ( model, Cmd.none )
+
+                UI.Core.Primary ->
+                    let
+                        wfcModel =
+                            WFC.collapse input.cell model.wfcModel
+
+                        tilemap =
+                            WFC.toTilemap wfcModel
+
+                        nextWorld =
+                            World.setTilemap tilemap model.world
+
+                        cache =
+                            RenderCache.setTilemapCache tilemap (Just wfcModel) model.cache
+                    in
+                    ( { model
+                        | wfcModel = wfcModel
+                        , world = nextWorld
+                        , cache = cache
+                      }
+                    , Cmd.none
+                    )
+
+        EditorMsg editorMsg ->
+            let
+                ( editorModel, inputEvent ) =
+                    Editor.update model.world model.cache editorMsg model.editor
+            in
+            ( { model | editor = editorModel }
+            , inputEvent
+                |> Maybe.map
+                    (\event ->
+                        Task.perform (\_ -> InputReceived event)
+                            (Task.succeed ())
+                    )
+                |> Maybe.withDefault Cmd.none
             )
 
         NoOp ->
@@ -250,8 +297,14 @@ view model =
                     , Element.inFront renderDebug
                     , Element.inFront
                         (wfcCurrentCell model.cache model.wfcModel)
+                    , Element.inFront
+                        (Editor.view
+                            model.cache
+                            model.world
+                            model.editor
+                            |> Element.map EditorMsg
+                        )
                     ]
-                |> Element.map (always NoOp)
     in
     Element.column
         [ Element.spacing 8 ]
@@ -261,7 +314,6 @@ view model =
             , sidePanel model.mode model.wfcModel
             ]
         , bottomPanel model.cache renderWidth
-            |> Element.map (always NoOp)
         ]
         |> Element.layout
             [ Element.width Element.fill
@@ -278,7 +330,7 @@ sidePanel mode wfcModel =
         , Element.padding 8
         ]
         [ controls
-        , wfcState wfcModel
+        , wfcStateDescription wfcModel
         , case mode of
             Manual ->
                 wfcContext wfcModel
@@ -312,7 +364,7 @@ controls =
         ]
 
 
-bottomPanel : RenderCache -> Int -> Element.Element ()
+bottomPanel : RenderCache Msg -> Int -> Element.Element Msg
 bottomPanel cache widthPixels =
     Element.row [ Element.spacing 8 ]
         [ tileSetDebug cache (Element.px widthPixels)
@@ -322,91 +374,11 @@ bottomPanel cache widthPixels =
 
 
 --
--- WFC state debug
---
-
-
-wfcState : WFC.Model -> Element.Element Msg
-wfcState wfcModel =
-    Element.el
-        []
-        (Element.text (WFC.stateDebug wfcModel))
-
-
-wfcContext : WFC.Model -> Element.Element Msg
-wfcContext wfcModel =
-    let
-        { position, openSteps, previousSteps } =
-            WFC.contextDebug wfcModel
-    in
-    Element.column
-        [ Element.width (Element.px 420)
-        , Element.spacing 8
-        , Element.Font.family [ Element.Font.monospace ]
-        , Element.Font.size 14
-        ]
-        [ Element.column
-            []
-            (position |> List.map (\step -> Element.el [] (Element.text step)))
-        , Element.column
-            []
-            (openSteps |> List.map (\step -> Element.el [] (Element.text step)))
-        , Element.column
-            [ Element.height (Element.fill |> Element.maximum 420)
-            , Element.width Element.fill
-            , Element.scrollbars
-            , Element.paddingXY 0 8
-            , Element.spacing 4
-            ]
-            (previousSteps |> List.map (\step -> Element.el [] (Element.text step)))
-        ]
-
-
-wfcCurrentCell : RenderCache.RenderCache -> WFC.Model -> Element.Element ()
-wfcCurrentCell cache wfcModel =
-    case WFC.toCurrentCell wfcModel of
-        Just cell ->
-            let
-                tileSizePixels =
-                    Render.Conversion.toPixelsValue cache.pixelsToMetersRatio Cell.size
-
-                ( cellX, cellY ) =
-                    Cell.coordinates cell
-
-                cellSize =
-                    Element.px (floor tileSizePixels)
-
-                cursorColor =
-                    if WFC.failed wfcModel then
-                        Data.Colors.red
-
-                    else
-                        Data.Colors.gray7
-            in
-            Element.el
-                [ Element.width cellSize
-                , Element.height cellSize
-                , Element.moveRight (toFloat (cellX - 1) * tileSizePixels)
-                , Element.moveDown (toFloat (cellY - 1) * tileSizePixels)
-                , Border.width 2
-                , Border.rounded 4
-                , Border.solid
-                , Border.color
-                    (Data.Colors.uiCompat cursorColor)
-                ]
-                Element.none
-
-        Nothing ->
-            Element.none
-
-
-
---
 -- Tileset debug
 --
 
 
-tileSetDebug : RenderCache -> Element.Length -> Element.Element ()
+tileSetDebug : RenderCache Msg -> Element.Length -> Element.Element Msg
 tileSetDebug cache width =
     Element.wrappedRow
         [ Element.spacing 16
@@ -418,7 +390,7 @@ tileSetDebug cache width =
         (List.map (tileConfigDebug cache) allTiles)
 
 
-tileConfigDebug : RenderCache -> TileConfig -> Element.Element ()
+tileConfigDebug : RenderCache Msg -> TileConfig -> Element.Element Msg
 tileConfigDebug cache tileConfig =
     let
         idDebug =
@@ -437,6 +409,14 @@ tileConfigDebug cache tileConfig =
             [ Element.inFront idDebug
             , Element.Font.color (Data.Colors.uiCompat Data.Colors.gray7)
             ]
+
+        assets =
+            case TileConfig.biome tileConfig of
+                TileConfig.Road ->
+                    cache.assets
+
+                _ ->
+                    debugAssets
     in
     Element.el
         (baseAttrs ++ tileSocketsDebug (TileConfig.sockets tileConfig))
@@ -446,7 +426,7 @@ tileConfigDebug cache tileConfig =
                 , Svg.Attributes.width "64"
                 , Svg.Attributes.height "64"
                 ]
-                (assetById cache.roadAssets (tileConfigId tileConfig))
+                (assetById assets (tileConfigId tileConfig))
             )
         )
 
@@ -475,7 +455,7 @@ matrixWidth =
     (socketMatrixCellSize + matrixCellMargin) * (List.length allSockets + 1) - matrixCellMargin
 
 
-socketsMatrix : Element.Element msg
+socketsMatrix : Element.Element Msg
 socketsMatrix =
     let
         cellSizeWithMargin =
@@ -551,7 +531,7 @@ socketsMatrix =
         (Element.html svgMatrix)
 
 
-matrixCell : ( Int, Int ) -> Socket -> Svg.Svg msg
+matrixCell : ( Int, Int ) -> Socket -> Svg.Svg Msg
 matrixCell ( x, y ) socket =
     let
         socketMatrixCellSizeString =

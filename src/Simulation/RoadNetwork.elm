@@ -27,6 +27,7 @@ import BoundingBox2d exposing (BoundingBox2d)
 import Common exposing (GlobalCoordinates)
 import Data.Assets exposing (innerLaneOffset, outerLaneOffset)
 import Data.Lots exposing (drivewayOffset)
+import Data.TileSet exposing (roadConnectionDirectionsByTile, tileById)
 import Dict exposing (Dict)
 import Direction2d exposing (Direction2d)
 import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
@@ -48,18 +49,11 @@ import Tilemap.Core
         , anchorByCell
         , fixedTileByCell
         , getTilemapConfig
+        , tileToConfig
         , tilemapToList
         )
-import Tilemap.Tile
-    exposing
-        ( Tile
-        , isBasicRoad
-        , isCurve
-        , isDeadend
-        , isIntersection
-        , isLotEntry
-        , potentialConnections
-        )
+import Tilemap.Tile as Tile exposing (Tile)
+import Tilemap.TileConfig as TileConfig exposing (TileConfig)
 import Vector2d exposing (Vector2d)
 
 
@@ -290,17 +284,12 @@ buildRoadNetwork : Tilemap -> Collection TrafficLight -> ( RoadNetwork, Collecti
 buildRoadNetwork tilemap trafficLights =
     let
         tilePriority ( _, tile ) =
-            if isDeadend tile then
-                0
+            case tileToConfig tile of
+                Just tileConfig ->
+                    TileConfig.graphPriority tileConfig
 
-            else if isLotEntry tile then
-                1
-
-            else if isIntersection tile then
-                2
-
-            else
-                3
+                Nothing ->
+                    TileConfig.maxGraphPriority
 
         nodes =
             createConnections
@@ -380,20 +369,31 @@ createConnections { nodes, tilemap, remainingTiles } =
 
 toConnections : Tilemap -> Cell -> Tile -> List Connection
 toConnections tilemap cell tile =
-    if isBasicRoad tile then
-        []
+    case Tile.id tile of
+        Just tileId ->
+            let
+                tileConfig =
+                    tileById tileId
+            in
+            case roadConnectionDirectionsByTile tileConfig of
+                [] ->
+                    []
 
-    else if isDeadend tile then
-        potentialConnections tile
-            |> List.concatMap
-                (OrthogonalDirection.opposite
-                    >> OrthogonalDirection.toDirection2d
-                    >> deadendConnections cell
-                )
+                [ single ] ->
+                    single
+                        |> OrthogonalDirection.opposite
+                        |> OrthogonalDirection.toDirection2d
+                        |> deadendConnections cell
 
-    else
-        potentialConnections tile
-            |> List.concatMap (connectionsByTileEntryDirection tilemap cell tile)
+                multiple ->
+                    if shouldIgnoreConnections tileConfig then
+                        []
+
+                    else
+                        List.concatMap (connectionsByTileEntryDirection tilemap cell tile) multiple
+
+        Nothing ->
+            []
 
 
 deadendConnections : Cell -> Direction2d GlobalCoordinates -> List Connection
@@ -565,7 +565,27 @@ hasOverlappingConnections tileA tileB =
 
 hasConnectionsInMultipleDirections : Tile -> Bool
 hasConnectionsInMultipleDirections tile =
-    isCurve tile || isIntersection tile || isLotEntry tile
+    case Tile.id tile of
+        Just tileId ->
+            let
+                tileConfig =
+                    tileById tileId
+            in
+            not (shouldIgnoreConnections tileConfig) && List.length (roadConnectionDirectionsByTile tileConfig) > 1
+
+        Nothing ->
+            False
+
+
+{-| "basic road tiles" should not create nodes, because they are always connected
+to a tile that has overlapping connections.
+
+TODO: unstable implementation don't rely on complexity alone
+
+-}
+shouldIgnoreConnections : TileConfig -> Bool
+shouldIgnoreConnections tileConfig =
+    TileConfig.complexity tileConfig < 0.2
 
 
 

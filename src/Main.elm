@@ -4,7 +4,7 @@ import Audio
 import Browser
 import Browser.Dom exposing (getViewport)
 import Browser.Events as Events
-import Duration
+import Duration exposing (Duration)
 import Element exposing (Element)
 import Lib.FSM as FSM
 import Message exposing (Message(..))
@@ -14,7 +14,7 @@ import Model.RenderCache exposing (setPixelsToMetersRatio)
 import Model.Screen as Screen
 import Render
 import Render.Debug
-import Simulation.Update as Simulation exposing (worldAfterTilemapChange)
+import Simulation.Update as Simulation
 import Task
 import Tilemap.Update as Tilemap
 import Time
@@ -61,6 +61,11 @@ secondarySystemFrequencyMs =
     1000 / 30
 
 
+secondarySystemFrequencyDelta : Duration
+secondarySystemFrequencyDelta =
+    Duration.milliseconds secondarySystemFrequencyMs
+
+
 subscriptions : Liikennematto -> Sub Message
 subscriptions model =
     let
@@ -68,7 +73,7 @@ subscriptions model =
             [ Events.onResize (\_ _ -> ResizeTriggered)
             , Events.onVisibilityChange VisibilityChanged
             , Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameReceived)
-            , Time.every secondarySystemFrequencyMs (always (UpdateTilemap (Duration.milliseconds secondarySystemFrequencyMs)))
+            , Time.every secondarySystemFrequencyMs (always (UpdateTilemap secondarySystemFrequencyDelta))
             , Audio.onAudioInitComplete (\_ -> AudioInitComplete)
             , UI.UI.subscriptions model
             ]
@@ -81,7 +86,7 @@ subscriptions model =
             (defaultSubs
                 ++ [ Events.onAnimationFrameDelta (Duration.milliseconds >> UpdateTraffic)
                    , Time.every environmentUpdateFrequencyMs (always UpdateEnvironment)
-                   , Time.every secondarySystemFrequencyMs CheckQueues
+                   , Time.every secondarySystemFrequencyMs (\time -> CheckQueues time secondarySystemFrequencyDelta)
                    ]
             )
 
@@ -157,7 +162,7 @@ updateBase msg model =
         NewGame ->
             let
                 previousWorld =
-                    Just (worldAfterTilemapChange model.world)
+                    Just model.world
 
                 ( modelWithTransition, transitionActions ) =
                     Liikennematto.triggerLoading model

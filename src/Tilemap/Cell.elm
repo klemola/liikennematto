@@ -1,5 +1,5 @@
 module Tilemap.Cell exposing
-    ( Boundary(..)
+    ( AreaBounds
     , Cell
     , CellCoordinates
     , Constraints
@@ -9,31 +9,37 @@ module Tilemap.Cell exposing
     , centerPoint
     , connectedBounds
     , coordinates
+    , fromArea
     , fromArray1DIndex
     , fromArray1DIndexUnsafe
     , fromCoordinates
     , fromCoordinatesSet
     , fromCoordinatesUnsafe
-    , identical
+    , isAdjacent
+    , isIdentical
     , nextOrthogonalCell
+    , nextOrthogonalCellUnsafe
     , orthogonalDirection
+    , orthogonalNeighbors
     , placeIn
     , quadrantNeighbors
     , size
     , toString
     , translateBy
+    , translateByVector
     )
 
 import BoundingBox2d exposing (BoundingBox2d)
 import Common exposing (GlobalCoordinates)
 import Length exposing (Length)
+import Lib.Bitmask exposing (OrthogonalMatch)
 import Lib.DiagonalDirection exposing (DiagonalDirection(..))
-import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
+import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
 import Maybe.Extra as Maybe
 import Point2d exposing (Point2d)
-import Quantity exposing (negativeInfinity)
+import Quantity exposing (Unitless, negativeInfinity)
 import Set exposing (Set)
-import Vector2d
+import Vector2d exposing (Vector2d)
 
 
 type Cell
@@ -145,6 +151,30 @@ fromCoordinatesSet constraints set =
         set
 
 
+type alias AreaBounds =
+    { minX : Int, maxX : Int, minY : Int, maxY : Int }
+
+
+fromArea : Constraints a -> AreaBounds -> List Cell
+fromArea constraints bounds =
+    let
+        xValues =
+            List.range bounds.minX bounds.maxX
+
+        yValues =
+            List.range bounds.minY bounds.maxY
+    in
+    List.concatMap
+        (\yVal ->
+            List.filterMap
+                (\xVal ->
+                    fromCoordinates constraints ( xVal, yVal )
+                )
+                xValues
+        )
+        yValues
+
+
 fromArray1DIndex : Constraints a -> Int -> Maybe Cell
 fromArray1DIndex constraints idx =
     let
@@ -191,22 +221,36 @@ fromArray1DIndexUnsafe constraints idx =
 
 nextOrthogonalCell : Constraints a -> OrthogonalDirection -> Cell -> Maybe Cell
 nextOrthogonalCell constraints dir cell =
-    let
-        ( x, y ) =
-            coordinates cell
-    in
+    fromCoordinates
+        constraints
+        (nextCoordinates dir
+            (coordinates cell)
+        )
+
+
+nextOrthogonalCellUnsafe : Constraints a -> OrthogonalDirection -> Cell -> Cell
+nextOrthogonalCellUnsafe constraints dir cell =
+    fromCoordinatesUnsafe
+        constraints
+        (nextCoordinates dir
+            (coordinates cell)
+        )
+
+
+nextCoordinates : OrthogonalDirection -> CellCoordinates -> CellCoordinates
+nextCoordinates dir ( x, y ) =
     case dir of
         Up ->
-            fromCoordinates constraints ( x, y - 1 )
+            ( x, y - 1 )
 
         Right ->
-            fromCoordinates constraints ( x + 1, y )
+            ( x + 1, y )
 
         Down ->
-            fromCoordinates constraints ( x, y + 1 )
+            ( x, y + 1 )
 
         Left ->
-            fromCoordinates constraints ( x - 1, y )
+            ( x - 1, y )
 
 
 nextDiagonalCell : Constraints a -> DiagonalDirection -> Cell -> Maybe Cell
@@ -227,6 +271,13 @@ nextDiagonalCell constraints dir cell =
 
         BottomRight ->
             fromCoordinates constraints ( x + 1, y + 1 )
+
+
+orthogonalNeighbors : Constraints a -> Cell -> List ( OrthogonalDirection, Cell )
+orthogonalNeighbors constraints cell =
+    List.filterMap
+        (\dir -> nextOrthogonalCell constraints dir cell |> Maybe.map (Tuple.pair dir))
+        OrthogonalDirection.all
 
 
 {-| Corner plus natural neighbors (clockwise).
@@ -266,12 +317,27 @@ quadrantNeighbors constraints dir origin =
                 ]
 
 
+{-| Safe translation by CellCoordinates displacement, guaranteed to fit into bounds or return Nothing
+-}
 translateBy : Constraints a -> CellCoordinates -> Cell -> Maybe Cell
 translateBy constraints ( offsetX, offsetY ) (Cell cellProperties) =
     fromCoordinates constraints
         ( cellProperties.x + offsetX
         , cellProperties.y + offsetY
         )
+
+
+{-| Raw translation by Vector2d displacement, allows out of bounds coordinates to be returned
+-}
+translateByVector : Vector2d Unitless cellCoordinates -> Cell -> CellCoordinates
+translateByVector displacement (Cell cellProperties) =
+    let
+        { x, y } =
+            Vector2d.toUnitless displacement
+    in
+    ( cellProperties.x + floor x
+    , cellProperties.y + floor y
+    )
 
 
 {-| Given a global grid and (local) subgrid, place subgrid cell into global space relative to the global origin
@@ -296,58 +362,15 @@ isValidCoordinate coordinate cellsAmount =
     coordinate > 0 && coordinate <= cellsAmount
 
 
-type Boundary
-    = Corner DiagonalDirection
-    | Edge OrthogonalDirection
-
-
 {-| Defines the the connected bounds, if the cell is positioned at the edge of the bounding grid.
 -}
-connectedBounds : Constraints a -> Cell -> Maybe Boundary
+connectedBounds : Constraints a -> Cell -> OrthogonalMatch
 connectedBounds constraints (Cell cellProperties) =
-    let
-        leftBoundConnects =
-            cellProperties.x == minX
-
-        rightBoundConnects =
-            cellProperties.x == constraints.horizontalCellsAmount
-
-        topBoundConnects =
-            cellProperties.y == minY
-
-        bottomBoundConnects =
-            cellProperties.y == constraints.verticalCellsAmount
-    in
-    case [ leftBoundConnects, rightBoundConnects, topBoundConnects, bottomBoundConnects ] of
-        -- Check corners
-        [ True, False, True, False ] ->
-            Just (Corner TopLeft)
-
-        [ False, True, True, False ] ->
-            Just (Corner TopRight)
-
-        [ True, False, False, True ] ->
-            Just (Corner BottomLeft)
-
-        [ False, True, False, True ] ->
-            Just (Corner BottomRight)
-
-        -- Otherwise, check the edges
-        [ True, False, False, False ] ->
-            Just (Edge Left)
-
-        [ False, True, False, False ] ->
-            Just (Edge Right)
-
-        [ False, False, True, False ] ->
-            Just (Edge Up)
-
-        [ False, False, False, True ] ->
-            Just (Edge Down)
-
-        -- No contact (or illogical contact e.g. all sides)
-        _ ->
-            Nothing
+    { up = cellProperties.y == minY
+    , left = cellProperties.x == minX
+    , right = cellProperties.x == constraints.horizontalCellsAmount
+    , down = cellProperties.y == constraints.verticalCellsAmount
+    }
 
 
 coordinates : Cell -> CellCoordinates
@@ -390,14 +413,19 @@ boundingBox (Cell cellProperties) =
     cellProperties.boundingBox
 
 
-identical : Cell -> Cell -> Bool
-identical (Cell cellA) (Cell cellB) =
+isIdentical : Cell -> Cell -> Bool
+isIdentical (Cell cellA) (Cell cellB) =
     cellA.x == cellB.x && cellA.y == cellB.y
+
+
+isAdjacent : Cell -> Cell -> Bool
+isAdjacent (Cell cellA) (Cell cellB) =
+    abs (cellA.x - cellB.x) + abs (cellA.y - cellB.y) == 1
 
 
 orthogonalDirection : Cell -> Cell -> Maybe OrthogonalDirection
 orthogonalDirection from to =
-    if identical from to then
+    if isIdentical from to then
         Nothing
 
     else
@@ -421,7 +449,11 @@ orthogonalDirection from to =
                 else
                     Left
         in
-        Just dir
+        if x0 /= x1 && y0 /= y1 then
+            Nothing
+
+        else
+            Just dir
 
 
 toString : Cell -> String

@@ -2,6 +2,7 @@ module Model.Debug exposing
     ( DebugLayerKind(..)
     , DebugLayers
     , DebugState
+    , DevAction(..)
     , initialDebugState
     , isLayerEnabled
     , toggleDebugPanel
@@ -27,6 +28,11 @@ type DebugLayerKind
     | LotDebug
     | RoadNetworkDebug
     | WFCDebug
+
+
+type DevAction
+    = SpawnTestCar
+    | RunWFC
 
 
 initialDebugState : DebugState

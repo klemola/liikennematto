@@ -5,24 +5,32 @@ module Tilemap.Core exposing
     , TilemapUpdateResult
     , addAnchor
     , addTile
+    , addTileFromWFC
     , anchorByCell
-    , canBuildRoadAt
+    , cellBitmask
     , cellHasAnchor
-    , cellHasFixedTile
+    , cellSupportsRoadPlacement
+    , clearTile
     , createTilemap
+    , extractRoadTile
     , fixedTileByCell
     , foldTiles
     , forAllTiles
+    , getBuildHistory
     , getTilemapConfig
     , getTilemapDimensions
     , inTilemapBounds
     , removeAnchor
     , removeTile
+    , resetSuperposition
+    , resetTileBySurroundings
+    , roadTile
+    , setBuildHistory
     , setSuperpositionOptions
-    , setTile
     , tileByCell
+    , tileNeighborIn
+    , tileToConfig
     , tilemapBoundingBox
-    , tilemapFromCells
     , tilemapIntersects
     , tilemapSize
     , tilemapToList
@@ -32,12 +40,20 @@ module Tilemap.Core exposing
 import Array exposing (Array)
 import Array.Extra as Array
 import BoundingBox2d exposing (BoundingBox2d)
-import Common exposing (GlobalCoordinates)
-import Data.TileSet as TileSet
+import Common exposing (GlobalCoordinates, andCarry)
+import Data.TileSet
+    exposing
+        ( extractLotEntryTile
+        , nonRoadTiles
+        , tileById
+        , tileIdsByOrthogonalMatch
+        , tileIdsFromBitmask
+        )
 import Dict exposing (Dict)
 import Dict.Extra as Dict
 import Duration exposing (Duration)
 import Length exposing (Length)
+import Lib.Bitmask exposing (OrthogonalMatch, fourBitMask)
 import Lib.Collection exposing (Id)
 import Lib.DiagonalDirection as DiagonalDirection exposing (DiagonalDirection(..))
 import Lib.FSM as FSM
@@ -45,15 +61,14 @@ import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Maybe.Extra as Maybe
 import Point2d
 import Quantity
-import Tilemap.Cell as Cell exposing (Boundary(..), Cell, CellCoordinates)
+import Tilemap.Cell as Cell exposing (Cell, CellCoordinates, nextOrthogonalCell)
 import Tilemap.Tile as Tile
     exposing
         ( Tile
         , TileKind(..)
         , TileOperation
-        , chooseTileKind
         )
-import Tilemap.TileConfig exposing (TileId)
+import Tilemap.TileConfig as TileConfig exposing (TileConfig, TileId, directionBySocket)
 
 
 type Tilemap
@@ -64,6 +79,7 @@ type Tilemap
         , height : Length
         , boundingBox : BoundingBox2d Length.Meters GlobalCoordinates
         , config : TilemapConfig
+        , recentPlacements : List Cell
         }
 
 
@@ -73,8 +89,8 @@ type alias TilemapConfig =
     }
 
 
-createTilemap : TilemapConfig -> Tilemap
-createTilemap tilemapConfig =
+createTilemap : TilemapConfig -> (Int -> Tile) -> Tilemap
+createTilemap tilemapConfig initTileFn =
     let
         width =
             Cell.size |> Quantity.multiplyBy (toFloat tilemapConfig.horizontalCellsAmount)
@@ -86,76 +102,47 @@ createTilemap tilemapConfig =
             tilemapConfig.horizontalCellsAmount * tilemapConfig.verticalCellsAmount
     in
     Tilemap
-        { cells = Array.initialize arrSize (initTile tilemapConfig)
+        { cells = Array.initialize arrSize initTileFn
         , anchors = Dict.empty
         , width = width
         , height = height
         , boundingBox = Common.boundingBoxWithDimensions width height Point2d.origin
         , config = tilemapConfig
+        , recentPlacements = []
         }
 
 
-tilemapFromCells : TilemapConfig -> List Cell -> Tilemap
-tilemapFromCells tilemapConfig cells =
-    fromCellsHelper cells (createTilemap tilemapConfig)
+resetTileBySurroundings : Cell -> List TileConfig -> TileKind -> Tilemap -> Tilemap
+resetTileBySurroundings cell tileSet tileKind tilemap =
+    let
+        options =
+            case tileKind of
+                Fixed _ ->
+                    tileIdsFromBitmask (cellBitmask cell tilemap)
+
+                _ ->
+                    resetSuperposition cell tileSet tilemap
+    in
+    setSuperpositionOptions cell options tilemap
 
 
-fromCellsHelper : List Cell -> Tilemap -> Tilemap
-fromCellsHelper remainingCells tilemap =
-    case remainingCells of
-        [] ->
-            tilemap
-
-        cell :: others ->
-            let
-                tilemapUpdateResult =
-                    tilemap
-                        |> applyTilemapOperation Tile.BuildInstantly cell
-                        |> Tuple.first
-                        -- run a FSM update cycle to make sure that tiles are not transitioning
-                        |> updateTilemap (Duration.milliseconds 1000)
-            in
-            fromCellsHelper others tilemapUpdateResult.tilemap
+resetSuperposition : Cell -> List TileConfig -> Tilemap -> List TileId
+resetSuperposition cell tileSet ((Tilemap tilemapContents) as tilemap) =
+    Cell.connectedBounds tilemapContents.config cell
+        |> Lib.Bitmask.mergeMatches (cellOrthogonalNeighbors cell (\_ -> True) tilemap)
+        |> tileIdsByOrthogonalMatch tileSet
 
 
-initTile : TilemapConfig -> Int -> Tile
-initTile tilemapConfig index =
-    index
-        |> Cell.fromArray1DIndexUnsafe tilemapConfig
-        |> Cell.connectedBounds tilemapConfig
-        |> Maybe.map boundarySuperposition
-        |> Maybe.withDefault (Superposition TileSet.tileIds)
-        |> Tile.init
+cellBitmask : Cell -> Tilemap -> Int
+cellBitmask cell tilemap =
+    tilemap
+        |> cellOrthogonalNeighbors cell cellBitmaskPredicate
+        |> fourBitMask
 
 
-boundarySuperposition : Cell.Boundary -> TileKind
-boundarySuperposition boundary =
-    Superposition
-        (case boundary of
-            Corner TopLeft ->
-                TileSet.topLeftCornerTileIds
-
-            Corner TopRight ->
-                TileSet.topRightCornerTileIds
-
-            Corner BottomLeft ->
-                TileSet.bottomLeftCornerTileIds
-
-            Corner BottomRight ->
-                TileSet.bottomRightCornerTileIds
-
-            Edge Left ->
-                TileSet.leftEdgeTileIds
-
-            Edge Right ->
-                TileSet.rightEdgeTileIds
-
-            Edge Up ->
-                TileSet.topEdgeTileIds
-
-            Edge Down ->
-                TileSet.bottomEdgeTileIds
-        )
+cellBitmaskPredicate : TileConfig -> Bool
+cellBitmaskPredicate tileConfig =
+    TileConfig.biome tileConfig == TileConfig.Road
 
 
 fixedTileByCell : Tilemap -> Cell -> Maybe Tile
@@ -183,23 +170,29 @@ tileByCell tilemap cell =
     Array.get idx tilemapContents.cells
 
 
+tileToConfig : Tile -> Maybe TileConfig
+tileToConfig =
+    Tile.id >> Maybe.map tileById
+
+
 extractFixedTile : Tile -> Maybe Tile
 extractFixedTile tile =
     case tile.kind of
         Fixed _ ->
             Just tile
 
-        Superposition _ ->
+        _ ->
             Nothing
 
 
-anchorByCell : Tilemap -> Cell -> Maybe ( Id, OrthogonalDirection )
-anchorByCell tilemap cell =
-    let
-        (Tilemap tilemapContents) =
-            tilemap
-    in
-    Dict.get (Cell.coordinates cell) tilemapContents.anchors
+setBuildHistory : List Cell -> Tilemap -> Tilemap
+setBuildHistory history (Tilemap tilemapContents) =
+    Tilemap { tilemapContents | recentPlacements = history }
+
+
+getBuildHistory : Tilemap -> List Cell
+getBuildHistory (Tilemap tilemapContents) =
+    tilemapContents.recentPlacements
 
 
 cellHasAnchor : Tilemap -> Cell -> Bool
@@ -219,26 +212,42 @@ tilemapIntersects testBB tilemap =
         |> List.any (Common.boundingBoxOverlaps testBB)
 
 
-cellHasFixedTile : Cell -> Tilemap -> Bool
-cellHasFixedTile cell tilemap =
-    fixedTileByCell tilemap cell
-        |> Maybe.andThen extractFixedTile
-        |> Maybe.isJust
+cellSupportsRoadPlacement : Cell -> Tilemap -> Bool
+cellSupportsRoadPlacement cell tilemap =
+    List.all (cellHasLowComplexity cell tilemap) DiagonalDirection.all
 
 
-canBuildRoadAt : Cell -> Tilemap -> Bool
-canBuildRoadAt cell tilemap =
-    List.all (hasLowComplexity cell tilemap) DiagonalDirection.all
+extractRoadTile : Cell -> Tilemap -> Maybe Tile
+extractRoadTile cell tilemap =
+    tileByCell tilemap cell
+        |> Maybe.andThen roadTile
 
 
-hasLowComplexity : Cell -> Tilemap -> DiagonalDirection -> Bool
-hasLowComplexity cell tilemap diagonalDirection =
+roadTile : Tile -> Maybe Tile
+roadTile tile =
+    Tile.id tile
+        |> Maybe.map tileById
+        |> Maybe.andThen
+            (\tileConfig ->
+                if TileConfig.biome tileConfig == TileConfig.Road then
+                    Just tile
+
+                else
+                    Nothing
+            )
+
+
+cellHasLowComplexity : Cell -> Tilemap -> DiagonalDirection -> Bool
+cellHasLowComplexity cell tilemap diagonalDirection =
     let
         tilemapConfig =
             getTilemapConfig tilemap
     in
     Cell.quadrantNeighbors tilemapConfig diagonalDirection cell
-        |> List.filterMap (fixedTileByCell tilemap)
+        |> List.filterMap
+            (\quadrantNeighbor ->
+                extractRoadTile quadrantNeighbor tilemap |> Maybe.map (\_ -> quadrantNeighbor)
+            )
         |> (\tiles -> List.length tiles < 3)
 
 
@@ -249,41 +258,19 @@ type TileListFilter
 
 tilemapToList : (Cell -> Tile -> a) -> TileListFilter -> Tilemap -> List a
 tilemapToList mapperFn listFilter tilemap =
-    let
-        (Tilemap tilemapContents) =
-            tilemap
+    foldTiles
+        (\cell tile acc ->
+            if
+                (listFilter == StaticTiles)
+                    && (Tile.isDynamic tile || not (Tile.isFixed tile))
+            then
+                acc
 
-        -- Keep track of the array index, which Array.foldl does not
-        initialAcc =
-            { acc = []
-            , index = 0
-            }
-
-        mappedAcc =
-            -- This is an optimization - Array.indexedMap would require double iteration (cell mapping + Nothing values discarded)
-            Array.foldl
-                (\tile { acc, index } ->
-                    { acc =
-                        Cell.fromArray1DIndex tilemapContents.config index
-                            |> Maybe.map
-                                (\cell ->
-                                    if
-                                        (listFilter == StaticTiles)
-                                            && (Tile.isDynamic tile || not (Tile.isFixed tile))
-                                    then
-                                        acc
-
-                                    else
-                                        mapperFn cell tile :: acc
-                                )
-                            |> Maybe.withDefault acc
-                    , index = index + 1
-                    }
-                )
-                initialAcc
-                tilemapContents.cells
-    in
-    mappedAcc.acc
+            else
+                mapperFn cell tile :: acc
+        )
+        []
+        tilemap
 
 
 foldTiles : (Cell -> Tile -> b -> b) -> b -> Tilemap -> b
@@ -303,12 +290,10 @@ foldTiles foldFn b tilemap =
             Array.foldl
                 (\tile { acc, index } ->
                     { acc =
-                        Cell.fromArray1DIndex tilemapContents.config index
-                            |> Maybe.map
-                                (\cell ->
-                                    foldFn cell tile acc
-                                )
-                            |> Maybe.withDefault acc
+                        foldFn
+                            (Cell.fromArray1DIndexUnsafe tilemapContents.config index)
+                            tile
+                            acc
                     , index = index + 1
                     }
                 )
@@ -355,29 +340,51 @@ tilemapBoundingBox (Tilemap tilemapContents) =
     tilemapContents.boundingBox
 
 
-updateCell : Cell -> Tile -> Tilemap -> Tilemap
-updateCell cell tile tilemap =
+cellOrthogonalNeighbors : Cell -> (TileConfig -> Bool) -> Tilemap -> OrthogonalMatch
+cellOrthogonalNeighbors origin predicate tilemap =
+    { up = cellOrthogonalNeighborIn Up origin predicate tilemap
+    , left = cellOrthogonalNeighborIn Left origin predicate tilemap
+    , right = cellOrthogonalNeighborIn Right origin predicate tilemap
+    , down = cellOrthogonalNeighborIn Down origin predicate tilemap
+    }
+
+
+cellOrthogonalNeighborIn : OrthogonalDirection -> Cell -> (TileConfig -> Bool) -> Tilemap -> Bool
+cellOrthogonalNeighborIn dir cell tilePredicate tilemap =
+    tilemap
+        |> tileNeighborIn dir cell fixedTileByCell
+        |> Maybe.andThen (Tuple.second >> Tile.id)
+        |> Maybe.map (tileById >> tilePredicate)
+        |> Maybe.withDefault False
+
+
+tileNeighborIn : OrthogonalDirection -> Cell -> (Tilemap -> Cell -> Maybe Tile) -> Tilemap -> Maybe ( Cell, Tile )
+tileNeighborIn dir origin getTileFn tilemap =
     let
-        (Tilemap tilemapContents) =
-            tilemap
+        tilemapConfig =
+            getTilemapConfig tilemap
 
-        idx =
-            Cell.array1DIndex tilemapContents.config cell
+        maybeCell =
+            Cell.nextOrthogonalCell tilemapConfig dir origin
+
+        maybeTile =
+            maybeCell
+                |> andCarry (getTileFn tilemap)
+                |> Maybe.andThen
+                    (\( neighborCell, tile ) ->
+                        let
+                            state =
+                                FSM.toCurrentState tile.fsm
+                        in
+                        -- tiles pending removal should not be used when checking tile neighbors
+                        if state == Tile.Removing || state == Tile.Removed then
+                            Nothing
+
+                        else
+                            Just ( neighborCell, tile )
+                    )
     in
-    Tilemap { tilemapContents | cells = tilemapContents.cells |> Array.set idx tile }
-
-
-setSuperpositionOptions : Cell -> List TileId -> Tilemap -> Tilemap
-setSuperpositionOptions cell nextOptions tilemap =
-    case tileByCell tilemap cell of
-        Just tile ->
-            -- Either retains superposition with next set of tileIds or unfixes the tile, no need to match on the kind
-            updateCell cell
-                { tile | kind = Superposition nextOptions }
-                tilemap
-
-        Nothing ->
-            tilemap
+    maybeTile
 
 
 
@@ -401,6 +408,7 @@ type alias TilemapUpdateResult =
     { tilemap : Tilemap
     , actions : List Tile.Action
     , transitionedCells : List Cell
+    , emptiedCells : List Cell
     , dynamicCells : List Cell
     }
 
@@ -422,32 +430,25 @@ updateTilemap delta tilemap =
                 }
                 currentTilemap.cells
 
-        nextTilemap =
-            List.foldl
-                (\idx acc ->
-                    case Cell.fromArray1DIndex currentTilemap.config idx of
-                        Just cell ->
-                            updateNeighborCells cell acc
-
-                        Nothing ->
-                            acc
-                )
-                (Tilemap { currentTilemap | cells = cellsUpdate.nextTiles })
-                cellsUpdate.emptiedIndices
-
         transitionedCells =
             List.filterMap
                 (Cell.fromArray1DIndex currentTilemap.config)
                 cellsUpdate.transitionedIndices
+
+        emptiedCells =
+            List.filterMap
+                (Cell.fromArray1DIndex currentTilemap.config)
+                cellsUpdate.emptiedIndices
 
         dynamicCells =
             List.filterMap
                 (Cell.fromArray1DIndex currentTilemap.config)
                 cellsUpdate.dynamicIndices
     in
-    { tilemap = nextTilemap
+    { tilemap = Tilemap { currentTilemap | cells = cellsUpdate.nextTiles }
     , actions = cellsUpdate.actions
     , transitionedCells = transitionedCells
+    , emptiedCells = emptiedCells
     , dynamicCells = dynamicCells
     }
 
@@ -466,7 +467,7 @@ updateTile delta tile tilemapUpdate =
 
         nextTile =
             if isRemoved then
-                Tile.init (Superposition TileSet.tileIds)
+                Tile.init Unintialized
 
             else
                 { kind = tile.kind
@@ -502,99 +503,253 @@ updateTile delta tile tilemapUpdate =
     }
 
 
-addTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )
+addTile : TileId -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
 addTile =
-    applyTilemapOperation Tile.Add
+    applyTilemapOperation Tile.Add Nothing
 
 
-setTile : Cell -> Tile -> Tilemap -> Tilemap
-setTile cell tile tilemap =
-    updateCell cell tile tilemap
-
-
-changeTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )
-changeTile =
-    applyTilemapOperation Tile.Change
+addTileFromWFC : Maybe ( TileId, Int ) -> TileId -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
+addTileFromWFC parentTile =
+    applyTilemapOperation Tile.AddFromWFC parentTile
 
 
 removeTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )
-removeTile origin tilemap =
+removeTile origin ((Tilemap tilemapContents) as tilemap) =
     case
         fixedTileByCell tilemap origin
             |> Maybe.map Tile.attemptRemove
     of
         Just ( tile, actions ) ->
-            let
-                tilemapWithOriginChange =
-                    updateCell origin tile tilemap
-            in
-            ( updateNeighborCells origin tilemapWithOriginChange
-            , actions
-            )
+            case tileParentTile tile of
+                Just parentTile ->
+                    ( tilemap
+                        |> removeLargeTileSubtiles origin parentTile
+                        |> resetLargeTileAnchor origin parentTile
+                    , actions
+                    )
+
+                Nothing ->
+                    let
+                        withUpdatedCell =
+                            updateCell origin tile tilemap
+
+                        ( withMaybeConnectedLargeTileRemoved, removeLargeTileActions ) =
+                            Tile.id tile
+                                |> Maybe.andThen extractLotEntryTile
+                                |> Maybe.andThen
+                                    (\( _, directionToLot ) ->
+                                        nextOrthogonalCell tilemapContents.config directionToLot origin
+                                    )
+                                |> Maybe.map
+                                    (\lotDrivewayCell ->
+                                        -- Call removeTile in a recursive way, as this will branch out to the "parent tile" found
+                                        -- case or at least fail on the neighbor not being a lot entry cell
+                                        removeTile lotDrivewayCell withUpdatedCell
+                                    )
+                                |> Maybe.withDefault ( withUpdatedCell, [] )
+                    in
+                    ( withMaybeConnectedLargeTileRemoved
+                    , actions ++ removeLargeTileActions
+                    )
 
         Nothing ->
             ( tilemap, [] )
 
 
-setAnchorTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )
-setAnchorTile anchor tilemap =
-    case fixedTileByCell tilemap anchor of
-        Just tile ->
-            let
-                anchorTileKind =
-                    chooseTile tilemap anchor
-
-                ( anchorTile, actions ) =
-                    Tile.updateTileId anchorTileKind tile
-            in
-            ( updateCell anchor anchorTile tilemap, actions )
-
-        Nothing ->
-            ( tilemap, [] )
+clearTile : Cell -> Tilemap -> Tilemap
+clearTile cell tilemap =
+    updateCell cell (Tile.init Tile.Unintialized) tilemap
 
 
-applyTilemapOperation : TileOperation -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
-applyTilemapOperation operation origin tilemap =
+applyTilemapOperation : TileOperation -> Maybe ( TileId, Int ) -> TileId -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
+applyTilemapOperation operation parentTileId tileId origin tilemap =
     let
-        originTileKind =
-            chooseTile tilemap origin
-
-        ( originTile, initialActions ) =
-            Tile.fromTileId originTileKind operation
-
-        tilemapWithOriginChange =
-            updateCell origin originTile tilemap
+        ( originTile, tileActions ) =
+            Tile.fromTileId tileId parentTileId operation
     in
-    ( updateNeighborCells origin tilemapWithOriginChange
-    , initialActions
+    ( updateCell origin originTile tilemap
+    , tileActions
     )
 
 
-updateNeighborCells : Cell -> Tilemap -> Tilemap
-updateNeighborCells origin tilemap =
+updateCell : Cell -> Tile -> Tilemap -> Tilemap
+updateCell cell tile (Tilemap tilemapContents) =
     let
-        potentiallyChangedCells =
-            [ nextOrthogonalTile Up origin tilemap
-            , nextOrthogonalTile Left origin tilemap
-            , nextOrthogonalTile Right origin tilemap
-            , nextOrthogonalTile Down origin tilemap
-            ]
+        idx =
+            Cell.array1DIndex tilemapContents.config cell
     in
-    potentiallyChangedCells
-        |> Maybe.values
-        |> List.foldl
-            (\( changedCell, tile ) acc ->
-                let
-                    nextTileKind =
-                        chooseTile acc changedCell
+    Tilemap { tilemapContents | cells = tilemapContents.cells |> Array.set idx tile }
 
-                    -- FSM actions are ignored
-                    ( nextTile, _ ) =
-                        Tile.updateTileId nextTileKind tile
-                in
-                updateCell changedCell nextTile acc
-            )
+
+setSuperpositionOptions : Cell -> List TileId -> Tilemap -> Tilemap
+setSuperpositionOptions cell nextOptions tilemap =
+    let
+        updatedTile =
+            case tileByCell tilemap cell of
+                Just tile ->
+                    { tile | kind = Superposition nextOptions }
+
+                Nothing ->
+                    Tile.init (Superposition nextOptions)
+    in
+    -- Either retains superposition with next set of tileIds or unfixes/intializes the tile, no need to match on the tile kind
+    updateCell cell updatedTile tilemap
+
+
+
+--
+-- Large tiles, subgrids
+--
+
+
+tileParentTile : Tile -> Maybe ( TileId, Int )
+tileParentTile tile =
+    case tile.kind of
+        Fixed properties ->
+            properties.parentTile
+
+        _ ->
+            Nothing
+
+
+removeLargeTileSubtiles : Cell -> ( TileId, Int ) -> Tilemap -> Tilemap
+removeLargeTileSubtiles subtileCell ( largeTileId, subtileIndex ) tilemap =
+    case tileById largeTileId of
+        TileConfig.Large largeTile ->
+            case
+                largeTileTopLeftCornerCell
+                    subtileCell
+                    subtileIndex
+                    tilemap
+                    largeTile
+            of
+                Just topLeftCornerCell ->
+                    List.foldl
+                        (\subgridCell nexTilemap ->
+                            setSuperpositionOptions subgridCell
+                                (resetSuperposition subgridCell nonRoadTiles nexTilemap)
+                                nexTilemap
+                        )
+                        tilemap
+                        (largeTileCells tilemap topLeftCornerCell largeTile)
+
+                Nothing ->
+                    tilemap
+
+        TileConfig.Single _ ->
             tilemap
+
+
+largeTileCells : Tilemap -> Cell -> TileConfig.LargeTile -> List Cell
+largeTileCells tilemap topLeftCornerCell largeTile =
+    let
+        tilemapConfig =
+            getTilemapConfig tilemap
+
+        subgridDimensions =
+            { horizontalCellsAmount = largeTile.width
+            , verticalCellsAmount = largeTile.height
+            }
+    in
+    largeTile.tiles
+        |> Array.indexedMapToList
+            (\index _ ->
+                index
+                    -- Use of unsafe function: the top left corner has been validated already
+                    -- and the whole subgrid should be within tilemap bounds
+                    |> Cell.fromArray1DIndexUnsafe subgridDimensions
+                    |> Cell.placeIn tilemapConfig topLeftCornerCell
+            )
+        |> List.filterMap identity
+
+
+largeTileTopLeftCornerCell : Cell -> Int -> Tilemap -> TileConfig.LargeTile -> Maybe Cell
+largeTileTopLeftCornerCell subtileCell subtileIndex tilemap largeTile =
+    let
+        tilemapConfig =
+            getTilemapConfig tilemap
+
+        subgridDimensions =
+            { horizontalCellsAmount = largeTile.width
+            , verticalCellsAmount = largeTile.height
+            }
+
+        -- the subgrid tile cell in local coordinates
+        localSubgridCell =
+            Cell.fromArray1DIndex subgridDimensions subtileIndex
+    in
+    -- Find the cell of the top left cell (index 0) of the large tile subgrid,
+    -- but in the space of the tilemap (local to global coordinates)
+    localSubgridCell
+        |> Maybe.map Cell.coordinates
+        |> Maybe.andThen
+            (\( x, y ) ->
+                Cell.translateBy tilemapConfig ( -x + 1, -y + 1 ) subtileCell
+            )
+
+
+resetLargeTileAnchor : Cell -> ( TileId, Int ) -> Tilemap -> Tilemap
+resetLargeTileAnchor subtileCell ( largeTileId, subtileIndex ) tilemap =
+    case tileById largeTileId of
+        TileConfig.Large largeTile ->
+            largeTile
+                |> largeTileTopLeftCornerCell subtileCell subtileIndex tilemap
+                |> Maybe.andThen (\cell -> largeTileAnchor cell tilemap largeTile)
+                |> Maybe.andThen (Common.applyTuple2 (resetLotEntryByLargeTileAnchor tilemap))
+                |> Maybe.withDefault tilemap
+
+        TileConfig.Single _ ->
+            tilemap
+
+
+resetLotEntryByLargeTileAnchor : Tilemap -> Cell -> TileConfig.SingleTile -> Maybe Tilemap
+resetLotEntryByLargeTileAnchor tilemap anchorCell anchorTile =
+    directionBySocket anchorTile.sockets Data.TileSet.lotDrivewaySocket
+        |> Maybe.andThen
+            (\directionToLotEntry ->
+                tileNeighborIn directionToLotEntry anchorCell fixedTileByCell tilemap
+            )
+        |> Maybe.andThen (Common.applyTuple2 (resetLotEntry tilemap))
+
+
+resetLotEntry : Tilemap -> Cell -> Tile -> Maybe Tilemap
+resetLotEntry tilemap lotEntryCell lotEntryTile =
+    tileToConfig lotEntryTile
+        |> Maybe.andThen TileConfig.baseTileId
+        |> Maybe.map
+            (\baseTileId ->
+                let
+                    ( nextTilemap, _ ) =
+                        addTileFromWFC Nothing baseTileId lotEntryCell tilemap
+                in
+                nextTilemap
+            )
+
+
+largeTileAnchor : Cell -> Tilemap -> TileConfig.LargeTile -> Maybe ( Cell, TileConfig.SingleTile )
+largeTileAnchor topLeftCornerCell (Tilemap tilemapContents) largeTile =
+    let
+        subgridDimensions =
+            { horizontalCellsAmount = largeTile.width
+            , verticalCellsAmount = largeTile.height
+            }
+
+        anchorTile =
+            Array.get largeTile.anchorIndex largeTile.tiles
+
+        anchorCell =
+            Cell.fromArray1DIndex subgridDimensions largeTile.anchorIndex
+
+        anchorCellInGlobalCoordinates =
+            anchorCell |> Maybe.andThen (Cell.placeIn tilemapContents.config topLeftCornerCell)
+    in
+    Maybe.map2 Tuple.pair anchorCellInGlobalCoordinates anchorTile
+
+
+
+--
+-- Anchors
+--
 
 
 addAnchor : Cell -> Id -> OrthogonalDirection -> Tilemap -> Tilemap
@@ -605,118 +760,36 @@ addAnchor anchor lotId anchorDirection (Tilemap tilemapContents) =
                 (Cell.coordinates anchor)
                 ( lotId, anchorDirection )
                 tilemapContents.anchors
-
-        tilemapWithAnchor =
-            Tilemap { tilemapContents | anchors = nextAnchors }
     in
-    setAnchorTile anchor tilemapWithAnchor |> Tuple.first
+    Tilemap { tilemapContents | anchors = nextAnchors }
 
 
 removeAnchor : Id -> Tilemap -> Tilemap
-removeAnchor lotId tilemap =
+removeAnchor lotId ((Tilemap tilemapContents) as tilemap) =
     let
-        (Tilemap tilemapContents) =
-            tilemap
-
         anchor =
             Dict.find
                 (\_ ( anchorLotId, _ ) -> anchorLotId == lotId)
                 tilemapContents.anchors
     in
-    case anchor |> Maybe.andThen (anchorCell tilemap) of
-        Just cell ->
-            let
-                cellCoordinates =
-                    Cell.coordinates cell
+    anchor
+        |> Maybe.map Tuple.first
+        |> Maybe.andThen (Cell.fromCoordinates tilemapContents.config)
+        |> Maybe.map
+            (\cell ->
+                let
+                    cellCoordinates =
+                        Cell.coordinates cell
+                in
+                Tilemap { tilemapContents | anchors = Dict.remove cellCoordinates tilemapContents.anchors }
+            )
+        |> Maybe.withDefault tilemap
 
-                tilemapWithAnchorRemoved =
-                    Tilemap { tilemapContents | anchors = Dict.remove cellCoordinates tilemapContents.anchors }
-            in
-            case fixedTileByCell tilemap cell of
-                Just _ ->
-                    -- Temporarily ignore Tile actions. Revisit when the Lot FSM is designed.
-                    changeTile cell tilemapWithAnchorRemoved |> Tuple.first
 
-                Nothing ->
-                    tilemapWithAnchorRemoved
-
-        Nothing ->
+anchorByCell : Tilemap -> Cell -> Maybe ( Id, OrthogonalDirection )
+anchorByCell tilemap cell =
+    let
+        (Tilemap tilemapContents) =
             tilemap
-
-
-anchorCell : Tilemap -> ( CellCoordinates, ( Id, OrthogonalDirection ) ) -> Maybe Cell
-anchorCell tilemap ( cellCoordinates, _ ) =
-    let
-        tilemapConfig =
-            getTilemapConfig tilemap
     in
-    Cell.fromCoordinates tilemapConfig cellCoordinates
-
-
-nextOrthogonalTile : OrthogonalDirection -> Cell -> Tilemap -> Maybe ( Cell, Tile )
-nextOrthogonalTile dir cell tilemap =
-    let
-        tilemapConfig =
-            getTilemapConfig tilemap
-
-        maybeCell =
-            Cell.nextOrthogonalCell tilemapConfig dir cell
-
-        maybeTile =
-            maybeCell
-                |> Maybe.andThen (fixedTileByCell tilemap)
-                |> Maybe.andThen
-                    (\tile ->
-                        let
-                            state =
-                                FSM.toCurrentState tile.fsm
-                        in
-                        -- tiles pending removal should not be used when checking tile neighbors
-                        if state == Tile.Removing || state == Tile.Removed then
-                            Nothing
-
-                        else
-                            Just tile
-                    )
-    in
-    Maybe.map2 Tuple.pair
-        maybeCell
-        maybeTile
-
-
-chooseTile : Tilemap -> Cell -> TileId
-chooseTile tilemap origin =
-    let
-        orthogonalNeighbors =
-            { up = hasOrthogonalNeighborAt Up origin tilemap
-            , left = hasOrthogonalNeighborAt Left origin tilemap
-            , right = hasOrthogonalNeighborAt Right origin tilemap
-            , down = hasOrthogonalNeighborAt Down origin tilemap
-            }
-
-        lotModifier =
-            cellHasAnchor tilemap origin
-    in
-    chooseTileKind orthogonalNeighbors lotModifier
-
-
-hasOrthogonalNeighborAt : OrthogonalDirection -> Cell -> Tilemap -> Bool
-hasOrthogonalNeighborAt dir cell tilemap =
-    hasNeighborTileAt dir cell tilemap || hasLotAt dir cell tilemap
-
-
-hasNeighborTileAt : OrthogonalDirection -> Cell -> Tilemap -> Bool
-hasNeighborTileAt dir cell tilemap =
-    tilemap
-        |> nextOrthogonalTile dir cell
-        |> Maybe.isJust
-
-
-hasLotAt : OrthogonalDirection -> Cell -> Tilemap -> Bool
-hasLotAt anchorDir anchor tilemap =
-    case anchorByCell tilemap anchor of
-        Just ( _, dir ) ->
-            dir == anchorDir
-
-        Nothing ->
-            False
+    Dict.get (Cell.coordinates cell) tilemapContents.anchors

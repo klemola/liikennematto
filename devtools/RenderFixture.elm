@@ -1,6 +1,6 @@
 module RenderFixture exposing (main)
 
-import Data.Assets exposing (roadsLegacy)
+import Data.Assets exposing (roads)
 import Data.RuleSetups as RuleSetups
 import Element
 import Html exposing (Html)
@@ -17,7 +17,7 @@ main =
             RuleSetups.collisionSetupPathsIntersect.world
 
         cache =
-            RenderCache.new world roadsLegacy
+            RenderCache.new world roads
 
         renderWidth =
             floor cache.tilemapWidthPixels
@@ -31,6 +31,7 @@ main =
                 cache
                 (Model.Debug.initialDebugState
                     |> Model.Debug.toggleLayer Model.Debug.CarDebug
+                    |> Model.Debug.toggleLayer Model.Debug.RoadNetworkDebug
                 )
                 |> Element.html
     in
