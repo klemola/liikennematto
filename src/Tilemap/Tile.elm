@@ -137,7 +137,7 @@ isDynamic tile =
         currentState =
             FSM.toCurrentState tile.fsm
     in
-    currentState == Constructing || currentState == Generated || currentState == Removing
+    currentState == Constructing || currentState == Removing
 
 
 id : Tile -> Maybe TileId

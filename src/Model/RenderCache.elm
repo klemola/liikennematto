@@ -201,14 +201,6 @@ tileAnimation tile =
                     (animationDirectionFromTile tile)
                 )
 
-        Tile.Generated ->
-            Just
-                (Animation
-                    Tile.transitionTimerShort
-                    Animation.Appear
-                    (animationDirectionFromTile tile)
-                )
-
         Tile.Removing ->
             Just
                 (Animation
@@ -216,6 +208,11 @@ tileAnimation tile =
                     Animation.Disappear
                     Nothing
                 )
+
+        Tile.Generated ->
+            -- TODO: consider animating these
+            -- Remember to adjust Tile.isDynamic accordingly
+            Nothing
 
         _ ->
             Nothing
