@@ -285,7 +285,7 @@ removing =
                 []
                 (FSM.Timer transitionTimer)
             ]
-        , entryActions = [ PlayAudio Audio.DestroyRoad ]
+        , entryActions = []
         , exitActions = []
         }
 

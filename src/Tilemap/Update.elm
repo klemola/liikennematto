@@ -251,7 +251,7 @@ removeTile cell model =
             )
     in
     ( withTilemap withWFC drivenWfcInitialState model
-    , Cmd.batch (tileActionsToCmds actions)
+    , Cmd.batch (playSound Audio.DestroyRoad :: tileActionsToCmds actions)
     )
 
 
