@@ -1,4 +1,4 @@
-module Lib.Bitmask exposing (OrthogonalMatch, fiveBitMask, fourBitMask, mergeMatches)
+module Lib.Bitmask exposing (OrthogonalMatch, fourBitMask, mergeMatches)
 
 
 type alias OrthogonalMatch =
@@ -37,18 +37,6 @@ fourBitMask { up, left, right, down } =
         + (2 * boolToBinary left)
         + (4 * boolToBinary right)
         + (8 * boolToBinary down)
-
-
-{-| Calculates tile Id like the four-bit variant, with extra modifier to allow two variants per ID
--}
-fiveBitMask : OrthogonalMatch -> Bool -> Int
-fiveBitMask { up, left, right, down } modifier =
-    -- 1 * up
-    boolToBinary up
-        + (2 * boolToBinary left)
-        + (4 * boolToBinary right)
-        + (8 * boolToBinary down)
-        + (16 * boolToBinary modifier)
 
 
 boolToBinary : Bool -> Int
