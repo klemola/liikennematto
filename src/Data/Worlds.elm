@@ -12,13 +12,19 @@ module Data.Worlds exposing
     , worldWithThreeWayIntersection
     )
 
-import Data.Utility exposing (tilemapFromCoordinates, worldFromTilemap)
+import Data.Utility
+    exposing
+        ( tenByTenTilemap
+        , tilemapFromCoordinates
+        , worldFromTilemap
+        )
 import Model.World exposing (World)
 
 
 defaultWorld : World
 defaultWorld =
     tilemapFromCoordinates
+        tenByTenTilemap
         [ ( 2, 5 )
         , ( 3, 5 )
         , ( 4, 5 )
@@ -33,6 +39,7 @@ defaultWorld =
 simpleWorld : World
 simpleWorld =
     tilemapFromCoordinates
+        tenByTenTilemap
         [ ( 1, 1 )
         , ( 2, 1 )
         ]
@@ -43,6 +50,7 @@ simpleWorld =
 lotTestWorld : World
 lotTestWorld =
     tilemapFromCoordinates
+        tenByTenTilemap
         -- a full height vertical road
         [ ( 1, 1 )
         , ( 1, 2 )
@@ -85,6 +93,7 @@ lotTestWorld =
 lowComplexityWorld : World
 lowComplexityWorld =
     tilemapFromCoordinates
+        tenByTenTilemap
         [ ( 1, 1 )
         , ( 2, 1 )
         , ( 3, 1 )
@@ -96,6 +105,7 @@ lowComplexityWorld =
 highComplexityWorld : World
 highComplexityWorld =
     tilemapFromCoordinates
+        tenByTenTilemap
         [ ( 1, 1 )
         , ( 2, 1 )
         , ( 1, 2 )
@@ -107,6 +117,7 @@ highComplexityWorld =
 worldThatHasAVerticalRoadAtLeftSide : World
 worldThatHasAVerticalRoadAtLeftSide =
     tilemapFromCoordinates
+        tenByTenTilemap
         [ ( 1, 1 )
         , ( 1, 2 )
         , ( 1, 3 )
@@ -125,6 +136,7 @@ worldThatHasAVerticalRoadAtLeftSide =
 worldThatHasParallelRoads : World
 worldThatHasParallelRoads =
     tilemapFromCoordinates
+        tenByTenTilemap
         [ ( 1, 1 )
         , ( 1, 2 )
         , ( 1, 3 )
@@ -153,6 +165,7 @@ worldThatHasParallelRoads =
 worldWithFourWayIntersection : World
 worldWithFourWayIntersection =
     tilemapFromCoordinates
+        tenByTenTilemap
         [ ( 1, 2 )
         , ( 2, 1 )
         , ( 2, 2 )
@@ -166,6 +179,7 @@ worldWithFourWayIntersection =
 worldWithThreeWayIntersection : World
 worldWithThreeWayIntersection =
     tilemapFromCoordinates
+        tenByTenTilemap
         [ ( 1, 3 )
         , ( 2, 3 )
         , ( 3, 1 )
@@ -181,6 +195,7 @@ worldWithThreeWayIntersection =
 largeWorld : World
 largeWorld =
     tilemapFromCoordinates
+        tenByTenTilemap
         [ ( 1, 1 )
         , ( 1, 2 )
         , ( 1, 3 )
@@ -245,6 +260,7 @@ largeWorld =
 disconnectedWorld : World
 disconnectedWorld =
     tilemapFromCoordinates
+        tenByTenTilemap
         [ ( 1, 1 )
         , ( 1, 2 )
         , ( 1, 3 )

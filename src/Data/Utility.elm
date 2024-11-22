@@ -59,14 +59,14 @@ tenByTenTilemap =
     }
 
 
-tilemapFromCoordinates : List ( Int, Int ) -> List AnchorDef -> Tilemap
-tilemapFromCoordinates cellCoordinates anchorDefs =
+tilemapFromCoordinates : TilemapConfig -> List CellCoordinates -> List AnchorDef -> Tilemap
+tilemapFromCoordinates tilemapConfig cellCoordinates anchorDefs =
     let
         cells =
             List.filterMap (Cell.fromCoordinates tenByTenTilemap) cellCoordinates
 
         withCells =
-            tilemapFromCells tenByTenTilemap cells
+            tilemapFromCells tilemapConfig cells
     in
     addAnchors withCells anchorDefs
 
@@ -295,12 +295,6 @@ gridToAscii width height cells =
             List.foldl updateGrid defaultGrid cells
     in
     String.join "\n" finalGrid
-
-
-
---
---
---
 
 
 createCell : TilemapConfig -> Int -> Int -> Cell

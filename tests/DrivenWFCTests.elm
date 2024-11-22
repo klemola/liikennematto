@@ -6,8 +6,10 @@ import Data.Utility
         , placeRoadAndUpdateBuffer
         , tenByTenTilemap
         , testSeed
+        , tilemapFromCoordinates
         )
 import Expect
+import Maybe.Extra as Maybe
 import Test exposing (..)
 import Tilemap.Cell as Cell
 import Tilemap.Core exposing (Tilemap, createTilemap, tileByCell)
@@ -90,6 +92,31 @@ suite =
                     Expect.all
                         [ \_ -> Expect.equal firstHorizontalRoadCellOptions [ 9, 22, 21 ]
                         , \_ -> Expect.equal secondHorizontalRoadCellOptions [ 9, 22, 21 ]
+                        ]
+                        ()
+                )
+            , test "Should not reopen the road if there are no potential driveway neighbors"
+                (\_ ->
+                    let
+                        tilemap =
+                            tilemapFromCoordinates
+                                constraints
+                                [ ( 5, 5 ), ( 5, 6 ), ( 5, 7 ), ( 5, 8 ) ]
+                                []
+                                |> restartWFC testSeed
+                                |> WFC.toTilemap
+                    in
+                    Expect.all
+                        [ \_ ->
+                            Expect.true "tile remains fixed"
+                                (tileByCell tilemap (createCell constraints 5 6)
+                                    |> Maybe.unwrap False Tile.isFixed
+                                )
+                        , \_ ->
+                            Expect.true "tile remains fixed"
+                                (tileByCell tilemap (createCell constraints 5 7)
+                                    |> Maybe.unwrap False Tile.isFixed
+                                )
                         ]
                         ()
                 )

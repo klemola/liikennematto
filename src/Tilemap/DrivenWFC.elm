@@ -120,11 +120,11 @@ findVariations origin options tilemap =
                             |> Maybe.andThen
                                 (\( neighborCell, neighborTile ) ->
                                     case neighborTile.kind of
-                                        Fixed _ ->
-                                            Nothing
+                                        Superposition _ ->
+                                            Just neighborCell
 
                                         _ ->
-                                            Just neighborCell
+                                            Nothing
                                 )
 
                     else
