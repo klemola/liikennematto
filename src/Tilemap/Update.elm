@@ -4,26 +4,21 @@ import Audio exposing (playSound)
 import Data.TileSet
     exposing
         ( defaultTiles
-        , nonRoadTiles
         , tileById
         , tileIdByBitmask
-        , tilesByBaseTileId
         )
 import Duration exposing (Duration)
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
-import List.Nonempty
 import Maybe.Extra as Maybe
 import Message exposing (Message(..))
 import Model.Debug exposing (DevAction(..))
 import Model.Liikennematto
     exposing
-        ( DrivenWFC(..)
-        , Liikennematto
+        ( Liikennematto
         , drivenWfcInitialState
-        , withTilemap
         )
-import Model.RenderCache exposing (refreshTilemapCache)
-import Model.World as World exposing (World)
+import Model.RenderCache as RenderCache exposing (refreshTilemapCache)
+import Model.World as World
 import Quantity
 import Random
 import Tilemap.Buffer exposing (updateBufferCells)
@@ -35,17 +30,21 @@ import Tilemap.Core
         , cellSupportsRoadPlacement
         , extractRoadTile
         , fixedTileByCell
-        , foldTiles
         , getTilemapConfig
         , resetSuperposition
-        , resetTileBySurroundings
         , setSuperpositionOptions
         , tileByCell
         , tileNeighborIn
         , updateTilemap
         )
+import Tilemap.DrivenWFC
+    exposing
+        ( DrivenWFC(..)
+        , restartWFC
+        , runWFC
+        )
 import Tilemap.Tile as Tile exposing (Action(..), Tile, TileKind(..), isBuilt)
-import Tilemap.TileConfig as TileConfig exposing (TileConfig, TileId)
+import Tilemap.TileConfig as TileConfig exposing (TileId)
 import Tilemap.WFC as WFC
 import UI.Core exposing (InputKind(..))
 
@@ -203,7 +202,7 @@ addTile cell model =
                 withBuffer =
                     updateBufferCells cell withWfc
             in
-            ( withTilemap withBuffer drivenWfcInitialState model
+            ( applyDrivenWfc withBuffer drivenWfcInitialState model
             , Cmd.batch (tileActionsToCmds (clearCellActions ++ addTileActions))
             )
 
@@ -250,7 +249,7 @@ removeTile cell model =
             , tilemapChangeActions ++ wfcTileActions
             )
     in
-    ( withTilemap withWFC drivenWfcInitialState model
+    ( applyDrivenWfc withWFC drivenWfcInitialState model
     , Cmd.batch (playSound Audio.DestroyRoad :: tileActionsToCmds actions)
     )
 
@@ -301,14 +300,12 @@ processTileNeighbor maybeTile wfcModel =
             wfcModel
 
 
-
---
--- Procgen
---
-
-
 runWFCIfNecessary : Liikennematto -> Duration -> ( Liikennematto, Cmd Message )
 runWFCIfNecessary model delta =
+    let
+        { world } =
+            model
+    in
     case model.wfc of
         WFCSolved ->
             ( model, Cmd.none )
@@ -321,7 +318,7 @@ runWFCIfNecessary model delta =
                         |> Quantity.max Quantity.zero
             in
             if Quantity.lessThanOrEqualToZero nextTimer then
-                runWFC model (restartWFC model.world) False
+                runWFCWithModel model (restartWFC world.seed world.tilemap) False
 
             else
                 ( { model | wfc = WFCPending nextTimer }, Cmd.none )
@@ -329,10 +326,10 @@ runWFCIfNecessary model delta =
         WFCActive wfcModel ->
             case WFC.currentState wfcModel of
                 WFC.Failed _ ->
-                    runWFC model (restartWFC model.world) False
+                    runWFCWithModel model (restartWFC world.seed world.tilemap) False
 
                 WFC.Done ->
-                    runWFC model wfcModel True
+                    runWFCWithModel model wfcModel True
 
                 -- Solving, Recovering
                 _ ->
@@ -340,141 +337,45 @@ runWFCIfNecessary model delta =
                         nextWfc =
                             WFC.stepN WFC.StopAtSolved 1000 wfcModel
                     in
-                    runWFC model nextWfc False
+                    runWFCWithModel model nextWfc False
 
 
-runWFC : Liikennematto -> WFC.Model -> Bool -> ( Liikennematto, Cmd Message )
-runWFC model wfc isSolved =
+runWFCWithModel : Liikennematto -> WFC.Model -> Bool -> ( Liikennematto, Cmd Message )
+runWFCWithModel model wfcModel isSolved =
     let
-        ( updatedWfcModel, wfcTileActions ) =
-            if isSolved then
-                WFC.flushPendingActions wfc
-
-            else
-                ( wfc, [] )
-
-        ( nextTilemap, nextDrivenWfc ) =
-            if isSolved then
-                ( WFC.toTilemap updatedWfcModel, WFCSolved )
-
-            else
-                ( model.world.tilemap, WFCActive updatedWfcModel )
+        ( nextTilemap, nextDrivenWfc, tileActions ) =
+            runWFC model.world.tilemap wfcModel isSolved
     in
-    ( withTilemap
-        nextTilemap
-        nextDrivenWfc
-        model
-    , Cmd.batch (tileActionsToCmds wfcTileActions)
+    ( applyDrivenWfc nextTilemap nextDrivenWfc model
+    , Cmd.batch (tileActionsToCmds tileActions)
     )
-
-
-restartWFC : World -> WFC.Model
-restartWFC world =
-    WFC.fromTilemap
-        (reopenRoads world.tilemap)
-        world.seed
-
-
-reopenRoads : Tilemap -> Tilemap
-reopenRoads tilemap =
-    foldTiles
-        (\cell tile nextTilemap ->
-            case Tile.id tile of
-                Just baseTileId ->
-                    reopenRoadsStep baseTileId cell nextTilemap
-
-                Nothing ->
-                    nextTilemap
-        )
-        tilemap
-        tilemap
-
-
-reopenRoadsStep : TileId -> Cell -> Tilemap -> Tilemap
-reopenRoadsStep baseTileId origin tilemap =
-    case tilesByBaseTileId baseTileId of
-        [] ->
-            tilemap
-
-        options ->
-            let
-                ( tileVariations, drivewayNeighbors ) =
-                    findVariations origin options tilemap
-            in
-            case tileVariations of
-                [] ->
-                    -- No valid variations, keep the tile fixed
-                    tilemap
-
-                variations ->
-                    tilemap
-                        |> setSuperpositionOptions origin (baseTileId :: variations)
-                        |> resetDrivewayNeighbors drivewayNeighbors
-
-
-findVariations : Cell -> List TileConfig -> Tilemap -> ( List TileConfig.TileId, List Cell )
-findVariations origin options tilemap =
-    List.foldl
-        (\option (( filteredOptionsAcc, drivewayNeighborsAcc ) as acc) ->
-            let
-                tileConfigId =
-                    TileConfig.tileConfigId option
-
-                sockets =
-                    TileConfig.socketsList option
-
-                toDrivewayNeighbor ( dir, socket ) =
-                    if socket == Data.TileSet.lotEntrySocket then
-                        tilemap
-                            |> tileNeighborIn dir origin tileByCell
-                            |> Maybe.andThen
-                                (\( neighborCell, neighborTile ) ->
-                                    case neighborTile.kind of
-                                        Fixed _ ->
-                                            Nothing
-
-                                        _ ->
-                                            Just neighborCell
-                                )
-
-                    else
-                        Nothing
-
-                drivewayNeighbors =
-                    sockets
-                        |> List.Nonempty.toList
-                        |> List.filterMap toDrivewayNeighbor
-            in
-            if List.length drivewayNeighbors > 0 then
-                ( tileConfigId :: filteredOptionsAcc
-                , drivewayNeighborsAcc ++ drivewayNeighbors
-                )
-
-            else
-                acc
-        )
-        ( [], [] )
-        options
-
-
-resetDrivewayNeighbors : List Cell -> Tilemap -> Tilemap
-resetDrivewayNeighbors drivewayNeighbors tilemap =
-    List.foldl
-        (\neighbor nextTilemap ->
-            resetTileBySurroundings neighbor
-                nonRoadTiles
-                -- TODO: this fake tile definition is wrong, maybe make the fn use different param
-                (Superposition [])
-                nextTilemap
-        )
-        tilemap
-        drivewayNeighbors
 
 
 
 --
 -- Helpers
 --
+
+
+applyDrivenWfc : Tilemap -> DrivenWFC -> Liikennematto -> Liikennematto
+applyDrivenWfc tilemap drivenWFC model =
+    let
+        nextWorld =
+            World.setTilemap tilemap model.world
+
+        renderCacheWFC =
+            case drivenWFC of
+                WFCActive wfc ->
+                    Just wfc
+
+                _ ->
+                    Nothing
+    in
+    { model
+        | world = nextWorld
+        , wfc = drivenWFC
+        , renderCache = RenderCache.setTilemapCache nextWorld.tilemap renderCacheWFC model.renderCache
+    }
 
 
 tileActionsToCmds : List Action -> List (Cmd Message)
