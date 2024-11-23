@@ -9,6 +9,7 @@ module Model.RenderCache exposing
     , setPixelsToMetersRatio
     , setTileListFilter
     , setTilemapCache
+    , setTilemapDebugCache
     )
 
 import Common exposing (andCarry)
@@ -130,20 +131,27 @@ setTileListFilter tileListFilter cache =
     { cache | tileListFilter = tileListFilter }
 
 
-setTilemapCache : Tilemap -> Maybe WFC.Model -> RenderCache msg -> RenderCache msg
-setTilemapCache tilemap wfcModel cache =
+setTilemapCache : Tilemap -> Maybe Tilemap -> RenderCache msg -> RenderCache msg
+setTilemapCache tilemap unsolvedWFCTilemap cache =
     { cache
         | tilemap = toTilemapCache cache.tileListFilter tilemap
 
         -- TODO: the debug state should only be set if the debug layer is open
         -- it is costly
         , tilemapDebug =
-            case wfcModel of
-                Just wfc ->
-                    toTilemapCache NoFilter (WFC.toTilemap wfc)
+            case unsolvedWFCTilemap of
+                Just wfcTilemap ->
+                    toTilemapCache NoFilter wfcTilemap
 
                 Nothing ->
                     cache.tilemapDebug
+    }
+
+
+setTilemapDebugCache : WFC.Model -> RenderCache msg -> RenderCache msg
+setTilemapDebugCache wfcModel cache =
+    { cache
+        | tilemapDebug = toTilemapCache NoFilter (WFC.toTilemap wfcModel)
     }
 
 

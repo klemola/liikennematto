@@ -1,4 +1,4 @@
-module Tilemap.DrivenWFC exposing (DrivenWFC(..), restartWFC, runWFC)
+module Tilemap.DrivenWFC exposing (DrivenWFC(..), restartWFC, runWFC, toWfcModel)
 
 import Data.TileSet
     exposing
@@ -29,27 +29,45 @@ type DrivenWFC
     | WFCSolved
 
 
-runWFC : Tilemap -> WFC.Model -> Bool -> ( Tilemap, DrivenWFC, List Tile.Action )
-runWFC tilemap wfc isSolved =
+wfcStepsPerCycle : Int
+wfcStepsPerCycle =
+    1000
+
+
+runWFC : Random.Seed -> Tilemap -> WFC.Model -> ( Tilemap, DrivenWFC, List Tile.Action )
+runWFC seed tilemap wfc =
     let
-        ( updatedWfcModel, wfcTileActions ) =
-            if isSolved then
-                WFC.flushPendingActions wfc
+        ( baseWFC, isSolved ) =
+            case WFC.currentState wfc of
+                WFC.Failed _ ->
+                    ( restartWFC seed tilemap, False )
 
-            else
-                ( wfc, [] )
+                WFC.Done ->
+                    ( wfc, True )
 
-        ( nextTilemap, nextDrivenWfc ) =
-            if isSolved then
-                ( WFC.toTilemap updatedWfcModel, WFCSolved )
-
-            else
-                ( tilemap, WFCActive updatedWfcModel )
+                -- Solving, Recovering
+                _ ->
+                    ( wfc, False )
     in
-    ( nextTilemap
-    , nextDrivenWfc
-    , wfcTileActions
-    )
+    if isSolved then
+        let
+            ( solvedWfc, tileActions ) =
+                WFC.flushPendingActions baseWFC
+        in
+        ( WFC.toTilemap solvedWfc
+        , WFCSolved
+        , tileActions
+        )
+
+    else
+        let
+            nextWfc =
+                WFC.stepN
+                    WFC.StopAtSolved
+                    wfcStepsPerCycle
+                    baseWFC
+        in
+        ( tilemap, WFCActive nextWfc, [] )
 
 
 restartWFC : Random.Seed -> Tilemap -> WFC.Model
@@ -57,6 +75,16 @@ restartWFC seed tilemap =
     WFC.fromTilemap
         (reopenRoads tilemap)
         seed
+
+
+toWfcModel : DrivenWFC -> Maybe WFC.Model
+toWfcModel drivenWfc =
+    case drivenWfc of
+        WFCActive wfc ->
+            Just wfc
+
+        _ ->
+            Nothing
 
 
 

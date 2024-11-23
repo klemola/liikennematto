@@ -17,7 +17,7 @@ import Model.Liikennematto
         ( Liikennematto
         , drivenWfcInitialState
         )
-import Model.RenderCache as RenderCache exposing (refreshTilemapCache)
+import Model.RenderCache exposing (refreshTilemapCache, setTilemapCache, setTilemapDebugCache)
 import Model.World as World
 import Quantity
 import Random
@@ -43,7 +43,13 @@ import Tilemap.DrivenWFC
         , restartWFC
         , runWFC
         )
-import Tilemap.Tile as Tile exposing (Action(..), Tile, TileKind(..), isBuilt)
+import Tilemap.Tile as Tile
+    exposing
+        ( Action(..)
+        , Tile
+        , TileKind(..)
+        , isBuilt
+        )
 import Tilemap.TileConfig as TileConfig exposing (TileId)
 import Tilemap.WFC as WFC
 import UI.Core exposing (InputKind(..))
@@ -202,7 +208,7 @@ addTile cell model =
                 withBuffer =
                     updateBufferCells cell withWfc
             in
-            ( applyDrivenWfc withBuffer drivenWfcInitialState model
+            ( resetDrivenWFC withBuffer model
             , Cmd.batch (tileActionsToCmds (clearCellActions ++ addTileActions))
             )
 
@@ -249,7 +255,7 @@ removeTile cell model =
             , tilemapChangeActions ++ wfcTileActions
             )
     in
-    ( applyDrivenWfc withWFC drivenWfcInitialState model
+    ( resetDrivenWFC withWFC model
     , Cmd.batch (playSound Audio.DestroyRoad :: tileActionsToCmds actions)
     )
 
@@ -318,37 +324,45 @@ runWFCIfNecessary model delta =
                         |> Quantity.max Quantity.zero
             in
             if Quantity.lessThanOrEqualToZero nextTimer then
-                runWFCWithModel model (restartWFC world.seed world.tilemap) False
+                runWFCWithModel (restartWFC world.seed world.tilemap) model
 
             else
                 ( { model | wfc = WFCPending nextTimer }, Cmd.none )
 
         WFCActive wfcModel ->
-            case WFC.currentState wfcModel of
-                WFC.Failed _ ->
-                    runWFCWithModel model (restartWFC world.seed world.tilemap) False
-
-                WFC.Done ->
-                    runWFCWithModel model wfcModel True
-
-                -- Solving, Recovering
-                _ ->
-                    let
-                        nextWfc =
-                            WFC.stepN WFC.StopAtSolved 1000 wfcModel
-                    in
-                    runWFCWithModel model nextWfc False
+            runWFCWithModel wfcModel model
 
 
-runWFCWithModel : Liikennematto -> WFC.Model -> Bool -> ( Liikennematto, Cmd Message )
-runWFCWithModel model wfcModel isSolved =
+runWFCWithModel : WFC.Model -> Liikennematto -> ( Liikennematto, Cmd Message )
+runWFCWithModel wfcModel model =
     let
+        { world } =
+            model
+
         ( nextTilemap, nextDrivenWfc, tileActions ) =
-            runWFC model.world.tilemap wfcModel isSolved
+            runWFC world.seed world.tilemap wfcModel
     in
-    ( applyDrivenWfc nextTilemap nextDrivenWfc model
-    , Cmd.batch (tileActionsToCmds tileActions)
-    )
+    case nextDrivenWfc of
+        WFCActive wfc ->
+            ( { model
+                | wfc = nextDrivenWfc
+                , renderCache = setTilemapDebugCache wfc model.renderCache
+              }
+            , Cmd.none
+            )
+
+        WFCSolved ->
+            ( { model
+                | world = World.setTilemap nextTilemap world
+                , wfc = nextDrivenWfc
+                , renderCache = setTilemapCache nextTilemap Nothing model.renderCache
+              }
+            , Cmd.batch (tileActionsToCmds tileActions)
+            )
+
+        WFCPending _ ->
+            -- This branch is handled at the call site
+            ( model, Cmd.none )
 
 
 
@@ -357,24 +371,12 @@ runWFCWithModel model wfcModel isSolved =
 --
 
 
-applyDrivenWfc : Tilemap -> DrivenWFC -> Liikennematto -> Liikennematto
-applyDrivenWfc tilemap drivenWFC model =
-    let
-        nextWorld =
-            World.setTilemap tilemap model.world
-
-        renderCacheWFC =
-            case drivenWFC of
-                WFCActive wfc ->
-                    Just wfc
-
-                _ ->
-                    Nothing
-    in
+resetDrivenWFC : Tilemap -> Liikennematto -> Liikennematto
+resetDrivenWFC tilemap model =
     { model
-        | world = nextWorld
-        , wfc = drivenWFC
-        , renderCache = RenderCache.setTilemapCache nextWorld.tilemap renderCacheWFC model.renderCache
+        | world = World.setTilemap tilemap model.world
+        , wfc = drivenWfcInitialState
+        , renderCache = setTilemapCache tilemap (Just tilemap) model.renderCache
     }
 
 
