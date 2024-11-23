@@ -6,7 +6,6 @@ module Model.Liikennematto exposing
     , InitSteps
     , Liikennematto
     , currentState
-    , drivenWfcInitialState
     , fromNewGame
     , fromPreviousGame
     , initial
@@ -24,7 +23,11 @@ import Model.Screen as Screen exposing (Screen)
 import Model.World as World exposing (World)
 import Simulation.Car exposing (CarState(..))
 import Tilemap.Core exposing (TileListFilter(..))
-import Tilemap.DrivenWFC exposing (DrivenWFC(..))
+import Tilemap.DrivenWFC
+    exposing
+        ( DrivenWFC(..)
+        , drivenWfcInitialState
+        )
 import Time
 import UI.Editor
 import UI.ZoomControl
@@ -214,16 +217,6 @@ horizontalCellsAmount =
 verticalCellsAmount : Int
 verticalCellsAmount =
     12
-
-
-minWfcUpdateFrequency : Duration
-minWfcUpdateFrequency =
-    Duration.milliseconds 500
-
-
-drivenWfcInitialState : DrivenWFC
-drivenWfcInitialState =
-    WFCPending minWfcUpdateFrequency
 
 
 tilemapConfig =

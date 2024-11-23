@@ -1,4 +1,9 @@
-module Tilemap.DrivenWFC exposing (DrivenWFC(..), restartWFC, runWFC, toWfcModel)
+module Tilemap.DrivenWFC exposing
+    ( DrivenWFC(..)
+    , drivenWfcInitialState
+    , restartWFC
+    , runWFC
+    )
 
 import Data.TileSet
     exposing
@@ -29,9 +34,19 @@ type DrivenWFC
     | WFCSolved
 
 
+minWfcUpdateFrequency : Duration
+minWfcUpdateFrequency =
+    Duration.milliseconds 250
+
+
+drivenWfcInitialState : DrivenWFC
+drivenWfcInitialState =
+    WFCPending minWfcUpdateFrequency
+
+
 wfcStepsPerCycle : Int
 wfcStepsPerCycle =
-    1000
+    10000
 
 
 runWFC : Random.Seed -> Tilemap -> WFC.Model -> ( Tilemap, DrivenWFC, List Tile.Action )
@@ -75,16 +90,6 @@ restartWFC seed tilemap =
     WFC.fromTilemap
         (reopenRoads tilemap)
         seed
-
-
-toWfcModel : DrivenWFC -> Maybe WFC.Model
-toWfcModel drivenWfc =
-    case drivenWfc of
-        WFCActive wfc ->
-            Just wfc
-
-        _ ->
-            Nothing
 
 
 

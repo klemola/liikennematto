@@ -12,11 +12,7 @@ import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirect
 import Maybe.Extra as Maybe
 import Message exposing (Message(..))
 import Model.Debug exposing (DevAction(..))
-import Model.Liikennematto
-    exposing
-        ( Liikennematto
-        , drivenWfcInitialState
-        )
+import Model.Liikennematto exposing (Liikennematto)
 import Model.RenderCache exposing (refreshTilemapCache, setTilemapCache, setTilemapDebugCache)
 import Model.World as World
 import Quantity
@@ -40,6 +36,7 @@ import Tilemap.Core
 import Tilemap.DrivenWFC
     exposing
         ( DrivenWFC(..)
+        , drivenWfcInitialState
         , restartWFC
         , runWFC
         )
