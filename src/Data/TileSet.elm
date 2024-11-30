@@ -392,7 +392,9 @@ grass : TileConfig
 grass =
     TileConfig.Single
         { id = defaultTileId
-        , complexity = 0.1
+
+        -- Make the "default/filler" not very likely to appear, as it is a last resort
+        , complexity = 0.8
         , graphPriority = maxGraphPriority
         , biome = TileConfig.Nature
         , sockets =
@@ -583,7 +585,7 @@ lotEntryTUp : TileConfig
 lotEntryTUp =
     TileConfig.Single
         { id = 20
-        , complexity = 0.4
+        , complexity = 0.2
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -600,7 +602,7 @@ lotEntryTRight : TileConfig
 lotEntryTRight =
     TileConfig.Single
         { id = 21
-        , complexity = 0.4
+        , complexity = 0.2
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -617,7 +619,7 @@ lotEntryTLeft : TileConfig
 lotEntryTLeft =
     TileConfig.Single
         { id = 22
-        , complexity = 0.4
+        , complexity = 0.2
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -895,7 +897,7 @@ threeByTwoLotA : TileConfig
 threeByTwoLotA =
     TileConfig.Large
         { id = 102
-        , complexity = 0.5
+        , complexity = 0.4
         , biome = TileConfig.Lot
         , tiles =
             Array.fromList
@@ -918,7 +920,7 @@ threeByTwoLotB : TileConfig
 threeByTwoLotB =
     TileConfig.Large
         { id = 103
-        , complexity = 0.5
+        , complexity = 0.4
         , biome = TileConfig.Lot
         , tiles =
             Array.fromList
@@ -941,7 +943,7 @@ twoByThreeLot : TileConfig
 twoByThreeLot =
     TileConfig.Large
         { id = 104
-        , complexity = 0.5
+        , complexity = 0.4
         , biome = TileConfig.Lot
         , tiles =
             Array.fromList
@@ -1036,7 +1038,7 @@ singleNature : TileConfig
 singleNature =
     TileConfig.Single
         { id = 200
-        , complexity = 0.4
+        , complexity = 0.2
         , graphPriority = maxGraphPriority
         , biome = TileConfig.Nature
         , sockets =
@@ -1053,7 +1055,7 @@ twoByTwoNature : TileConfig
 twoByTwoNature =
     TileConfig.Large
         { id = 201
-        , complexity = 0.5
+        , complexity = 0.2
         , biome = TileConfig.Nature
         , tiles =
             Array.fromList
