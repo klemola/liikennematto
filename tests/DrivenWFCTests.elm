@@ -1,4 +1,4 @@
-module DrivenWFCTests exposing (..)
+module DrivenWFCTests exposing (suite)
 
 import Data.Utility
     exposing
@@ -48,7 +48,7 @@ suite =
                     let
                         tilemap =
                             placeRoadAndUpdateBuffer
-                                [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ) ]
+                                [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ), ( 10, 5 ) ]
                                 emptyTilemap
                                 |> restartWFC testSeed
                                 |> WFC.toTilemap
@@ -62,10 +62,16 @@ suite =
                             tileByCell tilemap (createCell constraints 7 5)
                                 |> Maybe.map tileSuperposition
                                 |> Maybe.withDefault []
+
+                        lastHorizontalCellOptions =
+                            tileByCell tilemap (createCell constraints 9 5)
+                                |> Maybe.map tileSuperposition
+                                |> Maybe.withDefault []
                     in
                     Expect.all
                         [ \_ -> Expect.equal firstHorizontalRoadCellOptions [ 6, 20 ]
                         , \_ -> Expect.equal secondHorizontalRoadCellOptions [ 6, 20 ]
+                        , \_ -> Expect.equal lastHorizontalCellOptions []
                         ]
                         ()
                 )
@@ -74,7 +80,7 @@ suite =
                     let
                         tilemap =
                             placeRoadAndUpdateBuffer
-                                [ ( 5, 5 ), ( 5, 6 ), ( 5, 7 ), ( 5, 8 ) ]
+                                [ ( 5, 5 ), ( 5, 6 ), ( 5, 7 ), ( 5, 8 ), ( 5, 9 ), ( 5, 10 ) ]
                                 emptyTilemap
                                 |> restartWFC testSeed
                                 |> WFC.toTilemap
@@ -84,14 +90,40 @@ suite =
                                 |> Maybe.map tileSuperposition
                                 |> Maybe.withDefault []
 
-                        secondHorizontalRoadCellOptions =
-                            tileByCell tilemap (createCell constraints 5 7)
+                        lastHorizontalRoadCellOptions =
+                            tileByCell tilemap (createCell constraints 5 9)
                                 |> Maybe.map tileSuperposition
                                 |> Maybe.withDefault []
                     in
                     Expect.all
-                        [ \_ -> Expect.equal firstHorizontalRoadCellOptions [ 9, 22, 21 ]
-                        , \_ -> Expect.equal secondHorizontalRoadCellOptions [ 9, 22, 21 ]
+                        [ \_ -> Expect.equal firstHorizontalRoadCellOptions []
+                        , \_ -> Expect.equal lastHorizontalRoadCellOptions [ 9, 22, 21 ]
+                        ]
+                        ()
+                )
+            , test "Should set fixed roads to superposition - vertical roads, one side only"
+                (\_ ->
+                    let
+                        tilemap =
+                            placeRoadAndUpdateBuffer
+                                [ ( 2, 5 ), ( 2, 6 ), ( 2, 7 ), ( 2, 8 ), ( 2, 9 ), ( 2, 10 ) ]
+                                emptyTilemap
+                                |> restartWFC testSeed
+                                |> WFC.toTilemap
+
+                        firstHorizontalRoadCellOptions =
+                            tileByCell tilemap (createCell constraints 2 6)
+                                |> Maybe.map tileSuperposition
+                                |> Maybe.withDefault []
+
+                        lastHorizontalRoadCellOptions =
+                            tileByCell tilemap (createCell constraints 2 9)
+                                |> Maybe.map tileSuperposition
+                                |> Maybe.withDefault []
+                    in
+                    Expect.all
+                        [ \_ -> Expect.equal firstHorizontalRoadCellOptions []
+                        , \_ -> Expect.equal lastHorizontalRoadCellOptions [ 9, 21 ]
                         ]
                         ()
                 )

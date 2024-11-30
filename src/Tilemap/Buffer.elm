@@ -1,6 +1,6 @@
 module Tilemap.Buffer exposing (DirectionHistory, removeBuffer, updateBufferCells)
 
-import Data.TileSet exposing (nonRoadTiles, roadConnectionDirectionsByTile, tileById)
+import Data.TileSet exposing (decorativeTiles, roadConnectionDirectionsByTile, tileById)
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
 import Quantity exposing (Unitless)
 import Tilemap.Cell as Cell exposing (Cell, CellCoordinates)
@@ -44,7 +44,7 @@ updateBufferCells newCell tilemap =
                 Just tile ->
                     case tile.kind of
                         Unintialized ->
-                            resetTileBySurroundings cell nonRoadTiles Unintialized nextTilemap
+                            resetTileBySurroundings cell decorativeTiles Unintialized nextTilemap
 
                         _ ->
                             nextTilemap

@@ -43,8 +43,8 @@ import BoundingBox2d exposing (BoundingBox2d)
 import Common exposing (GlobalCoordinates, andCarry)
 import Data.TileSet
     exposing
-        ( extractLotEntryTile
-        , nonRoadTiles
+        ( decorativeTiles
+        , extractLotEntryTile
         , tileById
         , tileIdsByOrthogonalMatch
         , tileIdsFromBitmask
@@ -627,7 +627,7 @@ removeLargeTileSubtiles subtileCell ( largeTileId, subtileIndex ) tilemap =
                     List.foldl
                         (\subgridCell nexTilemap ->
                             setSuperpositionOptions subgridCell
-                                (resetSuperposition subgridCell nonRoadTiles nexTilemap)
+                                (resetSuperposition subgridCell decorativeTiles nexTilemap)
                                 nexTilemap
                         )
                         tilemap

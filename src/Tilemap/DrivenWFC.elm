@@ -7,7 +7,8 @@ module Tilemap.DrivenWFC exposing
 
 import Data.TileSet
     exposing
-        ( nonRoadTiles
+        ( decorativeTiles
+        , lotTiles
         , tilesByBaseTileId
         )
 import Duration exposing (Duration)
@@ -23,7 +24,7 @@ import Tilemap.Core
         , tileByCell
         , tileNeighborIn
         )
-import Tilemap.Tile as Tile exposing (TileKind(..))
+import Tilemap.Tile as Tile exposing (Tile, TileKind(..))
 import Tilemap.TileConfig as TileConfig exposing (TileConfig, TileId)
 import Tilemap.WFC as WFC
 
@@ -46,7 +47,7 @@ drivenWfcInitialState =
 
 wfcStepsPerCycle : Int
 wfcStepsPerCycle =
-    10000
+    100
 
 
 runWFC : Random.Seed -> Tilemap -> WFC.Model -> ( Tilemap, DrivenWFC, List Tile.Action )
@@ -98,6 +99,10 @@ restartWFC seed tilemap =
 --
 
 
+type alias DrivewayNeighborProperties =
+    ( Cell, List TileConfig )
+
+
 reopenRoads : Tilemap -> Tilemap
 reopenRoads tilemap =
     foldTiles
@@ -122,7 +127,7 @@ reopenRoadsStep baseTileId origin tilemap =
         options ->
             let
                 ( tileVariations, drivewayNeighbors ) =
-                    findVariations origin options tilemap
+                    findRoadVariations origin options tilemap
             in
             case tileVariations of
                 [] ->
@@ -135,8 +140,8 @@ reopenRoadsStep baseTileId origin tilemap =
                         |> resetDrivewayNeighbors drivewayNeighbors
 
 
-findVariations : Cell -> List TileConfig -> Tilemap -> ( List TileConfig.TileId, List Cell )
-findVariations origin options tilemap =
+findRoadVariations : Cell -> List TileConfig -> Tilemap -> ( List TileConfig.TileId, List DrivewayNeighborProperties )
+findRoadVariations origin options tilemap =
     List.foldl
         (\option (( filteredOptionsAcc, drivewayNeighborsAcc ) as acc) ->
             let
@@ -146,19 +151,16 @@ findVariations origin options tilemap =
                 sockets =
                     TileConfig.socketsList option
 
+                -- The origin needs to be "open" (in superposition) so that the large tile fit check
+                -- can simulate actual WFC steps
+                tilemapWithOriginOpened =
+                    setSuperpositionOptions origin [ tileConfigId ] tilemap
+
                 toDrivewayNeighbor ( dir, socket ) =
                     if socket == Data.TileSet.lotEntrySocket then
                         tilemap
                             |> tileNeighborIn dir origin tileByCell
-                            |> Maybe.andThen
-                                (\( neighborCell, neighborTile ) ->
-                                    case neighborTile.kind of
-                                        Superposition _ ->
-                                            Just neighborCell
-
-                                        _ ->
-                                            Nothing
-                                )
+                            |> Maybe.andThen (findValidLotTiles tilemapWithOriginOpened)
 
                     else
                         Nothing
@@ -180,12 +182,40 @@ findVariations origin options tilemap =
         options
 
 
-resetDrivewayNeighbors : List Cell -> Tilemap -> Tilemap
+findValidLotTiles : Tilemap -> ( Cell, Tile ) -> Maybe DrivewayNeighborProperties
+findValidLotTiles tilemapWithOpenOrigin ( neighborCell, neighborTile ) =
+    case neighborTile.kind of
+        Superposition _ ->
+            let
+                validLotTiles =
+                    List.filterMap
+                        (\lotTile ->
+                            case lotTile of
+                                TileConfig.Large largeTile ->
+                                    WFC.checkLargeTileFit tilemapWithOpenOrigin neighborCell largeTile
+                                        |> Maybe.map (\_ -> lotTile)
+
+                                TileConfig.Single _ ->
+                                    Nothing
+                        )
+                        lotTiles
+            in
+            if List.isEmpty validLotTiles then
+                Nothing
+
+            else
+                Just ( neighborCell, validLotTiles )
+
+        _ ->
+            Nothing
+
+
+resetDrivewayNeighbors : List ( Cell, List TileConfig ) -> Tilemap -> Tilemap
 resetDrivewayNeighbors drivewayNeighbors tilemap =
     List.foldl
-        (\neighbor nextTilemap ->
+        (\( neighbor, validLotTiles ) nextTilemap ->
             resetTileBySurroundings neighbor
-                nonRoadTiles
+                (decorativeTiles ++ validLotTiles)
                 -- TODO: this fake tile definition is wrong, maybe make the fn use different param
                 (Superposition [])
                 nextTilemap
