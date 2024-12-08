@@ -2,14 +2,11 @@ module Data.Assets exposing
     ( Assets
     , assetById
     , debugAssets
-    , innerLaneOffset
-    , outerLaneOffset
     , roads
     )
 
 import Data.Colors as Colors
 import Dict exposing (Dict)
-import Length exposing (Length)
 import Svg exposing (Svg, path)
 import Svg.Attributes as Attributes
 
@@ -26,18 +23,6 @@ assetById assets assetId =
 
         Nothing ->
             []
-
-
-innerLaneOffset : Length
-innerLaneOffset =
-    -- the distance from a road tile's edge to the inner lane (from left / bottom side)
-    Length.meters 6
-
-
-outerLaneOffset : Length
-outerLaneOffset =
-    -- the distance from a road tile's edge to the outer lane (from the left / bottom side)
-    Length.meters 10
 
 
 roads : Assets msg

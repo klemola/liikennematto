@@ -13,7 +13,6 @@ module Data.Lots exposing
     )
 
 import Common exposing (LocalCoordinates)
-import Data.Assets exposing (innerLaneOffset, outerLaneOffset)
 import Data.Cars as Cars exposing (CarMake)
 import Data.Colors as Colors
 import Length exposing (Length)
@@ -27,13 +26,11 @@ import Tilemap.Cell as Cell
 
 type alias NewLot =
     { kind : LotKind
-    , width : Length
-    , height : Length
+    , horizontalTilesAmount : Int
+    , verticalTilesAmount : Int
     , parkingSpotExitDirection : OrthogonalDirection
     , parkingSpots : List ( Point2d Length.Meters LocalCoordinates, ParkingRestriction )
     , drivewayExitDirection : OrthogonalDirection
-    , entryPosition : Point2d Length.Meters LocalCoordinates
-    , exitPosition : Point2d Length.Meters LocalCoordinates
     , parkingLaneStartPosition : Point2d Length.Meters LocalCoordinates
     , parkingLaneStartDirection : OrthogonalDirection
     , residents : List CarMake
@@ -71,34 +68,6 @@ drivewayOffset =
     Cell.size |> Quantity.multiplyBy 0.2
 
 
-toRoadConnectionPosition : Length -> OrthogonalDirection -> Length -> Point2d Length.Meters LocalCoordinates
-toRoadConnectionPosition laneOffset drivewayExitDirection lotWidth =
-    case drivewayExitDirection of
-        Right ->
-            Point2d.xy
-                lotWidth
-                (Cell.size
-                    |> Quantity.minus laneOffset
-                    |> Quantity.minus drivewayOffset
-                )
-
-        Down ->
-            Point2d.xy
-                (laneOffset |> Quantity.minus drivewayOffset)
-                Quantity.zero
-
-        Left ->
-            Point2d.xy
-                Quantity.zero
-                (Cell.size
-                    |> Quantity.minus laneOffset
-                    |> Quantity.minus drivewayOffset
-                )
-
-        _ ->
-            Point2d.origin
-
-
 residentParking : Point2d Length.Meters LocalCoordinates -> ( Point2d Length.Meters LocalCoordinates, ParkingRestriction )
 residentParking position =
     ( position, ResidentParkingOnly )
@@ -133,26 +102,14 @@ lotAsset kind =
 
 residentialSingle1 : NewLot
 residentialSingle1 =
-    let
-        width =
-            Cell.size |> Quantity.multiplyBy 2
-
-        height =
-            Cell.size |> Quantity.multiplyBy 2
-
-        drivewayExitDirection =
-            Right
-    in
     { kind = ResidentialSingle1
-    , width = width
-    , height = height
+    , horizontalTilesAmount = 2
+    , verticalTilesAmount = 2
     , parkingSpotExitDirection = Right
     , parkingSpots =
         [ residentParking <| Point2d.fromMeters { x = 21.25, y = 3.75 }
         ]
-    , drivewayExitDirection = drivewayExitDirection
-    , entryPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width
-    , exitPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width
+    , drivewayExitDirection = Right
     , parkingLaneStartPosition = Point2d.fromMeters { x = 21.25, y = 3.75 }
     , parkingLaneStartDirection = Left
     , residents =
@@ -695,19 +652,9 @@ residentialSingle1Asset =
 
 school : NewLot
 school =
-    let
-        width =
-            Cell.size |> Quantity.multiplyBy 3
-
-        height =
-            Cell.size |> Quantity.multiplyBy 3
-
-        drivewayExitDirection =
-            Left
-    in
     { kind = School
-    , width = width
-    , height = height
+    , horizontalTilesAmount = 3
+    , verticalTilesAmount = 3
     , parkingSpotExitDirection = Down
     , parkingSpots =
         [ noRestrictions <| Point2d.fromMeters { x = 9.85, y = 9.125 }
@@ -716,9 +663,7 @@ school =
         , noRestrictions <| Point2d.fromMeters { x = 23.375, y = 9.125 }
         , noRestrictions <| Point2d.fromMeters { x = 27.875, y = 9.125 }
         ]
-    , drivewayExitDirection = drivewayExitDirection
-    , entryPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width
-    , exitPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width
+    , drivewayExitDirection = Left
     , parkingLaneStartPosition = Point2d.fromMeters { x = 7.5, y = 3.75 }
     , parkingLaneStartDirection = Right
     , residents =
@@ -1254,19 +1199,9 @@ schoolAsset =
 
 cafe : NewLot
 cafe =
-    let
-        width =
-            Cell.size |> Quantity.multiplyBy 2
-
-        height =
-            Cell.size |> Quantity.multiplyBy 2
-
-        drivewayExitDirection =
-            Right
-    in
     { kind = Cafe
-    , width = width
-    , height = height
+    , horizontalTilesAmount = 2
+    , verticalTilesAmount = 2
     , parkingSpotExitDirection = Down
     , parkingSpots =
         [ residentParking <| Point2d.fromMeters { x = 3.875, y = 9.125 }
@@ -1275,9 +1210,7 @@ cafe =
         , noRestrictions <| Point2d.fromMeters { x = 17.375, y = 9.125 }
         , noRestrictions <| Point2d.fromMeters { x = 21.875, y = 9.125 }
         ]
-    , drivewayExitDirection = drivewayExitDirection
-    , entryPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width
-    , exitPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width
+    , drivewayExitDirection = Right
     , parkingLaneStartPosition = Point2d.fromMeters { x = 24.5, y = 3.75 }
     , parkingLaneStartDirection = Left
     , residents =
@@ -1652,19 +1585,9 @@ cafeAsset =
 
 residentialRow1 : NewLot
 residentialRow1 =
-    let
-        width =
-            Cell.size |> Quantity.multiplyBy 4
-
-        height =
-            Cell.size |> Quantity.multiplyBy 2
-
-        drivewayExitDirection =
-            Left
-    in
     { kind = ResidentialRow1
-    , width = width
-    , height = height
+    , horizontalTilesAmount = 4
+    , verticalTilesAmount = 2
     , parkingSpotExitDirection = Down
     , parkingSpots =
         [ noRestrictions <| Point2d.fromMeters { x = 9.75, y = 9.125 }
@@ -1672,9 +1595,7 @@ residentialRow1 =
         , noRestrictions <| Point2d.fromMeters { x = 18.6875, y = 9.125 }
         , residentParking <| Point2d.fromMeters { x = 23.25, y = 9.125 }
         ]
-    , drivewayExitDirection = drivewayExitDirection
-    , entryPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width
-    , exitPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width
+    , drivewayExitDirection = Left
     , parkingLaneStartPosition = Point2d.fromMeters { x = 7.5, y = 3.75 }
     , parkingLaneStartDirection = Right
     , residents =
@@ -2767,28 +2688,16 @@ residentialRow1Asset =
 
 residentialApartments1 : NewLot
 residentialApartments1 =
-    let
-        width =
-            Cell.size |> Quantity.multiplyBy 2
-
-        height =
-            Cell.size |> Quantity.multiplyBy 3
-
-        drivewayExitDirection =
-            Down
-    in
     { kind = ResidentialApartments1
-    , width = width
-    , height = height
+    , horizontalTilesAmount = 2
+    , verticalTilesAmount = 3
     , parkingSpotExitDirection = Down
     , parkingSpots =
         [ noRestrictions <| Point2d.fromMeters { x = 3.125, y = 12.25 }
         , noRestrictions <| Point2d.fromMeters { x = 7.75, y = 12.25 }
         , residentParking <| Point2d.fromMeters { x = 12.375, y = 12.25 }
         ]
-    , drivewayExitDirection = drivewayExitDirection
-    , entryPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width
-    , exitPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width
+    , drivewayExitDirection = Down
     , parkingLaneStartPosition = Point2d.fromMeters { x = 4.75, y = 7.1 }
     , parkingLaneStartDirection = Up
     , residents =
@@ -3239,26 +3148,14 @@ residentialApartments1Asset =
 
 fireStation : NewLot
 fireStation =
-    let
-        width =
-            Cell.size |> Quantity.multiplyBy 3
-
-        height =
-            Cell.size |> Quantity.multiplyBy 2
-
-        drivewayExitDirection =
-            Down
-    in
     { kind = FireStation
-    , width = width
-    , height = height
+    , horizontalTilesAmount = 3
+    , verticalTilesAmount = 2
     , parkingSpotExitDirection = Left
     , parkingSpots =
         [ residentParking <| Point2d.fromMeters { x = 20.4, y = 5 }
         ]
-    , drivewayExitDirection = drivewayExitDirection
-    , entryPosition = toRoadConnectionPosition outerLaneOffset drivewayExitDirection width
-    , exitPosition = toRoadConnectionPosition innerLaneOffset drivewayExitDirection width
+    , drivewayExitDirection = Down
     , parkingLaneStartPosition = Point2d.fromMeters { x = 12, y = 5 }
     , parkingLaneStartDirection = Right
     , residents =
