@@ -2,6 +2,7 @@ module Tilemap.WFC exposing
     ( Model
     , StepEndCondition(..)
     , WFCState(..)
+    , checkLargeTileFit
     , collapse
     , contextDebug
     , currentState
@@ -25,7 +26,8 @@ import Array
 import Common exposing (attemptFoldList, attemptMapList)
 import Data.TileSet as TileSet
     exposing
-        ( defaultTiles
+        ( defaultSocket
+        , defaultTiles
         , pairingsForSocket
         , tileById
         , tileIdsByOrthogonalMatch
@@ -379,7 +381,7 @@ processStep tilemap currentStep =
         Collapse cell tileConfig ->
             case tileConfig of
                 TileConfig.Large largeTile ->
-                    attemptPlanLargeTilePlacement tilemap cell largeTile
+                    largeTileSteps tilemap cell largeTile
                         |> Result.map (\steps -> ( steps, [], tilemap ))
 
                 TileConfig.Single singleTile ->
@@ -670,6 +672,7 @@ nextCandidates tilemap =
                                 )
 
                             else
+                                -- Same entropy
                                 ( { cell = cell, options = nonemptyOptions } :: candidates
                                 , currentEntropy
                                 )
@@ -691,10 +694,42 @@ nextCandidates tilemap =
 --
 
 
-{-| Tries to build a list of PlaceSubgridTile steps to build the a large tile subgrid
+{-| Tries to build a list of steps to build a large tile
 -}
-attemptPlanLargeTilePlacement : Tilemap -> Cell -> LargeTile -> Result WFCFailure (List Step)
-attemptPlanLargeTilePlacement tilemap anchorCell tile =
+largeTileSteps : Tilemap -> Cell -> LargeTile -> Result WFCFailure (List Step)
+largeTileSteps tilemap anchorCell largeTile =
+    largeTileSubgrid tilemap anchorCell largeTile
+        |> Result.map
+            (List.map (\( cell, props ) -> CollapseSubgridCell cell props))
+        |> Result.mapError (\_ -> InvalidBigTilePlacement anchorCell largeTile.id)
+
+
+{-| Does a large tile fit into the tilemap?
+Checks if the large tile subgrid cells and the anchor cell are compatible
+-}
+checkLargeTileFit : Tilemap -> Cell -> LargeTile -> Maybe LargeTile
+checkLargeTileFit tilemap anchorCell largeTile =
+    largeTileSubgrid tilemap anchorCell largeTile
+        |> Result.andThen
+            (List.foldl
+                (\( subgridCell, subgridProps ) acc ->
+                    case acc of
+                        Ok nextTilemap ->
+                            checkSubgridTile nextTilemap subgridCell subgridProps
+
+                        Err _ ->
+                            acc
+                )
+                (Ok tilemap)
+            )
+        |> Result.toMaybe
+        |> Maybe.map (\_ -> largeTile)
+
+
+{-| Tries to build a list of cells and subgrid tile data for a large tile
+-}
+largeTileSubgrid : Tilemap -> Cell -> LargeTile -> Result String (List ( Cell, SubgridTileProperties ))
+largeTileSubgrid tilemap anchorCell tile =
     let
         tilemapConstraints =
             getTilemapConfig tilemap
@@ -737,20 +772,16 @@ attemptPlanLargeTilePlacement tilemap anchorCell tile =
                             case cellInGlobalCoordinates of
                                 Just cell ->
                                     Ok
-                                        (CollapseSubgridCell cell
-                                            { parentTileId = tile.id
-                                            , singleTile = singleTile
-                                            , index = subgridIdx
-                                            }
+                                        ( cell
+                                        , { parentTileId = tile.id
+                                          , singleTile = singleTile
+                                          , index = subgridIdx
+                                          }
                                         )
 
                                 Nothing ->
                                     Err "Cannot translate cell to global coordinates"
                         )
-            )
-        |> Result.mapError
-            (\_ ->
-                InvalidBigTilePlacement anchorCell tile.id
             )
 
 
@@ -762,9 +793,9 @@ attemptPlaceSubgridTile :
     -> Cell
     -> SubgridTileProperties
     -> Result WFCFailure ( List Step, List Tile.Action, Tilemap )
-attemptPlaceSubgridTile tilemap largeTileId cell subgridTileProperties =
+attemptPlaceSubgridTile tilemap largeTileId subgridCell subgridTileProperties =
     tilemap
-        |> attemptTileNeighborUpdate subgridTileProperties.singleTile cell
+        |> attemptTileNeighborUpdate subgridTileProperties.singleTile subgridCell
         |> Result.map
             (\neighborSteps ->
                 let
@@ -772,11 +803,30 @@ attemptPlaceSubgridTile tilemap largeTileId cell subgridTileProperties =
                         ( subgridTileProperties.parentTileId, subgridTileProperties.index )
 
                     ( nextTilemap, tileActions ) =
-                        addTileFromWFC (Just parentTileProperties) subgridTileProperties.singleTile.id cell tilemap
+                        addTileFromWFC (Just parentTileProperties) subgridTileProperties.singleTile.id subgridCell tilemap
                 in
                 ( neighborSteps, tileActions, nextTilemap )
             )
-        |> Result.mapError (\_ -> InvalidBigTilePlacement cell largeTileId)
+        |> Result.mapError (\_ -> InvalidBigTilePlacement subgridCell largeTileId)
+
+
+{-| Same as attemptPlaceSubgridTile, except the subgrid tile fit is only verified
+-}
+checkSubgridTile : Tilemap -> Cell -> SubgridTileProperties -> Result String Tilemap
+checkSubgridTile tilemap subgridCell subgridTileProperties =
+    tilemap
+        |> attemptTileNeighborUpdate subgridTileProperties.singleTile subgridCell
+        |> Result.map
+            (\_ ->
+                let
+                    parentTileProperties =
+                        ( subgridTileProperties.parentTileId, subgridTileProperties.index )
+
+                    ( nextTilemap, _ ) =
+                        addTileFromWFC (Just parentTileProperties) subgridTileProperties.singleTile.id subgridCell tilemap
+                in
+                nextTilemap
+            )
 
 
 {-| Try to build a list of steps for the tile's neighbor
@@ -786,10 +836,10 @@ attemptTileNeighborUpdate currentTile originCell tilemap =
     applyToNeighbor
         (\nuCtx neighborTileId ->
             let
-                originSocket =
+                neigborSocket =
                     socketByDirection currentTile.sockets nuCtx.dir
             in
-            if canDock (OrthogonalDirection.opposite nuCtx.dir) originSocket neighborTileId then
+            if canDock (OrthogonalDirection.opposite nuCtx.dir) neigborSocket neighborTileId then
                 -- Tiles can dock, no tilemap update needed = skip
                 Ok nuCtx.steps
 
@@ -799,8 +849,17 @@ attemptTileNeighborUpdate currentTile originCell tilemap =
         (\nuCtx _ ->
             Ok (PropagateConstraints originCell nuCtx.neighborCell :: nuCtx.steps)
         )
-        (\_ ->
-            Err "Can't update uninitialized neighbor"
+        (\nuCtx ->
+            let
+                neighborSocket =
+                    socketByDirection currentTile.sockets nuCtx.dir
+            in
+            -- Allow docking on unitialized neighbor like it was the edge of the map
+            if neighborSocket == defaultSocket then
+                Ok nuCtx.steps
+
+            else
+                Err "Can't dock uninitialized neighbor"
         )
         originCell
         tilemap

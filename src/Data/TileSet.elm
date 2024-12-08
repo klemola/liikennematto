@@ -1,20 +1,23 @@
 module Data.TileSet exposing
     ( allTiles
     , allTilesAmount
+    , decorativeTiles
     , defaultSocket
     , defaultTiles
     , extractLotEntryTile
     , lotDrivewaySocket
     , lotDrivewayTileIds
     , lotEntrySocket
-    , nonRoadTiles
+    , lotTiles
     , pairingsForSocket
     , roadConnectionDirectionsByTile
+    , threeByThreeLotLargeTile
     , tileById
     , tileIdByBitmask
     , tileIdsByOrthogonalMatch
     , tileIdsFromBitmask
     , tilesByBaseTileId
+    , twoByTwoLotLargeTile
     )
 
 import Array
@@ -25,7 +28,8 @@ import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirect
 import List.Nonempty
 import Tilemap.TileConfig as TileConfig
     exposing
-        ( Socket(..)
+        ( LargeTile
+        , Socket(..)
         , TileConfig
         , TileId
         , maxGraphPriority
@@ -202,9 +206,18 @@ tileById tileId =
             defaultTile
 
 
-nonRoadTiles : List TileConfig
-nonRoadTiles =
-    List.filter (\tileConfig -> TileConfig.biome tileConfig /= TileConfig.Road) allTiles
+lotTiles : List TileConfig
+lotTiles =
+    List.filter (\tileConfig -> TileConfig.biome tileConfig == TileConfig.Lot) allTiles
+
+
+decorativeTiles : List TileConfig
+decorativeTiles =
+    List.filter
+        (\tileConfig ->
+            TileConfig.biome tileConfig == TileConfig.Nature
+        )
+        allTiles
 
 
 defaultTiles : List TileConfig
@@ -379,7 +392,9 @@ grass : TileConfig
 grass =
     TileConfig.Single
         { id = defaultTileId
-        , complexity = 0.1
+
+        -- Make the "default/filler" not very likely to appear, as it is a last resort
+        , complexity = 0.8
         , graphPriority = maxGraphPriority
         , biome = TileConfig.Nature
         , sockets =
@@ -570,7 +585,7 @@ lotEntryTUp : TileConfig
 lotEntryTUp =
     TileConfig.Single
         { id = 20
-        , complexity = 0.4
+        , complexity = 0.2
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -587,7 +602,7 @@ lotEntryTRight : TileConfig
 lotEntryTRight =
     TileConfig.Single
         { id = 21
-        , complexity = 0.4
+        , complexity = 0.2
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -604,7 +619,7 @@ lotEntryTLeft : TileConfig
 lotEntryTLeft =
     TileConfig.Single
         { id = 22
-        , complexity = 0.4
+        , complexity = 0.2
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -823,58 +838,66 @@ lotDrivewayUp =
 
 twoByTwoLot : TileConfig
 twoByTwoLot =
-    TileConfig.Large
-        { id = 100
-        , complexity = 0.4
-        , biome = TileConfig.Lot
-        , tiles =
-            Array.fromList
-                [ lotTopLeftCorner
-                , lotTopRightCorner
+    TileConfig.Large twoByTwoLotLargeTile
 
-                --
-                , lotBottomLeftCorner
-                , lotDrivewayRight
-                ]
-        , width = 2
-        , height = 2
-        , anchorIndex = 3
-        }
+
+twoByTwoLotLargeTile : LargeTile
+twoByTwoLotLargeTile =
+    { id = 100
+    , complexity = 0.2
+    , biome = TileConfig.Lot
+    , tiles =
+        Array.fromList
+            [ lotTopLeftCorner
+            , lotTopRightCorner
+
+            --
+            , lotBottomLeftCorner
+            , lotDrivewayRight
+            ]
+    , width = 2
+    , height = 2
+    , anchorIndex = 3
+    }
 
 
 threeByThreeLot : TileConfig
 threeByThreeLot =
-    TileConfig.Large
-        { id = 101
-        , complexity = 0.5
-        , biome = TileConfig.Lot
-        , tiles =
-            Array.fromList
-                [ lotTopLeftCorner
-                , lotTopEdge
-                , lotTopRightCorner
+    TileConfig.Large threeByThreeLotLargeTile
 
-                --
-                , lotLeftEdge
-                , lotInnerSpace
-                , lotRightEdge
 
-                --
-                , lotDrivewayLeft
-                , lotBottomEdge
-                , lotBottomRightCorner
-                ]
-        , width = 3
-        , height = 3
-        , anchorIndex = 6
-        }
+threeByThreeLotLargeTile : LargeTile
+threeByThreeLotLargeTile =
+    { id = 101
+    , complexity = 0.4
+    , biome = TileConfig.Lot
+    , tiles =
+        Array.fromList
+            [ lotTopLeftCorner
+            , lotTopEdge
+            , lotTopRightCorner
+
+            --
+            , lotLeftEdge
+            , lotInnerSpace
+            , lotRightEdge
+
+            --
+            , lotDrivewayLeft
+            , lotBottomEdge
+            , lotBottomRightCorner
+            ]
+    , width = 3
+    , height = 3
+    , anchorIndex = 6
+    }
 
 
 threeByTwoLotA : TileConfig
 threeByTwoLotA =
     TileConfig.Large
         { id = 102
-        , complexity = 0.5
+        , complexity = 0.4
         , biome = TileConfig.Lot
         , tiles =
             Array.fromList
@@ -897,7 +920,7 @@ threeByTwoLotB : TileConfig
 threeByTwoLotB =
     TileConfig.Large
         { id = 103
-        , complexity = 0.5
+        , complexity = 0.4
         , biome = TileConfig.Lot
         , tiles =
             Array.fromList
@@ -920,7 +943,7 @@ twoByThreeLot : TileConfig
 twoByThreeLot =
     TileConfig.Large
         { id = 104
-        , complexity = 0.5
+        , complexity = 0.4
         , biome = TileConfig.Lot
         , tiles =
             Array.fromList
@@ -1015,7 +1038,7 @@ singleNature : TileConfig
 singleNature =
     TileConfig.Single
         { id = 200
-        , complexity = 0.4
+        , complexity = 0.2
         , graphPriority = maxGraphPriority
         , biome = TileConfig.Nature
         , sockets =
@@ -1032,7 +1055,7 @@ twoByTwoNature : TileConfig
 twoByTwoNature =
     TileConfig.Large
         { id = 201
-        , complexity = 0.5
+        , complexity = 0.2
         , biome = TileConfig.Nature
         , tiles =
             Array.fromList

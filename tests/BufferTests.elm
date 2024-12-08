@@ -2,19 +2,19 @@ module BufferTests exposing (suite)
 
 import Data.Utility
     exposing
-        ( addTileInstantly
-        , cellsByTileKind
+        ( cellsByTileKind
         , cellsByTileKindFromAscii
-        , removeTileInstantly
+        , createCell
+        , placeRoadAndUpdateBuffer
+        , removeRoadAndUpdateBuffer
         , tenByTenTilemap
         , tilemapToAscii
         )
 import Expect
 import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Test exposing (..)
-import Tilemap.Buffer exposing (removeBuffer, updateBufferCells)
-import Tilemap.Cell as Cell exposing (Cell, CellCoordinates)
-import Tilemap.Core as Cell
+import Tilemap.Cell as Cell
+import Tilemap.Core
     exposing
         ( Tilemap
         , createTilemap
@@ -28,11 +28,6 @@ import Tilemap.Tile as Tile
 constraints : Cell.Constraints {}
 constraints =
     tenByTenTilemap
-
-
-createCell : Int -> Int -> Cell
-createCell x y =
-    Cell.fromCoordinatesUnsafe constraints ( x, y )
 
 
 emptyTilemap : Tilemap
@@ -76,33 +71,6 @@ multilineGridDebug label str =
                 String.join " " [ label, "line", lineNumber, line ]
             )
         |> String.join "\n"
-
-
-placeRoadAndUpdateBuffer : List CellCoordinates -> Tilemap -> Tilemap
-placeRoadAndUpdateBuffer cellsToPlace tilemap =
-    List.foldl
-        (\( x, y ) nextTilemap ->
-            let
-                cell =
-                    createCell x y
-            in
-            nextTilemap
-                |> addTileInstantly cell
-                |> updateBufferCells cell
-        )
-        tilemap
-        cellsToPlace
-
-
-removeRoadAndUpdateBuffer : CellCoordinates -> Tilemap -> Tilemap
-removeRoadAndUpdateBuffer ( x, y ) tilemap =
-    let
-        cell =
-            createCell x y
-    in
-    tilemap
-        |> removeTileInstantly cell
-        |> removeBuffer cell
 
 
 
@@ -166,7 +134,7 @@ suite =
                                 emptyTilemap
 
                         forwardTileKind =
-                            tileByCell tilemap (createCell 3 6) |> Maybe.map .kind
+                            tileByCell tilemap (createCell constraints 3 6) |> Maybe.map .kind
                     in
                     Expect.equal forwardTileKind (Just Tile.Unintialized)
                 )

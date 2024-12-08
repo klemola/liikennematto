@@ -14,8 +14,9 @@ import Model.Debug
         , toggleDebugPanel
         , toggleLayer
         )
-import Model.Liikennematto exposing (DrivenWFC(..), Liikennematto)
+import Model.Liikennematto exposing (Liikennematto)
 import Model.World exposing (World, formatEvents)
+import Tilemap.DrivenWFC exposing (DrivenWFC(..))
 import Time
 import UI.Core
     exposing

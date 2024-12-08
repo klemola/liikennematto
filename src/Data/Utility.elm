@@ -3,9 +3,13 @@ module Data.Utility exposing
     , addTileInstantly
     , cellsByTileKind
     , cellsByTileKindFromAscii
+    , createCell
     , getStartAndEndNode
+    , placeRoadAndUpdateBuffer
+    , removeRoadAndUpdateBuffer
     , removeTileInstantly
     , tenByTenTilemap
+    , testSeed
     , tilemapFromCoordinates
     , tilemapToAscii
     , worldFromTilemap
@@ -18,6 +22,7 @@ import Lib.OrthogonalDirection exposing (OrthogonalDirection)
 import Model.World as World exposing (World, createRoadNetwork)
 import Random
 import Simulation.RoadNetwork as RoadNetwork exposing (RNNodeContext)
+import Tilemap.Buffer exposing (removeBuffer, updateBufferCells)
 import Tilemap.Cell as Cell exposing (Cell, CellCoordinates)
 import Tilemap.Core
     exposing
@@ -42,6 +47,11 @@ type alias AnchorDef =
     }
 
 
+testSeed : Random.Seed
+testSeed =
+    Random.initialSeed 42
+
+
 tenByTenTilemap : TilemapConfig
 tenByTenTilemap =
     { horizontalCellsAmount = 10
@@ -49,14 +59,14 @@ tenByTenTilemap =
     }
 
 
-tilemapFromCoordinates : List ( Int, Int ) -> List AnchorDef -> Tilemap
-tilemapFromCoordinates cellCoordinates anchorDefs =
+tilemapFromCoordinates : TilemapConfig -> List CellCoordinates -> List AnchorDef -> Tilemap
+tilemapFromCoordinates tilemapConfig cellCoordinates anchorDefs =
     let
         cells =
             List.filterMap (Cell.fromCoordinates tenByTenTilemap) cellCoordinates
 
         withCells =
-            tilemapFromCells tenByTenTilemap cells
+            tilemapFromCells tilemapConfig cells
     in
     addAnchors withCells anchorDefs
 
@@ -117,7 +127,7 @@ addTileInstantly cell tilemap =
         ( tilemapWithTile, _ ) =
             case tileIdByBitmask bitmask of
                 Just tileId ->
-                    addTileById cell tileId tilemap (Random.initialSeed 42)
+                    addTileById cell tileId tilemap testSeed
 
                 Nothing ->
                     ( tilemap, [] )
@@ -285,3 +295,35 @@ gridToAscii width height cells =
             List.foldl updateGrid defaultGrid cells
     in
     String.join "\n" finalGrid
+
+
+createCell : TilemapConfig -> Int -> Int -> Cell
+createCell constraints x y =
+    Cell.fromCoordinatesUnsafe constraints ( x, y )
+
+
+placeRoadAndUpdateBuffer : List CellCoordinates -> Tilemap -> Tilemap
+placeRoadAndUpdateBuffer cellsToPlace tilemap =
+    List.foldl
+        (\( x, y ) nextTilemap ->
+            let
+                cell =
+                    createCell (getTilemapConfig tilemap) x y
+            in
+            nextTilemap
+                |> addTileInstantly cell
+                |> updateBufferCells cell
+        )
+        tilemap
+        cellsToPlace
+
+
+removeRoadAndUpdateBuffer : CellCoordinates -> Tilemap -> Tilemap
+removeRoadAndUpdateBuffer ( x, y ) tilemap =
+    let
+        cell =
+            createCell (getTilemapConfig tilemap) x y
+    in
+    tilemap
+        |> removeTileInstantly cell
+        |> removeBuffer cell

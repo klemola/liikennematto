@@ -1,32 +1,33 @@
 module Model.Liikennematto exposing
-    ( DrivenWFC(..)
-    , GameAction(..)
+    ( GameAction(..)
     , GameFSM
     , GameState(..)
     , GameUpdateContext
     , InitSteps
     , Liikennematto
     , currentState
-    , drivenWfcInitialState
     , fromNewGame
     , fromPreviousGame
     , initial
     , triggerLoading
-    , withTilemap
     )
 
 import Data.Assets exposing (roads)
 import Duration exposing (Duration)
 import Lib.FSM as FSM exposing (FSM)
 import Message exposing (Message)
-import Model.Debug exposing (DebugLayerKind(..), DebugState, initialDebugState, toggleDebugPanel, toggleLayer)
+import Model.Debug exposing (DebugLayerKind(..), DebugState, initialDebugState)
 import Model.Flags exposing (Flags, RuntimeEnvironment(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Screen as Screen exposing (Screen)
 import Model.World as World exposing (World)
 import Simulation.Car exposing (CarState(..))
-import Tilemap.Core exposing (TileListFilter(..), Tilemap)
-import Tilemap.WFC as WFC
+import Tilemap.Core exposing (TileListFilter(..))
+import Tilemap.DrivenWFC
+    exposing
+        ( DrivenWFC(..)
+        , drivenWfcInitialState
+        )
 import Time
 import UI.Editor
 import UI.ZoomControl
@@ -48,12 +49,6 @@ type alias Liikennematto =
     , editor : UI.Editor.Model
     , zoomControl : UI.ZoomControl.Model
     }
-
-
-type DrivenWFC
-    = WFCPending Duration
-    | WFCActive WFC.Model
-    | WFCSolved
 
 
 type alias InitSteps =
@@ -224,16 +219,6 @@ verticalCellsAmount =
     12
 
 
-minWfcUpdateFrequency : Duration
-minWfcUpdateFrequency =
-    Duration.milliseconds 500
-
-
-drivenWfcInitialState : DrivenWFC
-drivenWfcInitialState =
-    WFCPending minWfcUpdateFrequency
-
-
 tilemapConfig =
     { horizontalCellsAmount = horizontalCellsAmount
     , verticalCellsAmount = verticalCellsAmount
@@ -271,33 +256,6 @@ initial flags =
     , errorMessage = Nothing
     , editor = UI.Editor.initialModel
     , zoomControl = UI.ZoomControl.initialModel
-    }
-
-
-
---
--- Synchronized changes to multiple root level fields
---
-
-
-withTilemap : Tilemap -> DrivenWFC -> Liikennematto -> Liikennematto
-withTilemap tilemap drivenWFC model =
-    let
-        nextWorld =
-            World.setTilemap tilemap model.world
-
-        renderCacheWFC =
-            case drivenWFC of
-                WFCActive wfc ->
-                    Just wfc
-
-                _ ->
-                    Nothing
-    in
-    { model
-        | world = nextWorld
-        , wfc = drivenWFC
-        , renderCache = RenderCache.setTilemapCache nextWorld.tilemap renderCacheWFC model.renderCache
     }
 
 
