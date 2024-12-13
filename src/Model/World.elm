@@ -16,6 +16,7 @@ module Model.World exposing
     , hasLot
     , hasPendingTilemapChange
     , isEmptyArea
+    , prepareNewLot
     , refreshCars
     , refreshLots
     , removeCar
@@ -31,6 +32,9 @@ module Model.World exposing
 import BoundingBox2d exposing (BoundingBox2d)
 import Common exposing (GlobalCoordinates)
 import Data.Cars exposing (CarMake)
+import Data.Lots exposing (NewLot, allLots)
+import Data.TileSet exposing (lotTiles)
+import Dict exposing (Dict)
 import Duration exposing (Duration)
 import Graph
 import Length exposing (Length)
@@ -44,6 +48,7 @@ import Point2d
 import QuadTree exposing (Bounded, QuadTree)
 import Quantity
 import Random
+import Random.List
 import Round
 import Set exposing (Set)
 import Simulation.Car as Car exposing (Car)
@@ -64,6 +69,7 @@ import Tilemap.Core
         , tilemapIntersects
         )
 import Tilemap.Tile as Tile
+import Tilemap.TileConfig as TileConfig exposing (TileConfig, TileId)
 import Time
 
 
@@ -79,12 +85,13 @@ type WorldEvent
 
 type alias World =
     { tilemap : Tilemap
+    , uniqueTiles : TileInventory
     , pendingTilemapChange : Maybe PendingTilemapChange
     , roadNetwork : RoadNetwork
-    , roadNetworkLookup : QuadTree Length.Meters GlobalCoordinates RNLookupEntry
     , trafficLights : Collection TrafficLight
     , lots : Collection Lot
     , cars : Collection Car
+    , roadNetworkLookup : QuadTree Length.Meters GlobalCoordinates RNLookupEntry
     , carLookup : QuadTree Length.Meters GlobalCoordinates Car
     , lotLookup : QuadTree Length.Meters GlobalCoordinates Lot
     , eventQueue : EventQueue WorldEvent
@@ -107,6 +114,30 @@ type alias RNLookupEntry =
     , position : Point2d Length.Meters GlobalCoordinates
     , boundingBox : BoundingBox2d Length.Meters GlobalCoordinates
     }
+
+
+type alias TileInventory =
+    Dict TileId (List NewLot)
+
+
+initialUniqueTiles : TileInventory
+initialUniqueTiles =
+    lotTiles
+        |> List.filterMap
+            (\tileConfig ->
+                case tileConfig of
+                    TileConfig.Large largeTile ->
+                        Just
+                            ( largeTile.id
+                            , List.filter
+                                (\newLot -> newLot.horizontalTilesAmount == largeTile.width && newLot.verticalTilesAmount == largeTile.height)
+                                allLots
+                            )
+
+                    _ ->
+                        Nothing
+            )
+        |> Dict.fromList
 
 
 quadTreeLeafElementsAmount : Int
@@ -134,14 +165,15 @@ empty tilemapConfig =
             tilemapBoundingBox tilemap
     in
     { tilemap = tilemap
+    , uniqueTiles = initialUniqueTiles
     , pendingTilemapChange = Nothing
     , roadNetwork = RoadNetwork.empty
     , trafficLights = Collection.empty
     , cars = Collection.empty
     , lots = Collection.empty
+    , roadNetworkLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
     , carLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
     , lotLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
-    , roadNetworkLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
     , eventQueue = EventQueue.empty
     , seed = initialSeed
     }
@@ -293,6 +325,50 @@ refreshLots lot nextLots world =
 updateLot : Lot -> World -> World
 updateLot lot world =
     { world | lots = Collection.update lot.id lot world.lots }
+
+
+prepareNewLot : TileConfig -> World -> ( NewLot, World )
+prepareNewLot tileConfig world =
+    let
+        tileId =
+            TileConfig.tileConfigId tileConfig
+
+        newLotOptions =
+            Dict.get tileId world.uniqueTiles
+                -- There should always be a match, so this fallback is likely unnecessary
+                |> Maybe.withDefault []
+
+        ( ( newLot, remainingOptions ), nextSeed ) =
+            Random.step (Random.List.choose newLotOptions) world.seed
+    in
+    ( newLot |> Maybe.withDefault (newLotFallback tileConfig)
+    , { world
+        | seed = nextSeed
+        , uniqueTiles = Dict.insert tileId remainingOptions world.uniqueTiles
+      }
+    )
+
+
+newLotFallback : TileConfig -> NewLot
+newLotFallback tileConfig =
+    case TileConfig.tileConfigId tileConfig of
+        100 ->
+            Data.Lots.residentialSingle1
+
+        101 ->
+            Data.Lots.school
+
+        102 ->
+            Data.Lots.fireStation
+
+        103 ->
+            Data.Lots.residentialRow1
+
+        104 ->
+            Data.Lots.residentialApartments1
+
+        _ ->
+            Data.Lots.residentialSingle1
 
 
 removeLot : Id -> World -> World
