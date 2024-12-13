@@ -25,6 +25,7 @@ module Model.World exposing
     , setCar
     , setSeed
     , setTilemap
+    , unavailableTileIds
     , updateLot
     , updateRoadNetwork
     )
@@ -347,6 +348,21 @@ prepareNewLot tileConfig world =
         , uniqueTiles = Dict.insert tileId remainingOptions world.uniqueTiles
       }
     )
+
+
+unavailableTileIds : World -> Set TileId
+unavailableTileIds world =
+    Dict.foldl
+        (\tileId options acc ->
+            if List.isEmpty options then
+                Set.insert tileId acc
+
+            else
+                acc
+        )
+        Set.empty
+        world.uniqueTiles
+        |> Debug.log "unavailable"
 
 
 newLotFallback : TileConfig -> NewLot

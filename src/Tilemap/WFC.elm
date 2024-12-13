@@ -1,18 +1,17 @@
 module Tilemap.WFC exposing
     ( Model
     , StepEndCondition(..)
+    , UnavailableTiles
     , WFCState(..)
     , checkLargeTileFit
     , collapse
     , contextDebug
     , currentState
-    , failed
     , flushPendingActions
     , fromTilemap
     , init
     , propagateConstraints
     , resetCell
-    , setTilemap
     , solve
     , stateDebug
     , step
@@ -20,6 +19,8 @@ module Tilemap.WFC exposing
     , stopped
     , toCurrentCell
     , toTilemap
+    , toUnavailableTiles
+    , withUnavailableTiles
     )
 
 import Array
@@ -36,6 +37,7 @@ import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirect
 import List.Nonempty exposing (Nonempty)
 import Random exposing (Seed)
 import Random.Extra
+import Set exposing (Set)
 import Stack exposing (Stack)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
@@ -77,6 +79,7 @@ type alias ModelDetails =
     , previousSteps : Stack ( Step, Nonempty TileId )
     , state : WFCState
     , pendingActions : List Tile.Action
+    , unavailableTiles : UnavailableTiles
     , seed : Seed
     }
 
@@ -101,7 +104,12 @@ type WFCFailure
     | InvalidDirection
     | NoCandidates
     | TileNotFound
+    | TileUnavailable TileId
     | BacktrackFailed
+
+
+type alias UnavailableTiles =
+    Set TileId
 
 
 
@@ -140,8 +148,14 @@ fromTilemap tilemap initialSeed =
         , previousSteps = Stack.empty
         , state = Solving
         , pendingActions = []
+        , unavailableTiles = Set.empty
         , seed = initialSeed
         }
+
+
+withUnavailableTiles : UnavailableTiles -> Model -> Model
+withUnavailableTiles unavailableTiles (Model modelContents) =
+    Model { modelContents | unavailableTiles = unavailableTiles }
 
 
 
@@ -213,14 +227,15 @@ stepN endCondition nTimes model =
 
     else
         let
-            stepResult =
+            ((Model modelContents) as stepResult) =
                 step endCondition model
         in
-        if failed stepResult then
-            stepResult
+        case modelContents.state of
+            Failed _ ->
+                stepResult
 
-        else
-            stepN endCondition (nTimes - 1) stepResult
+            _ ->
+                stepN endCondition (nTimes - 1) stepResult
 
 
 
@@ -290,19 +305,18 @@ resetCell tileSet cell tileKind (Model modelContents) =
     Model { modelContents | tilemap = resetTileBySurroundings cell tileSet tileKind modelContents.tilemap }
 
 
-setTilemap : Tilemap -> Model -> Model
-setTilemap tilemap (Model modelContents) =
-    Model { modelContents | tilemap = tilemap }
-
-
 
 --
 -- Steps and propagation
 --
 
 
+type alias ProcessStepResult =
+    ( List Step, List Tile.Action, Tilemap )
+
+
 processOpenSteps : StepEndCondition -> Model -> Model
-processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap, pendingActions } as modelDetails)) =
+processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap } as modelDetails)) =
     case openSteps of
         currentStep :: otherSteps ->
             let
@@ -323,8 +337,26 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap, pendi
                         , targetCell = targetCell
                     }
             in
-            case processStep tilemap currentStep of
+            case processStep tilemap modelDetails.unavailableTiles currentStep of
                 Ok ( additionalSteps, tileActions, nextTilemap ) ->
+                    let
+                        nextUnavailableTiles =
+                            case currentStep of
+                                CollapseSubgridCell _ props ->
+                                    -- Check if the next step continues to build the same large tile
+                                    if (List.head otherSteps |> Maybe.andThen stepTileId) == Just props.parentTileId then
+                                        modelDetails.unavailableTiles
+
+                                    else
+                                        let
+                                            _ =
+                                                Debug.log "completed large tile" ( props.parentTileId, Set.insert props.parentTileId modelDetails.unavailableTiles )
+                                        in
+                                        Set.insert props.parentTileId modelDetails.unavailableTiles
+
+                                _ ->
+                                    modelDetails.unavailableTiles
+                    in
                     Model
                         { withPosition
                             | tilemap = nextTilemap
@@ -337,7 +369,8 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap, pendi
 
                                     Nothing ->
                                         previousSteps
-                            , pendingActions = pendingActions ++ tileActions
+                            , pendingActions = modelDetails.pendingActions ++ tileActions
+                            , unavailableTiles = nextUnavailableTiles
                         }
 
                 Err wfcFailure ->
@@ -375,24 +408,36 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap, pendi
             Model nextModelDetails
 
 
-processStep : Tilemap -> Step -> Result WFCFailure ( List Step, List Tile.Action, Tilemap )
-processStep tilemap currentStep =
+processStep : Tilemap -> UnavailableTiles -> Step -> Result WFCFailure ProcessStepResult
+processStep tilemap unavailableTiles currentStep =
     case currentStep of
         Collapse cell tileConfig ->
-            case tileConfig of
-                TileConfig.Large largeTile ->
-                    largeTileSteps tilemap cell largeTile
-                        |> Result.map (\steps -> ( steps, [], tilemap ))
+            let
+                tileId =
+                    TileConfig.tileConfigId tileConfig
+            in
+            if Set.member tileId unavailableTiles then
+                let
+                    _ =
+                        Debug.log "tile unavailable" tileId
+                in
+                Err (TileUnavailable tileId)
 
-                TileConfig.Single singleTile ->
-                    let
-                        nextSteps =
-                            propagateConstraintsSteps tilemap cell
+            else
+                case tileConfig of
+                    TileConfig.Large largeTile ->
+                        largeTileSteps tilemap cell largeTile
+                            |> Result.map (\steps -> ( steps, [], tilemap ))
 
-                        ( nextTilemap, tileActions ) =
-                            addTileFromWFC Nothing singleTile.id cell tilemap
-                    in
-                    Ok ( nextSteps, tileActions, nextTilemap )
+                    TileConfig.Single singleTile ->
+                        let
+                            nextSteps =
+                                propagateConstraintsSteps tilemap cell
+
+                            ( nextTilemap, tileActions ) =
+                                addTileFromWFC Nothing singleTile.id cell tilemap
+                        in
+                        Ok ( nextSteps, tileActions, nextTilemap )
 
         CollapseSubgridCell cell properties ->
             attemptPlaceSubgridTile tilemap properties.parentTileId cell properties
@@ -587,6 +632,7 @@ revertStep theStep previousSuperposition tilemap =
                 Nothing ->
                     psList
     in
+    -- TODO: backtrack should update the unavailable tile ids list
     ( nextSuperpositionOptions
     , setSuperpositionOptions targetCell nextSuperpositionOptions tilemap
     )
@@ -938,16 +984,6 @@ stopped (Model modelDetails) =
     modelDetails.state /= Solving
 
 
-failed : Model -> Bool
-failed (Model modelDetails) =
-    case modelDetails.state of
-        Failed _ ->
-            True
-
-        _ ->
-            False
-
-
 flushPendingActions : Model -> ( Model, List Tile.Action )
 flushPendingActions ((Model modelDetails) as model) =
     if modelDetails.state == Done then
@@ -967,6 +1003,11 @@ toCurrentCell (Model modelDetails) =
 toTilemap : Model -> Tilemap
 toTilemap (Model modelDetails) =
     modelDetails.tilemap
+
+
+toUnavailableTiles : Model -> UnavailableTiles
+toUnavailableTiles (Model modelDetails) =
+    modelDetails.unavailableTiles
 
 
 stateDebug : Model -> String
@@ -1013,6 +1054,9 @@ wfcFailureToString wfcFailure =
 
         TileNotFound ->
             "Tile not found"
+
+        TileUnavailable tileId ->
+            "Tile unavailable: " ++ String.fromInt tileId
 
         NoCandidates ->
             "No candidates available"
