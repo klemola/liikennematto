@@ -5,6 +5,8 @@ module Tilemap.TileInventory exposing
     , increaseCount
     , isAvailable
     , markAsUsed
+    , restoreItem
+    , tileIdItemPairs
     )
 
 import Dict exposing (Dict)
@@ -63,3 +65,29 @@ chooseRandom tileId seed inventory =
                 |> Maybe.withDefault []
     in
     Random.step (Random.List.choose options) seed
+
+
+restoreItem : (( TileId, a ) -> Bool) -> List ( TileId, a ) -> TileInventory (List a) -> TileInventory (List a)
+restoreItem matcher lookup inventory =
+    case
+        lookup
+            |> List.filter matcher
+            |> List.head
+    of
+        Just ( tileId, match ) ->
+            Dict.update tileId
+                (Maybe.map (\items -> match :: items))
+                inventory
+
+        Nothing ->
+            inventory
+
+
+tileIdItemPairs : TileInventory (List a) -> List ( TileId, a )
+tileIdItemPairs inventory =
+    Dict.foldl
+        (\tileId items pairs ->
+            pairs ++ List.map (Tuple.pair tileId) items
+        )
+        []
+        inventory

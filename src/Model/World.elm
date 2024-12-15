@@ -401,17 +401,18 @@ removeLot lotId world =
                 nextLots =
                     Collection.remove lotId world.lots
 
-                nextTilemap =
-                    removeAnchor lotId world.tilemap
-
-                nextLookup =
-                    createLookup (Collection.values nextLots) world
+                tileInventoryWithRestoredLot =
+                    TileInventory.restoreItem
+                        (\( _, newLot ) -> newLot.kind == lot.kind)
+                        (TileInventory.tileIdItemPairs initialTileInventory)
+                        world.tileInventory
             in
             { world
                 | lots = nextLots
-                , tilemap = nextTilemap
                 , cars = nextCars
-                , lotLookup = nextLookup
+                , tilemap = removeAnchor lotId world.tilemap
+                , lotLookup = createLookup (Collection.values nextLots) world
+                , tileInventory = tileInventoryWithRestoredLot
             }
 
         Nothing ->
