@@ -7,9 +7,11 @@ import Data.TileSet
     exposing
         ( allTiles
         , defaultTiles
+        , lotTiles
         , pairingsForSocket
         , tileIdsByOrthogonalMatch
         )
+import Dict
 import Element
 import Element.Background
 import Element.Font
@@ -43,6 +45,7 @@ import Tilemap.TileConfig as TileConfig
         , allSockets
         , tileConfigId
         )
+import Tilemap.TileInventory exposing (TileInventory)
 import Tilemap.WFC as WFC
 import Time
 import UI.Core
@@ -128,6 +131,13 @@ tilemapConfig =
     }
 
 
+initialTileInventory : TileInventory Int
+initialTileInventory =
+    lotTiles
+        |> List.map (\tileConfig -> ( tileConfigId tileConfig, 1 ))
+        |> Dict.fromList
+
+
 initWFC : Random.Seed -> WFC.Model
 initWFC seed =
     WFC.fromTilemap
@@ -136,6 +146,7 @@ initWFC seed =
             (initTileWithSuperposition tilemapConfig)
         )
         seed
+        |> WFC.withTileInventory initialTileInventory
 
 
 initTileWithSuperposition : TilemapConfig -> Int -> Tile
