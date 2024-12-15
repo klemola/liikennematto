@@ -25,7 +25,7 @@ Cars move and turn smoothly, avoid collision with each other, follow traffic sig
 ### Simulation
 
 -   a two-lane road network (graph based on the tilemap)
--   a* pathfinding
+-   a\* pathfinding
 -   collision prevention
 -   signal intersections (traffic lights)
 -   yield sign based intersections
@@ -49,13 +49,14 @@ Draw roads of all kind with the smart editor
 
 Read more about the project from [Liikennematto dev blog #1: prototyping traffic simulation with Elm](https://matiasklemola.com/liikennematto-dev-blog-one)
 
-[Part #2](https://matiasklemola.com/liikennematto-devlog-two), 
-[Part #3](https://matiasklemola.com/liikennematto-devlog-three), 
-[Part #4](https://matiasklemola.com/liikennematto-devlog-four)
+...or skip to: [Part #2](https://matiasklemola.com/liikennematto-devlog-two) |
+[Part #3](https://matiasklemola.com/liikennematto-devlog-three) |
+[Part #4](https://matiasklemola.com/liikennematto-devlog-four) |
+[Part #5](https://matiasklemola.com/liikennematto-devlog-five)
 
 ---
 
-Follow me on [Twitter](https://twitter.com/MatiasKlemola) or [Mastodon](https://mastodon.gamedev.place/@yourmagicisworking) for updates!
+Follow me on [Bluesky](https://bsky.app/profile/matiasklemola.com) or [Mastodon](https://mastodon.gamedev.place/@yourmagicisworking) for updates!
 
 ## Attribution
 
