@@ -8,7 +8,6 @@ module Tilemap.WFC exposing
     , currentState
     , flushPendingActions
     , fromTilemap
-    , init
     , propagateConstraints
     , resetCell
     , solve
@@ -27,10 +26,8 @@ import Common exposing (attemptFoldList, attemptMapList)
 import Data.TileSet as TileSet
     exposing
         ( defaultSocket
-        , defaultTiles
         , pairingsForSocket
         , tileById
-        , tileIdsByOrthogonalMatch
         )
 import Dict
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
@@ -42,9 +39,7 @@ import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
         ( Tilemap
-        , TilemapConfig
         , addTileFromWFC
-        , createTilemap
         , foldTiles
         , forAllTiles
         , getTilemapConfig
@@ -114,26 +109,6 @@ type WFCFailure
 --
 
 
-init : TilemapConfig -> Random.Seed -> Model
-init tilemapConfig initialSeed =
-    fromTilemap
-        (createTilemap
-            tilemapConfig
-            (initTileWithSuperposition tilemapConfig)
-        )
-        initialSeed
-
-
-initTileWithSuperposition : TilemapConfig -> Int -> Tile
-initTileWithSuperposition tilemapConfig index =
-    index
-        |> Cell.fromArray1DIndexUnsafe tilemapConfig
-        |> Cell.connectedBounds tilemapConfig
-        |> tileIdsByOrthogonalMatch defaultTiles
-        |> Superposition
-        |> Tile.init
-
-
 fromTilemap : Tilemap -> Random.Seed -> Model
 fromTilemap tilemap initialSeed =
     Model
@@ -162,11 +137,11 @@ withTileInventory tileInventory (Model modelContents) =
 
 {-| Tries to solve/fill the whole grid in one go by assigning a tile to each position
 -}
-solve : TilemapConfig -> Random.Seed -> Model
-solve tilemapConfig initialSeed =
+solve : Model -> Model
+solve initialModel =
     let
         nextModel =
-            step StopAtSolved <| init tilemapConfig initialSeed
+            step StopAtSolved initialModel
     in
     solve_ nextModel
 

@@ -3,7 +3,13 @@ module WFCDebug exposing (main)
 import Browser
 import Data.Assets exposing (assetById, debugAssets, roads)
 import Data.Colors
-import Data.TileSet exposing (allTiles, pairingsForSocket)
+import Data.TileSet
+    exposing
+        ( allTiles
+        , defaultTiles
+        , pairingsForSocket
+        , tileIdsByOrthogonalMatch
+        )
 import Element
 import Element.Background
 import Element.Font
@@ -21,7 +27,14 @@ import Render.Debug
 import Svg
 import Svg.Attributes
 import Task
-import Tilemap.Core exposing (TileListFilter(..), TilemapConfig)
+import Tilemap.Cell as Cell
+import Tilemap.Core
+    exposing
+        ( TileListFilter(..)
+        , TilemapConfig
+        , createTilemap
+        )
+import Tilemap.Tile as Tile exposing (Tile)
 import Tilemap.TileConfig as TileConfig
     exposing
         ( Socket(..)
@@ -88,7 +101,7 @@ init _ =
             RenderCache.new world roads
                 |> RenderCache.setTileListFilter NoFilter
     in
-    ( { wfcModel = WFC.init tilemapConfig initialSeed
+    ( { wfcModel = initWFC initialSeed
       , mode = Manual
       , world = world
       , cache = cache
@@ -113,6 +126,26 @@ tilemapConfig =
     { horizontalCellsAmount = 14
     , verticalCellsAmount = 10
     }
+
+
+initWFC : Random.Seed -> WFC.Model
+initWFC seed =
+    WFC.fromTilemap
+        (createTilemap
+            tilemapConfig
+            (initTileWithSuperposition tilemapConfig)
+        )
+        seed
+
+
+initTileWithSuperposition : TilemapConfig -> Int -> Tile
+initTileWithSuperposition constraints index =
+    index
+        |> Cell.fromArray1DIndexUnsafe constraints
+        |> Cell.connectedBounds constraints
+        |> tileIdsByOrthogonalMatch defaultTiles
+        |> Tile.Superposition
+        |> Tile.init
 
 
 subscriptions : Model -> Sub Msg
@@ -185,7 +218,7 @@ update msg model =
                 seed =
                     Random.initialSeed <| Time.posixToMillis posix
             in
-            ( { model | wfcModel = WFC.init tilemapConfig seed }
+            ( { model | wfcModel = initWFC seed }
             , Task.succeed () |> Task.perform (\_ -> Step)
             )
 
@@ -205,7 +238,7 @@ update msg model =
                     Random.initialSeed <| Time.posixToMillis posix
 
                 solveResult =
-                    WFC.solve tilemapConfig seed
+                    WFC.solve (initWFC seed)
 
                 tilemap =
                     WFC.toTilemap solveResult
