@@ -1,17 +1,22 @@
 module Tilemap.DrivenWFC exposing
     ( DrivenWFC(..)
     , drivenWfcInitialState
+    , resetWFC
     , restartWFC
     , runWFC
+    , updateTileNeighbors
     )
 
 import Data.TileSet
     exposing
         ( decorativeTiles
+        , defaultTiles
         , lotTiles
+        , tileById
         , tilesByBaseTileId
         )
 import Duration exposing (Duration)
+import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import List.Nonempty
 import Random
 import Tilemap.Cell exposing (Cell)
@@ -24,8 +29,9 @@ import Tilemap.Core
         , tileByCell
         , tileNeighborIn
         )
-import Tilemap.Tile as Tile exposing (Tile, TileKind(..))
+import Tilemap.Tile as Tile exposing (Action(..), Tile, TileKind(..))
 import Tilemap.TileConfig as TileConfig exposing (TileConfig, TileId)
+import Tilemap.TileInventory exposing (TileInventory)
 import Tilemap.WFC as WFC
 
 
@@ -56,7 +62,7 @@ runWFC seed tilemap wfc =
         ( baseWFC, isSolved ) =
             case WFC.currentState wfc of
                 WFC.Failed _ ->
-                    ( restartWFC seed tilemap, False )
+                    ( restartWFC seed (WFC.toTileInventory wfc) tilemap, False )
 
                 WFC.Done ->
                     ( wfc, True )
@@ -86,11 +92,79 @@ runWFC seed tilemap wfc =
         ( tilemap, WFCActive nextWfc, [] )
 
 
-restartWFC : Random.Seed -> Tilemap -> WFC.Model
-restartWFC seed tilemap =
-    WFC.fromTilemap
+restartWFC : Random.Seed -> TileInventory Int -> Tilemap -> WFC.Model
+restartWFC seed tileInventory tilemap =
+    resetWFC seed
+        Nothing
+        tileInventory
         (reopenRoads tilemap)
-        seed
+
+
+resetWFC : Random.Seed -> Maybe Cell -> TileInventory Int -> Tilemap -> WFC.Model
+resetWFC seed changedCell tileInventory tilemap =
+    let
+        wfcWithChangedTile =
+            WFC.fromTilemap tilemap seed
+                |> WFC.withTileInventory tileInventory
+    in
+    case changedCell of
+        Just cell ->
+            WFC.propagateConstraints cell wfcWithChangedTile
+
+        Nothing ->
+            wfcWithChangedTile
+
+
+
+--
+-- Update tile neighbors after a tile has changed (by user input)
+--
+
+
+updateTileNeighbors : Cell -> WFC.Model -> ( WFC.Model, List Action )
+updateTileNeighbors cell wfcModel =
+    wfcModel
+        |> updateTileNeighborsHelper cell OrthogonalDirection.all
+        |> WFC.flushPendingActions
+
+
+updateTileNeighborsHelper : Cell -> List OrthogonalDirection -> WFC.Model -> WFC.Model
+updateTileNeighborsHelper origin remainingDirs wfcModel =
+    case remainingDirs of
+        [] ->
+            wfcModel
+
+        dir :: otherDirs ->
+            let
+                maybeTile =
+                    tileNeighborIn dir origin tileByCell (WFC.toTilemap wfcModel)
+
+                nextWFCModel =
+                    processTileNeighbor maybeTile wfcModel
+            in
+            updateTileNeighborsHelper origin otherDirs nextWFCModel
+
+
+processTileNeighbor : Maybe ( Cell, Tile ) -> WFC.Model -> WFC.Model
+processTileNeighbor maybeTile wfcModel =
+    case maybeTile of
+        Just ( cell, tile ) ->
+            case tile.kind of
+                Fixed properties ->
+                    if TileConfig.biome (tileById properties.id) == TileConfig.Road then
+                        wfcModel
+                            |> WFC.resetCell defaultTiles cell tile.kind
+                            |> WFC.collapse cell
+
+                    else
+                        wfcModel
+
+                -- Does not change Superposition or Uninitialized
+                _ ->
+                    wfcModel
+
+        Nothing ->
+            wfcModel
 
 
 

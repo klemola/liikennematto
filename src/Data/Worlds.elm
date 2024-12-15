@@ -16,9 +16,13 @@ import Data.Utility
     exposing
         ( tenByTenTilemap
         , tilemapFromCoordinates
-        , worldFromTilemap
         )
-import Model.World exposing (World)
+import Model.World exposing (World, createRoadNetwork)
+
+
+worldFromTilemap tilemap =
+    Data.Utility.worldFromTilemap tilemap
+        |> createRoadNetwork tilemap
 
 
 defaultWorld : World

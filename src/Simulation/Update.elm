@@ -1,6 +1,5 @@
 module Simulation.Update exposing (update)
 
-import Data.Lots exposing (NewLot)
 import Data.TileSet exposing (extractLotEntryTile, lotDrivewayTileIds, tileById)
 import Duration
 import Lib.Collection as Collection
@@ -27,7 +26,7 @@ import Simulation.TrafficLight exposing (TrafficLight)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core exposing (addAnchor, anchorByCell, fixedTileByCell, getTilemapConfig, tileByCell)
 import Tilemap.Tile exposing (TileKind(..))
-import Tilemap.TileConfig as TileConfig exposing (TileConfig)
+import Tilemap.TileConfig exposing (TileConfig)
 import Time
 
 
@@ -227,41 +226,21 @@ newLotsFromTilemapChange tilemapChange time world =
             )
         |> List.foldl
             (\( drivewayCell, lotTileConfig ) nextWorld ->
-                addLot time (matchLotToTileConfig lotTileConfig) drivewayCell nextWorld
+                addLot time lotTileConfig drivewayCell nextWorld
             )
             world
 
 
-matchLotToTileConfig : TileConfig -> NewLot
-matchLotToTileConfig tileConfig =
-    -- TODO: this should be replaced
-    case TileConfig.tileConfigId tileConfig of
-        100 ->
-            Data.Lots.residentialSingle1
-
-        101 ->
-            Data.Lots.school
-
-        102 ->
-            Data.Lots.fireStation
-
-        103 ->
-            Data.Lots.residentialRow1
-
-        104 ->
-            Data.Lots.residentialApartments1
-
-        _ ->
-            Data.Lots.residentialSingle1
-
-
-addLot : Time.Posix -> NewLot -> Cell -> World -> World
-addLot time newLot drivewayCell world =
+addLot : Time.Posix -> TileConfig -> Cell -> World -> World
+addLot time tileConfig drivewayCell ({ tilemap, lots } as world) =
     let
+        ( newLot, worldWithUpdatedTileInventory ) =
+            World.prepareNewLot tileConfig world
+
         anchorCell =
             -- Use of unsafe function: to get here, the next Cell has to exist (it is the lot entry cell)
             Cell.nextOrthogonalCellUnsafe
-                (getTilemapConfig world.tilemap)
+                (getTilemapConfig tilemap)
                 newLot.drivewayExitDirection
                 drivewayCell
 
@@ -269,9 +248,9 @@ addLot time newLot drivewayCell world =
             Lot.build newLot anchorCell
 
         ( lot, nextLots ) =
-            Collection.addFromBuilder builderFn world.lots
+            Collection.addFromBuilder builderFn lots
     in
-    world
+    worldWithUpdatedTileInventory
         |> World.refreshLots lot nextLots
         |> World.setTilemap
             (addAnchor anchorCell

@@ -19,7 +19,7 @@ import Data.TileSet exposing (tileIdByBitmask)
 import Duration
 import Lib.Collection exposing (Id)
 import Lib.OrthogonalDirection exposing (OrthogonalDirection)
-import Model.World as World exposing (World, createRoadNetwork)
+import Model.World as World exposing (World)
 import Random
 import Simulation.RoadNetwork as RoadNetwork exposing (RNNodeContext)
 import Tilemap.Buffer exposing (removeBuffer, updateBufferCells)
@@ -88,7 +88,8 @@ addAnchors tilemap anchorDefs =
 
 worldFromTilemap : Tilemap -> World
 worldFromTilemap tilemap =
-    World.empty tenByTenTilemap |> createRoadNetwork tilemap
+    World.empty (getTilemapConfig tilemap)
+        |> World.setSeed testSeed
 
 
 tilemapFromCells : TilemapConfig -> List Cell -> Tilemap
@@ -127,7 +128,7 @@ addTileInstantly cell tilemap =
         ( tilemapWithTile, _ ) =
             case tileIdByBitmask bitmask of
                 Just tileId ->
-                    addTileById cell tileId tilemap testSeed
+                    addTileById cell tileId (worldFromTilemap tilemap) tilemap
 
                 Nothing ->
                     ( tilemap, [] )

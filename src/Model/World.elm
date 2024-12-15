@@ -16,6 +16,7 @@ module Model.World exposing
     , hasLot
     , hasPendingTilemapChange
     , isEmptyArea
+    , prepareNewLot
     , refreshCars
     , refreshLots
     , removeCar
@@ -24,6 +25,7 @@ module Model.World exposing
     , setCar
     , setSeed
     , setTilemap
+    , tileInventoryCount
     , updateLot
     , updateRoadNetwork
     )
@@ -31,6 +33,9 @@ module Model.World exposing
 import BoundingBox2d exposing (BoundingBox2d)
 import Common exposing (GlobalCoordinates)
 import Data.Cars exposing (CarMake)
+import Data.Lots exposing (NewLot, allLots)
+import Data.TileSet exposing (lotTiles)
+import Dict
 import Duration exposing (Duration)
 import Graph
 import Length exposing (Length)
@@ -64,6 +69,8 @@ import Tilemap.Core
         , tilemapIntersects
         )
 import Tilemap.Tile as Tile
+import Tilemap.TileConfig as TileConfig exposing (TileConfig)
+import Tilemap.TileInventory as TileInventory exposing (TileInventory)
 import Time
 
 
@@ -79,12 +86,13 @@ type WorldEvent
 
 type alias World =
     { tilemap : Tilemap
+    , tileInventory : TileInventory (List NewLot)
     , pendingTilemapChange : Maybe PendingTilemapChange
     , roadNetwork : RoadNetwork
-    , roadNetworkLookup : QuadTree Length.Meters GlobalCoordinates RNLookupEntry
     , trafficLights : Collection TrafficLight
     , lots : Collection Lot
     , cars : Collection Car
+    , roadNetworkLookup : QuadTree Length.Meters GlobalCoordinates RNLookupEntry
     , carLookup : QuadTree Length.Meters GlobalCoordinates Car
     , lotLookup : QuadTree Length.Meters GlobalCoordinates Lot
     , eventQueue : EventQueue WorldEvent
@@ -107,6 +115,28 @@ type alias RNLookupEntry =
     , position : Point2d Length.Meters GlobalCoordinates
     , boundingBox : BoundingBox2d Length.Meters GlobalCoordinates
     }
+
+
+initialTileInventory : TileInventory (List NewLot)
+initialTileInventory =
+    let
+        matchesTile largeTile newLot =
+            newLot.horizontalTilesAmount == largeTile.width && newLot.verticalTilesAmount == largeTile.height
+    in
+    lotTiles
+        |> List.filterMap
+            (\tileConfig ->
+                case tileConfig of
+                    TileConfig.Large largeTile ->
+                        Just
+                            ( largeTile.id
+                            , List.filter (matchesTile largeTile) allLots
+                            )
+
+                    _ ->
+                        Nothing
+            )
+        |> Dict.fromList
 
 
 quadTreeLeafElementsAmount : Int
@@ -134,14 +164,15 @@ empty tilemapConfig =
             tilemapBoundingBox tilemap
     in
     { tilemap = tilemap
+    , tileInventory = initialTileInventory
     , pendingTilemapChange = Nothing
     , roadNetwork = RoadNetwork.empty
     , trafficLights = Collection.empty
     , cars = Collection.empty
     , lots = Collection.empty
+    , roadNetworkLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
     , carLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
     , lotLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
-    , roadNetworkLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
     , eventQueue = EventQueue.empty
     , seed = initialSeed
     }
@@ -295,6 +326,50 @@ updateLot lot world =
     { world | lots = Collection.update lot.id lot world.lots }
 
 
+prepareNewLot : TileConfig -> World -> ( NewLot, World )
+prepareNewLot tileConfig world =
+    let
+        tileId =
+            TileConfig.tileConfigId tileConfig
+
+        ( ( newLot, remainingOptions ), nextSeed ) =
+            TileInventory.chooseRandom tileId world.seed world.tileInventory
+    in
+    ( newLot |> Maybe.withDefault (newLotFallback tileConfig)
+    , { world
+        | seed = nextSeed
+        , tileInventory = Dict.insert tileId remainingOptions world.tileInventory
+      }
+    )
+
+
+tileInventoryCount : World -> TileInventory Int
+tileInventoryCount world =
+    TileInventory.countAvailable world.tileInventory
+
+
+newLotFallback : TileConfig -> NewLot
+newLotFallback tileConfig =
+    case TileConfig.tileConfigId tileConfig of
+        100 ->
+            Data.Lots.residentialSingle1
+
+        101 ->
+            Data.Lots.school
+
+        102 ->
+            Data.Lots.fireStation
+
+        103 ->
+            Data.Lots.residentialRow1
+
+        104 ->
+            Data.Lots.residentialApartments1
+
+        _ ->
+            Data.Lots.residentialSingle1
+
+
 removeLot : Id -> World -> World
 removeLot lotId world =
     case Collection.get lotId world.lots of
@@ -326,17 +401,18 @@ removeLot lotId world =
                 nextLots =
                     Collection.remove lotId world.lots
 
-                nextTilemap =
-                    removeAnchor lotId world.tilemap
-
-                nextLookup =
-                    createLookup (Collection.values nextLots) world
+                tileInventoryWithRestoredLot =
+                    TileInventory.restoreItem
+                        (\( _, newLot ) -> newLot.kind == lot.kind)
+                        (TileInventory.tileIdItemPairs initialTileInventory)
+                        world.tileInventory
             in
             { world
                 | lots = nextLots
-                , tilemap = nextTilemap
                 , cars = nextCars
-                , lotLookup = nextLookup
+                , tilemap = removeAnchor lotId world.tilemap
+                , lotLookup = createLookup (Collection.values nextLots) world
+                , tileInventory = tileInventoryWithRestoredLot
             }
 
         Nothing ->

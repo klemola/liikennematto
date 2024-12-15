@@ -6,20 +6,19 @@ module Tilemap.WFC exposing
     , collapse
     , contextDebug
     , currentState
-    , failed
     , flushPendingActions
     , fromTilemap
-    , init
     , propagateConstraints
     , resetCell
-    , setTilemap
     , solve
     , stateDebug
     , step
     , stepN
     , stopped
     , toCurrentCell
+    , toTileInventory
     , toTilemap
+    , withTileInventory
     )
 
 import Array
@@ -27,11 +26,10 @@ import Common exposing (attemptFoldList, attemptMapList)
 import Data.TileSet as TileSet
     exposing
         ( defaultSocket
-        , defaultTiles
         , pairingsForSocket
         , tileById
-        , tileIdsByOrthogonalMatch
         )
+import Dict
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import List.Nonempty exposing (Nonempty)
 import Random exposing (Seed)
@@ -41,9 +39,7 @@ import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
         ( Tilemap
-        , TilemapConfig
         , addTileFromWFC
-        , createTilemap
         , foldTiles
         , forAllTiles
         , getTilemapConfig
@@ -63,6 +59,7 @@ import Tilemap.TileConfig as TileConfig
         , socketByDirection
         , socketByDirectionWithConfig
         )
+import Tilemap.TileInventory as TileInventory exposing (TileInventory)
 
 
 type Model
@@ -77,6 +74,7 @@ type alias ModelDetails =
     , previousSteps : Stack ( Step, Nonempty TileId )
     , state : WFCState
     , pendingActions : List Tile.Action
+    , tileInventory : TileInventory Int
     , seed : Seed
     }
 
@@ -101,6 +99,7 @@ type WFCFailure
     | InvalidDirection
     | NoCandidates
     | TileNotFound
+    | TileUnavailable TileId
     | BacktrackFailed
 
 
@@ -108,26 +107,6 @@ type WFCFailure
 --
 -- Init
 --
-
-
-init : TilemapConfig -> Random.Seed -> Model
-init tilemapConfig initialSeed =
-    fromTilemap
-        (createTilemap
-            tilemapConfig
-            (initTileWithSuperposition tilemapConfig)
-        )
-        initialSeed
-
-
-initTileWithSuperposition : TilemapConfig -> Int -> Tile
-initTileWithSuperposition tilemapConfig index =
-    index
-        |> Cell.fromArray1DIndexUnsafe tilemapConfig
-        |> Cell.connectedBounds tilemapConfig
-        |> tileIdsByOrthogonalMatch defaultTiles
-        |> Superposition
-        |> Tile.init
 
 
 fromTilemap : Tilemap -> Random.Seed -> Model
@@ -140,8 +119,14 @@ fromTilemap tilemap initialSeed =
         , previousSteps = Stack.empty
         , state = Solving
         , pendingActions = []
+        , tileInventory = Dict.empty
         , seed = initialSeed
         }
+
+
+withTileInventory : TileInventory Int -> Model -> Model
+withTileInventory tileInventory (Model modelContents) =
+    Model { modelContents | tileInventory = tileInventory }
 
 
 
@@ -152,11 +137,11 @@ fromTilemap tilemap initialSeed =
 
 {-| Tries to solve/fill the whole grid in one go by assigning a tile to each position
 -}
-solve : TilemapConfig -> Random.Seed -> Model
-solve tilemapConfig initialSeed =
+solve : Model -> Model
+solve initialModel =
     let
         nextModel =
-            step StopAtSolved <| init tilemapConfig initialSeed
+            step StopAtSolved initialModel
     in
     solve_ nextModel
 
@@ -189,13 +174,14 @@ step endCondition model =
                     Model { modelDetails | state = Solving }
 
                 _ ->
-                    case backtrack modelDetails.previousSteps modelDetails.tilemap of
-                        Ok tilemapAfterBacktrack ->
+                    case backtrack modelDetails.previousSteps modelDetails.tileInventory modelDetails.tilemap of
+                        Ok ( updatedTileInventory, tilemapAfterBacktrack ) ->
                             Model
                                 { modelDetails
                                     | state = Solving
                                     , openSteps = []
                                     , tilemap = tilemapAfterBacktrack
+                                    , tileInventory = updatedTileInventory
                                 }
 
                         Err failure ->
@@ -213,14 +199,15 @@ stepN endCondition nTimes model =
 
     else
         let
-            stepResult =
+            ((Model modelContents) as stepResult) =
                 step endCondition model
         in
-        if failed stepResult then
-            stepResult
+        case modelContents.state of
+            Failed _ ->
+                stepResult
 
-        else
-            stepN endCondition (nTimes - 1) stepResult
+            _ ->
+                stepN endCondition (nTimes - 1) stepResult
 
 
 
@@ -290,19 +277,18 @@ resetCell tileSet cell tileKind (Model modelContents) =
     Model { modelContents | tilemap = resetTileBySurroundings cell tileSet tileKind modelContents.tilemap }
 
 
-setTilemap : Tilemap -> Model -> Model
-setTilemap tilemap (Model modelContents) =
-    Model { modelContents | tilemap = tilemap }
-
-
 
 --
 -- Steps and propagation
 --
 
 
+type alias ProcessStepResult =
+    ( List Step, List Tile.Action, Tilemap )
+
+
 processOpenSteps : StepEndCondition -> Model -> Model
-processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap, pendingActions } as modelDetails)) =
+processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap } as modelDetails)) =
     case openSteps of
         currentStep :: otherSteps ->
             let
@@ -323,8 +309,22 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap, pendi
                         , targetCell = targetCell
                     }
             in
-            case processStep tilemap currentStep of
+            case processStep tilemap modelDetails.tileInventory currentStep of
                 Ok ( additionalSteps, tileActions, nextTilemap ) ->
+                    let
+                        nextTileInventory =
+                            case currentStep of
+                                CollapseSubgridCell _ props ->
+                                    -- Check if the next step continues to build the same large tile
+                                    if (List.head otherSteps |> Maybe.andThen stepTileId) == Just props.parentTileId then
+                                        modelDetails.tileInventory
+
+                                    else
+                                        TileInventory.markAsUsed props.parentTileId modelDetails.tileInventory
+
+                                _ ->
+                                    modelDetails.tileInventory
+                    in
                     Model
                         { withPosition
                             | tilemap = nextTilemap
@@ -337,7 +337,8 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap, pendi
 
                                     Nothing ->
                                         previousSteps
-                            , pendingActions = pendingActions ++ tileActions
+                            , pendingActions = modelDetails.pendingActions ++ tileActions
+                            , tileInventory = nextTileInventory
                         }
 
                 Err wfcFailure ->
@@ -375,24 +376,32 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap, pendi
             Model nextModelDetails
 
 
-processStep : Tilemap -> Step -> Result WFCFailure ( List Step, List Tile.Action, Tilemap )
-processStep tilemap currentStep =
+processStep : Tilemap -> TileInventory Int -> Step -> Result WFCFailure ProcessStepResult
+processStep tilemap tileInventory currentStep =
     case currentStep of
         Collapse cell tileConfig ->
-            case tileConfig of
-                TileConfig.Large largeTile ->
-                    largeTileSteps tilemap cell largeTile
-                        |> Result.map (\steps -> ( steps, [], tilemap ))
+            let
+                tileId =
+                    TileConfig.tileConfigId tileConfig
+            in
+            if not (TileInventory.isAvailable tileId tileInventory) then
+                Err (TileUnavailable tileId)
 
-                TileConfig.Single singleTile ->
-                    let
-                        nextSteps =
-                            propagateConstraintsSteps tilemap cell
+            else
+                case tileConfig of
+                    TileConfig.Large largeTile ->
+                        largeTileSteps tilemap cell largeTile
+                            |> Result.map (\steps -> ( steps, [], tilemap ))
 
-                        ( nextTilemap, tileActions ) =
-                            addTileFromWFC Nothing singleTile.id cell tilemap
-                    in
-                    Ok ( nextSteps, tileActions, nextTilemap )
+                    TileConfig.Single singleTile ->
+                        let
+                            nextSteps =
+                                propagateConstraintsSteps tilemap cell
+
+                            ( nextTilemap, tileActions ) =
+                                addTileFromWFC Nothing singleTile.id cell tilemap
+                        in
+                        Ok ( nextSteps, tileActions, nextTilemap )
 
         CollapseSubgridCell cell properties ->
             attemptPlaceSubgridTile tilemap properties.parentTileId cell properties
@@ -537,8 +546,8 @@ stepTileId theStep =
 --
 
 
-backtrack : Stack ( Step, Nonempty TileId ) -> Tilemap -> Result WFCFailure Tilemap
-backtrack previousSteps tilemap =
+backtrack : Stack ( Step, Nonempty TileId ) -> TileInventory Int -> Tilemap -> Result WFCFailure ( TileInventory Int, Tilemap )
+backtrack previousSteps tileInventory tilemap =
     let
         ( stepCtx, previousSteps_ ) =
             Stack.pop previousSteps
@@ -549,8 +558,8 @@ backtrack previousSteps tilemap =
 
         Just ( theStep, previousSuperposition ) ->
             let
-                ( remainingSuperposition, reverted ) =
-                    revertStep theStep previousSuperposition tilemap
+                ( remainingSuperposition, updatedInventory, reverted ) =
+                    revertStep theStep previousSuperposition tileInventory tilemap
 
                 backtrackedEnough =
                     case theStep of
@@ -561,14 +570,14 @@ backtrack previousSteps tilemap =
                             False
             in
             if backtrackedEnough then
-                Ok reverted
+                Ok ( updatedInventory, reverted )
 
             else
-                backtrack previousSteps_ reverted
+                backtrack previousSteps_ updatedInventory reverted
 
 
-revertStep : Step -> Nonempty TileId -> Tilemap -> ( List TileId, Tilemap )
-revertStep theStep previousSuperposition tilemap =
+revertStep : Step -> Nonempty TileId -> TileInventory Int -> Tilemap -> ( List TileId, TileInventory Int, Tilemap )
+revertStep theStep previousSuperposition tileInventory tilemap =
     let
         targetCell =
             stepCell theStep
@@ -579,15 +588,18 @@ revertStep theStep previousSuperposition tilemap =
         psList =
             List.Nonempty.toList previousSuperposition
 
-        nextSuperpositionOptions =
+        ( nextSuperpositionOptions, updatedInventory ) =
             case maybeTileId of
                 Just tileId ->
-                    List.filter (\superpositionOption -> superpositionOption /= tileId) psList
+                    ( List.filter (\superpositionOption -> superpositionOption /= tileId) psList
+                    , TileInventory.increaseCount tileId tileInventory
+                    )
 
                 Nothing ->
-                    psList
+                    ( psList, tileInventory )
     in
     ( nextSuperpositionOptions
+    , updatedInventory
     , setSuperpositionOptions targetCell nextSuperpositionOptions tilemap
     )
 
@@ -938,16 +950,6 @@ stopped (Model modelDetails) =
     modelDetails.state /= Solving
 
 
-failed : Model -> Bool
-failed (Model modelDetails) =
-    case modelDetails.state of
-        Failed _ ->
-            True
-
-        _ ->
-            False
-
-
 flushPendingActions : Model -> ( Model, List Tile.Action )
 flushPendingActions ((Model modelDetails) as model) =
     if modelDetails.state == Done then
@@ -967,6 +969,11 @@ toCurrentCell (Model modelDetails) =
 toTilemap : Model -> Tilemap
 toTilemap (Model modelDetails) =
     modelDetails.tilemap
+
+
+toTileInventory : Model -> TileInventory Int
+toTileInventory (Model modelDetails) =
+    modelDetails.tileInventory
 
 
 stateDebug : Model -> String
@@ -1013,6 +1020,9 @@ wfcFailureToString wfcFailure =
 
         TileNotFound ->
             "Tile not found"
+
+        TileUnavailable tileId ->
+            "Tile unavailable: " ++ String.fromInt tileId
 
         NoCandidates ->
             "No candidates available"

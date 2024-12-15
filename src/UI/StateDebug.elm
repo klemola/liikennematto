@@ -138,11 +138,12 @@ wfcCurrentCell cache wfcModel =
                     Element.px (floor tileSizePixels)
 
                 cursorColor =
-                    if WFC.failed wfcModel then
-                        Data.Colors.red
+                    case WFC.currentState wfcModel of
+                        WFC.Failed _ ->
+                            Data.Colors.red
 
-                    else
-                        Data.Colors.gray7
+                        _ ->
+                            Data.Colors.gray7
             in
             Element.el
                 [ Element.width cellSize

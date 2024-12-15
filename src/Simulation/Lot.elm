@@ -22,14 +22,14 @@ import Angle exposing (Angle)
 import BoundingBox2d exposing (BoundingBox2d)
 import Common exposing (GlobalCoordinates, LocalCoordinates)
 import CubicSpline2d exposing (CubicSpline2d)
-import Data.Lots exposing (LotKind, NewLot, ParkingRestriction(..))
+import Data.Lots exposing (LotKind, NewLot, ParkingRestriction(..), drivewayOffset)
 import Direction2d
-import Frame2d exposing (Frame2d)
 import Length exposing (Length)
 import Lib.Collection exposing (Id)
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
 import Point2d exposing (Point2d)
 import Quantity
+import Simulation.RoadNetwork exposing (innerLaneOffset, outerLaneOffset)
 import Simulation.Splines as Splines
 import Tilemap.Cell as Cell exposing (Cell)
 import Vector2d
@@ -54,26 +54,58 @@ type alias Lot =
 build : NewLot -> Cell -> Id -> Lot
 build newLot anchor lotId =
     let
+        width =
+            Cell.size |> Quantity.multiplyBy (toFloat newLot.horizontalTilesAmount)
+
+        height =
+            Cell.size |> Quantity.multiplyBy (toFloat newLot.verticalTilesAmount)
+
         constructionSiteBB =
-            constructionSite anchor newLot
+            constructionSite anchor ( width, height ) newLot
+
+        entryPosition =
+            toRoadConnectionPosition innerLaneOffset newLot.drivewayExitDirection width
+
+        exitPosition =
+            toRoadConnectionPosition outerLaneOffset newLot.drivewayExitDirection height
 
         lotFrame =
             Common.boundingBoxToFrame constructionSiteBB
+
+        createParkingSpot id ( position, parkingRestriction ) =
+            let
+                splineProps =
+                    { parkingSpotPosition = position
+                    , lotEntryPosition = entryPosition
+                    , lotExitPosition = exitPosition
+                    , parkingSpotExitDirection = OrthogonalDirection.toDirection2d newLot.parkingSpotExitDirection
+                    , drivewayExitDirection = OrthogonalDirection.toDirection2d newLot.drivewayExitDirection
+                    , parkingLaneStartPosition = newLot.parkingLaneStartPosition
+                    , parkingLaneStartDirection = OrthogonalDirection.toDirection2d newLot.parkingLaneStartDirection
+                    }
+            in
+            { id = id
+            , position = Point2d.placeIn lotFrame position
+            , pathFromLotEntry = List.map (Splines.asGlobalSpline lotFrame) (Splines.lotEntrySpline splineProps)
+            , pathToLotExit = List.map (Splines.asGlobalSpline lotFrame) (Splines.lotExitSpline splineProps)
+            , parkingRestriction = parkingRestriction
+            , reservedBy = Nothing
+            }
     in
     { id = lotId
     , kind = newLot.kind
-    , width = newLot.width
-    , height = newLot.height
+    , width = width
+    , height = height
     , position = BoundingBox2d.centerPoint constructionSiteBB
     , boundingBox = constructionSiteBB
-    , entryPosition = Point2d.placeIn lotFrame newLot.entryPosition
-    , exitPosition = Point2d.placeIn lotFrame newLot.exitPosition
+    , entryPosition = Point2d.placeIn lotFrame entryPosition
+    , exitPosition = Point2d.placeIn lotFrame exitPosition
     , drivewayExitDirection = newLot.drivewayExitDirection
     , parkingSpotExitDirection = newLot.parkingSpotExitDirection
     , parkingLock = Nothing
     , parkingSpots =
         newLot.parkingSpots
-            |> List.indexedMap (\spotId spot -> createParkingSpot spotId newLot lotFrame spot)
+            |> List.indexedMap createParkingSpot
             -- Prioritize resident parking, so that those spots are tried first when looking for a free spot
             |> List.sortWith
                 (\spotA spotB ->
@@ -86,8 +118,36 @@ build newLot anchor lotId =
     }
 
 
-constructionSite : Cell -> NewLot -> BoundingBox2d Length.Meters GlobalCoordinates
-constructionSite anchor { width, height, drivewayExitDirection } =
+toRoadConnectionPosition : Length -> OrthogonalDirection -> Length -> Point2d Length.Meters LocalCoordinates
+toRoadConnectionPosition laneOffset drivewayExitDirection lotWidth =
+    case drivewayExitDirection of
+        Right ->
+            Point2d.xy
+                lotWidth
+                (Cell.size
+                    |> Quantity.minus laneOffset
+                    |> Quantity.minus drivewayOffset
+                )
+
+        Down ->
+            Point2d.xy
+                (laneOffset |> Quantity.minus drivewayOffset)
+                Quantity.zero
+
+        Left ->
+            Point2d.xy
+                Quantity.zero
+                (Cell.size
+                    |> Quantity.minus laneOffset
+                    |> Quantity.minus drivewayOffset
+                )
+
+        _ ->
+            Point2d.origin
+
+
+constructionSite : Cell -> ( Length, Length ) -> NewLot -> BoundingBox2d Length.Meters GlobalCoordinates
+constructionSite anchor ( width, height ) { drivewayExitDirection } =
     let
         origin =
             Cell.bottomLeftCorner anchor
@@ -193,39 +253,6 @@ type alias ParkingSpot =
 type alias ParkingReservation =
     { lotId : Id
     , parkingSpotId : Int
-    }
-
-
-createParkingSpot :
-    Int
-    -> NewLot
-    -> Frame2d Length.Meters GlobalCoordinates { defines : LocalCoordinates }
-    -> ( Point2d Length.Meters LocalCoordinates, ParkingRestriction )
-    -> ParkingSpot
-createParkingSpot id newLot lotFrame ( position, parkingRestriction ) =
-    let
-        splineProps =
-            { parkingSpotPosition = position
-            , lotEntryPosition = newLot.entryPosition
-            , lotExitPosition = newLot.exitPosition
-            , parkingSpotExitDirection = OrthogonalDirection.toDirection2d newLot.parkingSpotExitDirection
-            , drivewayExitDirection = OrthogonalDirection.toDirection2d newLot.drivewayExitDirection
-            , parkingLaneStartPosition = newLot.parkingLaneStartPosition
-            , parkingLaneStartDirection = OrthogonalDirection.toDirection2d newLot.parkingLaneStartDirection
-            }
-
-        entrySpline =
-            Splines.lotEntrySpline splineProps
-
-        exitSpline =
-            Splines.lotExitSpline splineProps
-    in
-    { id = id
-    , position = Point2d.placeIn lotFrame position
-    , pathFromLotEntry = entrySpline |> List.map (Splines.asGlobalSpline lotFrame)
-    , pathToLotExit = exitSpline |> List.map (Splines.asGlobalSpline lotFrame)
-    , parkingRestriction = parkingRestriction
-    , reservedBy = Nothing
     }
 
 

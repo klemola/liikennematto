@@ -8,7 +8,6 @@ import Lib.Collection as Collection exposing (Id, nextId)
 import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.World as World exposing (World)
-import Quantity
 import Render
 import Render.Shape
 import Simulation.Lot exposing (Lot, ParkingSpot)
@@ -28,7 +27,7 @@ tilemapConfig =
     { horizontalCellsAmount = gallerySpotWidth
     , verticalCellsAmount =
         Data.Lots.allLots
-            |> List.map lotHeightCells
+            |> List.map .verticalTilesAmount
             |> List.map ((+) 1)
             |> List.sum
     }
@@ -82,7 +81,7 @@ buildLot :
 buildLot newLot acc =
     let
         y =
-            acc.baseY + lotHeightCells newLot + 1
+            acc.baseY + newLot.verticalTilesAmount + 1
 
         x =
             case newLot.drivewayExitDirection of
@@ -105,13 +104,6 @@ buildLot newLot acc =
 
         Nothing ->
             acc
-
-
-lotHeightCells : NewLot -> Int
-lotHeightCells newLot =
-    Cell.size
-        |> Quantity.ratio newLot.height
-        |> floor
 
 
 renderLotDebug : Lot -> Svg ()

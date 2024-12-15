@@ -4,19 +4,16 @@ import Audio exposing (playSound)
 import Data.TileSet
     exposing
         ( defaultTiles
-        , tileById
         , tileIdByBitmask
         )
 import Duration exposing (Duration)
-import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import Maybe.Extra as Maybe
 import Message exposing (Message(..))
 import Model.Debug exposing (DevAction(..))
 import Model.Liikennematto exposing (Liikennematto)
 import Model.RenderCache exposing (refreshTilemapCache, setTilemapCache, setTilemapDebugCache)
-import Model.World as World
+import Model.World as World exposing (World)
 import Quantity
-import Random
 import Tilemap.Buffer exposing (updateBufferCells)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
@@ -29,25 +26,24 @@ import Tilemap.Core
         , getTilemapConfig
         , resetSuperposition
         , setSuperpositionOptions
-        , tileByCell
-        , tileNeighborIn
         , updateTilemap
         )
 import Tilemap.DrivenWFC
     exposing
         ( DrivenWFC(..)
         , drivenWfcInitialState
+        , resetWFC
         , restartWFC
         , runWFC
+        , updateTileNeighbors
         )
 import Tilemap.Tile as Tile
     exposing
         ( Action(..)
-        , Tile
         , TileKind(..)
         , isBuilt
         )
-import Tilemap.TileConfig as TileConfig exposing (TileId)
+import Tilemap.TileConfig exposing (TileId)
 import Tilemap.WFC as WFC
 import UI.Core exposing (InputKind(..))
 
@@ -200,7 +196,7 @@ addTile cell model =
         Just tileId ->
             let
                 ( withWfc, addTileActions ) =
-                    addTileById cell tileId tilemapWithClearedCell world.seed
+                    addTileById cell tileId world tilemapWithClearedCell
 
                 withBuffer =
                     updateBufferCells cell withWfc
@@ -213,15 +209,14 @@ addTile cell model =
             ( model, Cmd.none )
 
 
-addTileById : Cell -> TileId -> Tilemap -> Random.Seed -> ( Tilemap, List Action )
-addTileById cell tileId tilemap seed =
+addTileById : Cell -> TileId -> World -> Tilemap -> ( Tilemap, List Action )
+addTileById cell tileId world tilemap =
     let
         ( updatedTilemap, tilemapChangeActions ) =
             Tilemap.Core.addTile tileId cell tilemap
 
         wfcModel =
-            WFC.fromTilemap updatedTilemap seed
-                |> WFC.propagateConstraints cell
+            resetWFC world.seed (Just cell) (World.tileInventoryCount world) updatedTilemap
 
         ( updatedWfcModel, wfcTileActions ) =
             updateTileNeighbors cell wfcModel
@@ -241,8 +236,7 @@ removeTile cell model =
             Tilemap.Core.removeTile cell world.tilemap
 
         wfcModel =
-            WFC.fromTilemap updatedTilemap world.seed
-                |> WFC.propagateConstraints cell
+            resetWFC world.seed (Just cell) (World.tileInventoryCount world) updatedTilemap
 
         ( updatedWfcModel, wfcTileActions ) =
             updateTileNeighbors cell wfcModel
@@ -255,52 +249,6 @@ removeTile cell model =
     ( resetDrivenWFC withWFC model
     , Cmd.batch (playSound Audio.DestroyRoad :: tileActionsToCmds actions)
     )
-
-
-updateTileNeighbors : Cell -> WFC.Model -> ( WFC.Model, List Action )
-updateTileNeighbors cell wfcModel =
-    wfcModel
-        |> updateTileNeighborsHelper cell OrthogonalDirection.all
-        |> WFC.flushPendingActions
-
-
-updateTileNeighborsHelper : Cell -> List OrthogonalDirection -> WFC.Model -> WFC.Model
-updateTileNeighborsHelper origin remainingDirs wfcModel =
-    case remainingDirs of
-        [] ->
-            wfcModel
-
-        dir :: otherDirs ->
-            let
-                maybeTile =
-                    tileNeighborIn dir origin tileByCell (WFC.toTilemap wfcModel)
-
-                nextWFCModel =
-                    processTileNeighbor maybeTile wfcModel
-            in
-            updateTileNeighborsHelper origin otherDirs nextWFCModel
-
-
-processTileNeighbor : Maybe ( Cell, Tile ) -> WFC.Model -> WFC.Model
-processTileNeighbor maybeTile wfcModel =
-    case maybeTile of
-        Just ( cell, tile ) ->
-            case tile.kind of
-                Fixed properties ->
-                    if TileConfig.biome (tileById properties.id) == TileConfig.Road then
-                        wfcModel
-                            |> WFC.resetCell defaultTiles cell tile.kind
-                            |> WFC.collapse cell
-
-                    else
-                        wfcModel
-
-                -- Does not change Superposition or Uninitialized
-                _ ->
-                    wfcModel
-
-        Nothing ->
-            wfcModel
 
 
 runWFCIfNecessary : Liikennematto -> Duration -> ( Liikennematto, Cmd Message )
@@ -321,7 +269,12 @@ runWFCIfNecessary model delta =
                         |> Quantity.max Quantity.zero
             in
             if Quantity.lessThanOrEqualToZero nextTimer then
-                runWFCWithModel (restartWFC world.seed world.tilemap) model
+                runWFCWithModel
+                    (restartWFC world.seed
+                        (World.tileInventoryCount world)
+                        world.tilemap
+                    )
+                    model
 
             else
                 ( { model | wfc = WFCPending nextTimer }, Cmd.none )

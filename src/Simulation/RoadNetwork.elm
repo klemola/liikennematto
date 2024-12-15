@@ -13,19 +13,20 @@ module Simulation.RoadNetwork exposing
     , getOutgoingConnectionIds
     , getOutgoingConnectionsAndCosts
     , getRandomNode
+    , innerLaneOffset
     , nodeById
     , nodeByPosition
     , nodeDirection
     , nodeLotId
     , nodePosition
     , nodeTrafficControl
+    , outerLaneOffset
     , outgoingConnectionsAmount
     , size
     )
 
 import BoundingBox2d exposing (BoundingBox2d)
 import Common exposing (GlobalCoordinates)
-import Data.Assets exposing (innerLaneOffset, outerLaneOffset)
 import Data.Lots exposing (drivewayOffset)
 import Data.TileSet exposing (roadConnectionDirectionsByTile, tileById)
 import Dict exposing (Dict)
@@ -104,6 +105,18 @@ type alias Lane =
 empty : RoadNetwork
 empty =
     Graph.empty
+
+
+innerLaneOffset : Length
+innerLaneOffset =
+    -- the distance from a road tile's edge to the inner lane (from left / bottom side)
+    Length.meters 6
+
+
+outerLaneOffset : Length
+outerLaneOffset =
+    -- the distance from a road tile's edge to the outer lane (from the left / bottom side)
+    Length.meters 10
 
 
 laneStartOffsetUp : Vector2d Length.Meters coordinates
