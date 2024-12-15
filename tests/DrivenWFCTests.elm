@@ -8,9 +8,9 @@ import Data.Utility
         , testSeed
         , tilemapFromCoordinates
         )
+import Dict
 import Expect
 import Maybe.Extra as Maybe
-import Set
 import Test exposing (..)
 import Tilemap.Cell as Cell
 import Tilemap.Core exposing (Tilemap, createTilemap, tileByCell)
@@ -51,7 +51,7 @@ suite =
                             placeRoadAndUpdateBuffer
                                 [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ), ( 10, 5 ) ]
                                 emptyTilemap
-                                |> restartWFC testSeed Set.empty
+                                |> restartWFC testSeed Dict.empty
                                 |> WFC.toTilemap
 
                         firstHorizontalRoadCellOptions =
@@ -83,7 +83,7 @@ suite =
                             placeRoadAndUpdateBuffer
                                 [ ( 5, 5 ), ( 5, 6 ), ( 5, 7 ), ( 5, 8 ), ( 5, 9 ), ( 5, 10 ) ]
                                 emptyTilemap
-                                |> restartWFC testSeed Set.empty
+                                |> restartWFC testSeed Dict.empty
                                 |> WFC.toTilemap
 
                         firstHorizontalRoadCellOptions =
@@ -109,7 +109,7 @@ suite =
                             placeRoadAndUpdateBuffer
                                 [ ( 2, 5 ), ( 2, 6 ), ( 2, 7 ), ( 2, 8 ), ( 2, 9 ), ( 2, 10 ) ]
                                 emptyTilemap
-                                |> restartWFC testSeed Set.empty
+                                |> restartWFC testSeed Dict.empty
                                 |> WFC.toTilemap
 
                         firstHorizontalRoadCellOptions =
@@ -136,7 +136,7 @@ suite =
                                 constraints
                                 [ ( 5, 5 ), ( 5, 6 ), ( 5, 7 ), ( 5, 8 ) ]
                                 []
-                                |> restartWFC testSeed Set.empty
+                                |> restartWFC testSeed Dict.empty
                                 |> WFC.toTilemap
                     in
                     Expect.all

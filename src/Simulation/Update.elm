@@ -234,7 +234,7 @@ newLotsFromTilemapChange tilemapChange time world =
 addLot : Time.Posix -> TileConfig -> Cell -> World -> World
 addLot time tileConfig drivewayCell ({ tilemap, lots } as world) =
     let
-        ( newLot, worldWithUpdatedUniqueTiles ) =
+        ( newLot, worldWithUpdatedTileInventory ) =
             World.prepareNewLot tileConfig world
 
         anchorCell =
@@ -250,7 +250,7 @@ addLot time tileConfig drivewayCell ({ tilemap, lots } as world) =
         ( lot, nextLots ) =
             Collection.addFromBuilder builderFn lots
     in
-    worldWithUpdatedUniqueTiles
+    worldWithUpdatedTileInventory
         |> World.refreshLots lot nextLots
         |> World.setTilemap
             (addAnchor anchorCell

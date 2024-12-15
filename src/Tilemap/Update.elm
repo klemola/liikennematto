@@ -216,7 +216,7 @@ addTileById cell tileId world tilemap =
             Tilemap.Core.addTile tileId cell tilemap
 
         wfcModel =
-            resetWFC world.seed (Just cell) (World.unavailableTileIds world) updatedTilemap
+            resetWFC world.seed (Just cell) (World.tileInventoryCount world) updatedTilemap
 
         ( updatedWfcModel, wfcTileActions ) =
             updateTileNeighbors cell wfcModel
@@ -236,7 +236,7 @@ removeTile cell model =
             Tilemap.Core.removeTile cell world.tilemap
 
         wfcModel =
-            resetWFC world.seed (Just cell) (World.unavailableTileIds world) updatedTilemap
+            resetWFC world.seed (Just cell) (World.tileInventoryCount world) updatedTilemap
 
         ( updatedWfcModel, wfcTileActions ) =
             updateTileNeighbors cell wfcModel
@@ -271,7 +271,7 @@ runWFCIfNecessary model delta =
             if Quantity.lessThanOrEqualToZero nextTimer then
                 runWFCWithModel
                     (restartWFC world.seed
-                        (World.unavailableTileIds world)
+                        (World.tileInventoryCount world)
                         world.tilemap
                     )
                     model

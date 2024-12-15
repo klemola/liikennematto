@@ -31,6 +31,7 @@ import Tilemap.Core
         )
 import Tilemap.Tile as Tile exposing (Action(..), Tile, TileKind(..))
 import Tilemap.TileConfig as TileConfig exposing (TileConfig, TileId)
+import Tilemap.TileInventory exposing (TileInventory)
 import Tilemap.WFC as WFC
 
 
@@ -61,7 +62,7 @@ runWFC seed tilemap wfc =
         ( baseWFC, isSolved ) =
             case WFC.currentState wfc of
                 WFC.Failed _ ->
-                    ( restartWFC seed (WFC.toUnavailableTiles wfc) tilemap, False )
+                    ( restartWFC seed (WFC.toTileInventory wfc) tilemap, False )
 
                 WFC.Done ->
                     ( wfc, True )
@@ -91,20 +92,20 @@ runWFC seed tilemap wfc =
         ( tilemap, WFCActive nextWfc, [] )
 
 
-restartWFC : Random.Seed -> WFC.UnavailableTiles -> Tilemap -> WFC.Model
-restartWFC seed unavailableTiles tilemap =
+restartWFC : Random.Seed -> TileInventory Int -> Tilemap -> WFC.Model
+restartWFC seed tileInventory tilemap =
     resetWFC seed
         Nothing
-        unavailableTiles
+        tileInventory
         (reopenRoads tilemap)
 
 
-resetWFC : Random.Seed -> Maybe Cell -> WFC.UnavailableTiles -> Tilemap -> WFC.Model
-resetWFC seed changedCell unavailableTiles tilemap =
+resetWFC : Random.Seed -> Maybe Cell -> TileInventory Int -> Tilemap -> WFC.Model
+resetWFC seed changedCell tileInventory tilemap =
     let
         wfcWithChangedTile =
             WFC.fromTilemap tilemap seed
-                |> WFC.withUnavailableTiles unavailableTiles
+                |> WFC.withTileInventory tileInventory
     in
     case changedCell of
         Just cell ->

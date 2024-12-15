@@ -1,7 +1,6 @@
 module Tilemap.WFC exposing
     ( Model
     , StepEndCondition(..)
-    , UnavailableTiles
     , WFCState(..)
     , checkLargeTileFit
     , collapse
@@ -18,9 +17,9 @@ module Tilemap.WFC exposing
     , stepN
     , stopped
     , toCurrentCell
+    , toTileInventory
     , toTilemap
-    , toUnavailableTiles
-    , withUnavailableTiles
+    , withTileInventory
     )
 
 import Array
@@ -33,11 +32,11 @@ import Data.TileSet as TileSet
         , tileById
         , tileIdsByOrthogonalMatch
         )
+import Dict
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import List.Nonempty exposing (Nonempty)
 import Random exposing (Seed)
 import Random.Extra
-import Set exposing (Set)
 import Stack exposing (Stack)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
@@ -65,6 +64,7 @@ import Tilemap.TileConfig as TileConfig
         , socketByDirection
         , socketByDirectionWithConfig
         )
+import Tilemap.TileInventory as TileInventory exposing (TileInventory)
 
 
 type Model
@@ -79,7 +79,7 @@ type alias ModelDetails =
     , previousSteps : Stack ( Step, Nonempty TileId )
     , state : WFCState
     , pendingActions : List Tile.Action
-    , unavailableTiles : UnavailableTiles
+    , tileInventory : TileInventory Int
     , seed : Seed
     }
 
@@ -106,10 +106,6 @@ type WFCFailure
     | TileNotFound
     | TileUnavailable TileId
     | BacktrackFailed
-
-
-type alias UnavailableTiles =
-    Set TileId
 
 
 
@@ -148,14 +144,14 @@ fromTilemap tilemap initialSeed =
         , previousSteps = Stack.empty
         , state = Solving
         , pendingActions = []
-        , unavailableTiles = Set.empty
+        , tileInventory = Dict.empty
         , seed = initialSeed
         }
 
 
-withUnavailableTiles : UnavailableTiles -> Model -> Model
-withUnavailableTiles unavailableTiles (Model modelContents) =
-    Model { modelContents | unavailableTiles = unavailableTiles }
+withTileInventory : TileInventory Int -> Model -> Model
+withTileInventory tileInventory (Model modelContents) =
+    Model { modelContents | tileInventory = tileInventory }
 
 
 
@@ -203,13 +199,14 @@ step endCondition model =
                     Model { modelDetails | state = Solving }
 
                 _ ->
-                    case backtrack modelDetails.previousSteps modelDetails.tilemap of
-                        Ok tilemapAfterBacktrack ->
+                    case backtrack modelDetails.previousSteps modelDetails.tileInventory modelDetails.tilemap of
+                        Ok ( updatedTileInventory, tilemapAfterBacktrack ) ->
                             Model
                                 { modelDetails
                                     | state = Solving
                                     , openSteps = []
                                     , tilemap = tilemapAfterBacktrack
+                                    , tileInventory = updatedTileInventory
                                 }
 
                         Err failure ->
@@ -337,25 +334,21 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap } as m
                         , targetCell = targetCell
                     }
             in
-            case processStep tilemap modelDetails.unavailableTiles currentStep of
+            case processStep tilemap modelDetails.tileInventory currentStep of
                 Ok ( additionalSteps, tileActions, nextTilemap ) ->
                     let
-                        nextUnavailableTiles =
+                        nextTileInventory =
                             case currentStep of
                                 CollapseSubgridCell _ props ->
                                     -- Check if the next step continues to build the same large tile
                                     if (List.head otherSteps |> Maybe.andThen stepTileId) == Just props.parentTileId then
-                                        modelDetails.unavailableTiles
+                                        modelDetails.tileInventory
 
                                     else
-                                        let
-                                            _ =
-                                                Debug.log "completed large tile" ( props.parentTileId, Set.insert props.parentTileId modelDetails.unavailableTiles )
-                                        in
-                                        Set.insert props.parentTileId modelDetails.unavailableTiles
+                                        TileInventory.markAsUsed props.parentTileId modelDetails.tileInventory
 
                                 _ ->
-                                    modelDetails.unavailableTiles
+                                    modelDetails.tileInventory
                     in
                     Model
                         { withPosition
@@ -370,7 +363,7 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap } as m
                                     Nothing ->
                                         previousSteps
                             , pendingActions = modelDetails.pendingActions ++ tileActions
-                            , unavailableTiles = nextUnavailableTiles
+                            , tileInventory = nextTileInventory
                         }
 
                 Err wfcFailure ->
@@ -408,19 +401,15 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap } as m
             Model nextModelDetails
 
 
-processStep : Tilemap -> UnavailableTiles -> Step -> Result WFCFailure ProcessStepResult
-processStep tilemap unavailableTiles currentStep =
+processStep : Tilemap -> TileInventory Int -> Step -> Result WFCFailure ProcessStepResult
+processStep tilemap tileInventory currentStep =
     case currentStep of
         Collapse cell tileConfig ->
             let
                 tileId =
                     TileConfig.tileConfigId tileConfig
             in
-            if Set.member tileId unavailableTiles then
-                let
-                    _ =
-                        Debug.log "tile unavailable" tileId
-                in
+            if not (TileInventory.isAvailable tileId tileInventory) then
                 Err (TileUnavailable tileId)
 
             else
@@ -582,8 +571,8 @@ stepTileId theStep =
 --
 
 
-backtrack : Stack ( Step, Nonempty TileId ) -> Tilemap -> Result WFCFailure Tilemap
-backtrack previousSteps tilemap =
+backtrack : Stack ( Step, Nonempty TileId ) -> TileInventory Int -> Tilemap -> Result WFCFailure ( TileInventory Int, Tilemap )
+backtrack previousSteps tileInventory tilemap =
     let
         ( stepCtx, previousSteps_ ) =
             Stack.pop previousSteps
@@ -594,8 +583,8 @@ backtrack previousSteps tilemap =
 
         Just ( theStep, previousSuperposition ) ->
             let
-                ( remainingSuperposition, reverted ) =
-                    revertStep theStep previousSuperposition tilemap
+                ( remainingSuperposition, updatedInventory, reverted ) =
+                    revertStep theStep previousSuperposition tileInventory tilemap
 
                 backtrackedEnough =
                     case theStep of
@@ -606,14 +595,14 @@ backtrack previousSteps tilemap =
                             False
             in
             if backtrackedEnough then
-                Ok reverted
+                Ok ( updatedInventory, reverted )
 
             else
-                backtrack previousSteps_ reverted
+                backtrack previousSteps_ updatedInventory reverted
 
 
-revertStep : Step -> Nonempty TileId -> Tilemap -> ( List TileId, Tilemap )
-revertStep theStep previousSuperposition tilemap =
+revertStep : Step -> Nonempty TileId -> TileInventory Int -> Tilemap -> ( List TileId, TileInventory Int, Tilemap )
+revertStep theStep previousSuperposition tileInventory tilemap =
     let
         targetCell =
             stepCell theStep
@@ -624,16 +613,18 @@ revertStep theStep previousSuperposition tilemap =
         psList =
             List.Nonempty.toList previousSuperposition
 
-        nextSuperpositionOptions =
+        ( nextSuperpositionOptions, updatedInventory ) =
             case maybeTileId of
                 Just tileId ->
-                    List.filter (\superpositionOption -> superpositionOption /= tileId) psList
+                    ( List.filter (\superpositionOption -> superpositionOption /= tileId) psList
+                    , TileInventory.increaseCount tileId tileInventory
+                    )
 
                 Nothing ->
-                    psList
+                    ( psList, tileInventory )
     in
-    -- TODO: backtrack should update the unavailable tile ids list
     ( nextSuperpositionOptions
+    , updatedInventory
     , setSuperpositionOptions targetCell nextSuperpositionOptions tilemap
     )
 
@@ -1005,9 +996,9 @@ toTilemap (Model modelDetails) =
     modelDetails.tilemap
 
 
-toUnavailableTiles : Model -> UnavailableTiles
-toUnavailableTiles (Model modelDetails) =
-    modelDetails.unavailableTiles
+toTileInventory : Model -> TileInventory Int
+toTileInventory (Model modelDetails) =
+    modelDetails.tileInventory
 
 
 stateDebug : Model -> String

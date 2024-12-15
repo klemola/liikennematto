@@ -25,7 +25,7 @@ module Model.World exposing
     , setCar
     , setSeed
     , setTilemap
-    , unavailableTileIds
+    , tileInventoryCount
     , updateLot
     , updateRoadNetwork
     )
@@ -35,7 +35,7 @@ import Common exposing (GlobalCoordinates)
 import Data.Cars exposing (CarMake)
 import Data.Lots exposing (NewLot, allLots)
 import Data.TileSet exposing (lotTiles)
-import Dict exposing (Dict)
+import Dict
 import Duration exposing (Duration)
 import Graph
 import Length exposing (Length)
@@ -49,7 +49,6 @@ import Point2d
 import QuadTree exposing (Bounded, QuadTree)
 import Quantity
 import Random
-import Random.List
 import Round
 import Set exposing (Set)
 import Simulation.Car as Car exposing (Car)
@@ -70,7 +69,8 @@ import Tilemap.Core
         , tilemapIntersects
         )
 import Tilemap.Tile as Tile
-import Tilemap.TileConfig as TileConfig exposing (TileConfig, TileId)
+import Tilemap.TileConfig as TileConfig exposing (TileConfig)
+import Tilemap.TileInventory as TileInventory exposing (TileInventory)
 import Time
 
 
@@ -86,7 +86,7 @@ type WorldEvent
 
 type alias World =
     { tilemap : Tilemap
-    , uniqueTiles : TileInventory
+    , tileInventory : TileInventory (List NewLot)
     , pendingTilemapChange : Maybe PendingTilemapChange
     , roadNetwork : RoadNetwork
     , trafficLights : Collection TrafficLight
@@ -117,12 +117,12 @@ type alias RNLookupEntry =
     }
 
 
-type alias TileInventory =
-    Dict TileId (List NewLot)
-
-
-initialUniqueTiles : TileInventory
-initialUniqueTiles =
+initialTileInventory : TileInventory (List NewLot)
+initialTileInventory =
+    let
+        matchesTile largeTile newLot =
+            newLot.horizontalTilesAmount == largeTile.width && newLot.verticalTilesAmount == largeTile.height
+    in
     lotTiles
         |> List.filterMap
             (\tileConfig ->
@@ -130,9 +130,7 @@ initialUniqueTiles =
                     TileConfig.Large largeTile ->
                         Just
                             ( largeTile.id
-                            , List.filter
-                                (\newLot -> newLot.horizontalTilesAmount == largeTile.width && newLot.verticalTilesAmount == largeTile.height)
-                                allLots
+                            , List.filter (matchesTile largeTile) allLots
                             )
 
                     _ ->
@@ -166,7 +164,7 @@ empty tilemapConfig =
             tilemapBoundingBox tilemap
     in
     { tilemap = tilemap
-    , uniqueTiles = initialUniqueTiles
+    , tileInventory = initialTileInventory
     , pendingTilemapChange = Nothing
     , roadNetwork = RoadNetwork.empty
     , trafficLights = Collection.empty
@@ -334,35 +332,20 @@ prepareNewLot tileConfig world =
         tileId =
             TileConfig.tileConfigId tileConfig
 
-        newLotOptions =
-            Dict.get tileId world.uniqueTiles
-                -- There should always be a match, so this fallback is likely unnecessary
-                |> Maybe.withDefault []
-
         ( ( newLot, remainingOptions ), nextSeed ) =
-            Random.step (Random.List.choose newLotOptions) world.seed
+            TileInventory.chooseRandom tileId world.seed world.tileInventory
     in
     ( newLot |> Maybe.withDefault (newLotFallback tileConfig)
     , { world
         | seed = nextSeed
-        , uniqueTiles = Dict.insert tileId remainingOptions world.uniqueTiles
+        , tileInventory = Dict.insert tileId remainingOptions world.tileInventory
       }
     )
 
 
-unavailableTileIds : World -> Set TileId
-unavailableTileIds world =
-    Dict.foldl
-        (\tileId options acc ->
-            if List.isEmpty options then
-                Set.insert tileId acc
-
-            else
-                acc
-        )
-        Set.empty
-        world.uniqueTiles
-        |> Debug.log "unavailable"
+tileInventoryCount : World -> TileInventory Int
+tileInventoryCount world =
+    TileInventory.countAvailable world.tileInventory
 
 
 newLotFallback : TileConfig -> NewLot
