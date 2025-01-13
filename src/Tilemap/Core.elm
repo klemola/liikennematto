@@ -5,7 +5,7 @@ module Tilemap.Core exposing
     , TilemapUpdateResult
     , addAnchor
     , addTile
-    , addTileFromWFC
+    , addTileFromWfc
     , anchorByCell
     , cellBitmask
     , cellHasAnchor
@@ -508,8 +508,8 @@ addTile =
     applyTilemapOperation Tile.Add Nothing
 
 
-addTileFromWFC : Maybe ( TileId, Int ) -> TileId -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
-addTileFromWFC parentTile =
+addTileFromWfc : Maybe ( TileId, Int ) -> TileId -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
+addTileFromWfc parentTile =
     applyTilemapOperation Tile.AddFromWFC parentTile
 
 
@@ -720,7 +720,7 @@ resetLotEntry tilemap lotEntryCell lotEntryTile =
             (\baseTileId ->
                 let
                     ( nextTilemap, _ ) =
-                        addTileFromWFC Nothing baseTileId lotEntryCell tilemap
+                        addTileFromWfc Nothing baseTileId lotEntryCell tilemap
                 in
                 nextTilemap
             )

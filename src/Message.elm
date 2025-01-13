@@ -6,6 +6,7 @@ import Duration exposing (Duration)
 import Model.Debug exposing (DebugLayerKind, DevAction)
 import Model.World exposing (TilemapChange)
 import Task
+import Tilemap.DrivenWFC exposing (RunWFCResult)
 import Time
 import UI.Core
 import UI.Editor
@@ -29,6 +30,7 @@ type Message
     | CheckQueues Time.Posix Duration
     | UpdateEnvironment
     | UpdateTilemap Duration
+    | WFCChunkProcessed RunWFCResult
     | TilemapChanged TilemapChange
     | TriggerDevAction DevAction
       -- UI

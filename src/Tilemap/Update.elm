@@ -6,14 +6,15 @@ import Data.TileSet
         ( defaultTiles
         , tileIdByBitmask
         )
-import Duration exposing (Duration)
 import Maybe.Extra as Maybe
 import Message exposing (Message(..))
 import Model.Debug exposing (DevAction(..))
 import Model.Liikennematto exposing (Liikennematto)
 import Model.RenderCache exposing (refreshTilemapCache, setTilemapCache, setTilemapDebugCache)
 import Model.World as World exposing (World)
+import Process
 import Quantity
+import Task
 import Tilemap.Buffer exposing (updateBufferCells)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
@@ -32,9 +33,9 @@ import Tilemap.DrivenWFC
     exposing
         ( DrivenWFC(..)
         , drivenWfcInitialState
-        , resetWFC
-        , restartWFC
-        , runWFC
+        , resetWfc
+        , restartWfc
+        , runWfc
         , updateTileNeighbors
         )
 import Tilemap.Tile as Tile
@@ -129,14 +130,53 @@ update msg model =
                     ( model, Cmd.none )
 
                 Nothing ->
-                    runWFCIfNecessary model delta
+                    let
+                        { world } =
+                            model
+                    in
+                    case model.wfc of
+                        WFCPending timer ->
+                            let
+                                nextTimer =
+                                    timer
+                                        |> Quantity.minus delta
+                                        |> Quantity.max Quantity.zero
+                            in
+                            if Quantity.lessThanOrEqualToZero nextTimer then
+                                ( model
+                                , scheduleWFCChunk
+                                    (restartWfc world.seed
+                                        (World.tileInventoryCount world)
+                                        world.tilemap
+                                    )
+                                    world
+                                )
 
-        TriggerDevAction action ->
-            case action of
-                RunWFC ->
-                    runWFCIfNecessary model (Duration.milliseconds 16)
+                            else
+                                ( { model | wfc = WFCPending nextTimer }, Cmd.none )
 
-                _ ->
+                        _ ->
+                            ( model, Cmd.none )
+
+        WFCChunkProcessed ( nextTilemap, nextDrivenWfc, tileActions ) ->
+            case nextDrivenWfc of
+                WFCActive wfc ->
+                    ( { model
+                        | renderCache = setTilemapDebugCache wfc model.renderCache
+                      }
+                    , scheduleWFCChunk wfc model.world
+                    )
+
+                WFCSolved ->
+                    ( { model
+                        | world = World.setTilemap nextTilemap model.world
+                        , wfc = nextDrivenWfc
+                        , renderCache = setTilemapCache nextTilemap Nothing model.renderCache
+                      }
+                    , Cmd.batch (tileActionsToCmds tileActions)
+                    )
+
+                WFCPending _ ->
                     ( model, Cmd.none )
 
         _ ->
@@ -216,7 +256,7 @@ addTileById cell tileId world tilemap =
             Tilemap.Core.addTile tileId cell tilemap
 
         wfcModel =
-            resetWFC world.seed (Just cell) (World.tileInventoryCount world) updatedTilemap
+            resetWfc world.seed (Just cell) (World.tileInventoryCount world) updatedTilemap
 
         ( updatedWfcModel, wfcTileActions ) =
             updateTileNeighbors cell wfcModel
@@ -236,7 +276,7 @@ removeTile cell model =
             Tilemap.Core.removeTile cell world.tilemap
 
         wfcModel =
-            resetWFC world.seed (Just cell) (World.tileInventoryCount world) updatedTilemap
+            resetWfc world.seed (Just cell) (World.tileInventoryCount world) updatedTilemap
 
         ( updatedWfcModel, wfcTileActions ) =
             updateTileNeighbors cell wfcModel
@@ -251,68 +291,17 @@ removeTile cell model =
     )
 
 
-runWFCIfNecessary : Liikennematto -> Duration -> ( Liikennematto, Cmd Message )
-runWFCIfNecessary model delta =
-    let
-        { world } =
-            model
-    in
-    case model.wfc of
-        WFCSolved ->
-            ( model, Cmd.none )
 
-        WFCPending timer ->
-            let
-                nextTimer =
-                    timer
-                        |> Quantity.minus delta
-                        |> Quantity.max Quantity.zero
-            in
-            if Quantity.lessThanOrEqualToZero nextTimer then
-                runWFCWithModel
-                    (restartWFC world.seed
-                        (World.tileInventoryCount world)
-                        world.tilemap
-                    )
-                    model
-
-            else
-                ( { model | wfc = WFCPending nextTimer }, Cmd.none )
-
-        WFCActive wfcModel ->
-            runWFCWithModel wfcModel model
+--
+-- WFC
+--
 
 
-runWFCWithModel : WFC.Model -> Liikennematto -> ( Liikennematto, Cmd Message )
-runWFCWithModel wfcModel model =
-    let
-        { world } =
-            model
-
-        ( nextTilemap, nextDrivenWfc, tileActions ) =
-            runWFC world.seed world.tilemap wfcModel
-    in
-    case nextDrivenWfc of
-        WFCActive wfc ->
-            ( { model
-                | wfc = nextDrivenWfc
-                , renderCache = setTilemapDebugCache wfc model.renderCache
-              }
-            , Cmd.none
-            )
-
-        WFCSolved ->
-            ( { model
-                | world = World.setTilemap nextTilemap world
-                , wfc = nextDrivenWfc
-                , renderCache = setTilemapCache nextTilemap Nothing model.renderCache
-              }
-            , Cmd.batch (tileActionsToCmds tileActions)
-            )
-
-        WFCPending _ ->
-            -- This branch is handled at the call site
-            ( model, Cmd.none )
+scheduleWFCChunk wfcModel world =
+    -- Small delay to allow for interrupts
+    Process.sleep 1
+        |> Task.andThen (\_ -> Task.succeed (runWfc world.seed world.tilemap wfcModel))
+        |> Task.perform WFCChunkProcessed
 
 
 

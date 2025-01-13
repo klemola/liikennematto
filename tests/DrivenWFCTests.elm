@@ -14,7 +14,7 @@ import Maybe.Extra as Maybe
 import Test exposing (..)
 import Tilemap.Cell as Cell
 import Tilemap.Core exposing (Tilemap, createTilemap, tileByCell)
-import Tilemap.DrivenWFC exposing (restartWFC)
+import Tilemap.DrivenWFC exposing (restartWfc)
 import Tilemap.Tile as Tile exposing (Tile)
 import Tilemap.TileConfig exposing (TileId)
 import Tilemap.WFC as WFC
@@ -43,7 +43,7 @@ tileSuperposition tile =
 suite : Test
 suite =
     describe "Tilemap.DrivenWFC"
-        [ describe ".restartWFC"
+        [ describe ".restartWfc"
             [ test "Should set fixed roads to superposition - horizontal roads"
                 (\_ ->
                     let
@@ -51,7 +51,7 @@ suite =
                             placeRoadAndUpdateBuffer
                                 [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ), ( 10, 5 ) ]
                                 emptyTilemap
-                                |> restartWFC testSeed Dict.empty
+                                |> restartWfc testSeed Dict.empty
                                 |> WFC.toTilemap
 
                         firstHorizontalRoadCellOptions =
@@ -83,7 +83,7 @@ suite =
                             placeRoadAndUpdateBuffer
                                 [ ( 5, 5 ), ( 5, 6 ), ( 5, 7 ), ( 5, 8 ), ( 5, 9 ), ( 5, 10 ) ]
                                 emptyTilemap
-                                |> restartWFC testSeed Dict.empty
+                                |> restartWfc testSeed Dict.empty
                                 |> WFC.toTilemap
 
                         firstHorizontalRoadCellOptions =
@@ -109,7 +109,7 @@ suite =
                             placeRoadAndUpdateBuffer
                                 [ ( 2, 5 ), ( 2, 6 ), ( 2, 7 ), ( 2, 8 ), ( 2, 9 ), ( 2, 10 ) ]
                                 emptyTilemap
-                                |> restartWFC testSeed Dict.empty
+                                |> restartWfc testSeed Dict.empty
                                 |> WFC.toTilemap
 
                         firstHorizontalRoadCellOptions =
@@ -136,7 +136,7 @@ suite =
                                 constraints
                                 [ ( 5, 5 ), ( 5, 6 ), ( 5, 7 ), ( 5, 8 ) ]
                                 []
-                                |> restartWFC testSeed Dict.empty
+                                |> restartWfc testSeed Dict.empty
                                 |> WFC.toTilemap
                     in
                     Expect.all

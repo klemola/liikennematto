@@ -1,9 +1,10 @@
 module Tilemap.DrivenWFC exposing
     ( DrivenWFC(..)
+    , RunWFCResult
     , drivenWfcInitialState
-    , resetWFC
-    , restartWFC
-    , runWFC
+    , resetWfc
+    , restartWfc
+    , runWfc
     , updateTileNeighbors
     )
 
@@ -41,6 +42,10 @@ type DrivenWFC
     | WFCSolved
 
 
+type alias RunWFCResult =
+    ( Tilemap, DrivenWFC, List Tile.Action )
+
+
 minWfcUpdateFrequency : Duration
 minWfcUpdateFrequency =
     Duration.milliseconds 250
@@ -53,16 +58,16 @@ drivenWfcInitialState =
 
 wfcStepsPerCycle : Int
 wfcStepsPerCycle =
-    100
+    5000
 
 
-runWFC : Random.Seed -> Tilemap -> WFC.Model -> ( Tilemap, DrivenWFC, List Tile.Action )
-runWFC seed tilemap wfc =
+runWfc : Random.Seed -> Tilemap -> WFC.Model -> RunWFCResult
+runWfc seed tilemap wfc =
     let
-        ( baseWFC, isSolved ) =
+        ( baseWfc, isSolved ) =
             case WFC.currentState wfc of
                 WFC.Failed _ ->
-                    ( restartWFC seed (WFC.toTileInventory wfc) tilemap, False )
+                    ( restartWfc seed (WFC.toTileInventory wfc) tilemap, False )
 
                 WFC.Done ->
                     ( wfc, True )
@@ -74,7 +79,7 @@ runWFC seed tilemap wfc =
     if isSolved then
         let
             ( solvedWfc, tileActions ) =
-                WFC.flushPendingActions baseWFC
+                WFC.flushPendingActions baseWfc
         in
         ( WFC.toTilemap solvedWfc
         , WFCSolved
@@ -87,21 +92,21 @@ runWFC seed tilemap wfc =
                 WFC.stepN
                     WFC.StopAtSolved
                     wfcStepsPerCycle
-                    baseWFC
+                    baseWfc
         in
         ( tilemap, WFCActive nextWfc, [] )
 
 
-restartWFC : Random.Seed -> TileInventory Int -> Tilemap -> WFC.Model
-restartWFC seed tileInventory tilemap =
-    resetWFC seed
+restartWfc : Random.Seed -> TileInventory Int -> Tilemap -> WFC.Model
+restartWfc seed tileInventory tilemap =
+    resetWfc seed
         Nothing
         tileInventory
         (reopenRoads tilemap)
 
 
-resetWFC : Random.Seed -> Maybe Cell -> TileInventory Int -> Tilemap -> WFC.Model
-resetWFC seed changedCell tileInventory tilemap =
+resetWfc : Random.Seed -> Maybe Cell -> TileInventory Int -> Tilemap -> WFC.Model
+resetWfc seed changedCell tileInventory tilemap =
     let
         wfcWithChangedTile =
             WFC.fromTilemap tilemap seed

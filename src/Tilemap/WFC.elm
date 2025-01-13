@@ -39,7 +39,7 @@ import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
         ( Tilemap
-        , addTileFromWFC
+        , addTileFromWfc
         , foldTiles
         , forAllTiles
         , getTilemapConfig
@@ -399,7 +399,7 @@ processStep tilemap tileInventory currentStep =
                                 propagateConstraintsSteps tilemap cell
 
                             ( nextTilemap, tileActions ) =
-                                addTileFromWFC Nothing singleTile.id cell tilemap
+                                addTileFromWfc Nothing singleTile.id cell tilemap
                         in
                         Ok ( nextSteps, tileActions, nextTilemap )
 
@@ -815,7 +815,7 @@ attemptPlaceSubgridTile tilemap largeTileId subgridCell subgridTileProperties =
                         ( subgridTileProperties.parentTileId, subgridTileProperties.index )
 
                     ( nextTilemap, tileActions ) =
-                        addTileFromWFC (Just parentTileProperties) subgridTileProperties.singleTile.id subgridCell tilemap
+                        addTileFromWfc (Just parentTileProperties) subgridTileProperties.singleTile.id subgridCell tilemap
                 in
                 ( neighborSteps, tileActions, nextTilemap )
             )
@@ -835,7 +835,7 @@ checkSubgridTile tilemap subgridCell subgridTileProperties =
                         ( subgridTileProperties.parentTileId, subgridTileProperties.index )
 
                     ( nextTilemap, _ ) =
-                        addTileFromWFC (Just parentTileProperties) subgridTileProperties.singleTile.id subgridCell tilemap
+                        addTileFromWfc (Just parentTileProperties) subgridTileProperties.singleTile.id subgridCell tilemap
                 in
                 nextTilemap
             )
