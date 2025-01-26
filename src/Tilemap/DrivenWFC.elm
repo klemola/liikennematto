@@ -160,6 +160,7 @@ processTileNeighbor maybeTile wfcModel =
                         wfcModel
                             |> WFC.resetCell defaultTiles cell tile.kind
                             |> WFC.collapse cell
+                            |> Tuple.first
 
                     else
                         wfcModel

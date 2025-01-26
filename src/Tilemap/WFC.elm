@@ -216,7 +216,7 @@ stepN endCondition nTimes model =
 --
 
 
-collapse : Cell -> Model -> Model
+collapse : Cell -> Model -> ( Model, Maybe TileConfig )
 collapse cell model =
     let
         (Model modelDetails) =
@@ -239,13 +239,15 @@ collapse cell model =
                                     , state = Solving
                                 }
                     in
-                    flushOpenSteps withCollapsedCell
+                    ( flushOpenSteps withCollapsedCell
+                    , Just tileConfig
+                    )
 
                 _ ->
-                    model
+                    ( model, Nothing )
 
         _ ->
-            model
+            ( model, Nothing )
 
 
 propagateConstraints : Cell -> Model -> Model

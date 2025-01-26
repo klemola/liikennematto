@@ -9,8 +9,8 @@ import Data.TileSet
         , defaultTiles
         , lotTiles
         , pairingsForSocket
-        , tileIdsByOrthogonalMatch
         )
+import Data.Utility exposing (initTileWithSuperposition)
 import Dict
 import Element
 import Element.Background
@@ -29,14 +29,12 @@ import Render.Debug
 import Svg
 import Svg.Attributes
 import Task
-import Tilemap.Cell as Cell
 import Tilemap.Core
     exposing
         ( TileListFilter(..)
         , TilemapConfig
         , createTilemap
         )
-import Tilemap.Tile as Tile exposing (Tile)
 import Tilemap.TileConfig as TileConfig
     exposing
         ( Socket(..)
@@ -143,20 +141,10 @@ initWFC seed =
     WFC.fromTilemap
         (createTilemap
             tilemapConfig
-            (initTileWithSuperposition tilemapConfig)
+            (initTileWithSuperposition tilemapConfig defaultTiles)
         )
         seed
         |> WFC.withTileInventory initialTileInventory
-
-
-initTileWithSuperposition : TilemapConfig -> Int -> Tile
-initTileWithSuperposition constraints index =
-    index
-        |> Cell.fromArray1DIndexUnsafe constraints
-        |> Cell.connectedBounds constraints
-        |> tileIdsByOrthogonalMatch defaultTiles
-        |> Tile.Superposition
-        |> Tile.init
 
 
 subscriptions : Model -> Sub Msg
@@ -275,7 +263,7 @@ update msg model =
 
                 UI.Core.Primary ->
                     let
-                        wfcModel =
+                        ( wfcModel, _ ) =
                             WFC.collapse input.cell model.wfcModel
 
                         tilemap =
