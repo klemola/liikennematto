@@ -43,7 +43,6 @@ import Tilemap.Core
         ( Tilemap
         , addTileFromWfc
         , foldTiles
-        , forAllTiles
         , getTilemapConfig
         , resetTileBySurroundings
         , setSuperpositionOptions
@@ -100,7 +99,6 @@ type WFCFailure
     | NoPotentialMatch
     | InvalidBigTilePlacement Cell TileId
     | InvalidDirection
-    | NoCandidates
     | TileNotFound
     | TileUnavailable TileId
     | BacktrackFailed
@@ -395,19 +393,7 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap } as m
                             }
 
                         StopAtSolved ->
-                            if not (solved modelDetails) then
-                                let
-                                    withPick =
-                                        pickRandom modelDetails
-                                in
-                                { withPick | state = Solving }
-
-                            else
-                                { modelDetails
-                                    | state = Done
-                                    , currentCell = Nothing
-                                    , targetCell = Nothing
-                                }
+                            pickRandom modelDetails
             in
             Model nextModelDetails
 
@@ -527,13 +513,6 @@ canDock dockDir dockSocket dockTileId =
             pairingsForSocket dockSocket
     in
     List.member matchSocket pairings
-
-
-{-| Returns true if all positions in the grid have a tile assigned
--}
-solved : ModelDetails -> Bool
-solved { tilemap, openSteps } =
-    List.isEmpty openSteps && forAllTiles (Tile.isSuperposition >> not) tilemap
 
 
 stepSuperposition : Tilemap -> Step -> Maybe (Nonempty TileId)
@@ -656,7 +635,11 @@ pickRandom ({ openSteps, tilemap, seed } as modelDetails) =
         List.Nonempty.fromList (nextCandidates tilemap)
     of
         Nothing ->
-            { modelDetails | state = Recovering NoCandidates }
+            { modelDetails
+                | state = Done
+                , currentCell = Nothing
+                , targetCell = Nothing
+            }
 
         Just candidates ->
             let
@@ -1062,9 +1045,6 @@ wfcFailureToString wfcFailure =
 
         TileUnavailable tileId ->
             "Tile unavailable: " ++ String.fromInt tileId
-
-        NoCandidates ->
-            "No candidates available"
 
         BacktrackFailed ->
             "Backtrack failed"
