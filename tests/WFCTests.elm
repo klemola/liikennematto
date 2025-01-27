@@ -43,6 +43,11 @@ emptyTilemap =
     createTilemap constraints (\_ -> Tile.init Tile.Unintialized)
 
 
+emptyTilemapWithInitializedCells : Tilemap
+emptyTilemapWithInitializedCells =
+    createTilemap constraints (initTileWithSuperposition constraints defaultTiles)
+
+
 testTileInventory : TileInventory Int
 testTileInventory =
     allTiles
@@ -81,7 +86,7 @@ suite =
             (\_ ->
                 let
                     tilemap =
-                        emptyTilemap
+                        emptyTilemapWithInitializedCells
 
                     model =
                         WFC.fromTilemap tilemap testSeed
@@ -94,7 +99,7 @@ suite =
             (\_ ->
                 let
                     tilemap =
-                        createTilemap constraints (initTileWithSuperposition constraints defaultTiles)
+                        emptyTilemapWithInitializedCells
 
                     initialModel =
                         WFC.fromTilemap tilemap testSeed
@@ -142,7 +147,7 @@ suite =
             (\_ ->
                 let
                     tilemap =
-                        createTilemap constraints (initTileWithSuperposition constraints defaultTiles)
+                        emptyTilemapWithInitializedCells
 
                     initialModel =
                         WFC.fromTilemap tilemap testSeed
@@ -199,7 +204,7 @@ suite =
             (\_ ->
                 let
                     tilemap =
-                        createTilemap constraints (initTileWithSuperposition constraints defaultTiles)
+                        emptyTilemapWithInitializedCells
 
                     initialModel =
                         WFC.fromTilemap tilemap testSeed
@@ -215,6 +220,49 @@ suite =
                         countSuperpositions (WFC.toTilemap steppedModel)
                 in
                 Expect.lessThan initialSuperpositions steppedSuperpositions
+            )
+        , test "solve handles backtracking (bad tile inventory)"
+            (\_ ->
+                let
+                    tilemap =
+                        emptyTilemapWithInitializedCells
+
+                    reducedTileInventory =
+                        Dict.map (\_ _ -> 0) testTileInventory
+
+                    model =
+                        WFC.fromTilemap tilemap testSeed
+                            |> WFC.withTileInventory reducedTileInventory
+                            |> WFC.solve
+
+                    wfcContext =
+                        WFC.contextDebug model
+                in
+                Expect.all
+                    [ \_ -> Expect.equal (WFC.currentState model) WFC.Done
+                    , \_ -> Expect.atLeast 1 wfcContext.backtrackCount
+                    ]
+                    ()
+            )
+        , test "solve handles backtracking (bad tile pick)"
+            (\_ ->
+                let
+                    tilemap =
+                        emptyTilemapWithInitializedCells
+
+                    cell =
+                        createCell constraints 2 2
+
+                    model =
+                        WFC.fromTilemap tilemap testSeed
+                            |> WFC.withTileInventory testTileInventory
+                            |> WFC.debug_collapseWithId cell 101
+                            |> WFC.step WFC.StopAtEmptySteps
+
+                    wfcContext =
+                        WFC.contextDebug model
+                in
+                Expect.atLeast 1 wfcContext.backtrackCount
             )
         , describe ".checkLargeTileFit"
             [ test "Should find fitting tiles (vertical road)"

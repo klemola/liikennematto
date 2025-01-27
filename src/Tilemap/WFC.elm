@@ -5,7 +5,9 @@ module Tilemap.WFC exposing
     , checkLargeTileFit
     , collapse
     , contextDebug
+    , currentSeed
     , currentState
+    , debug_collapseWithId
     , flushPendingActions
     , fromTilemap
     , propagateConstraints
@@ -71,7 +73,8 @@ type alias ModelDetails =
     , currentCell : Maybe Cell
     , targetCell : Maybe Cell
     , openSteps : List Step
-    , previousSteps : Stack ( Step, Nonempty TileId )
+    , previousSteps : PreviousSteps
+    , backtrackCount : Int
     , state : WFCState
     , pendingActions : List Tile.Action
     , tileInventory : TileInventory Int
@@ -103,6 +106,15 @@ type WFCFailure
     | BacktrackFailed
 
 
+type alias PreviousSteps =
+    Stack ( Step, Nonempty TileId )
+
+
+maxBacktrackCount : Int
+maxBacktrackCount =
+    50
+
+
 
 --
 -- Init
@@ -117,6 +129,7 @@ fromTilemap tilemap initialSeed =
         , targetCell = Nothing
         , openSteps = []
         , previousSteps = Stack.empty
+        , backtrackCount = 0
         , state = Solving
         , pendingActions = []
         , tileInventory = Dict.empty
@@ -165,6 +178,9 @@ step endCondition model =
     let
         ((Model modelDetails) as afterStep) =
             processOpenSteps endCondition model
+
+        _ =
+            Debug.log "btc" (modelDetails.backtrackCount + 1)
     in
     case modelDetails.state of
         Recovering wfcFailure ->
@@ -175,14 +191,20 @@ step endCondition model =
 
                 _ ->
                     case backtrack modelDetails.previousSteps modelDetails.tileInventory modelDetails.tilemap of
-                        Ok ( updatedTileInventory, tilemapAfterBacktrack ) ->
-                            Model
-                                { modelDetails
-                                    | state = Solving
-                                    , openSteps = []
-                                    , tilemap = tilemapAfterBacktrack
-                                    , tileInventory = updatedTileInventory
-                                }
+                        Ok ( prunedPreviousSteps, updatedTileInventory, tilemapAfterBacktrack ) ->
+                            if modelDetails.backtrackCount + 1 > maxBacktrackCount then
+                                Model { modelDetails | state = Failed BacktrackFailed }
+
+                            else
+                                Model
+                                    { modelDetails
+                                        | state = Solving
+                                        , openSteps = []
+                                        , previousSteps = prunedPreviousSteps
+                                        , backtrackCount = modelDetails.backtrackCount + 1
+                                        , tilemap = tilemapAfterBacktrack
+                                        , tileInventory = updatedTileInventory
+                                    }
 
                         Err failure ->
                             -- Backtracking failed, no way to continue
@@ -244,7 +266,7 @@ collapse cell model =
                     )
 
                 _ ->
-                    ( model, Nothing )
+                    ( Model { modelDetails | seed = nextSeed }, Nothing )
 
         _ ->
             ( model, Nothing )
@@ -344,10 +366,22 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap } as m
                         }
 
                 Err wfcFailure ->
+                    let
+                        nextOtherSteps =
+                            case wfcFailure of
+                                InvalidBigTilePlacement _ _ ->
+                                    []
+
+                                NoSuperpositionOptions ->
+                                    []
+
+                                _ ->
+                                    otherSteps
+                    in
                     Model
                         { withPosition
                             | state = Recovering wfcFailure
-                            , openSteps = otherSteps
+                            , openSteps = nextOtherSteps
                         }
 
         [] ->
@@ -548,7 +582,7 @@ stepTileId theStep =
 --
 
 
-backtrack : Stack ( Step, Nonempty TileId ) -> TileInventory Int -> Tilemap -> Result WFCFailure ( TileInventory Int, Tilemap )
+backtrack : PreviousSteps -> TileInventory Int -> Tilemap -> Result WFCFailure ( PreviousSteps, TileInventory Int, Tilemap )
 backtrack previousSteps tileInventory tilemap =
     let
         ( stepCtx, previousSteps_ ) =
@@ -556,7 +590,8 @@ backtrack previousSteps tileInventory tilemap =
     in
     case stepCtx of
         Nothing ->
-            Err BacktrackFailed
+            -- No steps left, should be possible to continue
+            Ok ( previousSteps_, tileInventory, tilemap )
 
         Just ( theStep, previousSuperposition ) ->
             let
@@ -572,7 +607,7 @@ backtrack previousSteps tileInventory tilemap =
                             False
             in
             if backtrackedEnough then
-                Ok ( updatedInventory, reverted )
+                Ok ( previousSteps_, updatedInventory, reverted )
 
             else
                 backtrack previousSteps_ updatedInventory reverted
@@ -584,14 +619,11 @@ revertStep theStep previousSuperposition tileInventory tilemap =
         targetCell =
             stepCell theStep
 
-        maybeTileId =
-            stepTileId theStep
-
         psList =
             List.Nonempty.toList previousSuperposition
 
         ( nextSuperpositionOptions, updatedInventory ) =
-            case maybeTileId of
+            case stepTileId theStep of
                 Just tileId ->
                     ( List.filter (\superpositionOption -> superpositionOption /= tileId) psList
                     , TileInventory.increaseCount tileId tileInventory
@@ -978,6 +1010,11 @@ toTileInventory (Model modelDetails) =
     modelDetails.tileInventory
 
 
+currentSeed : Model -> Random.Seed
+currentSeed (Model modelDetails) =
+    modelDetails.seed
+
+
 stateDebug : Model -> String
 stateDebug (Model modelDetails) =
     case modelDetails.state of
@@ -1039,6 +1076,7 @@ contextDebug :
         { position : List String
         , openSteps : List String
         , previousSteps : List String
+        , backtrackCount : Int
         }
 contextDebug (Model modelDetails) =
     { position =
@@ -1047,6 +1085,7 @@ contextDebug (Model modelDetails) =
         ]
     , openSteps = List.map stepDebug modelDetails.openSteps
     , previousSteps = modelDetails.previousSteps |> Stack.toList |> List.map previousStepDebug
+    , backtrackCount = modelDetails.backtrackCount
     }
 
 
@@ -1084,3 +1123,24 @@ previousStepDebug ( theStep, superpositionOptions ) =
                 |> String.join "|"
     in
     stepDebug theStep ++ " / " ++ optionsDebug
+
+
+debug_collapseWithId : Cell -> TileId -> Model -> Model
+debug_collapseWithId cell tileId ((Model modelDetails) as model) =
+    case tileByCell modelDetails.tilemap cell |> Maybe.map .kind of
+        Just (Superposition opts) ->
+            if List.member tileId opts then
+                let
+                    tileConfig =
+                        tileById tileId
+
+                    withStep =
+                        Model { modelDetails | openSteps = Collapse cell tileConfig :: modelDetails.openSteps }
+                in
+                processOpenSteps StopAtEmptySteps withStep
+
+            else
+                model
+
+        _ ->
+            model

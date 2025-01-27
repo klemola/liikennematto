@@ -300,7 +300,7 @@ removeTile cell model =
 scheduleWFCChunk wfcModel world =
     -- Small delay to allow for interrupts
     Process.sleep 1
-        |> Task.andThen (\_ -> Task.succeed (runWfc world.seed world.tilemap wfcModel))
+        |> Task.andThen (\_ -> Task.succeed (runWfc world.tilemap wfcModel))
         |> Task.perform WFCChunkProcessed
 
 

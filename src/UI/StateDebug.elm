@@ -97,7 +97,7 @@ wfcStateDescription wfcModel =
 wfcContext : WFC.Model -> Element msg
 wfcContext wfcModel =
     let
-        { position, openSteps, previousSteps } =
+        { position, openSteps, previousSteps, backtrackCount } =
             WFC.contextDebug wfcModel
     in
     Element.column
@@ -112,6 +112,9 @@ wfcContext wfcModel =
         , Element.column
             []
             (openSteps |> List.map (\step -> Element.el [] (Element.text step)))
+        , Element.el
+            []
+            (Element.text ("Backtrack count: " ++ String.fromInt backtrackCount))
         , Element.column
             [ Element.height debugElementLength
             , Element.width Element.fill

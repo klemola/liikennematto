@@ -61,13 +61,22 @@ wfcStepsPerCycle =
     5000
 
 
-runWfc : Random.Seed -> Tilemap -> WFC.Model -> RunWFCResult
-runWfc seed tilemap wfc =
+runWfc : Tilemap -> WFC.Model -> RunWFCResult
+runWfc tilemap wfc =
     let
         ( baseWfc, isSolved ) =
             case WFC.currentState wfc of
                 WFC.Failed _ ->
-                    ( restartWfc seed (WFC.toTileInventory wfc) tilemap, False )
+                    let
+                        _ =
+                            Debug.log "restart with seed" (WFC.currentSeed wfc)
+                    in
+                    ( restartWfc
+                        (WFC.currentSeed wfc)
+                        (WFC.toTileInventory wfc)
+                        tilemap
+                    , False
+                    )
 
                 WFC.Done ->
                     ( wfc, True )
@@ -80,6 +89,9 @@ runWfc seed tilemap wfc =
         let
             ( solvedWfc, tileActions ) =
                 WFC.flushPendingActions baseWfc
+
+            _ =
+                Debug.log "solved" ()
         in
         ( WFC.toTilemap solvedWfc
         , WFCSolved
@@ -93,6 +105,9 @@ runWfc seed tilemap wfc =
                     WFC.StopAtSolved
                     wfcStepsPerCycle
                     baseWfc
+
+            _ =
+                Debug.log "run wfc" ()
         in
         ( tilemap, WFCActive nextWfc, [] )
 
