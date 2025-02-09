@@ -1,6 +1,6 @@
 module Tilemap.Buffer exposing (DirectionHistory, removeBuffer, updateBufferCells)
 
-import Data.TileSet exposing (decorativeTiles, roadConnectionDirectionsByTile, tileById)
+import Data.TileSet exposing (decorativeTiles, lotTiles, roadConnectionDirectionsByTile, tileById)
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
 import Quantity exposing (Unitless)
 import Tilemap.Cell as Cell exposing (Cell, CellCoordinates)
@@ -40,17 +40,7 @@ updateBufferCells newCell tilemap =
     in
     List.foldl
         (\cell nextTilemap ->
-            case tileByCell nextTilemap cell of
-                Just tile ->
-                    case tile.kind of
-                        Unintialized ->
-                            resetTileBySurroundings cell decorativeTiles Unintialized nextTilemap
-
-                        _ ->
-                            nextTilemap
-
-                Nothing ->
-                    nextTilemap
+            resetTileBySurroundings cell (decorativeTiles ++ lotTiles) nextTilemap
         )
         withUpdatedHistory
         (bufferCellsFromHistory withUpdatedHistory)

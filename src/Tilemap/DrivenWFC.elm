@@ -11,7 +11,6 @@ module Tilemap.DrivenWFC exposing
 import Data.TileSet
     exposing
         ( decorativeTiles
-        , defaultTiles
         , lotTiles
         , tileById
         , tilesByBaseTileId
@@ -25,6 +24,7 @@ import Tilemap.Core
     exposing
         ( Tilemap
         , foldTiles
+        , resetFixedTileBySurroundings
         , resetTileBySurroundings
         , setSuperpositionOptions
         , tileByCell
@@ -39,6 +39,7 @@ import Tilemap.WFC as WFC
 type DrivenWFC
     = WFCPending Duration
     | WFCActive WFC.Model
+    | WFCFailed Random.Seed
     | WFCSolved
 
 
@@ -63,53 +64,36 @@ wfcStepsPerCycle =
 
 runWfc : Tilemap -> WFC.Model -> RunWFCResult
 runWfc tilemap wfc =
-    let
-        ( baseWfc, isSolved ) =
-            case WFC.currentState wfc of
-                WFC.Failed _ ->
-                    let
-                        _ =
-                            Debug.log "restart with seed" (WFC.currentSeed wfc)
-                    in
-                    ( restartWfc
-                        (WFC.currentSeed wfc)
-                        (WFC.toTileInventory wfc)
-                        tilemap
-                    , False
-                    )
+    case WFC.currentState wfc of
+        WFC.Failed _ ->
+            ( tilemap, WFCFailed (WFC.currentSeed wfc), [] )
 
-                WFC.Done ->
-                    ( wfc, True )
+        WFC.Done ->
+            let
+                ( solvedWfc, tileActions ) =
+                    WFC.flushPendingActions wfc
 
-                -- Solving, Recovering
-                _ ->
-                    ( wfc, False )
-    in
-    if isSolved then
-        let
-            ( solvedWfc, tileActions ) =
-                WFC.flushPendingActions baseWfc
+                _ =
+                    Debug.log "solved" ()
+            in
+            ( WFC.toTilemap solvedWfc
+            , WFCSolved
+            , tileActions
+            )
 
-            _ =
-                Debug.log "solved" ()
-        in
-        ( WFC.toTilemap solvedWfc
-        , WFCSolved
-        , tileActions
-        )
+        -- Solving, Recovering
+        _ ->
+            let
+                nextWfc =
+                    WFC.stepN
+                        WFC.StopAtSolved
+                        wfcStepsPerCycle
+                        wfc
 
-    else
-        let
-            nextWfc =
-                WFC.stepN
-                    WFC.StopAtSolved
-                    wfcStepsPerCycle
-                    baseWfc
-
-            _ =
-                Debug.log "run wfc" ()
-        in
-        ( tilemap, WFCActive nextWfc, [] )
+                _ =
+                    Debug.log "run wfc" ()
+            in
+            ( tilemap, WFCActive nextWfc, [] )
 
 
 restartWfc : Random.Seed -> TileInventory Int -> Tilemap -> WFC.Model
@@ -173,7 +157,10 @@ processTileNeighbor maybeTile wfcModel =
                 Fixed properties ->
                     if TileConfig.biome (tileById properties.id) == TileConfig.Road then
                         wfcModel
-                            |> WFC.resetCell defaultTiles cell tile.kind
+                            |> WFC.withTilemapUpdate
+                                (\wfcTilemap ->
+                                    resetFixedTileBySurroundings cell wfcTilemap
+                                )
                             |> WFC.collapse cell
                             |> Tuple.first
 
@@ -311,8 +298,6 @@ resetDrivewayNeighbors drivewayNeighbors tilemap =
         (\( neighbor, validLotTiles ) nextTilemap ->
             resetTileBySurroundings neighbor
                 (decorativeTiles ++ validLotTiles)
-                -- TODO: this fake tile definition is wrong, maybe make the fn use different param
-                (Superposition [])
                 nextTilemap
         )
         tilemap

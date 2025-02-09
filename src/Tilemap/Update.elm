@@ -158,8 +158,8 @@ update msg model =
                         _ ->
                             ( model, Cmd.none )
 
-        WFCChunkProcessed ( nextTilemap, nextDrivenWfc, tileActions ) ->
-            case nextDrivenWfc of
+        WFCChunkProcessed ( nextTilemap, updatedDrivenWfc, tileActions ) ->
+            case updatedDrivenWfc of
                 WFCActive wfc ->
                     ( { model
                         | renderCache = setTilemapDebugCache wfc model.renderCache
@@ -167,10 +167,22 @@ update msg model =
                     , scheduleWFCChunk wfc model.world
                     )
 
+                WFCFailed nextSeed ->
+                    let
+                        wfc =
+                            restartWfc
+                                nextSeed
+                                (World.tileInventoryCount model.world)
+                                nextTilemap
+                    in
+                    ( model
+                    , scheduleWFCChunk wfc model.world
+                    )
+
                 WFCSolved ->
                     ( { model
                         | world = World.setTilemap nextTilemap model.world
-                        , wfc = nextDrivenWfc
+                        , wfc = updatedDrivenWfc
                         , renderCache = setTilemapCache nextTilemap Nothing model.renderCache
                       }
                     , Cmd.batch (tileActionsToCmds tileActions)
