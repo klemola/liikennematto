@@ -1,6 +1,7 @@
 module Tilemap.DrivenWFC exposing
     ( DrivenWFC(..)
     , RunWFCResult
+    , drivenWfcDebug
     , drivenWfcInitialState
     , resetWfc
     , restartWfc
@@ -59,7 +60,7 @@ drivenWfcInitialState =
 
 wfcStepsPerCycle : Int
 wfcStepsPerCycle =
-    5000
+    3500
 
 
 runWfc : Tilemap -> WFC.Model -> RunWFCResult
@@ -302,3 +303,19 @@ resetDrivewayNeighbors drivewayNeighbors tilemap =
         )
         tilemap
         drivewayNeighbors
+
+
+drivenWfcDebug : DrivenWFC -> String
+drivenWfcDebug drivenWfc =
+    case drivenWfc of
+        WFCPending dur ->
+            "Pending " ++ (dur |> Duration.inMilliseconds |> String.fromFloat)
+
+        WFCActive _ ->
+            "Active"
+
+        WFCFailed _ ->
+            "Failed"
+
+        WFCSolved ->
+            "Solved"

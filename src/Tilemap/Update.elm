@@ -32,6 +32,7 @@ import Tilemap.Core
 import Tilemap.DrivenWFC
     exposing
         ( DrivenWFC(..)
+        , drivenWfcDebug
         , drivenWfcInitialState
         , resetWfc
         , restartWfc
@@ -143,13 +144,14 @@ update msg model =
                                         |> Quantity.max Quantity.zero
                             in
                             if Quantity.lessThanOrEqualToZero nextTimer then
-                                ( model
-                                , scheduleWFCChunk
-                                    (restartWfc world.seed
-                                        (World.tileInventoryCount world)
-                                        world.tilemap
-                                    )
-                                    world
+                                let
+                                    initialWfc =
+                                        restartWfc world.seed
+                                            (World.tileInventoryCount world)
+                                            world.tilemap
+                                in
+                                ( { model | wfc = WFCActive initialWfc }
+                                , scheduleWFCChunk initialWfc world
                                 )
 
                             else
@@ -159,36 +161,46 @@ update msg model =
                             ( model, Cmd.none )
 
         WFCChunkProcessed ( nextTilemap, updatedDrivenWfc, tileActions ) ->
-            case updatedDrivenWfc of
-                WFCActive wfc ->
-                    ( { model
-                        | renderCache = setTilemapDebugCache wfc model.renderCache
-                      }
-                    , scheduleWFCChunk wfc model.world
-                    )
+            case model.wfc of
+                WFCActive _ ->
+                    case updatedDrivenWfc of
+                        WFCActive wfc ->
+                            ( { model
+                                | renderCache = setTilemapDebugCache wfc model.renderCache
+                              }
+                            , scheduleWFCChunk wfc model.world
+                            )
 
-                WFCFailed nextSeed ->
+                        WFCFailed nextSeed ->
+                            let
+                                wfc =
+                                    restartWfc
+                                        nextSeed
+                                        (World.tileInventoryCount model.world)
+                                        nextTilemap
+                            in
+                            ( model
+                            , scheduleWFCChunk wfc model.world
+                            )
+
+                        WFCSolved ->
+                            ( { model
+                                | world = World.setTilemap nextTilemap model.world
+                                , wfc = updatedDrivenWfc
+                                , renderCache = setTilemapCache nextTilemap Nothing model.renderCache
+                              }
+                            , Cmd.batch (tileActionsToCmds tileActions)
+                            )
+
+                        WFCPending _ ->
+                            ( model, Cmd.none )
+
+                _ ->
                     let
-                        wfc =
-                            restartWfc
-                                nextSeed
-                                (World.tileInventoryCount model.world)
-                                nextTilemap
+                        _ =
+                            Debug.log "already solved or otherwise not active" (drivenWfcDebug model.wfc)
                     in
-                    ( model
-                    , scheduleWFCChunk wfc model.world
-                    )
-
-                WFCSolved ->
-                    ( { model
-                        | world = World.setTilemap nextTilemap model.world
-                        , wfc = updatedDrivenWfc
-                        , renderCache = setTilemapCache nextTilemap Nothing model.renderCache
-                      }
-                    , Cmd.batch (tileActionsToCmds tileActions)
-                    )
-
-                WFCPending _ ->
+                    -- WFC may already have been solved or failed, and the processed chunk is irrelevant
                     ( model, Cmd.none )
 
         _ ->
@@ -310,6 +322,10 @@ removeTile cell model =
 
 
 scheduleWFCChunk wfcModel world =
+    let
+        _ =
+            Debug.log "schedule WFC chunk" ()
+    in
     -- Small delay to allow for interrupts
     Process.sleep 1
         |> Task.andThen (\_ -> Task.succeed (runWfc world.tilemap wfcModel))

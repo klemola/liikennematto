@@ -16,7 +16,7 @@ import Model.Debug
         )
 import Model.Liikennematto exposing (Liikennematto)
 import Model.World exposing (World, formatEvents)
-import Tilemap.DrivenWFC exposing (DrivenWFC(..))
+import Tilemap.DrivenWFC exposing (DrivenWFC(..), drivenWfcDebug)
 import Time
 import UI.Core
     exposing
@@ -165,7 +165,12 @@ wfcState drivenWfc =
                 ]
 
         _ ->
-            Element.none
+            Element.el
+                [ Element.padding 8
+                , Background.color colorCardBackground
+                , Border.solid
+                ]
+                (Element.text (drivenWfcDebug drivenWfc))
 
 
 carState : Liikennematto -> Element Message
