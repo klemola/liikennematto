@@ -644,6 +644,9 @@ pickRandom ({ openSteps, tilemap, seed } as modelDetails) =
 
         Just candidates ->
             let
+                _ =
+                    Debug.log "candidates" (List.Nonempty.map (\c -> ( Cell.toString c.cell, c.options )) candidates)
+
                 ( randomCandidate, seedAfterCandidateGen ) =
                     Random.step (List.Nonempty.sample candidates) seed
 
@@ -808,13 +811,21 @@ largeTileSubgrid tilemap anchorCell tile =
                             in
                             case cellInGlobalCoordinates of
                                 Just cell ->
-                                    Ok
-                                        ( cell
-                                        , { parentTileId = tile.id
-                                          , singleTile = singleTile
-                                          , index = subgridIdx
-                                          }
-                                        )
+                                    case tileByCell tilemap cell |> Maybe.map .kind of
+                                        Just (Superposition _) ->
+                                            Ok
+                                                ( cell
+                                                , { parentTileId = tile.id
+                                                  , singleTile = singleTile
+                                                  , index = subgridIdx
+                                                  }
+                                                )
+
+                                        Just (Fixed _) ->
+                                            Err "Subgrid cell is fixed"
+
+                                        _ ->
+                                            Err "Subgrid cell is not available (may be uninitialized)"
 
                                 Nothing ->
                                     Err "Cannot translate cell to global coordinates"

@@ -12,6 +12,7 @@ module Data.TileSet exposing
     , pairingsForSocket
     , roadConnectionDirectionsByTile
     , threeByThreeLotLargeTile
+    , threeByTwoLotALargeTile
     , tileById
     , tileIdByBitmask
     , tileIdsByOrthogonalMatch
@@ -895,25 +896,29 @@ threeByThreeLotLargeTile =
 
 threeByTwoLotA : TileConfig
 threeByTwoLotA =
-    TileConfig.Large
-        { id = 102
-        , complexity = 0.4
-        , biome = TileConfig.Lot
-        , tiles =
-            Array.fromList
-                [ lotTopLeftCorner
-                , lotTopEdge
-                , lotTopRightCorner
+    TileConfig.Large threeByTwoLotALargeTile
 
-                --
-                , lotDrivewayUp
-                , lotBottomEdge
-                , lotBottomRightCorner
-                ]
-        , width = 3
-        , height = 2
-        , anchorIndex = 3
-        }
+
+threeByTwoLotALargeTile : LargeTile
+threeByTwoLotALargeTile =
+    { id = 102
+    , complexity = 0.4
+    , biome = TileConfig.Lot
+    , tiles =
+        Array.fromList
+            [ lotTopLeftCorner
+            , lotTopEdge
+            , lotTopRightCorner
+
+            --
+            , lotDrivewayUp
+            , lotBottomEdge
+            , lotBottomRightCorner
+            ]
+    , width = 3
+    , height = 2
+    , anchorIndex = 3
+    }
 
 
 threeByTwoLotB : TileConfig

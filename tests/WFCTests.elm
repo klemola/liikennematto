@@ -5,6 +5,7 @@ import Data.TileSet
         ( allTiles
         , defaultTiles
         , threeByThreeLotLargeTile
+        , threeByTwoLotALargeTile
         , twoByTwoLotLargeTile
         )
 import Data.Utility
@@ -288,10 +289,54 @@ suite =
                                 |> setSuperpositionOptions threeByThreeLotEntry [ 21, 9 ]
                     in
                     Expect.all
-                        [ \_ -> Expect.equal (WFC.checkLargeTileFit tilemap twoByTwoLotDriveway twoByTwoLotLargeTile) (Just twoByTwoLotLargeTile)
-                        , \_ -> Expect.equal (WFC.checkLargeTileFit tilemap threeByThreeLotDriveway threeByThreeLotLargeTile) (Just threeByThreeLotLargeTile)
+                        [ \_ ->
+                            Expect.equal
+                                (WFC.checkLargeTileFit tilemap twoByTwoLotDriveway twoByTwoLotLargeTile)
+                                (Just twoByTwoLotLargeTile)
+                        , \_ ->
+                            Expect.equal
+                                (WFC.checkLargeTileFit tilemap threeByThreeLotDriveway threeByThreeLotLargeTile)
+                                (Just threeByThreeLotLargeTile)
                         ]
                         ()
+                )
+            , test "Should find fitting tiles (horizontal road)"
+                (\_ ->
+                    let
+                        threeByTwoLotDriveway =
+                            createCell constraints 2 3
+
+                        threeByTwoLotEntry =
+                            createCell constraints 2 4
+
+                        tilemap =
+                            placeRoadAndUpdateBuffer
+                                [ ( 1, 4 ), ( 2, 4 ), ( 3, 4 ), ( 4, 4 ), ( 5, 4 ) ]
+                                emptyTilemap
+                                |> setSuperpositionOptions threeByTwoLotEntry [ 20, 6 ]
+                    in
+                    Expect.equal
+                        (WFC.checkLargeTileFit tilemap threeByTwoLotDriveway threeByTwoLotALargeTile)
+                        (Just threeByTwoLotALargeTile)
+                )
+            , test "Should report bad tile fit (fixed tile blocks lot entry)"
+                (\_ ->
+                    let
+                        threeByTwoLotDriveway =
+                            createCell constraints 2 3
+
+                        threeByTwoLotEntry =
+                            createCell constraints 2 4
+
+                        tilemap =
+                            placeRoadAndUpdateBuffer
+                                [ ( 1, 4 ), ( 2, 4 ), ( 3, 4 ), ( 4, 4 ), ( 5, 4 ), ( 2, 2 ) ]
+                                emptyTilemap
+                                |> setSuperpositionOptions threeByTwoLotEntry [ 20, 6 ]
+                    in
+                    Expect.equal
+                        (WFC.checkLargeTileFit tilemap threeByTwoLotDriveway threeByTwoLotALargeTile)
+                        Nothing
                 )
             ]
         ]
