@@ -91,7 +91,11 @@ view model =
                 )
             ]
         , controls model
-        , wfcState model.wfc
+        , if Model.Debug.isLayerEnabled WFCDebug model.debug then
+            wfcState model.wfc
+
+          else
+            Element.none
         , eventQueueView model.time model.world
         , carState model
         ]
@@ -140,7 +144,7 @@ controls model =
             [ controlButton
                 { content = Text "WFC debug"
                 , onPress = ToggleDebugLayer WFCDebug
-                , selected = False
+                , selected = Model.Debug.isLayerEnabled WFCDebug model.debug
                 , disabled = False
                 , size = FitToContent
                 }
@@ -169,6 +173,7 @@ wfcState drivenWfc =
                 [ Element.padding 8
                 , Background.color colorCardBackground
                 , Border.solid
+                , Font.size textSize
                 ]
                 (Element.text (drivenWfcDebug drivenWfc))
 
