@@ -131,10 +131,6 @@ update msg model =
                     ( model, Cmd.none )
 
                 Nothing ->
-                    let
-                        { world } =
-                            model
-                    in
                     case model.wfc of
                         WFCPending timer ->
                             let
@@ -145,6 +141,9 @@ update msg model =
                             in
                             if Quantity.lessThanOrEqualToZero nextTimer then
                                 let
+                                    { world } =
+                                        model
+
                                     initialWfc =
                                         restartWfc world.seed
                                             (World.tileInventoryCount world)
