@@ -148,7 +148,10 @@ update msg model =
                                             (World.tileInventoryCount world)
                                             world.tilemap
                                 in
-                                ( { model | wfc = WFCActive initialWfc }
+                                ( { model
+                                    | wfc = WFCActive initialWfc
+                                    , debug = appendWfcLog [ ">O Restart WFC (timer)" ] model.debug
+                                  }
                                 , scheduleWFCChunk initialWfc world
                                 )
 
@@ -169,7 +172,7 @@ update msg model =
                             , scheduleWFCChunk wfc model.world
                             )
 
-                        WFCFailed nextSeed ->
+                        WFCFailed wfcLog nextSeed ->
                             let
                                 wfc =
                                     restartWfc
@@ -177,7 +180,7 @@ update msg model =
                                         (World.tileInventoryCount model.world)
                                         nextTilemap
                             in
-                            ( model
+                            ( { model | debug = appendWfcLog (">X Restart WFC (failure)" :: wfcLog) model.debug }
                             , scheduleWFCChunk wfc model.world
                             )
 

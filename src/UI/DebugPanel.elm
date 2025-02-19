@@ -190,6 +190,7 @@ wfcPanel wfcLog drivenWfc =
                     [ Element.scrollbars
                     , Element.height debugElementLength
                     , Element.width Element.fill
+                    , Font.family [ Font.monospace ]
                     ]
                     (List.map (\row -> Element.text row) wfcLog)
                 ]

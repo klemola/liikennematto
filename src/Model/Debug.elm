@@ -100,5 +100,5 @@ isLayerEnabled layer debugState =
 appendWfcLog : List String -> DebugState -> DebugState
 appendWfcLog nextLog debugState =
     { debugState
-        | wfcLog = List.append debugState.wfcLog nextLog
+        | wfcLog = List.append nextLog debugState.wfcLog
     }

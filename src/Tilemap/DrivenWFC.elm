@@ -40,7 +40,7 @@ import Tilemap.WFC as WFC
 type DrivenWFC
     = WFCPending Duration
     | WFCActive WFC.Model
-    | WFCFailed Random.Seed
+    | WFCFailed (List String) Random.Seed
     | WFCSolved (List String)
 
 
@@ -67,7 +67,12 @@ runWfc : Tilemap -> WFC.Model -> RunWFCResult
 runWfc tilemap wfc =
     case WFC.currentState wfc of
         WFC.Failed _ ->
-            ( tilemap, WFCFailed (WFC.currentSeed wfc), [] )
+            ( tilemap
+            , WFCFailed
+                (WFC.log wfc)
+                (WFC.currentSeed wfc)
+            , []
+            )
 
         WFC.Done ->
             let
@@ -308,7 +313,7 @@ drivenWfcDebug drivenWfc =
         WFCActive _ ->
             "Active"
 
-        WFCFailed _ ->
+        WFCFailed _ _ ->
             "Failed"
 
         WFCSolved _ ->
