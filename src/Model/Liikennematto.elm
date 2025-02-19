@@ -23,11 +23,7 @@ import Model.Screen as Screen exposing (Screen)
 import Model.World as World exposing (World)
 import Simulation.Car exposing (CarState(..))
 import Tilemap.Core exposing (TileListFilter(..))
-import Tilemap.DrivenWFC
-    exposing
-        ( DrivenWFC(..)
-        , drivenWfcInitialState
-        )
+import Tilemap.DrivenWFC exposing (DrivenWFC(..))
 import Time
 import UI.Editor
 import UI.ZoomControl
@@ -209,6 +205,11 @@ triggerLoading model =
 --
 
 
+initialDrivenWfc : DrivenWFC
+initialDrivenWfc =
+    WFCSolved []
+
+
 horizontalCellsAmount : Int
 horizontalCellsAmount =
     16
@@ -248,7 +249,7 @@ initial flags =
     , time = Time.millisToPosix 0
     , previousWorld = Nothing
     , world = initialWorld
-    , wfc = drivenWfcInitialState
+    , wfc = initialDrivenWfc
     , simulationActive = True
     , renderCache = RenderCache.new initialWorld roads
     , dynamicTiles = []
@@ -269,7 +270,7 @@ fromNewGame : Maybe World -> Liikennematto -> Liikennematto
 fromNewGame previousWorld model =
     { model
         | world = initialWorld
-        , wfc = drivenWfcInitialState
+        , wfc = initialDrivenWfc
         , previousWorld = previousWorld
         , renderCache = RenderCache.new initialWorld roads
         , simulationActive = True
@@ -283,7 +284,7 @@ fromPreviousGame model =
         Just previousWorld ->
             { model
                 | world = previousWorld
-                , wfc = drivenWfcInitialState
+                , wfc = initialDrivenWfc
                 , previousWorld = Nothing
                 , renderCache = RenderCache.new previousWorld roads
                 , simulationActive = True

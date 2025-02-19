@@ -235,6 +235,9 @@ stepN endCondition nTimes model =
             Failed _ ->
                 stepResult
 
+            Done ->
+                stepResult
+
             _ ->
                 stepN endCondition (nTimes - 1) stepResult
 
@@ -643,6 +646,7 @@ pickRandom ({ openSteps, tilemap, seed } as modelDetails) =
                 | state = Done
                 , currentCell = Nothing
                 , targetCell = Nothing
+                , log = stateDebugInternal Done :: modelDetails.log
             }
 
         Just candidates ->

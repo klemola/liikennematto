@@ -32,7 +32,7 @@ import Tilemap.Core
 import Tilemap.DrivenWFC
     exposing
         ( DrivenWFC(..)
-        , drivenWfcInitialState
+        , initDrivenWfc
         , resetWfc
         , restartWfc
         , runWfc
@@ -333,7 +333,7 @@ resetDrivenWFC : Tilemap -> Liikennematto -> Liikennematto
 resetDrivenWFC tilemap model =
     { model
         | world = World.setTilemap tilemap model.world
-        , wfc = drivenWfcInitialState
+        , wfc = initDrivenWfc
         , renderCache = setTilemapCache tilemap (Just tilemap) model.renderCache
     }
 

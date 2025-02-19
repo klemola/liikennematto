@@ -2,7 +2,7 @@ module Tilemap.DrivenWFC exposing
     ( DrivenWFC(..)
     , RunWFCResult
     , drivenWfcDebug
-    , drivenWfcInitialState
+    , initDrivenWfc
     , resetWfc
     , restartWfc
     , runWfc
@@ -53,8 +53,8 @@ minWfcUpdateFrequency =
     Duration.milliseconds 250
 
 
-drivenWfcInitialState : DrivenWFC
-drivenWfcInitialState =
+initDrivenWfc : DrivenWFC
+initDrivenWfc =
     WFCPending minWfcUpdateFrequency
 
 
