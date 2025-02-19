@@ -677,7 +677,7 @@ toWeightedOptions options =
                         tileConfig =
                             tileById option
                     in
-                    ( 1.0 - TileConfig.complexity tileConfig, tileConfig )
+                    ( TileConfig.weight tileConfig, tileConfig )
                 )
                 options
     in

@@ -1,6 +1,7 @@
 module Data.TileSet exposing
     ( allTiles
     , allTilesAmount
+    , basicRoadTiles
     , decorativeTiles
     , defaultSocket
     , defaultTiles
@@ -27,6 +28,7 @@ import Lib.Bitmask exposing (OrthogonalMatch)
 import Lib.DiagonalDirection exposing (DiagonalDirection(..))
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
 import List.Nonempty
+import Set exposing (Set)
 import Tilemap.TileConfig as TileConfig
     exposing
         ( LargeTile
@@ -123,6 +125,16 @@ defaultTileId =
 loneRoadTileId : TileId
 loneRoadTileId =
     17
+
+
+basicRoadTiles : Set TileId
+basicRoadTiles =
+    Set.fromList [ TileConfig.tileConfigId horizontalRoad, TileConfig.tileConfigId verticalRoad ]
+
+
+defaultWeight : Float
+defaultWeight =
+    0.5
 
 
 allTiles : List TileConfig
@@ -395,7 +407,7 @@ grass =
         { id = defaultTileId
 
         -- Make the "default/filler" not very likely to appear, as it is a last resort
-        , complexity = 0.8
+        , weight = 0.1
         , graphPriority = maxGraphPriority
         , biome = TileConfig.Nature
         , sockets =
@@ -418,7 +430,7 @@ loneRoad : TileConfig
 loneRoad =
     TileConfig.Single
         { id = loneRoadTileId
-        , complexity = 0.1
+        , weight = defaultWeight
         , graphPriority = maxGraphPriority
         , biome = TileConfig.Road
         , sockets =
@@ -435,7 +447,7 @@ horizontalRoad : TileConfig
 horizontalRoad =
     TileConfig.Single
         { id = 6
-        , complexity = 0.1
+        , weight = 0.5
         , graphPriority = maxGraphPriority
         , biome = TileConfig.Road
         , sockets =
@@ -457,7 +469,7 @@ deadendUp : TileConfig
 deadendUp =
     TileConfig.Single
         { id = 8
-        , complexity = 0.1
+        , weight = 0.5
         , graphPriority = 0
         , biome = TileConfig.Road
         , sockets =
@@ -489,7 +501,7 @@ curveBottomRight : TileConfig
 curveBottomRight =
     TileConfig.Single
         { id = 3
-        , complexity = 0.2
+        , weight = 0.5
         , graphPriority = maxGraphPriority
         , biome = TileConfig.Road
         , sockets =
@@ -525,7 +537,7 @@ intersectionTUp : TileConfig
 intersectionTUp =
     TileConfig.Single
         { id = 7
-        , complexity = 0.3
+        , weight = 0.3
         , graphPriority = 0.2
         , biome = TileConfig.Road
         , sockets =
@@ -547,7 +559,7 @@ intersectionTLeft : TileConfig
 intersectionTLeft =
     TileConfig.Single
         { id = 11
-        , complexity = 0.3
+        , weight = 0.3
         , graphPriority = 0.2
         , biome = TileConfig.Road
         , sockets =
@@ -569,7 +581,7 @@ intersectionCross : TileConfig
 intersectionCross =
     TileConfig.Single
         { id = 15
-        , complexity = 0.3
+        , weight = 0.3
         , graphPriority = 0.2
         , biome = TileConfig.Road
         , sockets =
@@ -586,7 +598,7 @@ lotEntryTUp : TileConfig
 lotEntryTUp =
     TileConfig.Single
         { id = 20
-        , complexity = 0.2
+        , weight = 0.8
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -603,7 +615,7 @@ lotEntryTRight : TileConfig
 lotEntryTRight =
     TileConfig.Single
         { id = 21
-        , complexity = 0.2
+        , weight = 0.8
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -620,7 +632,7 @@ lotEntryTLeft : TileConfig
 lotEntryTLeft =
     TileConfig.Single
         { id = 22
-        , complexity = 0.2
+        , weight = 0.8
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -648,7 +660,7 @@ lotDrivewayTileIds =
 lotTopLeftCorner : TileConfig.SingleTile
 lotTopLeftCorner =
     { id = 30
-    , complexity = 0.5
+    , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -664,7 +676,7 @@ lotTopLeftCorner =
 lotTopRightCorner : TileConfig.SingleTile
 lotTopRightCorner =
     { id = 31
-    , complexity = 0.5
+    , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -680,7 +692,7 @@ lotTopRightCorner =
 lotBottomRightCorner : TileConfig.SingleTile
 lotBottomRightCorner =
     { id = 32
-    , complexity = 0.5
+    , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -696,7 +708,7 @@ lotBottomRightCorner =
 lotBottomLeftCorner : TileConfig.SingleTile
 lotBottomLeftCorner =
     { id = 33
-    , complexity = 0.5
+    , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -712,7 +724,7 @@ lotBottomLeftCorner =
 lotTopEdge : TileConfig.SingleTile
 lotTopEdge =
     { id = 34
-    , complexity = 0.5
+    , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -728,7 +740,7 @@ lotTopEdge =
 lotRightEdge : TileConfig.SingleTile
 lotRightEdge =
     { id = 35
-    , complexity = 0.5
+    , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -744,7 +756,7 @@ lotRightEdge =
 lotBottomEdge : TileConfig.SingleTile
 lotBottomEdge =
     { id = 36
-    , complexity = 0.5
+    , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -760,7 +772,7 @@ lotBottomEdge =
 lotLeftEdge : TileConfig.SingleTile
 lotLeftEdge =
     { id = 37
-    , complexity = 0.5
+    , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -776,7 +788,7 @@ lotLeftEdge =
 lotInnerSpace : TileConfig.SingleTile
 lotInnerSpace =
     { id = 38
-    , complexity = 0.5
+    , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -792,7 +804,7 @@ lotInnerSpace =
 lotDrivewayRight : TileConfig.SingleTile
 lotDrivewayRight =
     { id = 40
-    , complexity = 0.5
+    , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -808,7 +820,7 @@ lotDrivewayRight =
 lotDrivewayLeft : TileConfig.SingleTile
 lotDrivewayLeft =
     { id = 41
-    , complexity = 0.5
+    , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -824,7 +836,7 @@ lotDrivewayLeft =
 lotDrivewayUp : TileConfig.SingleTile
 lotDrivewayUp =
     { id = 42
-    , complexity = 0.5
+    , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
     , sockets =
@@ -845,7 +857,7 @@ twoByTwoLot =
 twoByTwoLotLargeTile : LargeTile
 twoByTwoLotLargeTile =
     { id = 100
-    , complexity = 0.2
+    , weight = 0.9
     , biome = TileConfig.Lot
     , tiles =
         Array.fromList
@@ -870,7 +882,7 @@ threeByThreeLot =
 threeByThreeLotLargeTile : LargeTile
 threeByThreeLotLargeTile =
     { id = 101
-    , complexity = 0.4
+    , weight = 0.9
     , biome = TileConfig.Lot
     , tiles =
         Array.fromList
@@ -902,7 +914,7 @@ threeByTwoLotA =
 threeByTwoLotALargeTile : LargeTile
 threeByTwoLotALargeTile =
     { id = 102
-    , complexity = 0.4
+    , weight = 0.9
     , biome = TileConfig.Lot
     , tiles =
         Array.fromList
@@ -925,7 +937,7 @@ threeByTwoLotB : TileConfig
 threeByTwoLotB =
     TileConfig.Large
         { id = 103
-        , complexity = 0.4
+        , weight = 0.9
         , biome = TileConfig.Lot
         , tiles =
             Array.fromList
@@ -948,7 +960,7 @@ twoByThreeLot : TileConfig
 twoByThreeLot =
     TileConfig.Large
         { id = 104
-        , complexity = 0.4
+        , weight = 0.9
         , biome = TileConfig.Lot
         , tiles =
             Array.fromList
@@ -978,7 +990,7 @@ twoByThreeLot =
 natureTopLeftCorner : TileConfig.SingleTile
 natureTopLeftCorner =
     { id = 50
-    , complexity = 0.5
+    , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Nature
     , sockets =
@@ -994,7 +1006,7 @@ natureTopLeftCorner =
 natureTopRightCorner : TileConfig.SingleTile
 natureTopRightCorner =
     { id = 51
-    , complexity = 0.5
+    , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Nature
     , sockets =
@@ -1010,7 +1022,7 @@ natureTopRightCorner =
 natureBottomRightCorner : TileConfig.SingleTile
 natureBottomRightCorner =
     { id = 52
-    , complexity = 0.5
+    , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Nature
     , sockets =
@@ -1026,7 +1038,7 @@ natureBottomRightCorner =
 natureBottomLeftCorner : TileConfig.SingleTile
 natureBottomLeftCorner =
     { id = 53
-    , complexity = 0.5
+    , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Nature
     , sockets =
@@ -1043,7 +1055,7 @@ singleNature : TileConfig
 singleNature =
     TileConfig.Single
         { id = 200
-        , complexity = 0.2
+        , weight = 0.1
         , graphPriority = maxGraphPriority
         , biome = TileConfig.Nature
         , sockets =
@@ -1060,7 +1072,7 @@ twoByTwoNature : TileConfig
 twoByTwoNature =
     TileConfig.Large
         { id = 201
-        , complexity = 0.2
+        , weight = 0.1
         , biome = TileConfig.Nature
         , tiles =
             Array.fromList
