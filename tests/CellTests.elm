@@ -1,7 +1,6 @@
 module CellTests exposing (suite)
 
 import Expect
-import Lib.DiagonalDirection exposing (DiagonalDirection(..))
 import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Test exposing (Test, describe, test)
 import Tilemap.Cell as Cell

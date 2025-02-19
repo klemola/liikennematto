@@ -34,7 +34,7 @@ import Tilemap.Core
         , tileToConfig
         , tilemapToList
         )
-import Tilemap.Tile as Tile exposing (Tile, TileKind(..))
+import Tilemap.Tile as Tile exposing (Tile, TileKind)
 import Tilemap.TileConfig exposing (TileId)
 import Tilemap.WFC as WFC
 import UI.Core

@@ -1,5 +1,6 @@
 module Tilemap.Tile exposing
     ( Action(..)
+    , FixedTileProperties
     , Tile
     , TileFSM
     , TileKind(..)
@@ -12,9 +13,7 @@ module Tilemap.Tile exposing
     , isBuilt
     , isDynamic
     , isFixed
-    , isSuperposition
     , transitionTimer
-    , transitionTimerShort
     )
 
 import Audio exposing (Sound)
@@ -104,16 +103,6 @@ attemptRemove tile =
 
         Err _ ->
             ( tile, [] )
-
-
-isSuperposition : Tile -> Bool
-isSuperposition tile =
-    case tile.kind of
-        Superposition _ ->
-            True
-
-        _ ->
-            False
 
 
 isFixed : Tile -> Bool

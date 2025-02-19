@@ -11,7 +11,7 @@ import Data.Utility
 import Dict
 import Expect
 import Maybe.Extra as Maybe
-import Test exposing (..)
+import Test exposing (Test, describe, test)
 import Tilemap.Cell as Cell
 import Tilemap.Core exposing (Tilemap, createTilemap, tileByCell)
 import Tilemap.DrivenWFC exposing (restartWfc)

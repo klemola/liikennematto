@@ -1,4 +1,4 @@
-module Tilemap.Buffer exposing (DirectionHistory, removeBuffer, updateBufferCells)
+module Tilemap.Buffer exposing (removeBuffer, updateBufferCells)
 
 import Data.TileSet exposing (decorativeTiles, roadConnectionDirectionsByTile, tileById)
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
@@ -18,10 +18,6 @@ import Tilemap.Core
         )
 import Tilemap.Tile as Tile exposing (Tile, TileKind(..))
 import Vector2d exposing (Vector2d)
-
-
-type alias DirectionHistory =
-    List OrthogonalDirection
 
 
 maxBufferDepth : Int

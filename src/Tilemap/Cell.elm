@@ -435,24 +435,25 @@ orthogonalDirection from to =
 
             ( x1, y1 ) =
                 coordinates to
-
-            dir =
-                if x1 > x0 then
-                    Right
-
-                else if y1 > y0 then
-                    Down
-
-                else if y0 > y1 then
-                    Up
-
-                else
-                    Left
         in
         if x0 /= x1 && y0 /= y1 then
             Nothing
 
         else
+            let
+                dir =
+                    if x1 > x0 then
+                        Right
+
+                    else if y1 > y0 then
+                        Down
+
+                    else if y0 > y1 then
+                        Up
+
+                    else
+                        Left
+            in
             Just dir
 
 

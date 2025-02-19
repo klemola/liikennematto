@@ -1,6 +1,7 @@
 module Tilemap.WFC exposing
     ( Model
     , StepEndCondition(..)
+    , WFCFailure
     , WFCState(..)
     , checkLargeTileFit
     , collapse

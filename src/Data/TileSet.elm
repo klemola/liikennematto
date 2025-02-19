@@ -25,8 +25,7 @@ module Data.TileSet exposing
 import Array
 import Dict exposing (Dict)
 import Lib.Bitmask exposing (OrthogonalMatch)
-import Lib.DiagonalDirection exposing (DiagonalDirection(..))
-import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
+import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import List.Nonempty
 import Set exposing (Set)
 import Tilemap.TileConfig as TileConfig

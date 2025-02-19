@@ -8,7 +8,7 @@ import Data.TileSet
         )
 import Maybe.Extra as Maybe
 import Message exposing (Message(..))
-import Model.Debug exposing (DevAction(..), appendWfcLog)
+import Model.Debug exposing (appendWfcLog)
 import Model.Liikennematto exposing (Liikennematto)
 import Model.RenderCache exposing (refreshTilemapCache, setTilemapCache, setTilemapDebugCache)
 import Model.World as World exposing (World)
@@ -41,7 +41,6 @@ import Tilemap.DrivenWFC
 import Tilemap.Tile as Tile
     exposing
         ( Action(..)
-        , TileKind(..)
         , isBuilt
         )
 import Tilemap.TileConfig exposing (TileId)
@@ -319,10 +318,11 @@ removeTile cell model =
 --
 
 
+scheduleWFCChunk : WFC.Model -> World -> Cmd Message
 scheduleWFCChunk wfcModel world =
     -- Small delay to allow for interrupts
     Process.sleep 1
-        |> Task.andThen (\_ -> Task.succeed (runWfc world.tilemap wfcModel))
+        |> Task.map (\_ -> runWfc world.tilemap wfcModel)
         |> Task.perform WFCChunkProcessed
 
 

@@ -1,6 +1,6 @@
 module Data.Utility exposing
     ( AnchorDef
-    , addTileInstantly
+    , CellsByTileKind
     , cellsByTileKind
     , cellsByTileKindFromAscii
     , createCell
@@ -8,7 +8,6 @@ module Data.Utility exposing
     , initTileWithSuperposition
     , placeRoadAndUpdateBuffer
     , removeRoadAndUpdateBuffer
-    , removeTileInstantly
     , tenByTenTilemap
     , testSeed
     , tilemapFromCoordinates

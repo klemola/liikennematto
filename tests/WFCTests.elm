@@ -18,7 +18,7 @@ import Data.Utility
         )
 import Dict
 import Expect
-import Test exposing (..)
+import Test exposing (Test, describe, test)
 import Tilemap.Cell as Cell
 import Tilemap.Core
     exposing

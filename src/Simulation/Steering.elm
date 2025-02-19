@@ -283,19 +283,6 @@ reachTargetVelocity currentVelocity targetVelocity =
 
 accelerateToZeroOverDistance : Speed -> Length -> Acceleration
 accelerateToZeroOverDistance currentVelocity (Quantity distanceFromTarget) =
-    let
-        (Quantity startingSpeed) =
-            currentVelocity
-
-        finalSpeed =
-            if distanceFromTarget > 1 && abs startingSpeed < 1 then
-                -- (Nearly) stopped before reaching the target; accelerate to move towards the target
-                Speed.inMetersPerSecond maxVelocity * 0.5
-
-            else
-                -- Already in motion; try to achieve optimal deceleration
-                0
-    in
     if distanceFromTarget == 0 then
         reachTargetVelocity currentVelocity Quantity.zero
 
@@ -304,6 +291,19 @@ accelerateToZeroOverDistance currentVelocity (Quantity distanceFromTarget) =
         -- Original formula: a = (Vf*Vf - Vi*Vi)/(2 * d)
         -- (where Vf = final speed, Vi = starting speed, d = distance, and the result a is acceleration)
         -- ...but with `abs` on the starting speed to handle negative velocity
+        let
+            (Quantity startingSpeed) =
+                currentVelocity
+
+            finalSpeed =
+                if distanceFromTarget > 1 && abs startingSpeed < 1 then
+                    -- (Nearly) stopped before reaching the target; accelerate to move towards the target
+                    Speed.inMetersPerSecond maxVelocity * 0.5
+
+                else
+                    -- Already in motion; try to achieve optimal deceleration
+                    0
+        in
         ((finalSpeed * finalSpeed - startingSpeed * abs startingSpeed) / (2 * distanceFromTarget))
             |> Quantity
             |> Quantity.clamp maxDeceleration maxAcceleration

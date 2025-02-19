@@ -4,7 +4,6 @@ module Simulation.Lot exposing
     , ParkingSpot
     , acquireParkingLock
     , build
-    , constructionSite
     , findFreeParkingSpot
     , inBounds
     , parkingPermitted

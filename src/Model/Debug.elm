@@ -34,7 +34,6 @@ type DebugLayerKind
 
 type DevAction
     = SpawnTestCar
-    | RunWFC
 
 
 initialDebugState : DebugState

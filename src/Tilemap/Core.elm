@@ -8,14 +8,12 @@ module Tilemap.Core exposing
     , addTileFromWfc
     , anchorByCell
     , cellBitmask
-    , cellHasAnchor
     , cellSupportsRoadPlacement
     , clearTile
     , createTilemap
     , extractRoadTile
     , fixedTileByCell
     , foldTiles
-    , forAllTiles
     , getBuildHistory
     , getTilemapConfig
     , getTilemapDimensions
@@ -33,7 +31,6 @@ module Tilemap.Core exposing
     , tileToConfig
     , tilemapBoundingBox
     , tilemapIntersects
-    , tilemapSize
     , tilemapToList
     , updateTilemap
     )
@@ -56,10 +53,9 @@ import Duration exposing (Duration)
 import Length exposing (Length)
 import Lib.Bitmask exposing (OrthogonalMatch, fourBitMask)
 import Lib.Collection exposing (Id)
-import Lib.DiagonalDirection as DiagonalDirection exposing (DiagonalDirection(..))
+import Lib.DiagonalDirection as DiagonalDirection exposing (DiagonalDirection)
 import Lib.FSM as FSM
 import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
-import Maybe.Extra as Maybe
 import Point2d
 import Quantity
 import Tilemap.Cell as Cell exposing (Cell, CellCoordinates, nextOrthogonalCell)
@@ -217,11 +213,6 @@ getBuildHistory (Tilemap tilemapContents) =
     tilemapContents.recentPlacements
 
 
-cellHasAnchor : Tilemap -> Cell -> Bool
-cellHasAnchor (Tilemap tilemapContents) cell =
-    Dict.member (Cell.coordinates cell) tilemapContents.anchors
-
-
 inTilemapBounds : Tilemap -> BoundingBox2d Length.Meters GlobalCoordinates -> Bool
 inTilemapBounds (Tilemap tilemap) testBB =
     BoundingBox2d.isContainedIn tilemap.boundingBox testBB
@@ -325,29 +316,9 @@ foldTiles foldFn b tilemap =
     mappedAcc.acc
 
 
-forAllTiles : (Tile -> Bool) -> Tilemap -> Bool
-forAllTiles predicate (Tilemap tilemapContents) =
-    -- Room for improvement: early exit if any cell does not satisfy the predicate
-    Array.all predicate tilemapContents.cells
-
-
 getTilemapConfig : Tilemap -> TilemapConfig
 getTilemapConfig (Tilemap tilemapContents) =
     tilemapContents.config
-
-
-tilemapSize : Tilemap -> Int
-tilemapSize (Tilemap tilemapContents) =
-    Array.foldl
-        (\tile count ->
-            if Tile.isFixed tile then
-                count + 1
-
-            else
-                count
-        )
-        0
-        tilemapContents.cells
 
 
 getTilemapDimensions : Tilemap -> { width : Length, height : Length }
@@ -388,25 +359,22 @@ tileNeighborIn dir origin getTileFn tilemap =
 
         maybeCell =
             Cell.nextOrthogonalCell tilemapConfig dir origin
-
-        maybeTile =
-            maybeCell
-                |> andCarry (getTileFn tilemap)
-                |> Maybe.andThen
-                    (\( neighborCell, tile ) ->
-                        let
-                            state =
-                                FSM.toCurrentState tile.fsm
-                        in
-                        -- tiles pending removal should not be used when checking tile neighbors
-                        if state == Tile.Removing || state == Tile.Removed then
-                            Nothing
-
-                        else
-                            Just ( neighborCell, tile )
-                    )
     in
-    maybeTile
+    maybeCell
+        |> andCarry (getTileFn tilemap)
+        |> Maybe.andThen
+            (\( neighborCell, tile ) ->
+                let
+                    state =
+                        FSM.toCurrentState tile.fsm
+                in
+                -- tiles pending removal should not be used when checking tile neighbors
+                if state == Tile.Removing || state == Tile.Removed then
+                    Nothing
+
+                else
+                    Just ( neighborCell, tile )
+            )
 
 
 
@@ -683,9 +651,6 @@ largeTileCells tilemap topLeftCornerCell largeTile =
 largeTileTopLeftCornerCell : Cell -> Int -> Tilemap -> TileConfig.LargeTile -> Maybe Cell
 largeTileTopLeftCornerCell subtileCell subtileIndex tilemap largeTile =
     let
-        tilemapConfig =
-            getTilemapConfig tilemap
-
         subgridDimensions =
             { horizontalCellsAmount = largeTile.width
             , verticalCellsAmount = largeTile.height
@@ -701,6 +666,10 @@ largeTileTopLeftCornerCell subtileCell subtileIndex tilemap largeTile =
         |> Maybe.map Cell.coordinates
         |> Maybe.andThen
             (\( x, y ) ->
+                let
+                    tilemapConfig =
+                        getTilemapConfig tilemap
+                in
                 Cell.translateBy tilemapConfig ( -x + 1, -y + 1 ) subtileCell
             )
 

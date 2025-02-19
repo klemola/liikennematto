@@ -7,8 +7,6 @@ import Data.Worlds
         , lowComplexityWorld
         )
 import Expect
-import Lib.Collection exposing (initialId)
-import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Maybe.Extra as Maybe
 import Test exposing (Test, describe, test)
 import Tilemap.Cell as Cell

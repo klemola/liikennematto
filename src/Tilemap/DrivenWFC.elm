@@ -31,7 +31,7 @@ import Tilemap.Core
         , tileByCell
         , tileNeighborIn
         )
-import Tilemap.Tile as Tile exposing (Action(..), Tile, TileKind(..))
+import Tilemap.Tile as Tile exposing (Action, Tile, TileKind(..))
 import Tilemap.TileConfig as TileConfig exposing (TileConfig, TileId)
 import Tilemap.TileInventory exposing (TileInventory)
 import Tilemap.WFC as WFC

@@ -25,9 +25,7 @@ import Tilemap.Cell as Cell
 import Tilemap.WFC as WFC
 import UI.Core
     exposing
-        ( ControlButtonContent(..)
-        , ControlButtonSize(..)
-        , borderRadiusButton
+        ( borderRadiusButton
         , borderSize
         , colorCardBackground
         , colorText

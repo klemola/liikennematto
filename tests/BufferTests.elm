@@ -11,8 +11,7 @@ import Data.Utility
         , tilemapToAscii
         )
 import Expect
-import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
-import Test exposing (..)
+import Test exposing (Test, describe, test)
 import Tilemap.Cell as Cell
 import Tilemap.Core
     exposing

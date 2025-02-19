@@ -60,7 +60,6 @@ type Msg
     | SolveInitDone Time.Posix
     | EditorMsg Editor.Msg
     | InputReceived UI.Core.InputEvent
-    | NoOp
 
 
 type alias Model =
@@ -297,9 +296,6 @@ update msg model =
                     )
                 |> Maybe.withDefault Cmd.none
             )
-
-        NoOp ->
-            ( model, Cmd.none )
 
 
 view : Model -> Html Msg
