@@ -19,7 +19,6 @@ module Tilemap.WFC exposing
     , stepN
     , stopped
     , toCurrentCell
-    , toTileInventory
     , toTilemap
     , withTileInventory
     , withTilemapUpdate
@@ -1006,11 +1005,6 @@ toCurrentCell (Model modelDetails) =
 toTilemap : Model -> Tilemap
 toTilemap (Model modelDetails) =
     modelDetails.tilemap
-
-
-toTileInventory : Model -> TileInventory Int
-toTileInventory (Model modelDetails) =
-    modelDetails.tileInventory
 
 
 log : Model -> List String
