@@ -10,6 +10,7 @@ module Tilemap.WFC exposing
     , debug_collapseWithId
     , flushPendingActions
     , fromTilemap
+    , log
     , propagateConstraints
     , solve
     , stateDebug
@@ -67,16 +68,17 @@ type Model
 
 
 type alias ModelDetails =
-    { tilemap : Tilemap
+    { seed : Seed
+    , state : WFCState
+    , tilemap : Tilemap
     , currentCell : Maybe Cell
     , targetCell : Maybe Cell
     , openSteps : List Step
     , previousSteps : PreviousSteps
     , backtrackCount : Int
-    , state : WFCState
+    , log : List String
     , pendingActions : List Tile.Action
     , tileInventory : TileInventory Int
-    , seed : Seed
     }
 
 
@@ -120,16 +122,17 @@ maxBacktrackCount =
 fromTilemap : Tilemap -> Random.Seed -> Model
 fromTilemap tilemap initialSeed =
     Model
-        { tilemap = tilemap
+        { seed = initialSeed
+        , state = Solving
+        , tilemap = tilemap
         , currentCell = Nothing
         , targetCell = Nothing
         , openSteps = []
         , previousSteps = Stack.empty
         , backtrackCount = 0
-        , state = Solving
+        , log = []
         , pendingActions = []
         , tileInventory = Dict.empty
-        , seed = initialSeed
         }
 
 
@@ -177,33 +180,42 @@ step endCondition model =
     in
     case steppedModel.state of
         Recovering _ ->
-            let
-                _ =
-                    Debug.log "< BEGIN backtrack" (Stack.size steppedModel.previousSteps)
-            in
             case backtrack steppedModel.previousSteps steppedModel.tileInventory steppedModel.tilemap of
                 Ok ( prunedPreviousSteps, updatedTileInventory, tilemapAfterBacktrack ) ->
                     if steppedModel.backtrackCount + 1 > maxBacktrackCount then
-                        Model { steppedModel | state = Failed BacktrackFailed }
+                        let
+                            nextState =
+                                Failed BacktrackFailed
+                        in
+                        Model
+                            { steppedModel
+                                | state = nextState
+                                , log = stateDebugInternal nextState :: steppedModel.log
+                            }
 
                     else
                         let
-                            _ =
-                                Debug.log "btc" (steppedModel.backtrackCount + 1)
+                            nextBacktrackCount =
+                                steppedModel.backtrackCount + 1
                         in
                         Model
                             { steppedModel
                                 | state = Solving
                                 , openSteps = []
                                 , previousSteps = prunedPreviousSteps
-                                , backtrackCount = steppedModel.backtrackCount + 1
+                                , backtrackCount = nextBacktrackCount
+                                , log = ("Backtrack successful, count: " ++ String.fromInt nextBacktrackCount) :: steppedModel.log
                                 , tilemap = tilemapAfterBacktrack
                                 , tileInventory = updatedTileInventory
                             }
 
                 Err failure ->
                     -- Backtracking failed, no way to continue
-                    Model { steppedModel | state = Failed failure }
+                    Model
+                        { steppedModel
+                            | state = Failed failure
+                            , log = "Backtrack failed" :: steppedModel.log
+                        }
 
         _ ->
             afterStep
@@ -352,20 +364,13 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap } as m
                             , previousSteps =
                                 case stepSuperposition tilemap currentStep of
                                     Just superpositionOptions ->
-                                        let
-                                            _ =
-                                                Debug.log "add step to previousSteps" (stepDebug currentStep)
-                                        in
                                         Stack.push ( currentStep, superpositionOptions ) previousSteps
 
                                     Nothing ->
-                                        let
-                                            _ =
-                                                Debug.log "no superposition" (stepDebug currentStep)
-                                        in
                                         previousSteps
                             , pendingActions = modelDetails.pendingActions ++ tileActions
                             , tileInventory = nextTileInventory
+                            , log = ("Processed step " ++ stepDebug currentStep) :: withPosition.log
                         }
 
                 Err wfcFailure ->
@@ -381,13 +386,14 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap } as m
                                 _ ->
                                     otherSteps
 
-                        _ =
-                            Debug.log "Recovering" ( wfcFailureToString wfcFailure, stepDebug currentStep )
+                        nextState =
+                            Recovering wfcFailure
                     in
                     Model
                         { withPosition
-                            | state = Recovering wfcFailure
+                            | state = nextState
                             , openSteps = nextOtherSteps
+                            , log = stateDebugInternal nextState :: withPosition.log
                         }
 
         [] ->
@@ -599,9 +605,6 @@ revertStep theStep previousSuperposition tileInventory tilemap =
         psList =
             List.Nonempty.toList previousSuperposition
 
-        _ =
-            Debug.log "revert step" (stepDebug theStep)
-
         ( nextSuperpositionOptions, updatedInventory ) =
             case stepTileId theStep of
                 Just tileId ->
@@ -644,9 +647,6 @@ pickRandom ({ openSteps, tilemap, seed } as modelDetails) =
 
         Just candidates ->
             let
-                _ =
-                    Debug.log "candidates" (List.Nonempty.map (\c -> ( Cell.toString c.cell, c.options )) candidates)
-
                 ( randomCandidate, seedAfterCandidateGen ) =
                     Random.step (List.Nonempty.sample candidates) seed
 
@@ -735,11 +735,7 @@ largeTileSteps tilemap anchorCell largeTile =
         |> Result.map
             (List.map (\( cell, props ) -> CollapseSubgridCell cell props))
         |> Result.mapError
-            (\err ->
-                let
-                    _ =
-                        Debug.log "large tile err" err
-                in
+            (\_ ->
                 InvalidBigTilePlacement anchorCell largeTile.id
             )
 
@@ -888,7 +884,7 @@ attemptTileNeighborUpdate currentTile originCell tilemap =
                 Ok nuCtx.steps
 
             else
-                Debug.log "" (Err "Can't dock fixed neighbor")
+                Err "Can't dock fixed neighbor"
         )
         (\nuCtx _ ->
             if nuCtx.neighborSocket == defaultSocket then
@@ -904,7 +900,7 @@ attemptTileNeighborUpdate currentTile originCell tilemap =
                 Ok nuCtx.steps
 
             else
-                Debug.log "" (Err "Can't dock uninitialized neighbor")
+                Err "Can't dock uninitialized neighbor"
         )
         originCell
         currentTile
@@ -1012,6 +1008,11 @@ toTileInventory (Model modelDetails) =
     modelDetails.tileInventory
 
 
+log : Model -> List String
+log (Model modelDetails) =
+    modelDetails.log
+
+
 currentSeed : Model -> Random.Seed
 currentSeed (Model modelDetails) =
     modelDetails.seed
@@ -1019,24 +1020,29 @@ currentSeed (Model modelDetails) =
 
 stateDebug : Model -> String
 stateDebug (Model modelDetails) =
-    case modelDetails.state of
+    stateDebugInternal modelDetails.state
+
+
+stateDebugInternal : WFCState -> String
+stateDebugInternal state =
+    case state of
         Solving ->
-            "solving"
+            "Solving"
 
         Recovering wfcFailure ->
             String.join " "
-                [ "recovering:"
+                [ "Recovering:"
                 , wfcFailureToString wfcFailure
                 ]
 
         Failed wfcFailure ->
             String.join " "
-                [ "failed:"
+                [ "Failed:"
                 , wfcFailureToString wfcFailure
                 ]
 
         Done ->
-            "done"
+            "Done"
 
 
 wfcFailureToString : WFCFailure -> String
@@ -1080,7 +1086,10 @@ contextDebug (Model modelDetails) =
         , Maybe.map Cell.toString modelDetails.targetCell |> Maybe.withDefault "-"
         ]
     , openSteps = List.map stepDebug modelDetails.openSteps
-    , previousSteps = modelDetails.previousSteps |> Stack.toList |> List.map previousStepDebug
+    , previousSteps =
+        modelDetails.previousSteps
+            |> Stack.toList
+            |> List.map previousStepDebug
     , backtrackCount = modelDetails.backtrackCount
     }
 

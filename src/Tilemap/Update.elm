@@ -8,7 +8,7 @@ import Data.TileSet
         )
 import Maybe.Extra as Maybe
 import Message exposing (Message(..))
-import Model.Debug exposing (DevAction(..))
+import Model.Debug exposing (DevAction(..), appendWfcLog)
 import Model.Liikennematto exposing (Liikennematto)
 import Model.RenderCache exposing (refreshTilemapCache, setTilemapCache, setTilemapDebugCache)
 import Model.World as World exposing (World)
@@ -32,7 +32,6 @@ import Tilemap.Core
 import Tilemap.DrivenWFC
     exposing
         ( DrivenWFC(..)
-        , drivenWfcDebug
         , drivenWfcInitialState
         , resetWfc
         , restartWfc
@@ -182,11 +181,12 @@ update msg model =
                             , scheduleWFCChunk wfc model.world
                             )
 
-                        WFCSolved ->
+                        WFCSolved wfcLog ->
                             ( { model
                                 | world = World.setTilemap nextTilemap model.world
                                 , wfc = updatedDrivenWfc
                                 , renderCache = setTilemapCache nextTilemap Nothing model.renderCache
+                                , debug = appendWfcLog wfcLog model.debug
                               }
                             , Cmd.batch (tileActionsToCmds tileActions)
                             )
@@ -195,10 +195,6 @@ update msg model =
                             ( model, Cmd.none )
 
                 _ ->
-                    let
-                        _ =
-                            Debug.log "already solved or otherwise not active" (drivenWfcDebug model.wfc)
-                    in
                     -- WFC may already have been solved or failed, and the processed chunk is irrelevant
                     ( model, Cmd.none )
 
@@ -321,10 +317,6 @@ removeTile cell model =
 
 
 scheduleWFCChunk wfcModel world =
-    let
-        _ =
-            Debug.log "schedule WFC chunk" ()
-    in
     -- Small delay to allow for interrupts
     Process.sleep 1
         |> Task.andThen (\_ -> Task.succeed (runWfc world.tilemap wfcModel))

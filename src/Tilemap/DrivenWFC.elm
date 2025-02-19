@@ -41,7 +41,7 @@ type DrivenWFC
     = WFCPending Duration
     | WFCActive WFC.Model
     | WFCFailed Random.Seed
-    | WFCSolved
+    | WFCSolved (List String)
 
 
 type alias RunWFCResult =
@@ -73,12 +73,9 @@ runWfc tilemap wfc =
             let
                 ( solvedWfc, tileActions ) =
                     WFC.flushPendingActions wfc
-
-                _ =
-                    Debug.log "solved" ()
             in
             ( WFC.toTilemap solvedWfc
-            , WFCSolved
+            , WFCSolved (WFC.log solvedWfc)
             , tileActions
             )
 
@@ -90,9 +87,6 @@ runWfc tilemap wfc =
                         WFC.StopAtSolved
                         wfcStepsPerCycle
                         wfc
-
-                _ =
-                    Debug.log "run wfc" ()
             in
             ( tilemap, WFCActive nextWfc, [] )
 
@@ -317,5 +311,5 @@ drivenWfcDebug drivenWfc =
         WFCFailed _ ->
             "Failed"
 
-        WFCSolved ->
+        WFCSolved _ ->
             "Solved"
