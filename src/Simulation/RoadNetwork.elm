@@ -28,7 +28,7 @@ module Simulation.RoadNetwork exposing
 import BoundingBox2d exposing (BoundingBox2d)
 import Common exposing (GlobalCoordinates)
 import Data.Lots exposing (drivewayOffset)
-import Data.TileSet exposing (roadConnectionDirectionsByTile, tileById)
+import Data.TileSet exposing (basicRoadTiles, roadConnectionDirectionsByTile, tileById)
 import Dict exposing (Dict)
 import Direction2d exposing (Direction2d)
 import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
@@ -41,6 +41,7 @@ import Point2d exposing (Point2d)
 import Quantity
 import Random
 import Random.Extra
+import Set
 import Simulation.TrafficLight as TrafficLight exposing (TrafficLight)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
@@ -592,13 +593,10 @@ hasConnectionsInMultipleDirections tile =
 
 {-| "basic road tiles" should not create nodes, because they are always connected
 to a tile that has overlapping connections.
-
-TODO: unstable implementation don't rely on complexity alone
-
 -}
 shouldIgnoreConnections : TileConfig -> Bool
 shouldIgnoreConnections tileConfig =
-    TileConfig.complexity tileConfig < 0.2
+    Set.member (TileConfig.tileConfigId tileConfig) basicRoadTiles
 
 
 

@@ -3,6 +3,7 @@ module Model.Debug exposing
     , DebugLayers
     , DebugState
     , DevAction(..)
+    , appendWfcLog
     , initialDebugState
     , isLayerEnabled
     , toggleDebugPanel
@@ -15,6 +16,7 @@ import Bitwise
 type alias DebugState =
     { showDebugPanel : Bool
     , layers : DebugLayers
+    , wfcLog : List String
     }
 
 
@@ -39,6 +41,7 @@ initialDebugState : DebugState
 initialDebugState =
     { showDebugPanel = False
     , layers = 0
+    , wfcLog = []
     }
 
 
@@ -92,3 +95,10 @@ isLayerEnabled layer debugState =
             Bitwise.and (Bitwise.shiftRightBy layerFlag debugState.layers) 1
     in
     bit == 1
+
+
+appendWfcLog : List String -> DebugState -> DebugState
+appendWfcLog nextLog debugState =
+    { debugState
+        | wfcLog = List.append nextLog debugState.wfcLog
+    }

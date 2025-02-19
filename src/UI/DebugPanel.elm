@@ -16,7 +16,7 @@ import Model.Debug
         )
 import Model.Liikennematto exposing (Liikennematto)
 import Model.World exposing (World, formatEvents)
-import Tilemap.DrivenWFC exposing (DrivenWFC(..))
+import Tilemap.DrivenWFC exposing (DrivenWFC(..), drivenWfcDebug)
 import Time
 import UI.Core
     exposing
@@ -30,6 +30,7 @@ import UI.Core
         , debugElementSize
         , scrollbarAwareOffsetF
         , textSize
+        , textSizeMini
         , whitespaceRegular
         , whitespaceTight
         )
@@ -62,15 +63,34 @@ update msg model =
 
 view : Liikennematto -> Element Message
 view model =
+    Element.row
+        [ Element.alignRight
+        , Element.moveLeft scrollbarAwareOffsetF
+        , Element.moveDown scrollbarAwareOffsetF
+        ]
+        [ if Model.Debug.isLayerEnabled WFCDebug model.debug then
+            wfcPanel model.debug.wfcLog model.wfc
+
+          else
+            Element.none
+        , if Model.Debug.isLayerEnabled CarDebug model.debug then
+            carPanel model
+
+          else
+            Element.none
+        , mainPanel model
+        ]
+
+
+mainPanel : Liikennematto -> Element Message
+mainPanel model =
     Element.column
         [ Element.padding whitespaceRegular
         , Element.spacing whitespaceTight
-        , Element.alignRight
-        , Element.moveLeft scrollbarAwareOffsetF
-        , Element.moveDown scrollbarAwareOffsetF
+        , Element.width (Element.shrink |> Element.minimum debugElementSize)
+        , Element.alignTop
         , Background.color colorMenuBackgroundInverse
         , Border.rounded borderRadiusPanel
-        , Element.width (Element.shrink |> Element.minimum debugElementSize)
         ]
         [ Element.row
             [ Element.width Element.fill ]
@@ -91,9 +111,7 @@ view model =
                 )
             ]
         , controls model
-        , wfcState model.wfc
         , eventQueueView model.time model.world
-        , carState model
         ]
 
 
@@ -140,7 +158,7 @@ controls model =
             [ controlButton
                 { content = Text "WFC debug"
                 , onPress = ToggleDebugLayer WFCDebug
-                , selected = False
+                , selected = Model.Debug.isLayerEnabled WFCDebug model.debug
                 , disabled = False
                 , size = FitToContent
                 }
@@ -148,31 +166,46 @@ controls model =
         ]
 
 
-wfcState : DrivenWFC -> Element msg
-wfcState drivenWfc =
-    case drivenWfc of
-        WFCActive wfcModel ->
-            Element.column
-                [ Element.spacing 16
-                , Element.padding 8
-                , Background.color colorCardBackground
-                , Border.solid
-                , Element.width debugElementLength
-                , Element.scrollbarX
-                ]
+wfcPanel : List String -> DrivenWFC -> Element msg
+wfcPanel wfcLog drivenWfc =
+    Element.column
+        [ Element.padding whitespaceRegular
+        , Element.spacing whitespaceTight
+        , Element.alignTop
+        , Element.width (Element.shrink |> Element.minimum debugElementSize)
+        , Font.size textSizeMini
+        , Background.color colorCardBackground
+        , Border.rounded borderRadiusPanel
+        ]
+        (case drivenWfc of
+            WFCActive wfcModel ->
                 [ wfcStateDescription wfcModel
                 , wfcContext wfcModel
                 ]
 
-        _ ->
-            Element.none
+            _ ->
+                [ Element.el []
+                    (Element.text (drivenWfcDebug drivenWfc))
+                , Element.column
+                    [ Element.scrollbars
+                    , Element.height debugElementLength
+                    , Element.width Element.fill
+                    , Font.family [ Font.monospace ]
+                    ]
+                    (List.map (\row -> Element.text row) wfcLog)
+                ]
+        )
 
 
-carState : Liikennematto -> Element Message
-carState model =
+carPanel : Liikennematto -> Element Message
+carPanel model =
     Element.column
-        [ Element.spacing whitespaceTight
-        , Element.width Element.fill
+        [ Element.padding whitespaceRegular
+        , Element.spacing whitespaceTight
+        , Element.width (Element.shrink |> Element.minimum debugElementSize)
+        , Element.alignTop
+        , Background.color colorMenuBackgroundInverse
+        , Border.rounded borderRadiusPanel
         ]
         (Collection.values model.world.cars
             |> List.map

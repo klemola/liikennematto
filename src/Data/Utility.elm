@@ -5,6 +5,7 @@ module Data.Utility exposing
     , cellsByTileKindFromAscii
     , createCell
     , getStartAndEndNode
+    , initTileWithSuperposition
     , placeRoadAndUpdateBuffer
     , removeRoadAndUpdateBuffer
     , removeTileInstantly
@@ -15,7 +16,7 @@ module Data.Utility exposing
     , worldFromTilemap
     )
 
-import Data.TileSet exposing (tileIdByBitmask)
+import Data.TileSet exposing (tileIdByBitmask, tileIdsByOrthogonalMatch)
 import Duration
 import Lib.Collection exposing (Id)
 import Lib.OrthogonalDirection exposing (OrthogonalDirection)
@@ -36,7 +37,8 @@ import Tilemap.Core
         , removeTile
         , updateTilemap
         )
-import Tilemap.Tile as Tile
+import Tilemap.Tile as Tile exposing (Tile)
+import Tilemap.TileConfig exposing (TileConfig)
 import Tilemap.Update exposing (addTileById)
 
 
@@ -328,3 +330,19 @@ removeRoadAndUpdateBuffer ( x, y ) tilemap =
     tilemap
         |> removeTileInstantly cell
         |> removeBuffer cell
+
+
+
+--
+-- WFC helpers
+--
+
+
+initTileWithSuperposition : TilemapConfig -> List TileConfig -> Int -> Tile
+initTileWithSuperposition constraints tileSet index =
+    index
+        |> Cell.fromArray1DIndexUnsafe constraints
+        |> Cell.connectedBounds constraints
+        |> tileIdsByOrthogonalMatch tileSet
+        |> Tile.Superposition
+        |> Tile.init

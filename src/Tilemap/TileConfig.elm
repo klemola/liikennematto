@@ -10,7 +10,6 @@ module Tilemap.TileConfig exposing
     , allSockets
     , baseTileId
     , biome
-    , complexity
     , directionBySocket
     , graphPriority
     , maxGraphPriority
@@ -23,6 +22,7 @@ module Tilemap.TileConfig exposing
     , socketsList
     , tileConfigId
     , toString
+    , weight
     )
 
 import Array exposing (Array)
@@ -41,7 +41,7 @@ type TileConfig
 
 type alias SingleTile =
     { id : TileId
-    , complexity : Float -- 0.0 to 1.0
+    , weight : Float -- 0.0 to 1.0
     , graphPriority : Float -- 0.0. to 1.0
     , biome : TileBiome
     , sockets : Sockets
@@ -51,7 +51,7 @@ type alias SingleTile =
 
 type alias LargeTile =
     { id : TileId
-    , complexity : Float -- 0.0 to 1.0
+    , weight : Float -- 0.0 to 1.0
     , biome : TileBiome
     , tiles : Array SingleTile
     , width : Int
@@ -119,14 +119,14 @@ tileConfigId tileConfig =
             largeTile.id
 
 
-complexity : TileConfig -> Float
-complexity tileConfig =
+weight : TileConfig -> Float
+weight tileConfig =
     case tileConfig of
         Single singleTile ->
-            singleTile.complexity
+            singleTile.weight
 
         Large largeTile ->
-            largeTile.complexity
+            largeTile.weight
 
 
 maxGraphPriority : Float

@@ -1,7 +1,8 @@
 module Tilemap.DrivenWFC exposing
     ( DrivenWFC(..)
     , RunWFCResult
-    , drivenWfcInitialState
+    , drivenWfcDebug
+    , initDrivenWfc
     , resetWfc
     , restartWfc
     , runWfc
@@ -11,7 +12,6 @@ module Tilemap.DrivenWFC exposing
 import Data.TileSet
     exposing
         ( decorativeTiles
-        , defaultTiles
         , lotTiles
         , tileById
         , tilesByBaseTileId
@@ -25,6 +25,7 @@ import Tilemap.Core
     exposing
         ( Tilemap
         , foldTiles
+        , resetFixedTileBySurroundings
         , resetTileBySurroundings
         , setSuperpositionOptions
         , tileByCell
@@ -39,7 +40,8 @@ import Tilemap.WFC as WFC
 type DrivenWFC
     = WFCPending Duration
     | WFCActive WFC.Model
-    | WFCSolved
+    | WFCFailed (List String) Random.Seed
+    | WFCSolved (List String)
 
 
 type alias RunWFCResult =
@@ -51,50 +53,47 @@ minWfcUpdateFrequency =
     Duration.milliseconds 250
 
 
-drivenWfcInitialState : DrivenWFC
-drivenWfcInitialState =
+initDrivenWfc : DrivenWFC
+initDrivenWfc =
     WFCPending minWfcUpdateFrequency
 
 
 wfcStepsPerCycle : Int
 wfcStepsPerCycle =
-    5000
+    3500
 
 
-runWfc : Random.Seed -> Tilemap -> WFC.Model -> RunWFCResult
-runWfc seed tilemap wfc =
-    let
-        ( baseWfc, isSolved ) =
-            case WFC.currentState wfc of
-                WFC.Failed _ ->
-                    ( restartWfc seed (WFC.toTileInventory wfc) tilemap, False )
+runWfc : Tilemap -> WFC.Model -> RunWFCResult
+runWfc tilemap wfc =
+    case WFC.currentState wfc of
+        WFC.Failed _ ->
+            ( tilemap
+            , WFCFailed
+                (WFC.log wfc)
+                (WFC.currentSeed wfc)
+            , []
+            )
 
-                WFC.Done ->
-                    ( wfc, True )
+        WFC.Done ->
+            let
+                ( solvedWfc, tileActions ) =
+                    WFC.flushPendingActions wfc
+            in
+            ( WFC.toTilemap solvedWfc
+            , WFCSolved (WFC.log solvedWfc)
+            , tileActions
+            )
 
-                -- Solving, Recovering
-                _ ->
-                    ( wfc, False )
-    in
-    if isSolved then
-        let
-            ( solvedWfc, tileActions ) =
-                WFC.flushPendingActions baseWfc
-        in
-        ( WFC.toTilemap solvedWfc
-        , WFCSolved
-        , tileActions
-        )
-
-    else
-        let
-            nextWfc =
-                WFC.stepN
-                    WFC.StopAtSolved
-                    wfcStepsPerCycle
-                    baseWfc
-        in
-        ( tilemap, WFCActive nextWfc, [] )
+        -- Solving, Recovering
+        _ ->
+            let
+                nextWfc =
+                    WFC.stepN
+                        WFC.StopAtSolved
+                        wfcStepsPerCycle
+                        wfc
+            in
+            ( tilemap, WFCActive nextWfc, [] )
 
 
 restartWfc : Random.Seed -> TileInventory Int -> Tilemap -> WFC.Model
@@ -158,8 +157,12 @@ processTileNeighbor maybeTile wfcModel =
                 Fixed properties ->
                     if TileConfig.biome (tileById properties.id) == TileConfig.Road then
                         wfcModel
-                            |> WFC.resetCell defaultTiles cell tile.kind
+                            |> WFC.withTilemapUpdate
+                                (\wfcTilemap ->
+                                    resetFixedTileBySurroundings cell wfcTilemap
+                                )
                             |> WFC.collapse cell
+                            |> Tuple.first
 
                     else
                         wfcModel
@@ -295,9 +298,23 @@ resetDrivewayNeighbors drivewayNeighbors tilemap =
         (\( neighbor, validLotTiles ) nextTilemap ->
             resetTileBySurroundings neighbor
                 (decorativeTiles ++ validLotTiles)
-                -- TODO: this fake tile definition is wrong, maybe make the fn use different param
-                (Superposition [])
                 nextTilemap
         )
         tilemap
         drivewayNeighbors
+
+
+drivenWfcDebug : DrivenWFC -> String
+drivenWfcDebug drivenWfc =
+    case drivenWfc of
+        WFCPending dur ->
+            "Pending " ++ (dur |> Duration.inMilliseconds |> String.fromFloat)
+
+        WFCActive _ ->
+            "Active"
+
+        WFCFailed _ _ ->
+            "Failed"
+
+        WFCSolved _ ->
+            "Solved"

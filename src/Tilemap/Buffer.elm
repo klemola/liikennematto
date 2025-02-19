@@ -40,17 +40,7 @@ updateBufferCells newCell tilemap =
     in
     List.foldl
         (\cell nextTilemap ->
-            case tileByCell nextTilemap cell of
-                Just tile ->
-                    case tile.kind of
-                        Unintialized ->
-                            resetTileBySurroundings cell decorativeTiles Unintialized nextTilemap
-
-                        _ ->
-                            nextTilemap
-
-                Nothing ->
-                    nextTilemap
+            resetTileBySurroundings cell decorativeTiles nextTilemap
         )
         withUpdatedHistory
         (bufferCellsFromHistory withUpdatedHistory)

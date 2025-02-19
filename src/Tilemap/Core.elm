@@ -22,6 +22,7 @@ module Tilemap.Core exposing
     , inTilemapBounds
     , removeAnchor
     , removeTile
+    , resetFixedTileBySurroundings
     , resetSuperposition
     , resetTileBySurroundings
     , roadTile
@@ -112,18 +113,39 @@ createTilemap tilemapConfig initTileFn =
         }
 
 
-resetTileBySurroundings : Cell -> List TileConfig -> TileKind -> Tilemap -> Tilemap
-resetTileBySurroundings cell tileSet tileKind tilemap =
-    let
-        options =
-            case tileKind of
+resetTileBySurroundings : Cell -> List TileConfig -> Tilemap -> Tilemap
+resetTileBySurroundings cell tileSet tilemap =
+    case tileByCell tilemap cell of
+        Just tile ->
+            case tile.kind of
                 Fixed _ ->
-                    tileIdsFromBitmask (cellBitmask cell tilemap)
+                    tilemap
 
                 _ ->
-                    resetSuperposition cell tileSet tilemap
-    in
-    setSuperpositionOptions cell options tilemap
+                    setSuperpositionOptions cell
+                        (resetSuperposition cell tileSet tilemap)
+                        tilemap
+
+        Nothing ->
+            tilemap
+
+
+resetFixedTileBySurroundings : Cell -> Tilemap -> Tilemap
+resetFixedTileBySurroundings cell tilemap =
+    case tileByCell tilemap cell of
+        Just tile ->
+            case tile.kind of
+                Fixed _ ->
+                    setSuperpositionOptions
+                        cell
+                        (tileIdsFromBitmask (cellBitmask cell tilemap))
+                        tilemap
+
+                _ ->
+                    tilemap
+
+        Nothing ->
+            tilemap
 
 
 resetSuperposition : Cell -> List TileConfig -> Tilemap -> List TileId
@@ -585,12 +607,7 @@ setSuperpositionOptions : Cell -> List TileId -> Tilemap -> Tilemap
 setSuperpositionOptions cell nextOptions tilemap =
     let
         updatedTile =
-            case tileByCell tilemap cell of
-                Just tile ->
-                    { tile | kind = Superposition nextOptions }
-
-                Nothing ->
-                    Tile.init (Superposition nextOptions)
+            Tile.init (Superposition nextOptions)
     in
     -- Either retains superposition with next set of tileIds or unfixes/intializes the tile, no need to match on the tile kind
     updateCell cell updatedTile tilemap

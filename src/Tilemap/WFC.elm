@@ -5,11 +5,13 @@ module Tilemap.WFC exposing
     , checkLargeTileFit
     , collapse
     , contextDebug
+    , currentSeed
     , currentState
+    , debug_collapseWithId
     , flushPendingActions
     , fromTilemap
+    , log
     , propagateConstraints
-    , resetCell
     , solve
     , stateDebug
     , step
@@ -19,6 +21,7 @@ module Tilemap.WFC exposing
     , toTileInventory
     , toTilemap
     , withTileInventory
+    , withTilemapUpdate
     )
 
 import Array
@@ -41,9 +44,7 @@ import Tilemap.Core
         ( Tilemap
         , addTileFromWfc
         , foldTiles
-        , forAllTiles
         , getTilemapConfig
-        , resetTileBySurroundings
         , setSuperpositionOptions
         , tileByCell
         )
@@ -67,15 +68,17 @@ type Model
 
 
 type alias ModelDetails =
-    { tilemap : Tilemap
+    { seed : Seed
+    , state : WFCState
+    , tilemap : Tilemap
     , currentCell : Maybe Cell
     , targetCell : Maybe Cell
     , openSteps : List Step
-    , previousSteps : Stack ( Step, Nonempty TileId )
-    , state : WFCState
+    , previousSteps : PreviousSteps
+    , backtrackCount : Int
+    , log : List String
     , pendingActions : List Tile.Action
     , tileInventory : TileInventory Int
-    , seed : Seed
     }
 
 
@@ -94,13 +97,20 @@ type WFCState
 
 type WFCFailure
     = NoSuperpositionOptions
-    | NoPotentialMatch
     | InvalidBigTilePlacement Cell TileId
     | InvalidDirection
-    | NoCandidates
     | TileNotFound
     | TileUnavailable TileId
     | BacktrackFailed
+
+
+type alias PreviousSteps =
+    Stack ( Step, Nonempty TileId )
+
+
+maxBacktrackCount : Int
+maxBacktrackCount =
+    50
 
 
 
@@ -112,15 +122,17 @@ type WFCFailure
 fromTilemap : Tilemap -> Random.Seed -> Model
 fromTilemap tilemap initialSeed =
     Model
-        { tilemap = tilemap
+        { seed = initialSeed
+        , state = Solving
+        , tilemap = tilemap
         , currentCell = Nothing
         , targetCell = Nothing
         , openSteps = []
         , previousSteps = Stack.empty
-        , state = Solving
+        , backtrackCount = 0
+        , log = []
         , pendingActions = []
         , tileInventory = Dict.empty
-        , seed = initialSeed
         }
 
 
@@ -163,30 +175,47 @@ type StepEndCondition
 step : StepEndCondition -> Model -> Model
 step endCondition model =
     let
-        ((Model modelDetails) as afterStep) =
+        ((Model steppedModel) as afterStep) =
             processOpenSteps endCondition model
     in
-    case modelDetails.state of
-        Recovering wfcFailure ->
-            case wfcFailure of
-                NoPotentialMatch ->
-                    -- Aknowledge failure, can resume
-                    Model { modelDetails | state = Solving }
+    case steppedModel.state of
+        Recovering _ ->
+            case backtrack steppedModel.previousSteps steppedModel.tileInventory steppedModel.tilemap of
+                Ok ( prunedPreviousSteps, updatedTileInventory, tilemapAfterBacktrack ) ->
+                    if steppedModel.backtrackCount + 1 > maxBacktrackCount then
+                        let
+                            nextState =
+                                Failed BacktrackFailed
+                        in
+                        Model
+                            { steppedModel
+                                | state = nextState
+                                , log = stateDebugInternal nextState :: steppedModel.log
+                            }
 
-                _ ->
-                    case backtrack modelDetails.previousSteps modelDetails.tileInventory modelDetails.tilemap of
-                        Ok ( updatedTileInventory, tilemapAfterBacktrack ) ->
-                            Model
-                                { modelDetails
-                                    | state = Solving
-                                    , openSteps = []
-                                    , tilemap = tilemapAfterBacktrack
-                                    , tileInventory = updatedTileInventory
-                                }
+                    else
+                        let
+                            nextBacktrackCount =
+                                steppedModel.backtrackCount + 1
+                        in
+                        Model
+                            { steppedModel
+                                | state = Solving
+                                , openSteps = []
+                                , previousSteps = prunedPreviousSteps
+                                , backtrackCount = nextBacktrackCount
+                                , log = ("Backtrack successful, count: " ++ String.fromInt nextBacktrackCount) :: steppedModel.log
+                                , tilemap = tilemapAfterBacktrack
+                                , tileInventory = updatedTileInventory
+                            }
 
-                        Err failure ->
-                            -- Backtracking failed, no way to continue
-                            Model { modelDetails | state = Failed failure }
+                Err failure ->
+                    -- Backtracking failed, no way to continue
+                    Model
+                        { steppedModel
+                            | state = Failed failure
+                            , log = "Backtrack failed" :: steppedModel.log
+                        }
 
         _ ->
             afterStep
@@ -206,6 +235,9 @@ stepN endCondition nTimes model =
             Failed _ ->
                 stepResult
 
+            Done ->
+                stepResult
+
             _ ->
                 stepN endCondition (nTimes - 1) stepResult
 
@@ -216,7 +248,7 @@ stepN endCondition nTimes model =
 --
 
 
-collapse : Cell -> Model -> Model
+collapse : Cell -> Model -> ( Model, Maybe TileConfig )
 collapse cell model =
     let
         (Model modelDetails) =
@@ -239,13 +271,15 @@ collapse cell model =
                                     , state = Solving
                                 }
                     in
-                    flushOpenSteps withCollapsedCell
+                    ( flushOpenSteps withCollapsedCell
+                    , Just tileConfig
+                    )
 
                 _ ->
-                    model
+                    ( Model { modelDetails | seed = nextSeed }, Nothing )
 
         _ ->
-            model
+            ( model, Nothing )
 
 
 propagateConstraints : Cell -> Model -> Model
@@ -272,9 +306,9 @@ flushOpenSteps ((Model modelContents) as model) =
         flushOpenSteps (step StopAtEmptySteps model)
 
 
-resetCell : List TileConfig -> Cell -> TileKind -> Model -> Model
-resetCell tileSet cell tileKind (Model modelContents) =
-    Model { modelContents | tilemap = resetTileBySurroundings cell tileSet tileKind modelContents.tilemap }
+withTilemapUpdate : (Tilemap -> Tilemap) -> Model -> Model
+withTilemapUpdate updateTilemap (Model modelDetails) =
+    Model { modelDetails | tilemap = updateTilemap modelDetails.tilemap }
 
 
 
@@ -339,13 +373,30 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap } as m
                                         previousSteps
                             , pendingActions = modelDetails.pendingActions ++ tileActions
                             , tileInventory = nextTileInventory
+                            , log = ("Processed step " ++ stepDebug currentStep) :: withPosition.log
                         }
 
                 Err wfcFailure ->
+                    let
+                        nextOtherSteps =
+                            case wfcFailure of
+                                InvalidBigTilePlacement _ _ ->
+                                    []
+
+                                NoSuperpositionOptions ->
+                                    []
+
+                                _ ->
+                                    otherSteps
+
+                        nextState =
+                            Recovering wfcFailure
+                    in
                     Model
                         { withPosition
-                            | state = Recovering wfcFailure
-                            , openSteps = otherSteps
+                            | state = nextState
+                            , openSteps = nextOtherSteps
+                            , log = stateDebugInternal nextState :: withPosition.log
                         }
 
         [] ->
@@ -359,19 +410,7 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap } as m
                             }
 
                         StopAtSolved ->
-                            if not (solved modelDetails) then
-                                let
-                                    withPick =
-                                        pickRandom modelDetails
-                                in
-                                { withPick | state = Solving }
-
-                            else
-                                { modelDetails
-                                    | state = Done
-                                    , currentCell = Nothing
-                                    , targetCell = Nothing
-                                }
+                            pickRandom modelDetails
             in
             Model nextModelDetails
 
@@ -411,7 +450,7 @@ processStep tilemap tileInventory currentStep =
                 (tileByCell tilemap from)
                 (tileByCell tilemap to)
                 |> Result.fromMaybe TileNotFound
-                |> Result.andThen (updateSuperpositionOptions tilemap from to)
+                |> Result.andThen (attemptPropagateConstraints tilemap from to)
                 |> Result.map (\nextTilemap -> ( [], [], nextTilemap ))
 
 
@@ -428,37 +467,27 @@ propagateConstraintsSteps tilemap cell =
     List.filterMap stepInDirection OrthogonalDirection.all
 
 
-updateSuperpositionOptions : Tilemap -> Cell -> Cell -> ( Tile, Tile ) -> Result WFCFailure Tilemap
-updateSuperpositionOptions tilemap from to tilePair =
+attemptPropagateConstraints : Tilemap -> Cell -> Cell -> ( Tile, Tile ) -> Result WFCFailure Tilemap
+attemptPropagateConstraints tilemap from to ( originTile, targetTile ) =
     Cell.orthogonalDirection from to
         |> Result.fromMaybe InvalidDirection
         |> Result.andThen
-            (superpositionOptionsForTile tilePair)
-        |> Result.map
-            (\superpositionOptions ->
-                setSuperpositionOptions to superpositionOptions tilemap
+            (\dir ->
+                case ( originTile.kind, targetTile.kind ) of
+                    ( Fixed tileProperties, Superposition options ) ->
+                        let
+                            revisedOptions =
+                                matchingSuperpositionOptions dir tileProperties.id options
+                        in
+                        if List.isEmpty revisedOptions then
+                            Err NoSuperpositionOptions
+
+                        else
+                            Ok (setSuperpositionOptions to revisedOptions tilemap)
+
+                    _ ->
+                        Ok tilemap
             )
-
-
-superpositionOptionsForTile :
-    ( Tile, Tile )
-    -> OrthogonalDirection
-    -> Result WFCFailure (List Int)
-superpositionOptionsForTile ( originTile, targetTile ) dir =
-    case ( originTile.kind, targetTile.kind ) of
-        ( Fixed tileProperties, Superposition options ) ->
-            let
-                revisedOptions =
-                    matchingSuperpositionOptions dir tileProperties.id options
-            in
-            if List.isEmpty revisedOptions then
-                Err NoSuperpositionOptions
-
-            else
-                Ok revisedOptions
-
-        _ ->
-            Err NoPotentialMatch
 
 
 matchingSuperpositionOptions : OrthogonalDirection -> TileId -> List TileId -> List TileId
@@ -491,13 +520,6 @@ canDock dockDir dockSocket dockTileId =
             pairingsForSocket dockSocket
     in
     List.member matchSocket pairings
-
-
-{-| Returns true if all positions in the grid have a tile assigned
--}
-solved : ModelDetails -> Bool
-solved { tilemap, openSteps } =
-    List.isEmpty openSteps && forAllTiles (Tile.isSuperposition >> not) tilemap
 
 
 stepSuperposition : Tilemap -> Step -> Maybe (Nonempty TileId)
@@ -546,15 +568,16 @@ stepTileId theStep =
 --
 
 
-backtrack : Stack ( Step, Nonempty TileId ) -> TileInventory Int -> Tilemap -> Result WFCFailure ( TileInventory Int, Tilemap )
+backtrack : PreviousSteps -> TileInventory Int -> Tilemap -> Result WFCFailure ( PreviousSteps, TileInventory Int, Tilemap )
 backtrack previousSteps tileInventory tilemap =
     let
-        ( stepCtx, previousSteps_ ) =
+        ( stepCtx, remainingPreviousSteps ) =
             Stack.pop previousSteps
     in
     case stepCtx of
         Nothing ->
-            Err BacktrackFailed
+            -- No steps left, should be possible to continue
+            Ok ( remainingPreviousSteps, tileInventory, tilemap )
 
         Just ( theStep, previousSuperposition ) ->
             let
@@ -564,16 +587,16 @@ backtrack previousSteps tileInventory tilemap =
                 backtrackedEnough =
                     case theStep of
                         Collapse _ _ ->
-                            List.length remainingSuperposition > 1
+                            List.length remainingSuperposition > 0
 
                         _ ->
                             False
             in
             if backtrackedEnough then
-                Ok ( updatedInventory, reverted )
+                Ok ( remainingPreviousSteps, updatedInventory, reverted )
 
             else
-                backtrack previousSteps_ updatedInventory reverted
+                backtrack remainingPreviousSteps updatedInventory reverted
 
 
 revertStep : Step -> Nonempty TileId -> TileInventory Int -> Tilemap -> ( List TileId, TileInventory Int, Tilemap )
@@ -582,14 +605,11 @@ revertStep theStep previousSuperposition tileInventory tilemap =
         targetCell =
             stepCell theStep
 
-        maybeTileId =
-            stepTileId theStep
-
         psList =
             List.Nonempty.toList previousSuperposition
 
         ( nextSuperpositionOptions, updatedInventory ) =
-            case maybeTileId of
+            case stepTileId theStep of
                 Just tileId ->
                     ( List.filter (\superpositionOption -> superpositionOption /= tileId) psList
                     , TileInventory.increaseCount tileId tileInventory
@@ -622,7 +642,12 @@ pickRandom ({ openSteps, tilemap, seed } as modelDetails) =
         List.Nonempty.fromList (nextCandidates tilemap)
     of
         Nothing ->
-            { modelDetails | state = Recovering NoCandidates }
+            { modelDetails
+                | state = Done
+                , currentCell = Nothing
+                , targetCell = Nothing
+                , log = stateDebugInternal Done :: modelDetails.log
+            }
 
         Just candidates ->
             let
@@ -656,7 +681,7 @@ toWeightedOptions options =
                         tileConfig =
                             tileById option
                     in
-                    ( 1.0 - TileConfig.complexity tileConfig, tileConfig )
+                    ( TileConfig.weight tileConfig, tileConfig )
                 )
                 options
     in
@@ -713,7 +738,10 @@ largeTileSteps tilemap anchorCell largeTile =
     largeTileSubgrid tilemap anchorCell largeTile
         |> Result.map
             (List.map (\( cell, props ) -> CollapseSubgridCell cell props))
-        |> Result.mapError (\_ -> InvalidBigTilePlacement anchorCell largeTile.id)
+        |> Result.mapError
+            (\_ ->
+                InvalidBigTilePlacement anchorCell largeTile.id
+            )
 
 
 {-| Does a large tile fit into the tilemap?
@@ -783,13 +811,21 @@ largeTileSubgrid tilemap anchorCell tile =
                             in
                             case cellInGlobalCoordinates of
                                 Just cell ->
-                                    Ok
-                                        ( cell
-                                        , { parentTileId = tile.id
-                                          , singleTile = singleTile
-                                          , index = subgridIdx
-                                          }
-                                        )
+                                    case tileByCell tilemap cell |> Maybe.map .kind of
+                                        Just (Superposition _) ->
+                                            Ok
+                                                ( cell
+                                                , { parentTileId = tile.id
+                                                  , singleTile = singleTile
+                                                  , index = subgridIdx
+                                                  }
+                                                )
+
+                                        Just (Fixed _) ->
+                                            Err "Subgrid cell is fixed"
+
+                                        _ ->
+                                            Err "Subgrid cell is not available (may be uninitialized)"
 
                                 Nothing ->
                                     Err "Cannot translate cell to global coordinates"
@@ -847,11 +883,7 @@ attemptTileNeighborUpdate : SingleTile -> Cell -> Tilemap -> Result String (List
 attemptTileNeighborUpdate currentTile originCell tilemap =
     applyToNeighbor
         (\nuCtx neighborTileId ->
-            let
-                neigborSocket =
-                    socketByDirection currentTile.sockets nuCtx.dir
-            in
-            if canDock (OrthogonalDirection.opposite nuCtx.dir) neigborSocket neighborTileId then
+            if canDock (OrthogonalDirection.opposite nuCtx.dir) nuCtx.neighborSocket neighborTileId then
                 -- Tiles can dock, no tilemap update needed = skip
                 Ok nuCtx.steps
 
@@ -859,21 +891,23 @@ attemptTileNeighborUpdate currentTile originCell tilemap =
                 Err "Can't dock fixed neighbor"
         )
         (\nuCtx _ ->
-            Ok (PropagateConstraints originCell nuCtx.neighborCell :: nuCtx.steps)
+            if nuCtx.neighborSocket == defaultSocket then
+                Ok (PropagateConstraints originCell nuCtx.neighborCell :: nuCtx.steps)
+
+            else
+                -- Don't try to propagate constraints for edges that will match another subgrid tile or the entry point
+                Ok nuCtx.steps
         )
         (\nuCtx ->
-            let
-                neighborSocket =
-                    socketByDirection currentTile.sockets nuCtx.dir
-            in
             -- Allow docking on unitialized neighbor like it was the edge of the map
-            if neighborSocket == defaultSocket then
+            if nuCtx.neighborSocket == defaultSocket then
                 Ok nuCtx.steps
 
             else
                 Err "Can't dock uninitialized neighbor"
         )
         originCell
+        currentTile
         tilemap
 
 
@@ -889,6 +923,7 @@ type alias NeighborUpdateContext =
     , neighborCell : Cell
     , tilemap : Tilemap
     , steps : List Step
+    , neighborSocket : Socket
     }
 
 
@@ -897,9 +932,10 @@ applyToNeighbor :
     -> (NeighborUpdateContext -> List TileId -> Result error (List Step))
     -> (NeighborUpdateContext -> Result error (List Step))
     -> Cell
+    -> SingleTile
     -> Tilemap
     -> Result error (List Step)
-applyToNeighbor onFixed onSuperposition onUninitialized cell tilemap =
+applyToNeighbor onFixed onSuperposition onUninitialized cell currentTile tilemap =
     let
         tilemapConfig =
             getTilemapConfig tilemap
@@ -912,7 +948,7 @@ applyToNeighbor onFixed onSuperposition onUninitialized cell tilemap =
                         Just toTile ->
                             let
                                 neighborUpdateContext =
-                                    NeighborUpdateContext dir toTile toCell tilemap steps
+                                    NeighborUpdateContext dir toTile toCell tilemap steps (socketByDirection currentTile.sockets dir)
                             in
                             case toTile.kind of
                                 Fixed properties ->
@@ -976,26 +1012,41 @@ toTileInventory (Model modelDetails) =
     modelDetails.tileInventory
 
 
+log : Model -> List String
+log (Model modelDetails) =
+    modelDetails.log
+
+
+currentSeed : Model -> Random.Seed
+currentSeed (Model modelDetails) =
+    modelDetails.seed
+
+
 stateDebug : Model -> String
 stateDebug (Model modelDetails) =
-    case modelDetails.state of
+    stateDebugInternal modelDetails.state
+
+
+stateDebugInternal : WFCState -> String
+stateDebugInternal state =
+    case state of
         Solving ->
-            "solving"
+            "Solving"
 
         Recovering wfcFailure ->
             String.join " "
-                [ "recovering:"
+                [ "Recovering:"
                 , wfcFailureToString wfcFailure
                 ]
 
         Failed wfcFailure ->
             String.join " "
-                [ "failed:"
+                [ "Failed:"
                 , wfcFailureToString wfcFailure
                 ]
 
         Done ->
-            "done"
+            "Done"
 
 
 wfcFailureToString : WFCFailure -> String
@@ -1003,9 +1054,6 @@ wfcFailureToString wfcFailure =
     case wfcFailure of
         NoSuperpositionOptions ->
             "No superposition opts"
-
-        NoPotentialMatch ->
-            "No potential match"
 
         InvalidBigTilePlacement cell tileId ->
             String.join
@@ -1024,9 +1072,6 @@ wfcFailureToString wfcFailure =
         TileUnavailable tileId ->
             "Tile unavailable: " ++ String.fromInt tileId
 
-        NoCandidates ->
-            "No candidates available"
-
         BacktrackFailed ->
             "Backtrack failed"
 
@@ -1037,6 +1082,7 @@ contextDebug :
         { position : List String
         , openSteps : List String
         , previousSteps : List String
+        , backtrackCount : Int
         }
 contextDebug (Model modelDetails) =
     { position =
@@ -1044,7 +1090,11 @@ contextDebug (Model modelDetails) =
         , Maybe.map Cell.toString modelDetails.targetCell |> Maybe.withDefault "-"
         ]
     , openSteps = List.map stepDebug modelDetails.openSteps
-    , previousSteps = modelDetails.previousSteps |> Stack.toList |> List.map previousStepDebug
+    , previousSteps =
+        modelDetails.previousSteps
+            |> Stack.toList
+            |> List.map previousStepDebug
+    , backtrackCount = modelDetails.backtrackCount
     }
 
 
@@ -1082,3 +1132,24 @@ previousStepDebug ( theStep, superpositionOptions ) =
                 |> String.join "|"
     in
     stepDebug theStep ++ " / " ++ optionsDebug
+
+
+debug_collapseWithId : Cell -> TileId -> Model -> Model
+debug_collapseWithId cell tileId ((Model modelDetails) as model) =
+    case tileByCell modelDetails.tilemap cell |> Maybe.map .kind of
+        Just (Superposition opts) ->
+            if List.member tileId opts then
+                let
+                    tileConfig =
+                        tileById tileId
+
+                    withStep =
+                        Model { modelDetails | openSteps = Collapse cell tileConfig :: modelDetails.openSteps }
+                in
+                processOpenSteps StopAtEmptySteps withStep
+
+            else
+                model
+
+        _ ->
+            model
