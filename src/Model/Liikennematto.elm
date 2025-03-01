@@ -21,6 +21,7 @@ import Model.Flags exposing (Flags, RuntimeEnvironment(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Screen as Screen exposing (Screen)
 import Model.World as World exposing (World)
+import Random
 import Tilemap.DrivenWFC exposing (DrivenWFC(..))
 import Time
 import UI.Editor
@@ -224,9 +225,9 @@ tilemapConfig =
     }
 
 
-initialWorld : World
-initialWorld =
-    World.empty tilemapConfig
+initialWorld : Random.Seed -> World
+initialWorld initialSeed =
+    World.empty initialSeed tilemapConfig
 
 
 initial : Flags -> Liikennematto
@@ -237,6 +238,12 @@ initial flags =
 
         skipExternalInit =
             flags.runtimeEnvironment == Unknown
+
+        initialSeed =
+            Random.initialSeed (Time.posixToMillis flags.time)
+
+        world =
+            initialWorld initialSeed
     in
     { game = appFsm
     , initSteps =
@@ -246,10 +253,10 @@ initial flags =
     , screen = Screen.fallback
     , time = Time.millisToPosix 0
     , previousWorld = Nothing
-    , world = initialWorld
+    , world = world
     , wfc = initialDrivenWfc
     , simulationActive = True
-    , renderCache = RenderCache.new initialWorld roads
+    , renderCache = RenderCache.new world roads
     , dynamicTiles = []
     , debug = initialDebugState
     , errorMessage = Nothing
@@ -266,11 +273,23 @@ initial flags =
 
 fromNewGame : Maybe World -> Liikennematto -> Liikennematto
 fromNewGame previousWorld model =
+    let
+        initialSeed =
+            case previousWorld of
+                Just pw ->
+                    pw.seed
+
+                Nothing ->
+                    Random.initialSeed 0
+
+        world =
+            initialWorld initialSeed
+    in
     { model
-        | world = initialWorld
+        | world = world
         , wfc = initialDrivenWfc
         , previousWorld = previousWorld
-        , renderCache = RenderCache.new initialWorld roads
+        , renderCache = RenderCache.new world roads
         , simulationActive = True
         , debug = initialDebugState
     }

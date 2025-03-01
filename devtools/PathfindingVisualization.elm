@@ -14,6 +14,7 @@ import CubicSpline2d exposing (ArcLengthParameterized, Nondegenerate)
 import Data.Assets exposing (roads)
 import Data.Cars exposing (testCar)
 import Data.Colors as Colors
+import Data.Utility exposing (testSeed)
 import Direction2d exposing (Direction2d)
 import Duration exposing (Duration)
 import Html exposing (Html)
@@ -56,6 +57,7 @@ type alias SplineMeta =
 world : World
 world =
     World.empty
+        testSeed
         { horizontalCellsAmount = 4
         , verticalCellsAmount = 4
         }

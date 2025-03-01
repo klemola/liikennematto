@@ -214,29 +214,30 @@ rerouteCarsIfNeeded world =
 
 addLotResidents : Time.Posix -> Id -> List CarMake -> World -> World
 addLotResidents time lotId residents world =
-    addLotResidentsHelper time lotId residents world.seed world
+    addLotResidentsHelper time lotId residents world
 
 
-addLotResidentsHelper : Time.Posix -> Id -> List CarMake -> Random.Seed -> World -> World
-addLotResidentsHelper time lotId remainingResidents seed world =
+addLotResidentsHelper : Time.Posix -> Id -> List CarMake -> World -> World
+addLotResidentsHelper time lotId remainingResidents world =
     case remainingResidents of
         [] ->
-            World.setSeed seed world
+            world
 
         resident :: others ->
             let
                 ( triggerAt, nextSeed ) =
                     Random.step
                         (randomFutureTime ( 5000, 20000 ) time)
-                        seed
+                        world.seed
 
                 nextWorld =
-                    World.addEvent
-                        (World.SpawnResident resident lotId)
-                        triggerAt
-                        world
+                    world
+                        |> World.setSeed nextSeed
+                        |> World.addEvent
+                            (World.SpawnResident resident lotId)
+                            triggerAt
             in
-            addLotResidentsHelper time lotId others nextSeed nextWorld
+            addLotResidentsHelper time lotId others nextWorld
 
 
 spawnResident : Time.Posix -> CarMake -> Lot -> World -> Result String World
@@ -282,7 +283,7 @@ spawnResident time carMake lot world =
 spawnTestCar : World -> ( World, Maybe Collection.Id )
 spawnTestCar world =
     let
-        maybeRandomNodeCtx =
+        ( maybeRandomNodeCtx, seedAfterRandomNode ) =
             RoadNetwork.getRandomNode
                 world.roadNetwork
                 world.seed
@@ -294,7 +295,7 @@ spawnTestCar world =
             (\nodeCtx ->
                 let
                     ( carMake, nextSeed ) =
-                        Random.step Data.Cars.randomCarMake world.seed
+                        Random.step Data.Cars.randomCarMake seedAfterRandomNode
 
                     builderFn =
                         Car.new carMake

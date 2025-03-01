@@ -12,7 +12,7 @@ import Tilemap.Update as Tilemap
 
 
 baseModel =
-    Liikennematto.initial { runtimeEnvironment = Unknown }
+    Liikennematto.initial Model.Flags.fallback
 
 
 suite : Benchmark

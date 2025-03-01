@@ -545,7 +545,8 @@ routeCarByDestination world position car =
     case destination of
         Just nodeCtx ->
             let
-                route =
+                -- Ignore seed: test setup
+                ( route, _ ) =
                     Route.randomFromNode
                         (Random.initialSeed 666)
                         2

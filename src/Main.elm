@@ -102,6 +102,15 @@ update msg model =
 updateBase : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
 updateBase msg model =
     case msg of
+        AnimationFrameReceived delta ->
+            let
+                ( nextGameFSM, gameActions ) =
+                    FSM.update delta model.initSteps model.game
+            in
+            ( { model | game = nextGameFSM }
+            , gameActionsToCmd gameActions
+            )
+
         VisibilityChanged newVisibility ->
             ( { model
                 | simulationActive =
@@ -148,15 +157,6 @@ updateBase msg model =
             in
             ( { model | initSteps = nextInitSteps }
             , Cmd.none
-            )
-
-        AnimationFrameReceived delta ->
-            let
-                ( nextGameFSM, gameActions ) =
-                    FSM.update delta model.initSteps model.game
-            in
-            ( { model | game = nextGameFSM }
-            , gameActionsToCmd gameActions
             )
 
         NewGame ->

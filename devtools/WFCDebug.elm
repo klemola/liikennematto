@@ -94,7 +94,7 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     let
         world =
-            World.empty tilemapConfig
+            World.empty initialSeed tilemapConfig
 
         cache =
             -- TODO: the tile list filter setup is not required if tile FSMs are updated

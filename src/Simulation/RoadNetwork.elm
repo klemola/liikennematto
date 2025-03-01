@@ -210,7 +210,7 @@ nodeByPosition roadNetwork position =
         |> Maybe.andThen (\matchId -> Graph.get matchId roadNetwork)
 
 
-getRandomNode : RoadNetwork -> Random.Seed -> (RNNode -> Bool) -> Maybe RNNodeContext
+getRandomNode : RoadNetwork -> Random.Seed -> (RNNode -> Bool) -> ( Maybe RNNodeContext, Random.Seed )
 getRandomNode roadNetwork seed predicate =
     let
         randomNodeGenerator =
@@ -228,7 +228,6 @@ getRandomNode roadNetwork seed predicate =
                 |> Random.map (Maybe.andThen (nodeById roadNetwork))
     in
     Random.step randomNodeGenerator seed
-        |> Tuple.first
 
 
 outgoingConnectionsAmount : RNNodeContext -> Int

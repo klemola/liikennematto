@@ -348,13 +348,13 @@ toPathSplines remaining acc =
 --
 
 
-randomFromNode : Random.Seed -> Int -> RoadNetwork -> RNNodeContext -> Route
+randomFromNode : Random.Seed -> Int -> RoadNetwork -> RNNodeContext -> ( Route, Random.Seed )
 randomFromNode seed maxConnections roadNetwork nodeCtx =
     let
-        ( nodes, _ ) =
+        ( nodes, nextSeed ) =
             randomConnectionsFromNode seed maxConnections roadNetwork nodeCtx []
     in
-    buildRoute nodeCtx nodes []
+    ( buildRoute nodeCtx nodes [], nextSeed )
 
 
 randomConnectionsFromNode : Random.Seed -> Int -> RoadNetwork -> RNNodeContext -> List RNNodeContext -> ( List RNNodeContext, Random.Seed )

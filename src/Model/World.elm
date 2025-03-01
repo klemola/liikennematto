@@ -149,13 +149,8 @@ minTilemapChangeFrequency =
     Duration.milliseconds 750
 
 
-initialSeed : Random.Seed
-initialSeed =
-    Random.initialSeed 42
-
-
-empty : TilemapConfig -> World
-empty tilemapConfig =
+empty : Random.Seed -> TilemapConfig -> World
+empty initialSeed tilemapConfig =
     let
         tilemap =
             createTilemap tilemapConfig (\_ -> Tile.init Tile.Unintialized)

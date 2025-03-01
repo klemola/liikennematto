@@ -8,7 +8,7 @@ module Simulation.Pathfinding exposing
     )
 
 import Array
-import Common exposing (GlobalCoordinates, andCarry)
+import Common exposing (GlobalCoordinates)
 import Data.Cars exposing (CarRole(..))
 import Duration exposing (Duration)
 import Length exposing (Length)
@@ -223,23 +223,30 @@ attemptGenerateRouteFromParkingSpot car parkingReservation world =
         in
         case lotWithParkingLock of
             Just lot ->
-                parkingReservation.lotId
-                    |> RoadNetwork.findLotExitNodeByLotId world.roadNetwork
-                    |> Common.andCarry (findRandomDestinationNode world car)
+                RoadNetwork.findLotExitNodeByLotId
+                    world.roadNetwork
+                    parkingReservation.lotId
                     |> Maybe.andThen
-                        (\( start, end ) ->
-                            Route.fromParkedAtLot
-                                parkingReservation
-                                world.lots
-                                world.roadNetwork
-                                start
-                                end
-                        )
-                    |> Maybe.map
-                        (\route ->
-                            world
-                                |> World.setCar (Car.routed route car)
-                                |> World.updateLot lot
+                        (\start ->
+                            let
+                                ( end, nextSeed ) =
+                                    findRandomDestinationNode world car start
+                            in
+                            end
+                                |> Maybe.andThen
+                                    (Route.fromParkedAtLot
+                                        parkingReservation
+                                        world.lots
+                                        world.roadNetwork
+                                        start
+                                    )
+                                |> Maybe.map
+                                    (\route ->
+                                        world
+                                            |> World.setCar (Car.routed route car)
+                                            |> World.setSeed nextSeed
+                                            |> World.updateLot lot
+                                    )
                         )
                     |> Result.fromMaybe "Could not generate route"
 
@@ -255,18 +262,25 @@ attemptGenerateRouteFromNode car startNodeCtx world =
     else
         -- Room for improvement: this step is not required once nodes have stable IDs
         World.findNodeByPosition world startNodeCtx.node.label.position
-            |> andCarry (findRandomDestinationNode world car)
-            |> Maybe.andThen (Route.fromStartAndEndNodes world.roadNetwork)
-            |> Maybe.map
-                (\route ->
-                    World.setCar
-                        (Car.routed route car)
-                        world
+            |> Maybe.andThen
+                (\start ->
+                    let
+                        ( end, nextSeed ) =
+                            findRandomDestinationNode world car start
+                    in
+                    end
+                        |> Maybe.andThen (Tuple.pair start >> Route.fromStartAndEndNodes world.roadNetwork)
+                        |> Maybe.map
+                            (\route ->
+                                world
+                                    |> World.setSeed nextSeed
+                                    |> World.setCar (Car.routed route car)
+                            )
                 )
             |> Result.fromMaybe "Could not generate route"
 
 
-findRandomDestinationNode : World -> Car -> RNNodeContext -> Maybe RNNodeContext
+findRandomDestinationNode : World -> Car -> RNNodeContext -> ( Maybe RNNodeContext, Random.Seed )
 findRandomDestinationNode world car startNodeCtx =
     let
         ( chance, seedAfterRandomFloat ) =

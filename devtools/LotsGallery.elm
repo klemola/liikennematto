@@ -4,6 +4,7 @@ import Color
 import Data.Assets exposing (roads)
 import Data.Colors as Colors
 import Data.Lots exposing (NewLot)
+import Data.Utility exposing (testSeed)
 import Lib.Collection as Collection exposing (Id, nextId)
 import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
@@ -35,7 +36,7 @@ tilemapConfig =
 
 world : World
 world =
-    World.empty tilemapConfig
+    World.empty testSeed tilemapConfig
 
 
 renderCache : RenderCache ()

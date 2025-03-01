@@ -89,7 +89,7 @@ addAnchors tilemap anchorDefs =
 
 worldFromTilemap : Tilemap -> World
 worldFromTilemap tilemap =
-    World.empty (getTilemapConfig tilemap)
+    World.empty testSeed (getTilemapConfig tilemap)
         |> World.setSeed testSeed
 
 

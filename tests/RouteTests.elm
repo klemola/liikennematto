@@ -135,6 +135,7 @@ createRoute world =
                     world.roadNetwork
                     origin
             )
+        |> Maybe.map Tuple.first
         |> Maybe.withDefault Route.initialRoute
 
 

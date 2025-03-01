@@ -18,7 +18,6 @@ import Model.World as World
         , World
         , updateRoadNetwork
         )
-import Random
 import Simulation.Events exposing (updateEventQueue)
 import Simulation.Lot as Lot
 import Simulation.Traffic as Traffic exposing (addLotResidents, rerouteCarsIfNeeded)
@@ -68,10 +67,7 @@ update msg model =
 
         CheckQueues time _ ->
             ( { model
-                | world =
-                    model.world
-                        |> World.setSeed (Random.initialSeed (Time.posixToMillis time))
-                        |> updateEventQueue time
+                | world = updateEventQueue time model.world
                 , time = time
               }
             , Cmd.none
