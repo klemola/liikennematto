@@ -88,7 +88,7 @@ fromTileConfig tileConfig parentTileProperties op =
             FSM.initialize initialState
 
         ( tileId, name ) =
-            TileConfig.tileConfigName tileConfig
+            TileConfig.tileConfigIdAndName tileConfig
     in
     ( { kind =
             Fixed

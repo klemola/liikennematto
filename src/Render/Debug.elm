@@ -2,7 +2,6 @@ module Render.Debug exposing (view)
 
 import Color
 import Common exposing (GlobalCoordinates)
-import Data.Assets exposing (assetById, debugAssets)
 import Data.Colors as Colors
 import Data.Lots exposing (ParkingRestriction(..))
 import Graph
@@ -10,7 +9,7 @@ import Length exposing (Length)
 import Lib.Collection as Collection exposing (Collection)
 import List.Extra
 import Model.Debug exposing (DebugLayerKind(..), DebugState, isLayerEnabled)
-import Model.RenderCache exposing (RenderCache)
+import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.World exposing (World)
 import Point2d exposing (Point2d)
 import Polygon2d
@@ -44,7 +43,7 @@ nodeRadius =
     Length.meters 0.8
 
 
-view : World -> RenderCache msg -> DebugState -> Svg msg
+view : World -> RenderCache -> DebugState -> Svg msg
 view world cache debugState =
     let
         tilemapWidth =
@@ -65,7 +64,7 @@ view world cache debugState =
         )
 
 
-debugLayerViews : World -> RenderCache msg -> DebugState -> List (Svg msg)
+debugLayerViews : World -> RenderCache -> DebugState -> List (Svg msg)
 debugLayerViews world cache debugState =
     let
         carsLayer =
@@ -103,7 +102,7 @@ debugLayerViews world cache debugState =
     ]
 
 
-renderRoadNetwork : RenderCache msg -> RoadNetwork -> Svg msg
+renderRoadNetwork : RenderCache -> RoadNetwork -> Svg msg
 renderRoadNetwork cache roadNetwork =
     let
         nodeColor kind =
@@ -213,7 +212,7 @@ renderRoadNetwork cache roadNetwork =
         ]
 
 
-renderCarsDebug : RenderCache msg -> Collection Car -> Svg msg
+renderCarsDebug : RenderCache -> Collection Car -> Svg msg
 renderCarsDebug cache cars =
     cars
         |> Collection.foldl
@@ -224,7 +223,7 @@ renderCarsDebug cache cars =
         |> Svg.Keyed.node "g" []
 
 
-renderCarDebug : RenderCache msg -> Car -> Svg msg
+renderCarDebug : RenderCache -> Car -> Svg msg
 renderCarDebug cache car =
     Svg.g []
         [ renderCarFieldOfView cache car
@@ -233,7 +232,7 @@ renderCarDebug cache car =
         ]
 
 
-renderCarPath : RenderCache msg -> Car -> Svg msg
+renderCarPath : RenderCache -> Car -> Svg msg
 renderCarPath cache car =
     Svg.g []
         (car.route
@@ -246,7 +245,7 @@ renderCarPath cache car =
         )
 
 
-renderCarCollisionDetection : RenderCache msg -> Car -> Svg msg
+renderCarCollisionDetection : RenderCache -> Car -> Svg msg
 renderCarCollisionDetection cache car =
     let
         points =
@@ -269,7 +268,7 @@ renderCarCollisionDetection cache car =
         ]
 
 
-renderCarFieldOfView : RenderCache msg -> Car -> Svg msg
+renderCarFieldOfView : RenderCache -> Car -> Svg msg
 renderCarFieldOfView cache car =
     Render.Shape.arc
         cache
@@ -277,7 +276,7 @@ renderCarFieldOfView cache car =
         (Collision.rightSideFOV (Collision.pathRay car Collision.maxCarCollisionTestDistance))
 
 
-toPointsString : RenderCache msg -> List (Point2d Length.Meters GlobalCoordinates) -> String
+toPointsString : RenderCache -> List (Point2d Length.Meters GlobalCoordinates) -> String
 toPointsString cache points =
     List.foldl
         (\point acc ->
@@ -294,7 +293,7 @@ toPointsString cache points =
         points
 
 
-renderLotsDebug : RenderCache msg -> Collection Lot -> Svg msg
+renderLotsDebug : RenderCache -> Collection Lot -> Svg msg
 renderLotsDebug cache lots =
     lots
         |> Collection.foldl
@@ -305,7 +304,7 @@ renderLotsDebug cache lots =
         |> Svg.Keyed.node "g" []
 
 
-renderLotDebug : RenderCache msg -> Lot -> Svg msg
+renderLotDebug : RenderCache -> Lot -> Svg msg
 renderLotDebug cache lot =
     let
         parkingSpots =
@@ -329,7 +328,7 @@ renderLotDebug cache lot =
         (parkingSpots ++ parkingLockIndicator)
 
 
-renderParkingSpotDebug : RenderCache msg -> ParkingSpot -> Svg msg
+renderParkingSpotDebug : RenderCache -> ParkingSpot -> Svg msg
 renderParkingSpotDebug cache parkingSpot =
     let
         spotIndicatorColor =
@@ -350,21 +349,31 @@ renderParkingSpotDebug cache parkingSpot =
         parkingSpot.position
 
 
-renderWFC : RenderCache msg -> Svg msg
+renderWFC : RenderCache -> Svg msg
 renderWFC cache =
     cache.tilemapDebug
         |> List.map
-            (\( cell, tileKind ) ->
-                ( Cell.toString cell
-                , renderTile cache cell tileKind
-                )
+            (\debugItem ->
+                case debugItem of
+                    RenderCache.FixedDebug renderable ->
+                        ( Cell.toString renderable.cell
+                        , nothing
+                        )
+
+                    RenderCache.SuperpositionDebug ( cell, ids ) ->
+                        ( Cell.toString cell
+                        , renderSuperposition cache cell ids
+                        )
             )
         |> Svg.Keyed.node "g" []
 
 
-renderTile : RenderCache msg -> Cell -> TileKind -> Svg msg
-renderTile cache cell tileKind =
+renderSuperposition : RenderCache -> Cell -> List TileId -> Svg msg
+renderSuperposition cache cell tileIds =
     let
+        idsDebug =
+            (List.sort >> List.map String.fromInt) tileIds
+
         { x, y } =
             Cell.bottomLeftCorner cell |> pointToPixels cache.pixelsToMetersRatio
 
@@ -374,38 +383,11 @@ renderTile cache cell tileKind =
         yAdjusted =
             cache.tilemapHeightPixels - tileSizePixels - y
     in
-    case tileKind of
-        Superposition tileIds ->
-            renderSuperposition { size = tileSizePixels, x = x, y = yAdjusted } tileIds
-
-        Fixed properties ->
-            Svg.g
-                []
-                [ Svg.svg
-                    [ Attributes.x (String.fromFloat x)
-                    , Attributes.y (String.fromFloat yAdjusted)
-                    , Attributes.width (String.fromFloat tileSizePixels)
-                    , Attributes.height (String.fromFloat tileSizePixels)
-                    , Attributes.viewBox "0 0 256 256"
-                    ]
-                    (assetById debugAssets properties.id)
-                ]
-
-        _ ->
-            nothing
-
-
-renderSuperposition : { size : Float, x : Float, y : Float } -> List TileId -> Svg msg
-renderSuperposition { size, x, y } tileIds =
-    let
-        idsDebug =
-            (List.sort >> List.map String.fromInt) tileIds
-    in
     Svg.svg
         [ Attributes.x (String.fromFloat x)
-        , Attributes.y (String.fromFloat y)
-        , Attributes.width (String.fromFloat size)
-        , Attributes.height (String.fromFloat size)
+        , Attributes.y (String.fromFloat yAdjusted)
+        , Attributes.width (String.fromFloat tileSizePixels)
+        , Attributes.height (String.fromFloat tileSizePixels)
         , Attributes.viewBox "0 0 256 256"
         ]
         (idsDebug

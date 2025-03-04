@@ -282,7 +282,7 @@ view model =
 
 render : Liikennematto -> Element Message
 render model =
-    Render.view model.world model.renderCache model.dynamicTiles
+    Render.view model.world model.renderCache
         |> Element.html
         |> Element.map (always NoOp)
 

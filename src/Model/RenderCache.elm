@@ -1,9 +1,7 @@
 module Model.RenderCache exposing
-    ( DynamicTilePresentation
-    , DynamicTilesPresentation
-    , RenderCache
-    , StaticTilePresentation
-    , TilemapPresentation
+    ( RenderCache
+    , Renderable
+    , TilemapDebugItem(..)
     , new
     , refreshTilemapCache
     , setPixelsToMetersRatio
@@ -12,8 +10,6 @@ module Model.RenderCache exposing
     , setTilemapDebugCache
     )
 
-import Common exposing (andCarry)
-import Data.Assets exposing (Assets)
 import Data.TileSet exposing (roadConnectionDirectionsByTile)
 import Length
 import Lib.FSM as FSM
@@ -34,43 +30,39 @@ import Tilemap.Core
         , tileToConfig
         , tilemapToList
         )
-import Tilemap.Tile as Tile exposing (Tile, TileKind)
+import Tilemap.Tile as Tile exposing (Tile)
 import Tilemap.TileConfig exposing (TileId)
 import Tilemap.WFC as WFC
 import UI.Core
 
 
-type alias RenderCache msg =
+type alias RenderCache =
     { pixelsToMetersRatio : PixelsToMetersRatio
-    , tilemap : TilemapPresentation
-    , tilemapDebug : TilemapPresentation
+    , tilemap : List Renderable
+    , tilemapDebug : List TilemapDebugItem
+    , dynamicTiles : List Renderable
     , tilemapWidthPixels : Float
     , tilemapHeightPixels : Float
     , tilemapWidth : Length.Length
     , tilemapHeight : Length.Length
     , tileListFilter : TileListFilter
-    , assets : Assets msg
     }
 
 
-type alias TilemapPresentation =
-    List StaticTilePresentation
+type alias Renderable =
+    { cell : Cell
+    , assetName : String
+    , animation : Maybe Animation
+    }
 
 
-type alias StaticTilePresentation =
-    ( Cell, TileKind )
+type TilemapDebugItem
+    = FixedDebug Renderable
+    | SuperpositionDebug ( Cell, List TileId )
 
 
-type alias DynamicTilesPresentation =
-    List DynamicTilePresentation
-
-
-type alias DynamicTilePresentation =
-    ( Cell, TileId, Maybe Animation )
-
-
-new : World -> Assets msg -> RenderCache msg
-new { tilemap } assets =
+new : World -> RenderCache
+new { tilemap } =
     let
         tilemapDimensions =
             getTilemapDimensions tilemap
@@ -85,19 +77,19 @@ new { tilemap } assets =
             StaticTiles
     in
     { pixelsToMetersRatio = defaultPixelsToMetersRatio
-    , tilemap = toTilemapCache initialTileListFilter tilemap
-    , tilemapDebug = toTilemapCache NoFilter tilemap
+    , tilemap = tilemapToList renderableFromTile initialTileListFilter tilemap
+    , tilemapDebug = tilemapToList debugItemFromTile NoFilter tilemap
+    , dynamicTiles = []
     , tilemapWidthPixels =
         tilemapWidthPixels
     , tilemapHeightPixels = tilemapHeigthPixels
     , tilemapWidth = tilemapDimensions.width
     , tilemapHeight = tilemapDimensions.height
     , tileListFilter = initialTileListFilter
-    , assets = assets
     }
 
 
-setPixelsToMetersRatio : UI.Core.ZoomLevel -> RenderCache msg -> RenderCache msg
+setPixelsToMetersRatio : UI.Core.ZoomLevel -> RenderCache -> RenderCache
 setPixelsToMetersRatio zoomLevel cache =
     let
         nextPixelsPerMeter =
@@ -126,36 +118,34 @@ zoomLevelToPixelsPerMeterValue zoomLevel =
             8
 
 
-setTileListFilter : TileListFilter -> RenderCache msg -> RenderCache msg
+setTileListFilter : TileListFilter -> RenderCache -> RenderCache
 setTileListFilter tileListFilter cache =
     { cache | tileListFilter = tileListFilter }
 
 
-setTilemapCache : Tilemap -> Maybe Tilemap -> RenderCache msg -> RenderCache msg
+setTilemapCache : Tilemap -> Maybe Tilemap -> RenderCache -> RenderCache
 setTilemapCache tilemap unsolvedWFCTilemap cache =
     { cache
-        | tilemap = toTilemapCache cache.tileListFilter tilemap
+        | tilemap = tilemapToList renderableFromTile cache.tileListFilter tilemap
 
         -- TODO: the debug state should only be set if the debug layer is open
         -- it is costly
         , tilemapDebug =
             case unsolvedWFCTilemap of
                 Just wfcTilemap ->
-                    toTilemapCache NoFilter wfcTilemap
+                    tilemapToList debugItemFromTile NoFilter wfcTilemap
 
                 Nothing ->
                     cache.tilemapDebug
     }
 
 
-setTilemapDebugCache : WFC.Model -> RenderCache msg -> RenderCache msg
+setTilemapDebugCache : WFC.Model -> RenderCache -> RenderCache
 setTilemapDebugCache wfcModel cache =
-    { cache
-        | tilemapDebug = toTilemapCache NoFilter (WFC.toTilemap wfcModel)
-    }
+    { cache | tilemapDebug = tilemapToList debugItemFromTile NoFilter (WFC.toTilemap wfcModel) }
 
 
-refreshTilemapCache : TilemapUpdateResult -> RenderCache msg -> ( RenderCache msg, DynamicTilesPresentation )
+refreshTilemapCache : TilemapUpdateResult -> RenderCache -> RenderCache
 refreshTilemapCache tilemapUpdateResult cache =
     let
         nextCache =
@@ -174,27 +164,61 @@ refreshTilemapCache tilemapUpdateResult cache =
                     tilemapUpdateResult.tilemap
                     tilemapUpdateResult.dynamicCells
     in
-    ( nextCache, nextDynamicTiles )
+    { nextCache | dynamicTiles = nextDynamicTiles }
 
 
-toTilemapCache : TileListFilter -> Tilemap -> List StaticTilePresentation
-toTilemapCache tileListFilter tilemap =
-    tilemapToList tileMapper tileListFilter tilemap
+renderableFromTile : Cell -> Tile -> Maybe Renderable
+renderableFromTile cell tile =
+    case tile.kind of
+        Tile.Fixed props ->
+            Just
+                { cell = cell
+                , assetName = props.name
+                , animation = Nothing
+                }
+
+        _ ->
+            Nothing
 
 
-tileMapper : Cell -> Tile -> StaticTilePresentation
-tileMapper cell tile =
-    ( cell, tile.kind )
+debugItemFromTile : Cell -> Tile -> Maybe TilemapDebugItem
+debugItemFromTile cell tile =
+    case tile.kind of
+        Tile.Fixed props ->
+            Just
+                (FixedDebug
+                    { cell = cell
+                    , assetName = props.name
+                    , animation = Nothing
+                    }
+                )
+
+        Tile.Superposition ids ->
+            Just (SuperpositionDebug ( cell, ids ))
+
+        _ ->
+            Nothing
 
 
-toDynamicTiles : Tilemap -> List Cell -> DynamicTilesPresentation
+toDynamicTiles : Tilemap -> List Cell -> List Renderable
 toDynamicTiles tilemap changingCells =
     changingCells
         |> List.filterMap
             (\cell ->
                 fixedTileByCell tilemap cell
-                    |> andCarry Tile.id
-                    |> Maybe.map (\( tile, tileId ) -> ( cell, tileId, tileAnimation tile ))
+                    |> Maybe.andThen
+                        (\tile ->
+                            case tile.kind of
+                                Tile.Fixed props ->
+                                    Just
+                                        { cell = cell
+                                        , assetName = props.name
+                                        , animation = tileAnimation tile
+                                        }
+
+                                _ ->
+                                    Nothing
+                        )
             )
 
 

@@ -21,7 +21,7 @@ module Tilemap.TileConfig exposing
     , sockets
     , socketsList
     , tileConfigId
-    , tileConfigName
+    , tileConfigIdAndName
     , toString
     , weight
     )
@@ -122,8 +122,8 @@ tileConfigId tileConfig =
             largeTile.id
 
 
-tileConfigName : TileConfig -> ( TileId, String )
-tileConfigName tileConfig =
+tileConfigIdAndName : TileConfig -> ( TileId, String )
+tileConfigIdAndName tileConfig =
     case tileConfig of
         Single singleTile ->
             ( singleTile.id, singleTile.name )
