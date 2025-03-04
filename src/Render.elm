@@ -5,19 +5,19 @@ module Render exposing
     )
 
 import Angle
+import Assets exposing (assets)
 import Color
 import Common exposing (GlobalCoordinates)
-import Data.Assets exposing (assetById)
 import Data.Cars exposing (CarMake, carAsset)
 import Data.Colors as Colors
-import Data.Lots exposing (lotAsset)
+import Dict
 import Graph exposing (Node)
 import Html exposing (Html)
 import Length exposing (Length)
 import Lib.Collection as Collection exposing (Collection)
 import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Model.Animation as Animation exposing (Animation)
-import Model.RenderCache exposing (DynamicTilesPresentation, RenderCache)
+import Model.RenderCache exposing (RenderCache)
 import Model.World exposing (World)
 import Point2d exposing (Point2d)
 import Quantity
@@ -71,8 +71,8 @@ styles =
 --
 
 
-view : World -> RenderCache msg -> DynamicTilesPresentation -> Html msg
-view { cars, lots, roadNetwork, trafficLights } cache dynamicTiles =
+view : World -> RenderCache -> Html msg
+view { cars, lots, roadNetwork, trafficLights } cache =
     let
         tilemapWidth =
             String.fromFloat cache.tilemapWidthPixels
@@ -88,12 +88,18 @@ view { cars, lots, roadNetwork, trafficLights } cache dynamicTiles =
         ]
         [ styles
         , Svg.Lazy.lazy renderTilemap cache
-        , renderDynamicTiles cache dynamicTiles
+        , renderDynamicTiles cache
         , Svg.Lazy.lazy2 renderLots cache lots
         , renderCars cache cars
         , Svg.Lazy.lazy2 renderTrafficLights cache trafficLights
         , Svg.Lazy.lazy2 renderTrafficSigns cache roadNetwork
         ]
+
+
+assetByName : String -> Svg msg
+assetByName name =
+    Dict.get name assets
+        |> Maybe.withDefault (Svg.g [] [])
 
 
 
@@ -102,64 +108,60 @@ view { cars, lots, roadNetwork, trafficLights } cache dynamicTiles =
 --
 
 
-renderTilemap : RenderCache msg -> Svg msg
+renderTilemap : RenderCache -> Svg msg
 renderTilemap cache =
     cache.tilemap
         |> List.map
-            (\( cell, tileKind ) ->
+            (\{ cell, assetName } ->
                 ( Cell.toString cell
-                , renderTile cache cell tileKind
+                , renderTile cache cell assetName
                 )
             )
         |> Svg.Keyed.node "g" []
 
 
-renderTile : RenderCache msg -> Cell -> TileKind -> Svg msg
-renderTile cache cell tileKind =
+renderTile : RenderCache -> Cell -> String -> Svg msg
+renderTile cache cell assetName =
     let
         { x, y } =
             Cell.bottomLeftCorner cell |> pointToPixels cache.pixelsToMetersRatio
+
+        tileSizePixels =
+            toPixelsValue cache.pixelsToMetersRatio Cell.size
+
+        yAdjusted =
+            cache.tilemapHeightPixels - tileSizePixels - y
+
+        attrs =
+            [ Attributes.transform ("translate(" ++ String.fromFloat x ++ "," ++ String.fromFloat yAdjusted ++ ")")
+            ]
     in
-    case tileKind of
-        Fixed properties ->
-            let
-                tileSizePixels =
-                    toPixelsValue cache.pixelsToMetersRatio Cell.size
-
-                yAdjusted =
-                    cache.tilemapHeightPixels - tileSizePixels - y
-            in
-            tileElement
-                tileSizePixels
-                { x = x
-                , y = yAdjusted
-                , asset = assetById cache.assets properties.id
-                , tileStyles = ""
-                }
-
-        _ ->
-            nothing
+    tileElement
+        tileSizePixels
+        { assetName = assetName
+        , groupAttrs = attrs
+        }
 
 
-renderDynamicTiles : RenderCache msg -> DynamicTilesPresentation -> Svg msg
-renderDynamicTiles cache tiles =
-    tiles
+renderDynamicTiles : RenderCache -> Svg msg
+renderDynamicTiles cache =
+    cache.dynamicTiles
         |> List.map
-            (\( cell, tileId, maybeAnimation ) ->
+            (\{ cell, assetName, animation } ->
                 ( Cell.toString cell
-                , case maybeAnimation of
-                    Just animation ->
-                        renderAnimatedTile cache cell (assetById cache.assets tileId) animation
+                , case animation of
+                    Just theAnimation ->
+                        renderAnimatedTile cache cell assetName theAnimation
 
                     Nothing ->
-                        renderTile cache cell (Fixed { id = tileId, parentTile = Nothing })
+                        renderTile cache cell assetName
                 )
             )
         |> Svg.Keyed.node "g" []
 
 
-renderAnimatedTile : RenderCache msg -> Cell -> List (Svg msg) -> Animation -> Svg msg
-renderAnimatedTile cache cell asset animation =
+renderAnimatedTile : RenderCache -> Cell -> String -> Animation -> Svg msg
+renderAnimatedTile cache cell assetName animation =
     let
         tileSizePixels =
             toPixelsValue cache.pixelsToMetersRatio Cell.size
@@ -178,42 +180,34 @@ renderAnimatedTile cache cell asset animation =
                 [ tileAnimationProperties
                     tileSizePixels
                     animation
-                    ( x, yAdjusted )
                 , animationStyleString
                 ]
 
         ( overflowTile, clipStyles ) =
             animation.direction
-                |> Maybe.map
-                    (animationOverflowTile
-                        { tileSizePixels = tileSizePixels
-                        , baseX = x
-                        , baseY = yAdjusted
-                        }
-                    )
+                |> Maybe.map (animationOverflowTile tileSizePixels)
                 |> Maybe.withDefault ( nothing, "" )
+
+        transform =
+            "translate(" ++ String.fromFloat x ++ "," ++ String.fromFloat yAdjusted ++ ")"
     in
-    Svg.g [ Attributes.style clipStyles ]
+    Svg.g
+        [ Attributes.style clipStyles
+        , Attributes.transform transform
+        ]
         [ tileElement
             tileSizePixels
-            { x = x
-            , y = yAdjusted
-            , asset = asset
-            , tileStyles = tileStyles
+            { assetName = assetName
+            , groupAttrs =
+                [ Attributes.style tileStyles
+                ]
             }
         , overflowTile
         ]
 
 
-type alias AnimationOverflowProperties =
-    { tileSizePixels : Float
-    , baseX : Float
-    , baseY : Float
-    }
-
-
-animationOverflowTile : AnimationOverflowProperties -> OrthogonalDirection -> ( Svg msg, String )
-animationOverflowTile { tileSizePixels, baseX, baseY } animationDirection =
+animationOverflowTile : Float -> OrthogonalDirection -> ( Svg msg, String )
+animationOverflowTile tileSizePixels animationDirection =
     let
         clipAmount =
             String.fromFloat tileSizePixels ++ "px"
@@ -221,26 +215,26 @@ animationOverflowTile { tileSizePixels, baseX, baseY } animationDirection =
         ( x, y, clipStyles ) =
             case animationDirection of
                 Up ->
-                    ( baseX
-                    , baseY + tileSizePixels
+                    ( 0
+                    , 0 + tileSizePixels
                     , "clip-path: inset(0 0 " ++ clipAmount ++ " 0);"
                     )
 
                 Down ->
-                    ( baseX
-                    , baseY - tileSizePixels
+                    ( 0
+                    , 0 - tileSizePixels
                     , "clip-path: inset(" ++ clipAmount ++ " 0 0 0);"
                     )
 
                 Right ->
-                    ( baseX - tileSizePixels
-                    , baseY
+                    ( 0 - tileSizePixels
+                    , 0
                     , "clip-path: inset(0 0 0 " ++ clipAmount ++ ");"
                     )
 
                 Left ->
-                    ( baseX + tileSizePixels
-                    , baseY
+                    ( 0 + tileSizePixels
+                    , 0
                     , "clip-path: inset(0 " ++ clipAmount ++ " 0 0);"
                     )
     in
@@ -256,33 +250,31 @@ animationOverflowTile { tileSizePixels, baseX, baseY } animationDirection =
     )
 
 
-tileElement : Float -> { x : Float, y : Float, asset : List (Svg msg), tileStyles : String } -> Svg msg
-tileElement tileSizePixels { x, y, asset, tileStyles } =
+tileElement : Float -> { assetName : String, groupAttrs : List (Svg.Attribute msg) } -> Svg msg
+tileElement tileSizePixels { assetName, groupAttrs } =
     Svg.g
-        [ Attributes.style tileStyles
-        ]
+        groupAttrs
         [ Svg.svg
-            [ Attributes.x (String.fromFloat x)
-            , Attributes.y (String.fromFloat y)
-            , Attributes.width (String.fromFloat tileSizePixels)
+            [ Attributes.width (String.fromFloat tileSizePixels)
             , Attributes.height (String.fromFloat tileSizePixels)
+            , Attributes.fill "none"
             , Attributes.viewBox "0 0 256 256"
             ]
-            asset
+            [ assetByName assetName ]
         ]
 
 
-tileAnimationProperties : Float -> Animation -> ( Float, Float ) -> String
-tileAnimationProperties tileSizePixels animation ( tileX, tileY ) =
+tileAnimationProperties : Float -> Animation -> String
+tileAnimationProperties tileSizePixels animation =
     let
         halfTile =
             tileSizePixels / 2
 
         centerX =
-            tileX + halfTile
+            halfTile
 
         centerY =
-            tileY + halfTile
+            halfTile
 
         props =
             case animation.direction of
@@ -369,7 +361,7 @@ tileAnimationProperties tileSizePixels animation ( tileX, tileY ) =
 --
 
 
-renderCars : RenderCache msg -> Collection Car -> Svg msg
+renderCars : RenderCache -> Collection Car -> Svg msg
 renderCars cache cars =
     cars
         |> Collection.foldl
@@ -380,12 +372,12 @@ renderCars cache cars =
         |> Svg.Keyed.node "g" []
 
 
-renderCar : RenderCache msg -> Car -> Svg msg
+renderCar : RenderCache -> Car -> Svg msg
 renderCar cache car =
     Svg.Lazy.lazy4 carSvg cache car.position car.orientation car.make
 
 
-carSvg : RenderCache msg -> Point2d Length.Meters GlobalCoordinates -> Angle.Angle -> CarMake -> Svg msg
+carSvg : RenderCache -> Point2d Length.Meters GlobalCoordinates -> Angle.Angle -> CarMake -> Svg msg
 carSvg cache position orientation make =
     let
         { x, y } =
@@ -438,14 +430,14 @@ carSvg cache position orientation make =
 --
 
 
-renderLots : RenderCache msg -> Collection Lot -> Svg msg
+renderLots : RenderCache -> Collection Lot -> Svg msg
 renderLots cache lots =
     lots
         |> Collection.foldl (\_ lot acc -> ( "Lot-" ++ Collection.idToString lot.id, renderLot cache lot ) :: acc) []
         |> Svg.Keyed.node "g" []
 
 
-renderLot : RenderCache msg -> Lot -> Svg msg
+renderLot : RenderCache -> Lot -> Svg msg
 renderLot cache lot =
     let
         { x, y } =
@@ -466,21 +458,12 @@ renderLot cache lot =
         translateStr =
             "translate(" ++ String.fromFloat renderX ++ "," ++ String.fromFloat renderY ++ ")"
 
-        viewBoxWidth =
-            toViewBoxValue lot.width
-
-        viewBoxHeight =
-            toViewBoxValue lot.height
-
         viewBox =
             [ "0 0"
-            , String.fromFloat viewBoxWidth
-            , String.fromFloat viewBoxHeight
+            , String.fromFloat (toViewBoxValue lot.width)
+            , String.fromFloat (toViewBoxValue lot.height)
             ]
                 |> String.join " "
-
-        asset =
-            lotAsset lot.kind
     in
     Svg.g [ Attributes.transform translateStr ]
         [ Svg.svg
@@ -489,7 +472,7 @@ renderLot cache lot =
             , Attributes.viewBox viewBox
             , Attributes.fill "none"
             ]
-            asset
+            [ assetByName lot.name ]
         ]
 
 
@@ -499,14 +482,14 @@ renderLot cache lot =
 --
 
 
-renderTrafficLights : RenderCache msg -> Collection TrafficLight -> Svg msg
+renderTrafficLights : RenderCache -> Collection TrafficLight -> Svg msg
 renderTrafficLights cache trafficLights =
     trafficLights
         |> Collection.foldl (\_ tl acc -> ( "TrafficLight-" ++ Collection.idToString tl.id, renderTrafficLight cache tl ) :: acc) []
         |> Svg.Keyed.node "g" []
 
 
-renderTrafficLight : RenderCache msg -> TrafficLight -> Svg msg
+renderTrafficLight : RenderCache -> TrafficLight -> Svg msg
 renderTrafficLight cache trafficLight =
     let
         { x, y } =
@@ -539,7 +522,7 @@ renderTrafficLight cache trafficLight =
         []
 
 
-renderTrafficSigns : RenderCache msg -> RoadNetwork -> Svg msg
+renderTrafficSigns : RenderCache -> RoadNetwork -> Svg msg
 renderTrafficSigns cache roadNetwork =
     roadNetwork
         |> Graph.nodes
@@ -558,7 +541,7 @@ renderTrafficSigns cache roadNetwork =
         |> Svg.Keyed.node "g" []
 
 
-renderYieldSign : RenderCache msg -> Node Connection -> Svg msg
+renderYieldSign : RenderCache -> Node Connection -> Svg msg
 renderYieldSign cache node =
     let
         size =

@@ -5,7 +5,7 @@ import Data.TileSet
         ( allTiles
         , defaultTiles
         , threeByThreeLotLargeTile
-        , threeByTwoLotALargeTile
+        , threeByTwoLotUpLargeTile
         , twoByTwoLotLargeTile
         )
 import Data.Utility
@@ -316,8 +316,8 @@ suite =
                                 |> setSuperpositionOptions threeByTwoLotEntry [ 20, 6 ]
                     in
                     Expect.equal
-                        (WFC.checkLargeTileFit tilemap threeByTwoLotDriveway threeByTwoLotALargeTile)
-                        (Just threeByTwoLotALargeTile)
+                        (WFC.checkLargeTileFit tilemap threeByTwoLotDriveway threeByTwoLotUpLargeTile)
+                        (Just threeByTwoLotUpLargeTile)
                 )
             , test "Should report bad tile fit (fixed tile blocks lot entry)"
                 (\_ ->
@@ -335,7 +335,7 @@ suite =
                                 |> setSuperpositionOptions threeByTwoLotEntry [ 20, 6 ]
                     in
                     Expect.equal
-                        (WFC.checkLargeTileFit tilemap threeByTwoLotDriveway threeByTwoLotALargeTile)
+                        (WFC.checkLargeTileFit tilemap threeByTwoLotDriveway threeByTwoLotUpLargeTile)
                         Nothing
                 )
             ]

@@ -55,7 +55,7 @@ cardAttributes =
     ]
 
 
-carStateCard : RenderCache.RenderCache msg -> Car -> Element msg
+carStateCard : RenderCache.RenderCache -> Car -> Element msg
 carStateCard cache car =
     Element.row
         cardAttributes
@@ -124,7 +124,7 @@ wfcContext wfcModel =
         ]
 
 
-wfcCurrentCell : RenderCache.RenderCache msg -> WFC.Model -> Element msg
+wfcCurrentCell : RenderCache.RenderCache -> WFC.Model -> Element msg
 wfcCurrentCell cache wfcModel =
     case WFC.toCurrentCell wfcModel of
         Just cell ->
@@ -180,7 +180,7 @@ speedToString speed =
     "Speed: " ++ speedValue ++ " m/s"
 
 
-pointToString : RenderCache.RenderCache msg -> Point2d Length.Meters a -> String
+pointToString : RenderCache.RenderCache -> Point2d Length.Meters a -> String
 pointToString cache point =
     let
         { x, y } =

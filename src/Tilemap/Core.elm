@@ -30,7 +30,6 @@ module Tilemap.Core exposing
     , tileNeighborIn
     , tileToConfig
     , tilemapBoundingBox
-    , tilemapIntersects
     , tilemapToList
     , updateTilemap
     )
@@ -218,13 +217,6 @@ inTilemapBounds (Tilemap tilemap) testBB =
     BoundingBox2d.isContainedIn tilemap.boundingBox testBB
 
 
-tilemapIntersects : BoundingBox2d Length.Meters GlobalCoordinates -> Tilemap -> Bool
-tilemapIntersects testBB tilemap =
-    -- FIXME : upoptimized, skips dynamic tiles
-    tilemapToList (\cell _ -> Cell.boundingBox cell) StaticTiles tilemap
-        |> List.any (Common.boundingBoxOverlaps testBB)
-
-
 cellSupportsRoadPlacement : Cell -> Tilemap -> Bool
 cellSupportsRoadPlacement cell tilemap =
     List.all (cellHasLowComplexity cell tilemap) DiagonalDirection.all
@@ -269,7 +261,7 @@ type TileListFilter
     | NoFilter
 
 
-tilemapToList : (Cell -> Tile -> a) -> TileListFilter -> Tilemap -> List a
+tilemapToList : (Cell -> Tile -> Maybe a) -> TileListFilter -> Tilemap -> List a
 tilemapToList mapperFn listFilter tilemap =
     foldTiles
         (\cell tile acc ->
@@ -280,7 +272,12 @@ tilemapToList mapperFn listFilter tilemap =
                 acc
 
             else
-                mapperFn cell tile :: acc
+                case mapperFn cell tile of
+                    Just v ->
+                        v :: acc
+
+                    Nothing ->
+                        acc
         )
         []
         tilemap
@@ -493,12 +490,12 @@ updateTile delta tile tilemapUpdate =
     }
 
 
-addTile : TileId -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
+addTile : TileConfig -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
 addTile =
     applyTilemapOperation Tile.Add Nothing
 
 
-addTileFromWfc : Maybe ( TileId, Int ) -> TileId -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
+addTileFromWfc : Maybe ( TileId, Int ) -> TileConfig -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
 addTileFromWfc parentTile =
     applyTilemapOperation Tile.AddFromWFC parentTile
 
@@ -551,11 +548,11 @@ clearTile cell tilemap =
     updateCell cell (Tile.init Tile.Unintialized) tilemap
 
 
-applyTilemapOperation : TileOperation -> Maybe ( TileId, Int ) -> TileId -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
-applyTilemapOperation operation parentTileId tileId origin tilemap =
+applyTilemapOperation : TileOperation -> Maybe ( TileId, Int ) -> TileConfig -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
+applyTilemapOperation operation parentTileId tileConfig origin tilemap =
     let
         ( originTile, tileActions ) =
-            Tile.fromTileId tileId parentTileId operation
+            Tile.fromTileConfig tileConfig parentTileId operation
     in
     ( updateCell origin originTile tilemap
     , tileActions
@@ -705,8 +702,11 @@ resetLotEntry tilemap lotEntryCell lotEntryTile =
         |> Maybe.map
             (\baseTileId ->
                 let
+                    tileConfig =
+                        tileById baseTileId
+
                     ( nextTilemap, _ ) =
-                        addTileFromWfc Nothing baseTileId lotEntryCell tilemap
+                        addTileFromWfc Nothing tileConfig lotEntryCell tilemap
                 in
                 nextTilemap
             )

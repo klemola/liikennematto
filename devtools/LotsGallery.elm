@@ -1,7 +1,6 @@
 module LotsGallery exposing (main)
 
 import Color
-import Data.Assets exposing (roads)
 import Data.Colors as Colors
 import Data.Lots exposing (NewLot)
 import Data.Utility exposing (testSeed)
@@ -39,9 +38,9 @@ world =
     World.empty testSeed tilemapConfig
 
 
-renderCache : RenderCache ()
+renderCache : RenderCache
 renderCache =
-    RenderCache.new world roads
+    RenderCache.new world
 
 
 tilemapWidthStr : String

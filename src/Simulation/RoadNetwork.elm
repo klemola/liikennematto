@@ -310,7 +310,7 @@ buildRoadNetwork tilemap trafficLights =
                 , nodes = Dict.empty
                 , remainingTiles =
                     tilemap
-                        |> tilemapToList Tuple.pair NoFilter
+                        |> tilemapToList (\cell tile -> Just ( cell, tile )) NoFilter
                         |> List.sortBy tilePriority
                 }
                 |> Dict.values
