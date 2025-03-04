@@ -13,7 +13,7 @@ module Data.TileSet exposing
     , pairingsForSocket
     , roadConnectionDirectionsByTile
     , threeByThreeLotLargeTile
-    , threeByTwoLotALargeTile
+    , threeByTwoLotUpLargeTile
     , tileById
     , tileIdByBitmask
     , tileIdsByOrthogonalMatch
@@ -169,8 +169,8 @@ allTiles =
     , lotEntryTRight
     , twoByTwoLot
     , threeByThreeLot
-    , threeByTwoLotA
-    , threeByTwoLotB
+    , threeByTwoLotUp
+    , threeByTwoLotLeft
     , twoByThreeLot
     ]
 
@@ -907,13 +907,13 @@ threeByThreeLotLargeTile =
     }
 
 
-threeByTwoLotA : TileConfig
-threeByTwoLotA =
-    TileConfig.Large threeByTwoLotALargeTile
+threeByTwoLotUp : TileConfig
+threeByTwoLotUp =
+    TileConfig.Large threeByTwoLotUpLargeTile
 
 
-threeByTwoLotALargeTile : LargeTile
-threeByTwoLotALargeTile =
+threeByTwoLotUpLargeTile : LargeTile
+threeByTwoLotUpLargeTile =
     { id = 102
     , name = "_hidden"
     , weight = 0.9
@@ -935,8 +935,8 @@ threeByTwoLotALargeTile =
     }
 
 
-threeByTwoLotB : TileConfig
-threeByTwoLotB =
+threeByTwoLotLeft : TileConfig
+threeByTwoLotLeft =
     TileConfig.Large
         { id = 103
         , name = "_hidden"
@@ -949,7 +949,7 @@ threeByTwoLotB =
                 , lotTopRightCorner
 
                 --
-                , lotDrivewayRight
+                , lotDrivewayLeft
                 , lotBottomEdge
                 , lotBottomRightCorner
                 ]

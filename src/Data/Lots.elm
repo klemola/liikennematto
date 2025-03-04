@@ -130,7 +130,7 @@ cafe =
 residentialRow1 : NewLot
 residentialRow1 =
     { name = "LotResidentialRow1"
-    , horizontalTilesAmount = 4
+    , horizontalTilesAmount = 3
     , verticalTilesAmount = 2
     , parkingSpotExitDirection = Down
     , parkingSpots =
