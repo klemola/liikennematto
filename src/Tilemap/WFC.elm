@@ -432,13 +432,13 @@ processStep tilemap tileInventory currentStep =
                         largeTileSteps tilemap cell largeTile
                             |> Result.map (\steps -> ( steps, [], tilemap ))
 
-                    TileConfig.Single singleTile ->
+                    TileConfig.Single _ ->
                         let
                             nextSteps =
                                 propagateConstraintsSteps tilemap cell
 
                             ( nextTilemap, tileActions ) =
-                                addTileFromWfc Nothing singleTile.id cell tilemap
+                                addTileFromWfc Nothing tileConfig cell tilemap
                         in
                         Ok ( nextSteps, tileActions, nextTilemap )
 
@@ -851,7 +851,11 @@ attemptPlaceSubgridTile tilemap largeTileId subgridCell subgridTileProperties =
                         ( subgridTileProperties.parentTileId, subgridTileProperties.index )
 
                     ( nextTilemap, tileActions ) =
-                        addTileFromWfc (Just parentTileProperties) subgridTileProperties.singleTile.id subgridCell tilemap
+                        addTileFromWfc
+                            (Just parentTileProperties)
+                            (TileConfig.Single subgridTileProperties.singleTile)
+                            subgridCell
+                            tilemap
                 in
                 ( neighborSteps, tileActions, nextTilemap )
             )
@@ -871,7 +875,11 @@ checkSubgridTile tilemap subgridCell subgridTileProperties =
                         ( subgridTileProperties.parentTileId, subgridTileProperties.index )
 
                     ( nextTilemap, _ ) =
-                        addTileFromWfc (Just parentTileProperties) subgridTileProperties.singleTile.id subgridCell tilemap
+                        addTileFromWfc
+                            (Just parentTileProperties)
+                            (TileConfig.Single subgridTileProperties.singleTile)
+                            subgridCell
+                            tilemap
                 in
                 nextTilemap
             )
