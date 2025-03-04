@@ -1064,9 +1064,7 @@ natureSingle1 =
     TileConfig.Single
         { id = defaultTileId
         , name = "NatureSingle1"
-
-        -- Make the "default/filler" not very likely to appear, as it is a last resort
-        , weight = 0.1
+        , weight = 0.4
         , graphPriority = maxGraphPriority
         , biome = TileConfig.Nature
         , sockets =
@@ -1102,7 +1100,7 @@ natureSingle3 =
     TileConfig.Single
         { id = 202
         , name = "NatureSingle3"
-        , weight = 0.1
+        , weight = 0.3
         , graphPriority = maxGraphPriority
         , biome = TileConfig.Nature
         , sockets =
@@ -1120,7 +1118,7 @@ natureSingle4 =
     TileConfig.Single
         { id = 203
         , name = "NatureSingle4"
-        , weight = 0.1
+        , weight = 0.3
         , graphPriority = maxGraphPriority
         , biome = TileConfig.Nature
         , sockets =
@@ -1138,7 +1136,7 @@ natureQuad1 =
     TileConfig.Large
         { id = 206
         , name = "NatureQuad1"
-        , weight = 0.1
+        , weight = 0.35
         , biome = TileConfig.Nature
         , tiles =
             Array.fromList
@@ -1160,7 +1158,7 @@ natureQuad2 =
     TileConfig.Large
         { id = 207
         , name = "NatureQuad2"
-        , weight = 0.1
+        , weight = 0.35
         , biome = TileConfig.Nature
         , tiles =
             Array.fromList
