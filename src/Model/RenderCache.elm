@@ -39,7 +39,7 @@ import UI.Core
 type alias RenderCache =
     { pixelsToMetersRatio : PixelsToMetersRatio
     , tilemap : List Renderable
-    , tilemapDebug : List TilemapDebugItem
+    , tilemapDebug : List ( Cell, TilemapDebugItem )
     , dynamicTiles : List Renderable
     , tilemapWidthPixels : Float
     , tilemapHeightPixels : Float
@@ -57,8 +57,8 @@ type alias Renderable =
 
 
 type TilemapDebugItem
-    = FixedDebug Renderable
-    | SuperpositionDebug ( Cell, List TileId )
+    = FixedDebug { id : TileId, parentTileId : Maybe TileId }
+    | SuperpositionDebug (List TileId)
 
 
 new : World -> RenderCache
@@ -181,20 +181,20 @@ renderableFromTile cell tile =
             Nothing
 
 
-debugItemFromTile : Cell -> Tile -> Maybe TilemapDebugItem
+debugItemFromTile : Cell -> Tile -> Maybe ( Cell, TilemapDebugItem )
 debugItemFromTile cell tile =
     case tile.kind of
         Tile.Fixed props ->
             Just
-                (FixedDebug
-                    { cell = cell
-                    , assetName = props.name
-                    , animation = Nothing
+                ( cell
+                , FixedDebug
+                    { id = props.id
+                    , parentTileId = Maybe.map Tuple.first props.parentTile
                     }
                 )
 
         Tile.Superposition ids ->
-            Just (SuperpositionDebug ( cell, ids ))
+            Just ( cell, SuperpositionDebug ids )
 
         _ ->
             Nothing

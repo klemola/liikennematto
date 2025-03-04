@@ -20,7 +20,7 @@ import Html exposing (Html)
 import Html.Attributes
 import List.Extra
 import Model.Debug
-import Model.RenderCache as RenderCache exposing (RenderCache)
+import Model.RenderCache as RenderCache
 import Model.World as World
 import Process
 import Random

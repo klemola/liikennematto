@@ -28,7 +28,7 @@ import Simulation.Route as Route
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Svg.Keyed
-import Tilemap.Cell as Cell exposing (Cell)
+import Tilemap.Cell as Cell
 import Tilemap.Tile exposing (TileKind(..))
 import Tilemap.TileConfig exposing (TileId)
 
@@ -353,54 +353,89 @@ renderWFC : RenderCache -> Svg msg
 renderWFC cache =
     cache.tilemapDebug
         |> List.map
-            (\debugItem ->
-                case debugItem of
-                    RenderCache.FixedDebug renderable ->
-                        ( Cell.toString renderable.cell
-                        , nothing
-                        )
+            (\( cell, variant ) ->
+                let
+                    { x, y } =
+                        Cell.bottomLeftCorner cell |> pointToPixels cache.pixelsToMetersRatio
 
-                    RenderCache.SuperpositionDebug ( cell, ids ) ->
-                        ( Cell.toString cell
-                        , renderSuperposition cache cell ids
-                        )
+                    tileSizePixels =
+                        toPixelsValue cache.pixelsToMetersRatio Cell.size
+
+                    yAdjusted =
+                        cache.tilemapHeightPixels - tileSizePixels - y
+                in
+                ( Cell.toString cell
+                , Svg.svg
+                    [ Attributes.x (String.fromFloat x)
+                    , Attributes.y (String.fromFloat yAdjusted)
+                    , Attributes.width (String.fromFloat tileSizePixels)
+                    , Attributes.height (String.fromFloat tileSizePixels)
+                    , Attributes.viewBox "0 0 256 256"
+                    ]
+                    [ case variant of
+                        RenderCache.FixedDebug fixedProps ->
+                            renderFixed fixedProps
+
+                        RenderCache.SuperpositionDebug ids ->
+                            renderSuperposition ids
+                    ]
+                )
             )
         |> Svg.Keyed.node "g" []
 
 
-renderSuperposition : RenderCache -> Cell -> List TileId -> Svg msg
-renderSuperposition cache cell tileIds =
+renderFixed : { id : TileId, parentTileId : Maybe TileId } -> Svg msg
+renderFixed fixedProps =
     let
-        idsDebug =
-            (List.sort >> List.map String.fromInt) tileIds
+        parentTileStr =
+            case fixedProps.parentTileId of
+                Just parentId ->
+                    "(" ++ String.fromInt parentId ++ ")"
 
-        { x, y } =
-            Cell.bottomLeftCorner cell |> pointToPixels cache.pixelsToMetersRatio
-
-        tileSizePixels =
-            toPixelsValue cache.pixelsToMetersRatio Cell.size
-
-        yAdjusted =
-            cache.tilemapHeightPixels - tileSizePixels - y
+                Nothing ->
+                    ""
     in
-    Svg.svg
-        [ Attributes.x (String.fromFloat x)
-        , Attributes.y (String.fromFloat yAdjusted)
-        , Attributes.width (String.fromFloat tileSizePixels)
-        , Attributes.height (String.fromFloat tileSizePixels)
-        , Attributes.viewBox "0 0 256 256"
-        ]
-        (idsDebug
-            |> List.Extra.greedyGroupsOf 4
-            |> List.indexedMap
-                (\idx values ->
-                    Svg.text_
-                        [ Attributes.fill "black"
-                        , Attributes.x "24"
-                        , Attributes.y (String.fromInt (28 + (idx * 28)))
-                        , Attributes.style "font: italic 24px sans-serif;"
-                        ]
-                        [ Svg.text (String.join " " values)
-                        ]
+    Svg.g []
+        [ Svg.rect
+            [ Attributes.x "16"
+            , Attributes.y "0"
+            , Attributes.width "128"
+            , Attributes.height "28"
+            , Attributes.fill "#F9F9E950"
+            ]
+            []
+        , Svg.text_
+            [ Attributes.fill "black"
+            , Attributes.x "24"
+            , Attributes.y "24"
+            , Attributes.style "font: italic 24px sans-serif;"
+            ]
+            [ Svg.text
+                (String.join " "
+                    [ "F"
+                    , String.fromInt fixedProps.id
+                    , parentTileStr
+                    ]
                 )
-        )
+            ]
+        ]
+
+
+renderSuperposition : List TileId -> Svg msg
+renderSuperposition ids =
+    ids
+        |> List.sort
+        |> List.map String.fromInt
+        |> List.Extra.greedyGroupsOf 4
+        |> List.indexedMap
+            (\idx values ->
+                Svg.text_
+                    [ Attributes.fill "black"
+                    , Attributes.x "24"
+                    , Attributes.y (String.fromInt (28 + (idx * 28)))
+                    , Attributes.style "font: italic 24px sans-serif;"
+                    ]
+                    [ Svg.text (String.join " " values)
+                    ]
+            )
+        |> Svg.g []
