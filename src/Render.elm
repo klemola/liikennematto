@@ -84,7 +84,7 @@ view { cars, lots, roadNetwork, trafficLights } cache =
         [ Attributes.width tilemapWidth
         , Attributes.height tilemapHeight
         , Attributes.viewBox <| "0 0 " ++ tilemapWidth ++ " " ++ tilemapHeight
-        , Attributes.style <| "background-color: " ++ Color.toCssString Colors.lightGreen ++ ";"
+        , Attributes.style <| "background-color: " ++ Colors.lightGreenCSS ++ ";"
         ]
         [ styles
         , Svg.Lazy.lazy renderTilemap cache

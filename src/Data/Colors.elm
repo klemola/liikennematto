@@ -204,7 +204,7 @@ lightBrownDarkerCSS =
 
 lightGreen : Color.Color
 lightGreen =
-    Color.rgb255 112 174 97
+    Color.rgb255 118 177 104
 
 
 lightGreenCSS : String
