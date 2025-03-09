@@ -98,7 +98,6 @@ init _ =
             World.empty initialSeed tilemapConfig
 
         cache =
-            -- TODO: the tile list filter setup is not required if tile FSMs are updated
             RenderCache.new world
                 |> RenderCache.setTileListFilter NoFilter
     in

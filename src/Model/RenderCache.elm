@@ -10,7 +10,8 @@ module Model.RenderCache exposing
     , setTilemapDebugCache
     )
 
-import Data.TileSet exposing (roadConnectionDirectionsByTile)
+import Common exposing (applyTuple2)
+import Data.TileSet exposing (roadConnectionDirectionsByTile, tileById)
 import Length
 import Lib.FSM as FSM
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
@@ -19,7 +20,7 @@ import Model.World exposing (World)
 import Pixels
 import Quantity
 import Render.Conversion exposing (PixelsToMetersRatio, defaultPixelsToMetersRatio, toPixelsValue)
-import Tilemap.Cell exposing (Cell)
+import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
         ( TileListFilter(..)
@@ -31,7 +32,7 @@ import Tilemap.Core
         , tilemapToList
         )
 import Tilemap.Tile as Tile exposing (Tile)
-import Tilemap.TileConfig exposing (TileId)
+import Tilemap.TileConfig as TileConfig exposing (TileId)
 import Tilemap.WFC as WFC
 import UI.Core
 
@@ -51,6 +52,8 @@ type alias RenderCache =
 
 type alias Renderable =
     { cell : Cell
+    , width : Int
+    , height : Int
     , assetName : String
     , animation : Maybe Animation
     }
@@ -171,11 +174,32 @@ renderableFromTile : Cell -> Tile -> Maybe Renderable
 renderableFromTile cell tile =
     case tile.kind of
         Tile.Fixed props ->
-            Just
-                { cell = cell
-                , assetName = props.name
-                , animation = Nothing
-                }
+            let
+                maybeLargeTile =
+                    props.parentTile |> Maybe.andThen (applyTuple2 extractLargeTileFromSubgridTile)
+            in
+            case maybeLargeTile of
+                Just largeTile ->
+                    Just
+                        { cell = cell
+                        , width = largeTile.width
+                        , height = largeTile.height
+                        , assetName = largeTile.name
+                        , animation = Nothing
+                        }
+
+                Nothing ->
+                    if props.name == "_subgrid" then
+                        Nothing
+
+                    else
+                        Just
+                            { cell = cell
+                            , width = 1
+                            , height = 1
+                            , assetName = props.name
+                            , animation = Nothing
+                            }
 
         _ ->
             Nothing
@@ -201,25 +225,29 @@ debugItemFromTile cell tile =
 
 
 toDynamicTiles : Tilemap -> List Cell -> List Renderable
-toDynamicTiles tilemap changingCells =
-    changingCells
-        |> List.filterMap
-            (\cell ->
-                fixedTileByCell tilemap cell
-                    |> Maybe.andThen
-                        (\tile ->
-                            case tile.kind of
-                                Tile.Fixed props ->
-                                    Just
-                                        { cell = cell
-                                        , assetName = props.name
-                                        , animation = tileAnimation tile
-                                        }
+toDynamicTiles tilemap =
+    List.filterMap
+        (\cell ->
+            fixedTileByCell tilemap cell
+                |> Maybe.map (Tuple.pair cell)
+                |> Maybe.andThen toRenderable
+        )
 
-                                _ ->
-                                    Nothing
-                        )
-            )
+
+toRenderable : ( Cell, Tile ) -> Maybe Renderable
+toRenderable ( cell, tile ) =
+    case tile.kind of
+        Tile.Fixed props ->
+            Just
+                { cell = cell
+                , width = 1
+                , height = 1
+                , assetName = props.name
+                , animation = tileAnimation tile
+                }
+
+        _ ->
+            Nothing
 
 
 tileAnimation : Tile -> Maybe Animation
@@ -260,4 +288,29 @@ animationDirectionFromTile tile =
             Just (OrthogonalDirection.opposite connection)
 
         _ ->
+            Nothing
+
+
+extractLargeTileFromSubgridTile : TileId -> Int -> Maybe TileConfig.LargeTile
+extractLargeTileFromSubgridTile tileId subgridIndex =
+    case tileById tileId of
+        TileConfig.Large largeTile ->
+            let
+                subgridCoords =
+                    subgridIndex
+                        |> Cell.fromArray1DIndexUnsafe
+                            { horizontalCellsAmount = largeTile.width
+                            , verticalCellsAmount = largeTile.height
+                            }
+                        |> Cell.coordinates
+            in
+            -- See if the subgrid cell is the top left one, because it's
+            -- the only valid render root for the asset
+            if subgridCoords == ( 1, 1 ) then
+                Just largeTile
+
+            else
+                Nothing
+
+        TileConfig.Single _ ->
             Nothing

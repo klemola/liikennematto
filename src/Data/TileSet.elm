@@ -12,14 +12,14 @@ module Data.TileSet exposing
     , lotTiles
     , pairingsForSocket
     , roadConnectionDirectionsByTile
-    , threeByThreeLotLargeTile
+    , threeByThreeLotLeftLargeTile
     , threeByTwoLotUpLargeTile
     , tileById
     , tileIdByBitmask
     , tileIdsByOrthogonalMatch
     , tileIdsFromBitmask
     , tilesByBaseTileId
-    , twoByTwoLotLargeTile
+    , twoByTwoLotRightLargeTile
     )
 
 import Array
@@ -167,11 +167,11 @@ allTiles =
     , lotEntryTUp
     , lotEntryTLeft
     , lotEntryTRight
-    , twoByTwoLot
-    , threeByThreeLot
+    , twoByTwoLotRight
+    , threeByThreeLotLeft
     , threeByTwoLotUp
     , threeByTwoLotLeft
-    , twoByThreeLot
+    , twoByThreeLotUp
     ]
 
 
@@ -647,7 +647,7 @@ lotDrivewayTileIds =
 lotTopLeftCorner : TileConfig.SingleTile
 lotTopLeftCorner =
     { id = 30
-    , name = "LotTopLeftCorner"
+    , name = "_subgrid"
     , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
@@ -664,7 +664,7 @@ lotTopLeftCorner =
 lotTopRightCorner : TileConfig.SingleTile
 lotTopRightCorner =
     { id = 31
-    , name = "LotTopRightCorner"
+    , name = "_subgrid"
     , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
@@ -681,7 +681,7 @@ lotTopRightCorner =
 lotBottomRightCorner : TileConfig.SingleTile
 lotBottomRightCorner =
     { id = 32
-    , name = "LotBottomRightCorner"
+    , name = "_subgrid"
     , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
@@ -698,7 +698,7 @@ lotBottomRightCorner =
 lotBottomLeftCorner : TileConfig.SingleTile
 lotBottomLeftCorner =
     { id = 33
-    , name = "LotBottomLeftCorner"
+    , name = "_subgrid"
     , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
@@ -715,7 +715,7 @@ lotBottomLeftCorner =
 lotTopEdge : TileConfig.SingleTile
 lotTopEdge =
     { id = 34
-    , name = "LotTopEdge"
+    , name = "_subgrid"
     , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
@@ -732,7 +732,7 @@ lotTopEdge =
 lotRightEdge : TileConfig.SingleTile
 lotRightEdge =
     { id = 35
-    , name = "LotRightEdge"
+    , name = "_subgrid"
     , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
@@ -749,7 +749,7 @@ lotRightEdge =
 lotBottomEdge : TileConfig.SingleTile
 lotBottomEdge =
     { id = 36
-    , name = "LotBottomEdge"
+    , name = "_subgrid"
     , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
@@ -766,7 +766,7 @@ lotBottomEdge =
 lotLeftEdge : TileConfig.SingleTile
 lotLeftEdge =
     { id = 37
-    , name = "LotLeftEdge"
+    , name = "_subgrid"
     , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
@@ -783,7 +783,7 @@ lotLeftEdge =
 lotInnerSpace : TileConfig.SingleTile
 lotInnerSpace =
     { id = 38
-    , name = "LotInnerSpace"
+    , name = "_subgrid"
     , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
@@ -800,7 +800,7 @@ lotInnerSpace =
 lotDrivewayRight : TileConfig.SingleTile
 lotDrivewayRight =
     { id = 40
-    , name = "LotDrivewayRight"
+    , name = "_subgrid"
     , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
@@ -817,7 +817,7 @@ lotDrivewayRight =
 lotDrivewayLeft : TileConfig.SingleTile
 lotDrivewayLeft =
     { id = 41
-    , name = "LotDrivewayLeft"
+    , name = "_subgrid"
     , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
@@ -834,7 +834,7 @@ lotDrivewayLeft =
 lotDrivewayUp : TileConfig.SingleTile
 lotDrivewayUp =
     { id = 42
-    , name = "LotDrivewayUp"
+    , name = "_subgrid"
     , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Lot
@@ -848,15 +848,15 @@ lotDrivewayUp =
     }
 
 
-twoByTwoLot : TileConfig
-twoByTwoLot =
-    TileConfig.Large twoByTwoLotLargeTile
+twoByTwoLotRight : TileConfig
+twoByTwoLotRight =
+    TileConfig.Large twoByTwoLotRightLargeTile
 
 
-twoByTwoLotLargeTile : LargeTile
-twoByTwoLotLargeTile =
+twoByTwoLotRightLargeTile : LargeTile
+twoByTwoLotRightLargeTile =
     { id = 100
-    , name = "_unused"
+    , name = "TwoByTwoLotRight"
     , weight = 0.9
     , biome = TileConfig.Lot
     , tiles =
@@ -874,15 +874,15 @@ twoByTwoLotLargeTile =
     }
 
 
-threeByThreeLot : TileConfig
-threeByThreeLot =
-    TileConfig.Large threeByThreeLotLargeTile
+threeByThreeLotLeft : TileConfig
+threeByThreeLotLeft =
+    TileConfig.Large threeByThreeLotLeftLargeTile
 
 
-threeByThreeLotLargeTile : LargeTile
-threeByThreeLotLargeTile =
+threeByThreeLotLeftLargeTile : LargeTile
+threeByThreeLotLeftLargeTile =
     { id = 101
-    , name = "_hidden"
+    , name = "ThreeByThreeLotLeft"
     , weight = 0.9
     , biome = TileConfig.Lot
     , tiles =
@@ -915,7 +915,7 @@ threeByTwoLotUp =
 threeByTwoLotUpLargeTile : LargeTile
 threeByTwoLotUpLargeTile =
     { id = 102
-    , name = "_hidden"
+    , name = "ThreeByTwoLotUp"
     , weight = 0.9
     , biome = TileConfig.Lot
     , tiles =
@@ -939,7 +939,7 @@ threeByTwoLotLeft : TileConfig
 threeByTwoLotLeft =
     TileConfig.Large
         { id = 103
-        , name = "_hidden"
+        , name = "ThreeByTwoLotLeft"
         , weight = 0.9
         , biome = TileConfig.Lot
         , tiles =
@@ -959,11 +959,11 @@ threeByTwoLotLeft =
         }
 
 
-twoByThreeLot : TileConfig
-twoByThreeLot =
+twoByThreeLotUp : TileConfig
+twoByThreeLotUp =
     TileConfig.Large
         { id = 104
-        , name = "_hidden"
+        , name = "TwoByThreeLotUp"
         , weight = 0.9
         , biome = TileConfig.Lot
         , tiles =
@@ -994,7 +994,7 @@ twoByThreeLot =
 natureTopLeftCorner : TileConfig.SingleTile
 natureTopLeftCorner =
     { id = 50
-    , name = "_hidden"
+    , name = "_subgrid"
     , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Nature
@@ -1011,7 +1011,7 @@ natureTopLeftCorner =
 natureTopRightCorner : TileConfig.SingleTile
 natureTopRightCorner =
     { id = 51
-    , name = "_hidden"
+    , name = "_subgrid"
     , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Nature
@@ -1028,7 +1028,7 @@ natureTopRightCorner =
 natureBottomRightCorner : TileConfig.SingleTile
 natureBottomRightCorner =
     { id = 52
-    , name = "_hidden"
+    , name = "_subgrid"
     , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Nature
@@ -1045,7 +1045,7 @@ natureBottomRightCorner =
 natureBottomLeftCorner : TileConfig.SingleTile
 natureBottomLeftCorner =
     { id = 53
-    , name = "_hidden"
+    , name = "_subgrid"
     , weight = defaultWeight
     , graphPriority = maxGraphPriority
     , biome = TileConfig.Nature

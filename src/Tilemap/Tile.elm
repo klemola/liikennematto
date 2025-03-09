@@ -157,8 +157,8 @@ transitionTimer =
     Duration.milliseconds 250
 
 
-transitionTimerShort : Duration
-transitionTimerShort =
+transitionTimerGenerated : Duration
+transitionTimerGenerated =
     Duration.milliseconds 100
 
 
@@ -215,7 +215,7 @@ generated =
             [ FSM.createTransition
                 (\_ -> built)
                 []
-                (FSM.Timer transitionTimerShort)
+                (FSM.Timer transitionTimerGenerated)
             , FSM.createTransition
                 (\_ -> changing)
                 []

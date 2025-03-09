@@ -4,9 +4,9 @@ import Data.TileSet
     exposing
         ( allTiles
         , defaultTiles
-        , threeByThreeLotLargeTile
+        , threeByThreeLotLeftLargeTile
         , threeByTwoLotUpLargeTile
-        , twoByTwoLotLargeTile
+        , twoByTwoLotRightLargeTile
         )
 import Data.Utility
     exposing
@@ -291,12 +291,12 @@ suite =
                     Expect.all
                         [ \_ ->
                             Expect.equal
-                                (WFC.checkLargeTileFit tilemap twoByTwoLotDriveway twoByTwoLotLargeTile)
-                                (Just twoByTwoLotLargeTile)
+                                (WFC.checkLargeTileFit tilemap twoByTwoLotDriveway twoByTwoLotRightLargeTile)
+                                (Just twoByTwoLotRightLargeTile)
                         , \_ ->
                             Expect.equal
-                                (WFC.checkLargeTileFit tilemap threeByThreeLotDriveway threeByThreeLotLargeTile)
-                                (Just threeByThreeLotLargeTile)
+                                (WFC.checkLargeTileFit tilemap threeByThreeLotDriveway threeByThreeLotLeftLargeTile)
+                                (Just threeByThreeLotLeftLargeTile)
                         ]
                         ()
                 )

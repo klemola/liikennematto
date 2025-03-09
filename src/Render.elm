@@ -17,7 +17,7 @@ import Length exposing (Length)
 import Lib.Collection as Collection exposing (Collection)
 import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Model.Animation as Animation exposing (Animation)
-import Model.RenderCache exposing (RenderCache)
+import Model.RenderCache exposing (RenderCache, Renderable)
 import Model.World exposing (World)
 import Point2d exposing (Point2d)
 import Quantity
@@ -35,7 +35,7 @@ import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Svg.Keyed
 import Svg.Lazy
-import Tilemap.Cell as Cell exposing (Cell)
+import Tilemap.Cell as Cell
 import Tilemap.Tile exposing (TileKind(..))
 
 
@@ -112,19 +112,19 @@ renderTilemap : RenderCache -> Svg msg
 renderTilemap cache =
     cache.tilemap
         |> List.map
-            (\{ cell, assetName } ->
-                ( Cell.toString cell
-                , renderTile cache cell assetName
+            (\renderable ->
+                ( Cell.toString renderable.cell
+                , renderTile cache renderable
                 )
             )
         |> Svg.Keyed.node "g" []
 
 
-renderTile : RenderCache -> Cell -> String -> Svg msg
-renderTile cache cell assetName =
+renderTile : RenderCache -> Renderable -> Svg msg
+renderTile cache renderable =
     let
         { x, y } =
-            Cell.bottomLeftCorner cell |> pointToPixels cache.pixelsToMetersRatio
+            Cell.bottomLeftCorner renderable.cell |> pointToPixels cache.pixelsToMetersRatio
 
         tileSizePixels =
             toPixelsValue cache.pixelsToMetersRatio Cell.size
@@ -136,38 +136,34 @@ renderTile cache cell assetName =
             [ Attributes.transform ("translate(" ++ String.fromFloat x ++ "," ++ String.fromFloat yAdjusted ++ ")")
             ]
     in
-    tileElement
-        tileSizePixels
-        { assetName = assetName
-        , groupAttrs = attrs
-        }
+    tileElement tileSizePixels renderable attrs
 
 
 renderDynamicTiles : RenderCache -> Svg msg
 renderDynamicTiles cache =
     cache.dynamicTiles
         |> List.map
-            (\{ cell, assetName, animation } ->
-                ( Cell.toString cell
-                , case animation of
-                    Just theAnimation ->
-                        renderAnimatedTile cache cell assetName theAnimation
+            (\renderable ->
+                ( Cell.toString renderable.cell
+                , case renderable.animation of
+                    Just animation ->
+                        renderAnimatedTile cache renderable animation
 
                     Nothing ->
-                        renderTile cache cell assetName
+                        renderTile cache renderable
                 )
             )
         |> Svg.Keyed.node "g" []
 
 
-renderAnimatedTile : RenderCache -> Cell -> String -> Animation -> Svg msg
-renderAnimatedTile cache cell assetName animation =
+renderAnimatedTile : RenderCache -> Renderable -> Animation -> Svg msg
+renderAnimatedTile cache renderable animation =
     let
         tileSizePixels =
             toPixelsValue cache.pixelsToMetersRatio Cell.size
 
         { x, y } =
-            Cell.bottomLeftCorner cell |> pointToPixels cache.pixelsToMetersRatio
+            Cell.bottomLeftCorner renderable.cell |> pointToPixels cache.pixelsToMetersRatio
 
         yAdjusted =
             cache.tilemapHeightPixels - tileSizePixels - y
@@ -197,11 +193,9 @@ renderAnimatedTile cache cell assetName animation =
         ]
         [ tileElement
             tileSizePixels
-            { assetName = assetName
-            , groupAttrs =
-                [ Attributes.style tileStyles
-                ]
-            }
+            renderable
+            [ Attributes.style tileStyles
+            ]
         , overflowTile
         ]
 
@@ -250,17 +244,28 @@ animationOverflowTile tileSizePixels animationDirection =
     )
 
 
-tileElement : Float -> { assetName : String, groupAttrs : List (Svg.Attribute msg) } -> Svg msg
-tileElement tileSizePixels { assetName, groupAttrs } =
+tileElement : Float -> Renderable -> List (Svg.Attribute msg) -> Svg msg
+tileElement tileSizePixels renderable groupAttrs =
+    let
+        ( widthPixels, heightPixels ) =
+            ( floor tileSizePixels * renderable.width, floor tileSizePixels * renderable.height )
+
+        viewBox =
+            [ "0 0"
+            , String.fromInt (256 * renderable.width)
+            , String.fromInt (256 * renderable.height)
+            ]
+                |> String.join " "
+    in
     Svg.g
         groupAttrs
         [ Svg.svg
-            [ Attributes.width (String.fromFloat tileSizePixels)
-            , Attributes.height (String.fromFloat tileSizePixels)
+            [ Attributes.width (String.fromInt widthPixels)
+            , Attributes.height (String.fromInt heightPixels)
             , Attributes.fill "none"
-            , Attributes.viewBox "0 0 256 256"
+            , Attributes.viewBox viewBox
             ]
-            [ assetByName assetName ]
+            [ assetByName renderable.assetName ]
         ]
 
 
