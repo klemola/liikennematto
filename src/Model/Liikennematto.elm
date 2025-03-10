@@ -12,10 +12,8 @@ module Model.Liikennematto exposing
     , triggerLoading
     )
 
-import Data.Assets exposing (roads)
 import Duration exposing (Duration)
 import Lib.FSM as FSM exposing (FSM)
-import Message exposing (Message)
 import Model.Debug exposing (DebugState, initialDebugState)
 import Model.Flags exposing (Flags, RuntimeEnvironment(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
@@ -37,8 +35,7 @@ type alias Liikennematto =
     , wfc : DrivenWFC
     , previousWorld : Maybe World
     , simulationActive : Bool
-    , renderCache : RenderCache Message
-    , dynamicTiles : RenderCache.DynamicTilesPresentation
+    , renderCache : RenderCache
     , debug : DebugState
     , errorMessage : Maybe String
     , editor : UI.Editor.Model
@@ -256,8 +253,7 @@ initial flags =
     , world = world
     , wfc = initialDrivenWfc
     , simulationActive = True
-    , renderCache = RenderCache.new world roads
-    , dynamicTiles = []
+    , renderCache = RenderCache.new world
     , debug = initialDebugState
     , errorMessage = Nothing
     , editor = UI.Editor.initialModel
@@ -289,7 +285,7 @@ fromNewGame previousWorld model =
         | world = world
         , wfc = initialDrivenWfc
         , previousWorld = previousWorld
-        , renderCache = RenderCache.new world roads
+        , renderCache = RenderCache.new world
         , simulationActive = True
         , debug = initialDebugState
     }
@@ -303,7 +299,7 @@ fromPreviousGame model =
                 | world = previousWorld
                 , wfc = initialDrivenWfc
                 , previousWorld = Nothing
-                , renderCache = RenderCache.new previousWorld roads
+                , renderCache = RenderCache.new previousWorld
                 , simulationActive = True
                 , debug = initialDebugState
             }

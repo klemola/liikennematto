@@ -90,7 +90,7 @@ subscriptions _ =
 -- Update
 
 
-update : World -> RenderCache msg -> Msg -> Model -> ( Model, Maybe InputEvent )
+update : World -> RenderCache -> Msg -> Model -> ( Model, Maybe InputEvent )
 update world renderCache msg model =
     let
         tilemapConfig =
@@ -246,7 +246,7 @@ selectCell event eventCell hasRoadTile initialEditor =
            )
 
 
-pointerEventToCell : RenderCache msg -> TilemapConfig -> Pointer.Event -> Maybe Cell
+pointerEventToCell : RenderCache -> TilemapConfig -> Pointer.Event -> Maybe Cell
 pointerEventToCell cache constraints event =
     let
         ( overlayX, overlayY ) =
@@ -306,7 +306,7 @@ resolvePointerUp pointerDownCell pointerUpCell pointerUpEvent model =
 -- Views
 
 
-view : RenderCache msg -> World -> Model -> Element Msg
+view : RenderCache -> World -> Model -> Element Msg
 view cache world model =
     Element.el
         [ Element.width Element.fill
@@ -349,7 +349,7 @@ view cache world model =
         )
 
 
-cellHighlight : RenderCache msg -> World -> Cell -> Element Msg
+cellHighlight : RenderCache -> World -> Cell -> Element Msg
 cellHighlight cache world activeCell =
     let
         tileSizePixels =

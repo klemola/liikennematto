@@ -1,6 +1,5 @@
 module RenderFixture exposing (main)
 
-import Data.Assets exposing (roads)
 import Data.RuleSetups as RuleSetups
 import Element
 import Html exposing (Html)
@@ -17,7 +16,7 @@ main =
             RuleSetups.collisionSetupPathsIntersect.world
 
         cache =
-            RenderCache.new world roads
+            RenderCache.new world
 
         renderWidth =
             floor cache.tilemapWidthPixels
@@ -35,7 +34,7 @@ main =
                 )
                 |> Element.html
     in
-    Render.view world cache []
+    Render.view world cache
         |> Element.html
         |> Element.el
             [ Element.width (Element.px renderWidth)

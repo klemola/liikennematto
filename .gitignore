@@ -13,5 +13,7 @@ debug.md
 
 build/
 fixtures/assets
+src/Assets.elm
+src/Assets
 
 .DS_Store

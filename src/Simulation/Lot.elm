@@ -21,7 +21,7 @@ import Angle exposing (Angle)
 import BoundingBox2d exposing (BoundingBox2d)
 import Common exposing (GlobalCoordinates, LocalCoordinates)
 import CubicSpline2d exposing (CubicSpline2d)
-import Data.Lots exposing (LotKind, NewLot, ParkingRestriction(..), drivewayOffset)
+import Data.Lots exposing (NewLot, ParkingRestriction(..), drivewayOffset)
 import Direction2d
 import Length exposing (Length)
 import Lib.Collection exposing (Id)
@@ -36,7 +36,7 @@ import Vector2d
 
 type alias Lot =
     { id : Id
-    , kind : LotKind
+    , name : String
     , width : Length
     , height : Length
     , position : Point2d Length.Meters GlobalCoordinates
@@ -92,7 +92,7 @@ build newLot anchor lotId =
             }
     in
     { id = lotId
-    , kind = newLot.kind
+    , name = newLot.name
     , width = width
     , height = height
     , position = BoundingBox2d.centerPoint constructionSiteBB

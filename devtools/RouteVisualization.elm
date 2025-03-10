@@ -2,7 +2,6 @@ module RouteVisualization exposing (Clicked, Model, Msg, main)
 
 import Browser
 import Common exposing (GlobalCoordinates)
-import Data.Assets exposing (roads)
 import Data.RuleSetups as RuleSetups
 import Element
 import Html exposing (Html)
@@ -26,7 +25,7 @@ import Simulation.Traffic exposing (RuleSetup)
 type alias Model =
     { world : World
     , activeCar : Car
-    , cache : RenderCache Msg
+    , cache : RenderCache
     , clicked : Maybe Clicked
     }
 
@@ -46,7 +45,7 @@ initialModel : Model
 initialModel =
     { world = ruleSetup.world
     , activeCar = ruleSetup.activeCar
-    , cache = RenderCache.new ruleSetup.world roads
+    , cache = RenderCache.new ruleSetup.world
     , clicked = Nothing
     }
 
@@ -157,7 +156,7 @@ view model =
     in
     Html.div []
         [ Html.div [ MouseEvents.onClick WorldClicked ]
-            [ Render.view world model.cache []
+            [ Render.view world model.cache
                 |> Element.html
                 |> Element.el
                     [ Element.width (Element.px renderWidth)
