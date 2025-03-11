@@ -142,6 +142,8 @@ allTiles =
     , natureSingle2
     , natureSingle3
     , natureSingle4
+    , natureDouble1
+    , natureDouble2
     , natureQuad1
     , natureQuad2
 
@@ -199,6 +201,8 @@ allTilesAndMetaTiles =
            , TileConfig.Single natureTopRightCorner
            , TileConfig.Single natureBottomLeftCorner
            , TileConfig.Single natureBottomRightCorner
+           , TileConfig.Single natureEndUp
+           , TileConfig.Single natureEndDown
            ]
 
 
@@ -1064,12 +1068,46 @@ natureBottomLeftCorner =
     }
 
 
+natureEndUp : TileConfig.SingleTile
+natureEndUp =
+    { id = 54
+    , name = "_subgrid"
+    , weight = defaultWeight
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Nature
+    , sockets =
+        { top = Green
+        , right = Green
+        , bottom = largeTileInnerEdgeSocket
+        , left = Green
+        }
+    , baseTileId = Nothing
+    }
+
+
+natureEndDown : TileConfig.SingleTile
+natureEndDown =
+    { id = 55
+    , name = "_subgrid"
+    , weight = defaultWeight
+    , graphPriority = maxGraphPriority
+    , biome = TileConfig.Nature
+    , sockets =
+        { top = largeTileInnerEdgeSocket
+        , right = Green
+        , bottom = Green
+        , left = Green
+        }
+    , baseTileId = Nothing
+    }
+
+
 natureSingle1 : TileConfig
 natureSingle1 =
     TileConfig.Single
         { id = defaultTileId
         , name = "NatureSingle1"
-        , weight = 0.4
+        , weight = 0.3
         , graphPriority = maxGraphPriority
         , biome = TileConfig.Nature
         , sockets =
@@ -1087,7 +1125,7 @@ natureSingle2 =
     TileConfig.Single
         { id = 201
         , name = "NatureSingle2"
-        , weight = 0.1
+        , weight = 0.3
         , graphPriority = maxGraphPriority
         , biome = TileConfig.Nature
         , sockets =
@@ -1105,7 +1143,7 @@ natureSingle3 =
     TileConfig.Single
         { id = 202
         , name = "NatureSingle3"
-        , weight = 0.3
+        , weight = 0.2
         , graphPriority = maxGraphPriority
         , biome = TileConfig.Nature
         , sockets =
@@ -1123,7 +1161,7 @@ natureSingle4 =
     TileConfig.Single
         { id = 203
         , name = "NatureSingle4"
-        , weight = 0.3
+        , weight = 0.2
         , graphPriority = maxGraphPriority
         , biome = TileConfig.Nature
         , sockets =
@@ -1136,12 +1174,54 @@ natureSingle4 =
         }
 
 
+natureDouble1 : TileConfig
+natureDouble1 =
+    TileConfig.Large
+        { id = 204
+        , name = "NatureDouble1"
+        , weight = 0.3
+        , biome = TileConfig.Nature
+        , tiles =
+            Array.fromList
+                [ natureEndUp
+
+                --
+                , natureEndDown
+                ]
+        , width = 1
+        , height = 2
+        , anchorIndex = 0
+        , entryDirection = Nothing
+        }
+
+
+natureDouble2 : TileConfig
+natureDouble2 =
+    TileConfig.Large
+        { id = 205
+        , name = "NatureDouble2"
+        , weight = 0.4
+        , biome = TileConfig.Nature
+        , tiles =
+            Array.fromList
+                [ natureEndUp
+
+                --
+                , natureEndDown
+                ]
+        , width = 1
+        , height = 2
+        , anchorIndex = 0
+        , entryDirection = Nothing
+        }
+
+
 natureQuad1 : TileConfig
 natureQuad1 =
     TileConfig.Large
         { id = 206
         , name = "NatureQuad1"
-        , weight = 0.35
+        , weight = 0.3
         , biome = TileConfig.Nature
         , tiles =
             Array.fromList
@@ -1164,7 +1244,7 @@ natureQuad2 =
     TileConfig.Large
         { id = 207
         , name = "NatureQuad2"
-        , weight = 0.35
+        , weight = 0.4
         , biome = TileConfig.Nature
         , tiles =
             Array.fromList
