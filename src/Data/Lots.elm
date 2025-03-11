@@ -26,7 +26,7 @@ type alias NewLot =
     , verticalTilesAmount : Int
     , parkingSpotExitDirection : OrthogonalDirection
     , parkingSpots : List ( Point2d Length.Meters LocalCoordinates, ParkingRestriction )
-    , drivewayExitDirection : OrthogonalDirection
+    , entryDirection : OrthogonalDirection
     , parkingLaneStartPosition : Point2d Length.Meters LocalCoordinates
     , parkingLaneStartDirection : OrthogonalDirection
     , residents : List CarMake
@@ -74,7 +74,7 @@ residentialSingle1 =
     , parkingSpots =
         [ residentParking <| Point2d.fromMeters { x = 21.25, y = 3.75 }
         ]
-    , drivewayExitDirection = Right
+    , entryDirection = Left
     , parkingLaneStartPosition = Point2d.fromMeters { x = 21.25, y = 3.75 }
     , parkingLaneStartDirection = Left
     , residents =
@@ -96,7 +96,7 @@ school =
         , noRestrictions <| Point2d.fromMeters { x = 23.375, y = 9.125 }
         , noRestrictions <| Point2d.fromMeters { x = 27.875, y = 9.125 }
         ]
-    , drivewayExitDirection = Left
+    , entryDirection = Right
     , parkingLaneStartPosition = Point2d.fromMeters { x = 7.5, y = 3.75 }
     , parkingLaneStartDirection = Right
     , residents =
@@ -118,7 +118,7 @@ cafe =
         , noRestrictions <| Point2d.fromMeters { x = 17.375, y = 9.125 }
         , noRestrictions <| Point2d.fromMeters { x = 21.875, y = 9.125 }
         ]
-    , drivewayExitDirection = Right
+    , entryDirection = Left
     , parkingLaneStartPosition = Point2d.fromMeters { x = 24.5, y = 3.75 }
     , parkingLaneStartDirection = Left
     , residents =
@@ -139,7 +139,7 @@ residentialRow1 =
         , noRestrictions <| Point2d.fromMeters { x = 18.6875, y = 9.125 }
         , residentParking <| Point2d.fromMeters { x = 23.25, y = 9.125 }
         ]
-    , drivewayExitDirection = Left
+    , entryDirection = Right
     , parkingLaneStartPosition = Point2d.fromMeters { x = 7.5, y = 3.75 }
     , parkingLaneStartDirection = Right
     , residents =
@@ -160,7 +160,7 @@ residentialApartments1 =
         , noRestrictions <| Point2d.fromMeters { x = 7.75, y = 12.25 }
         , residentParking <| Point2d.fromMeters { x = 12.375, y = 12.25 }
         ]
-    , drivewayExitDirection = Down
+    , entryDirection = Up
     , parkingLaneStartPosition = Point2d.fromMeters { x = 4.75, y = 7.1 }
     , parkingLaneStartDirection = Up
     , residents =
@@ -179,7 +179,7 @@ fireStation =
     , parkingSpots =
         [ residentParking <| Point2d.fromMeters { x = 20.4, y = 5 }
         ]
-    , drivewayExitDirection = Down
+    , entryDirection = Up
     , parkingLaneStartPosition = Point2d.fromMeters { x = 12, y = 5 }
     , parkingLaneStartDirection = Right
     , residents =

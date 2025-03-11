@@ -118,7 +118,9 @@ initialTileInventory : TileInventory (List NewLot)
 initialTileInventory =
     let
         matchesTile largeTile newLot =
-            newLot.horizontalTilesAmount == largeTile.width && newLot.verticalTilesAmount == largeTile.height
+            (newLot.horizontalTilesAmount == largeTile.width)
+                && (newLot.verticalTilesAmount == largeTile.height)
+                && (Just newLot.entryDirection == largeTile.entryDirection)
     in
     lotTiles
         |> List.filterMap

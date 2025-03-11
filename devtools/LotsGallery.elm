@@ -84,8 +84,8 @@ buildLot newLot acc =
             acc.baseY + newLot.verticalTilesAmount + 1
 
         x =
-            case newLot.drivewayExitDirection of
-                Right ->
+            case newLot.entryDirection of
+                Left ->
                     gallerySpotWidth
 
                 _ ->

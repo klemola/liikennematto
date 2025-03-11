@@ -60,6 +60,7 @@ type alias LargeTile =
     , width : Int
     , height : Int
     , anchorIndex : Int
+    , entryDirection : Maybe OrthogonalDirection
     }
 
 

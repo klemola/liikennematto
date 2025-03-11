@@ -871,6 +871,7 @@ twoByTwoLotRightLargeTile =
     , width = 2
     , height = 2
     , anchorIndex = 3
+    , entryDirection = Just OrthogonalDirection.Left
     }
 
 
@@ -904,6 +905,7 @@ threeByThreeLotLeftLargeTile =
     , width = 3
     , height = 3
     , anchorIndex = 6
+    , entryDirection = Just OrthogonalDirection.Right
     }
 
 
@@ -932,6 +934,7 @@ threeByTwoLotUpLargeTile =
     , width = 3
     , height = 2
     , anchorIndex = 3
+    , entryDirection = Just OrthogonalDirection.Up
     }
 
 
@@ -956,6 +959,7 @@ threeByTwoLotLeft =
         , width = 3
         , height = 2
         , anchorIndex = 3
+        , entryDirection = Just OrthogonalDirection.Right
         }
 
 
@@ -982,6 +986,7 @@ twoByThreeLotUp =
         , width = 2
         , height = 3
         , anchorIndex = 4
+        , entryDirection = Just OrthogonalDirection.Up
         }
 
 
@@ -1150,6 +1155,7 @@ natureQuad1 =
         , width = 2
         , height = 2
         , anchorIndex = 0
+        , entryDirection = Nothing
         }
 
 
@@ -1172,4 +1178,5 @@ natureQuad2 =
         , width = 2
         , height = 2
         , anchorIndex = 0
+        , entryDirection = Nothing
         }
