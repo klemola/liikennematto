@@ -97,7 +97,7 @@ type WFCState
 
 type WFCFailure
     = NoSuperpositionOptions
-    | InvalidBigTilePlacement Cell TileId
+    | InvalidBigTilePlacement Cell TileId String
     | InvalidDirection
     | TileNotFound
     | TileUnavailable TileId
@@ -380,7 +380,7 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap } as m
                     let
                         nextOtherSteps =
                             case wfcFailure of
-                                InvalidBigTilePlacement _ _ ->
+                                InvalidBigTilePlacement _ _ _ ->
                                     []
 
                                 NoSuperpositionOptions ->
@@ -396,7 +396,7 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap } as m
                         { withPosition
                             | state = nextState
                             , openSteps = nextOtherSteps
-                            , log = stateDebugInternal nextState :: withPosition.log
+                            , log = stateDebugInternal nextState :: ("Step FAILED " ++ stepDebug currentStep) :: withPosition.log
                         }
 
         [] ->
@@ -739,8 +739,8 @@ largeTileSteps tilemap anchorCell largeTile =
         |> Result.map
             (List.map (\( cell, props ) -> CollapseSubgridCell cell props))
         |> Result.mapError
-            (\_ ->
-                InvalidBigTilePlacement anchorCell largeTile.id
+            (\err ->
+                InvalidBigTilePlacement anchorCell largeTile.id err
             )
 
 
@@ -859,7 +859,10 @@ attemptPlaceSubgridTile tilemap largeTileId subgridCell subgridTileProperties =
                 in
                 ( neighborSteps, tileActions, nextTilemap )
             )
-        |> Result.mapError (\_ -> InvalidBigTilePlacement subgridCell largeTileId)
+        |> Result.mapError
+            (\err ->
+                InvalidBigTilePlacement subgridCell largeTileId err
+            )
 
 
 {-| Same as attemptPlaceSubgridTile, except the subgrid tile fit is only verified
@@ -1058,12 +1061,14 @@ wfcFailureToString wfcFailure =
         NoSuperpositionOptions ->
             "No superposition opts"
 
-        InvalidBigTilePlacement cell tileId ->
+        InvalidBigTilePlacement cell tileId reason ->
             String.join
                 " "
-                [ "Invalid big tile surroundings (no space or socket mismatch)"
+                [ "Invalid big tile placement"
                 , Cell.toString cell
                 , String.fromInt tileId
+                , "Reason:"
+                , reason
                 ]
 
         InvalidDirection ->
@@ -1113,8 +1118,10 @@ stepDebug theStep =
 
         CollapseSubgridCell cell properties ->
             String.join " "
-                [ "CollapseSubgridCell "
+                [ "CollapseSubgridCell"
                 , Cell.toString cell
+                , "Index:"
+                , String.fromInt properties.index
                 , "tile ID:"
                 , String.fromInt properties.singleTile.id
                 , "large tile ID: "
