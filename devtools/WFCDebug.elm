@@ -406,10 +406,10 @@ bottomPanel widthPixels =
 --
 
 
-assetByName : String -> Svg msg
+assetByName : String -> ( Svg msg, String )
 assetByName name =
     Dict.get name assets
-        |> Maybe.withDefault (Svg.g [] [])
+        |> Maybe.withDefault ( Svg.g [] [], "" )
 
 
 tileSetDebug : Element.Length -> Element.Element Msg
@@ -446,6 +446,9 @@ tileConfigDebug tileConfig =
 
         ( _, assetName ) =
             tileConfigIdAndName tileConfig
+
+        ( asset, viewBox ) =
+            assetByName assetName
     in
     Element.el
         (baseAttrs ++ tileSocketsDebug (TileConfig.sockets tileConfig))
@@ -454,8 +457,9 @@ tileConfigDebug tileConfig =
                 [ Svg.Attributes.viewBox "0 0 256 256"
                 , Svg.Attributes.width "64"
                 , Svg.Attributes.height "64"
+                , Svg.Attributes.viewBox viewBox
                 ]
-                [ assetByName assetName ]
+                [ asset ]
             )
         )
 

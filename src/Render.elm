@@ -21,7 +21,7 @@ import Model.RenderCache exposing (RenderCache, Renderable)
 import Model.World exposing (World)
 import Point2d exposing (Point2d)
 import Quantity
-import Render.Conversion exposing (pointToPixels, toPixelsValue, toViewBoxValue)
+import Render.Conversion exposing (pointToPixels, toPixelsValue)
 import Simulation.Car exposing (Car)
 import Simulation.Lot exposing (Lot)
 import Simulation.RoadNetwork
@@ -96,10 +96,10 @@ view { cars, lots, roadNetwork, trafficLights } cache =
         ]
 
 
-assetByName : String -> Svg msg
+assetByName : String -> ( Svg msg, String )
 assetByName name =
     Dict.get name assets
-        |> Maybe.withDefault (Svg.g [] [])
+        |> Maybe.withDefault ( Svg.g [] [], "" )
 
 
 
@@ -250,12 +250,8 @@ tileElement tileSizePixels renderable groupAttrs =
         ( widthPixels, heightPixels ) =
             ( floor tileSizePixels * renderable.width, floor tileSizePixels * renderable.height )
 
-        viewBox =
-            [ "0 0"
-            , String.fromInt (256 * renderable.width)
-            , String.fromInt (256 * renderable.height)
-            ]
-                |> String.join " "
+        ( asset, viewBox ) =
+            assetByName renderable.assetName
     in
     Svg.g
         groupAttrs
@@ -265,7 +261,7 @@ tileElement tileSizePixels renderable groupAttrs =
             , Attributes.fill "none"
             , Attributes.viewBox viewBox
             ]
-            [ assetByName renderable.assetName ]
+            [ asset ]
         ]
 
 
@@ -463,12 +459,8 @@ renderLot cache lot =
         translateStr =
             "translate(" ++ String.fromFloat renderX ++ "," ++ String.fromFloat renderY ++ ")"
 
-        viewBox =
-            [ "0 0"
-            , String.fromFloat (toViewBoxValue lot.width)
-            , String.fromFloat (toViewBoxValue lot.height)
-            ]
-                |> String.join " "
+        ( asset, viewBox ) =
+            assetByName lot.name
     in
     Svg.g [ Attributes.transform translateStr ]
         [ Svg.svg
@@ -477,7 +469,7 @@ renderLot cache lot =
             , Attributes.viewBox viewBox
             , Attributes.fill "none"
             ]
-            [ assetByName lot.name ]
+            [ asset ]
         ]
 
 
