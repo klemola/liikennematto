@@ -321,7 +321,7 @@ view model =
                 Nothing
                 (Length.meters 1)
                 model.path.pointOnSpline
-            , Render.renderCar renderCache model.car
+            , Render.renderCarLazy renderCache model.car
             ]
         , Html.div []
             [ Html.pre [] [ Html.text ("Parameter " ++ Round.round 2 (Length.inMeters model.path.parameter)) ]

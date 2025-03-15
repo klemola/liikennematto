@@ -1,5 +1,6 @@
 module Render exposing
     ( renderCar
+    , renderCarLazy
     , renderLot
     , view
     )
@@ -8,7 +9,7 @@ import Angle
 import Assets exposing (assets)
 import Color
 import Common exposing (GlobalCoordinates)
-import Data.Cars exposing (CarMake, carAsset)
+import Data.Cars exposing (CarMake, carStyleToString)
 import Data.Colors as Colors
 import Dict
 import Graph exposing (Node)
@@ -367,19 +368,19 @@ renderCars cache cars =
     cars
         |> Collection.foldl
             (\_ car acc ->
-                ( "Car-" ++ Collection.idToString car.id, renderCar cache car ) :: acc
+                ( "Car-" ++ Collection.idToString car.id, renderCarLazy cache car ) :: acc
             )
             []
         |> Svg.Keyed.node "g" []
 
 
-renderCar : RenderCache -> Car -> Svg msg
-renderCar cache car =
-    Svg.Lazy.lazy4 carSvg cache car.position car.orientation car.make
+renderCarLazy : RenderCache -> Car -> Svg msg
+renderCarLazy cache car =
+    Svg.Lazy.lazy4 renderCar cache car.position car.orientation car.make
 
 
-carSvg : RenderCache -> Point2d Length.Meters GlobalCoordinates -> Angle.Angle -> CarMake -> Svg msg
-carSvg cache position orientation make =
+renderCar : RenderCache -> Point2d Length.Meters GlobalCoordinates -> Angle.Angle -> CarMake -> Svg msg
+renderCar cache position orientation make =
     let
         { x, y } =
             pointToPixels cache.pixelsToMetersRatio position
@@ -410,10 +411,19 @@ carSvg cache position orientation make =
             "translate(" ++ String.fromFloat renderX ++ " " ++ String.fromFloat renderY ++ ")"
 
         ( asset, viewBox ) =
-            carAsset make
+            assetByName (carStyleToString make.style)
     in
     Svg.g
         [ Attributes.transform <| String.join " " [ rotateStr, translateStr ]
+        , [ "--color-body:"
+          , Color.toCssString make.bodyColor
+          , ";"
+          , "--color-accent:"
+          , Color.toCssString make.accentColor
+          , "; "
+          ]
+            |> String.join " "
+            |> Attributes.style
         ]
         [ Svg.svg
             [ Attributes.width (String.fromFloat carLengthPixels)
