@@ -191,20 +191,23 @@ lotEntrySpline { parkingSpotPosition, lotEntryPosition, parkingSpotExitDirection
 lotExitSpline : LotSplineProperties -> List (CubicSpline2d Length.Meters LocalCoordinates)
 lotExitSpline { parkingSpotPosition, lotExitPosition, parkingSpotExitDirection, parkingLaneStartPosition, parkingLaneStartDirection, entryDirection } =
     let
+        startDirection =
+            parkingSpotExitDirection
+
         exitDirection =
             Direction2d.reverse entryDirection
     in
-    if parkingSpotExitDirection == exitDirection then
-        [ mirroredSpline parkingSpotPosition lotExitPosition 0.66 entryDirection ]
+    if startDirection == Direction2d.reverse entryDirection then
+        [ mirroredSpline parkingSpotPosition lotExitPosition 0.66 startDirection ]
 
-    else if Direction2d.reverse exitDirection /= parkingLaneStartDirection then
+    else if entryDirection /= parkingLaneStartDirection then
         [ -- Room for improvement: use curved spline for parking spots that are not in the axis of the parking lane
           straightSpline parkingSpotPosition parkingLaneStartPosition
         , curveSpline parkingLaneStartPosition lotExitPosition (Direction2d.reverse parkingLaneStartDirection) 0.8
         ]
 
     else if parkingSpotCloseToLotEntry lotExitPosition parkingSpotPosition then
-        [ curveSpline parkingSpotPosition parkingLaneStartPosition entryDirection 0.8
+        [ curveSpline parkingSpotPosition parkingLaneStartPosition startDirection 0.8
         , mirroredSpline parkingLaneStartPosition lotExitPosition 0.33 exitDirection
         ]
 
@@ -214,9 +217,9 @@ lotExitSpline { parkingSpotPosition, lotExitPosition, parkingSpotExitDirection, 
                 parkingSpotSplineStartPosition
                     parkingLaneStartPosition
                     parkingSpotPosition
-                    (exitDirection |> Direction2d.reverse)
+                    entryDirection
         in
-        [ curveSpline parkingSpotPosition parkingSpotSplineStart entryDirection 0.7
+        [ curveSpline parkingSpotPosition parkingSpotSplineStart startDirection 0.7
         , straightSpline parkingSpotSplineStart parkingLaneStartPosition
         , mirroredSpline parkingLaneStartPosition lotExitPosition 0.33 exitDirection
         ]
