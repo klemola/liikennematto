@@ -63,10 +63,10 @@ build newLot anchor lotId =
             constructionSite anchor ( width, height ) newLot
 
         entryPosition =
-            toRoadConnectionPosition innerLaneOffset newLot.entryDirection width
+            toRoadConnectionPosition outerLaneOffset newLot.entryDirection width
 
         exitPosition =
-            toRoadConnectionPosition outerLaneOffset newLot.entryDirection height
+            toRoadConnectionPosition innerLaneOffset newLot.entryDirection width
 
         lotFrame =
             Common.boundingBoxToFrame constructionSiteBB
