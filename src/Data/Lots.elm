@@ -46,6 +46,9 @@ allLots =
     , school
     , cafe
     , fireStation
+    , park1
+    , concertVenue
+    , flowerShop
     ]
 
 
@@ -184,5 +187,57 @@ fireStation =
     , parkingLaneStartDirection = Right
     , residents =
         [ Cars.fireTruck
+        ]
+    }
+
+
+park1 : NewLot
+park1 =
+    { name = "LotPark1"
+    , horizontalTilesAmount = 3
+    , verticalTilesAmount = 3
+    , parkingSpotExitDirection = Down
+    , parkingSpots =
+        [ noRestrictions <| Point2d.fromMeters { x = 6.5, y = 9.875 }
+        ]
+    , entryDirection = Right
+    , parkingLaneStartPosition = Point2d.fromMeters { x = 6.5, y = 9.875 }
+    , parkingLaneStartDirection = Up
+    , residents = []
+    }
+
+
+concertVenue : NewLot
+concertVenue =
+    { name = "LotConcertVenue"
+    , horizontalTilesAmount = 3
+    , verticalTilesAmount = 2
+    , parkingSpotExitDirection = Down
+    , parkingSpots =
+        [ noRestrictions <| Point2d.fromMeters { x = 18.875, y = 10.3125 }
+        , noRestrictions <| Point2d.fromMeters { x = 23.25, y = 10.3125 }
+        ]
+    , entryDirection = Up
+    , parkingLaneStartPosition = Point2d.fromMeters { x = 8.5625, y = 5 }
+    , parkingLaneStartDirection = Right
+    , residents = []
+    }
+
+
+flowerShop : NewLot
+flowerShop =
+    { name = "LotFlowerShop"
+    , horizontalTilesAmount = 2
+    , verticalTilesAmount = 3
+    , parkingSpotExitDirection = Down
+    , parkingSpots =
+        [ noRestrictions <| Point2d.fromMeters { x = 3.125, y = 10.53125 }
+        , residentParking <| Point2d.fromMeters { x = 7.75, y = 10.53125 }
+        ]
+    , entryDirection = Up
+    , parkingLaneStartPosition = Point2d.fromMeters { x = 4.75, y = 7.1 }
+    , parkingLaneStartDirection = Up
+    , residents =
+        [ Cars.sedan Colors.pink Colors.pinkDarker
         ]
     }
