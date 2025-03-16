@@ -17,7 +17,6 @@ module Tilemap.Core exposing
     , getBuildHistory
     , getTilemapConfig
     , getTilemapDimensions
-    , inTilemapBounds
     , removeAnchor
     , removeTile
     , resetFixedTileBySurroundings
@@ -216,11 +215,6 @@ setBuildHistory history (Tilemap tilemapContents) =
 getBuildHistory : Tilemap -> List Cell
 getBuildHistory (Tilemap tilemapContents) =
     tilemapContents.recentPlacements
-
-
-inTilemapBounds : Tilemap -> BoundingBox2d Length.Meters GlobalCoordinates -> Bool
-inTilemapBounds (Tilemap tilemap) testBB =
-    BoundingBox2d.isContainedIn tilemap.boundingBox testBB
 
 
 cellSupportsRoadPlacement : Cell -> Tilemap -> Bool

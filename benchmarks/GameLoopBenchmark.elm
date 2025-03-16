@@ -5,7 +5,7 @@ import Benchmark.Runner exposing (BenchmarkProgram, program)
 import Data.RuleSetups as RuleSetups
 import Duration
 import Message
-import Model.Flags exposing (RuntimeEnvironment(..))
+import Model.Flags
 import Model.Liikennematto as Liikennematto
 import Simulation.Update as Simulation
 import Tilemap.Update as Tilemap

@@ -37,7 +37,6 @@ import Svg.Attributes as Attributes
 import Svg.Keyed
 import Svg.Lazy
 import Tilemap.Cell as Cell
-import Tilemap.Tile exposing (TileKind(..))
 
 
 
@@ -211,24 +210,24 @@ animationOverflowTile tileSizePixels animationDirection =
             case animationDirection of
                 Up ->
                     ( 0
-                    , 0 + tileSizePixels
+                    , tileSizePixels
                     , "clip-path: inset(0 0 " ++ clipAmount ++ " 0);"
                     )
 
                 Down ->
                     ( 0
-                    , 0 - tileSizePixels
+                    , -tileSizePixels
                     , "clip-path: inset(" ++ clipAmount ++ " 0 0 0);"
                     )
 
                 Right ->
-                    ( 0 - tileSizePixels
+                    ( -tileSizePixels
                     , 0
                     , "clip-path: inset(0 0 0 " ++ clipAmount ++ ");"
                     )
 
                 Left ->
-                    ( 0 + tileSizePixels
+                    ( tileSizePixels
                     , 0
                     , "clip-path: inset(0 " ++ clipAmount ++ " 0 0);"
                     )
@@ -563,8 +562,6 @@ renderYieldSign cache node =
         translateStr =
             "translate(" ++ String.fromFloat (x - size / 2) ++ "," ++ String.fromFloat (cache.tilemapHeightPixels - y - (size / 2)) ++ ")"
 
-        -- , Attributes.x <| String.fromFloat (x - size / 2)
-        -- , Attributes.y <| String.fromFloat <|
         ( asset, viewBox ) =
             assetByName "TrafficSignYield"
     in

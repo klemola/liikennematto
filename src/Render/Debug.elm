@@ -29,7 +29,6 @@ import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Svg.Keyed
 import Tilemap.Cell as Cell
-import Tilemap.Tile exposing (TileKind(..))
 import Tilemap.TileConfig exposing (TileId)
 
 
