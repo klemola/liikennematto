@@ -10,7 +10,7 @@ build:
 	terser --compress $(COMPRESS_ARGS) ./build/liikennematto.js --output ./build/liikennematto.min.js
 
 	@echo ">> Copying files"
-	cp -r ./src/sounds ./build
+	cp -r ./imports/sounds/* ./build
 	cp ./src/index.template.html ./build/index.html
 
 	@echo ">> Creating an archive"
@@ -52,6 +52,6 @@ review:
 	elm-review --fix
 
 stats:
-	cloc --exclude-dir=Data,Vendor,sounds src devtools
+	cloc --exclude-dir=Data,Vendor src devtools
 
 .PHONY: build check dev serve test benchmark devtools review stats
