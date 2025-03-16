@@ -15,7 +15,6 @@ module Model.World exposing
     , formatEvents
     , hasLot
     , hasPendingTilemapChange
-    , isEmptyArea
     , prepareNewLot
     , refreshCars
     , refreshLots
@@ -63,10 +62,8 @@ import Tilemap.Core
         , TilemapUpdateResult
         , createTilemap
         , getTilemapConfig
-        , inTilemapBounds
         , removeAnchor
         , tilemapBoundingBox
-        , tilemapIntersects
         )
 import Tilemap.Tile as Tile
 import Tilemap.TileConfig as TileConfig exposing (TileConfig)
@@ -121,7 +118,9 @@ initialTileInventory : TileInventory (List NewLot)
 initialTileInventory =
     let
         matchesTile largeTile newLot =
-            newLot.horizontalTilesAmount == largeTile.width && newLot.verticalTilesAmount == largeTile.height
+            (newLot.horizontalTilesAmount == largeTile.width)
+                && (newLot.verticalTilesAmount == largeTile.height)
+                && (Just newLot.entryDirection == largeTile.entryDirection)
     in
     lotTiles
         |> List.filterMap
@@ -187,19 +186,6 @@ boundingBox world =
 hasLot : Cell -> World -> Bool
 hasLot cell { lots } =
     List.any (Lot.inBounds cell) (Collection.values lots)
-
-
-isEmptyArea : BoundingBox2d Length.Meters GlobalCoordinates -> World -> Bool
-isEmptyArea testAreaBB world =
-    let
-        tilemapOverlap =
-            tilemapIntersects testAreaBB world.tilemap
-
-        lotOverlap =
-            Collection.foldl (\_ lot acc -> lot.boundingBox :: acc) [] world.lots
-                |> List.any (Common.boundingBoxOverlaps testAreaBB)
-    in
-    inTilemapBounds world.tilemap testAreaBB && not lotOverlap && not tilemapOverlap
 
 
 findCarById : Id -> World -> Maybe Car
@@ -398,7 +384,7 @@ removeLot lotId world =
 
                 tileInventoryWithRestoredLot =
                     TileInventory.restoreItem
-                        (\( _, newLot ) -> newLot.kind == lot.kind)
+                        (\( _, newLot ) -> newLot.name == lot.name)
                         (TileInventory.tileIdItemPairs initialTileInventory)
                         world.tileInventory
             in

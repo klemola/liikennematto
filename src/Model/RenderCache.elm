@@ -1,9 +1,7 @@
 module Model.RenderCache exposing
-    ( DynamicTilePresentation
-    , DynamicTilesPresentation
-    , RenderCache
-    , StaticTilePresentation
-    , TilemapPresentation
+    ( RenderCache
+    , Renderable
+    , TilemapDebugItem(..)
     , new
     , refreshTilemapCache
     , setPixelsToMetersRatio
@@ -12,9 +10,8 @@ module Model.RenderCache exposing
     , setTilemapDebugCache
     )
 
-import Common exposing (andCarry)
-import Data.Assets exposing (Assets)
-import Data.TileSet exposing (roadConnectionDirectionsByTile)
+import Common exposing (applyTuple2)
+import Data.TileSet exposing (roadConnectionDirectionsByTile, tileById)
 import Length
 import Lib.FSM as FSM
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
@@ -23,7 +20,7 @@ import Model.World exposing (World)
 import Pixels
 import Quantity
 import Render.Conversion exposing (PixelsToMetersRatio, defaultPixelsToMetersRatio, toPixelsValue)
-import Tilemap.Cell exposing (Cell)
+import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
         ( TileListFilter(..)
@@ -34,43 +31,41 @@ import Tilemap.Core
         , tileToConfig
         , tilemapToList
         )
-import Tilemap.Tile as Tile exposing (Tile, TileKind)
-import Tilemap.TileConfig exposing (TileId)
+import Tilemap.Tile as Tile exposing (Tile)
+import Tilemap.TileConfig as TileConfig exposing (TileId)
 import Tilemap.WFC as WFC
 import UI.Core
 
 
-type alias RenderCache msg =
+type alias RenderCache =
     { pixelsToMetersRatio : PixelsToMetersRatio
-    , tilemap : TilemapPresentation
-    , tilemapDebug : TilemapPresentation
+    , tilemap : List Renderable
+    , tilemapDebug : List ( Cell, TilemapDebugItem )
+    , dynamicTiles : List Renderable
     , tilemapWidthPixels : Float
     , tilemapHeightPixels : Float
     , tilemapWidth : Length.Length
     , tilemapHeight : Length.Length
     , tileListFilter : TileListFilter
-    , assets : Assets msg
     }
 
 
-type alias TilemapPresentation =
-    List StaticTilePresentation
+type alias Renderable =
+    { cell : Cell
+    , width : Int
+    , height : Int
+    , assetName : String
+    , animation : Maybe Animation
+    }
 
 
-type alias StaticTilePresentation =
-    ( Cell, TileKind )
+type TilemapDebugItem
+    = FixedDebug { id : TileId, parentTileId : Maybe TileId }
+    | SuperpositionDebug (List TileId)
 
 
-type alias DynamicTilesPresentation =
-    List DynamicTilePresentation
-
-
-type alias DynamicTilePresentation =
-    ( Cell, TileId, Maybe Animation )
-
-
-new : World -> Assets msg -> RenderCache msg
-new { tilemap } assets =
+new : World -> RenderCache
+new { tilemap } =
     let
         tilemapDimensions =
             getTilemapDimensions tilemap
@@ -85,19 +80,19 @@ new { tilemap } assets =
             StaticTiles
     in
     { pixelsToMetersRatio = defaultPixelsToMetersRatio
-    , tilemap = toTilemapCache initialTileListFilter tilemap
-    , tilemapDebug = toTilemapCache NoFilter tilemap
+    , tilemap = tilemapToList renderableFromTile initialTileListFilter tilemap
+    , tilemapDebug = tilemapToList debugItemFromTile NoFilter tilemap
+    , dynamicTiles = []
     , tilemapWidthPixels =
         tilemapWidthPixels
     , tilemapHeightPixels = tilemapHeigthPixels
     , tilemapWidth = tilemapDimensions.width
     , tilemapHeight = tilemapDimensions.height
     , tileListFilter = initialTileListFilter
-    , assets = assets
     }
 
 
-setPixelsToMetersRatio : UI.Core.ZoomLevel -> RenderCache msg -> RenderCache msg
+setPixelsToMetersRatio : UI.Core.ZoomLevel -> RenderCache -> RenderCache
 setPixelsToMetersRatio zoomLevel cache =
     let
         nextPixelsPerMeter =
@@ -126,36 +121,34 @@ zoomLevelToPixelsPerMeterValue zoomLevel =
             8
 
 
-setTileListFilter : TileListFilter -> RenderCache msg -> RenderCache msg
+setTileListFilter : TileListFilter -> RenderCache -> RenderCache
 setTileListFilter tileListFilter cache =
     { cache | tileListFilter = tileListFilter }
 
 
-setTilemapCache : Tilemap -> Maybe Tilemap -> RenderCache msg -> RenderCache msg
+setTilemapCache : Tilemap -> Maybe Tilemap -> RenderCache -> RenderCache
 setTilemapCache tilemap unsolvedWFCTilemap cache =
     { cache
-        | tilemap = toTilemapCache cache.tileListFilter tilemap
+        | tilemap = tilemapToList renderableFromTile cache.tileListFilter tilemap
 
         -- TODO: the debug state should only be set if the debug layer is open
         -- it is costly
         , tilemapDebug =
             case unsolvedWFCTilemap of
                 Just wfcTilemap ->
-                    toTilemapCache NoFilter wfcTilemap
+                    tilemapToList debugItemFromTile NoFilter wfcTilemap
 
                 Nothing ->
                     cache.tilemapDebug
     }
 
 
-setTilemapDebugCache : WFC.Model -> RenderCache msg -> RenderCache msg
+setTilemapDebugCache : WFC.Model -> RenderCache -> RenderCache
 setTilemapDebugCache wfcModel cache =
-    { cache
-        | tilemapDebug = toTilemapCache NoFilter (WFC.toTilemap wfcModel)
-    }
+    { cache | tilemapDebug = tilemapToList debugItemFromTile NoFilter (WFC.toTilemap wfcModel) }
 
 
-refreshTilemapCache : TilemapUpdateResult -> RenderCache msg -> ( RenderCache msg, DynamicTilesPresentation )
+refreshTilemapCache : TilemapUpdateResult -> RenderCache -> RenderCache
 refreshTilemapCache tilemapUpdateResult cache =
     let
         nextCache =
@@ -174,28 +167,87 @@ refreshTilemapCache tilemapUpdateResult cache =
                     tilemapUpdateResult.tilemap
                     tilemapUpdateResult.dynamicCells
     in
-    ( nextCache, nextDynamicTiles )
+    { nextCache | dynamicTiles = nextDynamicTiles }
 
 
-toTilemapCache : TileListFilter -> Tilemap -> List StaticTilePresentation
-toTilemapCache tileListFilter tilemap =
-    tilemapToList tileMapper tileListFilter tilemap
+renderableFromTile : Cell -> Tile -> Maybe Renderable
+renderableFromTile cell tile =
+    case tile.kind of
+        Tile.Fixed props ->
+            let
+                maybeLargeTile =
+                    props.parentTile |> Maybe.andThen (applyTuple2 extractLargeTileFromSubgridTile)
+            in
+            case maybeLargeTile of
+                Just largeTile ->
+                    Just
+                        { cell = cell
+                        , width = largeTile.width
+                        , height = largeTile.height
+                        , assetName = largeTile.name
+                        , animation = Nothing
+                        }
+
+                Nothing ->
+                    if props.name == "_subgrid" then
+                        Nothing
+
+                    else
+                        Just
+                            { cell = cell
+                            , width = 1
+                            , height = 1
+                            , assetName = props.name
+                            , animation = Nothing
+                            }
+
+        _ ->
+            Nothing
 
 
-tileMapper : Cell -> Tile -> StaticTilePresentation
-tileMapper cell tile =
-    ( cell, tile.kind )
+debugItemFromTile : Cell -> Tile -> Maybe ( Cell, TilemapDebugItem )
+debugItemFromTile cell tile =
+    case tile.kind of
+        Tile.Fixed props ->
+            Just
+                ( cell
+                , FixedDebug
+                    { id = props.id
+                    , parentTileId = Maybe.map Tuple.first props.parentTile
+                    }
+                )
+
+        Tile.Superposition ids ->
+            Just ( cell, SuperpositionDebug ids )
+
+        _ ->
+            Nothing
 
 
-toDynamicTiles : Tilemap -> List Cell -> DynamicTilesPresentation
-toDynamicTiles tilemap changingCells =
-    changingCells
-        |> List.filterMap
-            (\cell ->
-                fixedTileByCell tilemap cell
-                    |> andCarry Tile.id
-                    |> Maybe.map (\( tile, tileId ) -> ( cell, tileId, tileAnimation tile ))
-            )
+toDynamicTiles : Tilemap -> List Cell -> List Renderable
+toDynamicTiles tilemap =
+    List.filterMap
+        (\cell ->
+            fixedTileByCell tilemap cell
+                |> Maybe.map (Tuple.pair cell)
+                |> Maybe.andThen toRenderable
+        )
+
+
+toRenderable : ( Cell, Tile ) -> Maybe Renderable
+toRenderable ( cell, tile ) =
+    case tile.kind of
+        Tile.Fixed props ->
+            Just
+                { cell = cell
+                , width = 1
+                , height = 1
+                , assetName = props.name
+                , animation = tileAnimation tile
+                }
+
+        _ ->
+            Nothing
 
 
 tileAnimation : Tile -> Maybe Animation
@@ -236,4 +288,29 @@ animationDirectionFromTile tile =
             Just (OrthogonalDirection.opposite connection)
 
         _ ->
+            Nothing
+
+
+extractLargeTileFromSubgridTile : TileId -> Int -> Maybe TileConfig.LargeTile
+extractLargeTileFromSubgridTile tileId subgridIndex =
+    case tileById tileId of
+        TileConfig.Large largeTile ->
+            let
+                subgridCoords =
+                    subgridIndex
+                        |> Cell.fromArray1DIndexUnsafe
+                            { horizontalCellsAmount = largeTile.width
+                            , verticalCellsAmount = largeTile.height
+                            }
+                        |> Cell.coordinates
+            in
+            -- See if the subgrid cell is the top left one, because it's
+            -- the only valid render root for the asset
+            if subgridCoords == ( 1, 1 ) then
+                Just largeTile
+
+            else
+                Nothing
+
+        TileConfig.Single _ ->
             Nothing

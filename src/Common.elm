@@ -6,7 +6,6 @@ module Common exposing
     , applyTuple2
     , attemptFoldList
     , attemptMapList
-    , boundingBoxOverlaps
     , boundingBoxToFrame
     , boundingBoxWithDimensions
     , isCloseToZeroVelocity
@@ -79,11 +78,6 @@ boundingBoxWithDimensions width height origin =
                 |> Point2d.translateIn Direction2d.positiveY height
     in
     BoundingBox2d.from origin otherCorner
-
-
-boundingBoxOverlaps : BoundingBox2d Length.Meters GlobalCoordinates -> BoundingBox2d Length.Meters GlobalCoordinates -> Bool
-boundingBoxOverlaps bb1 bb2 =
-    BoundingBox2d.overlappingByAtLeast (Length.meters 0.1) bb1 bb2
 
 
 splitBoundingBoxHorizontally :

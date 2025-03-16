@@ -4,6 +4,7 @@ import Audio exposing (playSound)
 import Data.TileSet
     exposing
         ( defaultTiles
+        , tileById
         , tileIdByBitmask
         )
 import Maybe.Extra as Maybe
@@ -87,13 +88,12 @@ update msg model =
                         Nothing ->
                             Cmd.none
 
-                ( nextRenderCache, dynamicTiles ) =
+                nextRenderCache =
                     refreshTilemapCache withRemovedEffects renderCache
             in
             ( { model
                 | world = nextWorld
                 , renderCache = nextRenderCache
-                , dynamicTiles = dynamicTiles
               }
             , Cmd.batch (tilemapChangedEffects :: tileActionsToCmds withRemovedEffects.actions)
             )
@@ -273,8 +273,11 @@ addTile cell model =
 addTileById : Cell -> TileId -> World -> Tilemap -> ( Tilemap, List Action )
 addTileById cell tileId world tilemap =
     let
+        tileConfig =
+            tileById tileId
+
         ( updatedTilemap, tilemapChangeActions ) =
-            Tilemap.Core.addTile tileId cell tilemap
+            Tilemap.Core.addTile tileConfig cell tilemap
 
         wfcModel =
             resetWfc world.seed (Just cell) (World.tileInventoryCount world) updatedTilemap

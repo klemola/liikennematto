@@ -4,9 +4,9 @@ import Data.TileSet
     exposing
         ( allTiles
         , defaultTiles
-        , threeByThreeLotLargeTile
-        , threeByTwoLotALargeTile
-        , twoByTwoLotLargeTile
+        , threeByThreeLotLeftLargeTile
+        , threeByTwoLotUpLargeTile
+        , twoByTwoLotRightLargeTile
         )
 import Data.Utility
     exposing
@@ -291,12 +291,12 @@ suite =
                     Expect.all
                         [ \_ ->
                             Expect.equal
-                                (WFC.checkLargeTileFit tilemap twoByTwoLotDriveway twoByTwoLotLargeTile)
-                                (Just twoByTwoLotLargeTile)
+                                (WFC.checkLargeTileFit tilemap twoByTwoLotDriveway twoByTwoLotRightLargeTile)
+                                (Just twoByTwoLotRightLargeTile)
                         , \_ ->
                             Expect.equal
-                                (WFC.checkLargeTileFit tilemap threeByThreeLotDriveway threeByThreeLotLargeTile)
-                                (Just threeByThreeLotLargeTile)
+                                (WFC.checkLargeTileFit tilemap threeByThreeLotDriveway threeByThreeLotLeftLargeTile)
+                                (Just threeByThreeLotLeftLargeTile)
                         ]
                         ()
                 )
@@ -316,8 +316,8 @@ suite =
                                 |> setSuperpositionOptions threeByTwoLotEntry [ 20, 6 ]
                     in
                     Expect.equal
-                        (WFC.checkLargeTileFit tilemap threeByTwoLotDriveway threeByTwoLotALargeTile)
-                        (Just threeByTwoLotALargeTile)
+                        (WFC.checkLargeTileFit tilemap threeByTwoLotDriveway threeByTwoLotUpLargeTile)
+                        (Just threeByTwoLotUpLargeTile)
                 )
             , test "Should report bad tile fit (fixed tile blocks lot entry)"
                 (\_ ->
@@ -335,7 +335,7 @@ suite =
                                 |> setSuperpositionOptions threeByTwoLotEntry [ 20, 6 ]
                     in
                     Expect.equal
-                        (WFC.checkLargeTileFit tilemap threeByTwoLotDriveway threeByTwoLotALargeTile)
+                        (WFC.checkLargeTileFit tilemap threeByTwoLotDriveway threeByTwoLotUpLargeTile)
                         Nothing
                 )
             ]

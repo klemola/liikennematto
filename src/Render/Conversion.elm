@@ -4,7 +4,6 @@ module Render.Conversion exposing
     , pointToPixels
     , toMetersValue
     , toPixelsValue
-    , toViewBoxValue
     )
 
 import Common exposing (GlobalCoordinates)
@@ -18,31 +17,15 @@ type alias PixelsToMetersRatio =
     Quantity Float (Rate Pixels.Pixels Length.Meters)
 
 
-type alias MetersToViewboxRatio =
-    Quantity Float (Rate Length.Meters Pixels.Pixels)
-
-
 defaultPixelsToMetersRatio : PixelsToMetersRatio
 defaultPixelsToMetersRatio =
     Pixels.pixels 6 |> Quantity.per (Length.meters 1)
-
-
-metersToViewBoxRatio : MetersToViewboxRatio
-metersToViewBoxRatio =
-    Length.meters 1 |> Quantity.per (Pixels.pixels 16)
 
 
 toPixelsValue : PixelsToMetersRatio -> Length -> Float
 toPixelsValue pixelsToMetersRatio length =
     length
         |> Quantity.at pixelsToMetersRatio
-        |> Pixels.inPixels
-
-
-toViewBoxValue : Length -> Float
-toViewBoxValue length =
-    length
-        |> Quantity.at_ metersToViewBoxRatio
         |> Pixels.inPixels
 
 

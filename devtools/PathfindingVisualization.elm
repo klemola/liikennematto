@@ -11,7 +11,6 @@ import Browser
 import Browser.Events as Events
 import Common exposing (GlobalCoordinates)
 import CubicSpline2d exposing (ArcLengthParameterized, Nondegenerate)
-import Data.Assets exposing (roads)
 import Data.Cars exposing (testCar)
 import Data.Colors as Colors
 import Data.Utility exposing (testSeed)
@@ -63,9 +62,9 @@ world =
         }
 
 
-renderCache : RenderCache Msg
+renderCache : RenderCache
 renderCache =
-    RenderCache.new world roads
+    RenderCache.new world
 
 
 renderArea : Length.Length
@@ -322,7 +321,7 @@ view model =
                 Nothing
                 (Length.meters 1)
                 model.path.pointOnSpline
-            , Render.renderCar renderCache model.car
+            , Render.renderCarLazy renderCache model.car
             ]
         , Html.div []
             [ Html.pre [] [ Html.text ("Parameter " ++ Round.round 2 (Length.inMeters model.path.parameter)) ]

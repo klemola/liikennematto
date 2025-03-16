@@ -21,6 +21,7 @@ module Tilemap.TileConfig exposing
     , sockets
     , socketsList
     , tileConfigId
+    , tileConfigIdAndName
     , toString
     , weight
     )
@@ -41,6 +42,7 @@ type TileConfig
 
 type alias SingleTile =
     { id : TileId
+    , name : String
     , weight : Float -- 0.0 to 1.0
     , graphPriority : Float -- 0.0. to 1.0
     , biome : TileBiome
@@ -51,12 +53,14 @@ type alias SingleTile =
 
 type alias LargeTile =
     { id : TileId
+    , name : String
     , weight : Float -- 0.0 to 1.0
     , biome : TileBiome
     , tiles : Array SingleTile
     , width : Int
     , height : Int
     , anchorIndex : Int
+    , entryDirection : Maybe OrthogonalDirection
     }
 
 
@@ -117,6 +121,16 @@ tileConfigId tileConfig =
 
         Large largeTile ->
             largeTile.id
+
+
+tileConfigIdAndName : TileConfig -> ( TileId, String )
+tileConfigIdAndName tileConfig =
+    case tileConfig of
+        Single singleTile ->
+            ( singleTile.id, singleTile.name )
+
+        Large largeTile ->
+            ( largeTile.id, largeTile.name )
 
 
 weight : TileConfig -> Float
@@ -252,8 +266,8 @@ toString tileConfig =
             "Large " ++ String.fromInt largeTile.id
 
 
-mirroredHorizontally : TileId -> TileConfig -> TileConfig
-mirroredHorizontally id tileConfig =
+mirroredHorizontally : TileId -> String -> TileConfig -> TileConfig
+mirroredHorizontally id name tileConfig =
     case tileConfig of
         Single st ->
             let
@@ -263,6 +277,7 @@ mirroredHorizontally id tileConfig =
             Single
                 { st
                     | id = id
+                    , name = name
                     , sockets = { sockets_ | left = sockets_.right, right = sockets_.left }
                 }
 
@@ -270,8 +285,8 @@ mirroredHorizontally id tileConfig =
             tileConfig
 
 
-mirroredVertically : TileId -> TileConfig -> TileConfig
-mirroredVertically id tileConfig =
+mirroredVertically : TileId -> String -> TileConfig -> TileConfig
+mirroredVertically id name tileConfig =
     case tileConfig of
         Single st ->
             let
@@ -281,6 +296,7 @@ mirroredVertically id tileConfig =
             Single
                 { st
                     | id = id
+                    , name = name
                     , sockets = { sockets_ | top = sockets_.bottom, bottom = sockets_.top }
                 }
 
@@ -288,13 +304,14 @@ mirroredVertically id tileConfig =
             tileConfig
 
 
-rotatedClockwise : TileId -> TileConfig -> TileConfig
-rotatedClockwise id tileConfig =
+rotatedClockwise : TileId -> String -> TileConfig -> TileConfig
+rotatedClockwise id name tileConfig =
     case tileConfig of
         Single st ->
             Single
                 { st
                     | id = id
+                    , name = name
                     , sockets =
                         { top = st.sockets.left
                         , right = st.sockets.top

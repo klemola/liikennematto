@@ -21,7 +21,7 @@ import Angle exposing (Angle)
 import BoundingBox2d exposing (BoundingBox2d)
 import Common exposing (GlobalCoordinates, LocalCoordinates)
 import CubicSpline2d exposing (CubicSpline2d)
-import Data.Lots exposing (LotKind, NewLot, ParkingRestriction(..), drivewayOffset)
+import Data.Lots exposing (NewLot, ParkingRestriction(..), drivewayOffset)
 import Direction2d
 import Length exposing (Length)
 import Lib.Collection exposing (Id)
@@ -36,14 +36,14 @@ import Vector2d
 
 type alias Lot =
     { id : Id
-    , kind : LotKind
+    , name : String
     , width : Length
     , height : Length
     , position : Point2d Length.Meters GlobalCoordinates
     , boundingBox : BoundingBox2d Length.Meters GlobalCoordinates
     , entryPosition : Point2d Length.Meters GlobalCoordinates
     , exitPosition : Point2d Length.Meters GlobalCoordinates
-    , drivewayExitDirection : OrthogonalDirection
+    , entryDirection : OrthogonalDirection
     , parkingSpotExitDirection : OrthogonalDirection
     , parkingSpots : List ParkingSpot
     , parkingLock : Maybe Id
@@ -63,10 +63,10 @@ build newLot anchor lotId =
             constructionSite anchor ( width, height ) newLot
 
         entryPosition =
-            toRoadConnectionPosition innerLaneOffset newLot.drivewayExitDirection width
+            toRoadConnectionPosition innerLaneOffset newLot.entryDirection width
 
         exitPosition =
-            toRoadConnectionPosition outerLaneOffset newLot.drivewayExitDirection height
+            toRoadConnectionPosition outerLaneOffset newLot.entryDirection height
 
         lotFrame =
             Common.boundingBoxToFrame constructionSiteBB
@@ -78,7 +78,7 @@ build newLot anchor lotId =
                     , lotEntryPosition = entryPosition
                     , lotExitPosition = exitPosition
                     , parkingSpotExitDirection = OrthogonalDirection.toDirection2d newLot.parkingSpotExitDirection
-                    , drivewayExitDirection = OrthogonalDirection.toDirection2d newLot.drivewayExitDirection
+                    , entryDirection = OrthogonalDirection.toDirection2d newLot.entryDirection
                     , parkingLaneStartPosition = newLot.parkingLaneStartPosition
                     , parkingLaneStartDirection = OrthogonalDirection.toDirection2d newLot.parkingLaneStartDirection
                     }
@@ -92,14 +92,14 @@ build newLot anchor lotId =
             }
     in
     { id = lotId
-    , kind = newLot.kind
+    , name = newLot.name
     , width = width
     , height = height
     , position = BoundingBox2d.centerPoint constructionSiteBB
     , boundingBox = constructionSiteBB
     , entryPosition = Point2d.placeIn lotFrame entryPosition
     , exitPosition = Point2d.placeIn lotFrame exitPosition
-    , drivewayExitDirection = newLot.drivewayExitDirection
+    , entryDirection = newLot.entryDirection
     , parkingSpotExitDirection = newLot.parkingSpotExitDirection
     , parkingLock = Nothing
     , parkingSpots =
@@ -118,24 +118,24 @@ build newLot anchor lotId =
 
 
 toRoadConnectionPosition : Length -> OrthogonalDirection -> Length -> Point2d Length.Meters LocalCoordinates
-toRoadConnectionPosition laneOffset drivewayExitDirection lotWidth =
-    case drivewayExitDirection of
+toRoadConnectionPosition laneOffset entryDirection lotWidth =
+    case entryDirection of
         Right ->
             Point2d.xy
-                lotWidth
+                Quantity.zero
                 (Cell.size
                     |> Quantity.minus laneOffset
                     |> Quantity.minus drivewayOffset
                 )
 
-        Down ->
+        Up ->
             Point2d.xy
                 (laneOffset |> Quantity.minus drivewayOffset)
                 Quantity.zero
 
         Left ->
             Point2d.xy
-                Quantity.zero
+                lotWidth
                 (Cell.size
                     |> Quantity.minus laneOffset
                     |> Quantity.minus drivewayOffset
@@ -146,14 +146,26 @@ toRoadConnectionPosition laneOffset drivewayExitDirection lotWidth =
 
 
 constructionSite : Cell -> ( Length, Length ) -> NewLot -> BoundingBox2d Length.Meters GlobalCoordinates
-constructionSite anchor ( width, height ) { drivewayExitDirection } =
+constructionSite anchor ( width, height ) { entryDirection } =
     let
         origin =
             Cell.bottomLeftCorner anchor
 
         displacement =
-            case drivewayExitDirection of
+            case entryDirection of
                 Up ->
+                    -- Bottom left entry/exit cell
+                    Vector2d.xy
+                        Quantity.zero
+                        Cell.size
+
+                Right ->
+                    -- Bottom left entry/exit cell
+                    Vector2d.xy
+                        Cell.size
+                        Quantity.zero
+
+                Down ->
                     -- Top right entry/exit cell
                     Vector2d.xy
                         (width
@@ -162,22 +174,10 @@ constructionSite anchor ( width, height ) { drivewayExitDirection } =
                         )
                         (Quantity.negate height)
 
-                Right ->
+                Left ->
                     -- Bottom right entry/exit cell
                     Vector2d.xy
                         (Quantity.negate width)
-                        Quantity.zero
-
-                Down ->
-                    -- Bottom left entry/exit cell
-                    Vector2d.xy
-                        Quantity.zero
-                        Cell.size
-
-                Left ->
-                    -- Bottom left entry/exit cell
-                    Vector2d.xy
-                        Cell.size
                         Quantity.zero
 
         bottomLeftCorner =

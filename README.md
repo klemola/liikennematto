@@ -30,12 +30,12 @@ Cars move and turn smoothly, avoid collision with each other, follow traffic sig
 -   signal intersections (traffic lights)
 -   yield sign based intersections
 -   parking
--   dead end streets
--   procedural generation of lots and buildings
+-   procedural generation of lots, buildings and decorations
 -   debug tools
     -   spawn cars
     -   show road network visualization
     -   show car debug layers
+    -   show lot parking spots and parking lock
 
 ### Map editor
 
@@ -56,26 +56,20 @@ Read more about the project from [Liikennematto dev blog #1: prototyping traffic
 
 ---
 
+## Instructions for local development
+
+To run Liikennematto, you need `elm 0.19.1`, which you can get from [NPM](https://www.npmjs.com/package/elm) or possibly your system's package manager.
+
+Additionally, you need `elm-format`, `elm-test`, and `elm-review` for devtools, which can all be installed from NPM.
+
+Run `elm reactor` on the project root to start a dev server. You can then navigate to [http://127.0.0.1:8000/src/Main.elm](http://127.0.0.1:8000/src/Main.elm) to build the game. If you make changes, a full reload of the browser window will re-compile it. If you're on a UNIX-based system, you can use `make` to run this command and many others. See [Makefile](./Makefile) for reference on what's possible.
+
+There's one thing, though. I have moved all assets out of the source into a private project that pre-processes and transforms the original assets to work with Liikennematto. As such, if you try to compile Liikennematto, you'll get an error for missing `Assets` module. If you add a dummy module to fix this, you will not be able to render anything meaningful. Sounds will be missing as well. I intend to eventually offer a free asset package for development, but currently, due to time constraints, I can't. Get in touch if you really want to take Liikennematto for a spin.
+
+## Updates
+
 Follow me on [Bluesky](https://bsky.app/profile/matiasklemola.com) or [Mastodon](https://mastodon.gamedev.place/@yourmagicisworking) for updates!
 
 ## Attribution
 
 Thanks to [Kenney](https://kenney.nl/assets) for the free game assets used during the development (subset of the "Road Textures" and "Racing Pack" collections).
-
-## License
-
-The license covers original work, and excludes anything attributed above. See attribution for third party asset license.
-
-### Source code, custom graphics and sound assets
-
-Copyright 2022 Matias Klemola
-
-Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-
-1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-
-2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

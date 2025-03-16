@@ -30,7 +30,7 @@ type SVGCoordinates
     = SVGCoordinates -- Y down instead of up
 
 
-cubicSpline : RenderCache msg -> Color -> CubicSpline2d Length.Meters GlobalCoordinates -> Svg msg
+cubicSpline : RenderCache -> Color -> CubicSpline2d Length.Meters GlobalCoordinates -> Svg msg
 cubicSpline cache color spline =
     let
         splineInSVGCoords =
@@ -64,7 +64,7 @@ cubicSpline cache color spline =
         ]
 
 
-cubicSplineDebug : RenderCache msg -> Color -> CubicSpline2d Length.Meters GlobalCoordinates -> Svg msg
+cubicSplineDebug : RenderCache -> Color -> CubicSpline2d Length.Meters GlobalCoordinates -> Svg msg
 cubicSplineDebug cache color spline =
     let
         splineInSVGCoords =
@@ -115,7 +115,7 @@ cubicSplineDebug cache color spline =
         ]
 
 
-circle : RenderCache msg -> Color -> Maybe ( Color, Float ) -> Length.Length -> Point2d Length.Meters GlobalCoordinates -> Svg msg
+circle : RenderCache -> Color -> Maybe ( Color, Float ) -> Length.Length -> Point2d Length.Meters GlobalCoordinates -> Svg msg
 circle cache fillColor strokeProperties radius centerPoint =
     let
         centerPointInSVGCoords =
@@ -141,7 +141,7 @@ circle cache fillColor strokeProperties radius centerPoint =
         (Circle2d.atPoint centerPointInSVGCoords radiusPixels)
 
 
-line : RenderCache msg -> Color -> LineSegment2d Length.Meters GlobalCoordinates -> Svg msg
+line : RenderCache -> Color -> LineSegment2d Length.Meters GlobalCoordinates -> Svg msg
 line cache color lineSegment =
     let
         rayInSVGCoords =
@@ -161,7 +161,7 @@ line cache color lineSegment =
         rayInSVGCoords
 
 
-arc : RenderCache msg -> Color -> Arc2d Length.Meters GlobalCoordinates -> Svg msg
+arc : RenderCache -> Color -> Arc2d Length.Meters GlobalCoordinates -> Svg msg
 arc cache color theArc =
     let
         start =
@@ -188,7 +188,7 @@ arc cache color theArc =
         arcInSVGCoords
 
 
-boundingBox : RenderCache msg -> Color -> BoundingBox2d Length.Meters GlobalCoordinates -> Svg msg
+boundingBox : RenderCache -> Color -> BoundingBox2d Length.Meters GlobalCoordinates -> Svg msg
 boundingBox cache color bb =
     let
         centerPointPixels =

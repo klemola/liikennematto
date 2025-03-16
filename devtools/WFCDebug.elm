@@ -1,7 +1,7 @@
 module WFCDebug exposing (main)
 
+import Assets exposing (assets)
 import Browser
-import Data.Assets exposing (assetById, debugAssets, roads)
 import Data.Colors
 import Data.TileSet
     exposing
@@ -20,13 +20,13 @@ import Html exposing (Html)
 import Html.Attributes
 import List.Extra
 import Model.Debug
-import Model.RenderCache as RenderCache exposing (RenderCache)
+import Model.RenderCache as RenderCache
 import Model.World as World
 import Process
 import Random
 import Render
 import Render.Debug
-import Svg
+import Svg exposing (Svg)
 import Svg.Attributes
 import Task
 import Tilemap.Core
@@ -42,6 +42,7 @@ import Tilemap.TileConfig as TileConfig
         , TileConfig
         , allSockets
         , tileConfigId
+        , tileConfigIdAndName
         )
 import Tilemap.TileInventory exposing (TileInventory)
 import Tilemap.WFC as WFC
@@ -65,7 +66,7 @@ type Msg
 type alias Model =
     { wfcModel : WFC.Model
     , world : World.World
-    , cache : RenderCache.RenderCache Msg
+    , cache : RenderCache.RenderCache
     , mode : Mode
     , editor : Editor.Model
     }
@@ -97,8 +98,7 @@ init _ =
             World.empty initialSeed tilemapConfig
 
         cache =
-            -- TODO: the tile list filter setup is not required if tile FSMs are updated
-            RenderCache.new world roads
+            RenderCache.new world
                 |> RenderCache.setTileListFilter NoFilter
     in
     ( { wfcModel = initWFC initialSeed
@@ -317,7 +317,7 @@ view model =
                 |> Element.html
 
         render =
-            Render.view model.world model.cache []
+            Render.view model.world model.cache
                 |> Element.html
                 |> Element.el
                     [ Element.width (Element.px renderWidth)
@@ -341,7 +341,7 @@ view model =
             [ render
             , sidePanel model.mode model.wfcModel
             ]
-        , bottomPanel model.cache renderWidth
+        , bottomPanel renderWidth
         ]
         |> Element.layout
             [ Element.width Element.fill
@@ -392,10 +392,10 @@ controls =
         ]
 
 
-bottomPanel : RenderCache Msg -> Int -> Element.Element Msg
-bottomPanel cache widthPixels =
+bottomPanel : Int -> Element.Element Msg
+bottomPanel widthPixels =
     Element.row [ Element.spacing 8 ]
-        [ tileSetDebug cache (Element.px widthPixels)
+        [ tileSetDebug (Element.px widthPixels)
         , socketsMatrix
         ]
 
@@ -406,8 +406,14 @@ bottomPanel cache widthPixels =
 --
 
 
-tileSetDebug : RenderCache Msg -> Element.Length -> Element.Element Msg
-tileSetDebug cache width =
+assetByName : String -> ( Svg msg, String )
+assetByName name =
+    Dict.get name assets
+        |> Maybe.withDefault ( Svg.g [] [], "" )
+
+
+tileSetDebug : Element.Length -> Element.Element Msg
+tileSetDebug width =
     Element.wrappedRow
         [ Element.spacing 16
         , Element.padding 8
@@ -415,11 +421,11 @@ tileSetDebug cache width =
         , Element.Background.color (Element.rgba 0.1 0.1 0.1 0.9)
         , Element.alignTop
         ]
-        (List.map (tileConfigDebug cache) allTiles)
+        (List.map tileConfigDebug allTiles)
 
 
-tileConfigDebug : RenderCache Msg -> TileConfig -> Element.Element Msg
-tileConfigDebug cache tileConfig =
+tileConfigDebug : TileConfig -> Element.Element Msg
+tileConfigDebug tileConfig =
     let
         idDebug =
             Element.el
@@ -438,13 +444,11 @@ tileConfigDebug cache tileConfig =
             , Element.Font.color (Data.Colors.uiCompat Data.Colors.gray7)
             ]
 
-        assets =
-            case TileConfig.biome tileConfig of
-                TileConfig.Road ->
-                    cache.assets
+        ( _, assetName ) =
+            tileConfigIdAndName tileConfig
 
-                _ ->
-                    debugAssets
+        ( asset, viewBox ) =
+            assetByName assetName
     in
     Element.el
         (baseAttrs ++ tileSocketsDebug (TileConfig.sockets tileConfig))
@@ -453,8 +457,9 @@ tileConfigDebug cache tileConfig =
                 [ Svg.Attributes.viewBox "0 0 256 256"
                 , Svg.Attributes.width "64"
                 , Svg.Attributes.height "64"
+                , Svg.Attributes.viewBox viewBox
                 ]
-                (assetById assets (tileConfigId tileConfig))
+                [ asset ]
             )
         )
 

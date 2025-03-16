@@ -7,7 +7,7 @@ module Tilemap.Tile exposing
     , TileOperation(..)
     , TileState(..)
     , attemptRemove
-    , fromTileId
+    , fromTileConfig
     , id
     , init
     , isBuilt
@@ -20,7 +20,7 @@ import Audio exposing (Sound)
 import Duration exposing (Duration)
 import Lib.FSM as FSM exposing (FSM, State)
 import Tilemap.Cell exposing (Cell)
-import Tilemap.TileConfig exposing (TileId)
+import Tilemap.TileConfig as TileConfig exposing (TileConfig, TileId)
 
 
 type alias Tile =
@@ -36,7 +36,10 @@ type TileKind
 
 
 type alias FixedTileProperties =
-    { id : TileId, parentTile : Maybe ( TileId, Int ) }
+    { id : TileId
+    , name : String
+    , parentTile : Maybe ( TileId, Int )
+    }
 
 
 type alias TileFSM =
@@ -70,8 +73,8 @@ init kind =
     }
 
 
-fromTileId : TileId -> Maybe ( TileId, Int ) -> TileOperation -> ( Tile, List Action )
-fromTileId tileId parentTileProperties op =
+fromTileConfig : TileConfig -> Maybe ( TileId, Int ) -> TileOperation -> ( Tile, List Action )
+fromTileConfig tileConfig parentTileProperties op =
     let
         initialState =
             case op of
@@ -83,10 +86,14 @@ fromTileId tileId parentTileProperties op =
 
         ( fsm, initialActions ) =
             FSM.initialize initialState
+
+        ( tileId, name ) =
+            TileConfig.tileConfigIdAndName tileConfig
     in
     ( { kind =
             Fixed
                 { id = tileId
+                , name = name
                 , parentTile = parentTileProperties
                 }
       , fsm = fsm
@@ -150,8 +157,8 @@ transitionTimer =
     Duration.milliseconds 250
 
 
-transitionTimerShort : Duration
-transitionTimerShort =
+transitionTimerGenerated : Duration
+transitionTimerGenerated =
     Duration.milliseconds 100
 
 
@@ -208,7 +215,7 @@ generated =
             [ FSM.createTransition
                 (\_ -> built)
                 []
-                (FSM.Timer transitionTimerShort)
+                (FSM.Timer transitionTimerGenerated)
             , FSM.createTransition
                 (\_ -> changing)
                 []

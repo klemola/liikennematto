@@ -234,7 +234,7 @@ addLot time tileConfig drivewayCell ({ tilemap, lots } as world) =
             -- Use of unsafe function: to get here, the next Cell has to exist (it is the lot entry cell)
             Cell.nextOrthogonalCellUnsafe
                 (getTilemapConfig tilemap)
-                newLot.drivewayExitDirection
+                (OrthogonalDirection.opposite newLot.entryDirection)
                 drivewayCell
 
         builderFn =
@@ -248,7 +248,7 @@ addLot time tileConfig drivewayCell ({ tilemap, lots } as world) =
         |> World.setTilemap
             (addAnchor anchorCell
                 lot.id
-                (OrthogonalDirection.opposite lot.drivewayExitDirection)
+                lot.entryDirection
                 world.tilemap
             )
         |> addLotResidents time lot.id newLot.residents
