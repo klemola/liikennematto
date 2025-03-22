@@ -27,7 +27,7 @@ type alias NewLot =
     , parkingSpotExitDirection : OrthogonalDirection
     , parkingSpots : List ( Point2d Length.Meters LocalCoordinates, ParkingRestriction )
     , entryDirection : OrthogonalDirection
-    , parkingLaneStartPosition : Point2d Length.Meters LocalCoordinates
+    , parkingLaneStartPoint : Point2d Length.Meters LocalCoordinates
     , parkingLaneStartDirection : OrthogonalDirection
     , residents : List CarMake
     }
@@ -78,7 +78,7 @@ residentialSingle1 =
         [ residentParking <| Point2d.fromMeters { x = 21.25, y = 3.75 }
         ]
     , entryDirection = Left
-    , parkingLaneStartPosition = Point2d.fromMeters { x = 21.25, y = 3.75 }
+    , parkingLaneStartPoint = Point2d.fromMeters { x = 21.25, y = 3.75 }
     , parkingLaneStartDirection = Left
     , residents =
         [ Cars.sedan Colors.red Colors.redDarker
@@ -100,7 +100,7 @@ school =
         , noRestrictions <| Point2d.fromMeters { x = 27.875, y = 9.125 }
         ]
     , entryDirection = Right
-    , parkingLaneStartPosition = Point2d.fromMeters { x = 7.5, y = 3.75 }
+    , parkingLaneStartPoint = Point2d.fromMeters { x = 7.5, y = 3.75 }
     , parkingLaneStartDirection = Right
     , residents =
         [ Cars.van Colors.orange Colors.orangeDarker
@@ -122,7 +122,7 @@ cafe =
         , noRestrictions <| Point2d.fromMeters { x = 21.875, y = 9.125 }
         ]
     , entryDirection = Left
-    , parkingLaneStartPosition = Point2d.fromMeters { x = 24.5, y = 3.75 }
+    , parkingLaneStartPoint = Point2d.fromMeters { x = 24.5, y = 3.75 }
     , parkingLaneStartDirection = Left
     , residents =
         [ Cars.van Colors.lightBrown Colors.lightBrownDarker
@@ -143,7 +143,7 @@ residentialRow1 =
         , residentParking <| Point2d.fromMeters { x = 23.25, y = 9.125 }
         ]
     , entryDirection = Right
-    , parkingLaneStartPosition = Point2d.fromMeters { x = 7.5, y = 3.75 }
+    , parkingLaneStartPoint = Point2d.fromMeters { x = 7.5, y = 3.75 }
     , parkingLaneStartDirection = Right
     , residents =
         [ Cars.sedan Colors.darkBlue Colors.darkBlueDarker
@@ -164,7 +164,7 @@ residentialApartments1 =
         , residentParking <| Point2d.fromMeters { x = 12.375, y = 12.25 }
         ]
     , entryDirection = Up
-    , parkingLaneStartPosition = Point2d.fromMeters { x = 4.75, y = 7.1 }
+    , parkingLaneStartPoint = Point2d.fromMeters { x = 4.75, y = 7.1 }
     , parkingLaneStartDirection = Up
     , residents =
         [ Cars.hatchback Colors.yellowGreen Colors.yellowGreenDarker
@@ -183,7 +183,7 @@ fireStation =
         [ residentParking <| Point2d.fromMeters { x = 20.4, y = 5 }
         ]
     , entryDirection = Up
-    , parkingLaneStartPosition = Point2d.fromMeters { x = 12, y = 5 }
+    , parkingLaneStartPoint = Point2d.fromMeters { x = 12, y = 5 }
     , parkingLaneStartDirection = Right
     , residents =
         [ Cars.fireTruck
@@ -201,7 +201,7 @@ park1 =
         [ noRestrictions <| Point2d.fromMeters { x = 6.5, y = 9.875 }
         ]
     , entryDirection = Right
-    , parkingLaneStartPosition = Point2d.fromMeters { x = 6.5, y = 9.875 }
+    , parkingLaneStartPoint = Point2d.fromMeters { x = 6.5, y = 9.875 }
     , parkingLaneStartDirection = Up
     , residents = []
     }
@@ -218,7 +218,7 @@ concertVenue =
         , noRestrictions <| Point2d.fromMeters { x = 23.25, y = 10.3125 }
         ]
     , entryDirection = Up
-    , parkingLaneStartPosition = Point2d.fromMeters { x = 8.5625, y = 5 }
+    , parkingLaneStartPoint = Point2d.fromMeters { x = 8.5625, y = 5 }
     , parkingLaneStartDirection = Right
     , residents = []
     }
@@ -235,7 +235,7 @@ flowerShop =
         , residentParking <| Point2d.fromMeters { x = 7.75, y = 10.53125 }
         ]
     , entryDirection = Up
-    , parkingLaneStartPosition = Point2d.fromMeters { x = 4.75, y = 7.1 }
+    , parkingLaneStartPoint = Point2d.fromMeters { x = 4.75, y = 7.1 }
     , parkingLaneStartDirection = Up
     , residents =
         [ Cars.sedan Colors.pink Colors.pinkDarker

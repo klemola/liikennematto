@@ -19,16 +19,16 @@ module Simulation.Lot exposing
 
 import Angle exposing (Angle)
 import BoundingBox2d exposing (BoundingBox2d)
-import Common exposing (GlobalCoordinates, LocalCoordinates)
+import Common exposing (GlobalCoordinates)
 import CubicSpline2d exposing (CubicSpline2d)
-import Data.Lots exposing (NewLot, ParkingRestriction(..), drivewayOffset)
+import Data.Lots exposing (NewLot, ParkingRestriction(..))
 import Direction2d
 import Length exposing (Length)
 import Lib.Collection exposing (Id)
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
 import Point2d exposing (Point2d)
 import Quantity
-import Simulation.RoadNetwork exposing (innerLaneOffset, outerLaneOffset)
+import Simulation.RoadNetwork exposing (toRoadConnectionPoints)
 import Simulation.Splines as Splines
 import Tilemap.Cell as Cell exposing (Cell)
 import Vector2d
@@ -41,8 +41,8 @@ type alias Lot =
     , height : Length
     , position : Point2d Length.Meters GlobalCoordinates
     , boundingBox : BoundingBox2d Length.Meters GlobalCoordinates
-    , entryPosition : Point2d Length.Meters GlobalCoordinates
-    , exitPosition : Point2d Length.Meters GlobalCoordinates
+    , entryPoint : Point2d Length.Meters GlobalCoordinates
+    , exitPoint : Point2d Length.Meters GlobalCoordinates
     , entryDirection : OrthogonalDirection
     , parkingSpotExitDirection : OrthogonalDirection
     , parkingSpots : List ParkingSpot
@@ -62,11 +62,8 @@ build newLot anchor lotId =
         constructionSiteBB =
             constructionSite anchor ( width, height ) newLot
 
-        entryPosition =
-            toRoadConnectionPosition outerLaneOffset newLot.entryDirection width
-
-        exitPosition =
-            toRoadConnectionPosition innerLaneOffset newLot.entryDirection width
+        ( entryPoint, exitPoint ) =
+            toRoadConnectionPoints newLot.entryDirection width
 
         lotFrame =
             Common.boundingBoxToFrame constructionSiteBB
@@ -75,11 +72,11 @@ build newLot anchor lotId =
             let
                 splineProps =
                     { parkingSpotPosition = position
-                    , lotEntryPosition = entryPosition
-                    , lotExitPosition = exitPosition
+                    , lotEntryPoint = entryPoint
+                    , lotExitPoint = exitPoint
                     , parkingSpotExitDirection = OrthogonalDirection.toDirection2d newLot.parkingSpotExitDirection
                     , entryDirection = OrthogonalDirection.toDirection2d newLot.entryDirection
-                    , parkingLaneStartPosition = newLot.parkingLaneStartPosition
+                    , parkingLaneStartPoint = newLot.parkingLaneStartPoint
                     , parkingLaneStartDirection = OrthogonalDirection.toDirection2d newLot.parkingLaneStartDirection
                     }
             in
@@ -97,8 +94,8 @@ build newLot anchor lotId =
     , height = height
     , position = BoundingBox2d.centerPoint constructionSiteBB
     , boundingBox = constructionSiteBB
-    , entryPosition = Point2d.placeIn lotFrame entryPosition
-    , exitPosition = Point2d.placeIn lotFrame exitPosition
+    , entryPoint = Point2d.placeIn lotFrame entryPoint
+    , exitPoint = Point2d.placeIn lotFrame exitPoint
     , entryDirection = newLot.entryDirection
     , parkingSpotExitDirection = newLot.parkingSpotExitDirection
     , parkingLock = Nothing
@@ -115,34 +112,6 @@ build newLot anchor lotId =
                         GT
                 )
     }
-
-
-toRoadConnectionPosition : Length -> OrthogonalDirection -> Length -> Point2d Length.Meters LocalCoordinates
-toRoadConnectionPosition laneOffset entryDirection lotWidth =
-    case entryDirection of
-        Right ->
-            Point2d.xy
-                Quantity.zero
-                (Cell.size
-                    |> Quantity.minus laneOffset
-                    |> Quantity.minus drivewayOffset
-                )
-
-        Up ->
-            Point2d.xy
-                (laneOffset |> Quantity.minus drivewayOffset)
-                Quantity.zero
-
-        Left ->
-            Point2d.xy
-                lotWidth
-                (Cell.size
-                    |> Quantity.minus laneOffset
-                    |> Quantity.minus drivewayOffset
-                )
-
-        _ ->
-            Point2d.origin
 
 
 constructionSite : Cell -> ( Length, Length ) -> NewLot -> BoundingBox2d Length.Meters GlobalCoordinates

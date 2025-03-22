@@ -23,10 +23,11 @@ module Simulation.RoadNetwork exposing
     , outerLaneOffset
     , outgoingConnectionsAmount
     , size
+    , toRoadConnectionPoints
     )
 
 import BoundingBox2d exposing (BoundingBox2d)
-import Common exposing (GlobalCoordinates)
+import Common exposing (GlobalCoordinates, LocalCoordinates)
 import Data.Lots exposing (drivewayOffset)
 import Data.TileSet exposing (basicRoadTiles, roadConnectionDirectionsByTile, tileById)
 import Dict exposing (Dict)
@@ -158,6 +159,52 @@ laneStartOffsetLeft =
 laneEndOffsetLeft : Vector2d Length.Meters coordinates
 laneEndOffsetLeft =
     Vector2d.xy Quantity.zero innerLaneOffset
+
+
+toRoadConnectionPoints : OrthogonalDirection -> Length -> ( Point2d Length.Meters LocalCoordinates, Point2d Length.Meters LocalCoordinates )
+toRoadConnectionPoints entryDirection lotWidth =
+    case entryDirection of
+        Right ->
+            ( Point2d.xy
+                Quantity.zero
+                (Cell.size
+                    |> Quantity.minus outerLaneOffset
+                    |> Quantity.minus drivewayOffset
+                )
+            , Point2d.xy
+                Quantity.zero
+                (Cell.size
+                    |> Quantity.minus innerLaneOffset
+                    |> Quantity.minus drivewayOffset
+                )
+            )
+
+        Up ->
+            ( Point2d.xy
+                (outerLaneOffset |> Quantity.minus drivewayOffset)
+                Quantity.zero
+            , Point2d.xy
+                (innerLaneOffset |> Quantity.minus drivewayOffset)
+                Quantity.zero
+            )
+
+        Left ->
+            ( Point2d.xy
+                lotWidth
+                (Cell.size
+                    |> Quantity.minus innerLaneOffset
+                    |> Quantity.minus drivewayOffset
+                )
+            , Point2d.xy
+                lotWidth
+                (Cell.size
+                    |> Quantity.minus outerLaneOffset
+                    |> Quantity.minus drivewayOffset
+                )
+            )
+
+        _ ->
+            ( Point2d.origin, Point2d.origin )
 
 
 

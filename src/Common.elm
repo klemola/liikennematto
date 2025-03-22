@@ -11,7 +11,7 @@ module Common exposing
     , isCloseToZeroVelocity
     , isInTheNormalPlaneOf
     , randomFutureTime
-    , rightAnglePosition
+    , rightAnglePoint
     , splitBoundingBoxHorizontally
     , splitBoundingBoxVertically
     )
@@ -48,12 +48,12 @@ angleFromDirection direction target origin =
         |> Maybe.withDefault (Angle.degrees 0)
 
 
-rightAnglePosition :
+rightAnglePoint :
     Point2d Length.Meters coordinates
     -> Point2d Length.Meters coordinates
     -> Direction2d coordinates
     -> Point2d Length.Meters coordinates
-rightAnglePosition origin target direction =
+rightAnglePoint origin target direction =
     let
         distanceToTarget =
             Point2d.distanceFrom origin target
@@ -63,10 +63,10 @@ rightAnglePosition origin target direction =
                 |> angleFromDirection direction target
                 |> Angle.cos
 
-        distanceToRightAnglePosition =
+        distanceToRightAnglePoint =
             distanceToTarget |> Quantity.multiplyBy cosine
     in
-    Point2d.translateIn direction distanceToRightAnglePosition origin
+    Point2d.translateIn direction distanceToRightAnglePoint origin
 
 
 boundingBoxWithDimensions : Length -> Length -> Point2d Length.Meters GlobalCoordinates -> BoundingBox2d Length.Meters GlobalCoordinates

@@ -181,6 +181,6 @@ renderParkingSpotPaths parkingSpots =
                             _ ->
                                 Color.rgba 0 0 0 opacity
                 in
-                parkingSpot.pathToLotExit |> List.map (Render.Shape.cubicSplineDebug renderCache color)
+                parkingSpot.pathFromLotEntry |> List.map (Render.Shape.cubicSplineDebug renderCache color)
             )
         |> List.concat

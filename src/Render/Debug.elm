@@ -319,7 +319,7 @@ renderLotDebug cache lot =
                     (Colors.withAlpha 0.6 Colors.gray1)
                     (Just ( Colors.gray7, 2 ))
                     (Length.meters 1)
-                    lot.entryPosition
+                    lot.entryPoint
                 ]
     in
     Svg.g
