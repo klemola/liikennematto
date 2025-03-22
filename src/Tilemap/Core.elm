@@ -17,6 +17,7 @@ module Tilemap.Core exposing
     , getBuildHistory
     , getTilemapConfig
     , getTilemapDimensions
+    , mapCell
     , removeAnchor
     , removeTile
     , resetFixedTileBySurroundings
@@ -554,6 +555,16 @@ applyTilemapOperation operation parentTileId tileConfig origin tilemap =
     ( updateCell origin originTile tilemap
     , tileActions
     )
+
+
+mapCell : Cell -> (Tile -> Tile) -> Tilemap -> Tilemap
+mapCell cell tileFn tilemap =
+    case tileByCell tilemap cell of
+        Just tile ->
+            updateCell cell (tileFn tile) tilemap
+
+        Nothing ->
+            tilemap
 
 
 updateCell : Cell -> Tile -> Tilemap -> Tilemap

@@ -184,7 +184,12 @@ renderableFromTile cell tile =
                         { cell = cell
                         , width = largeTile.width
                         , height = largeTile.height
-                        , assetName = largeTile.name
+                        , assetName =
+                            if props.name == "_subgrid" then
+                                largeTile.name
+
+                            else
+                                props.name
                         , animation = Nothing
                         }
 
@@ -230,12 +235,12 @@ toDynamicTiles tilemap =
         (\cell ->
             fixedTileByCell tilemap cell
                 |> Maybe.map (Tuple.pair cell)
-                |> Maybe.andThen toRenderable
+                |> Maybe.andThen renderableFromDynamicTile
         )
 
 
-toRenderable : ( Cell, Tile ) -> Maybe Renderable
-toRenderable ( cell, tile ) =
+renderableFromDynamicTile : ( Cell, Tile ) -> Maybe Renderable
+renderableFromDynamicTile ( cell, tile ) =
     case tile.kind of
         Tile.Fixed props ->
             Just
@@ -270,8 +275,6 @@ tileAnimation tile =
                 )
 
         Tile.Generated ->
-            -- TODO: consider animating these
-            -- Remember to adjust Tile.isDynamic accordingly
             Nothing
 
         _ ->

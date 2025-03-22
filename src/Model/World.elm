@@ -66,7 +66,7 @@ import Tilemap.Core
         , tilemapBoundingBox
         )
 import Tilemap.Tile as Tile
-import Tilemap.TileConfig as TileConfig exposing (TileConfig)
+import Tilemap.TileConfig as TileConfig exposing (LargeTile)
 import Tilemap.TileInventory as TileInventory exposing (TileInventory)
 import Time
 
@@ -307,19 +307,16 @@ updateLot lot world =
     { world | lots = Collection.update lot.id lot world.lots }
 
 
-prepareNewLot : TileConfig -> World -> ( NewLot, World )
-prepareNewLot tileConfig world =
+prepareNewLot : LargeTile -> World -> ( NewLot, World )
+prepareNewLot largeTile world =
     let
-        tileId =
-            TileConfig.tileConfigId tileConfig
-
         ( ( newLot, remainingOptions ), nextSeed ) =
-            TileInventory.chooseRandom tileId world.seed world.tileInventory
+            TileInventory.chooseRandom largeTile.id world.seed world.tileInventory
     in
-    ( newLot |> Maybe.withDefault (newLotFallback tileConfig)
+    ( newLot |> Maybe.withDefault (newLotFallback largeTile)
     , { world
         | seed = nextSeed
-        , tileInventory = Dict.insert tileId remainingOptions world.tileInventory
+        , tileInventory = Dict.insert largeTile.id remainingOptions world.tileInventory
       }
     )
 
@@ -329,9 +326,9 @@ tileInventoryCount world =
     TileInventory.countAvailable world.tileInventory
 
 
-newLotFallback : TileConfig -> NewLot
-newLotFallback tileConfig =
-    case TileConfig.tileConfigId tileConfig of
+newLotFallback : LargeTile -> NewLot
+newLotFallback largeTile =
+    case largeTile.id of
         100 ->
             Data.Lots.residentialSingle1
 

@@ -774,25 +774,8 @@ largeTileSubgrid tilemap anchorCell tile =
         tilemapConstraints =
             getTilemapConfig tilemap
 
-        -- The large tile is a subgrid in the main grid; the tilemap
-        subgridDimensions =
-            { horizontalCellsAmount = tile.width
-            , verticalCellsAmount = tile.height
-            }
-
-        -- The local (subgrid) cell of the anchor tile
-        subgridAnchorCell =
-            Cell.fromArray1DIndex subgridDimensions tile.anchorIndex
-
-        -- Find the cell of the top left cell (index 0) of the large tile subgrid,
-        -- but in the space of the tilemap (local to global coordinates)
         topLeftCornerCell =
-            subgridAnchorCell
-                |> Maybe.map Cell.coordinates
-                |> Maybe.andThen
-                    (\( x, y ) ->
-                        Cell.translateBy tilemapConstraints ( -x + 1, -y + 1 ) anchorCell
-                    )
+            Tile.largeTileTopLeftCell tilemapConstraints anchorCell tile
     in
     topLeftCornerCell
         |> Result.fromMaybe "Invalid origin"
@@ -803,6 +786,11 @@ largeTileSubgrid tilemap anchorCell tile =
                     |> attemptMapList
                         (\( subgridIdx, singleTile ) ->
                             let
+                                subgridDimensions =
+                                    { horizontalCellsAmount = tile.width
+                                    , verticalCellsAmount = tile.height
+                                    }
+
                                 cellInGlobalCoordinates =
                                     subgridIdx
                                         -- Use of unsafe function: we know that here that the Cell can be constructed

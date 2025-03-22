@@ -12,6 +12,7 @@ import Model.Liikennematto
     exposing
         ( Liikennematto
         )
+import Model.RenderCache as RenderCache
 import Model.World as World
     exposing
         ( TilemapChange
@@ -19,13 +20,21 @@ import Model.World as World
         , updateRoadNetwork
         )
 import Simulation.Events exposing (updateEventQueue)
-import Simulation.Lot as Lot
+import Simulation.Lot as Lot exposing (Lot)
 import Simulation.Traffic as Traffic exposing (addLotResidents, rerouteCarsIfNeeded)
 import Simulation.TrafficLight exposing (TrafficLight)
 import Tilemap.Cell as Cell exposing (Cell)
-import Tilemap.Core exposing (addAnchor, anchorByCell, fixedTileByCell, getTilemapConfig, tileByCell)
-import Tilemap.Tile exposing (TileKind(..))
-import Tilemap.TileConfig exposing (TileConfig)
+import Tilemap.Core
+    exposing
+        ( addAnchor
+        , anchorByCell
+        , fixedTileByCell
+        , getTilemapConfig
+        , mapCell
+        , tileByCell
+        )
+import Tilemap.Tile as Tile exposing (TileKind(..))
+import Tilemap.TileConfig as TileConfig exposing (LargeTile)
 import Time
 
 
@@ -74,11 +83,18 @@ update msg model =
             )
 
         TilemapChanged tilemapChange ->
+            let
+                ( worldWithLots, lots ) =
+                    newLotsFromTilemapChange tilemapChange model.time model.world
+            in
             ( { model
-                | world =
-                    model.world
-                        |> newLotsFromTilemapChange tilemapChange model.time
-                        |> worldAfterTilemapChange tilemapChange
+                | world = worldAfterTilemapChange tilemapChange worldWithLots
+                , renderCache =
+                    if List.isEmpty lots then
+                        model.renderCache
+
+                    else
+                        RenderCache.setTilemapCache worldWithLots.tilemap Nothing model.renderCache
               }
             , Cmd.none
             )
@@ -149,7 +165,7 @@ removeOrphanLots tilemapChange world =
                         let
                             lotEntryTile =
                                 tile
-                                    |> Tilemap.Tile.id
+                                    |> Tile.id
                                     |> Maybe.andThen extractLotEntryTile
                         in
                         case lotEntryTile of
@@ -193,7 +209,7 @@ updateTrafficLight trafficLight =
     { trafficLight | fsm = nextFsm }
 
 
-newLotsFromTilemapChange : TilemapChange -> Time.Posix -> World -> World
+newLotsFromTilemapChange : TilemapChange -> Time.Posix -> World -> ( World, List Lot )
 newLotsFromTilemapChange tilemapChange time world =
     let
         extractDrivewayTile cell tile =
@@ -201,7 +217,15 @@ newLotsFromTilemapChange tilemapChange time world =
                 Fixed properties ->
                     if List.member properties.id lotDrivewayTileIds then
                         properties.parentTile
-                            |> Maybe.map (\( parentTileId, _ ) -> tileById parentTileId)
+                            |> Maybe.andThen
+                                (\( parentTileId, _ ) ->
+                                    case tileById parentTileId of
+                                        TileConfig.Large largeTile ->
+                                            Just largeTile
+
+                                        TileConfig.Single _ ->
+                                            Nothing
+                                )
                             |> Maybe.map (Tuple.pair cell)
 
                     else
@@ -218,24 +242,36 @@ newLotsFromTilemapChange tilemapChange time world =
                     |> Maybe.andThen (extractDrivewayTile cell)
             )
         |> List.foldl
-            (\( drivewayCell, lotTileConfig ) nextWorld ->
-                addLot time lotTileConfig drivewayCell nextWorld
+            (\( drivewayCell, lotTileConfig ) ( nextWorld, lotsAdded ) ->
+                let
+                    ( withLot, lot ) =
+                        addLot time lotTileConfig drivewayCell nextWorld
+                in
+                ( withLot, lot :: lotsAdded )
             )
-            world
+            ( world, [] )
 
 
-addLot : Time.Posix -> TileConfig -> Cell -> World -> World
-addLot time tileConfig drivewayCell ({ tilemap, lots } as world) =
+addLot : Time.Posix -> LargeTile -> Cell -> World -> ( World, Lot )
+addLot time largeTile drivewayCell ({ tilemap, lots } as world) =
     let
         ( newLot, worldWithUpdatedTileInventory ) =
-            World.prepareNewLot tileConfig world
+            World.prepareNewLot largeTile world
+
+        constraints =
+            getTilemapConfig tilemap
 
         anchorCell =
             -- Use of unsafe function: to get here, the next Cell has to exist (it is the lot entry cell)
             Cell.nextOrthogonalCellUnsafe
-                (getTilemapConfig tilemap)
+                constraints
                 (OrthogonalDirection.opposite newLot.entryDirection)
                 drivewayCell
+
+        topLeftCell =
+            Tile.largeTileTopLeftCell constraints drivewayCell largeTile
+                -- TODO: this fallback is unnecessary - the cell should exist
+                |> Maybe.withDefault drivewayCell
 
         builderFn =
             Lot.build newLot anchorCell
@@ -243,12 +279,15 @@ addLot time tileConfig drivewayCell ({ tilemap, lots } as world) =
         ( lot, nextLots ) =
             Collection.addFromBuilder builderFn lots
     in
-    worldWithUpdatedTileInventory
+    ( worldWithUpdatedTileInventory
         |> World.refreshLots lot nextLots
         |> World.setTilemap
-            (addAnchor anchorCell
-                lot.id
-                lot.entryDirection
-                world.tilemap
+            (world.tilemap
+                |> addAnchor anchorCell
+                    lot.id
+                    lot.entryDirection
+                |> mapCell topLeftCell (Tile.withName lot.name)
             )
         |> addLotResidents time lot.id newLot.residents
+    , lot
+    )

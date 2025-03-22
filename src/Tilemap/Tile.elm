@@ -13,14 +13,16 @@ module Tilemap.Tile exposing
     , isBuilt
     , isDynamic
     , isFixed
+    , largeTileTopLeftCell
     , transitionTimer
+    , withName
     )
 
 import Audio exposing (Sound)
 import Duration exposing (Duration)
 import Lib.FSM as FSM exposing (FSM, State)
-import Tilemap.Cell exposing (Cell)
-import Tilemap.TileConfig as TileConfig exposing (TileConfig, TileId)
+import Tilemap.Cell as Cell exposing (Cell, Constraints)
+import Tilemap.TileConfig as TileConfig exposing (LargeTile, TileConfig, TileId)
 
 
 type alias Tile =
@@ -112,6 +114,16 @@ attemptRemove tile =
             ( tile, [] )
 
 
+withName : String -> Tile -> Tile
+withName name tile =
+    case tile.kind of
+        Fixed props ->
+            { tile | kind = Fixed { props | name = name } }
+
+        _ ->
+            tile
+
+
 isFixed : Tile -> Bool
 isFixed tile =
     case tile.kind of
@@ -148,6 +160,35 @@ id tile =
 
 
 --
+-- Large tiles
+--
+
+
+largeTileTopLeftCell : Constraints a -> Cell -> LargeTile -> Maybe Cell
+largeTileTopLeftCell constraints globalAnchorCell largeTile =
+    let
+        -- The large tile is a subgrid in the main grid; the tilemap
+        subgridDimensions =
+            { horizontalCellsAmount = largeTile.width
+            , verticalCellsAmount = largeTile.height
+            }
+
+        -- The local (subgrid) cell of the anchor tile
+        subgridAnchorCell =
+            Cell.fromArray1DIndex subgridDimensions largeTile.anchorIndex
+    in
+    -- Find the cell of the top left cell (index 0) of the large tile subgrid,
+    -- but in the space of the tilemap (local to global coordinates)
+    subgridAnchorCell
+        |> Maybe.map Cell.coordinates
+        |> Maybe.andThen
+            (\( x, y ) ->
+                Cell.translateBy constraints ( -x + 1, -y + 1 ) globalAnchorCell
+            )
+
+
+
+--
 -- FSM
 --
 
@@ -159,7 +200,7 @@ transitionTimer =
 
 transitionTimerGenerated : Duration
 transitionTimerGenerated =
-    Duration.milliseconds 100
+    Duration.milliseconds 150
 
 
 initialized : State TileState Action ()

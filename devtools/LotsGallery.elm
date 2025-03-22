@@ -1,14 +1,16 @@
 module LotsGallery exposing (main)
 
+import Assets exposing (assets)
 import Color
 import Data.Colors as Colors
 import Data.Lots exposing (NewLot)
 import Data.Utility exposing (testSeed)
+import Dict
 import Lib.Collection as Collection exposing (Id, nextId)
 import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.World as World exposing (World)
-import Render
+import Render.Conversion exposing (pointToPixels, toPixelsValue)
 import Render.Shape
 import Simulation.Lot exposing (Lot, ParkingSpot)
 import Svg exposing (Svg)
@@ -106,12 +108,53 @@ buildLot newLot acc =
             acc
 
 
+assetByName : String -> ( Svg msg, String )
+assetByName name =
+    Dict.get name assets
+        |> Maybe.withDefault ( Svg.g [] [], "" )
+
+
 renderLotDebug : Lot -> Svg ()
 renderLotDebug lot =
     Svg.g []
-        [ Render.renderLot renderCache lot
+        [ renderLot renderCache lot
         , Svg.g []
             (renderParkingSpotPaths lot.parkingSpots)
+        ]
+
+
+renderLot : RenderCache -> Lot -> Svg msg
+renderLot cache lot =
+    let
+        { x, y } =
+            pointToPixels cache.pixelsToMetersRatio lot.position
+
+        width =
+            toPixelsValue cache.pixelsToMetersRatio lot.width
+
+        height =
+            toPixelsValue cache.pixelsToMetersRatio lot.height
+
+        renderX =
+            x - width / 2
+
+        renderY =
+            cache.tilemapHeightPixels - (height / 2) - y
+
+        translateStr =
+            "translate(" ++ String.fromFloat renderX ++ "," ++ String.fromFloat renderY ++ ")"
+
+        ( asset, viewBox ) =
+            assetByName lot.name
+    in
+    Svg.g [ Attributes.transform translateStr ]
+        [ Svg.svg
+            [ Attributes.width (String.fromFloat width)
+            , Attributes.height (String.fromFloat height)
+            , Attributes.viewBox viewBox
+            , Attributes.fill "none"
+            ]
+            [ asset ]
         ]
 
 

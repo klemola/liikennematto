@@ -1,7 +1,6 @@
 module Render exposing
     ( renderCar
     , renderCarLazy
-    , renderLot
     , view
     )
 
@@ -24,7 +23,6 @@ import Point2d exposing (Point2d)
 import Quantity
 import Render.Conversion exposing (pointToPixels, toPixelsValue)
 import Simulation.Car exposing (Car)
-import Simulation.Lot exposing (Lot)
 import Simulation.RoadNetwork
     exposing
         ( Connection
@@ -72,7 +70,7 @@ styles =
 
 
 view : World -> RenderCache -> Html msg
-view { cars, lots, roadNetwork, trafficLights } cache =
+view { cars, roadNetwork, trafficLights } cache =
     let
         tilemapWidth =
             String.fromFloat cache.tilemapWidthPixels
@@ -89,7 +87,6 @@ view { cars, lots, roadNetwork, trafficLights } cache =
         [ styles
         , Svg.Lazy.lazy renderTilemap cache
         , renderDynamicTiles cache
-        , Svg.Lazy.lazy2 renderLots cache lots
         , renderCars cache cars
         , Svg.Lazy.lazy2 renderTrafficLights cache trafficLights
         , Svg.Lazy.lazy2 renderTrafficSigns cache roadNetwork
@@ -429,54 +426,6 @@ renderCar cache position orientation make =
             , Attributes.height (String.fromFloat carWidthPixels)
             , Attributes.fill "none"
             , Attributes.viewBox viewBox
-            ]
-            [ asset ]
-        ]
-
-
-
---
--- Lots
---
-
-
-renderLots : RenderCache -> Collection Lot -> Svg msg
-renderLots cache lots =
-    lots
-        |> Collection.foldl (\_ lot acc -> ( "Lot-" ++ Collection.idToString lot.id, renderLot cache lot ) :: acc) []
-        |> Svg.Keyed.node "g" []
-
-
-renderLot : RenderCache -> Lot -> Svg msg
-renderLot cache lot =
-    let
-        { x, y } =
-            pointToPixels cache.pixelsToMetersRatio lot.position
-
-        width =
-            toPixelsValue cache.pixelsToMetersRatio lot.width
-
-        height =
-            toPixelsValue cache.pixelsToMetersRatio lot.height
-
-        renderX =
-            x - width / 2
-
-        renderY =
-            cache.tilemapHeightPixels - (height / 2) - y
-
-        translateStr =
-            "translate(" ++ String.fromFloat renderX ++ "," ++ String.fromFloat renderY ++ ")"
-
-        ( asset, viewBox ) =
-            assetByName lot.name
-    in
-    Svg.g [ Attributes.transform translateStr ]
-        [ Svg.svg
-            [ Attributes.width (String.fromFloat width)
-            , Attributes.height (String.fromFloat height)
-            , Attributes.viewBox viewBox
-            , Attributes.fill "none"
             ]
             [ asset ]
         ]
