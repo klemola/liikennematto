@@ -194,9 +194,6 @@ lotExitSpline { parkingSpotPosition, lotExitPoint, parkingSpotExitDirection, par
     let
         startDirection =
             parkingSpotExitDirection
-
-        exitDirection =
-            Direction2d.reverse entryDirection
     in
     if startDirection == Direction2d.reverse entryDirection then
         [ mirroredSpline parkingSpotPosition lotExitPoint 0.66 startDirection ]
@@ -207,23 +204,28 @@ lotExitSpline { parkingSpotPosition, lotExitPoint, parkingSpotExitDirection, par
         , curveSpline parkingLaneStartPoint lotExitPoint (Direction2d.reverse parkingLaneStartDirection) 0.8
         ]
 
-    else if parkingSpotCloseToLotEntry lotExitPoint parkingSpotPosition then
-        [ curveSpline parkingSpotPosition parkingLaneStartPoint startDirection 0.8
-        , mirroredSpline parkingLaneStartPoint lotExitPoint 0.33 exitDirection
-        ]
-
     else
         let
-            parkingSpotSplineStart =
-                parkingSpotSplineStartPoint
-                    parkingLaneStartPoint
-                    parkingSpotPosition
-                    entryDirection
+            exitDirection =
+                Direction2d.reverse entryDirection
         in
-        [ curveSpline parkingSpotPosition parkingSpotSplineStart startDirection 0.7
-        , straightSpline parkingSpotSplineStart parkingLaneStartPoint
-        , mirroredSpline parkingLaneStartPoint lotExitPoint 0.33 exitDirection
-        ]
+        if parkingSpotCloseToLotEntry lotExitPoint parkingSpotPosition then
+            [ curveSpline parkingSpotPosition parkingLaneStartPoint startDirection 0.8
+            , mirroredSpline parkingLaneStartPoint lotExitPoint 0.33 exitDirection
+            ]
+
+        else
+            let
+                parkingSpotSplineStart =
+                    parkingSpotSplineStartPoint
+                        parkingLaneStartPoint
+                        parkingSpotPosition
+                        entryDirection
+            in
+            [ curveSpline parkingSpotPosition parkingSpotSplineStart startDirection 0.7
+            , straightSpline parkingSpotSplineStart parkingLaneStartPoint
+            , mirroredSpline parkingLaneStartPoint lotExitPoint 0.33 exitDirection
+            ]
 
 
 parkingSpotSplineStartPoint : Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> Point2d Length.Meters a

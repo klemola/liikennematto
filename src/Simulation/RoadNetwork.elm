@@ -13,14 +13,12 @@ module Simulation.RoadNetwork exposing
     , getOutgoingConnectionIds
     , getOutgoingConnectionsAndCosts
     , getRandomNode
-    , innerLaneOffset
     , nodeById
     , nodeByPosition
     , nodeDirection
     , nodeLotId
     , nodePosition
     , nodeTrafficControl
-    , outerLaneOffset
     , outgoingConnectionsAmount
     , size
     , toRoadConnectionPoints
