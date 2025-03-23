@@ -775,7 +775,7 @@ largeTileSubgrid tilemap anchorCell tile =
             getTilemapConfig tilemap
 
         topLeftCornerCell =
-            Tile.largeTileTopLeftCell tilemapConstraints anchorCell tile
+            Tile.largeTileTopLeftCell tilemapConstraints anchorCell tile.anchorIndex tile
     in
     topLeftCornerCell
         |> Result.fromMaybe "Invalid origin"

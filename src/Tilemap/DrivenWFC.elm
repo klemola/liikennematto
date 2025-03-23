@@ -1,12 +1,12 @@
 module Tilemap.DrivenWFC exposing
     ( DrivenWFC(..)
     , RunWFCResult
+    , addTileById
     , drivenWfcDebug
     , initDrivenWfc
-    , resetWfc
+    , onRemoveTile
     , restartWfc
     , runWfc
-    , updateTileNeighbors
     )
 
 import Data.TileSet
@@ -117,6 +117,41 @@ resetWfc seed changedCell tileInventory tilemap =
 
         Nothing ->
             wfcWithChangedTile
+
+
+addTileById : Random.Seed -> TileInventory Int -> Cell -> TileId -> Tilemap -> ( Tilemap, List Action )
+addTileById seed tileInventory cell tileId tilemap =
+    let
+        tileConfig =
+            tileById tileId
+
+        ( updatedTilemap, tilemapChangeActions ) =
+            Tilemap.Core.addTile tileConfig cell tilemap
+
+        wfcModel =
+            resetWfc seed (Just cell) tileInventory updatedTilemap
+
+        ( updatedWfcModel, wfcTileActions ) =
+            updateTileNeighbors cell wfcModel
+    in
+    ( WFC.toTilemap updatedWfcModel
+    , tilemapChangeActions ++ wfcTileActions
+    )
+
+
+onRemoveTile : Random.Seed -> TileInventory Int -> Cell -> Tilemap -> ( WFC.Model, List Action )
+onRemoveTile seed tileInventory cell tilemap =
+    let
+        ( updatedTilemap, tilemapChangeActions ) =
+            Tilemap.Core.removeTile cell tilemap
+
+        wfcModel =
+            resetWfc seed (Just cell) tileInventory updatedTilemap
+
+        ( wfcWithoutTile, wfcActions ) =
+            updateTileNeighbors cell wfcModel
+    in
+    ( wfcWithoutTile, tilemapChangeActions ++ wfcActions )
 
 
 

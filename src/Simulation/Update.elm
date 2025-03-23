@@ -269,7 +269,7 @@ addLot time largeTile drivewayCell ({ tilemap, lots } as world) =
                 drivewayCell
 
         topLeftCell =
-            Tile.largeTileTopLeftCell constraints drivewayCell largeTile
+            Tile.largeTileTopLeftCell constraints drivewayCell largeTile.anchorIndex largeTile
                 -- TODO: this fallback is unnecessary - the cell should exist
                 |> Maybe.withDefault drivewayCell
 

@@ -13,11 +13,13 @@ module Tilemap.Tile exposing
     , isBuilt
     , isDynamic
     , isFixed
+    , largeTileCells
     , largeTileTopLeftCell
     , transitionTimer
     , withName
     )
 
+import Array.Extra as Array
 import Audio exposing (Sound)
 import Duration exposing (Duration)
 import Lib.FSM as FSM exposing (FSM, State)
@@ -164,8 +166,8 @@ id tile =
 --
 
 
-largeTileTopLeftCell : Constraints a -> Cell -> LargeTile -> Maybe Cell
-largeTileTopLeftCell constraints globalAnchorCell largeTile =
+largeTileTopLeftCell : Constraints a -> Cell -> Int -> LargeTile -> Maybe Cell
+largeTileTopLeftCell constraints globalReferenceCell subgridIndex largeTile =
     let
         -- The large tile is a subgrid in the main grid; the tilemap
         subgridDimensions =
@@ -173,18 +175,38 @@ largeTileTopLeftCell constraints globalAnchorCell largeTile =
             , verticalCellsAmount = largeTile.height
             }
 
-        -- The local (subgrid) cell of the anchor tile
-        subgridAnchorCell =
-            Cell.fromArray1DIndex subgridDimensions largeTile.anchorIndex
+        -- The reference cell in local coordinates (a subgrid cell)
+        subgridCell =
+            Cell.fromArray1DIndex subgridDimensions subgridIndex
     in
     -- Find the cell of the top left cell (index 0) of the large tile subgrid,
     -- but in the space of the tilemap (local to global coordinates)
-    subgridAnchorCell
+    subgridCell
         |> Maybe.map Cell.coordinates
         |> Maybe.andThen
             (\( x, y ) ->
-                Cell.translateBy constraints ( -x + 1, -y + 1 ) globalAnchorCell
+                Cell.translateBy constraints ( -x + 1, -y + 1 ) globalReferenceCell
             )
+
+
+largeTileCells : Constraints a -> Cell -> TileConfig.LargeTile -> List Cell
+largeTileCells constraints topLeftCornerCell largeTile =
+    let
+        subgridDimensions =
+            { horizontalCellsAmount = largeTile.width
+            , verticalCellsAmount = largeTile.height
+            }
+    in
+    largeTile.tiles
+        |> Array.indexedMapToList
+            (\index _ ->
+                index
+                    -- Use of unsafe function: the top left corner has been validated already
+                    -- and the whole subgrid should be within tilemap bounds
+                    |> Cell.fromArray1DIndexUnsafe subgridDimensions
+                    |> Cell.placeIn constraints topLeftCornerCell
+            )
+        |> List.filterMap identity
 
 
 

@@ -36,9 +36,9 @@ import Tilemap.Core
         , removeTile
         , updateTilemap
         )
+import Tilemap.DrivenWFC exposing (addTileById)
 import Tilemap.Tile as Tile exposing (Tile)
 import Tilemap.TileConfig exposing (TileConfig)
-import Tilemap.Update exposing (addTileById)
 
 
 type alias AnchorDef =
@@ -129,7 +129,11 @@ addTileInstantly cell tilemap =
         ( tilemapWithTile, _ ) =
             case tileIdByBitmask bitmask of
                 Just tileId ->
-                    addTileById cell tileId (worldFromTilemap tilemap) tilemap
+                    let
+                        world =
+                            worldFromTilemap tilemap
+                    in
+                    addTileById world.seed (World.tileInventoryCount world) cell tileId tilemap
 
                 Nothing ->
                     ( tilemap, [] )

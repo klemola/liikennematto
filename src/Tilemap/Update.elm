@@ -1,10 +1,9 @@
-module Tilemap.Update exposing (addTileById, update)
+module Tilemap.Update exposing (update)
 
 import Audio exposing (playSound)
 import Data.TileSet
     exposing
         ( defaultTiles
-        , tileById
         , tileIdByBitmask
         )
 import Maybe.Extra as Maybe
@@ -33,18 +32,17 @@ import Tilemap.Core
 import Tilemap.DrivenWFC
     exposing
         ( DrivenWFC(..)
+        , addTileById
         , initDrivenWfc
-        , resetWfc
+        , onRemoveTile
         , restartWfc
         , runWfc
-        , updateTileNeighbors
         )
 import Tilemap.Tile as Tile
     exposing
         ( Action(..)
         , isBuilt
         )
-import Tilemap.TileConfig exposing (TileId)
 import Tilemap.WFC as WFC
 import UI.Core exposing (InputKind(..))
 
@@ -257,7 +255,7 @@ addTile cell model =
         Just tileId ->
             let
                 ( withWfc, addTileActions ) =
-                    addTileById cell tileId world tilemapWithClearedCell
+                    addTileById world.seed (World.tileInventoryCount world) cell tileId tilemapWithClearedCell
 
                 withBuffer =
                     updateBufferCells cell withWfc
@@ -270,47 +268,16 @@ addTile cell model =
             ( model, Cmd.none )
 
 
-addTileById : Cell -> TileId -> World -> Tilemap -> ( Tilemap, List Action )
-addTileById cell tileId world tilemap =
-    let
-        tileConfig =
-            tileById tileId
-
-        ( updatedTilemap, tilemapChangeActions ) =
-            Tilemap.Core.addTile tileConfig cell tilemap
-
-        wfcModel =
-            resetWfc world.seed (Just cell) (World.tileInventoryCount world) updatedTilemap
-
-        ( updatedWfcModel, wfcTileActions ) =
-            updateTileNeighbors cell wfcModel
-    in
-    ( WFC.toTilemap updatedWfcModel
-    , tilemapChangeActions ++ wfcTileActions
-    )
-
-
 removeTile : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
 removeTile cell model =
     let
         { world } =
             model
 
-        ( updatedTilemap, tilemapChangeActions ) =
-            Tilemap.Core.removeTile cell world.tilemap
-
-        wfcModel =
-            resetWfc world.seed (Just cell) (World.tileInventoryCount world) updatedTilemap
-
-        ( updatedWfcModel, wfcTileActions ) =
-            updateTileNeighbors cell wfcModel
-
-        ( withWFC, actions ) =
-            ( WFC.toTilemap updatedWfcModel
-            , tilemapChangeActions ++ wfcTileActions
-            )
+        ( updatedWfcModel, actions ) =
+            onRemoveTile world.seed (World.tileInventoryCount world) cell world.tilemap
     in
-    ( resetDrivenWFC withWFC model
+    ( resetDrivenWFC (WFC.toTilemap updatedWfcModel) model
     , Cmd.batch (playSound Audio.DestroyRoad :: tileActionsToCmds actions)
     )
 

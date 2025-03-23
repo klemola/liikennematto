@@ -35,13 +35,14 @@ module Tilemap.Core exposing
     )
 
 import Array exposing (Array)
-import Array.Extra as Array
 import BoundingBox2d exposing (BoundingBox2d)
 import Common exposing (GlobalCoordinates, andCarry)
 import Data.TileSet
     exposing
         ( decorativeTiles
         , extractLotEntryTile
+        , lotDrivewaySocket
+        , lotEntrySocket
         , tileById
         , tileIdsByOrthogonalMatch
         , tileIdsFromBitmask
@@ -130,11 +131,31 @@ resetFixedTileBySurroundings cell tilemap =
     case tileByCell tilemap cell of
         Just tile ->
             case tile.kind of
-                Fixed _ ->
-                    setSuperpositionOptions
-                        cell
-                        (tileIdsFromBitmask (cellBitmask cell tilemap))
-                        tilemap
+                Fixed current ->
+                    let
+                        base =
+                            setSuperpositionOptions
+                                cell
+                                (tileIdsFromBitmask (cellBitmask cell tilemap))
+                                tilemap
+
+                        currentTileConfig =
+                            tileById current.id
+                    in
+                    directionBySocket (TileConfig.sockets currentTileConfig) lotEntrySocket
+                        |> Maybe.andThen
+                            (\lotEntryDirection ->
+                                tileNeighborIn lotEntryDirection cell fixedTileByCell tilemap
+                            )
+                        |> Maybe.andThen
+                            (\( subgridAnchorCell, subgridAnchorTile ) ->
+                                Maybe.map
+                                    (\parentTile ->
+                                        removeLargeTileSubtiles subgridAnchorCell parentTile base
+                                    )
+                                    (tileParentTile subgridAnchorTile)
+                            )
+                        |> Maybe.withDefault base
 
                 _ ->
                     tilemap
@@ -603,14 +624,14 @@ tileParentTile tile =
 
 
 removeLargeTileSubtiles : Cell -> ( TileId, Int ) -> Tilemap -> Tilemap
-removeLargeTileSubtiles subtileCell ( largeTileId, subtileIndex ) tilemap =
+removeLargeTileSubtiles subtileCell ( largeTileId, subtileIndex ) ((Tilemap tilemapContents) as tilemap) =
     case tileById largeTileId of
         TileConfig.Large largeTile ->
             case
-                largeTileTopLeftCornerCell
+                Tile.largeTileTopLeftCell
+                    tilemapContents.config
                     subtileCell
                     subtileIndex
-                    tilemap
                     largeTile
             of
                 Just topLeftCornerCell ->
@@ -621,7 +642,7 @@ removeLargeTileSubtiles subtileCell ( largeTileId, subtileIndex ) tilemap =
                                 nexTilemap
                         )
                         tilemap
-                        (largeTileCells tilemap topLeftCornerCell largeTile)
+                        (Tile.largeTileCells tilemapContents.config topLeftCornerCell largeTile)
 
                 Nothing ->
                     tilemap
@@ -630,61 +651,12 @@ removeLargeTileSubtiles subtileCell ( largeTileId, subtileIndex ) tilemap =
             tilemap
 
 
-largeTileCells : Tilemap -> Cell -> TileConfig.LargeTile -> List Cell
-largeTileCells tilemap topLeftCornerCell largeTile =
-    let
-        tilemapConfig =
-            getTilemapConfig tilemap
-
-        subgridDimensions =
-            { horizontalCellsAmount = largeTile.width
-            , verticalCellsAmount = largeTile.height
-            }
-    in
-    largeTile.tiles
-        |> Array.indexedMapToList
-            (\index _ ->
-                index
-                    -- Use of unsafe function: the top left corner has been validated already
-                    -- and the whole subgrid should be within tilemap bounds
-                    |> Cell.fromArray1DIndexUnsafe subgridDimensions
-                    |> Cell.placeIn tilemapConfig topLeftCornerCell
-            )
-        |> List.filterMap identity
-
-
-largeTileTopLeftCornerCell : Cell -> Int -> Tilemap -> TileConfig.LargeTile -> Maybe Cell
-largeTileTopLeftCornerCell subtileCell subtileIndex tilemap largeTile =
-    let
-        subgridDimensions =
-            { horizontalCellsAmount = largeTile.width
-            , verticalCellsAmount = largeTile.height
-            }
-
-        -- the subgrid tile cell in local coordinates
-        localSubgridCell =
-            Cell.fromArray1DIndex subgridDimensions subtileIndex
-    in
-    -- Find the cell of the top left cell (index 0) of the large tile subgrid,
-    -- but in the space of the tilemap (local to global coordinates)
-    localSubgridCell
-        |> Maybe.map Cell.coordinates
-        |> Maybe.andThen
-            (\( x, y ) ->
-                let
-                    tilemapConfig =
-                        getTilemapConfig tilemap
-                in
-                Cell.translateBy tilemapConfig ( -x + 1, -y + 1 ) subtileCell
-            )
-
-
 resetLargeTileAnchor : Cell -> ( TileId, Int ) -> Tilemap -> Tilemap
-resetLargeTileAnchor subtileCell ( largeTileId, subtileIndex ) tilemap =
+resetLargeTileAnchor subtileCell ( largeTileId, subtileIndex ) ((Tilemap tilemapContents) as tilemap) =
     case tileById largeTileId of
         TileConfig.Large largeTile ->
             largeTile
-                |> largeTileTopLeftCornerCell subtileCell subtileIndex tilemap
+                |> Tile.largeTileTopLeftCell tilemapContents.config subtileCell subtileIndex
                 |> Maybe.andThen (\cell -> largeTileAnchor cell tilemap largeTile)
                 |> Maybe.andThen (Common.applyTuple2 (resetLotEntryByLargeTileAnchor tilemap))
                 |> Maybe.withDefault tilemap
@@ -695,7 +667,7 @@ resetLargeTileAnchor subtileCell ( largeTileId, subtileIndex ) tilemap =
 
 resetLotEntryByLargeTileAnchor : Tilemap -> Cell -> TileConfig.SingleTile -> Maybe Tilemap
 resetLotEntryByLargeTileAnchor tilemap anchorCell anchorTile =
-    directionBySocket anchorTile.sockets Data.TileSet.lotDrivewaySocket
+    directionBySocket anchorTile.sockets lotDrivewaySocket
         |> Maybe.andThen
             (\directionToLotEntry ->
                 tileNeighborIn directionToLotEntry anchorCell fixedTileByCell tilemap
