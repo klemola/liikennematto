@@ -10,7 +10,8 @@ build:
 	terser --compress $(COMPRESS_ARGS) ./build/liikennematto.js --output ./build/liikennematto.min.js
 
 	@echo ">> Copying files"
-	cp -r ./imports/sounds/* ./build
+	@mkdir -p ./build/sounds
+	cp -r ./imports/sounds/* ./build/sounds/
 	cp ./src/index.template.html ./build/index.html
 
 	@echo ">> Creating an archive"
