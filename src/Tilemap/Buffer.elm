@@ -12,7 +12,7 @@ import Tilemap.Core
         , getBuildHistory
         , getTilemapConfig
         , resetTileBySurroundings
-        , roadTile
+        , roadTileFromCell
         , setBuildHistory
         , tileByCell
         )
@@ -188,7 +188,7 @@ extractOrphanBufferCell origin tilemap isDeadend maybeBufferCell =
                 False
 
             else
-                case roadTile neighborMeta.tile of
+                case extractRoadTile neighborMeta.tile of
                     Just road ->
                         case roadConnectionDirections road of
                             [ dir1, dir2 ] ->
@@ -293,7 +293,7 @@ roadNeighbors cell tilemap =
                         , direction = dir
                         }
                     )
-                    (extractRoadTile neighbor tilemap)
+                    (roadTileFromCell neighbor tilemap)
             )
 
 

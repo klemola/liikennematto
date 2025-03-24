@@ -23,7 +23,7 @@ module Tilemap.Core exposing
     , resetFixedTileBySurroundings
     , resetSuperposition
     , resetTileBySurroundings
-    , roadTile
+    , roadTileFromCell
     , setBuildHistory
     , setSuperpositionOptions
     , tileByCell
@@ -56,6 +56,7 @@ import Lib.Collection exposing (Id)
 import Lib.DiagonalDirection as DiagonalDirection exposing (DiagonalDirection)
 import Lib.FSM as FSM
 import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
+import Maybe.Extra as Maybe
 import Point2d
 import Quantity
 import Tilemap.Cell as Cell exposing (Cell, CellCoordinates, nextOrthogonalCell)
@@ -182,17 +183,8 @@ resetSuperposition cell tileSet ((Tilemap tilemapContents) as tilemap) =
 
 cellBitmask : Cell -> Tilemap -> Int
 cellBitmask cell tilemap =
-    let
-        filterNeighbor neighborTile =
-            case neighborTile.kind of
-                Tile.Fixed props ->
-                    TileConfig.biome (tileById props.id) == TileConfig.Road
-
-                _ ->
-                    False
-    in
     tilemap
-        |> cellOrthogonalNeighbors cell filterNeighbor
+        |> cellOrthogonalNeighbors cell (extractRoadTile >> Maybe.isJust)
         |> fourBitMask
 
 
@@ -244,14 +236,14 @@ cellSupportsRoadPlacement cell tilemap =
     List.all (cellHasLowComplexity cell tilemap) DiagonalDirection.all
 
 
-extractRoadTile : Cell -> Tilemap -> Maybe Tile
-extractRoadTile cell tilemap =
+roadTileFromCell : Cell -> Tilemap -> Maybe Tile
+roadTileFromCell cell tilemap =
     tileByCell tilemap cell
-        |> Maybe.andThen roadTile
+        |> Maybe.andThen extractRoadTile
 
 
-roadTile : Tile -> Maybe Tile
-roadTile tile =
+extractRoadTile : Tile -> Maybe Tile
+extractRoadTile tile =
     Tile.id tile
         |> Maybe.map tileById
         |> Maybe.andThen
@@ -273,7 +265,7 @@ cellHasLowComplexity cell tilemap diagonalDirection =
     Cell.quadrantNeighbors tilemapConfig diagonalDirection cell
         |> List.filterMap
             (\quadrantNeighbor ->
-                extractRoadTile quadrantNeighbor tilemap |> Maybe.map (\_ -> quadrantNeighbor)
+                roadTileFromCell quadrantNeighbor tilemap |> Maybe.map (\_ -> quadrantNeighbor)
             )
         |> (\tiles -> List.length tiles < 3)
 

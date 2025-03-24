@@ -24,8 +24,8 @@ import Tilemap.Core
     exposing
         ( TilemapConfig
         , cellSupportsRoadPlacement
-        , extractRoadTile
         , getTilemapConfig
+        , roadTileFromCell
         )
 import UI.Core
     exposing
@@ -129,7 +129,7 @@ update world renderCache msg model =
                 Just eventCell ->
                     let
                         cellHasRoadTile =
-                            case extractRoadTile eventCell world.tilemap of
+                            case roadTileFromCell eventCell world.tilemap of
                                 Just _ ->
                                     True
 

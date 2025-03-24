@@ -26,6 +26,7 @@ import Tilemap.Core
         , fixedTileByCell
         , getTilemapConfig
         , resetSuperposition
+        , roadTileFromCell
         , setSuperpositionOptions
         , updateTilemap
         )
@@ -204,16 +205,10 @@ update msg model =
 
 onPrimaryInput : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
 onPrimaryInput cell model =
-    let
-        isRoadTile =
-            case extractRoadTile cell model.world.tilemap of
-                Just _ ->
-                    True
-
-                Nothing ->
-                    False
-    in
-    if not isRoadTile && cellSupportsRoadPlacement cell model.world.tilemap then
+    if
+        Maybe.isNothing (roadTileFromCell cell model.world.tilemap)
+            && cellSupportsRoadPlacement cell model.world.tilemap
+    then
         addTile cell model
 
     else
@@ -222,11 +217,11 @@ onPrimaryInput cell model =
 
 onSecondaryInput : Cell -> Liikennematto -> ( Liikennematto, Cmd Message )
 onSecondaryInput cell model =
-    let
-        tile =
-            fixedTileByCell model.world.tilemap cell
-    in
-    if Maybe.unwrap False isBuilt tile then
+    if
+        fixedTileByCell model.world.tilemap cell
+            |> Maybe.andThen extractRoadTile
+            |> Maybe.unwrap False isBuilt
+    then
         removeTile cell model
 
     else
