@@ -18,9 +18,19 @@ build:
 	@echo ">> Done!"
 
 check:
-	@mkdir -p ./build
 	clear
-	elm make src/Main.elm --output=./build/liikennematto-debug.js
+	elm make src/Main.elm --output /dev/null
+	elm make benchmarks/RoadNetworkBenchmark.elm --output /dev/null
+	elm make benchmarks/TrafficBenchmark.elm --output /dev/null
+	elm make benchmarks/SplineBenchmark.elm --output /dev/null
+	elm make benchmarks/PathfindingAndRouteBenchmark.elm --output /dev/null
+	elm make benchmarks/GameLoopBenchmark.elm --output /dev/null
+	elm make benchmarks/RenderBenchmark.elm --output /dev/null
+	elm make devtools/RenderFixture.elm --output /dev/null
+	elm make devtools/LotsGallery.elm --output /dev/null
+	elm make devtools/PathfindingVisualization.elm --output /dev/null
+	elm make devtools/RouteVisualization.elm --output /dev/null
+	elm make devtools/WFCDebug.elm --output /dev/null
 
 dev:
 	elm reactor
