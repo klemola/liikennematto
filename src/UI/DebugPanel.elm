@@ -15,6 +15,7 @@ import Model.Debug
         , toggleLayer
         )
 import Model.Liikennematto exposing (Liikennematto)
+import Model.Screen as Screen
 import Model.World exposing (World, formatEvents)
 import Tilemap.DrivenWFC exposing (DrivenWFC(..), drivenWfcDebug)
 import Time
@@ -63,17 +64,21 @@ update msg model =
 
 view : Liikennematto -> Element Message
 view model =
+    let
+        showPanel =
+            model.screen.width >= Screen.breakpointXL
+    in
     Element.row
         [ Element.alignRight
         , Element.moveLeft scrollbarAwareOffsetF
         , Element.moveDown scrollbarAwareOffsetF
         ]
-        [ if Model.Debug.isLayerEnabled WFCDebug model.debug then
+        [ if Model.Debug.isLayerEnabled WFCDebug model.debug && showPanel then
             wfcPanel model.debug.wfcLog model.wfc
 
           else
             Element.none
-        , if Model.Debug.isLayerEnabled CarDebug model.debug then
+        , if Model.Debug.isLayerEnabled CarDebug model.debug && showPanel then
             carPanel model
 
           else
@@ -89,6 +94,7 @@ mainPanel model =
         , Element.spacing whitespaceTight
         , Element.width (Element.shrink |> Element.minimum debugElementSize)
         , Element.alignTop
+        , Element.alignRight
         , Background.color colorMenuBackgroundInverse
         , Border.rounded borderRadiusPanel
         ]
@@ -172,7 +178,8 @@ wfcPanel wfcLog drivenWfc =
         [ Element.padding whitespaceRegular
         , Element.spacing whitespaceTight
         , Element.alignTop
-        , Element.width (Element.shrink |> Element.minimum debugElementSize)
+        , Element.alignLeft
+        , Element.width (Element.px 600)
         , Font.size textSizeMini
         , Background.color colorCardBackground
         , Border.rounded borderRadiusPanel
@@ -199,20 +206,25 @@ wfcPanel wfcLog drivenWfc =
 
 carPanel : Liikennematto -> Element Message
 carPanel model =
-    Element.column
-        [ Element.padding whitespaceRegular
-        , Element.spacing whitespaceTight
-        , Element.width (Element.shrink |> Element.minimum debugElementSize)
-        , Element.alignTop
-        , Background.color colorMenuBackgroundInverse
-        , Border.rounded borderRadiusPanel
-        ]
-        (Collection.values model.world.cars
-            |> List.map
+    if Collection.size model.world.cars == 0 then
+        Element.none
+
+    else
+        Element.column
+            [ Element.padding whitespaceRegular
+            , Element.spacing whitespaceTight
+            , Element.width (Element.px debugElementSize)
+            , Element.alignTop
+            , Element.alignLeft
+            , Background.color colorMenuBackgroundInverse
+            , Border.rounded borderRadiusPanel
+            ]
+            (List.map
                 (carStateCard model.renderCache
                     >> Element.map (\_ -> NoOp)
                 )
-        )
+                (Collection.values model.world.cars)
+            )
 
 
 eventQueueView : Time.Posix -> World -> Element msg

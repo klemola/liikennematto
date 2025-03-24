@@ -1,6 +1,7 @@
 module Model.Screen exposing
     ( Screen
     , ScreenCategory(..)
+    , breakpointXL
     , fallback
     , fromDimensions
     )

@@ -190,7 +190,7 @@ step endCondition model =
                         Model
                             { steppedModel
                                 | state = nextState
-                                , log = stateDebugInternal nextState :: steppedModel.log
+                                , log = ("<" ++ stateDebugInternal nextState) :: steppedModel.log
                             }
 
                     else
@@ -204,7 +204,7 @@ step endCondition model =
                                 , openSteps = []
                                 , previousSteps = prunedPreviousSteps
                                 , backtrackCount = nextBacktrackCount
-                                , log = ("Backtrack successful, count: " ++ String.fromInt nextBacktrackCount) :: steppedModel.log
+                                , log = ("<Backtrack successful, count: " ++ String.fromInt nextBacktrackCount) :: steppedModel.log
                                 , tilemap = tilemapAfterBacktrack
                                 , tileInventory = updatedTileInventory
                             }
@@ -214,7 +214,7 @@ step endCondition model =
                     Model
                         { steppedModel
                             | state = Failed failure
-                            , log = "Backtrack failed" :: steppedModel.log
+                            , log = "!Backtrack failed" :: steppedModel.log
                         }
 
         _ ->
@@ -373,7 +373,7 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap } as m
                                         previousSteps
                             , pendingActions = modelDetails.pendingActions ++ tileActions
                             , tileInventory = nextTileInventory
-                            , log = ("Processed step " ++ stepDebug currentStep) :: withPosition.log
+                            , log = ("|Step " ++ stepDebug currentStep) :: withPosition.log
                         }
 
                 Err wfcFailure ->
@@ -396,7 +396,10 @@ processOpenSteps endCondition (Model ({ openSteps, previousSteps, tilemap } as m
                         { withPosition
                             | state = nextState
                             , openSteps = nextOtherSteps
-                            , log = stateDebugInternal nextState :: ("Step FAILED " ++ stepDebug currentStep) :: withPosition.log
+                            , log =
+                                ("<" ++ stateDebugInternal nextState)
+                                    :: ("!FAIL " ++ stepDebug currentStep)
+                                    :: withPosition.log
                         }
 
         [] ->
