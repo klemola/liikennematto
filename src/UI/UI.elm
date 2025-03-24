@@ -6,6 +6,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Html exposing (Html)
 import Html.Attributes as HtmlAttribute
+import Html.Events.Extra.Mouse as Mouse
 import Message exposing (Message(..))
 import Model.Liikennematto exposing (Liikennematto)
 import Model.World exposing (World)
@@ -100,6 +101,7 @@ view model render renderDebugLayers =
         , Element.inFront (restoreGameControl model.previousWorld)
         , Element.htmlAttribute (HtmlAttribute.id containerId)
         , Element.htmlAttribute (HtmlAttribute.style "touch-action" "pan-x pan-y")
+        , Element.htmlAttribute (Mouse.onContextMenu (\_ -> NoOp))
         ]
         (renderWrapper model render renderDebugLayers)
 
