@@ -203,7 +203,7 @@ triggerLoading model =
 
 initialDrivenWfc : DrivenWFC
 initialDrivenWfc =
-    WFCSolved []
+    WFCSolved [] []
 
 
 horizontalCellsAmount : Int

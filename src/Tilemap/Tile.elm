@@ -52,7 +52,6 @@ type alias TileFSM =
 
 type Action
     = PlayAudio Sound
-    | OnRemoved Cell
 
 
 type TileState

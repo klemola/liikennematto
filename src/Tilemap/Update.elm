@@ -39,7 +39,7 @@ import Tilemap.DrivenWFC
         , restartWfc
         , runWfc
         )
-import Tilemap.Tile as Tile
+import Tilemap.Tile
     exposing
         ( Action(..)
         , isBuilt
@@ -148,7 +148,7 @@ update msg model =
                                 in
                                 ( { model
                                     | wfc = WFCActive initialWfc
-                                    , debug = appendWfcLog [ ">O Restart WFC (timer)" ] model.debug
+                                    , debug = appendWfcLog [ ">Restart WFC (timer)" ] model.debug
                                   }
                                 , scheduleWFCChunk initialWfc world
                                 )
@@ -178,18 +178,26 @@ update msg model =
                                         (World.tileInventoryCount model.world)
                                         nextTilemap
                             in
-                            ( { model | debug = appendWfcLog (">X Restart WFC (failure)" :: wfcLog) model.debug }
+                            ( { model | debug = appendWfcLog (">Restart WFC (failure)" :: wfcLog) model.debug }
                             , scheduleWFCChunk wfc model.world
                             )
 
-                        WFCSolved wfcLog ->
+                        WFCSolved wfcLog collapsedTiles ->
+                            let
+                                audioCmd =
+                                    if List.isEmpty collapsedTiles then
+                                        Cmd.none
+
+                                    else
+                                        playSound Audio.BuildLot
+                            in
                             ( { model
                                 | world = World.setTilemap nextTilemap model.world
                                 , wfc = updatedDrivenWfc
                                 , renderCache = setTilemapCache nextTilemap Nothing model.renderCache
                                 , debug = appendWfcLog wfcLog model.debug
                               }
-                            , Cmd.batch (tileActionsToCmds tileActions)
+                            , Cmd.batch (audioCmd :: tileActionsToCmds tileActions)
                             )
 
                         WFCPending _ ->
@@ -313,7 +321,4 @@ tileActionsToCmds =
             case action of
                 PlayAudio sound ->
                     playSound sound
-
-                Tile.OnRemoved _ ->
-                    Cmd.none
         )

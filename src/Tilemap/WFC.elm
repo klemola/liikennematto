@@ -5,6 +5,7 @@ module Tilemap.WFC exposing
     , WFCState(..)
     , checkLargeTileFit
     , collapse
+    , collapsedTiles
     , contextDebug
     , currentSeed
     , currentState
@@ -1017,6 +1018,32 @@ log (Model modelDetails) =
 currentSeed : Model -> Random.Seed
 currentSeed (Model modelDetails) =
     modelDetails.seed
+
+
+collapsedTiles : Model -> List ( Cell, TileId )
+collapsedTiles (Model modelDetails) =
+    let
+        collect remaining acc =
+            case Stack.pop remaining of
+                ( Nothing, _ ) ->
+                    acc
+
+                ( Just previousStep, nextRemaining ) ->
+                    let
+                        ( theStep, _ ) =
+                            previousStep
+
+                        nextAcc =
+                            case theStep of
+                                Collapse cell tileConfig ->
+                                    ( cell, TileConfig.tileConfigId tileConfig ) :: acc
+
+                                _ ->
+                                    acc
+                    in
+                    collect nextRemaining nextAcc
+    in
+    collect modelDetails.previousSteps []
 
 
 stateDebug : Model -> String
