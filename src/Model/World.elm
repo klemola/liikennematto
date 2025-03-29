@@ -1,5 +1,6 @@
 module Model.World exposing
-    ( PendingTilemapChange
+    ( LotPlacement
+    , PendingTilemapChange
     , RNLookupEntry
     , TilemapChange
     , World
@@ -104,6 +105,14 @@ type alias PendingTilemapChange =
 type alias TilemapChange =
     { changedCells : Nonempty Cell
     , transitionedCells : List Cell
+    }
+
+
+type alias LotPlacement =
+    { lot : Lot
+    , tile : LargeTile
+    , drivewayCell : Cell
+    , anchorCell : Cell
     }
 
 

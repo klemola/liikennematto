@@ -4,7 +4,7 @@ import Browser.Dom
 import Browser.Events exposing (Visibility)
 import Duration exposing (Duration)
 import Model.Debug exposing (DebugLayerKind, DevAction)
-import Model.World exposing (TilemapChange)
+import Model.World exposing (LotPlacement, TilemapChange)
 import Task
 import Tilemap.DrivenWFC exposing (RunWFCResult)
 import Time
@@ -32,6 +32,7 @@ type Message
     | UpdateTilemap Duration
     | WFCChunkProcessed RunWFCResult
     | TilemapChanged TilemapChange
+    | LotsPlaced (List LotPlacement)
     | TriggerDevAction DevAction
       -- UI
     | InputReceived UI.Core.InputEvent

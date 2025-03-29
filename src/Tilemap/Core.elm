@@ -4,6 +4,7 @@ module Tilemap.Core exposing
     , TilemapConfig
     , TilemapUpdateResult
     , addAnchor
+    , addAnimationTimer
     , addTile
     , addTileFromWfc
     , anchorByCell
@@ -78,6 +79,7 @@ type Tilemap
         , boundingBox : BoundingBox2d Length.Meters GlobalCoordinates
         , config : TilemapConfig
         , recentPlacements : List Cell
+        , animationTimers : List ( Cell, Duration )
         }
 
 
@@ -107,6 +109,7 @@ createTilemap tilemapConfig initTileFn =
         , boundingBox = Common.boundingBoxWithDimensions width height Point2d.origin
         , config = tilemapConfig
         , recentPlacements = []
+        , animationTimers = []
         }
 
 
@@ -229,6 +232,11 @@ setBuildHistory history (Tilemap tilemapContents) =
 getBuildHistory : Tilemap -> List Cell
 getBuildHistory (Tilemap tilemapContents) =
     tilemapContents.recentPlacements
+
+
+addAnimationTimer : Cell -> Duration -> Tilemap -> Tilemap
+addAnimationTimer cell timer (Tilemap tilemapContents) =
+    Tilemap { tilemapContents | animationTimers = ( cell, timer ) :: tilemapContents.animationTimers }
 
 
 cellSupportsRoadPlacement : Cell -> Tilemap -> Bool
@@ -442,8 +450,37 @@ updateTilemap delta tilemap =
             List.filterMap
                 (Cell.fromArray1DIndex currentTilemap.config)
                 cellsUpdate.dynamicIndices
+
+        ( cellsWithFinishedTimers, nextTimers ) =
+            List.foldl
+                (\( timerCell, timer ) ( finishedAcc, timersAcc ) ->
+                    let
+                        nextTimer =
+                            timer
+                                |> Quantity.minus delta
+                                |> Quantity.max Quantity.zero
+                    in
+                    if Quantity.lessThanOrEqualToZero nextTimer then
+                        ( timerCell :: finishedAcc, timersAcc )
+
+                    else
+                        ( finishedAcc, ( timerCell, nextTimer ) :: timersAcc )
+                )
+                ( [], [] )
+                currentTilemap.animationTimers
     in
-    { tilemap = Tilemap { currentTilemap | cells = cellsUpdate.nextTiles }
+    { tilemap =
+        List.foldl
+            (\cell updatedTilemap ->
+                mapCell cell (Tile.withAnimation Nothing) updatedTilemap
+            )
+            (Tilemap
+                { currentTilemap
+                    | cells = cellsUpdate.nextTiles
+                    , animationTimers = nextTimers
+                }
+            )
+            cellsWithFinishedTimers
     , actions = cellsUpdate.actions
     , transitionedCells = transitionedCells
     , emptiedCells = emptiedCells
@@ -565,7 +602,15 @@ applyTilemapOperation operation parentTileId tileConfig origin tilemap =
         ( originTile, tileActions ) =
             Tile.fromTileConfig tileConfig parentTileId operation
     in
-    ( updateCell origin originTile tilemap
+    ( updateCell origin
+        originTile
+        (case Tile.animation originTile of
+            Just animation ->
+                addAnimationTimer origin animation.duration tilemap
+
+            Nothing ->
+                tilemap
+        )
     , tileActions
     )
 

@@ -6,12 +6,13 @@ import Data.TileSet
         ( defaultTiles
         , tileIdByBitmask
         )
+import Duration
 import Maybe.Extra as Maybe
 import Message exposing (Message(..))
 import Model.Debug exposing (appendWfcLog)
 import Model.Liikennematto exposing (Liikennematto)
 import Model.RenderCache exposing (refreshTilemapCache, setTilemapCache, setTilemapDebugCache)
-import Model.World as World exposing (World)
+import Model.World as World exposing (LotPlacement, World)
 import Process
 import Quantity
 import Task
@@ -20,11 +21,14 @@ import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
         ( Tilemap
+        , addAnchor
+        , addAnimationTimer
         , cellBitmask
         , cellSupportsRoadPlacement
         , extractRoadTile
         , fixedTileByCell
         , getTilemapConfig
+        , mapCell
         , resetSuperposition
         , roadTileFromCell
         , setSuperpositionOptions
@@ -39,7 +43,7 @@ import Tilemap.DrivenWFC
         , restartWfc
         , runWfc
         )
-import Tilemap.Tile
+import Tilemap.Tile as Tile
     exposing
         ( Action(..)
         , isBuilt
@@ -207,6 +211,23 @@ update msg model =
                     -- WFC may already have been solved or failed, and the processed chunk is irrelevant
                     ( model, Cmd.none )
 
+        LotsPlaced lotPlacements ->
+            let
+                nextWorld =
+                    List.foldl
+                        (\lotPlacement worldWithLots ->
+                            { worldWithLots | tilemap = tilemapWithLotPlacement lotPlacement worldWithLots.tilemap }
+                        )
+                        model.world
+                        lotPlacements
+            in
+            ( { model
+                | world = nextWorld
+                , renderCache = setTilemapCache nextWorld.tilemap Nothing model.renderCache
+              }
+            , Cmd.none
+            )
+
         _ ->
             ( model, Cmd.none )
 
@@ -297,6 +318,34 @@ scheduleWFCChunk wfcModel world =
     Process.sleep 1
         |> Task.map (\_ -> runWfc world.tilemap wfcModel)
         |> Task.perform WFCChunkProcessed
+
+
+
+--
+-- External events
+--
+
+
+tilemapWithLotPlacement : LotPlacement -> Tilemap -> Tilemap
+tilemapWithLotPlacement { lot, tile, drivewayCell, anchorCell } tilemap =
+    let
+        constraints =
+            getTilemapConfig tilemap
+
+        topLeftCell =
+            Tile.largeTileTopLeftCell constraints drivewayCell tile.anchorIndex tile
+                -- This fallback is unnecessary - the cell should exist
+                |> Maybe.withDefault drivewayCell
+    in
+    tilemap
+        |> addAnchor anchorCell
+            lot.id
+            lot.entryDirection
+        |> mapCell topLeftCell
+            (Tile.withName lot.name
+                >> Tile.withAnimation (Just Tile.defaultTileAnimation)
+            )
+        |> addAnimationTimer topLeftCell (Duration.milliseconds 500)
 
 
 

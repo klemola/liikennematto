@@ -123,6 +123,16 @@ renderTile renderable =
     tileElement
         renderable
         [ Attributes.transform ("translate(" ++ String.fromFloat renderable.x ++ "," ++ String.fromFloat renderable.y ++ ")")
+        , Attributes.class
+            (case renderable.animation of
+                Just _ ->
+                    -- For "static" tiles, the actual animation is discarded and the classname will activate the animation.
+                    -- Room for improvement: this is an awkward placeholder that should be revised when the animation system is redone.
+                    "animated-tile"
+
+                Nothing ->
+                    ""
+            )
         ]
 
 
@@ -155,15 +165,15 @@ staticFoliageAnimation =
 
 staticTileStyles =
     String.join "\n"
-        [ ".building {"
+        [ ".animated-tile .building {"
         , "transform-origin: center center;"
         , Animation.toStyleString staticBuildingAnimation
         , "}"
-        , ".tree, .bush {"
+        , ".animated-tile .tree, .animated-tile .bush {"
         , "transform-origin: center center;"
         , Animation.toStyleString staticTreeAnimation
         , "}"
-        , ".flower, .grass {"
+        , ".animated-tile .flower, .animated-tile .grass {"
         , "transform-origin: center center;"
         , Animation.toStyleString staticFoliageAnimation
         , "}"

@@ -208,7 +208,7 @@ renderableFromTile tilemapHeightPixels pixelsToMetersRatio cell tile =
 
                                 else
                                     props.name
-                            , animation = Nothing
+                            , animation = props.animation
                         }
 
                 Nothing ->
@@ -223,7 +223,7 @@ renderableFromTile tilemapHeightPixels pixelsToMetersRatio cell tile =
                         Just
                             { base
                                 | assetName = props.name
-                                , animation = Nothing
+                                , animation = props.animation
                             }
 
         _ ->
