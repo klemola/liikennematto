@@ -86,7 +86,7 @@ view { cars, roadNetwork, trafficLights } cache =
         , Attributes.style <| "background-color: " ++ Colors.lightGreenCSS ++ ";"
         ]
         [ styles
-        , Svg.Lazy.lazy renderTilemap cache
+        , Svg.Lazy.lazy renderTilemap cache.tilemap
         , renderDynamicTiles cache
         , renderCars cache cars
         , Svg.Lazy.lazy2 renderTrafficLights cache trafficLights
@@ -106,35 +106,24 @@ assetByName name =
 --
 
 
-renderTilemap : RenderCache -> Svg msg
-renderTilemap cache =
-    cache.tilemap
+renderTilemap : List Renderable -> Svg msg
+renderTilemap tilemap =
+    tilemap
         |> List.map
             (\renderable ->
-                ( Cell.toString renderable.cell ++ renderable.assetName
-                , renderTile cache renderable
+                ( renderableKey renderable
+                , Svg.Lazy.lazy renderTile renderable
                 )
             )
         |> Svg.Keyed.node "g" []
 
 
-renderTile : RenderCache -> Renderable -> Svg msg
-renderTile cache renderable =
-    let
-        { x, y } =
-            Cell.bottomLeftCorner renderable.cell |> pointToPixels cache.pixelsToMetersRatio
-
-        tileSizePixels =
-            toPixelsValue cache.pixelsToMetersRatio Cell.size
-
-        yAdjusted =
-            cache.tilemapHeightPixels - tileSizePixels - y
-
-        attrs =
-            [ Attributes.transform ("translate(" ++ String.fromFloat x ++ "," ++ String.fromFloat yAdjusted ++ ")")
-            ]
-    in
-    tileElement tileSizePixels renderable attrs
+renderTile : Renderable -> Svg msg
+renderTile renderable =
+    tileElement
+        renderable
+        [ Attributes.transform ("translate(" ++ String.fromFloat renderable.x ++ "," ++ String.fromFloat renderable.y ++ ")")
+        ]
 
 
 staticBuildingAnimation : Animation
@@ -170,7 +159,7 @@ staticTileStyles =
         , "transform-origin: center center;"
         , Animation.toStyleString staticBuildingAnimation
         , "}"
-        , ".tree, bush {"
+        , ".tree, .bush {"
         , "transform-origin: center center;"
         , Animation.toStyleString staticTreeAnimation
         , "}"
@@ -183,33 +172,28 @@ staticTileStyles =
 
 renderDynamicTiles : RenderCache -> Svg msg
 renderDynamicTiles cache =
+    let
+        tileSizePixels =
+            toPixelsValue cache.pixelsToMetersRatio Cell.size
+    in
     cache.dynamicTiles
         |> List.map
             (\renderable ->
-                ( Cell.toString renderable.cell
+                ( renderableKey renderable
                 , case renderable.animation of
                     Just animation ->
-                        renderAnimatedTile cache renderable animation
+                        renderAnimatedTile tileSizePixels renderable animation
 
                     Nothing ->
-                        renderTile cache renderable
+                        renderTile renderable
                 )
             )
         |> Svg.Keyed.node "g" []
 
 
-renderAnimatedTile : RenderCache -> Renderable -> Animation -> Svg msg
-renderAnimatedTile cache renderable animation =
+renderAnimatedTile : Float -> Renderable -> Animation -> Svg msg
+renderAnimatedTile tileSizePixels renderable animation =
     let
-        tileSizePixels =
-            toPixelsValue cache.pixelsToMetersRatio Cell.size
-
-        { x, y } =
-            Cell.bottomLeftCorner renderable.cell |> pointToPixels cache.pixelsToMetersRatio
-
-        yAdjusted =
-            cache.tilemapHeightPixels - tileSizePixels - y
-
         animationStyleString =
             Animation.toStyleString animation
 
@@ -227,14 +211,13 @@ renderAnimatedTile cache renderable animation =
                 |> Maybe.withDefault ( nothing, "" )
 
         transform =
-            "translate(" ++ String.fromFloat x ++ "," ++ String.fromFloat yAdjusted ++ ")"
+            "translate(" ++ String.fromFloat renderable.x ++ "," ++ String.fromFloat renderable.y ++ ")"
     in
     Svg.g
         [ Attributes.style clipStyles
         , Attributes.transform transform
         ]
         [ tileElement
-            tileSizePixels
             renderable
             [ Attributes.style tileStyles
             ]
@@ -286,20 +269,17 @@ animationOverflowTile tileSizePixels animationDirection =
     )
 
 
-tileElement : Float -> Renderable -> List (Svg.Attribute msg) -> Svg msg
-tileElement tileSizePixels renderable groupAttrs =
+tileElement : Renderable -> List (Svg.Attribute msg) -> Svg msg
+tileElement renderable groupAttrs =
     let
-        ( widthPixels, heightPixels ) =
-            ( floor tileSizePixels * renderable.width, floor tileSizePixels * renderable.height )
-
         ( asset, viewBox ) =
             assetByName renderable.assetName
     in
     Svg.g
         groupAttrs
         [ Svg.svg
-            [ Attributes.width (String.fromInt widthPixels)
-            , Attributes.height (String.fromInt heightPixels)
+            [ Attributes.width (String.fromInt renderable.width)
+            , Attributes.height (String.fromInt renderable.height)
             , Attributes.fill "none"
             , Attributes.viewBox viewBox
             ]
@@ -398,6 +378,11 @@ tileAnimationProperties tileSizePixels animation =
         ]
 
 
+renderableKey : Renderable -> String
+renderableKey renderable =
+    String.join "-" [ String.fromFloat renderable.x, String.fromFloat renderable.y, renderable.assetName ]
+
+
 
 --
 -- Cars
@@ -485,7 +470,14 @@ renderCar cache position orientation make =
 renderTrafficLights : RenderCache -> Collection TrafficLight -> Svg msg
 renderTrafficLights cache trafficLights =
     trafficLights
-        |> Collection.foldl (\_ tl acc -> ( "TrafficLight-" ++ Collection.idToString tl.id, renderTrafficLight cache tl ) :: acc) []
+        |> Collection.foldl
+            (\_ tl acc ->
+                ( "TrafficLight-" ++ Collection.idToString tl.id
+                , renderTrafficLight cache tl
+                )
+                    :: acc
+            )
+            []
         |> Svg.Keyed.node "g" []
 
 
