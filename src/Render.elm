@@ -11,6 +11,7 @@ import Common exposing (GlobalCoordinates)
 import Data.Cars exposing (CarMake, carStyleToString)
 import Data.Colors as Colors
 import Dict
+import Duration
 import Graph exposing (Node)
 import Html exposing (Html)
 import Length exposing (Length)
@@ -60,7 +61,7 @@ nothing =
 
 styles : Svg msg
 styles =
-    Svg.style [] [ Svg.text Animation.keyframes ]
+    Svg.style [] [ Svg.text (staticTileStyles ++ "\n" ++ Animation.keyframes) ]
 
 
 
@@ -110,7 +111,7 @@ renderTilemap cache =
     cache.tilemap
         |> List.map
             (\renderable ->
-                ( Cell.toString renderable.cell
+                ( Cell.toString renderable.cell ++ renderable.assetName
                 , renderTile cache renderable
                 )
             )
@@ -134,6 +135,50 @@ renderTile cache renderable =
             ]
     in
     tileElement tileSizePixels renderable attrs
+
+
+staticBuildingAnimation : Animation
+staticBuildingAnimation =
+    { duration = Duration.milliseconds 300
+    , delay = Duration.milliseconds 300
+    , name = Animation.Grow
+    , direction = Nothing
+    }
+
+
+staticTreeAnimation : Animation
+staticTreeAnimation =
+    { duration = Duration.milliseconds 300
+    , delay = Duration.milliseconds 200
+    , name = Animation.Grow
+    , direction = Nothing
+    }
+
+
+staticFoliageAnimation : Animation
+staticFoliageAnimation =
+    { duration = Duration.milliseconds 200
+    , delay = Duration.milliseconds 100
+    , name = Animation.Grow
+    , direction = Nothing
+    }
+
+
+staticTileStyles =
+    String.join "\n"
+        [ ".building {"
+        , "transform-origin: center center;"
+        , Animation.toStyleString staticBuildingAnimation
+        , "}"
+        , ".tree, bush {"
+        , "transform-origin: center center;"
+        , Animation.toStyleString staticTreeAnimation
+        , "}"
+        , ".flower, .grass {"
+        , "transform-origin: center center;"
+        , Animation.toStyleString staticFoliageAnimation
+        , "}"
+        ]
 
 
 renderDynamicTiles : RenderCache -> Svg msg

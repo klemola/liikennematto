@@ -260,19 +260,19 @@ tileAnimation tile =
     case FSM.toCurrentState tile.fsm of
         Tile.Constructing ->
             Just
-                (Animation
-                    Tile.transitionTimer
-                    Animation.Appear
-                    (animationDirectionFromTile tile)
-                )
+                { duration = Tile.transitionTimer
+                , delay = Quantity.zero
+                , name = Animation.Appear
+                , direction = animationDirectionFromTile tile
+                }
 
         Tile.Removing ->
             Just
-                (Animation
-                    Tile.transitionTimer
-                    Animation.Disappear
-                    Nothing
-                )
+                { duration = Tile.transitionTimer
+                , delay = Quantity.zero
+                , name = Animation.Disappear
+                , direction = Nothing
+                }
 
         Tile.Generated ->
             Nothing
