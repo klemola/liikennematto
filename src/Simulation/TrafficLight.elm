@@ -5,6 +5,7 @@ module Simulation.TrafficLight exposing
     , build
     , color
     , new
+    , redLightWaitingTime
     , shouldStopTraffic
     , withFacing
     , withPosition
@@ -12,7 +13,7 @@ module Simulation.TrafficLight exposing
 
 import Common exposing (GlobalCoordinates)
 import Direction2d exposing (Direction2d)
-import Duration
+import Duration exposing (Duration)
 import Length
 import Lib.Collection exposing (Id)
 import Lib.FSM as FSM exposing (FSM)
@@ -39,6 +40,21 @@ type alias NewTrafficLight =
     }
 
 
+greenLightWaitingTime : Duration
+greenLightWaitingTime =
+    Duration.seconds 12
+
+
+yellowLightWaitingTime : Duration
+yellowLightWaitingTime =
+    Duration.seconds 4
+
+
+redLightWaitingTime : Duration
+redLightWaitingTime =
+    Duration.seconds 16
+
+
 green : FSM.State TrafficLightColor actionType updateContext
 green =
     FSM.createState
@@ -48,7 +64,7 @@ green =
             [ FSM.createTransition
                 (\_ -> yellow)
                 []
-                (FSM.Timer (Duration.seconds 12))
+                (FSM.Timer greenLightWaitingTime)
             ]
         , entryActions = []
         , exitActions = []
@@ -64,7 +80,7 @@ yellow =
             [ FSM.createTransition
                 (\_ -> red)
                 []
-                (FSM.Timer (Duration.seconds 4))
+                (FSM.Timer yellowLightWaitingTime)
             ]
         , entryActions = []
         , exitActions = []
@@ -80,7 +96,7 @@ red =
             [ FSM.createTransition
                 (\_ -> green)
                 []
-                (FSM.Timer (Duration.seconds 16))
+                (FSM.Timer redLightWaitingTime)
             ]
         , entryActions = []
         , exitActions = []

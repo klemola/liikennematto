@@ -80,6 +80,11 @@ routeEndSlowRadius =
     Length.meters 15
 
 
+maxWaitingTime : Duration
+maxWaitingTime =
+    Quantity.plus TrafficLight.redLightWaitingTime (Duration.seconds 4)
+
+
 updateTraffic :
     { updateQueue : List Car
     , world : World
@@ -96,31 +101,38 @@ updateTraffic { updateQueue, world, delta, events } =
 
         activeCar :: queue ->
             let
-                ( nextCar, worldEvents ) =
+                ( updatedCar, worldEvents ) =
                     updateCar delta world activeCar
+
+                carAfterWaitingTimeCheck =
+                    if Quantity.greaterThan maxWaitingTime updatedCar.waitingTime then
+                        Car.triggerDespawn updatedCar
+
+                    else
+                        updatedCar
             in
             updateTraffic
                 { updateQueue = queue
-                , world = World.setCar nextCar world
+                , world = World.setCar carAfterWaitingTimeCheck world
                 , delta = delta
                 , events = events ++ worldEvents
                 }
 
 
 updateCar : Duration -> World -> Car -> ( Car, List World.WorldEvent )
-updateCar delta world activeCar =
+updateCar delta world car =
     let
         fsmUpdateContext =
-            { currentPosition = activeCar.position
-            , currentVelocity = activeCar.velocity
-            , route = activeCar.route
+            { currentPosition = car.position
+            , currentVelocity = car.velocity
+            , route = car.route
             }
 
         ( nextFSM, fsmEvents ) =
-            FSM.update delta fsmUpdateContext activeCar.fsm
+            FSM.update delta fsmUpdateContext car.fsm
 
         carWithFsmUpdate =
-            { activeCar | fsm = nextFSM }
+            { car | fsm = nextFSM }
 
         ( nextRoute, pathfindingEvent ) =
             Pathfinding.updateRoute delta carWithFsmUpdate
@@ -128,22 +140,21 @@ updateCar delta world activeCar =
         otherCars =
             world.carLookup
                 |> World.findNearbyEntities nearbyTrafficRadius carWithFsmUpdate.boundingBox
-                |> List.filter (\car -> car.id /= carWithFsmUpdate.id)
-
-        steering =
-            checkRules
-                { world = world
-                , otherCars = otherCars
-                , activeCar = carWithFsmUpdate
-                }
+                |> List.filter (\theCar -> theCar.id /= carWithFsmUpdate.id)
 
         worldEvents =
             pathfindingEvent :: List.map (World.CarStateChange carWithFsmUpdate.id) fsmEvents
     in
-    ( applySteering
-        delta
-        steering
-        { carWithFsmUpdate | route = nextRoute }
+    ( { carWithFsmUpdate | route = nextRoute }
+        |> applySteering
+            delta
+            (checkRules
+                { world = world
+                , otherCars = otherCars
+                , activeCar = carWithFsmUpdate
+                }
+            )
+        |> updateWaitingTime delta
     , worldEvents
     )
 
@@ -187,6 +198,40 @@ applySteering delta steering car =
         , shape = nextShape
         , boundingBox = nextBoundingBox
     }
+
+
+updateWaitingTime : Duration -> Car -> Car
+updateWaitingTime delta car =
+    let
+        state =
+            FSM.toCurrentState car.fsm
+
+        shouldTrackWaitingTime =
+            case state of
+                Driving ->
+                    True
+
+                WaitingForParkingSpot ->
+                    True
+
+                Parking ->
+                    True
+
+                _ ->
+                    False
+
+        newWaitingTime =
+            if shouldTrackWaitingTime then
+                if Car.isMoving car then
+                    Quantity.zero
+
+                else
+                    Quantity.plus car.waitingTime delta
+
+            else
+                Quantity.zero
+    in
+    { car | waitingTime = newWaitingTime }
 
 
 rerouteCarsIfNeeded : World -> World

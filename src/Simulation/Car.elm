@@ -27,6 +27,7 @@ import AngularSpeed exposing (AngularSpeed)
 import BoundingBox2d exposing (BoundingBox2d)
 import Common exposing (GlobalCoordinates, isCloseToZeroVelocity)
 import Data.Cars exposing (CarMake)
+import Duration exposing (Duration)
 import Frame2d
 import Length
 import Lib.Collection exposing (Id)
@@ -52,6 +53,7 @@ type alias Car =
     , route : Route
     , homeLotId : Maybe Id
     , parkingReservation : Maybe ParkingReservation
+    , waitingTime : Duration
     }
 
 
@@ -360,6 +362,7 @@ build parkingReservation newCar id =
     , route = Route.initialRoute
     , homeLotId = newCar.homeLotId
     , parkingReservation = parkingReservation
+    , waitingTime = Duration.milliseconds 0
     }
 
 
