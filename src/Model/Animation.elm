@@ -11,6 +11,7 @@ import Lib.OrthogonalDirection exposing (OrthogonalDirection)
 
 type alias Animation =
     { duration : Duration
+    , delay : Duration
     , name : AnimationName
     , direction : Maybe OrthogonalDirection
     }
@@ -19,13 +20,29 @@ type alias Animation =
 type AnimationName
     = Appear
     | Disappear
+    | Grow
+    | FallIntoPlace
 
 
 toStyleString : Animation -> String
 toStyleString animation =
     let
-        name =
-            keyframeName animation
+        ( name, initialOpacity ) =
+            case ( animation.name, animation.direction ) of
+                ( Appear, Just _ ) ->
+                    ( "appear-from-direction", "1.0" )
+
+                ( Appear, Nothing ) ->
+                    ( "appear-directionless", "1.0" )
+
+                ( Disappear, _ ) ->
+                    ( "disappear", "1.0" )
+
+                ( Grow, _ ) ->
+                    ( "grow", "0" )
+
+                ( FallIntoPlace, _ ) ->
+                    ( "fall-into-place", "0" )
 
         duration =
             (animation.duration
@@ -33,50 +50,59 @@ toStyleString animation =
                 |> String.fromFloat
             )
                 ++ "ms"
+
+        delay =
+            (animation.delay
+                |> Duration.inMilliseconds
+                |> String.fromFloat
+            )
+                ++ "ms"
     in
-    String.join " "
-        [ "animation:"
-        , duration
-        , name
-        , "forwards"
-        , ";"
+    String.join "\n"
+        [ "animation-fill-mode: forwards;"
+        , "transform-box: fill-box;"
+        , "animation-delay:" ++ delay ++ ";"
+        , "animation-duration:" ++ duration ++ ";"
+        , "animation-name:" ++ name ++ ";"
+        , "opacity:" ++ initialOpacity ++ ";"
         ]
-
-
-keyframeName : Animation -> String
-keyframeName animation =
-    case ( animation.name, animation.direction ) of
-        ( Appear, Just _ ) ->
-            "appear-from-direction"
-
-        ( Appear, Nothing ) ->
-            "appear-directionless"
-
-        ( Disappear, _ ) ->
-            "disappear"
 
 
 keyframes : String
 keyframes =
     """
-    @keyframes appear-from-direction {
-        0%   { transform: translate(var(--xOffset), var(--yOffset)); }
-        50%  { transform: translate(0,            , 0             ); }
-        51%  { transform: scale(    1             , 1             ); }
-        80%  { transform: scale(    var(--scaleX) , var(--scaleY) ); }
-        100% { transform: scale(    1             , 1             ); }
-    }
+@keyframes appear-from-direction {
+    0%   { transform: translate(var(--xOffset), var(--yOffset)); }
+    50%  { transform: translate(0,            , 0             ); }
+    51%  { transform: scale(    1             , 1             ); }
+    80%  { transform: scale(    var(--scaleX) , var(--scaleY) ); }
+    100% { transform: scale(    1             , 1             ); }
+}
 
-    @keyframes appear-directionless {
-        0%   { transform: scale(1    , 1   ) rotate( 0deg  ); }
-        15%  { transform: scale(1.05 , 1   ) rotate( 1.5deg); }
-        50%  { transform: scale(1.1  , 1.05) rotate( 2deg  ); }
-        85%  { transform: scale(1    , 1.05) rotate(-1.5deg); }
-        100% { transform: scale(1    , 1   ) rotate( 0deg  ); }
-    }
+@keyframes appear-directionless {
+    0%   { transform: scale(1    , 1   ) rotate( 0deg  ); }
+    15%  { transform: scale(1.05 , 1   ) rotate( 1.5deg); }
+    50%  { transform: scale(1.1  , 1.05) rotate( 2deg  ); }
+    85%  { transform: scale(1    , 1.05) rotate(-1.5deg); }
+    100% { transform: scale(1    , 1   ) rotate( 0deg  ); }
+}
 
-    @keyframes disappear {
-        0%   { transform: scale(1  ); opacity: 1.0; }
-        100% { transform: scale(1.5); opacity: 0.0; }
-    }
+@keyframes disappear {
+    0%   { transform: scale(1  ); opacity: 1.0; }
+    100% { transform: scale(1.5); opacity: 0.0; }
+}
+
+@keyframes grow {
+    0%   { scale: 45%;  opacity: 0.2; }
+    50%  {              opacity: 0.9; }
+    66%  { scale: 110%; opacity: 1; }
+    100% { scale: 100%; opacity: 1; }
+}
+
+@keyframes fall-into-place {
+    0%   { transform: translate(0, -40%); opacity: 0.3; }
+    51%  { transform: translate(0, 0   ); opacity: 1;   }
+    80%  { transform: scale(1, 1.05);                   }
+    100% { transform: translate(0, 0   ); opacity: 1;   }
+}
     """

@@ -19,7 +19,13 @@ import Model.Animation as Animation exposing (Animation)
 import Model.World exposing (World)
 import Pixels
 import Quantity
-import Render.Conversion exposing (PixelsToMetersRatio, defaultPixelsToMetersRatio, toPixelsValue)
+import Render.Conversion
+    exposing
+        ( PixelsToMetersRatio
+        , defaultPixelsToMetersRatio
+        , pointToPixels
+        , toPixelsValue
+        )
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
@@ -51,7 +57,8 @@ type alias RenderCache =
 
 
 type alias Renderable =
-    { cell : Cell
+    { x : Float
+    , y : Float
     , width : Int
     , height : Int
     , assetName : String
@@ -80,7 +87,11 @@ new { tilemap } =
             StaticTiles
     in
     { pixelsToMetersRatio = defaultPixelsToMetersRatio
-    , tilemap = tilemapToList renderableFromTile initialTileListFilter tilemap
+    , tilemap =
+        tilemapToList
+            (renderableFromTile tilemapHeigthPixels defaultPixelsToMetersRatio)
+            initialTileListFilter
+            tilemap
     , tilemapDebug = tilemapToList debugItemFromTile NoFilter tilemap
     , dynamicTiles = []
     , tilemapWidthPixels =
@@ -129,7 +140,11 @@ setTileListFilter tileListFilter cache =
 setTilemapCache : Tilemap -> Maybe Tilemap -> RenderCache -> RenderCache
 setTilemapCache tilemap unsolvedWFCTilemap cache =
     { cache
-        | tilemap = tilemapToList renderableFromTile cache.tileListFilter tilemap
+        | tilemap =
+            tilemapToList
+                (renderableFromTile cache.tilemapHeightPixels cache.pixelsToMetersRatio)
+                cache.tileListFilter
+                tilemap
 
         -- TODO: the debug state should only be set if the debug layer is open
         -- it is costly
@@ -164,14 +179,15 @@ refreshTilemapCache tilemapUpdateResult cache =
 
             else
                 toDynamicTiles
+                    cache
                     tilemapUpdateResult.tilemap
                     tilemapUpdateResult.dynamicCells
     in
     { nextCache | dynamicTiles = nextDynamicTiles }
 
 
-renderableFromTile : Cell -> Tile -> Maybe Renderable
-renderableFromTile cell tile =
+renderableFromTile : Float -> PixelsToMetersRatio -> Cell -> Tile -> Maybe Renderable
+renderableFromTile tilemapHeightPixels pixelsToMetersRatio cell tile =
     case tile.kind of
         Tile.Fixed props ->
             let
@@ -180,17 +196,19 @@ renderableFromTile cell tile =
             in
             case maybeLargeTile of
                 Just largeTile ->
+                    let
+                        base =
+                            baseRenderable tilemapHeightPixels pixelsToMetersRatio cell ( largeTile.width, largeTile.height )
+                    in
                     Just
-                        { cell = cell
-                        , width = largeTile.width
-                        , height = largeTile.height
-                        , assetName =
-                            if props.name == "_subgrid" then
-                                largeTile.name
+                        { base
+                            | assetName =
+                                if props.name == "_subgrid" then
+                                    largeTile.name
 
-                            else
-                                props.name
-                        , animation = Nothing
+                                else
+                                    props.name
+                            , animation = props.animation
                         }
 
                 Nothing ->
@@ -198,12 +216,14 @@ renderableFromTile cell tile =
                         Nothing
 
                     else
+                        let
+                            base =
+                                baseRenderable tilemapHeightPixels pixelsToMetersRatio cell ( 1, 1 )
+                        in
                         Just
-                            { cell = cell
-                            , width = 1
-                            , height = 1
-                            , assetName = props.name
-                            , animation = Nothing
+                            { base
+                                | assetName = props.name
+                                , animation = props.animation
                             }
 
         _ ->
@@ -229,30 +249,53 @@ debugItemFromTile cell tile =
             Nothing
 
 
-toDynamicTiles : Tilemap -> List Cell -> List Renderable
-toDynamicTiles tilemap =
+toDynamicTiles : RenderCache -> Tilemap -> List Cell -> List Renderable
+toDynamicTiles cache tilemap =
     List.filterMap
         (\cell ->
             fixedTileByCell tilemap cell
                 |> Maybe.map (Tuple.pair cell)
-                |> Maybe.andThen renderableFromDynamicTile
+                |> Maybe.andThen (renderableFromDynamicTile cache)
         )
 
 
-renderableFromDynamicTile : ( Cell, Tile ) -> Maybe Renderable
-renderableFromDynamicTile ( cell, tile ) =
+renderableFromDynamicTile : RenderCache -> ( Cell, Tile ) -> Maybe Renderable
+renderableFromDynamicTile cache ( cell, tile ) =
     case tile.kind of
         Tile.Fixed props ->
+            let
+                base =
+                    baseRenderable cache.tilemapHeightPixels cache.pixelsToMetersRatio cell ( 1, 1 )
+            in
             Just
-                { cell = cell
-                , width = 1
-                , height = 1
-                , assetName = props.name
-                , animation = tileAnimation tile
+                { base
+                    | assetName = props.name
+                    , animation = tileAnimation tile
                 }
 
         _ ->
             Nothing
+
+
+baseRenderable : Float -> PixelsToMetersRatio -> Cell -> ( Int, Int ) -> Renderable
+baseRenderable tilemapHeightPixels pixelsToMetersRatio cell ( width, height ) =
+    let
+        { x, y } =
+            Cell.bottomLeftCorner cell |> pointToPixels pixelsToMetersRatio
+
+        tileSizePixels =
+            toPixelsValue pixelsToMetersRatio Cell.size
+
+        yAdjusted =
+            tilemapHeightPixels - tileSizePixels - y
+    in
+    { x = x
+    , y = yAdjusted
+    , width = floor tileSizePixels * width
+    , height = floor tileSizePixels * height
+    , assetName = "_placeholder"
+    , animation = Nothing
+    }
 
 
 tileAnimation : Tile -> Maybe Animation
@@ -260,19 +303,19 @@ tileAnimation tile =
     case FSM.toCurrentState tile.fsm of
         Tile.Constructing ->
             Just
-                (Animation
-                    Tile.transitionTimer
-                    Animation.Appear
-                    (animationDirectionFromTile tile)
-                )
+                { duration = Tile.transitionTimer
+                , delay = Quantity.zero
+                , name = Animation.Appear
+                , direction = animationDirectionFromTile tile
+                }
 
         Tile.Removing ->
             Just
-                (Animation
-                    Tile.transitionTimer
-                    Animation.Disappear
-                    Nothing
-                )
+                { duration = Tile.transitionTimer
+                , delay = Quantity.zero
+                , name = Animation.Disappear
+                , direction = Nothing
+                }
 
         Tile.Generated ->
             Nothing

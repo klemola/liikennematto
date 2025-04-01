@@ -12,25 +12,23 @@ import Model.Liikennematto
     exposing
         ( Liikennematto
         )
-import Model.RenderCache as RenderCache
 import Model.World as World
     exposing
-        ( TilemapChange
+        ( LotPlacement
+        , TilemapChange
         , World
         , updateRoadNetwork
         )
 import Simulation.Events exposing (updateEventQueue)
-import Simulation.Lot as Lot exposing (Lot)
+import Simulation.Lot as Lot
 import Simulation.Traffic as Traffic exposing (addLotResidents, rerouteCarsIfNeeded)
 import Simulation.TrafficLight exposing (TrafficLight)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
-        ( addAnchor
-        , anchorByCell
+        ( anchorByCell
         , fixedTileByCell
         , getTilemapConfig
-        , mapCell
         , tileByCell
         )
 import Tilemap.Tile as Tile exposing (TileKind(..))
@@ -84,19 +82,17 @@ update msg model =
 
         TilemapChanged tilemapChange ->
             let
-                ( worldWithLots, lots ) =
+                ( worldWithLots, lotPlacements ) =
                     newLotsFromTilemapChange tilemapChange model.time model.world
             in
             ( { model
                 | world = worldAfterTilemapChange tilemapChange worldWithLots
-                , renderCache =
-                    if List.isEmpty lots then
-                        model.renderCache
-
-                    else
-                        RenderCache.setTilemapCache worldWithLots.tilemap Nothing model.renderCache
               }
-            , Cmd.none
+            , if List.isEmpty lotPlacements then
+                Cmd.none
+
+              else
+                Message.asCmd (LotsPlaced lotPlacements)
             )
 
         UpdateEnvironment ->
@@ -209,7 +205,7 @@ updateTrafficLight trafficLight =
     { trafficLight | fsm = nextFsm }
 
 
-newLotsFromTilemapChange : TilemapChange -> Time.Posix -> World -> ( World, List Lot )
+newLotsFromTilemapChange : TilemapChange -> Time.Posix -> World -> ( World, List LotPlacement )
 newLotsFromTilemapChange tilemapChange time world =
     let
         extractDrivewayTile cell tile =
@@ -244,15 +240,15 @@ newLotsFromTilemapChange tilemapChange time world =
         |> List.foldl
             (\( drivewayCell, lotTileConfig ) ( nextWorld, lotsAdded ) ->
                 let
-                    ( withLot, lot ) =
+                    ( withLot, lotPlacement ) =
                         addLot time lotTileConfig drivewayCell nextWorld
                 in
-                ( withLot, lot :: lotsAdded )
+                ( withLot, lotPlacement :: lotsAdded )
             )
             ( world, [] )
 
 
-addLot : Time.Posix -> LargeTile -> Cell -> World -> ( World, Lot )
+addLot : Time.Posix -> LargeTile -> Cell -> World -> ( World, LotPlacement )
 addLot time largeTile drivewayCell ({ tilemap, lots } as world) =
     let
         ( newLot, worldWithUpdatedTileInventory ) =
@@ -268,11 +264,6 @@ addLot time largeTile drivewayCell ({ tilemap, lots } as world) =
                 (OrthogonalDirection.opposite newLot.entryDirection)
                 drivewayCell
 
-        topLeftCell =
-            Tile.largeTileTopLeftCell constraints drivewayCell largeTile.anchorIndex largeTile
-                -- TODO: this fallback is unnecessary - the cell should exist
-                |> Maybe.withDefault drivewayCell
-
         builderFn =
             Lot.build newLot anchorCell
 
@@ -281,13 +272,10 @@ addLot time largeTile drivewayCell ({ tilemap, lots } as world) =
     in
     ( worldWithUpdatedTileInventory
         |> World.refreshLots lot nextLots
-        |> World.setTilemap
-            (world.tilemap
-                |> addAnchor anchorCell
-                    lot.id
-                    lot.entryDirection
-                |> mapCell topLeftCell (Tile.withName lot.name)
-            )
         |> addLotResidents time lot.id newLot.residents
-    , lot
+    , { lot = lot
+      , tile = largeTile
+      , drivewayCell = drivewayCell
+      , anchorCell = anchorCell
+      }
     )

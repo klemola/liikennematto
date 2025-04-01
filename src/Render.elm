@@ -11,6 +11,7 @@ import Common exposing (GlobalCoordinates)
 import Data.Cars exposing (CarMake, carStyleToString)
 import Data.Colors as Colors
 import Dict
+import Duration
 import Graph exposing (Node)
 import Html exposing (Html)
 import Length exposing (Length)
@@ -60,7 +61,7 @@ nothing =
 
 styles : Svg msg
 styles =
-    Svg.style [] [ Svg.text Animation.keyframes ]
+    Svg.style [] [ Svg.text (staticTileStyles ++ "\n" ++ Animation.keyframes) ]
 
 
 
@@ -85,7 +86,7 @@ view { cars, roadNetwork, trafficLights } cache =
         , Attributes.style <| "background-color: " ++ Colors.lightGreenCSS ++ ";"
         ]
         [ styles
-        , Svg.Lazy.lazy renderTilemap cache
+        , Svg.Lazy.lazy renderTilemap cache.tilemap
         , renderDynamicTiles cache
         , renderCars cache cars
         , Svg.Lazy.lazy2 renderTrafficLights cache trafficLights
@@ -105,66 +106,117 @@ assetByName name =
 --
 
 
-renderTilemap : RenderCache -> Svg msg
-renderTilemap cache =
-    cache.tilemap
+renderTilemap : List Renderable -> Svg msg
+renderTilemap tilemap =
+    tilemap
         |> List.map
             (\renderable ->
-                ( Cell.toString renderable.cell
-                , renderTile cache renderable
+                ( renderableKey renderable
+                , Svg.Lazy.lazy renderTile renderable
                 )
             )
         |> Svg.Keyed.node "g" []
 
 
-renderTile : RenderCache -> Renderable -> Svg msg
-renderTile cache renderable =
-    let
-        { x, y } =
-            Cell.bottomLeftCorner renderable.cell |> pointToPixels cache.pixelsToMetersRatio
+renderTile : Renderable -> Svg msg
+renderTile renderable =
+    tileElement
+        renderable
+        [ Attributes.transform ("translate(" ++ String.fromFloat renderable.x ++ "," ++ String.fromFloat renderable.y ++ ")")
+        , Attributes.class
+            (case renderable.animation of
+                Just _ ->
+                    -- For "static" tiles, the actual animation is discarded and the classname will activate the animation.
+                    -- Room for improvement: this is an awkward placeholder that should be revised when the animation system is redone.
+                    "animated-tile"
 
-        tileSizePixels =
-            toPixelsValue cache.pixelsToMetersRatio Cell.size
+                Nothing ->
+                    ""
+            )
+        ]
 
-        yAdjusted =
-            cache.tilemapHeightPixels - tileSizePixels - y
 
-        attrs =
-            [ Attributes.transform ("translate(" ++ String.fromFloat x ++ "," ++ String.fromFloat yAdjusted ++ ")")
-            ]
-    in
-    tileElement tileSizePixels renderable attrs
+staticBuildingSmallAnimation : Animation
+staticBuildingSmallAnimation =
+    { duration = Duration.milliseconds 300
+    , delay = Duration.milliseconds 300
+    , name = Animation.Grow
+    , direction = Nothing
+    }
+
+
+staticBuildingLargeAnimation : Animation
+staticBuildingLargeAnimation =
+    { duration = Duration.milliseconds 400
+    , delay = Duration.milliseconds 300
+    , name = Animation.FallIntoPlace
+    , direction = Nothing
+    }
+
+
+staticTreeAnimation : Animation
+staticTreeAnimation =
+    { duration = Duration.milliseconds 300
+    , delay = Duration.milliseconds 200
+    , name = Animation.Grow
+    , direction = Nothing
+    }
+
+
+staticFoliageAnimation : Animation
+staticFoliageAnimation =
+    { duration = Duration.milliseconds 200
+    , delay = Duration.milliseconds 100
+    , name = Animation.Grow
+    , direction = Nothing
+    }
+
+
+staticTileStyles =
+    String.join "\n"
+        [ ".animated-tile .building_small, .animated-tile .building_medium {"
+        , "transform-origin: center center;"
+        , Animation.toStyleString staticBuildingSmallAnimation
+        , "}"
+        , ".animated-tile .building_large {"
+        , "transform-origin: center bottom;"
+        , Animation.toStyleString staticBuildingLargeAnimation
+        , "}"
+        , ".animated-tile .tree, .animated-tile .bush {"
+        , "transform-origin: center center;"
+        , Animation.toStyleString staticTreeAnimation
+        , "}"
+        , ".animated-tile .flower, .animated-tile .grass {"
+        , "transform-origin: center center;"
+        , Animation.toStyleString staticFoliageAnimation
+        , "}"
+        ]
 
 
 renderDynamicTiles : RenderCache -> Svg msg
 renderDynamicTiles cache =
+    let
+        tileSizePixels =
+            toPixelsValue cache.pixelsToMetersRatio Cell.size
+    in
     cache.dynamicTiles
         |> List.map
             (\renderable ->
-                ( Cell.toString renderable.cell
+                ( renderableKey renderable
                 , case renderable.animation of
                     Just animation ->
-                        renderAnimatedTile cache renderable animation
+                        renderAnimatedTile tileSizePixels renderable animation
 
                     Nothing ->
-                        renderTile cache renderable
+                        renderTile renderable
                 )
             )
         |> Svg.Keyed.node "g" []
 
 
-renderAnimatedTile : RenderCache -> Renderable -> Animation -> Svg msg
-renderAnimatedTile cache renderable animation =
+renderAnimatedTile : Float -> Renderable -> Animation -> Svg msg
+renderAnimatedTile tileSizePixels renderable animation =
     let
-        tileSizePixels =
-            toPixelsValue cache.pixelsToMetersRatio Cell.size
-
-        { x, y } =
-            Cell.bottomLeftCorner renderable.cell |> pointToPixels cache.pixelsToMetersRatio
-
-        yAdjusted =
-            cache.tilemapHeightPixels - tileSizePixels - y
-
         animationStyleString =
             Animation.toStyleString animation
 
@@ -182,14 +234,13 @@ renderAnimatedTile cache renderable animation =
                 |> Maybe.withDefault ( nothing, "" )
 
         transform =
-            "translate(" ++ String.fromFloat x ++ "," ++ String.fromFloat yAdjusted ++ ")"
+            "translate(" ++ String.fromFloat renderable.x ++ "," ++ String.fromFloat renderable.y ++ ")"
     in
     Svg.g
         [ Attributes.style clipStyles
         , Attributes.transform transform
         ]
         [ tileElement
-            tileSizePixels
             renderable
             [ Attributes.style tileStyles
             ]
@@ -241,20 +292,17 @@ animationOverflowTile tileSizePixels animationDirection =
     )
 
 
-tileElement : Float -> Renderable -> List (Svg.Attribute msg) -> Svg msg
-tileElement tileSizePixels renderable groupAttrs =
+tileElement : Renderable -> List (Svg.Attribute msg) -> Svg msg
+tileElement renderable groupAttrs =
     let
-        ( widthPixels, heightPixels ) =
-            ( floor tileSizePixels * renderable.width, floor tileSizePixels * renderable.height )
-
         ( asset, viewBox ) =
             assetByName renderable.assetName
     in
     Svg.g
         groupAttrs
         [ Svg.svg
-            [ Attributes.width (String.fromInt widthPixels)
-            , Attributes.height (String.fromInt heightPixels)
+            [ Attributes.width (String.fromInt renderable.width)
+            , Attributes.height (String.fromInt renderable.height)
             , Attributes.fill "none"
             , Attributes.viewBox viewBox
             ]
@@ -353,6 +401,11 @@ tileAnimationProperties tileSizePixels animation =
         ]
 
 
+renderableKey : Renderable -> String
+renderableKey renderable =
+    String.join "-" [ String.fromFloat renderable.x, String.fromFloat renderable.y, renderable.assetName ]
+
+
 
 --
 -- Cars
@@ -440,7 +493,14 @@ renderCar cache position orientation make =
 renderTrafficLights : RenderCache -> Collection TrafficLight -> Svg msg
 renderTrafficLights cache trafficLights =
     trafficLights
-        |> Collection.foldl (\_ tl acc -> ( "TrafficLight-" ++ Collection.idToString tl.id, renderTrafficLight cache tl ) :: acc) []
+        |> Collection.foldl
+            (\_ tl acc ->
+                ( "TrafficLight-" ++ Collection.idToString tl.id
+                , renderTrafficLight cache tl
+                )
+                    :: acc
+            )
+            []
         |> Svg.Keyed.node "g" []
 
 

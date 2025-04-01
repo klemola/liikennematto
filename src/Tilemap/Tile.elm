@@ -6,7 +6,9 @@ module Tilemap.Tile exposing
     , TileKind(..)
     , TileOperation(..)
     , TileState(..)
+    , animation
     , attemptRemove
+    , defaultTileAnimation
     , fromTileConfig
     , id
     , init
@@ -16,6 +18,7 @@ module Tilemap.Tile exposing
     , largeTileCells
     , largeTileTopLeftCell
     , transitionTimer
+    , withAnimation
     , withName
     )
 
@@ -23,6 +26,7 @@ import Array.Extra as Array
 import Audio exposing (Sound)
 import Duration exposing (Duration)
 import Lib.FSM as FSM exposing (FSM, State)
+import Model.Animation as Animation exposing (Animation)
 import Tilemap.Cell as Cell exposing (Cell, Constraints)
 import Tilemap.TileConfig as TileConfig exposing (LargeTile, TileConfig, TileId)
 
@@ -43,6 +47,7 @@ type alias FixedTileProperties =
     { id : TileId
     , name : String
     , parentTile : Maybe ( TileId, Int )
+    , animation : Maybe Animation
     }
 
 
@@ -69,6 +74,18 @@ type TileOperation
     | Add
 
 
+defaultTileAnimation : Animation
+defaultTileAnimation =
+    { -- the combined duration of the animation and delay
+      -- the actual animation is fine-grained and has different values for buildings, foliage, etc.
+      -- which is hardcoded to the animation string
+      duration = Duration.milliseconds 500
+    , delay = Duration.milliseconds 0
+    , name = Animation.Grow
+    , direction = Nothing
+    }
+
+
 init : TileKind -> Tile
 init kind =
     { kind = kind
@@ -92,12 +109,26 @@ fromTileConfig tileConfig parentTileProperties op =
 
         ( tileId, name ) =
             TileConfig.tileConfigIdAndName tileConfig
+
+        isMainTile =
+            case parentTileProperties of
+                Just ( _, subgridIndex ) ->
+                    subgridIndex == 0
+
+                Nothing ->
+                    True
     in
     ( { kind =
             Fixed
                 { id = tileId
                 , name = name
                 , parentTile = parentTileProperties
+                , animation =
+                    if isMainTile && TileConfig.biome tileConfig == TileConfig.Nature then
+                        Just defaultTileAnimation
+
+                    else
+                        Nothing
                 }
       , fsm = fsm
       }
@@ -120,6 +151,16 @@ withName name tile =
     case tile.kind of
         Fixed props ->
             { tile | kind = Fixed { props | name = name } }
+
+        _ ->
+            tile
+
+
+withAnimation : Maybe Animation -> Tile -> Tile
+withAnimation theAnimation tile =
+    case tile.kind of
+        Fixed props ->
+            { tile | kind = Fixed { props | animation = theAnimation } }
 
         _ ->
             tile
@@ -154,6 +195,16 @@ id tile =
     case tile.kind of
         Fixed properties ->
             Just properties.id
+
+        _ ->
+            Nothing
+
+
+animation : Tile -> Maybe Animation
+animation tile =
+    case tile.kind of
+        Fixed properties ->
+            properties.animation
 
         _ ->
             Nothing
