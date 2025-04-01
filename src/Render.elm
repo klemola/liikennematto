@@ -136,11 +136,20 @@ renderTile renderable =
         ]
 
 
-staticBuildingAnimation : Animation
-staticBuildingAnimation =
+staticBuildingSmallAnimation : Animation
+staticBuildingSmallAnimation =
     { duration = Duration.milliseconds 300
     , delay = Duration.milliseconds 300
     , name = Animation.Grow
+    , direction = Nothing
+    }
+
+
+staticBuildingLargeAnimation : Animation
+staticBuildingLargeAnimation =
+    { duration = Duration.milliseconds 400
+    , delay = Duration.milliseconds 300
+    , name = Animation.FallIntoPlace
     , direction = Nothing
     }
 
@@ -165,9 +174,13 @@ staticFoliageAnimation =
 
 staticTileStyles =
     String.join "\n"
-        [ ".animated-tile .building {"
+        [ ".animated-tile .building_small, .animated-tile .building_medium {"
         , "transform-origin: center center;"
-        , Animation.toStyleString staticBuildingAnimation
+        , Animation.toStyleString staticBuildingSmallAnimation
+        , "}"
+        , ".animated-tile .building_large {"
+        , "transform-origin: center bottom;"
+        , Animation.toStyleString staticBuildingLargeAnimation
         , "}"
         , ".animated-tile .tree, .animated-tile .bush {"
         , "transform-origin: center center;"

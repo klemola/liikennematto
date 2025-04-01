@@ -21,6 +21,7 @@ type AnimationName
     = Appear
     | Disappear
     | Grow
+    | FallIntoPlace
 
 
 toStyleString : Animation -> String
@@ -39,6 +40,9 @@ toStyleString animation =
 
                 ( Grow, _ ) ->
                     ( "grow", "0" )
+
+                ( FallIntoPlace, _ ) ->
+                    ( "fall-into-place", "0" )
 
         duration =
             (animation.duration
@@ -93,5 +97,12 @@ keyframes =
     50%  {              opacity: 0.9; }
     66%  { scale: 110%; opacity: 1; }
     100% { scale: 100%; opacity: 1; }
+}
+
+@keyframes fall-into-place {
+    0%   { transform: translate(0, -40%); opacity: 0.3; }
+    51%  { transform: translate(0, 0   ); opacity: 1;   }
+    80%  { transform: scale(1, 1.05);                   }
+    100% { transform: translate(0, 0   ); opacity: 1;   }
 }
     """
