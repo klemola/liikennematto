@@ -21,7 +21,6 @@ import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
         ( Tilemap
-        , addAnchor
         , addAnimationTimer
         , cellBitmask
         , cellSupportsRoadPlacement
@@ -327,7 +326,7 @@ scheduleWFCChunk wfcModel world =
 
 
 tilemapWithLotPlacement : LotPlacement -> Tilemap -> Tilemap
-tilemapWithLotPlacement { lot, tile, drivewayCell, anchorCell } tilemap =
+tilemapWithLotPlacement { lot, tile, drivewayCell } tilemap =
     let
         constraints =
             getTilemapConfig tilemap
@@ -338,9 +337,6 @@ tilemapWithLotPlacement { lot, tile, drivewayCell, anchorCell } tilemap =
                 |> Maybe.withDefault drivewayCell
     in
     tilemap
-        |> addAnchor anchorCell
-            lot.id
-            lot.entryDirection
         |> mapCell topLeftCell
             (Tile.withName lot.name
                 >> Tile.withAnimation (Just Tile.defaultTileAnimation)

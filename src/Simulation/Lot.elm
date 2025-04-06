@@ -51,7 +51,7 @@ type alias Lot =
 
 
 build : NewLot -> Cell -> Id -> Lot
-build newLot anchor lotId =
+build newLot lotEntryCell lotId =
     let
         width =
             Cell.size |> Quantity.multiplyBy (toFloat newLot.horizontalTilesAmount)
@@ -60,7 +60,7 @@ build newLot anchor lotId =
             Cell.size |> Quantity.multiplyBy (toFloat newLot.verticalTilesAmount)
 
         constructionSiteBB =
-            constructionSite anchor ( width, height ) newLot
+            constructionSite lotEntryCell ( width, height ) newLot
 
         ( entryPoint, exitPoint ) =
             toRoadConnectionPoints newLot.entryDirection width
@@ -115,10 +115,10 @@ build newLot anchor lotId =
 
 
 constructionSite : Cell -> ( Length, Length ) -> NewLot -> BoundingBox2d Length.Meters GlobalCoordinates
-constructionSite anchor ( width, height ) { entryDirection } =
+constructionSite lotEntryCell ( width, height ) { entryDirection } =
     let
         origin =
-            Cell.bottomLeftCorner anchor
+            Cell.bottomLeftCorner lotEntryCell
 
         displacement =
             case entryDirection of

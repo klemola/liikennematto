@@ -3,11 +3,9 @@ module Tilemap.Core exposing
     , Tilemap
     , TilemapConfig
     , TilemapUpdateResult
-    , addAnchor
     , addAnimationTimer
     , addTile
     , addTileFromWfc
-    , anchorByCell
     , cellBitmask
     , cellSupportsRoadPlacement
     , clearTile
@@ -19,7 +17,6 @@ module Tilemap.Core exposing
     , getTilemapConfig
     , getTilemapDimensions
     , mapCell
-    , removeAnchor
     , removeTile
     , resetFixedTileBySurroundings
     , resetSuperposition
@@ -48,19 +45,16 @@ import Data.TileSet
         , tileIdsByOrthogonalMatch
         , tileIdsFromBitmask
         )
-import Dict exposing (Dict)
-import Dict.Extra as Dict
 import Duration exposing (Duration)
 import Length exposing (Length)
 import Lib.Bitmask exposing (OrthogonalMatch, fourBitMask)
-import Lib.Collection exposing (Id)
 import Lib.DiagonalDirection as DiagonalDirection exposing (DiagonalDirection)
 import Lib.FSM as FSM
 import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Maybe.Extra as Maybe
 import Point2d
 import Quantity
-import Tilemap.Cell as Cell exposing (Cell, CellCoordinates, nextOrthogonalCell)
+import Tilemap.Cell as Cell exposing (Cell, nextOrthogonalCell)
 import Tilemap.Tile as Tile
     exposing
         ( Tile
@@ -73,7 +67,6 @@ import Tilemap.TileConfig as TileConfig exposing (TileConfig, TileId, directionB
 type Tilemap
     = Tilemap
         { cells : Array Tile
-        , anchors : Dict CellCoordinates ( Id, OrthogonalDirection )
         , width : Length
         , height : Length
         , boundingBox : BoundingBox2d Length.Meters GlobalCoordinates
@@ -103,7 +96,6 @@ createTilemap tilemapConfig initTileFn =
     in
     Tilemap
         { cells = Array.initialize arrSize initTileFn
-        , anchors = Dict.empty
         , width = width
         , height = height
         , boundingBox = Common.boundingBoxWithDimensions width height Point2d.origin
@@ -747,52 +739,3 @@ largeTileAnchor topLeftCornerCell (Tilemap tilemapContents) largeTile =
             anchorCell |> Maybe.andThen (Cell.placeIn tilemapContents.config topLeftCornerCell)
     in
     Maybe.map2 Tuple.pair anchorCellInGlobalCoordinates anchorTile
-
-
-
---
--- Anchors
---
-
-
-addAnchor : Cell -> Id -> OrthogonalDirection -> Tilemap -> Tilemap
-addAnchor anchor lotId anchorDirection (Tilemap tilemapContents) =
-    let
-        nextAnchors =
-            Dict.insert
-                (Cell.coordinates anchor)
-                ( lotId, anchorDirection )
-                tilemapContents.anchors
-    in
-    Tilemap { tilemapContents | anchors = nextAnchors }
-
-
-removeAnchor : Id -> Tilemap -> Tilemap
-removeAnchor lotId ((Tilemap tilemapContents) as tilemap) =
-    let
-        anchor =
-            Dict.find
-                (\_ ( anchorLotId, _ ) -> anchorLotId == lotId)
-                tilemapContents.anchors
-    in
-    anchor
-        |> Maybe.map Tuple.first
-        |> Maybe.andThen (Cell.fromCoordinates tilemapContents.config)
-        |> Maybe.map
-            (\cell ->
-                let
-                    cellCoordinates =
-                        Cell.coordinates cell
-                in
-                Tilemap { tilemapContents | anchors = Dict.remove cellCoordinates tilemapContents.anchors }
-            )
-        |> Maybe.withDefault tilemap
-
-
-anchorByCell : Tilemap -> Cell -> Maybe ( Id, OrthogonalDirection )
-anchorByCell tilemap cell =
-    let
-        (Tilemap tilemapContents) =
-            tilemap
-    in
-    Dict.get (Cell.coordinates cell) tilemapContents.anchors

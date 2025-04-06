@@ -1,6 +1,5 @@
 module Data.Utility exposing
-    ( AnchorDef
-    , CellsByTileKind
+    ( CellsByTileKind
     , cellsByTileKind
     , cellsByTileKindFromAscii
     , createCell
@@ -17,8 +16,6 @@ module Data.Utility exposing
 
 import Data.TileSet exposing (tileIdByBitmask, tileIdsByOrthogonalMatch)
 import Duration
-import Lib.Collection exposing (Id)
-import Lib.OrthogonalDirection exposing (OrthogonalDirection)
 import Model.World as World exposing (World)
 import Random
 import Simulation.RoadNetwork as RoadNetwork exposing (RNNodeContext)
@@ -28,7 +25,6 @@ import Tilemap.Core
     exposing
         ( Tilemap
         , TilemapConfig
-        , addAnchor
         , cellBitmask
         , createTilemap
         , foldTiles
@@ -39,13 +35,6 @@ import Tilemap.Core
 import Tilemap.DrivenWFC exposing (addTileById)
 import Tilemap.Tile as Tile exposing (Tile)
 import Tilemap.TileConfig exposing (TileConfig)
-
-
-type alias AnchorDef =
-    { lotId : Id
-    , anchorDirection : OrthogonalDirection
-    , cellCoordinates : Cell.CellCoordinates
-    }
 
 
 testSeed : Random.Seed
@@ -60,31 +49,13 @@ tenByTenTilemap =
     }
 
 
-tilemapFromCoordinates : TilemapConfig -> List CellCoordinates -> List AnchorDef -> Tilemap
-tilemapFromCoordinates tilemapConfig cellCoordinates anchorDefs =
+tilemapFromCoordinates : TilemapConfig -> List CellCoordinates -> Tilemap
+tilemapFromCoordinates tilemapConfig cellCoordinates =
     let
         cells =
             List.filterMap (Cell.fromCoordinates tenByTenTilemap) cellCoordinates
-
-        withCells =
-            tilemapFromCells tilemapConfig cells
     in
-    addAnchors withCells anchorDefs
-
-
-addAnchors : Tilemap -> List AnchorDef -> Tilemap
-addAnchors tilemap anchorDefs =
-    List.foldl
-        (\{ cellCoordinates, lotId, anchorDirection } nextTilemap ->
-            case Cell.fromCoordinates (getTilemapConfig tilemap) cellCoordinates of
-                Just cell ->
-                    addAnchor cell lotId anchorDirection nextTilemap
-
-                Nothing ->
-                    nextTilemap
-        )
-        tilemap
-        anchorDefs
+    tilemapFromCells tilemapConfig cells
 
 
 worldFromTilemap : Tilemap -> World

@@ -1,6 +1,7 @@
 module Simulation.Update exposing (update)
 
 import Data.TileSet exposing (extractLotEntryTile, lotDrivewayTileIds, tileById)
+import Dict
 import Duration
 import Lib.Collection as Collection
 import Lib.FSM as FSM
@@ -26,8 +27,7 @@ import Simulation.TrafficLight exposing (TrafficLight)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
-        ( anchorByCell
-        , fixedTileByCell
+        ( fixedTileByCell
         , getTilemapConfig
         , tileByCell
         )
@@ -152,10 +152,12 @@ removeOrphanLots tilemapChange world =
         |> Nonempty.toList
         |> List.filterMap
             (\cell ->
-                anchorByCell world.tilemap cell |> Maybe.map (\( id, _ ) -> ( id, cell ))
+                world.lotEntries
+                    |> Dict.get (Cell.coordinates cell)
+                    |> Maybe.map (\( id, _ ) -> ( id, cell ))
             )
         |> List.foldl
-            (\( anchorLotId, cell ) nextWorld ->
+            (\( lotEntryLotId, cell ) nextWorld ->
                 case fixedTileByCell world.tilemap cell of
                     Just tile ->
                         let
@@ -170,11 +172,11 @@ removeOrphanLots tilemapChange world =
 
                             Nothing ->
                                 -- The tile used to be a lot entry tile, yet has changed
-                                World.removeLot anchorLotId nextWorld
+                                World.removeLot lotEntryLotId nextWorld
 
                     Nothing ->
                         -- The lot entry tile has been removed
-                        World.removeLot anchorLotId nextWorld
+                        World.removeLot lotEntryLotId nextWorld
             )
             world
 
@@ -257,7 +259,7 @@ addLot time largeTile drivewayCell ({ tilemap, lots } as world) =
         constraints =
             getTilemapConfig tilemap
 
-        anchorCell =
+        lotEntryCell =
             -- Use of unsafe function: to get here, the next Cell has to exist (it is the lot entry cell)
             Cell.nextOrthogonalCellUnsafe
                 constraints
@@ -265,7 +267,7 @@ addLot time largeTile drivewayCell ({ tilemap, lots } as world) =
                 drivewayCell
 
         builderFn =
-            Lot.build newLot anchorCell
+            Lot.build newLot lotEntryCell
 
         ( lot, nextLots ) =
             Collection.addFromBuilder builderFn lots
@@ -273,9 +275,13 @@ addLot time largeTile drivewayCell ({ tilemap, lots } as world) =
     ( worldWithUpdatedTileInventory
         |> World.refreshLots lot nextLots
         |> addLotResidents time lot.id newLot.residents
+        |> World.addLotEntry
+            lotEntryCell
+            lot.id
+            lot.entryDirection
     , { lot = lot
       , tile = largeTile
       , drivewayCell = drivewayCell
-      , anchorCell = anchorCell
+      , lotEntryCell = lotEntryCell
       }
     )

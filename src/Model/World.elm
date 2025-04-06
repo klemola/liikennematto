@@ -6,6 +6,7 @@ module Model.World exposing
     , World
     , WorldEvent(..)
     , addEvent
+    , addLotEntry
     , createLookup
     , createRoadNetwork
     , empty
@@ -35,12 +36,14 @@ import Common exposing (GlobalCoordinates)
 import Data.Cars exposing (CarMake)
 import Data.Lots exposing (NewLot, allLots)
 import Data.TileSet exposing (lotTiles)
-import Dict
+import Dict exposing (Dict)
+import Dict.Extra as Dict
 import Duration exposing (Duration)
 import Graph
 import Length exposing (Length)
 import Lib.Collection as Collection exposing (Collection, Id)
 import Lib.EventQueue as EventQueue exposing (EventQueue)
+import Lib.OrthogonalDirection exposing (OrthogonalDirection)
 import List.Nonempty exposing (Nonempty)
 import Point2d
     exposing
@@ -63,7 +66,6 @@ import Tilemap.Core
         , TilemapUpdateResult
         , createTilemap
         , getTilemapConfig
-        , removeAnchor
         , tilemapBoundingBox
         )
 import Tilemap.Tile as Tile
@@ -85,6 +87,7 @@ type WorldEvent
 type alias World =
     { tilemap : Tilemap
     , tileInventory : TileInventory (List NewLot)
+    , lotEntries : Dict CellCoordinates ( Id, OrthogonalDirection )
     , pendingTilemapChange : Maybe PendingTilemapChange
     , roadNetwork : RoadNetwork
     , trafficLights : Collection TrafficLight
@@ -112,7 +115,7 @@ type alias LotPlacement =
     { lot : Lot
     , tile : LargeTile
     , drivewayCell : Cell
-    , anchorCell : Cell
+    , lotEntryCell : Cell
     }
 
 
@@ -168,6 +171,7 @@ empty initialSeed tilemapConfig =
     in
     { tilemap = tilemap
     , tileInventory = initialTileInventory
+    , lotEntries = Dict.empty
     , pendingTilemapChange = Nothing
     , roadNetwork = RoadNetwork.empty
     , trafficLights = Collection.empty
@@ -393,12 +397,14 @@ removeLot lotId world =
                         (\( _, newLot ) -> newLot.name == lot.name)
                         (TileInventory.tileIdItemPairs initialTileInventory)
                         world.tileInventory
+
+                worldWithoutLotEntry =
+                    removeLotEntry lotId world
             in
-            { world
+            { worldWithoutLotEntry
                 | lots = nextLots
                 , cars = nextCars
-                , tilemap = removeAnchor lotId world.tilemap
-                , lotLookup = createLookup (Collection.values nextLots) world
+                , lotLookup = createLookup (Collection.values nextLots) worldWithoutLotEntry
                 , tileInventory = tileInventoryWithRestoredLot
             }
 
@@ -432,7 +438,7 @@ updateRoadNetwork world =
     -- Room for improvement: the road network should be updated with minimal changes instead of being replaced
     let
         ( nextRoadNetwork, nextTrafficLights ) =
-            buildRoadNetwork world.tilemap world.trafficLights
+            buildRoadNetwork world.tilemap world.lotEntries world.trafficLights
 
         nodeLookupList =
             Graph.fold
@@ -534,6 +540,45 @@ combineChangedCells tilemapUpdateResult currentChanges =
             Set.fromList (List.map Cell.coordinates tilemapUpdateResult.emptiedCells)
     in
     Set.union (Set.union transitioned emptied) currentChanges
+
+
+
+--
+-- Lot entry lookup
+--
+
+
+addLotEntry : Cell -> Id -> OrthogonalDirection -> World -> World
+addLotEntry lotEntry lotId lotEntryDirection world =
+    { world
+        | lotEntries =
+            Dict.insert
+                (Cell.coordinates lotEntry)
+                ( lotId, lotEntryDirection )
+                world.lotEntries
+    }
+
+
+removeLotEntry : Id -> World -> World
+removeLotEntry lotId world =
+    let
+        lotEntry =
+            Dict.find
+                (\_ ( lotEntryLotId, _ ) -> lotEntryLotId == lotId)
+                world.lotEntries
+    in
+    lotEntry
+        |> Maybe.map Tuple.first
+        |> Maybe.andThen (Cell.fromCoordinates (getTilemapConfig world.tilemap))
+        |> Maybe.map
+            (\cell ->
+                let
+                    cellCoordinates =
+                        Cell.coordinates cell
+                in
+                { world | lotEntries = Dict.remove cellCoordinates world.lotEntries }
+            )
+        |> Maybe.withDefault world
 
 
 

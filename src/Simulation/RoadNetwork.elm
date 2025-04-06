@@ -42,12 +42,11 @@ import Random
 import Random.Extra
 import Set
 import Simulation.TrafficLight as TrafficLight exposing (TrafficLight)
-import Tilemap.Cell as Cell exposing (Cell)
+import Tilemap.Cell as Cell exposing (Cell, CellCoordinates)
 import Tilemap.Core
     exposing
         ( TileListFilter(..)
         , Tilemap
-        , anchorByCell
         , fixedTileByCell
         , getTilemapConfig
         , tileToConfig
@@ -338,8 +337,8 @@ connectionDirection node =
     node.label.direction
 
 
-buildRoadNetwork : Tilemap -> Collection TrafficLight -> ( RoadNetwork, Collection TrafficLight )
-buildRoadNetwork tilemap trafficLights =
+buildRoadNetwork : Tilemap -> Dict CellCoordinates ( Id, OrthogonalDirection ) -> Collection TrafficLight -> ( RoadNetwork, Collection TrafficLight )
+buildRoadNetwork tilemap lotEntries trafficLights =
     let
         tilePriority ( _, tile ) =
             case tileToConfig tile of
@@ -352,6 +351,7 @@ buildRoadNetwork tilemap trafficLights =
         nodes =
             createConnections
                 { tilemap = tilemap
+                , lotEntries = lotEntries
                 , nodes = Dict.empty
                 , remainingTiles =
                     tilemap
@@ -390,11 +390,12 @@ type alias NodesMemo =
 
 createConnections :
     { tilemap : Tilemap
+    , lotEntries : Dict CellCoordinates ( Id, OrthogonalDirection )
     , nodes : NodesMemo
     , remainingTiles : List ( Cell, Tile )
     }
     -> NodesMemo
-createConnections { nodes, tilemap, remainingTiles } =
+createConnections { nodes, tilemap, lotEntries, remainingTiles } =
     case remainingTiles of
         [] ->
             nodes
@@ -402,7 +403,7 @@ createConnections { nodes, tilemap, remainingTiles } =
         ( cell, tile ) :: otherTiles ->
             let
                 connectionsInTile =
-                    toConnections tilemap cell tile
+                    toConnections tilemap lotEntries cell tile
 
                 maybeCreateNode nodeSpec currentNodes =
                     let
@@ -418,6 +419,7 @@ createConnections { nodes, tilemap, remainingTiles } =
             in
             createConnections
                 { tilemap = tilemap
+                , lotEntries = lotEntries
                 , nodes =
                     connectionsInTile
                         |> List.foldl maybeCreateNode nodes
@@ -425,8 +427,8 @@ createConnections { nodes, tilemap, remainingTiles } =
                 }
 
 
-toConnections : Tilemap -> Cell -> Tile -> List Connection
-toConnections tilemap cell tile =
+toConnections : Tilemap -> Dict CellCoordinates ( Id, OrthogonalDirection ) -> Cell -> Tile -> List Connection
+toConnections tilemap lotEntries cell tile =
     case Tile.id tile of
         Just tileId ->
             let
@@ -448,7 +450,7 @@ toConnections tilemap cell tile =
                         []
 
                     else
-                        List.concatMap (connectionsByTileEntryDirection tilemap cell tile) multiple
+                        List.concatMap (connectionsByTileEntryDirection tilemap lotEntries cell tile) multiple
 
         Nothing ->
             []
@@ -503,14 +505,14 @@ laneCenterPositionsByDirection cell trafficDirection =
     )
 
 
-connectionsByTileEntryDirection : Tilemap -> Cell -> Tile -> OrthogonalDirection -> List Connection
-connectionsByTileEntryDirection tilemap cell tile direction =
+connectionsByTileEntryDirection : Tilemap -> Dict CellCoordinates ( Id, OrthogonalDirection ) -> Cell -> Tile -> OrthogonalDirection -> List Connection
+connectionsByTileEntryDirection tilemap lotEntries cell tile direction =
     let
         origin =
             Cell.bottomLeftCorner cell
 
-        anchor =
-            anchorByCell tilemap cell
+        lotEntry =
+            Dict.get (Cell.coordinates cell) lotEntries
 
         startDirection =
             OrthogonalDirection.toDirection2d direction
@@ -519,9 +521,9 @@ connectionsByTileEntryDirection tilemap cell tile direction =
             Direction2d.reverse startDirection
 
         ( startConnectionKind, endConnectionKind, extraOffset ) =
-            case anchor of
-                Just ( lotId, anchorDirection ) ->
-                    if direction == anchorDirection then
+            case lotEntry of
+                Just ( lotId, lotEntryDirection ) ->
+                    if direction == lotEntryDirection then
                         ( LotEntry lotId, LotExit lotId, toLotOffset direction )
 
                     else
@@ -552,8 +554,8 @@ connectionsByTileEntryDirection tilemap cell tile direction =
 
 
 toLotOffset : OrthogonalDirection -> Vector2d Length.Meters coordinates
-toLotOffset anchorDirection =
-    case anchorDirection of
+toLotOffset lotEntryDirection =
+    case lotEntryDirection of
         Up ->
             Vector2d.xy (Quantity.negate drivewayOffset) Quantity.zero
 

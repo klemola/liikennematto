@@ -135,7 +135,6 @@ suite =
                             tilemapFromCoordinates
                                 constraints
                                 [ ( 5, 5 ), ( 5, 6 ), ( 5, 7 ), ( 5, 8 ) ]
-                                []
                                 |> restartWfc testSeed Dict.empty
                                 |> WFC.toTilemap
                     in

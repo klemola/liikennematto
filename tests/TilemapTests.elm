@@ -23,7 +23,6 @@ tilemapThatResemblesAIntersection =
         , ( 3, 1 )
         , ( 2, 2 )
         ]
-        []
 
 
 tilemapThatResemblesACurve : Tilemap
@@ -34,7 +33,6 @@ tilemapThatResemblesACurve =
         , ( 2, 1 )
         , ( 1, 2 )
         ]
-        []
 
 
 suite : Test
