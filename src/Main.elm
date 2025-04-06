@@ -116,7 +116,7 @@ updateBase msg model =
                 | simulationActive =
                     case newVisibility of
                         Events.Visible ->
-                            model.simulationActive
+                            True
 
                         Events.Hidden ->
                             False
