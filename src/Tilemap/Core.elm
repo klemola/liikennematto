@@ -16,6 +16,7 @@ module Tilemap.Core exposing
     , getBuildHistory
     , getTilemapConfig
     , getTilemapDimensions
+    , largeTileBounds
     , mapCell
     , removeTile
     , resetFixedTileBySurroundings
@@ -45,14 +46,15 @@ import Data.TileSet
         , tileIdsByOrthogonalMatch
         , tileIdsFromBitmask
         )
+import Direction2d
 import Duration exposing (Duration)
-import Length exposing (Length)
+import Length exposing (Length, Meters)
 import Lib.Bitmask exposing (OrthogonalMatch, fourBitMask)
 import Lib.DiagonalDirection as DiagonalDirection exposing (DiagonalDirection)
 import Lib.FSM as FSM
 import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Maybe.Extra as Maybe
-import Point2d
+import Point2d exposing (Point2d)
 import Quantity
 import Tilemap.Cell as Cell exposing (Cell, nextOrthogonalCell)
 import Tilemap.Tile as Tile
@@ -62,6 +64,7 @@ import Tilemap.Tile as Tile
         , TileOperation
         )
 import Tilemap.TileConfig as TileConfig exposing (TileConfig, TileId, directionBySocket)
+import Vector2d
 
 
 type Tilemap
@@ -650,6 +653,50 @@ tileParentTile tile =
 
         _ ->
             Nothing
+
+
+largeTileBounds : Cell -> Tile -> Tilemap -> Maybe ( Point2d Meters GlobalCoordinates, BoundingBox2d Meters GlobalCoordinates )
+largeTileBounds cell tile (Tilemap tilemapContents) =
+    tileParentTile tile
+        |> Maybe.andThen
+            (\( parentTileId, subgridIndex ) ->
+                case tileById parentTileId of
+                    TileConfig.Large largeTile ->
+                        Tile.largeTileTopLeftCell
+                            tilemapContents.config
+                            cell
+                            subgridIndex
+                            largeTile
+                            |> Maybe.map (Tuple.pair largeTile)
+
+                    TileConfig.Single _ ->
+                        Nothing
+            )
+        |> Maybe.map
+            (\( largeTile, topLeftCornerCell ) ->
+                let
+                    origin =
+                        Cell.bottomLeftCorner topLeftCornerCell
+                            |> Point2d.translateIn Direction2d.positiveY Cell.size
+
+                    rawCellSize =
+                        Length.inMeters Cell.size
+
+                    lowerRightCorner =
+                        Point2d.translateBy
+                            (Vector2d.fromMeters
+                                { x = rawCellSize * toFloat largeTile.width
+                                , y = rawCellSize * toFloat largeTile.height
+                                }
+                            )
+                            origin
+                in
+                ( origin
+                , BoundingBox2d.from
+                    origin
+                    lowerRightCorner
+                )
+            )
 
 
 removeLargeTileSubtiles : Cell -> ( TileId, Int ) -> Tilemap -> Tilemap

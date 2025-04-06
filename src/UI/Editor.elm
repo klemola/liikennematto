@@ -8,23 +8,30 @@ module UI.Editor exposing
     , view
     )
 
+import BoundingBox2d exposing (BoundingBox2d)
 import Browser.Events as Events
+import Common exposing (GlobalCoordinates)
 import Duration exposing (Duration)
 import Element exposing (Color, Element)
+import Element.Background
 import Element.Border as Border
 import Html.Attributes
 import Html.Events.Extra.Mouse as Mouse
 import Html.Events.Extra.Pointer as Pointer
+import Length exposing (Meters)
 import Model.RenderCache exposing (RenderCache)
-import Model.World as World exposing (World)
+import Model.World exposing (World)
+import Point2d exposing (Point2d)
 import Quantity
-import Render.Conversion
+import Render.Conversion exposing (toPixelsValue)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
         ( TilemapConfig
         , cellSupportsRoadPlacement
+        , fixedTileByCell
         , getTilemapConfig
+        , largeTileBounds
         , roadTileFromCell
         )
 import UI.Core
@@ -41,6 +48,7 @@ import UI.TimerIndicator
 
 type alias Model =
     { activeCell : Maybe Cell
+    , highlightArea : Maybe ( Point2d Meters GlobalCoordinates, BoundingBox2d Meters GlobalCoordinates )
     , longPressTimer : Maybe Duration
     , pointerDownEvent : Maybe Pointer.Event
     , lastEventDevice : Pointer.DeviceType
@@ -50,6 +58,7 @@ type alias Model =
 initialModel : Model
 initialModel =
     { activeCell = Nothing
+    , highlightArea = Nothing
     , longPressTimer = Nothing
     , pointerDownEvent = Nothing
     , lastEventDevice = Pointer.MouseType
@@ -110,7 +119,7 @@ update world renderCache msg model =
                     event
             of
                 Just activeCell ->
-                    ( activateCell activeCell model
+                    ( activateCell activeCell world model
                     , Nothing
                     )
 
@@ -136,7 +145,7 @@ update world renderCache msg model =
                                 Nothing ->
                                     False
                     in
-                    ( selectCell event eventCell cellHasRoadTile model
+                    ( selectCell event eventCell cellHasRoadTile world model
                     , Nothing
                     )
 
@@ -165,7 +174,7 @@ update world renderCache msg model =
                                 event
                                 model
                     in
-                    ( activateCell pointerUpCell baseModel
+                    ( activateCell pointerUpCell world baseModel
                     , inputEvent
                     )
 
@@ -185,8 +194,8 @@ update world renderCache msg model =
             ( model, Nothing )
 
 
-activateCell : Cell -> Model -> Model
-activateCell cell model =
+activateCell : Cell -> World -> Model -> Model
+activateCell cell world model =
     if
         -- Cell already active?
         model.activeCell
@@ -196,7 +205,13 @@ activateCell cell model =
         model
 
     else
-        { model | activeCell = Just cell }
+        { model
+            | activeCell = Just cell
+            , highlightArea =
+                Maybe.andThen
+                    (\tile -> largeTileBounds cell tile world.tilemap)
+                    (fixedTileByCell world.tilemap cell)
+        }
 
 
 deactivateCell : Model -> Model
@@ -231,12 +246,12 @@ setLastEventDevice deviceType model =
     { model | lastEventDevice = deviceType }
 
 
-selectCell : Pointer.Event -> Cell -> Bool -> Model -> Model
-selectCell event eventCell hasRoadTile initialEditor =
+selectCell : Pointer.Event -> Cell -> Bool -> World -> Model -> Model
+selectCell event eventCell hasRoadTile world initialEditor =
     initialEditor
         |> setLastEventDevice event.pointerType
         |> storePointerDownEvent event
-        |> activateCell eventCell
+        |> activateCell eventCell world
         |> (\editor ->
                 if event.pointerType == Pointer.MouseType || not hasRoadTile then
                     editor
@@ -313,6 +328,14 @@ view cache world model =
         , Element.height Element.fill
         , Element.htmlAttribute (Html.Attributes.id overlayId)
         , Element.inFront
+            (case model.highlightArea of
+                Just area ->
+                    highlightAreaView cache area
+
+                Nothing ->
+                    Element.none
+            )
+        , Element.inFront
             (Element.el
                 [ Element.width Element.fill
                 , Element.height Element.fill
@@ -379,18 +402,37 @@ cellHighlight cache world activeCell =
 
 highlightColor : World -> Cell -> Maybe Color
 highlightColor world cell =
-    let
-        canBuildHere =
-            cellSupportsRoadPlacement cell world.tilemap
-
-        mightDestroyLot =
-            World.hasLot cell world
-    in
-    if canBuildHere && mightDestroyLot then
-        Just UI.Core.colorDanger
-
-    else if canBuildHere then
+    if cellSupportsRoadPlacement cell world.tilemap then
         Just UI.Core.colorTarget
 
     else
         Just UI.Core.colorNotAllowed
+
+
+highlightAreaView : RenderCache -> ( Point2d Meters GlobalCoordinates, BoundingBox2d Meters GlobalCoordinates ) -> Element msg
+highlightAreaView cache ( origin, area ) =
+    let
+        { x, y } =
+            Point2d.toRecord (toPixelsValue cache.pixelsToMetersRatio) origin
+
+        ( width, height ) =
+            BoundingBox2d.dimensions area
+
+        widthPixels =
+            Element.px (floor (toPixelsValue cache.pixelsToMetersRatio width))
+
+        heightPixels =
+            Element.px (floor (toPixelsValue cache.pixelsToMetersRatio height))
+    in
+    Element.el
+        [ Element.width widthPixels
+        , Element.height heightPixels
+        , Element.moveRight x
+        , Element.moveDown (cache.tilemapHeightPixels - y)
+        , Border.width cellHighlightWidth
+        , Border.rounded borderRadiusButton
+        , Border.solid
+        , Border.color UI.Core.colorDanger
+        , Element.Background.color UI.Core.colorDanger
+        ]
+        Element.none

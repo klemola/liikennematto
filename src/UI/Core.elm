@@ -228,7 +228,7 @@ colorSelected =
 
 colorDanger : Element.Color
 colorDanger =
-    uiCompat (Colors.withAlpha 0.65 Colors.yellow)
+    uiCompat (Colors.withAlpha 0.25 Colors.yellow)
 
 
 colorNotAllowed : Element.Color
