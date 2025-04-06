@@ -160,14 +160,16 @@ type alias LotSplineProperties =
 
 lotEntrySpline : LotSplineProperties -> List (CubicSpline2d Length.Meters LocalCoordinates)
 lotEntrySpline { parkingSpotPosition, lotEntryPoint, parkingSpotExitDirection, parkingLaneStartPoint, parkingLaneStartDirection, entryDirection } =
-    if parkingSpotExitDirection == Direction2d.reverse entryDirection then
+    if parkingSpotExitDirection == Direction2d.reverse entryDirection && entryDirection == parkingLaneStartDirection then
         [ mirroredSpline lotEntryPoint parkingSpotPosition 0.5 entryDirection ]
 
     else if entryDirection /= parkingLaneStartDirection then
         [ curveSpline lotEntryPoint parkingLaneStartPoint entryDirection 0.7
+        , if parkingLaneStartDirection == Direction2d.reverse parkingSpotExitDirection then
+            straightSpline parkingLaneStartPoint parkingSpotPosition
 
-        -- Room for improvement: use curved spline for parking spots that are not in the axis of the parking lane
-        , straightSpline parkingLaneStartPoint parkingSpotPosition
+          else
+            curveSpline parkingLaneStartPoint parkingSpotPosition parkingLaneStartDirection 0.8
         ]
 
     else if parkingSpotCloseToLotEntry lotEntryPoint parkingSpotPosition then
@@ -195,12 +197,15 @@ lotExitSpline { parkingSpotPosition, lotExitPoint, parkingSpotExitDirection, par
         startDirection =
             parkingSpotExitDirection
     in
-    if startDirection == Direction2d.reverse entryDirection then
+    if startDirection == Direction2d.reverse entryDirection && entryDirection == parkingLaneStartDirection then
         [ mirroredSpline parkingSpotPosition lotExitPoint 0.66 startDirection ]
 
     else if entryDirection /= parkingLaneStartDirection then
-        [ -- Room for improvement: use curved spline for parking spots that are not in the axis of the parking lane
-          straightSpline parkingSpotPosition parkingLaneStartPoint
+        [ if parkingLaneStartDirection == Direction2d.reverse startDirection then
+            straightSpline parkingSpotPosition parkingLaneStartPoint
+
+          else
+            curveSpline parkingSpotPosition parkingLaneStartPoint startDirection 0.8
         , curveSpline parkingLaneStartPoint lotExitPoint (Direction2d.reverse parkingLaneStartDirection) 0.8
         ]
 
