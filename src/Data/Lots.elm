@@ -198,11 +198,12 @@ park1 =
     , verticalTilesAmount = 3
     , parkingSpotExitDirection = Down
     , parkingSpots =
-        [ noRestrictions <| Point2d.fromMeters { x = 6.5, y = 9.875 }
+        [ noRestrictions <| Point2d.fromMeters { x = 5.9375, y = 9.875 }
+        , noRestrictions <| Point2d.fromMeters { x = 10.125, y = 9.875 }
         ]
     , entryDirection = Right
-    , parkingLaneStartPoint = Point2d.fromMeters { x = 6.5, y = 9.875 }
-    , parkingLaneStartDirection = Up
+    , parkingLaneStartPoint = Point2d.fromMeters { x = 4.75, y = 3.75 }
+    , parkingLaneStartDirection = Right
     , residents = []
     }
 
@@ -218,7 +219,7 @@ concertVenue =
         , noRestrictions <| Point2d.fromMeters { x = 23.25, y = 10.3125 }
         ]
     , entryDirection = Up
-    , parkingLaneStartPoint = Point2d.fromMeters { x = 8.5625, y = 5 }
+    , parkingLaneStartPoint = Point2d.fromMeters { x = 11.375, y = 5 }
     , parkingLaneStartDirection = Right
     , residents = []
     }
