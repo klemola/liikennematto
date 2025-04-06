@@ -10,7 +10,7 @@ import Lib.FSM as FSM
 import Message exposing (Message(..))
 import Model.Flags as Flags exposing (FlagsJson)
 import Model.Liikennematto as Liikennematto exposing (Liikennematto)
-import Model.RenderCache exposing (setPixelsToMetersRatio)
+import Model.RenderCache exposing (setPixelsToMetersRatio, setTilemapCache)
 import Model.Screen as Screen
 import Render
 import Render.Debug
@@ -186,7 +186,9 @@ updateBase msg model =
         ZoomLevelChanged nextLevel ->
             let
                 nextRenderCache =
-                    setPixelsToMetersRatio nextLevel model.renderCache
+                    model.renderCache
+                        |> setPixelsToMetersRatio nextLevel
+                        |> setTilemapCache model.world.tilemap Nothing
             in
             ( { model | renderCache = nextRenderCache }
             , Browser.Dom.getViewportOf containerId
