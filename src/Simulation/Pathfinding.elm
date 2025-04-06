@@ -32,7 +32,7 @@ import Speed exposing (Speed)
 
 minRouteEndNodeDistance : Length
 minRouteEndNodeDistance =
-    Length.meters 100
+    Length.meters 64
 
 
 lotToNodeRouteTargetRatio : Float
