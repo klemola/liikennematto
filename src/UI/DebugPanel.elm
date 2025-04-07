@@ -28,7 +28,6 @@ import UI.Core
         , colorMenuBackgroundInverse
         , colorTextInverse
         , controlButton
-        , debugElementSize
         , scrollbarAwareOffsetF
         , textSize
         , textSizeMini
@@ -92,7 +91,7 @@ mainPanel model =
     Element.column
         [ Element.padding whitespaceRegular
         , Element.spacing whitespaceTight
-        , Element.width (Element.shrink |> Element.minimum debugElementSize)
+        , Element.width (Element.shrink |> Element.minimum 320)
         , Element.alignTop
         , Element.alignRight
         , Background.color colorMenuBackgroundInverse
@@ -213,7 +212,7 @@ carPanel model =
         Element.column
             [ Element.padding whitespaceRegular
             , Element.spacing whitespaceTight
-            , Element.width (Element.px debugElementSize)
+            , Element.width (Element.px 420)
             , Element.alignTop
             , Element.alignLeft
             , Background.color colorMenuBackgroundInverse

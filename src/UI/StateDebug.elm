@@ -29,14 +29,13 @@ import UI.Core
         , borderSize
         , colorCardBackground
         , colorText
-        , debugElementSize
         , whitespaceTight
         )
 
 
 debugElementLength : Element.Length
 debugElementLength =
-    Element.fill |> Element.maximum debugElementSize
+    Element.fill |> Element.maximum 420
 
 
 cardAttributes : List (Element.Attribute msg)
