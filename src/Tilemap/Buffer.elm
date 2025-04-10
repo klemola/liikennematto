@@ -1,6 +1,6 @@
 module Tilemap.Buffer exposing (removeBuffer, updateBufferCells)
 
-import Data.TileSet exposing (decorativeTiles, roadConnectionDirectionsByTile, tileById)
+import Data.TileSet exposing (roadConnectionDirectionsByTile, tileById)
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
 import Quantity exposing (Unitless)
 import Tilemap.Cell as Cell exposing (Cell, CellCoordinates)
@@ -11,7 +11,7 @@ import Tilemap.Core
         , extractRoadTile
         , getBuildHistory
         , getTilemapConfig
-        , resetTileBySurroundings
+        , mapCell
         , roadTileFromCell
         , setBuildHistory
         , tileByCell
@@ -36,7 +36,16 @@ updateBufferCells newCell tilemap =
     in
     List.foldl
         (\cell nextTilemap ->
-            resetTileBySurroundings cell decorativeTiles nextTilemap
+            mapCell cell
+                (\current ->
+                    case current.kind of
+                        Unintialized ->
+                            Tile.init Tile.Buffer
+
+                        _ ->
+                            current
+                )
+                nextTilemap
         )
         withUpdatedHistory
         (bufferCellsFromHistory withUpdatedHistory)
@@ -210,7 +219,7 @@ extractOrphanBufferCell origin tilemap isDeadend maybeBufferCell =
     Maybe.andThen
         (\directionToOrigin ->
             case tileByCell tilemap maybeBufferCell |> Maybe.map .kind of
-                Just (Superposition _) ->
+                Just Buffer ->
                     if
                         List.any
                             (hasOverlappingBuffer 1 directionToOrigin)

@@ -377,6 +377,18 @@ renderWFC cache =
 
                         RenderCache.SuperpositionDebug ids ->
                             renderSuperposition ids
+
+                        RenderCache.BufferDebug ->
+                            Svg.g []
+                                [ Svg.text_
+                                    [ Attributes.fill "black"
+                                    , Attributes.x "24"
+                                    , Attributes.y "24"
+                                    , Attributes.style "font: italic 24px sans-serif;"
+                                    ]
+                                    [ Svg.text "B"
+                                    ]
+                                ]
                     ]
                 )
             )

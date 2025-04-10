@@ -885,29 +885,39 @@ checkSubgridTile tilemap subgridCell subgridTileProperties =
 attemptTileNeighborUpdate : SingleTile -> Cell -> Tilemap -> Result String (List Step)
 attemptTileNeighborUpdate currentTile originCell tilemap =
     applyToNeighbor
-        (\nuCtx neighborTileId ->
-            if canDock (OrthogonalDirection.opposite nuCtx.dir) nuCtx.neighborSocket neighborTileId then
-                -- Tiles can dock, no tilemap update needed = skip
-                Ok nuCtx.steps
+        (\neighborTile nuCtx ->
+            case neighborTile.kind of
+                Fixed properties ->
+                    if canDock (OrthogonalDirection.opposite nuCtx.dir) nuCtx.neighborSocket properties.id then
+                        -- Tiles can dock, no tilemap update needed = skip
+                        Ok nuCtx.steps
 
-            else
-                Err "Can't dock fixed neighbor"
-        )
-        (\nuCtx _ ->
-            if nuCtx.neighborSocket == defaultSocket then
-                Ok (PropagateConstraints originCell nuCtx.neighborCell :: nuCtx.steps)
+                    else
+                        Err "Can't dock fixed neighbor"
 
-            else
-                -- Don't try to propagate constraints for edges that will match another subgrid tile or the entry point
-                Ok nuCtx.steps
-        )
-        (\nuCtx ->
-            -- Allow docking on unitialized neighbor like it was the edge of the map
-            if nuCtx.neighborSocket == defaultSocket then
-                Ok nuCtx.steps
+                Superposition _ ->
+                    if nuCtx.neighborSocket == defaultSocket then
+                        Ok (PropagateConstraints originCell nuCtx.neighborCell :: nuCtx.steps)
 
-            else
-                Err "Can't dock uninitialized neighbor"
+                    else
+                        -- Don't try to propagate constraints for edges that will match another subgrid tile or the entry point
+                        Ok nuCtx.steps
+
+                Unintialized ->
+                    -- Allow docking on unitialized neighbor like it was the edge of the map
+                    if nuCtx.neighborSocket == defaultSocket then
+                        Ok nuCtx.steps
+
+                    else
+                        Err "Can't dock uninitialized neighbor"
+
+                Buffer ->
+                    -- Allow docking on buffer neighbor like it was the edge of the map
+                    if nuCtx.neighborSocket == defaultSocket then
+                        Ok nuCtx.steps
+
+                    else
+                        Err "Can't dock buffer neighbor"
         )
         originCell
         currentTile
@@ -931,14 +941,12 @@ type alias NeighborUpdateContext =
 
 
 applyToNeighbor :
-    (NeighborUpdateContext -> TileId -> Result error (List Step))
-    -> (NeighborUpdateContext -> List TileId -> Result error (List Step))
-    -> (NeighborUpdateContext -> Result error (List Step))
+    (Tile -> NeighborUpdateContext -> Result error (List Step))
     -> Cell
     -> SingleTile
     -> Tilemap
     -> Result error (List Step)
-applyToNeighbor onFixed onSuperposition onUninitialized cell currentTile tilemap =
+applyToNeighbor neighborUpdateFn cell currentTile tilemap =
     let
         tilemapConfig =
             getTilemapConfig tilemap
@@ -953,15 +961,7 @@ applyToNeighbor onFixed onSuperposition onUninitialized cell currentTile tilemap
                                 neighborUpdateContext =
                                     NeighborUpdateContext dir toTile toCell tilemap steps (socketByDirection currentTile.sockets dir)
                             in
-                            case toTile.kind of
-                                Fixed properties ->
-                                    onFixed neighborUpdateContext properties.id
-
-                                Superposition options ->
-                                    onSuperposition neighborUpdateContext options
-
-                                Unintialized ->
-                                    onUninitialized neighborUpdateContext
+                            neighborUpdateFn toTile neighborUpdateContext
 
                         Nothing ->
                             Ok steps
