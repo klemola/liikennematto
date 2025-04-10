@@ -169,6 +169,7 @@ directionalBuffer origin direction ( sideDepth, backwardDepth ) tilemap =
                 subgridCorners
     in
     Cell.fromArea (getTilemapConfig tilemap) areaBounds
+        |> List.filter (\cell -> cell /= origin)
 
 
 
