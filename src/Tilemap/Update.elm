@@ -16,7 +16,6 @@ import Model.World as World exposing (LotPlacement, World)
 import Process
 import Quantity
 import Task
-import Tilemap.Buffer exposing (updateBufferCells)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
@@ -279,11 +278,8 @@ addTile cell model =
             let
                 ( withWfc, addTileActions ) =
                     addTileById world.seed (World.tileInventoryCount world) cell tileId tilemapWithClearedCell
-
-                withBuffer =
-                    updateBufferCells cell withWfc
             in
-            ( resetDrivenWFC withBuffer model
+            ( resetDrivenWFC withWfc model
             , Cmd.batch (tileActionsToCmds (clearCellActions ++ addTileActions))
             )
 

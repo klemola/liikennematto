@@ -20,6 +20,7 @@ import Duration exposing (Duration)
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import List.Nonempty
 import Random
+import Tilemap.Buffer exposing (removeBuffer, updateBufferCells)
 import Tilemap.Cell exposing (Cell)
 import Tilemap.Core
     exposing
@@ -134,7 +135,7 @@ addTileById seed tileInventory cell tileId tilemap =
         ( updatedWfcModel, wfcTileActions ) =
             updateTileNeighbors cell wfcModel
     in
-    ( WFC.toTilemap updatedWfcModel
+    ( updateBufferCells cell (WFC.toTilemap updatedWfcModel)
     , tilemapChangeActions ++ wfcTileActions
     )
 
@@ -145,8 +146,11 @@ onRemoveTile seed tileInventory cell tilemap =
         ( updatedTilemap, tilemapChangeActions ) =
             Tilemap.Core.removeTile cell tilemap
 
+        withBufferRemoved =
+            removeBuffer cell updatedTilemap
+
         wfcModel =
-            resetWfc seed (Just cell) tileInventory updatedTilemap
+            resetWfc seed (Just cell) tileInventory withBufferRemoved
 
         ( wfcWithoutTile, wfcActions ) =
             updateTileNeighbors cell wfcModel
