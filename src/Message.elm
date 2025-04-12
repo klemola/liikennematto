@@ -3,7 +3,7 @@ module Message exposing (Message(..), asCmd)
 import Browser.Dom
 import Browser.Events exposing (Visibility)
 import Duration exposing (Duration)
-import Model.Debug exposing (DebugLayerKind, DevAction)
+import Model.Debug exposing (DebugLayerKind, DevAction, DevOutput)
 import Model.World exposing (LotPlacement, TilemapChange)
 import Task
 import Tilemap.DrivenWFC exposing (RunWFCResult)
@@ -20,6 +20,7 @@ type Message
     | WindowResized Browser.Dom.Viewport
     | VisibilityChanged Visibility
     | AnimationFrameReceived Duration
+    | KeyReleased String
     | AudioInitComplete
     | GameSetupComplete
     | ToggleSimulationActive
@@ -39,6 +40,7 @@ type Message
     | ZoomLevelChanged UI.Core.ZoomLevel
     | ToggleDebugPanel
     | ToggleDebugLayer DebugLayerKind
+    | SelectDevOutput DevOutput
     | EditorMsg UI.Editor.Msg
     | ZoomControlMsg UI.ZoomControl.Msg
 

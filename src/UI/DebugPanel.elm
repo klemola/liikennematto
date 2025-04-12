@@ -1,4 +1,4 @@
-module UI.DebugPanel exposing (update, view)
+module UI.DebugPanel exposing (devMenu, update, view)
 
 import Data.Icons as Icons
 import Element exposing (Element)
@@ -11,11 +11,12 @@ import Model.Debug
     exposing
         ( DebugLayerKind(..)
         , DevAction(..)
+        , DevOutput(..)
+        , selectDevOutput
         , toggleDebugPanel
         , toggleLayer
         )
 import Model.Liikennematto exposing (Liikennematto)
-import Model.Screen as Screen
 import Model.World exposing (World, formatEvents)
 import Tilemap.DrivenWFC exposing (DrivenWFC(..), drivenWfcDebug)
 import Time
@@ -57,32 +58,23 @@ update msg model =
             , Cmd.none
             )
 
+        SelectDevOutput output ->
+            ( { model | debug = selectDevOutput output model.debug }
+            , Cmd.none
+            )
+
         _ ->
             ( model, Cmd.none )
 
 
 view : Liikennematto -> Element Message
 view model =
-    let
-        showPanel =
-            model.screen.width >= Screen.breakpointXL
-    in
     Element.row
         [ Element.alignRight
         , Element.moveLeft scrollbarAwareOffsetF
         , Element.moveDown scrollbarAwareOffsetF
         ]
-        [ if Model.Debug.isLayerEnabled WFCDebug model.debug && showPanel then
-            wfcPanel model.debug.wfcLog model.time model.wfc
-
-          else
-            Element.none
-        , if Model.Debug.isLayerEnabled CarDebug model.debug && showPanel then
-            carPanel model
-
-          else
-            Element.none
-        , mainPanel model
+        [ mainPanel model
         ]
 
 
@@ -116,7 +108,6 @@ mainPanel model =
                 )
             ]
         , controls model
-        , eventQueueView model.time model.world
         ]
 
 
@@ -156,29 +147,15 @@ controls model =
                 , size = Large
                 }
             ]
-        , Element.row
-            [ Element.spacing whitespaceTight
-            , Font.size textSize
-            ]
-            [ controlButton
-                { content = Text "WFC debug"
-                , onPress = ToggleDebugLayer WFCDebug
-                , selected = Model.Debug.isLayerEnabled WFCDebug model.debug
-                , disabled = False
-                , size = FitToContent
-                }
-            ]
         ]
 
 
-wfcPanel : List String -> Time.Posix -> DrivenWFC -> Element msg
-wfcPanel wfcLog currentTime drivenWfc =
+wfcOutput : List String -> Time.Posix -> DrivenWFC -> Element msg
+wfcOutput wfcLog currentTime drivenWfc =
     Element.column
-        [ Element.padding whitespaceRegular
-        , Element.spacing whitespaceTight
-        , Element.alignTop
-        , Element.alignLeft
-        , Element.width (Element.px 600)
+        [ Element.spacing whitespaceTight
+        , Element.padding whitespaceRegular
+        , Element.width Element.fill
         , Font.size textSizeMini
         , Background.color colorCardBackground
         , Border.rounded borderRadiusPanel
@@ -203,20 +180,15 @@ wfcPanel wfcLog currentTime drivenWfc =
         )
 
 
-carPanel : Liikennematto -> Element Message
-carPanel model =
+carsList : Liikennematto -> Element Message
+carsList model =
     if Collection.size model.world.cars == 0 then
         Element.none
 
     else
         Element.column
-            [ Element.padding whitespaceRegular
-            , Element.spacing whitespaceTight
-            , Element.width (Element.px 420)
-            , Element.alignTop
-            , Element.alignLeft
-            , Background.color colorMenuBackgroundInverse
-            , Border.rounded borderRadiusPanel
+            [ Element.spacing whitespaceTight
+            , Element.width Element.fill
             ]
             (List.map
                 (carStateCard model.renderCache
@@ -226,10 +198,60 @@ carPanel model =
             )
 
 
-eventQueueView : Time.Posix -> World -> Element msg
-eventQueueView time world =
+eventQueueList : Time.Posix -> World -> Element msg
+eventQueueList time world =
     Element.column
         [ Element.spacing whitespaceTight
         , Element.width Element.fill
         ]
         (List.map eventCard (formatEvents time world))
+
+
+devMenu : Liikennematto -> Element Message
+devMenu model =
+    Element.column
+        [ Element.alignLeft
+        , Element.moveRight scrollbarAwareOffsetF
+        , Element.moveDown scrollbarAwareOffsetF
+        , Element.padding whitespaceRegular
+        , Element.spacing whitespaceTight
+        , Element.width (Element.px 600)
+        , Background.color colorMenuBackgroundInverse
+        , Border.rounded borderRadiusPanel
+        ]
+        [ Element.row
+            [ Element.spacing whitespaceTight
+            , Font.size textSize
+            ]
+            [ controlButton
+                { content = Text "Events"
+                , onPress = SelectDevOutput EventQueueList
+                , selected = model.debug.selectedDevOutput == EventQueueList
+                , disabled = False
+                , size = FitToContent
+                }
+            , controlButton
+                { content = Text "WFC"
+                , onPress = SelectDevOutput WFCOutput
+                , selected = model.debug.selectedDevOutput == WFCOutput
+                , disabled = False
+                , size = FitToContent
+                }
+            , controlButton
+                { content = Text "Cars"
+                , onPress = SelectDevOutput CarsList
+                , selected = model.debug.selectedDevOutput == CarsList
+                , disabled = False
+                , size = FitToContent
+                }
+            ]
+        , case model.debug.selectedDevOutput of
+            EventQueueList ->
+                eventQueueList model.time model.world
+
+            WFCOutput ->
+                wfcOutput model.debug.wfcLog model.time model.wfc
+
+            CarsList ->
+                carsList model
+        ]

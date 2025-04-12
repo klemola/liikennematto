@@ -98,6 +98,7 @@ view model render renderDebugLayers =
         , Element.inFront (rightControls model)
         , Element.inFront (leftControls model)
         , Element.inFront (debugPanel model)
+        , Element.inFront (devMenu model)
         , Element.inFront (restoreGameControl model.previousWorld)
         , Element.htmlAttribute (HtmlAttribute.id containerId)
         , Element.htmlAttribute (HtmlAttribute.style "touch-action" "pan-x pan-y")
@@ -243,6 +244,15 @@ debugPanel : Liikennematto -> Element Message
 debugPanel model =
     if model.debug.showDebugPanel then
         DebugPanel.view model
+
+    else
+        Element.none
+
+
+devMenu : Liikennematto -> Element Message
+devMenu model =
+    if model.debug.showDevMenu then
+        DebugPanel.devMenu model
 
     else
         Element.none

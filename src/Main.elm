@@ -6,8 +6,10 @@ import Browser.Dom exposing (getViewport)
 import Browser.Events as Events
 import Duration exposing (Duration)
 import Element exposing (Element)
+import Json.Decode as Decode
 import Lib.FSM as FSM
 import Message exposing (Message(..))
+import Model.Debug
 import Model.Flags as Flags exposing (FlagsJson)
 import Model.Liikennematto as Liikennematto exposing (Liikennematto)
 import Model.RenderCache exposing (setPixelsToMetersRatio, setTilemapCache)
@@ -66,6 +68,11 @@ secondarySystemFrequencyDelta =
     Duration.milliseconds secondarySystemFrequencyMs
 
 
+keyReleasedDecoder : Decode.Decoder Message
+keyReleasedDecoder =
+    Decode.map KeyReleased (Decode.field "key" Decode.string)
+
+
 subscriptions : Liikennematto -> Sub Message
 subscriptions model =
     let
@@ -73,6 +80,7 @@ subscriptions model =
             [ Events.onResize (\_ _ -> ResizeTriggered)
             , Events.onVisibilityChange VisibilityChanged
             , Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameReceived)
+            , Events.onKeyUp keyReleasedDecoder
             , Time.every secondarySystemFrequencyMs (always (UpdateTilemap secondarySystemFrequencyDelta))
             , Audio.onAudioInitComplete (\_ -> AudioInitComplete)
             , UI.UI.subscriptions model
@@ -146,6 +154,13 @@ updateBase msg model =
               }
             , Cmd.none
             )
+
+        KeyReleased key ->
+            if key == "§" then
+                ( { model | debug = Model.Debug.toggleDevMenu model.debug }, Cmd.none )
+
+            else
+                ( model, Cmd.none )
 
         AudioInitComplete ->
             let

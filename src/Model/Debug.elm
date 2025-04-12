@@ -3,10 +3,13 @@ module Model.Debug exposing
     , DebugLayers
     , DebugState
     , DevAction(..)
+    , DevOutput(..)
     , appendWfcLog
     , initialDebugState
     , isLayerEnabled
+    , selectDevOutput
     , toggleDebugPanel
+    , toggleDevMenu
     , toggleLayer
     )
 
@@ -15,6 +18,8 @@ import Bitwise
 
 type alias DebugState =
     { showDebugPanel : Bool
+    , showDevMenu : Bool
+    , selectedDevOutput : DevOutput
     , layers : DebugLayers
     , wfcLog : List String
     }
@@ -32,6 +37,12 @@ type DebugLayerKind
     | WFCDebug
 
 
+type DevOutput
+    = EventQueueList
+    | CarsList
+    | WFCOutput
+
+
 type DevAction
     = SpawnTestCar
 
@@ -39,6 +50,8 @@ type DevAction
 initialDebugState : DebugState
 initialDebugState =
     { showDebugPanel = False
+    , showDevMenu = False
+    , selectedDevOutput = EventQueueList
     , layers = 0
     , wfcLog = []
     }
@@ -47,6 +60,11 @@ initialDebugState =
 toggleDebugPanel : DebugState -> DebugState
 toggleDebugPanel debugState =
     { debugState | showDebugPanel = not debugState.showDebugPanel }
+
+
+toggleDevMenu : DebugState -> DebugState
+toggleDevMenu debugState =
+    { debugState | showDevMenu = not debugState.showDevMenu }
 
 
 
@@ -96,8 +114,33 @@ isLayerEnabled layer debugState =
     bit == 1
 
 
+setLayer : DebugLayerKind -> Bool -> DebugState -> DebugState
+setLayer layer isEnabled debugState =
+    let
+        layerFlag =
+            layerToBinary layer
+
+        bitMask =
+            Bitwise.shiftLeftBy layerFlag 1
+
+        clearedLayers =
+            Bitwise.and debugState.layers (Bitwise.complement bitMask)
+    in
+    if isEnabled then
+        { debugState | layers = Bitwise.or clearedLayers bitMask }
+
+    else
+        { debugState | layers = clearedLayers }
+
+
 appendWfcLog : List String -> DebugState -> DebugState
 appendWfcLog nextLog debugState =
     { debugState
         | wfcLog = List.append nextLog debugState.wfcLog
     }
+
+
+selectDevOutput : DevOutput -> DebugState -> DebugState
+selectDevOutput output debugState =
+    { debugState | selectedDevOutput = output }
+        |> setLayer WFCDebug (output == WFCOutput)
