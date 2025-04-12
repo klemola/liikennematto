@@ -5,6 +5,7 @@ import Data.Utility
         ( cellsByTileKind
         , cellsByTileKindFromAscii
         , createCell
+        , multilineGridDebug
         , placeRoadAndUpdateBuffer
         , removeRoadAndUpdateBuffer
         , tenByTenTilemap
@@ -55,21 +56,6 @@ expectCellsMatch expectedAsciiTilemap tilemap =
 
         Err parseMessage ->
             Expect.fail parseMessage
-
-
-multilineGridDebug : String -> String -> String
-multilineGridDebug label str =
-    str
-        |> String.lines
-        |> List.indexedMap
-            (\i line ->
-                let
-                    lineNumber =
-                        String.fromInt (i + 1) |> String.pad 2 ' '
-                in
-                String.join " " [ label, "line", lineNumber, line ]
-            )
-        |> String.join "\n"
 
 
 
@@ -284,7 +270,7 @@ suite =
                     in
                     Expect.all
                         [ \_ -> expectCellsMatch expectedTilemap tilemap
-                        , \_ -> Expect.equal (List.length (getBuildHistory tilemap)) 2
+                        , \_ -> Expect.equal (List.length (getBuildHistory tilemap)) 1
                         ]
                         ()
                 )

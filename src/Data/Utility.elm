@@ -5,6 +5,7 @@ module Data.Utility exposing
     , createCell
     , getStartAndEndNode
     , initTileWithSuperposition
+    , multilineGridDebug
     , placeRoadAndUpdateBuffer
     , removeRoadAndUpdateBuffer
     , tenByTenTilemap
@@ -283,6 +284,21 @@ gridToAscii width height cells =
             List.foldl updateGrid defaultGrid cells
     in
     String.join "\n" finalGrid
+
+
+multilineGridDebug : String -> String -> String
+multilineGridDebug label str =
+    str
+        |> String.lines
+        |> List.indexedMap
+            (\i line ->
+                let
+                    lineNumber =
+                        String.fromInt (i + 1) |> String.pad 2 ' '
+                in
+                String.join " " [ label, "line", lineNumber, line ]
+            )
+        |> String.join "\n"
 
 
 createCell : TilemapConfig -> Int -> Int -> Cell
