@@ -587,7 +587,7 @@ lotEntryTUp =
     TileConfig.Single
         { id = 20
         , name = "RoadLotEntryTUp"
-        , weight = 0.8
+        , weight = 1.0
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -605,7 +605,7 @@ lotEntryTRight =
     TileConfig.Single
         { id = 21
         , name = "RoadLotEntryTRight"
-        , weight = 0.8
+        , weight = 1.0
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -623,7 +623,7 @@ lotEntryTLeft =
     TileConfig.Single
         { id = 22
         , name = "RoadLotEntryTLeft"
-        , weight = 0.8
+        , weight = 1.0
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -861,7 +861,7 @@ twoByTwoLotRightLargeTile : LargeTile
 twoByTwoLotRightLargeTile =
     { id = 100
     , name = "TwoByTwoLotRight"
-    , weight = 0.9
+    , weight = 1.0
     , biome = TileConfig.Lot
     , tiles =
         Array.fromList
@@ -888,7 +888,7 @@ threeByThreeLotLeftLargeTile : LargeTile
 threeByThreeLotLeftLargeTile =
     { id = 101
     , name = "ThreeByThreeLotLeft"
-    , weight = 0.9
+    , weight = 1.0
     , biome = TileConfig.Lot
     , tiles =
         Array.fromList
@@ -922,7 +922,7 @@ threeByTwoLotUpLargeTile : LargeTile
 threeByTwoLotUpLargeTile =
     { id = 102
     , name = "ThreeByTwoLotUp"
-    , weight = 0.9
+    , weight = 1.0
     , biome = TileConfig.Lot
     , tiles =
         Array.fromList
@@ -947,7 +947,7 @@ threeByTwoLotLeft =
     TileConfig.Large
         { id = 103
         , name = "ThreeByTwoLotLeft"
-        , weight = 0.9
+        , weight = 1.0
         , biome = TileConfig.Lot
         , tiles =
             Array.fromList
@@ -972,7 +972,7 @@ twoByThreeLotUp =
     TileConfig.Large
         { id = 104
         , name = "TwoByThreeLotUp"
-        , weight = 0.9
+        , weight = 1.0
         , biome = TileConfig.Lot
         , tiles =
             Array.fromList
