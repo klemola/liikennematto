@@ -21,6 +21,7 @@ import Duration exposing (Duration)
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import List.Nonempty
 import Random
+import Round
 import Tilemap.Buffer exposing (removeBuffer, updateBufferCells)
 import Tilemap.Cell exposing (Cell)
 import Tilemap.Core
@@ -37,10 +38,11 @@ import Tilemap.Tile as Tile exposing (Action, Tile, TileKind(..))
 import Tilemap.TileConfig as TileConfig exposing (TileConfig, TileId)
 import Tilemap.TileInventory exposing (TileInventory)
 import Tilemap.WFC as WFC
+import Time
 
 
 type DrivenWFC
-    = WFCPending Duration
+    = WFCPending Duration Time.Posix
     | WFCActive WFC.Model
     | WFCFailed (List String) Random.Seed
     | WFCSolved (List String) (List ( Cell, TileId ))
@@ -55,9 +57,9 @@ minWfcUpdateFrequency =
     Duration.milliseconds 250
 
 
-initDrivenWfc : DrivenWFC
-initDrivenWfc =
-    WFCPending minWfcUpdateFrequency
+initDrivenWfc : Time.Posix -> DrivenWFC
+initDrivenWfc time =
+    WFCPending minWfcUpdateFrequency time
 
 
 wfcStepsPerCycle : Int
@@ -366,11 +368,18 @@ resetDrivewayNeighbors drivewayNeighbors tilemap =
         drivewayNeighbors
 
 
-drivenWfcDebug : DrivenWFC -> String
-drivenWfcDebug drivenWfc =
+drivenWfcDebug : Time.Posix -> DrivenWFC -> String
+drivenWfcDebug currentTime drivenWfc =
     case drivenWfc of
-        WFCPending dur ->
-            "Pending " ++ (dur |> Duration.inMilliseconds |> String.fromFloat)
+        WFCPending dur initTime ->
+            String.join " "
+                [ "Pending"
+                , dur
+                    |> Duration.inMilliseconds
+                    |> Round.round 2
+                , String.fromInt
+                    ((Time.posixToMillis currentTime - Time.posixToMillis initTime) // 1000)
+                ]
 
         WFCActive _ ->
             "Active"

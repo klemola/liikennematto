@@ -26,10 +26,10 @@ maxBufferDepth =
 
 
 updateBufferCells : Cell -> Tilemap -> Tilemap
-updateBufferCells newCell tilemap =
+updateBufferCells builtCell tilemap =
     let
         updatedHistory =
-            nextCellHistory newCell (getBuildHistory tilemap)
+            nextCellHistory builtCell (getBuildHistory tilemap)
 
         withUpdatedHistory =
             setBuildHistory updatedHistory tilemap
@@ -48,20 +48,20 @@ updateBufferCells newCell tilemap =
                 nextTilemap
         )
         withUpdatedHistory
-        (bufferCellsFromHistory withUpdatedHistory)
+        (bufferCells builtCell withUpdatedHistory)
 
 
 removeBuffer : Cell -> Tilemap -> Tilemap
-removeBuffer removedCell tilemap =
+removeBuffer clearedCell tilemap =
     let
         withUpdatedHistory =
             setBuildHistory [] tilemap
 
         cellsToClear =
-            case roadDirectionByNeighbors removedCell tilemap of
+            case roadDirectionByNeighbors clearedCell tilemap of
                 DirectionContinuous neighbor1 neighbor2 straightRoadDirection_ ->
                     List.concat
-                        [ orphanCells removedCell straightRoadDirection_ False
+                        [ orphanCells clearedCell straightRoadDirection_ False
                         , orphanCells neighbor1.cell straightRoadDirection_ True
                         , orphanCells neighbor2.cell straightRoadDirection_ True
                         ]
@@ -89,38 +89,32 @@ removeBuffer removedCell tilemap =
 --
 
 
-bufferCellsFromHistory : Tilemap -> List Cell
-bufferCellsFromHistory tilemap =
-    case getBuildHistory tilemap of
-        current :: _ ->
-            case roadNeighbors current tilemap of
-                [ n1, n2 ] ->
-                    case straightRoadDirection n1 n2 of
-                        -- Straight road
-                        Just straightRoadDirection_ ->
-                            List.concat
-                                [ directionalBuffer current straightRoadDirection_ ( maxBufferDepth, 0 ) tilemap
-                                , neighborCellBuffer n1.cell tilemap
-                                , neighborCellBuffer n2.cell tilemap
-                                ]
+bufferCells : Cell -> Tilemap -> List Cell
+bufferCells builtCell tilemap =
+    case roadNeighbors builtCell tilemap of
+        [ n1, n2 ] ->
+            case straightRoadDirection n1 n2 of
+                -- Straight road
+                Just straightRoadDirection_ ->
+                    List.concat
+                        [ directionalBuffer builtCell straightRoadDirection_ ( maxBufferDepth, 0 ) tilemap
+                        , neighborCellBuffer n1.cell tilemap
+                        , neighborCellBuffer n2.cell tilemap
+                        ]
 
-                        Nothing ->
-                            -- Curve
-                            List.concat
-                                [ neighborCellBuffer n1.cell tilemap
-                                , neighborCellBuffer n2.cell tilemap
-                                ]
+                Nothing ->
+                    -- Curve
+                    List.concat
+                        [ neighborCellBuffer n1.cell tilemap
+                        , neighborCellBuffer n2.cell tilemap
+                        ]
 
-                [ n1 ] ->
-                    -- Deadend
-                    neighborCellBuffer n1.cell tilemap
+        [ n1 ] ->
+            -- Deadend
+            neighborCellBuffer n1.cell tilemap
 
-                _ ->
-                    -- Intersection or standalone road
-                    []
-
-        [] ->
-            -- Should not happen
+        _ ->
+            -- Intersection or standalone road
             []
 
 
@@ -248,17 +242,17 @@ vector2dFromInt ( x, y ) =
 
 
 nextCellHistory : Cell -> List Cell -> List Cell
-nextCellHistory newCell history =
+nextCellHistory builtCell history =
     case history of
         previous :: _ ->
-            if Cell.isAdjacent newCell previous then
-                (newCell :: history) |> List.take 3
+            if Cell.isAdjacent builtCell previous then
+                (builtCell :: history) |> List.take 5
 
             else
-                [ newCell ]
+                [ builtCell ]
 
         _ ->
-            [ newCell ]
+            [ builtCell ]
 
 
 type RoadDirection

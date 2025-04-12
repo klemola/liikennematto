@@ -73,7 +73,7 @@ view model =
         , Element.moveDown scrollbarAwareOffsetF
         ]
         [ if Model.Debug.isLayerEnabled WFCDebug model.debug && showPanel then
-            wfcPanel model.debug.wfcLog model.wfc
+            wfcPanel model.debug.wfcLog model.time model.wfc
 
           else
             Element.none
@@ -171,8 +171,8 @@ controls model =
         ]
 
 
-wfcPanel : List String -> DrivenWFC -> Element msg
-wfcPanel wfcLog drivenWfc =
+wfcPanel : List String -> Time.Posix -> DrivenWFC -> Element msg
+wfcPanel wfcLog currentTime drivenWfc =
     Element.column
         [ Element.padding whitespaceRegular
         , Element.spacing whitespaceTight
@@ -191,7 +191,7 @@ wfcPanel wfcLog drivenWfc =
 
             _ ->
                 [ Element.el []
-                    (Element.text (drivenWfcDebug drivenWfc))
+                    (Element.text (drivenWfcDebug currentTime drivenWfc))
                 , Element.column
                     [ Element.scrollbars
                     , Element.height debugElementLength

@@ -25,6 +25,7 @@ import Tilemap.Core
         , cellSupportsRoadPlacement
         , extractRoadTile
         , fixedTileByCell
+        , getBuildHistory
         , getTilemapConfig
         , mapCell
         , resetSuperposition
@@ -47,6 +48,7 @@ import Tilemap.Tile as Tile
         , isBuilt
         )
 import Tilemap.WFC as WFC
+import Time
 import UI.Core exposing (InputKind(..))
 
 
@@ -124,39 +126,31 @@ update msg model =
                 Secondary ->
                     onSecondaryInput inputEvent.cell model
 
-        CheckQueues _ delta ->
+        CheckQueues time delta ->
             case model.world.pendingTilemapChange of
                 Just _ ->
                     ( model, Cmd.none )
 
                 Nothing ->
                     case model.wfc of
-                        WFCPending timer ->
+                        WFCPending timer initTime ->
                             let
                                 nextTimer =
                                     timer
                                         |> Quantity.minus delta
                                         |> Quantity.max Quantity.zero
-                            in
-                            if Quantity.lessThanOrEqualToZero nextTimer then
-                                let
-                                    { world } =
-                                        model
 
-                                    initialWfc =
-                                        restartWfc world.seed
-                                            (World.tileInventoryCount world)
-                                            world.tilemap
-                                in
-                                ( { model
-                                    | wfc = WFCActive initialWfc
-                                    , debug = appendWfcLog [ ">Restart WFC (timer)" ] model.debug
-                                  }
-                                , scheduleWFCChunk initialWfc world
-                                )
+                                builtEnough =
+                                    List.length (getBuildHistory model.world.tilemap) >= 5
+
+                                waitedEnough =
+                                    (Time.posixToMillis time - Time.posixToMillis initTime) > 2000
+                            in
+                            if Quantity.lessThanOrEqualToZero nextTimer && (builtEnough || waitedEnough) then
+                                startWFC model
 
                             else
-                                ( { model | wfc = WFCPending nextTimer }, Cmd.none )
+                                ( { model | wfc = WFCPending nextTimer initTime }, Cmd.none )
 
                         _ ->
                             ( model, Cmd.none )
@@ -202,7 +196,7 @@ update msg model =
                             , Cmd.batch (audioCmd :: tileActionsToCmds tileActions)
                             )
 
-                        WFCPending _ ->
+                        WFCPending _ _ ->
                             ( model, Cmd.none )
 
                 _ ->
@@ -307,6 +301,25 @@ removeTile cell model =
 --
 
 
+startWFC : Liikennematto -> ( Liikennematto, Cmd Message )
+startWFC model =
+    let
+        { world } =
+            model
+
+        initialWfc =
+            restartWfc world.seed
+                (World.tileInventoryCount world)
+                world.tilemap
+    in
+    ( { model
+        | wfc = WFCActive initialWfc
+        , debug = appendWfcLog [ ">Restart WFC (timer)" ] model.debug
+      }
+    , scheduleWFCChunk initialWfc world
+    )
+
+
 scheduleWFCChunk : WFC.Model -> World -> Cmd Message
 scheduleWFCChunk wfcModel world =
     -- Small delay to allow for interrupts
@@ -350,7 +363,13 @@ resetDrivenWFC : Tilemap -> Liikennematto -> Liikennematto
 resetDrivenWFC tilemap model =
     { model
         | world = World.setTilemap tilemap model.world
-        , wfc = initDrivenWfc
+        , wfc =
+            case model.wfc of
+                WFCPending _ initTime ->
+                    initDrivenWfc initTime
+
+                _ ->
+                    initDrivenWfc model.time
         , renderCache = setTilemapCache tilemap (Just tilemap) model.renderCache
     }
 
