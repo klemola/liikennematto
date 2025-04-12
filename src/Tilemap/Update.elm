@@ -3,7 +3,7 @@ module Tilemap.Update exposing (update)
 import Audio exposing (playSound)
 import Data.TileSet
     exposing
-        ( defaultTiles
+        ( decorativeTiles
         , tileIdByBitmask
         )
 import Duration
@@ -69,7 +69,7 @@ update msg model =
                                 (\removedCell nextTilemap ->
                                     setSuperpositionOptions
                                         removedCell
-                                        (resetSuperposition removedCell defaultTiles nextTilemap)
+                                        (resetSuperposition removedCell decorativeTiles nextTilemap)
                                         nextTilemap
                                 )
                                 tilemapUpdateResult.tilemap
