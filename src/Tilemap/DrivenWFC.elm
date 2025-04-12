@@ -2,6 +2,7 @@ module Tilemap.DrivenWFC exposing
     ( DrivenWFC(..)
     , RunWFCResult
     , addTileById
+    , bufferToSuperposition
     , drivenWfcDebug
     , initDrivenWfc
     , onRemoveTile
@@ -20,6 +21,7 @@ import Duration exposing (Duration)
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import List.Nonempty
 import Random
+import Tilemap.Buffer exposing (removeBuffer, updateBufferCells)
 import Tilemap.Cell exposing (Cell)
 import Tilemap.Core
     exposing
@@ -101,7 +103,7 @@ restartWfc seed tileInventory tilemap =
     resetWfc seed
         Nothing
         tileInventory
-        (reopenRoads tilemap)
+        (preprocessTilemap tilemap)
 
 
 resetWfc : Random.Seed -> Maybe Cell -> TileInventory Int -> Tilemap -> WFC.Model
@@ -134,7 +136,7 @@ addTileById seed tileInventory cell tileId tilemap =
         ( updatedWfcModel, wfcTileActions ) =
             updateTileNeighbors cell wfcModel
     in
-    ( WFC.toTilemap updatedWfcModel
+    ( updateBufferCells cell (WFC.toTilemap updatedWfcModel)
     , tilemapChangeActions ++ wfcTileActions
     )
 
@@ -145,8 +147,11 @@ onRemoveTile seed tileInventory cell tilemap =
         ( updatedTilemap, tilemapChangeActions ) =
             Tilemap.Core.removeTile cell tilemap
 
+        withBufferRemoved =
+            removeBuffer cell updatedTilemap
+
         wfcModel =
-            resetWfc seed (Just cell) tileInventory updatedTilemap
+            resetWfc seed (Just cell) tileInventory withBufferRemoved
 
         ( wfcWithoutTile, wfcActions ) =
             updateTileNeighbors cell wfcModel
@@ -202,7 +207,7 @@ processTileNeighbor maybeTile wfcModel =
                     else
                         wfcModel
 
-                -- Does not change Superposition or Uninitialized
+                -- Does not change Superposition, Buffer or Uninitialized
                 _ ->
                     wfcModel
 
@@ -212,7 +217,7 @@ processTileNeighbor maybeTile wfcModel =
 
 
 --
--- Reopen road tiles for a WFC pass
+-- Preprocess tilemap for a WFC pass
 --
 
 
@@ -220,15 +225,37 @@ type alias DrivewayNeighborProperties =
     ( Cell, List TileConfig )
 
 
+preprocessTilemap : Tilemap -> Tilemap
+preprocessTilemap tilemap =
+    tilemap
+        |> bufferToSuperposition
+        |> reopenRoads
+
+
+bufferToSuperposition : Tilemap -> Tilemap
+bufferToSuperposition tilemap =
+    foldTiles
+        (\cell tile nextTilemap ->
+            case tile.kind of
+                Buffer ->
+                    resetTileBySurroundings cell decorativeTiles nextTilemap
+
+                _ ->
+                    nextTilemap
+        )
+        tilemap
+        tilemap
+
+
 reopenRoads : Tilemap -> Tilemap
 reopenRoads tilemap =
     foldTiles
         (\cell tile nextTilemap ->
-            case Tile.id tile of
-                Just baseTileId ->
-                    reopenRoadsStep baseTileId cell nextTilemap
+            case tile.kind of
+                Fixed properties ->
+                    reopenRoadsStep properties.id cell nextTilemap
 
-                Nothing ->
+                _ ->
                     nextTilemap
         )
         tilemap

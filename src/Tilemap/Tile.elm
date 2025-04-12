@@ -39,6 +39,7 @@ type alias Tile =
 
 type TileKind
     = Unintialized
+    | Buffer
     | Fixed FixedTileProperties
     | Superposition (List TileId)
 

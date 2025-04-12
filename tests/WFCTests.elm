@@ -32,6 +32,7 @@ import Tilemap.Tile as Tile exposing (TileKind(..))
 import Tilemap.TileConfig as TileConfig
 import Tilemap.TileInventory exposing (TileInventory)
 import Tilemap.WFC as WFC
+import Tilemap.DrivenWFC as DrivenWFC
 
 
 constraints : Cell.Constraints {}
@@ -287,6 +288,7 @@ suite =
                                 emptyTilemap
                                 |> setSuperpositionOptions twoByTwoLotEntry [ 22, 9 ]
                                 |> setSuperpositionOptions threeByThreeLotEntry [ 21, 9 ]
+                                |> DrivenWFC.bufferToSuperposition
                     in
                     Expect.all
                         [ \_ ->
@@ -314,6 +316,7 @@ suite =
                                 [ ( 1, 4 ), ( 2, 4 ), ( 3, 4 ), ( 4, 4 ), ( 5, 4 ) ]
                                 emptyTilemap
                                 |> setSuperpositionOptions threeByTwoLotEntry [ 20, 6 ]
+                                |> DrivenWFC.bufferToSuperposition
                     in
                     Expect.equal
                         (WFC.checkLargeTileFit tilemap threeByTwoLotDriveway threeByTwoLotUpLargeTile)

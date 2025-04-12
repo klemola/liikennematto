@@ -15,7 +15,6 @@ module Model.World exposing
     , findNearbyEntities
     , findNodeByPosition
     , formatEvents
-    , hasLot
     , hasPendingTilemapChange
     , prepareNewLot
     , refreshCars
@@ -194,11 +193,6 @@ empty initialSeed tilemapConfig =
 boundingBox : World -> BoundingBox2d Length.Meters GlobalCoordinates
 boundingBox world =
     tilemapBoundingBox world.tilemap
-
-
-hasLot : Cell -> World -> Bool
-hasLot cell { lots } =
-    List.any (Lot.inBounds cell) (Collection.values lots)
 
 
 findCarById : Id -> World -> Maybe Car

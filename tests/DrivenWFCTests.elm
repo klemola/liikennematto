@@ -144,11 +144,6 @@ suite =
                                 (tileByCell tilemap (createCell constraints 5 6)
                                     |> Maybe.unwrap False Tile.isFixed
                                 )
-                        , \_ ->
-                            Expect.true "tile remains fixed"
-                                (tileByCell tilemap (createCell constraints 5 7)
-                                    |> Maybe.unwrap False Tile.isFixed
-                                )
                         ]
                         ()
                 )

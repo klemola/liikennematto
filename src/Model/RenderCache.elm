@@ -69,6 +69,7 @@ type alias Renderable =
 type TilemapDebugItem
     = FixedDebug { id : TileId, parentTileId : Maybe TileId }
     | SuperpositionDebug (List TileId)
+    | BufferDebug
 
 
 new : World -> RenderCache
@@ -244,6 +245,9 @@ debugItemFromTile cell tile =
 
         Tile.Superposition ids ->
             Just ( cell, SuperpositionDebug ids )
+
+        Tile.Buffer ->
+            Just ( cell, BufferDebug )
 
         _ ->
             Nothing

@@ -5,6 +5,7 @@ module Data.Utility exposing
     , createCell
     , getStartAndEndNode
     , initTileWithSuperposition
+    , multilineGridDebug
     , placeRoadAndUpdateBuffer
     , removeRoadAndUpdateBuffer
     , tenByTenTilemap
@@ -133,6 +134,7 @@ type alias CellsByTileKind =
     { uninitialized : List CellCoordinates
     , fixed : List CellCoordinates
     , superposition : List CellCoordinates
+    , buffer : List CellCoordinates
     }
 
 
@@ -141,6 +143,7 @@ emptyCellsByTileKind =
     { uninitialized = []
     , fixed = []
     , superposition = []
+    , buffer = []
     }
 
 
@@ -163,6 +166,9 @@ cellsByTileKind tilemap =
 
                         Tile.Superposition _ ->
                             { acc | superposition = coords :: acc.superposition }
+
+                        Tile.Buffer ->
+                            { acc | buffer = coords :: acc.buffer }
                 )
                 emptyCellsByTileKind
                 tilemap
@@ -170,6 +176,7 @@ cellsByTileKind tilemap =
     { uninitialized = List.sort unsorted.uninitialized
     , fixed = List.sort unsorted.fixed
     , superposition = List.sort unsorted.superposition
+    , buffer = List.sort unsorted.buffer
     }
 
 
@@ -194,6 +201,7 @@ cellsByTileKindFromAscii tilemapConfig asciiArt =
                             { uninitialized = List.sort (okAcc.uninitialized ++ okRow.uninitialized)
                             , fixed = List.sort (okAcc.fixed ++ okRow.fixed)
                             , superposition = List.sort (okAcc.superposition ++ okRow.superposition)
+                            , buffer = List.sort (okAcc.buffer ++ okRow.buffer)
                             }
                         )
                         rowResult
@@ -226,6 +234,9 @@ processAsciiRow tilemapConfig y_ row =
                         'o' ->
                             { acc | superposition = ( x, y ) :: acc.superposition }
 
+                        'b' ->
+                            { acc | buffer = ( x, y ) :: acc.buffer }
+
                         _ ->
                             acc
                 )
@@ -246,6 +257,7 @@ tilemapToAscii tilemap =
         [ List.map (Tuple.pair '-') cellsByTileKind_.uninitialized
         , List.map (Tuple.pair 'x') cellsByTileKind_.fixed
         , List.map (Tuple.pair 'o') cellsByTileKind_.superposition
+        , List.map (Tuple.pair 'b') cellsByTileKind_.buffer
         ]
         |> List.sortBy Tuple.second
         |> gridToAscii tilemapConfig.horizontalCellsAmount tilemapConfig.verticalCellsAmount
@@ -272,6 +284,21 @@ gridToAscii width height cells =
             List.foldl updateGrid defaultGrid cells
     in
     String.join "\n" finalGrid
+
+
+multilineGridDebug : String -> String -> String
+multilineGridDebug label str =
+    str
+        |> String.lines
+        |> List.indexedMap
+            (\i line ->
+                let
+                    lineNumber =
+                        String.fromInt (i + 1) |> String.pad 2 ' '
+                in
+                String.join " " [ label, "line", lineNumber, line ]
+            )
+        |> String.join "\n"
 
 
 createCell : TilemapConfig -> Int -> Int -> Cell

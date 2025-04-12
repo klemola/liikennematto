@@ -5,6 +5,7 @@ import Data.Utility
         ( cellsByTileKind
         , cellsByTileKindFromAscii
         , createCell
+        , multilineGridDebug
         , placeRoadAndUpdateBuffer
         , removeRoadAndUpdateBuffer
         , tenByTenTilemap
@@ -55,21 +56,6 @@ expectCellsMatch expectedAsciiTilemap tilemap =
 
         Err parseMessage ->
             Expect.fail parseMessage
-
-
-multilineGridDebug : String -> String -> String
-multilineGridDebug label str =
-    str
-        |> String.lines
-        |> List.indexedMap
-            (\i line ->
-                let
-                    lineNumber =
-                        String.fromInt (i + 1) |> String.pad 2 ' '
-                in
-                String.join " " [ label, "line", lineNumber, line ]
-            )
-        |> String.join "\n"
 
 
 
@@ -149,13 +135,13 @@ suite =
                         expectedTilemap =
                             """
                             ----------
-                            -----o----
-                            -----o----
-                            -----o----
+                            -----b----
+                            -----b----
+                            -----b----
                             ----xxx---
-                            -----o----
-                            -----o----
-                            -----o----
+                            -----b----
+                            -----b----
+                            -----b----
                             ----------
                             ----------
                             """
@@ -173,12 +159,12 @@ suite =
 
                         expectedTilemap =
                             """
-                            ---oo-----
-                            ---oo-----
+                            ---bb-----
+                            ---bb-----
                             --xxxx----
-                            ---oo-----
-                            ---oo-----
-                            ---oo-----
+                            ---bb-----
+                            ---bb-----
+                            ---bb-----
                             ----------
                             ----------
                             ----------
@@ -198,13 +184,13 @@ suite =
                         expectedTilemap =
                             """
                             ----------
-                            -----oo---
-                            -----oo---
-                            -----oo---
+                            -----bb---
+                            -----bb---
+                            -----bb---
                             ----xxxx--
-                            -----oo---
-                            -----oo---
-                            -----oo---
+                            -----bb---
+                            -----bb---
+                            -----bb---
                             ----------
                             ----------
                             """
@@ -225,7 +211,7 @@ suite =
                                 ----------
                                 ----------
                                 ---x------
-                                oooxooo---
+                                bbbxbbb---
                                 ---x------
                                 ----------
                                 ----------
@@ -248,9 +234,9 @@ suite =
                             """
                                 ----------
                                 ----x-----
-                                -oooxooo--
-                                -oooxooo--
-                                -oooxooo--
+                                -bbbxbbb--
+                                -bbbxbbb--
+                                -bbbxbbb--
                                 ----x-----
                                 ----------
                                 ----------
@@ -284,7 +270,7 @@ suite =
                     in
                     Expect.all
                         [ \_ -> expectCellsMatch expectedTilemap tilemap
-                        , \_ -> Expect.equal (List.length (getBuildHistory tilemap)) 2
+                        , \_ -> Expect.equal (List.length (getBuildHistory tilemap)) 1
                         ]
                         ()
                 )
@@ -309,13 +295,13 @@ suite =
                         expectedTilemap =
                             """
                                 ----------
-                                --ooox----
-                                --oooxooo-
-                                --oooxooo-
+                                --bbbx----
+                                --bbbxbbb-
+                                --bbbxbbb-
                                 -xxxxx----
-                                --ooo-----
-                                --ooo-----
-                                --ooo-----
+                                --bbb-----
+                                --bbb-----
+                                --bbb-----
                                 ----------
                                 ----------
                                 """
@@ -348,13 +334,13 @@ suite =
                         expectedTilemap =
                             """
                                 ----------
-                                --ooo-----
-                                --ooox----
-                                --oooxooo-
+                                --bbb-----
+                                --bbbx----
+                                --bbbxbbb-
                                 -xxxxx----
-                                --oooxooo-
-                                --oooxooo-
-                                --ooox----
+                                --bbbxbbb-
+                                --bbbxbbb-
+                                --bbbx----
                                 ----------
                                 ----------
                                 """
@@ -406,12 +392,12 @@ suite =
 
                         expectedTilemap =
                             """
-                            ---o------
-                            ---o------
+                            ---b------
+                            ---b------
                             --xxx-----
-                            ---o------
-                            ---o------
-                            ---o------
+                            ---b------
+                            ---b------
+                            ---b------
                             ----------
                             ----------
                             ----------
@@ -448,13 +434,13 @@ suite =
                             ----------
                             ----------
                             --xx-xx---
-                            ---ooo----
-                            ---ooo----
-                            ---ooo----
+                            ---bbb----
+                            ---bbb----
+                            ---bbb----
                             --xxxxx---
-                            ---ooo----
-                            ---ooo----
-                            ---ooo----
+                            ---bbb----
+                            ---bbb----
+                            ---bbb----
                             """
                     in
                     expectCellsMatch expectedTilemap tilemapAfterRemove
@@ -479,12 +465,12 @@ suite =
 
                         expectedTilemap =
                             """
-                            ---oo-----
-                            ---oo-----
+                            ---bb-----
+                            ---bb-----
                             --xxxx----
-                            ---oo-----
-                            ---oox----
-                            ---oo-----
+                            ---bb-----
+                            ---bbx----
+                            ---bb-----
                             ----------
                             ----------
                             ----------
@@ -522,12 +508,12 @@ suite =
 
                         expectedTilemap =
                             """
-                            ---oooo---
-                            ---oooo---
+                            ---bbbb---
+                            ---bbbb---
                             --xxxxxx--
-                            -oooxoo---
-                            -oooxoox--
-                            ---oxoo---
+                            -bbbxbb---
+                            -bbbxbbx--
+                            ---bxbb---
                             ----------
                             ----------
                             ----------
@@ -558,12 +544,12 @@ suite =
                         expectedTilemap =
                             """
                             ---------x
-                            ------ooox
-                            ------ooox
+                            ------bbbx
+                            ------bbbx
                             ---------x
                             ----------
                             ---------x
-                            ------ooox
+                            ------bbbx
                             ---------x
                             ----------
                             ----------
@@ -579,11 +565,11 @@ suite =
                                 [ ( 4, 4 )
                                 , ( 5, 4 )
                                 , ( 6, 4 )
+                                , ( 4, 5 )
+                                , ( 4, 6 )
                                 , ( 6, 5 )
                                 , ( 6, 6 )
                                 , ( 5, 6 )
-                                , ( 4, 6 )
-                                , ( 4, 5 )
                                 ]
                                 emptyTilemap
 
@@ -592,11 +578,11 @@ suite =
 
                         expectedTilemap =
                             """
-                            ----o-----
-                            ----o-----
-                            ----o-----
+                            ----b-----
+                            ----b-----
+                            ----b-----
                             ---xxx----
-                            oooxoxooo-
+                            bbbxbxbbb-
                             ---x-x----
                             ----------
                             ----------
