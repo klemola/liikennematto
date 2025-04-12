@@ -912,12 +912,7 @@ attemptTileNeighborUpdate currentTile originCell tilemap =
                         Err "Can't dock uninitialized neighbor"
 
                 Buffer ->
-                    -- Allow docking on buffer neighbor like it was the edge of the map
-                    if nuCtx.neighborSocket == defaultSocket then
-                        Ok nuCtx.steps
-
-                    else
-                        Err "Can't dock buffer neighbor"
+                    Ok nuCtx.steps
         )
         originCell
         currentTile
