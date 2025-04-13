@@ -96,7 +96,7 @@ mainPanel model =
                 , Font.bold
                 , Font.color colorTextInverse
                 ]
-                (Element.text "Debug")
+                (Element.text "Peek under the hood")
             , Element.el [ Element.alignRight ]
                 (controlButton
                     { content = Icon Icons.Close
