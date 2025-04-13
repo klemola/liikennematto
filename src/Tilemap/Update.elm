@@ -261,20 +261,25 @@ addTile cell model =
         { world } =
             model
 
-        ( tilemapWithClearedCell, clearCellActions ) =
-            Tilemap.Core.removeTile cell world.tilemap
+        tilemapWithMaybeConnectedLargeTileRemoved =
+            Tilemap.Core.removeLargeTileIfExists cell world.tilemap
 
         bitmask =
-            cellBitmask cell tilemapWithClearedCell
+            cellBitmask cell tilemapWithMaybeConnectedLargeTileRemoved
     in
     case tileIdByBitmask bitmask of
         Just tileId ->
             let
                 ( withWfc, addTileActions ) =
-                    addTileById world.seed (World.tileInventoryCount world) cell tileId tilemapWithClearedCell
+                    addTileById
+                        world.seed
+                        (World.tileInventoryCount world)
+                        cell
+                        tileId
+                        tilemapWithMaybeConnectedLargeTileRemoved
             in
             ( resetDrivenWFC withWfc model
-            , Cmd.batch (tileActionsToCmds (clearCellActions ++ addTileActions))
+            , Cmd.batch (tileActionsToCmds addTileActions)
             )
 
         Nothing ->

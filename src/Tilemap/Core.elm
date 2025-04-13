@@ -18,6 +18,7 @@ module Tilemap.Core exposing
     , getTilemapDimensions
     , largeTileBounds
     , mapCell
+    , removeLargeTileIfExists
     , removeTile
     , resetFixedTileBySurroundings
     , resetSuperposition
@@ -130,31 +131,13 @@ resetFixedTileBySurroundings cell tilemap =
     case tileByCell tilemap cell of
         Just tile ->
             case tile.kind of
-                Fixed current ->
-                    let
-                        base =
-                            setSuperpositionOptions
-                                cell
-                                (tileIdsFromBitmask (cellBitmask cell tilemap))
-                                tilemap
-
-                        currentTileConfig =
-                            tileById current.id
-                    in
-                    directionBySocket (TileConfig.sockets currentTileConfig) lotEntrySocket
-                        |> Maybe.andThen
-                            (\lotEntryDirection ->
-                                tileNeighborIn lotEntryDirection cell fixedTileByCell tilemap
-                            )
-                        |> Maybe.andThen
-                            (\( subgridAnchorCell, subgridAnchorTile ) ->
-                                Maybe.map
-                                    (\parentTile ->
-                                        removeLargeTileSubtiles subgridAnchorCell parentTile base
-                                    )
-                                    (tileParentTile subgridAnchorTile)
-                            )
-                        |> Maybe.withDefault base
+                Fixed _ ->
+                    -- Room for improvement: retain lot entry but with different tile, if possible
+                    tilemap
+                        |> removeLargeTileIfExists cell
+                        |> setSuperpositionOptions
+                            cell
+                            (tileIdsFromBitmask (cellBitmask cell tilemap))
 
                 _ ->
                     tilemap
@@ -544,43 +527,17 @@ addTileFromWfc parentTile =
 
 
 removeTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )
-removeTile origin ((Tilemap tilemapContents) as tilemap) =
+removeTile origin tilemap =
     case
         fixedTileByCell tilemap origin
             |> Maybe.map Tile.attemptRemove
     of
         Just ( tile, actions ) ->
-            case tileParentTile tile of
-                Just parentTile ->
-                    ( tilemap
-                        |> removeLargeTileSubtiles origin parentTile
-                        |> resetLargeTileAnchor origin parentTile
-                    , actions
-                    )
-
-                Nothing ->
-                    let
-                        withUpdatedCell =
-                            updateCell origin tile tilemap
-
-                        ( withMaybeConnectedLargeTileRemoved, removeLargeTileActions ) =
-                            Tile.id tile
-                                |> Maybe.andThen extractLotEntryTile
-                                |> Maybe.andThen
-                                    (\( _, directionToLot ) ->
-                                        nextOrthogonalCell tilemapContents.config directionToLot origin
-                                    )
-                                |> Maybe.map
-                                    (\lotDrivewayCell ->
-                                        -- Call removeTile in a recursive way, as this will branch out to the "parent tile" found
-                                        -- case or at least fail on the neighbor not being a lot entry cell
-                                        removeTile lotDrivewayCell withUpdatedCell
-                                    )
-                                |> Maybe.withDefault ( withUpdatedCell, [] )
-                    in
-                    ( withMaybeConnectedLargeTileRemoved
-                    , actions ++ removeLargeTileActions
-                    )
+            ( removeLargeTileIfExists
+                origin
+                (updateCell origin tile tilemap)
+            , actions
+            )
 
         Nothing ->
             ( tilemap, [] )
@@ -697,6 +654,39 @@ largeTileBounds cell tile (Tilemap tilemapContents) =
                     lowerRightCorner
                 )
             )
+
+
+removeLargeTileIfExists : Cell -> Tilemap -> Tilemap
+removeLargeTileIfExists origin ((Tilemap tilemapContents) as tilemap) =
+    case
+        fixedTileByCell tilemap origin
+    of
+        Just tile ->
+            case tileParentTile tile of
+                -- Check if the tile is part of a large tile
+                Just parentTile ->
+                    tilemap
+                        |> removeLargeTileSubtiles origin parentTile
+                        |> resetLargeTileAnchor origin parentTile
+
+                -- Check if the tile is a lot entry
+                Nothing ->
+                    Tile.id tile
+                        |> Maybe.andThen extractLotEntryTile
+                        |> Maybe.andThen
+                            (\( _, directionToLot ) ->
+                                nextOrthogonalCell tilemapContents.config directionToLot origin
+                            )
+                        |> Maybe.map
+                            (\lotDrivewayCell ->
+                                -- Call removeTile in a recursive way, as this will branch out to the "parent tile" found
+                                -- case or at least fail on the neighbor not being a lot entry cell
+                                removeLargeTileIfExists lotDrivewayCell tilemap
+                            )
+                        |> Maybe.withDefault tilemap
+
+        Nothing ->
+            tilemap
 
 
 removeLargeTileSubtiles : Cell -> ( TileId, Int ) -> Tilemap -> Tilemap
