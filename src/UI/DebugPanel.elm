@@ -156,6 +156,7 @@ wfcOutput wfcLog currentTime drivenWfc =
         [ Element.spacing whitespaceTight
         , Element.padding whitespaceRegular
         , Element.width Element.fill
+        , Element.height (Element.px 420)
         , Font.size textSizeMini
         , Background.color colorCardBackground
         , Border.rounded borderRadiusPanel
