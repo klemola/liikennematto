@@ -28,11 +28,11 @@ import Tilemap.Core
         , setSuperpositionOptions
         , tileByCell
         )
+import Tilemap.DrivenWFC as DrivenWFC
 import Tilemap.Tile as Tile exposing (TileKind(..))
 import Tilemap.TileConfig as TileConfig
 import Tilemap.TileInventory exposing (TileInventory)
 import Tilemap.WFC as WFC
-import Tilemap.DrivenWFC as DrivenWFC
 
 
 constraints : Cell.Constraints {}
@@ -140,10 +140,8 @@ suite =
                                             Nothing
                                 )
                 in
-                Expect.true "Collapsed cell should have fewer options"
-                    (Maybe.map2 (<) collapsedOptions initialOptions
-                        |> Maybe.withDefault False
-                    )
+                Maybe.map2 Expect.lessThan initialOptions collapsedOptions
+                    |> Maybe.withDefault (Expect.fail "Invalid initial options or collapsed options")
             )
         , test "propagateConstraints updates neighboring cells"
             (\_ ->
@@ -187,18 +185,14 @@ suite =
                                         _ ->
                                             Nothing
                                 )
-
-                    neighborChanged =
-                        case ( initialNeighborOpts, updatedNeighborOpts ) of
-                            ( Just initialOpts, Just updatedOpts ) ->
-                                List.length updatedOpts < List.length initialOpts
-
-                            _ ->
-                                False
                 in
                 Expect.all
                     [ \_ -> Expect.notEqual Nothing collapsedTileConfig
-                    , \_ -> Expect.true "Neighbor cell should have updated options" neighborChanged
+                    , \_ ->
+                        Maybe.map2 Expect.greaterThan
+                            (Maybe.map List.length updatedNeighborOpts)
+                            (Maybe.map List.length initialNeighborOpts)
+                            |> Maybe.withDefault (Expect.fail "Invalid initial neighbor opts or updated neighbor opts")
                     ]
                     ()
             )

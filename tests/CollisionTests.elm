@@ -36,7 +36,8 @@ suite =
                             Collision.rightSideFOV lineSegment
                     in
                     Collision.fieldOfViewCheck fov testPoint
-                        |> Expect.true "The point should be inside the FOV"
+                        |> Expect.equal True
+                        |> Expect.onFail "The point should be inside the FOV"
                 )
             , test "should NOT contain a point that is outside the range (by radius)"
                 (\_ ->
@@ -60,7 +61,8 @@ suite =
                             Collision.rightSideFOV lineSegment
                     in
                     Collision.fieldOfViewCheck fov testPoint
-                        |> Expect.false "The point should be outside the FOV radius"
+                        |> Expect.equal False
+                        |> Expect.onFail "The point should be outside the FOV radius"
                 )
             , test "should NOT contain a point that is outside the range (by angle)"
                 (\_ ->
@@ -84,7 +86,8 @@ suite =
                             Collision.rightSideFOV lineSegment
                     in
                     Collision.fieldOfViewCheck fov testPoint
-                        |> Expect.false "The point should be outside the FOV area of a circle"
+                        |> Expect.equal False
+                        |> Expect.onFail "The point should be outside the FOV area of a circle"
                 )
             ]
         ]

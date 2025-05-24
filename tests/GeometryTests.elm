@@ -23,7 +23,10 @@ suite =
                         origin =
                             Point2d.origin
                     in
-                    Expect.true "should be within the normal plane" (testPoint |> Common.isInTheNormalPlaneOf normal origin)
+                    testPoint
+                        |> Common.isInTheNormalPlaneOf normal origin
+                        |> Expect.equal True
+                        |> Expect.onFail "should be within the normal plane"
                 )
             , test "point should NOT be within the normal plane"
                 (\_ ->
@@ -37,7 +40,10 @@ suite =
                         origin =
                             Point2d.origin
                     in
-                    Expect.false "should be within the normal plane" (testPoint |> Common.isInTheNormalPlaneOf normal origin)
+                    testPoint
+                        |> Common.isInTheNormalPlaneOf normal origin
+                        |> Expect.equal False
+                        |> Expect.onFail "should be within the normal plane"
                 )
             ]
         ]

@@ -59,9 +59,11 @@ suite =
                                     _ ->
                                         False
                             )
-                        |> Maybe.unwrap
-                            (Expect.fail "Could not find the tile")
-                            (Expect.true "Expected a T-shaped intersection after the mask is applied.")
+                        |> Maybe.map
+                            (Expect.equal True
+                                >> Expect.onFail "Expected a T-shaped intersection after the mask is applied."
+                            )
+                        |> Maybe.withDefault (Expect.fail "Could not find the tile")
                 )
             , test "Creates a curve with compatible tiles"
                 (\_ ->
@@ -83,9 +85,11 @@ suite =
                                     _ ->
                                         False
                             )
-                        |> Maybe.unwrap
-                            (Expect.fail "Could not find the tile")
-                            (Expect.true "Expected a curve road piece after the mask is applied.")
+                        |> Maybe.map
+                            (Expect.equal True
+                                >> Expect.onFail "Expected a curve road piece after the mask is applied."
+                            )
+                        |> Maybe.withDefault (Expect.fail "Could not find the tile")
                 )
             ]
         , describe ".canBuildRoadAt"
@@ -101,7 +105,8 @@ suite =
                     Cell.fromCoordinates tilemapConfig ( 2, 2 )
                         |> Maybe.map (\cell -> cellSupportsRoadPlacement cell lowComplexityWorld.tilemap)
                         |> Maybe.withDefault False
-                        |> Expect.true "Expected valid world."
+                        |> Expect.equal True
+                        |> Expect.onFail "Expected valid world."
                 )
             , test "Disallows a complex setup"
                 (\_ ->
@@ -115,7 +120,8 @@ suite =
                     Cell.fromCoordinates tilemapConfig ( 2, 2 )
                         |> Maybe.map (\cell -> cellSupportsRoadPlacement cell tilemap)
                         |> Maybe.withDefault False
-                        |> Expect.false "Expected invalid world."
+                        |> Expect.equal False
+                        |> Expect.onFail "Expected invalid world."
                 )
             ]
         ]

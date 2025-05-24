@@ -28,6 +28,20 @@ getLinearAcceleration steering =
     steering.linear |> Maybe.withDefault Quantity.zero
 
 
+expectNegativeAcceleration : String -> Acceleration -> Expect.Expectation
+expectNegativeAcceleration failOutput quantity =
+    Quantity.lessThanZero quantity
+        |> Expect.equal True
+        |> Expect.onFail failOutput
+
+
+expectPositiveAcceleration : String -> Acceleration -> Expect.Expectation
+expectPositiveAcceleration failOutput quantity =
+    Quantity.greaterThanOrEqualToZero quantity
+        |> Expect.equal True
+        |> Expect.onFail failOutput
+
+
 suite : Test
 suite =
     describe "Round"
@@ -38,22 +52,20 @@ suite =
                 (\_ -> Expect.equal (Traffic.checkRules noCollisionSetupIntersection) Steering.accelerate)
             , test "disallow movement if it will cause a collision (paths intersect)"
                 (\_ ->
-                    Expect.true
+                    expectNegativeAcceleration
                         "Expected collision avoidance"
                         (collisionSetupPathsIntersect
                             |> Traffic.checkRules
                             |> getLinearAcceleration
-                            |> Quantity.lessThanZero
                         )
                 )
             , test "disallow movement if it will cause a collision (near collision)"
                 (\_ ->
-                    Expect.true
+                    expectNegativeAcceleration
                         "Expected collision avoidance"
                         (collisionSetupNearCollision
                             |> Traffic.checkRules
                             |> getLinearAcceleration
-                            |> Quantity.lessThanZero
                         )
                 )
             , test "recover when a collision occurs"
@@ -64,12 +76,11 @@ suite =
                 (\_ -> Expect.equal (Traffic.checkRules connectedRoadsSetup) Steering.accelerate)
             , test "allow movement if traffic lights are green"
                 (\_ ->
-                    Expect.true
+                    expectPositiveAcceleration
                         "Expected zero to positive acceleration"
                         (greenTrafficLightsSetup
                             |> Traffic.checkRules
                             |> getLinearAcceleration
-                            |> Quantity.greaterThanOrEqualToZero
                         )
                 )
             , test "allow movement if there's no need to yield at sign"
@@ -78,52 +89,47 @@ suite =
         , describe "Checking traffic rules"
             [ test "can prevent car movement"
                 (\_ ->
-                    Expect.true
+                    expectNegativeAcceleration
                         "Expected deceleration"
                         (collisionSetupNearCollision
                             |> Traffic.checkRules
                             |> getLinearAcceleration
-                            |> Quantity.lessThanZero
                         )
                 )
             , test "can stop the car at traffic lights"
                 (\_ ->
-                    Expect.true
+                    expectNegativeAcceleration
                         "Expected deceleration"
                         (redTrafficLightsSetup
                             |> Traffic.checkRules
                             |> getLinearAcceleration
-                            |> Quantity.lessThanZero
                         )
                 )
             , test "can make the car yield, setup 1"
                 (\_ ->
-                    Expect.true
+                    expectNegativeAcceleration
                         "Expected deceleration"
                         (yieldWithPriorityTrafficSetup1
                             |> Traffic.checkRules
                             |> getLinearAcceleration
-                            |> Quantity.lessThanZero
                         )
                 )
             , test "can make the car yield, setup 2"
                 (\_ ->
-                    Expect.true
+                    expectNegativeAcceleration
                         "Expected deceleration"
                         (yieldWithPriorityTrafficSetup2
                             |> Traffic.checkRules
                             |> getLinearAcceleration
-                            |> Quantity.lessThanZero
                         )
                 )
             , test "can make the car slow down before a yield sign"
                 (\_ ->
-                    Expect.true
+                    expectNegativeAcceleration
                         "Expected deceleration"
                         (yieldSlowDownSetup
                             |> Traffic.checkRules
                             |> getLinearAcceleration
-                            |> Quantity.lessThanZero
                         )
                 )
             ]
