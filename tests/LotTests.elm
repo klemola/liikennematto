@@ -52,7 +52,8 @@ suite =
                         (Cell.fromCoordinates tilemapConfig ( 2, 5 ))
                         twoByTwoLot
                         |> Maybe.withDefault False
-                        |> Expect.true "Expected the cell to be in the lot's bounds"
+                        |> Expect.equal True
+                        |> Expect.onFail "Expected the cell to be in the lot's bounds"
                 )
             , test "validates if a cell is in lot's bounds for 3x3 lot"
                 (\_ ->
@@ -60,7 +61,8 @@ suite =
                         (Cell.fromCoordinates tilemapConfig ( 3, 1 ))
                         threeByThreeLot
                         |> Maybe.withDefault False
-                        |> Expect.true "Expected the cell to be in the lot's bounds"
+                        |> Expect.equal True
+                        |> Expect.onFail "Expected the cell to be in the lot's bounds"
                 )
             , test "validates if a cell is *NOT* in lot's bounds for 2x2 lot"
                 (\_ ->
@@ -68,7 +70,8 @@ suite =
                         (Cell.fromCoordinates tilemapConfig ( 2, 6 ))
                         twoByTwoLot
                         |> Maybe.withDefault True
-                        |> Expect.false "Expected the cell to be out of the lot's bounds"
+                        |> Expect.equal False
+                        |> Expect.onFail "Expected the cell to be out of the lot's bounds"
                 )
             , test
                 "validates if a cell is *NOT* in lot's bounds for 3x3 lot"
@@ -77,7 +80,8 @@ suite =
                         (Cell.fromCoordinates tilemapConfig ( 5, 2 ))
                         threeByThreeLot
                         |> Maybe.withDefault True
-                        |> Expect.false "Expected the cell to be out of the lot's bounds"
+                        |> Expect.equal False
+                        |> Expect.onFail "Expected the cell to be out of the lot's bounds"
                 )
             ]
         ]

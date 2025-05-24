@@ -38,9 +38,10 @@ debugElementLength =
     Element.fill |> Element.maximum 420
 
 
-cardAttributes : List (Element.Attribute msg)
-cardAttributes =
+cardAttributes : Element.Length -> List (Element.Attribute msg)
+cardAttributes height =
     [ Element.width Element.fill
+    , Element.height height
     , Element.padding whitespaceTight
     , Element.spacing UI.Core.whitespaceTight
     , Element.clipX
@@ -57,7 +58,7 @@ cardAttributes =
 carStateCard : RenderCache.RenderCache -> Car -> Element msg
 carStateCard cache car =
     Element.row
-        cardAttributes
+        (cardAttributes (Element.px 64))
         [ Element.text ("# " ++ Collection.idToString car.id)
         , Element.column [ Element.spacing whitespaceTight ]
             [ Element.text (pointToString cache car.position)
@@ -74,7 +75,7 @@ eventCard queueEvent =
             queueEvent
     in
     Element.el
-        cardAttributes
+        (cardAttributes (Element.px 64))
         (Element.column
             [ Element.spacing UI.Core.whitespaceTight ]
             [ Element.text kind

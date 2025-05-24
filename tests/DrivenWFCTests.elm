@@ -140,10 +140,10 @@ suite =
                     in
                     Expect.all
                         [ \_ ->
-                            Expect.true "tile remains fixed"
-                                (tileByCell tilemap (createCell constraints 5 6)
-                                    |> Maybe.unwrap False Tile.isFixed
-                                )
+                            tileByCell tilemap (createCell constraints 5 6)
+                                |> Maybe.unwrap False Tile.isFixed
+                                |> Expect.equal True
+                                |> Expect.onFail "tile remains fixed"
                         ]
                         ()
                 )

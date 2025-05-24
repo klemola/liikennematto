@@ -37,9 +37,10 @@ suite =
                         in
                         case Route.distanceToPathEnd route of
                             Just distanceToPathEnd ->
-                                Expect.true
-                                    "Expected the total distance to be more than length on a couple of cells"
-                                    (distanceToPathEnd |> Quantity.greaterThan (Cell.size |> Quantity.twice))
+                                distanceToPathEnd
+                                    |> Quantity.greaterThan (Cell.size |> Quantity.twice)
+                                    |> Expect.equal True
+                                    |> Expect.onFail "Expected the total distance to be more than length on a couple of cells"
 
                             _ ->
                                 Expect.fail "Invalid samples"
@@ -66,12 +67,11 @@ suite =
                         in
                         case ( Route.startNodePosition route, sample, sampleAhead ) of
                             ( Just startNodePosition, Just pointOnSpline, Just pointOnNextSpline ) ->
-                                Expect.true
-                                    "Expected sample ahead to provide a point further from origin"
-                                    (Point2d.distanceFrom startNodePosition pointOnNextSpline
-                                        |> Quantity.minus (Point2d.distanceFrom startNodePosition pointOnSpline)
-                                        |> Quantity.greaterThan (Quantity.half lookAhead)
-                                    )
+                                Point2d.distanceFrom startNodePosition pointOnNextSpline
+                                    |> Quantity.minus (Point2d.distanceFrom startNodePosition pointOnSpline)
+                                    |> Quantity.greaterThan (Quantity.half lookAhead)
+                                    |> Expect.equal True
+                                    |> Expect.onFail "Expected sample ahead to provide a point further from origin"
 
                             _ ->
                                 Expect.fail "Invalid samples"
@@ -92,7 +92,10 @@ suite =
                         Just ( start, end ) ->
                             AStar.findPath start end world.roadNetwork
                                 |> Expect.all
-                                    [ \path -> Expect.true "Expected a valid path" (path /= Nothing)
+                                    [ \path ->
+                                        (path /= Nothing)
+                                            |> Expect.equal True
+                                            |> Expect.onFail "Expected a valid path"
                                     , \path -> Expect.equal (startNodeId path) (Just 1)
                                     , \path -> Expect.equal (endNodeId path) (Just 13)
                                     ]

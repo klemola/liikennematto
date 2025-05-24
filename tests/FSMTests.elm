@@ -94,7 +94,8 @@ suite =
                         |> Maybe.andThen FSM.timeToStateChange
                         |> Maybe.withDefault Quantity.zero
                         |> Quantity.lessThan cyclicTimer
-                        |> Expect.true "expected the transition timer to decrease on update"
+                        |> Expect.equal True
+                        |> Expect.onFail "expected the transition timer to decrease on update"
                 )
              , test "transition the FSM to the target state (single update)"
                 (\_ ->
