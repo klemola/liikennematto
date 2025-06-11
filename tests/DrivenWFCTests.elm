@@ -70,8 +70,8 @@ suite =
                                 |> Maybe.withDefault []
                     in
                     Expect.all
-                        [ \_ -> Expect.equal firstHorizontalRoadCellOptions [ 6, 20 ]
-                        , \_ -> Expect.equal secondHorizontalRoadCellOptions [ 6, 20 ]
+                        [ \_ -> Expect.equal firstHorizontalRoadCellOptions [ 6, 50 ]
+                        , \_ -> Expect.equal secondHorizontalRoadCellOptions [ 6, 50 ]
                         , \_ -> Expect.equal lastHorizontalCellOptions []
                         ]
                         ()
@@ -98,7 +98,7 @@ suite =
                     in
                     Expect.all
                         [ \_ -> Expect.equal firstHorizontalRoadCellOptions []
-                        , \_ -> Expect.equal lastHorizontalRoadCellOptions [ 9, 22, 21 ]
+                        , \_ -> Expect.equal lastHorizontalRoadCellOptions [ 9, 52, 51 ]
                         ]
                         ()
                 )
@@ -124,7 +124,7 @@ suite =
                     in
                     Expect.all
                         [ \_ -> Expect.equal firstHorizontalRoadCellOptions []
-                        , \_ -> Expect.equal lastHorizontalRoadCellOptions [ 9, 21 ]
+                        , \_ -> Expect.equal lastHorizontalRoadCellOptions [ 9, 51 ]
                         ]
                         ()
                 )

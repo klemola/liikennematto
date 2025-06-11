@@ -12,7 +12,8 @@ module Tilemap.DrivenWFC exposing
 
 import Data.TileSet
     exposing
-        ( decorativeTiles
+        ( basicRoadTiles
+        , decorativeTiles
         , lotTiles
         , tileById
         , tilesByBaseTileId
@@ -22,6 +23,7 @@ import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirect
 import List.Nonempty
 import Random
 import Round
+import Set
 import Tilemap.Buffer exposing (removeBuffer, updateBufferCells)
 import Tilemap.Cell exposing (Cell)
 import Tilemap.Core
@@ -255,7 +257,11 @@ reopenRoads tilemap =
         (\cell tile nextTilemap ->
             case tile.kind of
                 Fixed properties ->
-                    reopenRoadsStep properties.id cell nextTilemap
+                    if Set.member properties.id basicRoadTiles then
+                        reopenRoadsStep properties.id cell nextTilemap
+
+                    else
+                        nextTilemap
 
                 _ ->
                     nextTilemap
