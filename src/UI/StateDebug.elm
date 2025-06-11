@@ -114,7 +114,7 @@ wfcContext wfcModel =
             []
             (Element.text ("Backtrack count: " ++ String.fromInt backtrackCount))
         , Element.column
-            [ Element.height debugElementLength
+            [ Element.height (Element.px 420)
             , Element.width Element.fill
             , Element.scrollbars
             , Element.paddingXY 0 8
