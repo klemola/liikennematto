@@ -7,15 +7,21 @@ module Data.Worlds exposing
     , lowComplexityWorld
     , simpleWorld
     , worldWithFourWayIntersection
+    , worldWithSchool
     , worldWithThreeWayIntersection
     )
 
+import Data.Lots
 import Data.Utility
     exposing
-        ( tenByTenTilemap
+        ( addLotByEntryCell
+        , placeRoadAndUpdateBuffer
+        , tenByTenTilemap
         , tilemapFromCoordinates
         )
 import Model.World exposing (World, createRoadNetwork)
+import Tilemap.Cell as Cell
+import Tilemap.DrivenWFC exposing (bufferToSuperposition)
 
 
 worldFromTilemap tilemap =
@@ -260,3 +266,30 @@ disconnectedWorld =
         , ( 10, 10 )
         ]
         |> worldFromTilemap
+
+
+worldWithSchool : World
+worldWithSchool =
+    let
+        tilemap =
+            tilemapFromCoordinates
+                tenByTenTilemap
+                []
+                |> placeRoadAndUpdateBuffer
+                    [ ( 1, 1 )
+                    , ( 1, 2 )
+                    , ( 1, 3 )
+                    , ( 1, 4 )
+                    , ( 1, 5 )
+                    , ( 1, 6 )
+                    ]
+                |> bufferToSuperposition
+
+        initialWorld =
+            worldFromTilemap tilemap
+    in
+    initialWorld
+        |> addLotByEntryCell
+            (Cell.fromCoordinatesUnsafe tenByTenTilemap ( 1, 4 ))
+            Data.Lots.school
+        |> Result.withDefault initialWorld

@@ -6,6 +6,7 @@ module Data.TileSet exposing
     , defaultSocket
     , defaultTiles
     , extractLotEntryTile
+    , horizontalRoadLotEntryUp
     , lotDrivewaySocket
     , lotDrivewayTileIds
     , lotEntrySocket
@@ -20,6 +21,8 @@ module Data.TileSet exposing
     , tileIdsFromBitmask
     , tilesByBaseTileId
     , twoByTwoLotRightLargeTile
+    , verticalRoadLotEntryLeft
+    , verticalRoadLotEntryRight
     )
 
 import Array

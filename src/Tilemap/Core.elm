@@ -42,7 +42,6 @@ import Data.TileSet
         ( decorativeTiles
         , extractLotEntryTile
         , lotDrivewaySocket
-        , lotEntrySocket
         , tileById
         , tileIdsByOrthogonalMatch
         , tileIdsFromBitmask
