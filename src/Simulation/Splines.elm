@@ -55,26 +55,20 @@ toNode { direction, origin, environment } { node } =
     if node.label.kind == DeadendExit then
         uTurnSpline origin target direction
 
+    else if node.label.direction == direction then
+        -- This works for both axis-aligned positions, and non-aligned lot/road network combos
+        mirroredSpline origin target 0.5 direction
+
     else
         let
-            angleDegreesToTarget =
-                origin
-                    |> Common.angleFromDirection direction target
-                    |> Quantity.abs
+            parameter =
+                if environment == Intersection then
+                    0.75
+
+                else
+                    0.5
         in
-        if angleDegreesToTarget |> Quantity.lessThan (Angle.radians 0.1) then
-            straightSpline origin target
-
-        else
-            let
-                parameter =
-                    if environment == Intersection then
-                        0.75
-
-                    else
-                        0.5
-            in
-            curveSpline origin target direction parameter
+        curveSpline origin target direction parameter
 
 
 uTurnSpline : Point2d Length.Meters a -> Point2d Length.Meters a -> Direction2d a -> CubicSpline2d Length.Meters a

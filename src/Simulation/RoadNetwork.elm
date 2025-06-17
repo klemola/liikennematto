@@ -101,6 +101,10 @@ type alias Lane =
     Length
 
 
+type alias TrafficLights =
+    Collection TrafficLight
+
+
 empty : RoadNetwork
 empty =
     Graph.empty
@@ -337,7 +341,7 @@ connectionDirection node =
     node.label.direction
 
 
-buildRoadNetwork : Tilemap -> Dict CellCoordinates ( Id, OrthogonalDirection ) -> Collection TrafficLight -> ( RoadNetwork, Collection TrafficLight )
+buildRoadNetwork : Tilemap -> Dict CellCoordinates ( Id, OrthogonalDirection ) -> TrafficLights -> ( RoadNetwork, TrafficLights )
 buildRoadNetwork tilemap lotEntries trafficLights =
     let
         tilePriority ( _, tile ) =
@@ -369,10 +373,18 @@ buildRoadNetwork tilemap lotEntries trafficLights =
     roadNetwork |> setupTrafficControl trafficLights
 
 
-setupTrafficControl : Collection TrafficLight -> RoadNetwork -> ( RoadNetwork, Collection TrafficLight )
+setupTrafficControl : TrafficLights -> RoadNetwork -> ( RoadNetwork, TrafficLights )
 setupTrafficControl currentTrafficLights roadNetwork =
     Graph.fold
-        (updateNodeTrafficControl currentTrafficLights)
+        (\nodeCtx ( roadNetworkAcc, trafficLightsAcc ) ->
+            let
+                ( nextNodeCtx, updatedTrafficLights ) =
+                    resolveTrafficControl currentTrafficLights nodeCtx trafficLightsAcc roadNetworkAcc
+            in
+            ( Graph.insert nextNodeCtx roadNetworkAcc
+            , updatedTrafficLights
+            )
+        )
         ( roadNetwork, Collection.empty )
         roadNetwork
 
@@ -849,32 +861,34 @@ connectDeadendEntryWithExit entry =
 --
 
 
-updateNodeTrafficControl :
-    Collection TrafficLight
-    -> RNNodeContext
-    -> ( RoadNetwork, Collection TrafficLight )
-    -> ( RoadNetwork, Collection TrafficLight )
-updateNodeTrafficControl currentTrafficLights nodeCtx ( roadNetwork, trafficLights ) =
+resolveTrafficControl : TrafficLights -> RNNodeContext -> TrafficLights -> RoadNetwork -> ( RNNodeContext, TrafficLights )
+resolveTrafficControl currentTrafficLights nodeCtx nextTrafficLights roadNetwork =
     case outgoingConnectionsAmount nodeCtx of
         -- Four-way intersection (or crossroads)
         3 ->
             let
-                connection =
-                    nodeCtx.node.label
+                isLotExit =
+                    case nodeCtx.node.label.kind of
+                        LotExit _ ->
+                            True
 
-                ( trafficLight, nextTrafficLights ) =
-                    case Collection.find (\_ existingTrafficLight -> existingTrafficLight.position == connection.position) currentTrafficLights of
-                        Just ( _, trafficLightMatch ) ->
-                            ( trafficLightMatch
-                            , Collection.addWithId trafficLightMatch.id trafficLightMatch trafficLights
-                            )
-
-                        Nothing ->
-                            createTrafficLight connection trafficLights
+                        _ ->
+                            False
             in
-            ( Graph.insert (linkTrafficLightToNode trafficLight.id nodeCtx) roadNetwork
-            , nextTrafficLights
-            )
+            if isLotExit then
+                ( addYield nodeCtx, nextTrafficLights )
+
+            else
+                case extractLotConnection nodeCtx roadNetwork of
+                    Just ( _, dir ) ->
+                        if dir == nodeCtx.node.label.direction then
+                            ( addYield nodeCtx, nextTrafficLights )
+
+                        else
+                            ( setTrafficControl NoTrafficControl nodeCtx, nextTrafficLights )
+
+                    Nothing ->
+                        updateTrafficLight nodeCtx currentTrafficLights nextTrafficLights
 
         -- Three-way intersection (or T-intersection)
         2 ->
@@ -885,24 +899,70 @@ updateNodeTrafficControl currentTrafficLights nodeCtx ( roadNetwork, trafficLigh
 
                     else
                         -- orphan road node
-                        nodeCtx
-                            |> setTrafficControl
-                                (Yield
-                                    (yieldCheckArea
-                                        nodeCtx.node.label.position
-                                        nodeCtx.node.label.direction
-                                    )
-                                )
+                        addYield nodeCtx
             in
-            ( Graph.insert nextNodeCtx roadNetwork
-            , trafficLights
-            )
+            ( nextNodeCtx, nextTrafficLights )
 
         -- Not an intersection (assuming max four ways)
         _ ->
-            ( Graph.insert (nodeCtx |> setTrafficControl NoTrafficControl) roadNetwork
-            , trafficLights
+            ( setTrafficControl NoTrafficControl nodeCtx, nextTrafficLights )
+
+
+addYield : RNNodeContext -> RNNodeContext
+addYield nodeCtx =
+    setTrafficControl
+        (Yield
+            (yieldCheckArea
+                nodeCtx.node.label.position
+                nodeCtx.node.label.direction
             )
+        )
+        nodeCtx
+
+
+extractLotConnection : RNNodeContext -> RoadNetwork -> Maybe ( Id, Direction2d GlobalCoordinates )
+extractLotConnection nodeCtx roadNetwork =
+    List.foldl
+        (\nodeId acc ->
+            case Graph.get nodeId roadNetwork of
+                Just outgoingNode ->
+                    case outgoingNode.node.label.kind of
+                        LotEntry id ->
+                            Just ( id, outgoingNode.node.label.direction )
+
+                        _ ->
+                            acc
+
+                Nothing ->
+                    acc
+        )
+        Nothing
+        (getOutgoingConnectionIds nodeCtx)
+
+
+updateTrafficLight : RNNodeContext -> TrafficLights -> TrafficLights -> ( RNNodeContext, TrafficLights )
+updateTrafficLight nodeCtx currentTrafficLights nextTrafficLights =
+    let
+        connection =
+            nodeCtx.node.label
+
+        ( trafficLight, updatedTrafficLights ) =
+            case
+                Collection.find
+                    (\_ existingTrafficLight -> existingTrafficLight.position == connection.position)
+                    currentTrafficLights
+            of
+                Just ( _, trafficLightMatch ) ->
+                    ( trafficLightMatch
+                    , Collection.addWithId trafficLightMatch.id trafficLightMatch nextTrafficLights
+                    )
+
+                Nothing ->
+                    createTrafficLight connection nextTrafficLights
+    in
+    ( linkTrafficLightToNode trafficLight.id nodeCtx
+    , updatedTrafficLights
+    )
 
 
 isOnPriorityRoad : RoadNetwork -> RNNodeContext -> Bool
@@ -924,7 +984,7 @@ isParallel nodeA nodeB =
         |> Maybe.withDefault False
 
 
-createTrafficLight : Connection -> Collection TrafficLight -> ( TrafficLight, Collection TrafficLight )
+createTrafficLight : Connection -> TrafficLights -> ( TrafficLight, TrafficLights )
 createTrafficLight connection trafficLights =
     let
         facing =
