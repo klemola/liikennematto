@@ -1,4 +1,6 @@
-module Lib.Bitmask exposing (OrthogonalMatch, fourBitMask, mergeMatches)
+module Lib.Bitmask exposing (OrthogonalMatch, fourBitMask, matchInDirection, mergeMatches)
+
+import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 
 
 type alias OrthogonalMatch =
@@ -16,6 +18,22 @@ mergeMatches n1 n2 =
     , right = n1.right || n2.right
     , down = n1.down || n2.down
     }
+
+
+matchInDirection : OrthogonalDirection -> OrthogonalMatch -> Bool
+matchInDirection dir matches =
+    case dir of
+        OrthogonalDirection.Up ->
+            matches.up
+
+        OrthogonalDirection.Right ->
+            matches.right
+
+        OrthogonalDirection.Down ->
+            matches.down
+
+        OrthogonalDirection.Left ->
+            matches.left
 
 
 {-| Calculates tile ID based on surrounding tiles

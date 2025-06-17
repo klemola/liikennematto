@@ -21,9 +21,11 @@ import Data.Utility
         )
 import Model.World exposing (World, createRoadNetwork)
 import Tilemap.Cell as Cell
+import Tilemap.Core exposing (Tilemap)
 import Tilemap.DrivenWFC exposing (bufferToSuperposition)
 
 
+worldFromTilemap : Tilemap -> World
 worldFromTilemap tilemap =
     Data.Utility.worldFromTilemap tilemap
         |> createRoadNetwork tilemap
@@ -276,12 +278,14 @@ worldWithSchool =
                 tenByTenTilemap
                 []
                 |> placeRoadAndUpdateBuffer
-                    [ ( 1, 1 )
-                    , ( 1, 2 )
-                    , ( 1, 3 )
-                    , ( 1, 4 )
-                    , ( 1, 5 )
-                    , ( 1, 6 )
+                    [ ( 5, 1 )
+                    , ( 5, 2 )
+                    , ( 5, 3 )
+                    , ( 5, 4 )
+                    , ( 5, 5 )
+                    , ( 6, 5 )
+                    , ( 7, 5 )
+                    , ( 8, 5 )
                     ]
                 |> bufferToSuperposition
 
@@ -290,6 +294,6 @@ worldWithSchool =
     in
     initialWorld
         |> addLotByEntryCell
-            (Cell.fromCoordinatesUnsafe tenByTenTilemap ( 1, 4 ))
+            (Cell.fromCoordinatesUnsafe tenByTenTilemap ( 5, 4 ))
             Data.Lots.school
         |> Result.withDefault initialWorld

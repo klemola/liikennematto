@@ -40,19 +40,24 @@ import Common exposing (GlobalCoordinates, andCarry)
 import Data.TileSet
     exposing
         ( decorativeTiles
+        , defaultTileId
         , extractLotEntryTile
         , lotDrivewaySocket
+        , lotDrivewayTileIds
+        , lotEntrySocket
         , tileById
+        , tileIdByBitmask
         , tileIdsByOrthogonalMatch
-        , tileIdsFromBitmask
+        , tilesByBaseTileId
         )
 import Direction2d
 import Duration exposing (Duration)
 import Length exposing (Length, Meters)
-import Lib.Bitmask exposing (OrthogonalMatch, fourBitMask)
+import Lib.Bitmask exposing (OrthogonalMatch, fourBitMask, matchInDirection)
 import Lib.DiagonalDirection as DiagonalDirection exposing (DiagonalDirection)
 import Lib.FSM as FSM
-import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
+import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
+import List.Nonempty
 import Maybe.Extra as Maybe
 import Point2d exposing (Point2d)
 import Quantity
@@ -63,7 +68,7 @@ import Tilemap.Tile as Tile
         , TileKind(..)
         , TileOperation
         )
-import Tilemap.TileConfig as TileConfig exposing (TileConfig, TileId, directionBySocket)
+import Tilemap.TileConfig as TileConfig exposing (TileConfig, TileId, directionBySocket, socketByDirectionWithConfig)
 import Vector2d
 
 
@@ -131,12 +136,27 @@ resetFixedTileBySurroundings cell tilemap =
         Just tile ->
             case tile.kind of
                 Fixed _ ->
-                    -- Room for improvement: retain lot entry but with different tile, if possible
-                    tilemap
-                        |> removeLargeTileIfExists cell
-                        |> setSuperpositionOptions
-                            cell
-                            (tileIdsFromBitmask (cellBitmask cell tilemap))
+                    let
+                        baseTileId =
+                            tileIdByBitmask (cellBitmask cell tilemap)
+                                |> Maybe.withDefault defaultTileId
+
+                        variations =
+                            lotEntryVariationsByTileId baseTileId cell tilemap
+                    in
+                    if List.isEmpty variations then
+                        tilemap
+                            |> removeLargeTileIfExists cell
+                            |> (\tilemapWithoutLargeTile ->
+                                    setSuperpositionOptions
+                                        cell
+                                        (List.singleton baseTileId)
+                                        tilemapWithoutLargeTile
+                               )
+
+                    else
+                        -- Skip any lot removal logic
+                        setSuperpositionOptions cell variations tilemap
 
                 _ ->
                     tilemap
@@ -145,10 +165,47 @@ resetFixedTileBySurroundings cell tilemap =
             tilemap
 
 
+lotEntryVariationsByTileId : TileId -> Cell -> Tilemap -> List TileId
+lotEntryVariationsByTileId tileId cell tilemap =
+    let
+        extractLotDrivewayTile dir tile =
+            case tile.kind of
+                Fixed properties ->
+                    let
+                        tileConfig =
+                            tileById properties.id
+
+                        facing =
+                            socketByDirectionWithConfig tileConfig (OrthogonalDirection.opposite dir)
+                    in
+                    List.member properties.id lotDrivewayTileIds && facing == lotDrivewaySocket
+
+                _ ->
+                    False
+
+        lotNeighbors =
+            cellOrthogonalNeighbors cell extractLotDrivewayTile tilemap
+    in
+    List.filterMap
+        (\tileConfig ->
+            List.Nonempty.foldl
+                (\( dir, socket ) acc ->
+                    if socket == lotEntrySocket && matchInDirection dir lotNeighbors then
+                        Just (TileConfig.tileConfigId tileConfig)
+
+                    else
+                        acc
+                )
+                Nothing
+                (TileConfig.socketsList tileConfig)
+        )
+        (tilesByBaseTileId tileId)
+
+
 resetSuperposition : Cell -> List TileConfig -> Tilemap -> List TileId
 resetSuperposition cell tileSet ((Tilemap tilemapContents) as tilemap) =
     let
-        filterNeighbor neighborTile =
+        filterNeighbor _ neighborTile =
             case neighborTile.kind of
                 Fixed _ ->
                     True
@@ -164,7 +221,9 @@ resetSuperposition cell tileSet ((Tilemap tilemapContents) as tilemap) =
 cellBitmask : Cell -> Tilemap -> Int
 cellBitmask cell tilemap =
     tilemap
-        |> cellOrthogonalNeighbors cell (extractRoadTile >> Maybe.isJust)
+        |> cellOrthogonalNeighbors
+            cell
+            (\_ neighborTile -> extractRoadTile neighborTile |> Maybe.isJust)
         |> fourBitMask
 
 
@@ -329,12 +388,12 @@ tilemapBoundingBox (Tilemap tilemapContents) =
     tilemapContents.boundingBox
 
 
-cellOrthogonalNeighbors : Cell -> (Tile -> Bool) -> Tilemap -> OrthogonalMatch
+cellOrthogonalNeighbors : Cell -> (OrthogonalDirection -> Tile -> Bool) -> Tilemap -> OrthogonalMatch
 cellOrthogonalNeighbors origin predicate tilemap =
     let
         neighborIn dir =
             tileNeighborIn dir origin tileByCell tilemap
-                |> Maybe.map (Tuple.second >> predicate)
+                |> Maybe.map (Tuple.second >> predicate dir)
                 |> Maybe.withDefault False
     in
     { up = neighborIn Up

@@ -8,6 +8,7 @@ import Data.Utility
         , testSeed
         , tilemapFromCoordinates
         )
+import Data.Worlds exposing (worldWithSchool)
 import Dict
 import Expect
 import Lib.FSM as FSM
@@ -144,6 +145,52 @@ suite =
                         ]
                         tilemapWithTile
                 )
+            , test "Should add a tile by bitmask - neighbor changes to accomodate a lot"
+                (\_ ->
+                    let
+                        tilemap =
+                            worldWithSchool.tilemap
+
+                        newCell =
+                            createCell constraints 4 4
+
+                        deadendLeftId =
+                            4
+
+                        ( tilemapWithTile, _ ) =
+                            addTileById testSeed Dict.empty newCell deadendLeftId tilemap
+                    in
+                    Expect.all
+                        [ cellHasTile newCell deadendLeftId
+                        , neighborCellHasTile newCell
+                            OrthogonalDirection.Right
+                            (Tile.Fixed (fixedTileProps 61 "RoadIntersectionTLeftLotEntryRight"))
+                        ]
+                        tilemapWithTile
+                )
+            , test "Should add a tile by bitmask - ignore lot neighbor if driveway is facing the other way"
+                (\_ ->
+                    let
+                        tilemap =
+                            worldWithSchool.tilemap
+
+                        newCell =
+                            createCell constraints 6 6
+
+                        deadendDownId =
+                            1
+
+                        ( tilemapWithTile, _ ) =
+                            addTileById testSeed Dict.empty newCell deadendDownId tilemap
+                    in
+                    Expect.all
+                        [ cellHasTile newCell deadendDownId
+                        , neighborCellHasTile newCell
+                            OrthogonalDirection.Up
+                            (Tile.Fixed (fixedTileProps 14 "RoadIntersectionTDown"))
+                        ]
+                        tilemapWithTile
+                )
             ]
         , describe ".onRemoveTile"
             [ test "Should remove a tile - one neighbor changed"
@@ -195,6 +242,30 @@ suite =
                         , neighborCellHasTile removedCell OrthogonalDirection.Right (Tile.Fixed (fixedTileProps 4 "RoadDeadendLeft"))
                         , neighborCellHasTile removedCell OrthogonalDirection.Down (Tile.Fixed (fixedTileProps 8 "RoadDeadendUp"))
                         , neighborCellHasTile removedCell OrthogonalDirection.Left (Tile.Fixed (fixedTileProps 2 "RoadDeadendRight"))
+                        ]
+                        tilemapWithoutTile
+                )
+            , test "Should remove a tile - neighbor changes to accomodate a lot"
+                (\_ ->
+                    let
+                        tilemap =
+                            worldWithSchool.tilemap
+
+                        removedCell =
+                            createCell constraints 5 5
+
+                        ( wfcModel, _ ) =
+                            -- The lot entry becames a deadend "cul-de-sac" to keep the lot entry
+                            onRemoveTile testSeed Dict.empty removedCell tilemap
+
+                        tilemapWithoutTile =
+                            WFC.toTilemap wfcModel
+                    in
+                    Expect.all
+                        [ cellTileIsBeingRemoved removedCell
+                        , neighborCellHasTile removedCell
+                            OrthogonalDirection.Up
+                            (Tile.Fixed (fixedTileProps 56 "RoadDeadendDownLotEntryRight"))
                         ]
                         tilemapWithoutTile
                 )

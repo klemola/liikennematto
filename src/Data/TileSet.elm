@@ -4,6 +4,7 @@ module Data.TileSet exposing
     , basicRoadTiles
     , decorativeTiles
     , defaultSocket
+    , defaultTileId
     , defaultTiles
     , extractLotEntryTile
     , horizontalRoadLotEntryUp
@@ -18,7 +19,6 @@ module Data.TileSet exposing
     , tileById
     , tileIdByBitmask
     , tileIdsByOrthogonalMatch
-    , tileIdsFromBitmask
     , tilesByBaseTileId
     , twoByTwoLotRightLargeTile
     , verticalRoadLotEntryLeft
@@ -311,13 +311,6 @@ bitmaskToTileIdLookup =
 tileIdByBitmask : Int -> Maybe TileId
 tileIdByBitmask bitmask =
     Dict.get bitmask bitmaskToTileIdLookup
-
-
-tileIdsFromBitmask : Int -> List TileId
-tileIdsFromBitmask bitmask =
-    tileIdByBitmask bitmask
-        |> Maybe.withDefault defaultTileId
-        |> List.singleton
 
 
 
