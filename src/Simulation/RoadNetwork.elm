@@ -688,7 +688,7 @@ toEdges nodes current =
         matcherFn =
             case current.label.kind of
                 DeadendEntry ->
-                    connectDeadendEntryWithExit >> potentialResultToEdges
+                    connectDeadendEntryWithExit nodes >> potentialResultToEdges
 
                 DeadendExit ->
                     completeLane nodes >> potentialResultToEdges
@@ -699,7 +699,7 @@ toEdges nodes current =
                 LotExit _ ->
                     findLanesInsideCell nodes
 
-                _ ->
+                LaneConnector ->
                     if
                         current.label.cell
                             |> Cell.centerPoint
@@ -775,15 +775,44 @@ closestToOriginOrdering nodeA nodeB =
 
 findLanesInsideCell : List (Node Connection) -> Node Connection -> List (Edge Lane)
 findLanesInsideCell nodes current =
-    nodes
-        |> List.filterMap
-            (\other ->
-                if current.id /= other.id && connectsWithinCell current other then
-                    Just (connect current other)
+    let
+        cellBB =
+            Cell.boundingBox current.label.cell
 
-                else
-                    Nothing
-            )
+        cellInfo =
+            List.foldl
+                (\node acc ->
+                    if current.id /= node.id && BoundingBox2d.contains node.label.position cellBB then
+                        { laneConnectorsAmount =
+                            if node.label.kind == LaneConnector then
+                                acc.laneConnectorsAmount + 1
+
+                            else
+                                acc.laneConnectorsAmount
+                        , nodesInCell = node :: acc.nodesInCell
+                        }
+
+                    else
+                        acc
+                )
+                { laneConnectorsAmount = 0
+                , nodesInCell = []
+                }
+                nodes
+    in
+    List.filterMap
+        (\other ->
+            let
+                isDeadendOrVariation =
+                    cellInfo.laneConnectorsAmount == 1 && other.label.kind == LaneConnector
+            in
+            if isDeadendOrVariation || connectsWithinCell current other then
+                Just (connect current other)
+
+            else
+                Nothing
+        )
+        cellInfo.nodesInCell
 
 
 connectsWithinCell : Node Connection -> Node Connection -> Bool
@@ -848,11 +877,29 @@ connectionLookupArea node =
         ( left, right )
 
 
-connectDeadendEntryWithExit : Node Connection -> Maybe (Edge Lane)
-connectDeadendEntryWithExit entry =
-    -- an assumption about node creation order (implied ID) is a cheap way to create the edge
-    -- Room for improvement: really try to find a node that is at the expected Position
-    Just { from = entry.id, to = entry.id + 1, label = Cell.size |> Quantity.half }
+connectDeadendEntryWithExit : List (Node Connection) -> Node Connection -> Maybe (Edge Lane)
+connectDeadendEntryWithExit nodes entry =
+    let
+        lanesDistance =
+            outerLaneOffset |> Quantity.minus innerLaneOffset
+
+        entryPosition =
+            entry.label.position
+    in
+    nodes
+        |> List.filterMap
+            (\other ->
+                if other.label.kind == DeadendExit && Point2d.distanceFrom entryPosition other.label.position == lanesDistance then
+                    Just
+                        { from = entry.id
+                        , to = other.id
+                        , label = lanesDistance
+                        }
+
+                else
+                    Nothing
+            )
+        |> List.head
 
 
 

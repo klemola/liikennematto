@@ -52,7 +52,7 @@ toNode { direction, origin, environment } { node } =
         target =
             node.label.position
     in
-    if node.label.kind == DeadendExit then
+    if node.label.direction == Direction2d.reverse direction then
         uTurnSpline origin target direction
 
     else if node.label.direction == direction then
