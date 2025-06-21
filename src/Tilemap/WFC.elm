@@ -12,6 +12,7 @@ module Tilemap.WFC exposing
     , debug_collapseWithId
     , flushPendingActions
     , fromTilemap
+    , largeTileSubgrid
     , log
     , propagateConstraints
     , solve
