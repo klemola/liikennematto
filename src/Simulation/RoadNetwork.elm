@@ -937,12 +937,12 @@ resolveTrafficControl currentTrafficLights nodeCtx nextTrafficLights roadNetwork
                     Nothing ->
                         updateTrafficLight nodeCtx currentTrafficLights nextTrafficLights
 
-        -- Three-way intersection (or T-intersection)
+        -- Three-way intersection & curved road with a lot entry
         2 ->
             let
                 nextNodeCtx =
-                    if nodeCtx |> isOnPriorityRoad roadNetwork then
-                        nodeCtx |> setTrafficControl NoTrafficControl
+                    if isOnPriorityRoad roadNetwork nodeCtx then
+                        setTrafficControl NoTrafficControl nodeCtx
 
                     else
                         -- orphan road node
@@ -1019,16 +1019,20 @@ isOnPriorityRoad roadNetwork nodeCtx =
             getOutgoingConnectionIds nodeCtx
                 |> List.filterMap (\nodeId -> Graph.get nodeId roadNetwork)
     in
-    List.any (.node >> isParallel nodeCtx.node) otherNodeCtxs
+    List.any
+        (\other ->
+            case other.node.label.kind of
+                LotEntry _ ->
+                    True
 
-
-isParallel : Node Connection -> Node Connection -> Bool
-isParallel nodeA nodeB =
-    Direction2d.from
-        (connectionPosition nodeA)
-        (connectionPosition nodeB)
-        |> Maybe.map (\dir -> Direction2d.xComponent dir == 0 || Direction2d.yComponent dir == 0)
-        |> Maybe.withDefault False
+                _ ->
+                    Direction2d.from
+                        (connectionPosition nodeCtx.node)
+                        (connectionPosition other.node)
+                        |> Maybe.map (\dir -> Direction2d.xComponent dir == 0 || Direction2d.yComponent dir == 0)
+                        |> Maybe.withDefault False
+        )
+        otherNodeCtxs
 
 
 createTrafficLight : Connection -> TrafficLights -> ( TrafficLight, TrafficLights )
