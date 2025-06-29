@@ -262,18 +262,11 @@ nodesToSplines current remaining splines =
 
         next :: others ->
             let
-                environment =
-                    if RoadNetwork.outgoingConnectionsAmount current > 1 then
-                        RoadNetwork.Intersection
-
-                    else
-                        RoadNetwork.Road
-
                 spline =
                     Splines.toNode
                         { origin = RoadNetwork.nodePosition current
                         , direction = RoadNetwork.nodeDirection current
-                        , environment = environment
+                        , environment = current.node.label.environment
                         }
                         next
             in

@@ -1,7 +1,9 @@
 module Data.TileSet exposing
-    ( allTiles
+    ( ConnectionsByTile
+    , allTiles
     , allTilesAmount
     , basicRoadTiles
+    , connectionsByTile
     , decorativeTiles
     , defaultSocket
     , defaultTileId
@@ -13,7 +15,6 @@ module Data.TileSet exposing
     , lotEntrySocket
     , lotTiles
     , pairingsForSocket
-    , roadConnectionDirectionsByTile
     , threeByThreeLotLeftLargeTile
     , threeByTwoLotUpLargeTile
     , tileById
@@ -41,7 +42,6 @@ import Tilemap.TileConfig as TileConfig
         , mirroredHorizontally
         , mirroredVertically
         , rotatedClockwise
-        , socketByDirection
         )
 
 
@@ -73,7 +73,7 @@ lotDrivewaySocket =
 
 roadConnectionSockets : List Socket
 roadConnectionSockets =
-    [ Red, Pink, Yellow, Blue, lotEntrySocket ]
+    [ Red, Pink, Yellow, Blue ]
 
 
 pairingsForSocket : Socket -> List Socket
@@ -398,18 +398,27 @@ findLotEntryDirection sockets =
                 findLotEntryDirection xs
 
 
-roadConnectionDirectionsByTile : TileConfig -> List OrthogonalDirection
-roadConnectionDirectionsByTile tileConfig =
-    let
-        sockets_ =
-            TileConfig.sockets tileConfig
-    in
-    OrthogonalDirection.all
-        |> List.filter
-            (\dir ->
-                -- TODO: optimize, using List instead of Set due to non-comparable Socket
-                List.member (socketByDirection sockets_ dir) roadConnectionSockets
-            )
+type alias ConnectionsByTile =
+    { roadConnections : List OrthogonalDirection
+    , lotConnection : Maybe OrthogonalDirection
+    }
+
+
+connectionsByTile : TileConfig -> ConnectionsByTile
+connectionsByTile tileConfig =
+    List.Nonempty.foldl
+        (\( dir, socket ) acc ->
+            if List.member socket roadConnectionSockets then
+                { acc | roadConnections = dir :: acc.roadConnections }
+
+            else if socket == lotEntrySocket then
+                { acc | lotConnection = Just dir }
+
+            else
+                acc
+        )
+        { roadConnections = [], lotConnection = Nothing }
+        (TileConfig.socketsList tileConfig)
 
 
 

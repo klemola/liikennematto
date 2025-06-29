@@ -27,7 +27,12 @@ module Simulation.RoadNetwork exposing
 import BoundingBox2d exposing (BoundingBox2d)
 import Common exposing (GlobalCoordinates, LocalCoordinates)
 import Data.Lots exposing (drivewayOffset)
-import Data.TileSet exposing (basicRoadTiles, roadConnectionDirectionsByTile, tileById)
+import Data.TileSet
+    exposing
+        ( basicRoadTiles
+        , connectionsByTile
+        , tileById
+        )
 import Dict exposing (Dict)
 import Direction2d exposing (Direction2d)
 import Graph exposing (Edge, Graph, Node, NodeContext, NodeId)
@@ -73,6 +78,7 @@ type alias Connection =
     { kind : ConnectionKind
     , position : Point2d Length.Meters GlobalCoordinates
     , direction : Direction2d GlobalCoordinates
+    , environment : ConnectionEnvironment
     , cell : Cell
     , trafficControl : TrafficControl
     }
@@ -88,7 +94,7 @@ type ConnectionKind
 
 type ConnectionEnvironment
     = Road
-    | Intersection
+    | Intersection Int
 
 
 type TrafficControl
@@ -446,8 +452,19 @@ toConnections tilemap lotEntries cell tile =
             let
                 tileConfig =
                     tileById tileId
+
+                connections =
+                    connectionsByTile tileConfig
+
+                combinedConnections =
+                    case connections.lotConnection of
+                        Just lotEntryDir ->
+                            lotEntryDir :: connections.roadConnections
+
+                        Nothing ->
+                            connections.roadConnections
             in
-            case roadConnectionDirectionsByTile tileConfig of
+            case combinedConnections of
                 [] ->
                     []
 
@@ -462,7 +479,18 @@ toConnections tilemap lotEntries cell tile =
                         []
 
                     else
-                        List.concatMap (connectionsByTileEntryDirection tilemap lotEntries cell tile) multiple
+                        let
+                            intersectionDirectionsAmount =
+                                List.length connections.roadConnections
+
+                            environment =
+                                if intersectionDirectionsAmount >= 3 then
+                                    Intersection intersectionDirectionsAmount
+
+                                else
+                                    Road
+                        in
+                        List.concatMap (connectionsByTileEntryDirection tilemap lotEntries cell environment tile) multiple
 
         Nothing ->
             []
@@ -478,6 +506,7 @@ deadendConnections cell trafficDirection =
             { kind = DeadendEntry
             , position = entryPosition
             , direction = trafficDirection
+            , environment = Road
             , cell = cell
             , trafficControl = NoTrafficControl
             }
@@ -486,6 +515,7 @@ deadendConnections cell trafficDirection =
             { kind = DeadendExit
             , position = exitPosition
             , direction = Direction2d.reverse trafficDirection
+            , environment = Road
             , cell = cell
             , trafficControl = NoTrafficControl
             }
@@ -517,8 +547,15 @@ laneCenterPositionsByDirection cell trafficDirection =
     )
 
 
-connectionsByTileEntryDirection : Tilemap -> Dict CellCoordinates ( Id, OrthogonalDirection ) -> Cell -> Tile -> OrthogonalDirection -> List Connection
-connectionsByTileEntryDirection tilemap lotEntries cell tile direction =
+connectionsByTileEntryDirection :
+    Tilemap
+    -> Dict CellCoordinates ( Id, OrthogonalDirection )
+    -> Cell
+    -> ConnectionEnvironment
+    -> Tile
+    -> OrthogonalDirection
+    -> List Connection
+connectionsByTileEntryDirection tilemap lotEntries cell environment tile direction =
     let
         origin =
             Cell.bottomLeftCorner cell
@@ -526,11 +563,11 @@ connectionsByTileEntryDirection tilemap lotEntries cell tile direction =
         lotEntry =
             Dict.get (Cell.coordinates cell) lotEntries
 
-        startDirection =
+        awayFromTileDirection =
             OrthogonalDirection.toDirection2d direction
 
-        endDirection =
-            Direction2d.reverse startDirection
+        facingTileDirection =
+            Direction2d.reverse awayFromTileDirection
 
         ( startConnectionKind, endConnectionKind, extraOffset ) =
             case lotEntry of
@@ -552,13 +589,15 @@ connectionsByTileEntryDirection tilemap lotEntries cell tile direction =
     in
     [ { kind = startConnectionKind
       , position = origin |> Point2d.translateBy (startOffset |> Vector2d.plus extraOffset)
-      , direction = startDirection
+      , direction = awayFromTileDirection
+      , environment = Road
       , cell = startConnectionCell
       , trafficControl = NoTrafficControl
       }
     , { kind = endConnectionKind
       , position = origin |> Point2d.translateBy (endOffset |> Vector2d.plus extraOffset)
-      , direction = endDirection
+      , direction = facingTileDirection
+      , environment = environment
       , cell = cell
       , trafficControl = NoTrafficControl
       }
@@ -643,7 +682,7 @@ hasConnectionsInMultipleDirections tile =
                 tileConfig =
                     tileById tileId
             in
-            not (shouldIgnoreConnections tileConfig) && List.length (roadConnectionDirectionsByTile tileConfig) > 1
+            not (shouldIgnoreConnections tileConfig) && List.length (connectionsByTile tileConfig |> .roadConnections) > 1
 
         Nothing ->
             False
@@ -910,49 +949,50 @@ connectDeadendEntryWithExit nodes entry =
 
 resolveTrafficControl : TrafficLights -> RNNodeContext -> TrafficLights -> RoadNetwork -> ( RNNodeContext, TrafficLights )
 resolveTrafficControl currentTrafficLights nodeCtx nextTrafficLights roadNetwork =
-    case outgoingConnectionsAmount nodeCtx of
-        -- Four-way intersection (or crossroads)
-        3 ->
-            let
-                isLotExit =
-                    case nodeCtx.node.label.kind of
-                        LotExit _ ->
-                            True
+    let
+        isLotExit =
+            case nodeCtx.node.label.kind of
+                LotExit _ ->
+                    True
 
-                        _ ->
-                            False
-            in
-            if isLotExit then
-                ( addYield nodeCtx, nextTrafficLights )
+                _ ->
+                    False
+    in
+    if isLotExit then
+        ( addYield nodeCtx, nextTrafficLights )
 
-            else
-                case extractLotConnection nodeCtx roadNetwork of
-                    Just ( _, dir ) ->
-                        if dir == nodeCtx.node.label.direction then
-                            ( addYield nodeCtx, nextTrafficLights )
+    else
+        case nodeCtx.node.label.environment of
+            Intersection intersectionDirectionsAmount ->
+                case intersectionDirectionsAmount of
+                    -- Four-way intersection (or crossroads)
+                    4 ->
+                        case extractLotConnection nodeCtx roadNetwork of
+                            Just ( _, dir ) ->
+                                if dir == nodeCtx.node.label.direction then
+                                    ( addYield nodeCtx, nextTrafficLights )
 
-                        else
-                            ( setTrafficControl NoTrafficControl nodeCtx, nextTrafficLights )
+                                else
+                                    ( setTrafficControl NoTrafficControl nodeCtx, nextTrafficLights )
 
-                    Nothing ->
-                        updateTrafficLight nodeCtx currentTrafficLights nextTrafficLights
+                            Nothing ->
+                                updateTrafficLight nodeCtx currentTrafficLights nextTrafficLights
 
-        -- Three-way intersection & curved road with a lot entry
-        2 ->
-            let
-                nextNodeCtx =
-                    if isOnPriorityRoad roadNetwork nodeCtx then
-                        setTrafficControl NoTrafficControl nodeCtx
+                    -- 3 connections, a T-shaped intersection (though the type does not narrow the number down)
+                    _ ->
+                        let
+                            nextNodeCtx =
+                                if isOnPriorityRoad roadNetwork nodeCtx then
+                                    setTrafficControl NoTrafficControl nodeCtx
 
-                    else
-                        -- orphan road node
-                        addYield nodeCtx
-            in
-            ( nextNodeCtx, nextTrafficLights )
+                                else
+                                    -- orphan road node
+                                    addYield nodeCtx
+                        in
+                        ( nextNodeCtx, nextTrafficLights )
 
-        -- Not an intersection (assuming max four ways)
-        _ ->
-            ( setTrafficControl NoTrafficControl nodeCtx, nextTrafficLights )
+            Road ->
+                ( setTrafficControl NoTrafficControl nodeCtx, nextTrafficLights )
 
 
 addYield : RNNodeContext -> RNNodeContext
@@ -1023,7 +1063,7 @@ isOnPriorityRoad roadNetwork nodeCtx =
         (\other ->
             case other.node.label.kind of
                 LotEntry _ ->
-                    True
+                    False
 
                 _ ->
                     Direction2d.from
@@ -1057,6 +1097,11 @@ linkTrafficLightToNode trafficLightId nodeCtx =
 
 setTrafficControl : TrafficControl -> RNNodeContext -> RNNodeContext
 setTrafficControl trafficControl nodeCtx =
+    updateConnection (\connection -> { connection | trafficControl = trafficControl }) nodeCtx
+
+
+updateConnection : (Connection -> Connection) -> RNNodeContext -> RNNodeContext
+updateConnection updateFn nodeCtx =
     let
         node =
             nodeCtx.node
@@ -1065,7 +1110,7 @@ setTrafficControl trafficControl nodeCtx =
             nodeCtx.node.label
 
         nextLabel =
-            { label | trafficControl = trafficControl }
+            updateFn label
 
         nextNode =
             { node | label = nextLabel }

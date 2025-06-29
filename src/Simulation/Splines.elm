@@ -62,11 +62,12 @@ toNode { direction, origin, environment } { node } =
     else
         let
             parameter =
-                if environment == Intersection then
-                    0.75
+                case environment of
+                    Intersection _ ->
+                        0.75
 
-                else
-                    0.5
+                    Road ->
+                        0.5
         in
         curveSpline origin target direction parameter
 

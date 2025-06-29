@@ -1,6 +1,6 @@
 module Tilemap.Buffer exposing (removeBuffer, updateBufferCells)
 
-import Data.TileSet exposing (roadConnectionDirectionsByTile, tileById)
+import Data.TileSet exposing (connectionsByTile, tileById)
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
 import Quantity exposing (Unitless)
 import Tilemap.Cell as Cell exposing (Cell, CellCoordinates)
@@ -355,7 +355,9 @@ roadConnectionDirections : Tile -> List OrthogonalDirection
 roadConnectionDirections tile =
     case Tile.id tile of
         Just tileId ->
-            tileById tileId |> roadConnectionDirectionsByTile
+            tileById tileId
+                |> connectionsByTile
+                |> .roadConnections
 
         Nothing ->
             []
