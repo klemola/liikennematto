@@ -229,7 +229,7 @@ suite =
 
                     seed =
                         -- This is a special seed that (currently) guarantees at least one lot generated
-                        Random.initialSeed 3
+                        Random.initialSeed 5
 
                     model =
                         WFC.fromTilemap tilemap seed

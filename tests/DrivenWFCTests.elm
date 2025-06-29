@@ -164,7 +164,7 @@ suite =
                         [ cellHasTile newCell deadendLeftId
                         , neighborCellHasTile newCell
                             OrthogonalDirection.Right
-                            (Tile.Fixed (fixedTileProps 61 "RoadIntersectionTLeftLotEntryRight"))
+                            (Tile.Fixed (fixedTileProps 64 "RoadIntersectionTLeftLotEntryRight"))
                         ]
                         tilemapWithTile
                 )
@@ -265,7 +265,7 @@ suite =
                         [ cellTileIsBeingRemoved removedCell
                         , neighborCellHasTile removedCell
                             OrthogonalDirection.Up
-                            (Tile.Fixed (fixedTileProps 56 "RoadDeadendDownLotEntryRight"))
+                            (Tile.Fixed (fixedTileProps 58 "RoadDeadendDownLotEntryRight"))
                         ]
                         tilemapWithoutTile
                 )

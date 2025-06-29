@@ -173,11 +173,14 @@ allTiles =
     , verticalRoadLotEntryLeft
     , verticalRoadLotEntryRight
     , deadendLeftLotEntryUp
+    , deadendLeftLotEntryLeft
     , deadendRightLotEntryUp
+    , deadendRightLotEntryRight
     , deadendDownLotEntryLeft
     , deadendDownLotEntryRight
     , deadendUpLotEntryLeft
     , deadendUpLotEntryRight
+    , deadendUpLotEntryUp
     , intersectionTDownLotEntryUp
     , intersectionTLeftLotEntryRight
     , intersectionTRightLotEntryLeft
@@ -674,10 +677,28 @@ deadendLeftLotEntryUp =
         }
 
 
+deadendLeftLotEntryLeft : TileConfig
+deadendLeftLotEntryLeft =
+    TileConfig.Single
+        { id = 54
+        , name = "RoadDeadendLeftLotEntryLeft"
+        , weight = 1.0
+        , graphPriority = 0.1
+        , biome = TileConfig.Road
+        , sockets =
+            { top = Green
+            , right = Blue
+            , bottom = Green
+            , left = lotEntrySocket
+            }
+        , baseTileId = Just 4
+        }
+
+
 deadendRightLotEntryUp : TileConfig
 deadendRightLotEntryUp =
     TileConfig.Single
-        { id = 54
+        { id = 55
         , name = "RoadDeadendRightLotEntryUp"
         , weight = 1.0
         , graphPriority = 0.1
@@ -692,10 +713,28 @@ deadendRightLotEntryUp =
         }
 
 
+deadendRightLotEntryRight : TileConfig
+deadendRightLotEntryRight =
+    TileConfig.Single
+        { id = 56
+        , name = "RoadDeadendRightLotEntryRight"
+        , weight = 1.0
+        , graphPriority = 0.1
+        , biome = TileConfig.Road
+        , sockets =
+            { top = Green
+            , right = lotEntrySocket
+            , bottom = Green
+            , left = Blue
+            }
+        , baseTileId = Just 2
+        }
+
+
 deadendDownLotEntryLeft : TileConfig
 deadendDownLotEntryLeft =
     TileConfig.Single
-        { id = 55
+        { id = 57
         , name = "RoadDeadendDownLotEntryLeft"
         , weight = 1.0
         , graphPriority = 0.1
@@ -713,7 +752,7 @@ deadendDownLotEntryLeft =
 deadendDownLotEntryRight : TileConfig
 deadendDownLotEntryRight =
     TileConfig.Single
-        { id = 56
+        { id = 58
         , name = "RoadDeadendDownLotEntryRight"
         , weight = 1.0
         , graphPriority = 0.1
@@ -731,7 +770,7 @@ deadendDownLotEntryRight =
 deadendUpLotEntryLeft : TileConfig
 deadendUpLotEntryLeft =
     TileConfig.Single
-        { id = 57
+        { id = 59
         , name = "RoadDeadendUpLotEntryLeft"
         , weight = 1.0
         , graphPriority = 0.1
@@ -749,7 +788,7 @@ deadendUpLotEntryLeft =
 deadendUpLotEntryRight : TileConfig
 deadendUpLotEntryRight =
     TileConfig.Single
-        { id = 58
+        { id = 60
         , name = "RoadDeadendUpLotEntryRight"
         , weight = 1.0
         , graphPriority = 0.1
@@ -764,10 +803,28 @@ deadendUpLotEntryRight =
         }
 
 
+deadendUpLotEntryUp : TileConfig
+deadendUpLotEntryUp =
+    TileConfig.Single
+        { id = 61
+        , name = "RoadDeadendUpLotEntryUp"
+        , weight = 1.0
+        , graphPriority = 0.1
+        , biome = TileConfig.Road
+        , sockets =
+            { top = lotEntrySocket
+            , right = Green
+            , bottom = Blue
+            , left = Green
+            }
+        , baseTileId = Just 8
+        }
+
+
 intersectionTDownLotEntryUp : TileConfig
 intersectionTDownLotEntryUp =
     TileConfig.Single
-        { id = 59
+        { id = 62
         , name = "RoadIntersectionTDownLotEntryUp"
         , weight = 1.0
         , graphPriority = 0.1
@@ -785,7 +842,7 @@ intersectionTDownLotEntryUp =
 intersectionTRightLotEntryLeft : TileConfig
 intersectionTRightLotEntryLeft =
     TileConfig.Single
-        { id = 60
+        { id = 63
         , name = "RoadIntersectionTRightLotEntryLeft"
         , weight = 1.0
         , graphPriority = 0.1
@@ -803,7 +860,7 @@ intersectionTRightLotEntryLeft =
 intersectionTLeftLotEntryRight : TileConfig
 intersectionTLeftLotEntryRight =
     TileConfig.Single
-        { id = 61
+        { id = 64
         , name = "RoadIntersectionTLeftLotEntryRight"
         , weight = 1.0
         , graphPriority = 0.1
@@ -821,7 +878,7 @@ intersectionTLeftLotEntryRight =
 curveBottomRightLotEntryRight : TileConfig
 curveBottomRightLotEntryRight =
     TileConfig.Single
-        { id = 62
+        { id = 65
         , name = "RoadCurveBottomRightLotEntryRight"
         , weight = 0.5
         , graphPriority = maxGraphPriority
@@ -839,7 +896,7 @@ curveBottomRightLotEntryRight =
 curveBottomLeftLotEntryLeft : TileConfig
 curveBottomLeftLotEntryLeft =
     TileConfig.Single
-        { id = 63
+        { id = 66
         , name = "RoadCurveBottomLeftLotEntryLeft"
         , weight = 0.5
         , graphPriority = maxGraphPriority
@@ -857,7 +914,7 @@ curveBottomLeftLotEntryLeft =
 curveTopLeftLotEntryLeft : TileConfig
 curveTopLeftLotEntryLeft =
     TileConfig.Single
-        { id = 64
+        { id = 67
         , name = "RoadCurveTopLeftLotEntryLeft"
         , weight = 0.5
         , graphPriority = maxGraphPriority
@@ -875,7 +932,7 @@ curveTopLeftLotEntryLeft =
 curveTopLeftLotEntryUp : TileConfig
 curveTopLeftLotEntryUp =
     TileConfig.Single
-        { id = 65
+        { id = 68
         , name = "RoadCurveTopLeftLotEntryUp"
         , weight = 0.5
         , graphPriority = maxGraphPriority
@@ -893,7 +950,7 @@ curveTopLeftLotEntryUp =
 curveTopRightLotEntryRight : TileConfig
 curveTopRightLotEntryRight =
     TileConfig.Single
-        { id = 66
+        { id = 69
         , name = "RoadCurveTopRightLotEntryRight"
         , weight = 0.5
         , graphPriority = maxGraphPriority
@@ -911,7 +968,7 @@ curveTopRightLotEntryRight =
 curveTopRightLotEntryUp : TileConfig
 curveTopRightLotEntryUp =
     TileConfig.Single
-        { id = 67
+        { id = 70
         , name = "RoadCurveTopRightLotEntryUp"
         , weight = 0.5
         , graphPriority = maxGraphPriority
