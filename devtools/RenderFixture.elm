@@ -1,7 +1,6 @@
 module RenderFixture exposing (main)
 
-import Data.RuleSetups as RuleSetups
-import Data.Worlds
+import Data.RuleSetups
 import Element
 import Html exposing (Html)
 import Model.Debug
@@ -14,7 +13,7 @@ main : Html ()
 main =
     let
         world =
-            Data.Worlds.worldWithSchool
+            Data.RuleSetups.collisionSetupPathsIntersect.world
 
         cache =
             RenderCache.new world
