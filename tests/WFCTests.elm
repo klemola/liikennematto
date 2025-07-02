@@ -18,6 +18,7 @@ import Data.Utility
         )
 import Dict
 import Expect
+import Random
 import Test exposing (Test, describe, test)
 import Tilemap.Cell as Cell
 import Tilemap.Core
@@ -226,8 +227,12 @@ suite =
                     reducedTileInventory =
                         Dict.map (\_ _ -> 0) testTileInventory
 
+                    seed =
+                        -- This is a special seed that (currently) guarantees at least one lot generated
+                        Random.initialSeed 5
+
                     model =
-                        WFC.fromTilemap tilemap testSeed
+                        WFC.fromTilemap tilemap seed
                             |> WFC.withTileInventory reducedTileInventory
                             |> WFC.solve
 

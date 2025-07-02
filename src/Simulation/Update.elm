@@ -1,5 +1,6 @@
-module Simulation.Update exposing (update)
+module Simulation.Update exposing (addLot, update)
 
+import Data.Lots exposing (NewLot)
 import Data.TileSet exposing (extractLotEntryTile, lotDrivewayTileIds, tileById)
 import Dict
 import Duration
@@ -21,7 +22,7 @@ import Model.World as World
         , updateRoadNetwork
         )
 import Simulation.Events exposing (updateEventQueue)
-import Simulation.Lot as Lot
+import Simulation.Lot as Lot exposing (Lot)
 import Simulation.Traffic as Traffic exposing (addLotResidents, rerouteCarsIfNeeded)
 import Simulation.TrafficLight exposing (TrafficLight)
 import Tilemap.Cell as Cell exposing (Cell)
@@ -242,20 +243,23 @@ newLotsFromTilemapChange tilemapChange time world =
         |> List.foldl
             (\( drivewayCell, lotTileConfig ) ( nextWorld, lotsAdded ) ->
                 let
+                    ( newLot, worldWithUpdatedTileInventory ) =
+                        World.prepareNewLot lotTileConfig nextWorld
+
+                    onCreateLot lot worldWithLot =
+                        addLotResidents time lot.id newLot.residents worldWithLot
+
                     ( withLot, lotPlacement ) =
-                        addLot time lotTileConfig drivewayCell nextWorld
+                        addLot onCreateLot lotTileConfig newLot drivewayCell worldWithUpdatedTileInventory
                 in
                 ( withLot, lotPlacement :: lotsAdded )
             )
             ( world, [] )
 
 
-addLot : Time.Posix -> LargeTile -> Cell -> World -> ( World, LotPlacement )
-addLot time largeTile drivewayCell ({ tilemap, lots } as world) =
+addLot : (Lot -> World -> World) -> LargeTile -> NewLot -> Cell -> World -> ( World, LotPlacement )
+addLot onCreateLot largeTile newLot drivewayCell ({ tilemap, lots } as world) =
     let
-        ( newLot, worldWithUpdatedTileInventory ) =
-            World.prepareNewLot largeTile world
-
         constraints =
             getTilemapConfig tilemap
 
@@ -272,9 +276,9 @@ addLot time largeTile drivewayCell ({ tilemap, lots } as world) =
         ( lot, nextLots ) =
             Collection.addFromBuilder builderFn lots
     in
-    ( worldWithUpdatedTileInventory
+    ( world
         |> World.refreshLots lot nextLots
-        |> addLotResidents time lot.id newLot.residents
+        |> onCreateLot lot
         |> World.addLotEntry
             lotEntryCell
             lot.id

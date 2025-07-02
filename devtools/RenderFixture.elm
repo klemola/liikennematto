@@ -1,6 +1,6 @@
 module RenderFixture exposing (main)
 
-import Data.RuleSetups as RuleSetups
+import Data.RuleSetups
 import Element
 import Html exposing (Html)
 import Model.Debug
@@ -13,7 +13,7 @@ main : Html ()
 main =
     let
         world =
-            RuleSetups.collisionSetupPathsIntersect.world
+            Data.RuleSetups.collisionSetupPathsIntersect.world
 
         cache =
             RenderCache.new world
@@ -31,6 +31,7 @@ main =
                 (Model.Debug.initialDebugState
                     |> Model.Debug.toggleLayer Model.Debug.CarDebug
                     |> Model.Debug.toggleLayer Model.Debug.RoadNetworkDebug
+                    |> Model.Debug.toggleLayer Model.Debug.WFCDebug
                 )
                 |> Element.html
     in

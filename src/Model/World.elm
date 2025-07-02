@@ -16,6 +16,7 @@ module Model.World exposing
     , findNodeByPosition
     , formatEvents
     , hasPendingTilemapChange
+    , newLotMatchesTile
     , prepareNewLot
     , refreshCars
     , refreshLots
@@ -127,12 +128,6 @@ type alias RNLookupEntry =
 
 initialTileInventory : TileInventory (List NewLot)
 initialTileInventory =
-    let
-        matchesTile largeTile newLot =
-            (newLot.horizontalTilesAmount == largeTile.width)
-                && (newLot.verticalTilesAmount == largeTile.height)
-                && (Just newLot.entryDirection == largeTile.entryDirection)
-    in
     lotTiles
         |> List.filterMap
             (\tileConfig ->
@@ -140,7 +135,7 @@ initialTileInventory =
                     TileConfig.Large largeTile ->
                         Just
                             ( largeTile.id
-                            , List.filter (matchesTile largeTile) allLots
+                            , List.filter (newLotMatchesTile largeTile) allLots
                             )
 
                     _ ->
@@ -331,6 +326,13 @@ prepareNewLot largeTile world =
 tileInventoryCount : World -> TileInventory Int
 tileInventoryCount world =
     TileInventory.countAvailable world.tileInventory
+
+
+newLotMatchesTile : LargeTile -> NewLot -> Bool
+newLotMatchesTile largeTile newLot =
+    (newLot.horizontalTilesAmount == largeTile.width)
+        && (newLot.verticalTilesAmount == largeTile.height)
+        && (Just newLot.entryDirection == largeTile.entryDirection)
 
 
 newLotFallback : LargeTile -> NewLot

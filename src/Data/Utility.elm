@@ -1,5 +1,6 @@
 module Data.Utility exposing
     ( CellsByTileKind
+    , addLotByEntryCell
     , cellsByTileKind
     , cellsByTileKindFromAscii
     , createCell
@@ -15,27 +16,41 @@ module Data.Utility exposing
     , worldFromTilemap
     )
 
-import Data.TileSet exposing (tileIdByBitmask, tileIdsByOrthogonalMatch)
+import Data.Lots exposing (NewLot)
+import Data.TileSet
+    exposing
+        ( horizontalRoadLotEntryUp
+        , lotTiles
+        , tileIdByBitmask
+        , tileIdsByOrthogonalMatch
+        , verticalRoadLotEntryLeft
+        , verticalRoadLotEntryRight
+        )
 import Duration
-import Model.World as World exposing (World)
+import Lib.OrthogonalDirection as OrthogonalDirection
+import Model.World as World exposing (World, newLotMatchesTile)
 import Random
 import Simulation.RoadNetwork as RoadNetwork exposing (RNNodeContext)
+import Simulation.Update exposing (addLot)
 import Tilemap.Buffer exposing (removeBuffer, updateBufferCells)
 import Tilemap.Cell as Cell exposing (Cell, CellCoordinates)
 import Tilemap.Core
     exposing
         ( Tilemap
         , TilemapConfig
+        , addTileFromWfc
         , cellBitmask
         , createTilemap
         , foldTiles
         , getTilemapConfig
+        , mapCell
         , removeTile
         , updateTilemap
         )
 import Tilemap.DrivenWFC exposing (addTileById)
 import Tilemap.Tile as Tile exposing (Tile)
-import Tilemap.TileConfig exposing (TileConfig)
+import Tilemap.TileConfig as TileConfig exposing (TileConfig)
+import Tilemap.WFC as WFC
 
 
 testSeed : Random.Seed
@@ -347,3 +362,123 @@ initTileWithSuperposition constraints tileSet index =
         |> tileIdsByOrthogonalMatch tileSet
         |> Tile.Superposition
         |> Tile.init
+
+
+
+--
+-- Lots
+--
+
+
+addLotByEntryCell : Cell -> NewLot -> World -> Result String World
+addLotByEntryCell lotEntryCell newLot world =
+    let
+        { tilemap } =
+            world
+
+        tilemapConfig =
+            getTilemapConfig tilemap
+
+        drivewayCellMatch =
+            Cell.nextOrthogonalCell tilemapConfig newLot.entryDirection lotEntryCell
+
+        largeTileMatch =
+            lotTiles
+                |> List.filterMap
+                    (\tileConfig ->
+                        case tileConfig of
+                            TileConfig.Large largeTile ->
+                                if newLotMatchesTile largeTile newLot then
+                                    Just largeTile
+
+                                else
+                                    Nothing
+
+                            TileConfig.Single _ ->
+                                Nothing
+                    )
+                |> List.head
+
+        lotEntry =
+            lotEntryTile lotEntryCell newLot tilemap
+                |> Maybe.withDefault (Tile.init Tile.Buffer)
+
+        tilemapWithLotEntry =
+            mapCell lotEntryCell (\_ -> lotEntry) tilemap
+
+        attemptBuildLot drivewayCell largeTile =
+            WFC.checkLargeTileFit tilemapWithLotEntry drivewayCell largeTile
+                |> Result.fromMaybe "Invalid lot placement: large tile does not fit"
+                |> Result.andThen (\_ -> WFC.largeTileSubgrid tilemapWithLotEntry drivewayCell largeTile)
+                |> Result.map
+                    (\largeTileCells ->
+                        let
+                            tilemapWithLargeTile =
+                                List.foldl
+                                    (\( cell, subgridProps ) nextTilemap ->
+                                        addTileFromWfc
+                                            (Just ( subgridProps.parentTileId, subgridProps.index ))
+                                            (TileConfig.Single subgridProps.singleTile)
+                                            cell
+                                            nextTilemap
+                                            |> Tuple.first
+                                    )
+                                    tilemapWithLotEntry
+                                    largeTileCells
+                        in
+                        world
+                            |> World.setTilemap tilemapWithLargeTile
+                            |> addLot (\_ worldWithLot -> worldWithLot) largeTile newLot drivewayCell
+                            |> (\( worldWithLot, lotPlacement ) ->
+                                    World.setTilemap (tilemapWithLotPlacement lotPlacement worldWithLot.tilemap) worldWithLot
+                               )
+                            |> World.updateRoadNetwork
+                    )
+    in
+    case ( drivewayCellMatch, largeTileMatch ) of
+        ( Just drivewayCell, Just largeTile ) ->
+            attemptBuildLot drivewayCell largeTile
+
+        _ ->
+            Err "Invalid lot placement: invalid driveway or no matching large tile"
+
+
+lotEntryTile : Cell -> NewLot -> Tilemap -> Maybe Tile
+lotEntryTile cell newLot tilemap =
+    let
+        lotEntryTileConfig =
+            case ( cellBitmask cell tilemap, newLot.entryDirection ) of
+                ( 9, OrthogonalDirection.Right ) ->
+                    Just verticalRoadLotEntryRight
+
+                ( 9, OrthogonalDirection.Left ) ->
+                    Just verticalRoadLotEntryLeft
+
+                ( 6, OrthogonalDirection.Up ) ->
+                    Just horizontalRoadLotEntryUp
+
+                _ ->
+                    Nothing
+    in
+    lotEntryTileConfig
+        |> Maybe.map
+            (\tileConfig ->
+                Tile.fromTileConfig tileConfig Nothing Tile.AddFromWFC
+            )
+        |> Maybe.map Tuple.first
+
+
+tilemapWithLotPlacement : World.LotPlacement -> Tilemap -> Tilemap
+tilemapWithLotPlacement { lot, tile, drivewayCell } tilemap =
+    let
+        constraints =
+            getTilemapConfig tilemap
+
+        topLeftCell =
+            Tile.largeTileTopLeftCell constraints drivewayCell tile.anchorIndex tile
+                -- This fallback is unnecessary - the cell should exist
+                |> Maybe.withDefault drivewayCell
+    in
+    mapCell topLeftCell
+        (Tile.withName lot.name)
+        tilemap

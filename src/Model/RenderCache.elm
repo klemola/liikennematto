@@ -11,7 +11,7 @@ module Model.RenderCache exposing
     )
 
 import Common exposing (applyTuple2)
-import Data.TileSet exposing (roadConnectionDirectionsByTile, tileById)
+import Data.TileSet exposing (connectionsByTile, tileById)
 import Length
 import Lib.FSM as FSM
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
@@ -332,7 +332,7 @@ animationDirectionFromTile : Tile -> Maybe OrthogonalDirection
 animationDirectionFromTile tile =
     case
         tileToConfig tile
-            |> Maybe.map roadConnectionDirectionsByTile
+            |> Maybe.map (connectionsByTile >> .roadConnections)
     of
         Just [ connection ] ->
             Just (OrthogonalDirection.opposite connection)
