@@ -458,11 +458,29 @@ addNodeToSpatialIndex tilemap node index =
     in
     case node.label.kind of
         LaneConnector ->
-            -- Duplicate LaneConnector nodes in neighboring cells for boundary connectivity
-            List.foldl
-                (\( _, neighborCell ) acc -> addNodeToCell (Cell.coordinates neighborCell) node acc)
-                indexWithCurrentCell
-                (Cell.orthogonalNeighbors (getTilemapConfig tilemap) node.label.cell)
+            case OrthogonalDirection.fromDirection2d node.label.direction of
+                Just orthDir ->
+                    let
+                        dir =
+                            if
+                                node.label.cell
+                                    |> Cell.centerPoint
+                                    |> Common.isInTheNormalPlaneOf node.label.direction node.label.position
+                            then
+                                OrthogonalDirection.opposite orthDir
+
+                            else
+                                orthDir
+                    in
+                    case Cell.nextOrthogonalCell (getTilemapConfig tilemap) dir node.label.cell of
+                        Just targetNeighbor ->
+                            addNodeToCell (Cell.coordinates targetNeighbor) node indexWithCurrentCell
+
+                        Nothing ->
+                            indexWithCurrentCell
+
+                Nothing ->
+                    indexWithCurrentCell
 
         _ ->
             indexWithCurrentCell
