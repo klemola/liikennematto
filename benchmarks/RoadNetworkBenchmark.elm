@@ -3,28 +3,45 @@ module RoadNetworkBenchmark exposing (main)
 import Benchmark exposing (Benchmark, benchmark, describe)
 import Benchmark.Runner exposing (BenchmarkProgram, program)
 import Data.Worlds as Worlds
-import Model.World exposing (createRoadNetwork)
+import RoadNetworkOptimized
+import Simulation.RoadNetwork
 
 
 suite : Benchmark
 suite =
-    describe "Road network graph performance"
-        [ benchmark "small map" <|
-            \_ ->
-                let
-                    world =
-                        Worlds.worldWithFourWayIntersection
-                in
-                createRoadNetwork world.tilemap world
-
-        -- this benchmark is, at the moment, really heavy - something like 163 runs per sec. May crash yer browser!
-        , benchmark "large map" <|
-            \_ ->
-                let
-                    world =
-                        Worlds.largeWorld
-                in
-                createRoadNetwork world.tilemap world
+    describe "Road network performance: Original vs Optimized"
+        [ describe "Small map (5 tiles)"
+            [ benchmark "Original" <|
+                \_ ->
+                    let
+                        world =
+                            Worlds.worldWithFourWayIntersection
+                    in
+                    Simulation.RoadNetwork.buildRoadNetwork world.tilemap world.lotEntries world.trafficLights
+            , benchmark "Optimized" <|
+                \_ ->
+                    let
+                        world =
+                            Worlds.worldWithFourWayIntersection
+                    in
+                    RoadNetworkOptimized.buildRoadNetwork world.tilemap world.lotEntries world.trafficLights
+            ]
+        , describe "Extra large map (50+ tiles)"
+            [ benchmark "Original" <|
+                \_ ->
+                    let
+                        world =
+                            Worlds.largeWorld
+                    in
+                    Simulation.RoadNetwork.buildRoadNetwork world.tilemap world.lotEntries world.trafficLights
+            , benchmark "Optimized" <|
+                \_ ->
+                    let
+                        world =
+                            Worlds.largeWorld
+                    in
+                    RoadNetworkOptimized.buildRoadNetwork world.tilemap world.lotEntries world.trafficLights
+            ]
         ]
 
 
