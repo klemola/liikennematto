@@ -2,6 +2,7 @@ module Lib.OrthogonalDirection exposing
     ( OrthogonalDirection(..)
     , all
     , cross
+    , fromDirection2d
     , opposite
     , toDirection2d
     , toString
@@ -98,6 +99,24 @@ toDirection2d dir =
 
         Left ->
             left
+
+
+fromDirection2d : Direction2d coordinates -> Maybe OrthogonalDirection
+fromDirection2d direction =
+    if direction == Direction2d.positiveX then
+        Just Right
+
+    else if direction == Direction2d.negativeX then
+        Just Left
+
+    else if direction == Direction2d.positiveY then
+        Just Up
+
+    else if direction == Direction2d.negativeY then
+        Just Down
+
+    else
+        Nothing
 
 
 toString : OrthogonalDirection -> String
