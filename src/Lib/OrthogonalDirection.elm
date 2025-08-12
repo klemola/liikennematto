@@ -33,26 +33,6 @@ all =
     verticalDirections ++ horizontalDirections
 
 
-up : Direction2d.Direction2d coordinates
-up =
-    Direction2d.positiveY
-
-
-right : Direction2d.Direction2d coordinates
-right =
-    Direction2d.positiveX
-
-
-down : Direction2d.Direction2d coordinates
-down =
-    Direction2d.negativeY
-
-
-left : Direction2d.Direction2d coordinates
-left =
-    Direction2d.negativeX
-
-
 opposite : OrthogonalDirection -> OrthogonalDirection
 opposite dir =
     case dir of
@@ -89,16 +69,16 @@ toDirection2d : OrthogonalDirection -> Direction2d coordinates
 toDirection2d dir =
     case dir of
         Up ->
-            up
+            Direction2d.positiveY
 
         Right ->
-            right
+            Direction2d.positiveX
 
         Down ->
-            down
+            Direction2d.negativeY
 
         Left ->
-            left
+            Direction2d.negativeX
 
 
 fromDirection2d : Direction2d coordinates -> Maybe OrthogonalDirection

@@ -8,7 +8,7 @@ import Simulation.RoadNetwork
 
 suite : Benchmark
 suite =
-    describe "Road network performance (optimized version)"
+    describe "Road network performance"
         [ benchmark "Small map (5 tiles)" <|
             \_ ->
                 let
