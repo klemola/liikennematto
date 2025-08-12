@@ -788,9 +788,8 @@ completeLane tilemapConfig spatialIndex current =
             else
                 Nothing
 
-        -- Collect potential connections by expanding in node's direction
-        expandSearch : Cell -> List (Node Connection) -> List (Node Connection)
-        expandSearch currentCell acc =
+        -- Find closest match by expanding in node's direction
+        expandSearch currentCell =
             let
                 nodesInCell =
                     Dict.get (Cell.coordinates currentCell) spatialIndex
@@ -805,17 +804,21 @@ completeLane tilemapConfig spatialIndex current =
                     OrthogonalDirection.fromDirection2d current.label.direction
                         |> Maybe.andThen (\orthDir -> Cell.nextOrthogonalCell tilemapConfig orthDir currentCell)
             in
-            case nextCellMaybe of
-                Just nextCell ->
-                    expandSearch nextCell (compatibleNodes ++ acc)
+            case compatibleNodes of
+                [] ->
+                    case nextCellMaybe of
+                        Just nextCell ->
+                            expandSearch nextCell
 
-                Nothing ->
-                    compatibleNodes ++ acc
+                        Nothing ->
+                            Nothing
+
+                _ ->
+                    compatibleNodes
+                        |> List.sortBy (closestToOriginOrdering current)
+                        |> List.head
     in
-    expandSearch current.label.cell []
-        |> List.Extra.uniqueBy .id
-        |> List.sortBy (closestToOriginOrdering current)
-        |> List.head
+    expandSearch current.label.cell
         |> Maybe.map (connect current)
 
 
