@@ -81,6 +81,7 @@ type WorldEvent
     | CreateRouteFromNode Id RNNodeContext
     | BeginCarParking { carId : Id, lotId : Id }
     | CarStateChange Id Car.CarEvent
+    | RerouteCars
     | None
 
 
@@ -625,6 +626,9 @@ formatEventKind kind =
 
         CarStateChange carId _ ->
             "Car FSM event: #" ++ Collection.idToString carId
+
+        RerouteCars ->
+            "Reroute cars"
 
         None ->
             "_NONE_"

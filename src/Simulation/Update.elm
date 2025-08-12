@@ -1,5 +1,6 @@
 module Simulation.Update exposing (addLot, update)
 
+import Common exposing (addMillisecondsToPosix)
 import Data.Lots exposing (NewLot)
 import Data.TileSet exposing (extractLotEntryTile, lotDrivewayTileIds, tileById)
 import Dict
@@ -23,7 +24,7 @@ import Model.World as World
         )
 import Simulation.Events exposing (updateEventQueue)
 import Simulation.Lot as Lot exposing (Lot)
-import Simulation.Traffic as Traffic exposing (addLotResidents, rerouteCarsIfNeeded)
+import Simulation.Traffic as Traffic exposing (addLotResidents)
 import Simulation.TrafficLight exposing (TrafficLight)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
@@ -86,9 +87,7 @@ update msg model =
                 ( worldWithLots, lotPlacements ) =
                     newLotsFromTilemapChange tilemapChange model.time model.world
             in
-            ( { model
-                | world = worldAfterTilemapChange tilemapChange worldWithLots
-              }
+            ( { model | world = worldAfterTilemapChange model.time tilemapChange worldWithLots }
             , if List.isEmpty lotPlacements then
                 Cmd.none
 
@@ -139,12 +138,14 @@ processWorldEvents time events world =
         events
 
 
-worldAfterTilemapChange : TilemapChange -> World -> World
-worldAfterTilemapChange tilemapChange world =
+worldAfterTilemapChange : Time.Posix -> TilemapChange -> World -> World
+worldAfterTilemapChange time tilemapChange world =
     world
         |> removeOrphanLots tilemapChange
         |> updateRoadNetwork
-        |> rerouteCarsIfNeeded
+        |> World.addEvent
+            World.RerouteCars
+            (addMillisecondsToPosix 1 time)
 
 
 removeOrphanLots : TilemapChange -> World -> World

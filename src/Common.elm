@@ -1,6 +1,7 @@
 module Common exposing
     ( GlobalCoordinates
     , LocalCoordinates
+    , addMillisecondsToPosix
     , andCarry
     , angleFromDirection
     , applyTuple2
