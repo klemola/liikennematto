@@ -19,7 +19,6 @@ module Simulation.RoadNetwork exposing
     , nodeLotId
     , nodePosition
     , nodeTrafficControl
-    , outgoingConnectionsAmount
     , size
     , toRoadConnectionPoints
     )
@@ -286,11 +285,6 @@ getRandomNode roadNetwork seed predicate =
     Random.step randomNodeGenerator seed
 
 
-outgoingConnectionsAmount : RNNodeContext -> Int
-outgoingConnectionsAmount nodeCtx =
-    IntDict.size nodeCtx.outgoing
-
-
 getOutgoingConnectionIds : RNNodeContext -> List NodeId
 getOutgoingConnectionIds nodeCtx =
     Graph.alongOutgoingEdges nodeCtx
@@ -450,37 +444,33 @@ createConnections { nodes, spatialIndex, tilemap, lotEntries, remainingTiles } =
 addNodeToSpatialIndex : Tilemap -> Node Connection -> CellIndex -> CellIndex
 addNodeToSpatialIndex tilemap node index =
     let
-        cellCoords =
-            Cell.coordinates node.label.cell
-
         indexWithCurrentCell =
-            addNodeToCell cellCoords node index
+            addNodeToCell (Cell.coordinates node.label.cell) node index
     in
     case node.label.kind of
         LaneConnector ->
-            case OrthogonalDirection.fromDirection2d node.label.direction of
-                Just orthDir ->
-                    let
-                        dir =
-                            if
-                                node.label.cell
-                                    |> Cell.centerPoint
-                                    |> Common.isInTheNormalPlaneOf node.label.direction node.label.position
-                            then
-                                OrthogonalDirection.opposite orthDir
+            OrthogonalDirection.fromDirection2d node.label.direction
+                |> Maybe.andThen
+                    (\orthDir ->
+                        let
+                            dir =
+                                if
+                                    node.label.cell
+                                        |> Cell.centerPoint
+                                        |> Common.isInTheNormalPlaneOf node.label.direction node.label.position
+                                then
+                                    OrthogonalDirection.opposite orthDir
 
-                            else
-                                orthDir
-                    in
-                    case Cell.nextOrthogonalCell (getTilemapConfig tilemap) dir node.label.cell of
-                        Just targetNeighbor ->
-                            addNodeToCell (Cell.coordinates targetNeighbor) node indexWithCurrentCell
-
-                        Nothing ->
-                            indexWithCurrentCell
-
-                Nothing ->
-                    indexWithCurrentCell
+                                else
+                                    orthDir
+                        in
+                        Cell.nextOrthogonalCell (getTilemapConfig tilemap) dir node.label.cell
+                            |> Maybe.map
+                                (\targetNeighbor ->
+                                    addNodeToCell (Cell.coordinates targetNeighbor) node indexWithCurrentCell
+                                )
+                    )
+                |> Maybe.withDefault indexWithCurrentCell
 
         _ ->
             indexWithCurrentCell
@@ -817,19 +807,12 @@ completeLane tilemapConfig spatialIndex current =
                     nodesInCell
                         |> List.filter isPotentialConnection
                         |> List.filterMap checkCompatibility
-
-                nextCellMaybe =
-                    OrthogonalDirection.fromDirection2d current.label.direction
-                        |> Maybe.andThen (\orthDir -> Cell.nextOrthogonalCell tilemapConfig orthDir currentCell)
             in
             case compatibleNodes of
                 [] ->
-                    case nextCellMaybe of
-                        Just nextCell ->
-                            expandSearch nextCell
-
-                        Nothing ->
-                            Nothing
+                    OrthogonalDirection.fromDirection2d current.label.direction
+                        |> Maybe.andThen (\orthDir -> Cell.nextOrthogonalCell tilemapConfig orthDir currentCell)
+                        |> Maybe.andThen expandSearch
 
                 _ ->
                     compatibleNodes

@@ -1,5 +1,6 @@
 module Model.World exposing
     ( LotPlacement
+    , PendingRoadNetworkUpdate
     , PendingTilemapChange
     , RNLookupEntry
     , TilemapChange
