@@ -74,9 +74,26 @@ update msg model =
             , Cmd.none
             )
 
-        CheckQueues time _ ->
+        CheckQueues time delta ->
             ( { model
-                | world = updateEventQueue time model.world
+                | world =
+                    model.world
+                        |> updateEventQueue time
+                        |> (\nextWorld ->
+                                let
+                                    ( triggered, worldWithResolvedUpdate ) =
+                                        World.resolveRoadNetworkUpdate delta nextWorld
+                                in
+                                if triggered then
+                                    worldWithResolvedUpdate
+                                        |> updateRoadNetwork
+                                        |> World.addEvent
+                                            World.RerouteCars
+                                            (addMillisecondsToPosix 1 time)
+
+                                else
+                                    worldWithResolvedUpdate
+                           )
                 , time = time
               }
             , Cmd.none
@@ -87,7 +104,7 @@ update msg model =
                 ( worldWithLots, lotPlacements ) =
                     newLotsFromTilemapChange tilemapChange model.time model.world
             in
-            ( { model | world = worldAfterTilemapChange model.time tilemapChange worldWithLots }
+            ( { model | world = worldAfterTilemapChange tilemapChange worldWithLots }
             , if List.isEmpty lotPlacements then
                 Cmd.none
 
@@ -138,14 +155,11 @@ processWorldEvents time events world =
         events
 
 
-worldAfterTilemapChange : Time.Posix -> TilemapChange -> World -> World
-worldAfterTilemapChange time tilemapChange world =
+worldAfterTilemapChange : TilemapChange -> World -> World
+worldAfterTilemapChange tilemapChange world =
     world
         |> removeOrphanLots tilemapChange
-        |> updateRoadNetwork
-        |> World.addEvent
-            World.RerouteCars
-            (addMillisecondsToPosix 1 time)
+        |> World.createPendingRoadNetworkUpdate
 
 
 removeOrphanLots : TilemapChange -> World -> World
