@@ -2,6 +2,8 @@ module Simulation.RoadNetwork exposing
     ( Connection
     , ConnectionEnvironment(..)
     , ConnectionKind(..)
+    , DebugData
+    , EdgeDebugInfo
     , Lane
     , RNNode
     , RNNodeContext
@@ -20,6 +22,7 @@ module Simulation.RoadNetwork exposing
     , nodePosition
     , nodeTrafficControl
     , size
+    , toDebugData
     , toRoadConnectionPoints
     )
 
@@ -110,6 +113,18 @@ type alias Lane =
 
 type alias TrafficLights =
     Collection TrafficLight
+
+
+type alias DebugData =
+    { nodes : List RNNodeContext
+    , edges : List EdgeDebugInfo
+    }
+
+
+type alias EdgeDebugInfo =
+    { fromNodeId : Int
+    , toNodeId : Int
+    }
 
 
 empty : RoadNetwork
@@ -1188,6 +1203,30 @@ updateConnection updateFn nodeCtx =
             { node | label = nextLabel }
     in
     { nodeCtx | node = nextNode }
+
+
+toDebugData : RoadNetwork -> DebugData
+toDebugData roadNetwork =
+    let
+        nodeContexts =
+            Graph.fold (\nodeCtx acc -> nodeCtx :: acc) [] roadNetwork
+
+        edges =
+            List.concatMap extractEdgesFromNode nodeContexts
+
+        extractEdgesFromNode nodeCtx =
+            IntDict.foldl
+                (\toNodeId _ acc ->
+                    { fromNodeId = nodeCtx.node.id
+                    , toNodeId = toNodeId
+                    } :: acc
+                )
+                []
+                nodeCtx.outgoing
+    in
+    { nodes = nodeContexts
+    , edges = edges
+    }
 
 
 yieldCheckArea :
