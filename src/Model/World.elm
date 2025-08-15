@@ -1,5 +1,6 @@
 module Model.World exposing
     ( LotPlacement
+    , PendingRoadNetworkUpdate
     , PendingTilemapChange
     , RNLookupEntry
     , TilemapChange
@@ -8,6 +9,7 @@ module Model.World exposing
     , addEvent
     , addLotEntry
     , createLookup
+    , createPendingRoadNetworkUpdate
     , createRoadNetwork
     , empty
     , findCarById
@@ -22,6 +24,7 @@ module Model.World exposing
     , refreshLots
     , removeCar
     , removeLot
+    , resolveRoadNetworkUpdate
     , resolveTilemapUpdate
     , setCar
     , setSeed
@@ -81,6 +84,7 @@ type WorldEvent
     | CreateRouteFromNode Id RNNodeContext
     | BeginCarParking { carId : Id, lotId : Id }
     | CarStateChange Id Car.CarEvent
+    | RerouteCars
     | None
 
 
@@ -89,6 +93,7 @@ type alias World =
     , tileInventory : TileInventory (List NewLot)
     , lotEntries : Dict CellCoordinates ( Id, OrthogonalDirection )
     , pendingTilemapChange : Maybe PendingTilemapChange
+    , pendingRoadNetworkUpdate : Maybe PendingRoadNetworkUpdate
     , roadNetwork : RoadNetwork
     , trafficLights : Collection TrafficLight
     , lots : Collection Lot
@@ -103,6 +108,10 @@ type alias World =
 
 type alias PendingTilemapChange =
     ( Duration, Set CellCoordinates )
+
+
+type alias PendingRoadNetworkUpdate =
+    Duration
 
 
 type alias TilemapChange =
@@ -154,6 +163,11 @@ minTilemapChangeFrequency =
     Duration.milliseconds 750
 
 
+minRoadNetworkUpdateFrequency : Duration
+minRoadNetworkUpdateFrequency =
+    Duration.milliseconds 1200
+
+
 empty : Random.Seed -> TilemapConfig -> World
 empty initialSeed tilemapConfig =
     let
@@ -167,6 +181,7 @@ empty initialSeed tilemapConfig =
     , tileInventory = initialTileInventory
     , lotEntries = Dict.empty
     , pendingTilemapChange = Nothing
+    , pendingRoadNetworkUpdate = Nothing
     , roadNetwork = RoadNetwork.empty
     , trafficLights = Collection.empty
     , cars = Collection.empty
@@ -488,9 +503,7 @@ resolveTilemapUpdate delta tilemapUpdateResult world =
                         minTilemapChangeFrequency
 
                     else
-                        changeTimer
-                            |> Quantity.minus delta
-                            |> Quantity.max Quantity.zero
+                        changeTimer |> Quantity.minus delta
 
                 nextChangedCells =
                     combineChangedCells tilemapUpdateResult currentChangedCells
@@ -536,6 +549,39 @@ combineChangedCells tilemapUpdateResult currentChanges =
             Set.fromList (List.map Cell.coordinates tilemapUpdateResult.emptiedCells)
     in
     Set.union (Set.union transitioned emptied) currentChanges
+
+
+
+--
+-- Pending road network update
+--
+
+
+createPendingRoadNetworkUpdate : World -> World
+createPendingRoadNetworkUpdate world =
+    { world | pendingRoadNetworkUpdate = Just minRoadNetworkUpdateFrequency }
+
+
+resolveRoadNetworkUpdate : Duration -> World -> ( Bool, World )
+resolveRoadNetworkUpdate delta world =
+    let
+        ( triggered, nextUpdate ) =
+            case world.pendingRoadNetworkUpdate of
+                Just timer ->
+                    let
+                        nextTimer =
+                            timer |> Quantity.minus delta
+                    in
+                    if Quantity.lessThanOrEqualToZero nextTimer then
+                        ( True, Nothing )
+
+                    else
+                        ( False, Just nextTimer )
+
+                Nothing ->
+                    ( False, Nothing )
+    in
+    ( triggered, { world | pendingRoadNetworkUpdate = nextUpdate } )
 
 
 
@@ -625,6 +671,9 @@ formatEventKind kind =
 
         CarStateChange carId _ ->
             "Car FSM event: #" ++ Collection.idToString carId
+
+        RerouteCars ->
+            "Reroute cars"
 
         None ->
             "_NONE_"

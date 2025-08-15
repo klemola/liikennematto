@@ -3,28 +3,26 @@ module RoadNetworkBenchmark exposing (main)
 import Benchmark exposing (Benchmark, benchmark, describe)
 import Benchmark.Runner exposing (BenchmarkProgram, program)
 import Data.Worlds as Worlds
-import Model.World exposing (createRoadNetwork)
+import Simulation.RoadNetwork
 
 
 suite : Benchmark
 suite =
-    describe "Road network graph performance"
-        [ benchmark "small map" <|
+    describe "Road network performance"
+        [ benchmark "Small map (5 tiles)" <|
             \_ ->
                 let
                     world =
                         Worlds.worldWithFourWayIntersection
                 in
-                createRoadNetwork world.tilemap world
-
-        -- this benchmark is, at the moment, really heavy - something like 163 runs per sec. May crash yer browser!
-        , benchmark "large map" <|
+                Simulation.RoadNetwork.buildRoadNetwork world.tilemap world.lotEntries world.trafficLights
+        , benchmark "Extra large map (50+ tiles)" <|
             \_ ->
                 let
                     world =
                         Worlds.largeWorld
                 in
-                createRoadNetwork world.tilemap world
+                Simulation.RoadNetwork.buildRoadNetwork world.tilemap world.lotEntries world.trafficLights
         ]
 
 

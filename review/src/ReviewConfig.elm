@@ -40,6 +40,7 @@ config =
     , NoDebug.TodoOrToString.rule
         |> Rule.ignoreErrorsForDirectories [ "tests/" ]
     , NoExposingEverything.rule
+        |> Rule.ignoreErrorsForFiles [ "src/Data/Colors.elm" ]
     , NoImportingEverything.rule []
     , NoMissingTypeAnnotation.rule
         |> Rule.ignoreErrorsForDirectories [ "tests/" ]
@@ -51,10 +52,12 @@ config =
     , NoUnused.Dependencies.rule
     , NoUnused.Exports.rule
         |> Rule.ignoreErrorsForDirectories [ "vendor/" ]
+        |> Rule.ignoreErrorsForFiles [ "src/Data/Colors.elm" ]
     , NoUnused.Modules.rule
     , NoUnused.Parameters.rule
     , NoUnused.Patterns.rule
     , NoUnused.Variables.rule
         |> Rule.ignoreErrorsForDirectories [ "vendor/" ]
+        |> Rule.ignoreErrorsForFiles [ "src/Data/Colors.elm" ]
     , Simplify.rule Simplify.defaults
     ]

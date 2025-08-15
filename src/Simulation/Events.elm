@@ -16,7 +16,12 @@ import Simulation.Pathfinding
         , attemptGenerateRouteFromNode
         , attemptGenerateRouteFromParkingSpot
         )
-import Simulation.Traffic exposing (spawnResident, spawnTestCar)
+import Simulation.Traffic
+    exposing
+        ( rerouteCarsIfNeeded
+        , spawnResident
+        , spawnTestCar
+        )
 import Time
 
 
@@ -101,6 +106,9 @@ processEvent time event world =
 
         World.CarStateChange carId carEvent ->
             onCarStateChange time carId carEvent world
+
+        World.RerouteCars ->
+            rerouteCarsIfNeeded world
 
         None ->
             world

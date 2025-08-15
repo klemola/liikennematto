@@ -78,6 +78,7 @@ worldFromTilemap : Tilemap -> World
 worldFromTilemap tilemap =
     World.empty testSeed (getTilemapConfig tilemap)
         |> World.setSeed testSeed
+        |> World.setTilemap tilemap
 
 
 tilemapFromCells : TilemapConfig -> List Cell -> Tilemap

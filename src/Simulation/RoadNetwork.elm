@@ -2,6 +2,8 @@ module Simulation.RoadNetwork exposing
     ( Connection
     , ConnectionEnvironment(..)
     , ConnectionKind(..)
+    , DebugData
+    , EdgeDebugInfo
     , Lane
     , RNNode
     , RNNodeContext
@@ -19,8 +21,8 @@ module Simulation.RoadNetwork exposing
     , nodeLotId
     , nodePosition
     , nodeTrafficControl
-    , outgoingConnectionsAmount
     , size
+    , toDebugData
     , toRoadConnectionPoints
     )
 
@@ -40,6 +42,7 @@ import IntDict
 import Length exposing (Length)
 import Lib.Collection as Collection exposing (Collection, Id, idMatches)
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
+import List.Extra
 import Maybe.Extra as Maybe
 import Point2d exposing (Point2d)
 import Quantity
@@ -52,6 +55,7 @@ import Tilemap.Core
     exposing
         ( TileListFilter(..)
         , Tilemap
+        , TilemapConfig
         , fixedTileByCell
         , getTilemapConfig
         , tileToConfig
@@ -109,6 +113,18 @@ type alias Lane =
 
 type alias TrafficLights =
     Collection TrafficLight
+
+
+type alias DebugData =
+    { nodes : List RNNodeContext
+    , edges : List EdgeDebugInfo
+    }
+
+
+type alias EdgeDebugInfo =
+    { fromNodeId : Int
+    , toNodeId : Int
+    }
 
 
 empty : RoadNetwork
@@ -284,11 +300,6 @@ getRandomNode roadNetwork seed predicate =
     Random.step randomNodeGenerator seed
 
 
-outgoingConnectionsAmount : RNNodeContext -> Int
-outgoingConnectionsAmount nodeCtx =
-    IntDict.size nodeCtx.outgoing
-
-
 getOutgoingConnectionIds : RNNodeContext -> List NodeId
 getOutgoingConnectionIds nodeCtx =
     Graph.alongOutgoingEdges nodeCtx
@@ -358,41 +369,25 @@ buildRoadNetwork tilemap lotEntries trafficLights =
                 Nothing ->
                     TileConfig.maxGraphPriority
 
-        nodes =
+        ( nodes, spatialIndex ) =
             createConnections
                 { tilemap = tilemap
                 , lotEntries = lotEntries
                 , nodes = Dict.empty
+                , spatialIndex = Dict.empty
                 , remainingTiles =
                     tilemap
                         |> tilemapToList (\cell tile -> Just ( cell, tile )) NoFilter
                         |> List.sortBy tilePriority
                 }
-                |> Dict.values
 
         edges =
-            createLanes nodes
+            createLanes (getTilemapConfig tilemap) spatialIndex (Dict.values nodes)
 
         roadNetwork =
-            Graph.fromNodesAndEdges nodes edges
+            Graph.fromNodesAndEdges (Dict.values nodes) edges
     in
     roadNetwork |> setupTrafficControl trafficLights
-
-
-setupTrafficControl : TrafficLights -> RoadNetwork -> ( RoadNetwork, TrafficLights )
-setupTrafficControl currentTrafficLights roadNetwork =
-    Graph.fold
-        (\nodeCtx ( roadNetworkAcc, trafficLightsAcc ) ->
-            let
-                ( nextNodeCtx, updatedTrafficLights ) =
-                    resolveTrafficControl currentTrafficLights nodeCtx trafficLightsAcc roadNetworkAcc
-            in
-            ( Graph.insert nextNodeCtx roadNetworkAcc
-            , updatedTrafficLights
-            )
-        )
-        ( roadNetwork, Collection.empty )
-        roadNetwork
 
 
 
@@ -401,8 +396,11 @@ setupTrafficControl currentTrafficLights roadNetwork =
 --
 
 
+type alias CellIndex =
+    Dict CellCoordinates (List (Node Connection))
+
+
 type alias NodesMemo =
-    -- Index nodes by their position (x, y) to avoid duplicates
     Dict ( Float, Float ) (Node Connection)
 
 
@@ -410,39 +408,96 @@ createConnections :
     { tilemap : Tilemap
     , lotEntries : Dict CellCoordinates ( Id, OrthogonalDirection )
     , nodes : NodesMemo
+    , spatialIndex : CellIndex
     , remainingTiles : List ( Cell, Tile )
     }
-    -> NodesMemo
-createConnections { nodes, tilemap, lotEntries, remainingTiles } =
+    -> ( NodesMemo, CellIndex )
+createConnections { nodes, spatialIndex, tilemap, lotEntries, remainingTiles } =
     case remainingTiles of
         [] ->
-            nodes
+            ( nodes, spatialIndex )
 
         ( cell, tile ) :: otherTiles ->
             let
                 connectionsInTile =
                     toConnections tilemap lotEntries cell tile
 
-                maybeCreateNode nodeSpec currentNodes =
-                    let
-                        key =
-                            Point2d.toTuple Length.inMeters nodeSpec.position
-                    in
-                    if Dict.member key currentNodes then
-                        currentNodes
+                ( updatedNodes, newNodes ) =
+                    List.foldl
+                        (\nodeSpec ( currentNodes, accNewNodes ) ->
+                            let
+                                key =
+                                    Point2d.toTuple Length.inMeters nodeSpec.position
+                            in
+                            if Dict.member key currentNodes then
+                                ( currentNodes, accNewNodes )
 
-                    else
-                        currentNodes
-                            |> Dict.insert key (Node (Dict.size currentNodes) nodeSpec)
+                            else
+                                let
+                                    newNode =
+                                        Node (Dict.size currentNodes) nodeSpec
+                                in
+                                ( Dict.insert key newNode currentNodes
+                                , newNode :: accNewNodes
+                                )
+                        )
+                        ( nodes, [] )
+                        connectionsInTile
+
+                updatedSpatialIndex =
+                    List.foldl (addNodeToSpatialIndex tilemap) spatialIndex newNodes
             in
             createConnections
                 { tilemap = tilemap
                 , lotEntries = lotEntries
-                , nodes =
-                    connectionsInTile
-                        |> List.foldl maybeCreateNode nodes
+                , nodes = updatedNodes
+                , spatialIndex = updatedSpatialIndex
                 , remainingTiles = otherTiles
                 }
+
+
+addNodeToSpatialIndex : Tilemap -> Node Connection -> CellIndex -> CellIndex
+addNodeToSpatialIndex tilemap node index =
+    let
+        indexWithCurrentCell =
+            addNodeToCell (Cell.coordinates node.label.cell) node index
+    in
+    case node.label.kind of
+        LaneConnector ->
+            OrthogonalDirection.fromDirection2d node.label.direction
+                |> Maybe.andThen
+                    (\orthDir ->
+                        let
+                            dir =
+                                if
+                                    node.label.cell
+                                        |> Cell.centerPoint
+                                        |> Common.isInTheNormalPlaneOf node.label.direction node.label.position
+                                then
+                                    OrthogonalDirection.opposite orthDir
+
+                                else
+                                    orthDir
+                        in
+                        Cell.nextOrthogonalCell (getTilemapConfig tilemap) dir node.label.cell
+                            |> Maybe.map
+                                (\targetNeighbor ->
+                                    addNodeToCell (Cell.coordinates targetNeighbor) node indexWithCurrentCell
+                                )
+                    )
+                |> Maybe.withDefault indexWithCurrentCell
+
+        _ ->
+            indexWithCurrentCell
+
+
+addNodeToCell : CellCoordinates -> Node Connection -> CellIndex -> CellIndex
+addNodeToCell cellCoords node index =
+    let
+        existingNodes =
+            Dict.get cellCoords index |> Maybe.withDefault []
+    in
+    Dict.insert cellCoords (node :: existingNodes) index
 
 
 toConnections : Tilemap -> Dict CellCoordinates ( Id, OrthogonalDirection ) -> Cell -> Tile -> List Connection
@@ -658,8 +713,6 @@ chooseConnectionCell tilemap tile direction startConnectionKind baseCell =
                     fixedTileByCell tilemap nextCell
                         |> Maybe.unwrap False (hasOverlappingConnections tile)
                 then
-                    -- Some tile combinations have overlapping connections on their edges.
-                    -- Using the neighbor tile's cell as the basis for the connection ensures all lanes are mapped correctly.
                     nextCell
 
                 else
@@ -688,11 +741,9 @@ hasConnectionsInMultipleDirections tile =
             False
 
 
-{-| "basic road tiles" should not create nodes, because they are always connected
-to a tile that has overlapping connections.
--}
 shouldIgnoreConnections : TileConfig -> Bool
 shouldIgnoreConnections tileConfig =
+    -- "basic road tiles" should not create nodes, because they are always connected to a tile that has overlapping connections.
     Set.member (TileConfig.tileConfigId tileConfig) basicRoadTiles
 
 
@@ -700,6 +751,123 @@ shouldIgnoreConnections tileConfig =
 --
 -- Lanes
 --
+
+
+createLanes : TilemapConfig -> CellIndex -> List (Node Connection) -> List (Edge Lane)
+createLanes tilemapConfig spatialIndex nodes =
+    List.concatMap (toEdges tilemapConfig spatialIndex) nodes
+
+
+toEdges : TilemapConfig -> CellIndex -> Node Connection -> List (Edge Lane)
+toEdges tilemapConfig spatialIndex current =
+    let
+        potentialResultToEdges =
+            Maybe.unwrap [] List.singleton
+
+        completeLaneWithConfig =
+            completeLane tilemapConfig spatialIndex
+
+        matcherFn =
+            case current.label.kind of
+                DeadendEntry ->
+                    connectDeadendEntryWithExit spatialIndex >> potentialResultToEdges
+
+                DeadendExit ->
+                    completeLaneWithConfig >> potentialResultToEdges
+
+                LotEntry _ ->
+                    always []
+
+                LotExit _ ->
+                    findLanesInsideCell spatialIndex
+
+                LaneConnector ->
+                    if
+                        current.label.cell
+                            |> Cell.centerPoint
+                            |> Common.isInTheNormalPlaneOf current.label.direction current.label.position
+                    then
+                        findLanesInsideCell spatialIndex
+
+                    else
+                        -- the node is facing away from its' Cell
+                        completeLaneWithConfig >> potentialResultToEdges
+    in
+    matcherFn current
+
+
+completeLane : TilemapConfig -> CellIndex -> Node Connection -> Maybe (Edge Lane)
+completeLane tilemapConfig spatialIndex current =
+    let
+        isPotentialConnection other =
+            (other.id /= current.id)
+                && hasSameDirection current other
+                && isFacing current other
+
+        checkCompatibility other =
+            if other.label.kind == LaneConnector || other.label.kind == DeadendEntry then
+                Just other
+
+            else
+                Nothing
+
+        -- Find closest match by expanding in node's direction
+        expandSearch currentCell =
+            let
+                nodesInCell =
+                    Dict.get (Cell.coordinates currentCell) spatialIndex
+                        |> Maybe.withDefault []
+
+                compatibleNodes =
+                    nodesInCell
+                        |> List.filter isPotentialConnection
+                        |> List.filterMap checkCompatibility
+            in
+            case compatibleNodes of
+                [] ->
+                    OrthogonalDirection.fromDirection2d current.label.direction
+                        |> Maybe.andThen (\orthDir -> Cell.nextOrthogonalCell tilemapConfig orthDir currentCell)
+                        |> Maybe.andThen expandSearch
+
+                _ ->
+                    compatibleNodes
+                        |> List.sortBy (closestToOriginOrdering current)
+                        |> List.head
+    in
+    expandSearch current.label.cell
+        |> Maybe.map (connect current)
+
+
+findLanesInsideCell : CellIndex -> Node Connection -> List (Edge Lane)
+findLanesInsideCell spatialIndex current =
+    let
+        cellCoords =
+            Cell.coordinates current.label.cell
+
+        nodesInCell =
+            Dict.get cellCoords spatialIndex
+                |> Maybe.withDefault []
+                |> List.Extra.uniqueBy .id
+                |> List.filter (\node -> node.id /= current.id)
+
+        laneConnectorsAmount =
+            nodesInCell
+                |> List.filter (\node -> node.label.kind == LaneConnector)
+                |> List.length
+    in
+    List.filterMap
+        (\other ->
+            let
+                isDeadendOrVariation =
+                    laneConnectorsAmount == 1 && other.label.kind == LaneConnector
+            in
+            if isDeadendOrVariation || connectsWithinCell current other then
+                Just (connect current other)
+
+            else
+                Nothing
+        )
+        nodesInCell
 
 
 connect : Node Connection -> Node Connection -> Edge Lane
@@ -713,67 +881,37 @@ connect current match =
         )
 
 
-createLanes : List (Node Connection) -> List (Edge Lane)
-createLanes nodes =
-    List.concatMap (toEdges nodes) nodes
-
-
-toEdges : List (Node Connection) -> Node Connection -> List (Edge Lane)
-toEdges nodes current =
+connectDeadendEntryWithExit : CellIndex -> Node Connection -> Maybe (Edge Lane)
+connectDeadendEntryWithExit spatialIndex entry =
     let
-        potentialResultToEdges =
-            Maybe.unwrap [] List.singleton
+        lanesDistance =
+            outerLaneOffset |> Quantity.minus innerLaneOffset
 
-        matcherFn =
-            case current.label.kind of
-                DeadendEntry ->
-                    connectDeadendEntryWithExit nodes >> potentialResultToEdges
+        entryPosition =
+            entry.label.position
 
-                DeadendExit ->
-                    completeLane nodes >> potentialResultToEdges
+        cellCoords =
+            Cell.coordinates entry.label.cell
 
-                LotEntry _ ->
-                    always []
-
-                LotExit _ ->
-                    findLanesInsideCell nodes
-
-                LaneConnector ->
-                    if
-                        current.label.cell
-                            |> Cell.centerPoint
-                            |> Common.isInTheNormalPlaneOf current.label.direction current.label.position
-                    then
-                        findLanesInsideCell nodes
-
-                    else
-                        -- the node is facing away from its' Cell
-                        completeLane nodes >> potentialResultToEdges
+        nodesInSameCell =
+            Dict.get cellCoords spatialIndex
+                |> Maybe.withDefault []
+                |> List.Extra.uniqueBy .id
     in
-    matcherFn current
+    nodesInSameCell
+        |> List.filterMap
+            (\other ->
+                if other.label.kind == DeadendExit && Point2d.distanceFrom entryPosition other.label.position == lanesDistance then
+                    Just
+                        { from = entry.id
+                        , to = other.id
+                        , label = lanesDistance
+                        }
 
-
-completeLane : List (Node Connection) -> Node Connection -> Maybe (Edge Lane)
-completeLane nodes current =
-    let
-        isPotentialConnection other =
-            (other.id /= current.id)
-                && hasSameDirection current other
-                && isFacing current other
-
-        checkCompatibility other =
-            if other.label.kind == LaneConnector || other.label.kind == DeadendEntry then
-                Just other
-
-            else
-                Nothing
-    in
-    nodes
-        |> List.filter isPotentialConnection
-        |> List.sortBy (closestToOriginOrdering current)
+                else
+                    Nothing
+            )
         |> List.head
-        |> Maybe.andThen checkCompatibility
-        |> Maybe.map (connect current)
 
 
 hasSameDirection : Node Connection -> Node Connection -> Bool
@@ -810,48 +948,6 @@ closestToOriginOrdering nodeA nodeB =
     in
     Point2d.distanceFrom origin target
         |> Length.inMeters
-
-
-findLanesInsideCell : List (Node Connection) -> Node Connection -> List (Edge Lane)
-findLanesInsideCell nodes current =
-    let
-        cellBB =
-            Cell.boundingBox current.label.cell
-
-        cellInfo =
-            List.foldl
-                (\node acc ->
-                    if current.id /= node.id && BoundingBox2d.contains node.label.position cellBB then
-                        { laneConnectorsAmount =
-                            if node.label.kind == LaneConnector then
-                                acc.laneConnectorsAmount + 1
-
-                            else
-                                acc.laneConnectorsAmount
-                        , nodesInCell = node :: acc.nodesInCell
-                        }
-
-                    else
-                        acc
-                )
-                { laneConnectorsAmount = 0
-                , nodesInCell = []
-                }
-                nodes
-    in
-    List.filterMap
-        (\other ->
-            let
-                isDeadendOrVariation =
-                    cellInfo.laneConnectorsAmount == 1 && other.label.kind == LaneConnector
-            in
-            if isDeadendOrVariation || connectsWithinCell current other then
-                Just (connect current other)
-
-            else
-                Nothing
-        )
-        cellInfo.nodesInCell
 
 
 connectsWithinCell : Node Connection -> Node Connection -> Bool
@@ -916,35 +1012,26 @@ connectionLookupArea node =
         ( left, right )
 
 
-connectDeadendEntryWithExit : List (Node Connection) -> Node Connection -> Maybe (Edge Lane)
-connectDeadendEntryWithExit nodes entry =
-    let
-        lanesDistance =
-            outerLaneOffset |> Quantity.minus innerLaneOffset
-
-        entryPosition =
-            entry.label.position
-    in
-    nodes
-        |> List.filterMap
-            (\other ->
-                if other.label.kind == DeadendExit && Point2d.distanceFrom entryPosition other.label.position == lanesDistance then
-                    Just
-                        { from = entry.id
-                        , to = other.id
-                        , label = lanesDistance
-                        }
-
-                else
-                    Nothing
-            )
-        |> List.head
-
-
 
 --
 -- Traffic control
 --
+
+
+setupTrafficControl : TrafficLights -> RoadNetwork -> ( RoadNetwork, TrafficLights )
+setupTrafficControl currentTrafficLights roadNetwork =
+    Graph.fold
+        (\nodeCtx ( roadNetworkAcc, trafficLightsAcc ) ->
+            let
+                ( nextNodeCtx, updatedTrafficLights ) =
+                    resolveTrafficControl currentTrafficLights nodeCtx trafficLightsAcc roadNetworkAcc
+            in
+            ( Graph.insert nextNodeCtx roadNetworkAcc
+            , updatedTrafficLights
+            )
+        )
+        ( roadNetwork, Collection.empty )
+        roadNetwork
 
 
 resolveTrafficControl : TrafficLights -> RNNodeContext -> TrafficLights -> RoadNetwork -> ( RNNodeContext, TrafficLights )
@@ -1116,6 +1203,30 @@ updateConnection updateFn nodeCtx =
             { node | label = nextLabel }
     in
     { nodeCtx | node = nextNode }
+
+
+toDebugData : RoadNetwork -> DebugData
+toDebugData roadNetwork =
+    let
+        nodeContexts =
+            Graph.fold (\nodeCtx acc -> nodeCtx :: acc) [] roadNetwork
+
+        edges =
+            List.concatMap extractEdgesFromNode nodeContexts
+
+        extractEdgesFromNode nodeCtx =
+            IntDict.foldl
+                (\toNodeId _ acc ->
+                    { fromNodeId = nodeCtx.node.id
+                    , toNodeId = toNodeId
+                    } :: acc
+                )
+                []
+                nodeCtx.outgoing
+    in
+    { nodes = nodeContexts
+    , edges = edges
+    }
 
 
 yieldCheckArea :
