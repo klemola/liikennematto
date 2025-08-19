@@ -47,6 +47,9 @@ suite =
 
                         tilemapConfig =
                             getTilemapConfig tilemap
+
+                        intersectionTDownId =
+                            12
                     in
                     Cell.fromCoordinates tilemapConfig ( 2, 1 )
                         |> Maybe.andThen (fixedTileByCell tilemap)
@@ -54,7 +57,7 @@ suite =
                             (\tile ->
                                 case tile.kind of
                                     Fixed properties ->
-                                        properties.id == 14
+                                        properties.id == intersectionTDownId
 
                                     _ ->
                                         False
@@ -73,6 +76,9 @@ suite =
 
                         tilemapConfig =
                             getTilemapConfig tilemap
+
+                        curveTopLeftId =
+                            9
                     in
                     Cell.fromCoordinates tilemapConfig ( 1, 1 )
                         |> Maybe.andThen (fixedTileByCell tilemap)
@@ -80,7 +86,7 @@ suite =
                             (\tile ->
                                 case tile.kind of
                                     Fixed properties ->
-                                        properties.id == 12
+                                        properties.id == curveTopLeftId
 
                                     _ ->
                                         False

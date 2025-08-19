@@ -229,7 +229,7 @@ suite =
 
                     seed =
                         -- This is a special seed that (currently) guarantees at least one lot generated
-                        Random.initialSeed 5
+                        Random.initialSeed 60
 
                     model =
                         WFC.fromTilemap tilemap seed
@@ -254,10 +254,13 @@ suite =
                     cell =
                         createCell constraints 2 2
 
+                    threeByThreeLotLeftId =
+                        114
+
                     model =
                         WFC.fromTilemap tilemap testSeed
                             |> WFC.withTileInventory testTileInventory
-                            |> WFC.debug_collapseWithId cell 101
+                            |> WFC.debug_collapseWithId cell threeByThreeLotLeftId
                             |> WFC.step WFC.StopAtEmptySteps
 
                     wfcContext =
@@ -281,12 +284,21 @@ suite =
                         threeByThreeLotEntry =
                             createCell constraints 3 5
 
+                        verticalRoadId =
+                            2
+
+                        verticalRoadLotEntryLeftId =
+                            18
+
+                        verticalRoadLotEntryRightId =
+                            17
+
                         tilemap =
                             placeRoadAndUpdateBuffer
                                 [ ( 3, 1 ), ( 3, 2 ), ( 3, 3 ), ( 3, 4 ), ( 3, 5 ), ( 3, 6 ) ]
                                 emptyTilemap
-                                |> setSuperpositionOptions twoByTwoLotEntry [ 22, 9 ]
-                                |> setSuperpositionOptions threeByThreeLotEntry [ 21, 9 ]
+                                |> setSuperpositionOptions twoByTwoLotEntry [ verticalRoadLotEntryLeftId, verticalRoadId ]
+                                |> setSuperpositionOptions threeByThreeLotEntry [ verticalRoadLotEntryRightId, verticalRoadId ]
                                 |> DrivenWFC.bufferToSuperposition
                     in
                     Expect.all
@@ -310,11 +322,17 @@ suite =
                         threeByTwoLotEntry =
                             createCell constraints 2 4
 
+                        horizontalRoadId =
+                            1
+
+                        horizontalRoadLotEntryUpId =
+                            16
+
                         tilemap =
                             placeRoadAndUpdateBuffer
                                 [ ( 1, 4 ), ( 2, 4 ), ( 3, 4 ), ( 4, 4 ), ( 5, 4 ) ]
                                 emptyTilemap
-                                |> setSuperpositionOptions threeByTwoLotEntry [ 20, 6 ]
+                                |> setSuperpositionOptions threeByTwoLotEntry [ horizontalRoadLotEntryUpId, horizontalRoadId ]
                                 |> DrivenWFC.bufferToSuperposition
                     in
                     Expect.equal
@@ -330,11 +348,17 @@ suite =
                         threeByTwoLotEntry =
                             createCell constraints 2 4
 
+                        horizontalRoadId =
+                            1
+
+                        horizontalRoadLotEntryUpId =
+                            16
+
                         tilemap =
                             placeRoadAndUpdateBuffer
                                 [ ( 1, 4 ), ( 2, 4 ), ( 3, 4 ), ( 4, 4 ), ( 5, 4 ), ( 2, 2 ) ]
                                 emptyTilemap
-                                |> setSuperpositionOptions threeByTwoLotEntry [ 20, 6 ]
+                                |> setSuperpositionOptions threeByTwoLotEntry [ horizontalRoadLotEntryUpId, horizontalRoadId ]
                     in
                     Expect.equal
                         (WFC.checkLargeTileFit tilemap threeByTwoLotDriveway threeByTwoLotUpLargeTile)

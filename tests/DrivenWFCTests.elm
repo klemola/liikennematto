@@ -104,7 +104,7 @@ suite =
                             createCell constraints 9 5
 
                         deadendRightId =
-                            2
+                            4
 
                         ( tilemapWithTile, _ ) =
                             addTileById testSeed Dict.empty newCell deadendRightId tilemap
@@ -114,7 +114,7 @@ suite =
                         , neighborCellHasTile newCell OrthogonalDirection.Up Tile.Unintialized
                         , neighborCellHasTile newCell OrthogonalDirection.Right Tile.Unintialized
                         , neighborCellHasTile newCell OrthogonalDirection.Down Tile.Unintialized
-                        , neighborCellHasTile newCell OrthogonalDirection.Left (Tile.Fixed (fixedTileProps 6 "RoadHorizontal"))
+                        , neighborCellHasTile newCell OrthogonalDirection.Left (Tile.Fixed (fixedTileProps 1 "RoadHorizontal"))
                         ]
                         tilemapWithTile
                 )
@@ -138,10 +138,10 @@ suite =
                     in
                     Expect.all
                         [ cellHasTile newCell intersectionCrossId
-                        , neighborCellHasTile newCell OrthogonalDirection.Up (Tile.Fixed (fixedTileProps 8 "RoadDeadendUp"))
-                        , neighborCellHasTile newCell OrthogonalDirection.Right (Tile.Fixed (fixedTileProps 6 "RoadHorizontal"))
-                        , neighborCellHasTile newCell OrthogonalDirection.Down (Tile.Fixed (fixedTileProps 1 "RoadDeadendDown"))
-                        , neighborCellHasTile newCell OrthogonalDirection.Left (Tile.Fixed (fixedTileProps 6 "RoadHorizontal"))
+                        , neighborCellHasTile newCell OrthogonalDirection.Up (Tile.Fixed (fixedTileProps 3 "RoadDeadendUp"))
+                        , neighborCellHasTile newCell OrthogonalDirection.Right (Tile.Fixed (fixedTileProps 1 "RoadHorizontal"))
+                        , neighborCellHasTile newCell OrthogonalDirection.Down (Tile.Fixed (fixedTileProps 5 "RoadDeadendDown"))
+                        , neighborCellHasTile newCell OrthogonalDirection.Left (Tile.Fixed (fixedTileProps 1 "RoadHorizontal"))
                         ]
                         tilemapWithTile
                 )
@@ -155,7 +155,7 @@ suite =
                             createCell constraints 4 4
 
                         deadendLeftId =
-                            4
+                            6
 
                         ( tilemapWithTile, _ ) =
                             addTileById testSeed Dict.empty newCell deadendLeftId tilemap
@@ -164,7 +164,7 @@ suite =
                         [ cellHasTile newCell deadendLeftId
                         , neighborCellHasTile newCell
                             OrthogonalDirection.Right
-                            (Tile.Fixed (fixedTileProps 64 "RoadIntersectionTLeftLotEntryRight"))
+                            (Tile.Fixed (fixedTileProps 42 "RoadIntersectionTLeftLotEntryRight"))
                         ]
                         tilemapWithTile
                 )
@@ -178,7 +178,7 @@ suite =
                             createCell constraints 6 6
 
                         deadendDownId =
-                            1
+                            5
 
                         ( tilemapWithTile, _ ) =
                             addTileById testSeed Dict.empty newCell deadendDownId tilemap
@@ -187,7 +187,7 @@ suite =
                         [ cellHasTile newCell deadendDownId
                         , neighborCellHasTile newCell
                             OrthogonalDirection.Up
-                            (Tile.Fixed (fixedTileProps 14 "RoadIntersectionTDown"))
+                            (Tile.Fixed (fixedTileProps 12 "RoadIntersectionTDown"))
                         ]
                         tilemapWithTile
                 )
@@ -215,7 +215,7 @@ suite =
                         , neighborCellHasTile removedCell OrthogonalDirection.Up Tile.Unintialized
                         , neighborCellHasTile removedCell OrthogonalDirection.Right Tile.Unintialized
                         , neighborCellHasTile removedCell OrthogonalDirection.Down Tile.Unintialized
-                        , neighborCellHasTile removedCell OrthogonalDirection.Left (Tile.Fixed (fixedTileProps 2 "RoadDeadendRight"))
+                        , neighborCellHasTile removedCell OrthogonalDirection.Left (Tile.Fixed (fixedTileProps 4 "RoadDeadendRight"))
                         ]
                         tilemapWithoutTile
                 )
@@ -238,10 +238,10 @@ suite =
                     in
                     Expect.all
                         [ cellTileIsBeingRemoved removedCell
-                        , neighborCellHasTile removedCell OrthogonalDirection.Up (Tile.Fixed (fixedTileProps 1 "RoadDeadendDown"))
-                        , neighborCellHasTile removedCell OrthogonalDirection.Right (Tile.Fixed (fixedTileProps 4 "RoadDeadendLeft"))
-                        , neighborCellHasTile removedCell OrthogonalDirection.Down (Tile.Fixed (fixedTileProps 8 "RoadDeadendUp"))
-                        , neighborCellHasTile removedCell OrthogonalDirection.Left (Tile.Fixed (fixedTileProps 2 "RoadDeadendRight"))
+                        , neighborCellHasTile removedCell OrthogonalDirection.Up (Tile.Fixed (fixedTileProps 5 "RoadDeadendDown"))
+                        , neighborCellHasTile removedCell OrthogonalDirection.Right (Tile.Fixed (fixedTileProps 6 "RoadDeadendLeft"))
+                        , neighborCellHasTile removedCell OrthogonalDirection.Down (Tile.Fixed (fixedTileProps 3 "RoadDeadendUp"))
+                        , neighborCellHasTile removedCell OrthogonalDirection.Left (Tile.Fixed (fixedTileProps 4 "RoadDeadendRight"))
                         ]
                         tilemapWithoutTile
                 )
@@ -265,7 +265,7 @@ suite =
                         [ cellTileIsBeingRemoved removedCell
                         , neighborCellHasTile removedCell
                             OrthogonalDirection.Up
-                            (Tile.Fixed (fixedTileProps 58 "RoadDeadendDownLotEntryRight"))
+                            (Tile.Fixed (fixedTileProps 27 "RoadDeadendDownLotEntryRight"))
                         ]
                         tilemapWithoutTile
                 )
@@ -295,10 +295,16 @@ suite =
                             tileByCell tilemap (createCell constraints 9 5)
                                 |> Maybe.map tileSuperposition
                                 |> Maybe.withDefault []
+
+                        horizontalRoadId =
+                            1
+
+                        horizontalRoadLotEntryUpId =
+                            16
                     in
                     Expect.all
-                        [ \_ -> Expect.equal firstHorizontalRoadCellOptions [ 6, 50 ]
-                        , \_ -> Expect.equal secondHorizontalRoadCellOptions [ 6, 50 ]
+                        [ \_ -> Expect.equal firstHorizontalRoadCellOptions [ horizontalRoadId, horizontalRoadLotEntryUpId ]
+                        , \_ -> Expect.equal secondHorizontalRoadCellOptions [ horizontalRoadId, horizontalRoadLotEntryUpId ]
                         , \_ -> Expect.equal lastHorizontalCellOptions []
                         ]
                         ()
@@ -322,10 +328,24 @@ suite =
                             tileByCell tilemap (createCell constraints 5 9)
                                 |> Maybe.map tileSuperposition
                                 |> Maybe.withDefault []
+
+                        verticalRoadId =
+                            2
+
+                        verticalRoadLotEntryLeftId =
+                            19
+
+                        verticalRoadLotEntryRightId =
+                            18
                     in
                     Expect.all
                         [ \_ -> Expect.equal firstHorizontalRoadCellOptions []
-                        , \_ -> Expect.equal lastHorizontalRoadCellOptions [ 9, 52, 51 ]
+                        , \_ ->
+                            Expect.equal lastHorizontalRoadCellOptions
+                                [ verticalRoadId
+                                , verticalRoadLotEntryLeftId
+                                , verticalRoadLotEntryRightId
+                                ]
                         ]
                         ()
                 )
@@ -348,10 +368,16 @@ suite =
                             tileByCell tilemap (createCell constraints 2 9)
                                 |> Maybe.map tileSuperposition
                                 |> Maybe.withDefault []
+
+                        verticalRoadId =
+                            2
+
+                        verticalRoadLotEntryRightId =
+                            18
                     in
                     Expect.all
                         [ \_ -> Expect.equal firstHorizontalRoadCellOptions []
-                        , \_ -> Expect.equal lastHorizontalRoadCellOptions [ 9, 51 ]
+                        , \_ -> Expect.equal lastHorizontalRoadCellOptions [ verticalRoadId, verticalRoadLotEntryRightId ]
                         ]
                         ()
                 )
