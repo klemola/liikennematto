@@ -47,7 +47,6 @@ import Tilemap.TileConfig as TileConfig
 import Tilemap.TileInventory exposing (TileInventory)
 import Tilemap.WFC as WFC
 import Time
-import UI.Core
 import UI.Editor as Editor
 import UI.StateDebug exposing (wfcContext, wfcCurrentCell, wfcStateDescription)
 
@@ -60,7 +59,7 @@ type Msg
     | InitSolve
     | SolveInitDone Time.Posix
     | EditorMsg Editor.Msg
-    | InputReceived UI.Core.InputEvent
+    | InputReceived Editor.InputEvent
 
 
 type alias Model =
@@ -257,10 +256,10 @@ update msg model =
 
         InputReceived input ->
             case input.kind of
-                UI.Core.Secondary ->
+                Editor.Secondary ->
                     ( model, Cmd.none )
 
-                UI.Core.Primary ->
+                Editor.Primary ->
                     let
                         ( wfcModel, _ ) =
                             WFC.collapse input.cell model.wfcModel
@@ -285,7 +284,7 @@ update msg model =
         EditorMsg editorMsg ->
             let
                 ( editorModel, inputEvent ) =
-                    Editor.update model.world model.cache editorMsg model.editor
+                    Editor.update model.world model.cache.pixelsToMetersRatio editorMsg model.editor
             in
             ( { model | editor = editorModel }
             , inputEvent

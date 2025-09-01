@@ -4,7 +4,6 @@ module Model.RenderCache exposing
     , TilemapDebugItem(..)
     , new
     , refreshTilemapCache
-    , setPixelsToMetersRatio
     , setTileListFilter
     , setTilemapCache
     , setTilemapDebugCache
@@ -17,7 +16,6 @@ import Lib.FSM as FSM
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import Model.Animation as Animation exposing (Animation)
 import Model.World exposing (World)
-import Pixels
 import Quantity
 import Render.Conversion
     exposing
@@ -40,7 +38,6 @@ import Tilemap.Core
 import Tilemap.Tile as Tile exposing (Tile)
 import Tilemap.TileConfig as TileConfig exposing (TileId)
 import Tilemap.WFC as WFC
-import UI.Core
 
 
 type alias RenderCache =
@@ -102,35 +99,6 @@ new { tilemap } =
     , tilemapHeight = tilemapDimensions.height
     , tileListFilter = initialTileListFilter
     }
-
-
-setPixelsToMetersRatio : UI.Core.ZoomLevel -> RenderCache -> RenderCache
-setPixelsToMetersRatio zoomLevel cache =
-    let
-        nextPixelsPerMeter =
-            zoomLevelToPixelsPerMeterValue zoomLevel
-
-        nextRatio =
-            Pixels.pixels nextPixelsPerMeter |> Quantity.per (Length.meters 1)
-    in
-    { cache
-        | pixelsToMetersRatio = nextRatio
-        , tilemapWidthPixels = toPixelsValue nextRatio cache.tilemapWidth
-        , tilemapHeightPixels = toPixelsValue nextRatio cache.tilemapHeight
-    }
-
-
-zoomLevelToPixelsPerMeterValue : UI.Core.ZoomLevel -> Float
-zoomLevelToPixelsPerMeterValue zoomLevel =
-    case zoomLevel of
-        UI.Core.VeryFar ->
-            4
-
-        UI.Core.Far ->
-            6
-
-        UI.Core.Near ->
-            8
 
 
 setTileListFilter : TileListFilter -> RenderCache -> RenderCache

@@ -22,8 +22,7 @@ import Model.World as World exposing (World)
 import Random
 import Tilemap.DrivenWFC exposing (DrivenWFC(..))
 import Time
-import UI.Editor
-import UI.ZoomControl
+import UI.Model exposing (UI)
 
 
 type alias Liikennematto =
@@ -38,8 +37,7 @@ type alias Liikennematto =
     , renderCache : RenderCache
     , debug : DebugState
     , errorMessage : Maybe String
-    , editor : UI.Editor.Model
-    , zoomControl : UI.ZoomControl.Model
+    , ui : UI
     }
 
 
@@ -256,8 +254,7 @@ initial flags =
     , renderCache = RenderCache.new world
     , debug = initialDebugState
     , errorMessage = Nothing
-    , editor = UI.Editor.initialModel
-    , zoomControl = UI.ZoomControl.initialModel
+    , ui = UI.Model.initialModel
     }
 
 

@@ -1,4 +1,10 @@
-module UI.UI exposing (subscriptions, update, view)
+module UI.UI exposing
+    ( Msg
+    , UIEvent(..)
+    , subscriptions
+    , update
+    , view
+    )
 
 import Data.Icons as Icons
 import Element exposing (Element)
@@ -7,9 +13,10 @@ import Element.Border as Border
 import Html exposing (Html)
 import Html.Attributes as HtmlAttribute
 import Html.Events.Extra.Mouse as Mouse
-import Message exposing (Message(..))
+import Model.Debug exposing (DebugLayerKind(..), DevOutput(..))
 import Model.Liikennematto exposing (Liikennematto)
 import Model.World exposing (World)
+import Render.Conversion exposing (PixelsToMetersRatio)
 import UI.Core
     exposing
         ( ControlButtonContent(..)
@@ -28,9 +35,24 @@ import UI.Core
         , whitespaceRegular
         , whitespaceTight
         )
-import UI.DebugPanel as DebugPanel
 import UI.Editor as Editor
-import UI.ZoomControl as ZoomControl
+import UI.Model exposing (ButtonKind, UI, ZoomLevel(..))
+
+
+type Msg
+    = ToggleMenu
+    | ZoomIn
+    | ZoomOut
+    | Trigger ButtonKind
+    | ToggleSimulationActive Bool
+    | EditorMsg Editor.Msg
+    | NoOp
+
+
+type UIEvent
+    = GameInputReceived Editor.InputEvent
+    | ZoomLevelChanged ZoomLevel
+    | ButtonPressed ButtonKind
 
 
 baseLayoutOptions : List Element.Option
@@ -49,43 +71,134 @@ touchLayoutOptions =
     Element.noHover :: baseLayoutOptions
 
 
-subscriptions : Liikennematto -> Sub Message
+subscriptions : UI -> Sub Msg
 subscriptions model =
     Sub.map EditorMsg (Editor.subscriptions model.editor)
 
 
-update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
-update msg model =
+update : World -> PixelsToMetersRatio -> Msg -> UI -> ( UI, Cmd Msg, Maybe UIEvent )
+update world pixelsToMetersRatio msg model =
     case msg of
+        ToggleMenu ->
+            ( { model | showMenu = not model.showMenu }
+            , Cmd.none
+            , Nothing
+            )
+
+        ZoomIn ->
+            let
+                zoomLevel =
+                    zoomIn model.zoomLevel
+            in
+            ( { model | zoomLevel = zoomLevel }
+            , Cmd.none
+            , Just (ZoomLevelChanged zoomLevel)
+            )
+
+        ZoomOut ->
+            let
+                zoomLevel =
+                    zoomOut model.zoomLevel
+            in
+            ( { model | zoomLevel = zoomLevel }
+            , Cmd.none
+            , Just (ZoomLevelChanged zoomLevel)
+            )
+
+        Trigger buttonId ->
+            ( model
+            , Cmd.none
+            , Just (ButtonPressed buttonId)
+            )
+
+        ToggleSimulationActive isActive ->
+            let
+                buttonId =
+                    if isActive then
+                        UI.Model.ResumeSimulation
+
+                    else
+                        UI.Model.PauseSimulation
+            in
+            ( model
+            , Cmd.none
+            , Just (ButtonPressed buttonId)
+            )
+
         EditorMsg editorMsg ->
             let
                 ( editorModel, inputEvent ) =
-                    Editor.update model.world model.renderCache editorMsg model.editor
+                    Editor.update world pixelsToMetersRatio editorMsg model.editor
             in
             ( { model | editor = editorModel }
-            , inputEvent
-                |> Maybe.map (InputReceived >> Message.asCmd)
-                |> Maybe.withDefault Cmd.none
+            , Cmd.none
+            , inputEvent |> Maybe.map GameInputReceived
             )
 
-        ZoomControlMsg zoomControlMsg ->
-            let
-                ( zoomControlModel, zoomLevel ) =
-                    ZoomControl.update zoomControlMsg model.zoomControl
-            in
-            ( { model | zoomControl = zoomControlModel }
-            , Message.asCmd (ZoomLevelChanged zoomLevel)
-            )
+        NoOp ->
+            ( model, Cmd.none, Nothing )
+
+
+zoomIn : ZoomLevel -> ZoomLevel
+zoomIn currentLevel =
+    case currentLevel of
+        VeryFar ->
+            Far
+
+        Far ->
+            Near
+
+        Near ->
+            Near
+
+
+zoomOut : ZoomLevel -> ZoomLevel
+zoomOut currentLevel =
+    case currentLevel of
+        Near ->
+            Far
+
+        Far ->
+            VeryFar
+
+        VeryFar ->
+            VeryFar
+
+
+zoomLevelToUIValue : ZoomLevel -> Float
+zoomLevelToUIValue zoomLevel =
+    case zoomLevel of
+        VeryFar ->
+            1
+
+        Far ->
+            2
+
+        Near ->
+            3
+
+
+uiValueToZoomLevel : Float -> ZoomLevel
+uiValueToZoomLevel value =
+    case floor value of
+        1 ->
+            VeryFar
+
+        2 ->
+            Far
+
+        3 ->
+            Near
 
         _ ->
-            DebugPanel.update msg model
+            Far
 
 
-view : Liikennematto -> Element Message -> Element Message -> Html Message
-view model render renderDebugLayers =
+view : Liikennematto -> Element msg -> Element msg -> Html Msg
+view liikennematto render renderDebugLayers =
     Element.layoutWith
         { options =
-            if Editor.usingTouchDevice model.editor then
+            if Editor.usingTouchDevice liikennematto.ui.editor then
                 baseLayoutOptions
 
             else
@@ -95,26 +208,26 @@ view model render renderDebugLayers =
         , Element.width Element.fill
         , Element.height Element.fill
         , Element.scrollbars
-        , Element.inFront (rightControls model)
-        , Element.inFront (leftControls model)
-        , Element.inFront (debugPanel model)
-        , Element.inFront (devMenu model)
-        , Element.inFront (restoreGameControl model.previousWorld)
+        , Element.inFront (rightControls liikennematto.ui)
+        , Element.inFront (leftControls liikennematto.simulationActive)
+        , Element.inFront (menu liikennematto.ui)
+
+        -- , Element.inFront (devMenu liikennematto.ui)
         , Element.htmlAttribute (HtmlAttribute.id containerId)
         , Element.htmlAttribute (HtmlAttribute.style "touch-action" "pan-x pan-y")
         , Element.htmlAttribute (Mouse.onContextMenu (\_ -> NoOp))
         ]
-        (renderWrapper model render renderDebugLayers)
+        (renderWrapper liikennematto render renderDebugLayers liikennematto.ui)
 
 
-renderWrapper : Liikennematto -> Element Message -> Element Message -> Element Message
-renderWrapper model render debugLayers =
+renderWrapper : Liikennematto -> Element msg -> Element msg -> UI -> Element Msg
+renderWrapper { renderCache, world, screen } render debugLayers model =
     let
         renderWidth =
-            floor model.renderCache.tilemapWidthPixels + (borderSize * 2)
+            floor renderCache.tilemapWidthPixels + (borderSize * 2)
 
         renderHeight =
-            floor model.renderCache.tilemapHeightPixels + (borderSize * 2)
+            floor renderCache.tilemapHeightPixels + (borderSize * 2)
 
         wrapperWidth =
             renderWidth + (borderSize * 2) + renderSafeAreaXSize
@@ -123,14 +236,14 @@ renderWrapper model render debugLayers =
             renderHeight + (borderSize * 2) + renderSafeAreaYSize
 
         horizontalAlignment =
-            if wrapperWidth < model.screen.width then
+            if wrapperWidth < screen.width then
                 Element.centerX
 
             else
                 Element.alignLeft
 
         ( verticalAlignment, renderTopOffset ) =
-            if wrapperHeight < model.screen.height then
+            if wrapperHeight < screen.height then
                 ( Element.centerY, 0 )
 
             else
@@ -153,21 +266,22 @@ renderWrapper model render debugLayers =
             , Border.rounded borderRadiusButton
             , Border.width borderSize
             , Border.color colorRenderEdge
-            , Element.inFront debugLayers
+            , Element.inFront
+                (debugLayers |> Element.map (\_ -> NoOp))
             , Element.inFront
                 (Editor.view
-                    model.renderCache
-                    model.world
+                    renderCache
+                    world
                     model.editor
                     |> Element.map EditorMsg
                 )
             ]
-            render
+            (render |> Element.map (\_ -> NoOp))
         )
 
 
-leftControls : Liikennematto -> Element Message
-leftControls model =
+leftControls : Bool -> Element Msg
+leftControls simulationActive =
     Element.row
         [ Element.spacing whitespaceTight
         , Element.alignBottom
@@ -175,20 +289,18 @@ leftControls model =
         , Element.moveUp scrollbarAwareOffsetF
         , Element.moveRight scrollbarAwareOffsetF
         ]
-        [ ZoomControl.view model.zoomControl
-            |> Element.map ZoomControlMsg
-        , Element.el
+        [ Element.el
             [ Element.padding whitespaceTight
             , Element.spacing whitespaceTight
             , Element.alignBottom
             , Background.color colorMenuBackground
             , Border.rounded borderRadiusPanel
             ]
-            (simulationControl model.simulationActive)
+            (simulationControl simulationActive)
         ]
 
 
-rightControls : Liikennematto -> Element Message
+rightControls : UI -> Element Msg
 rightControls model =
     Element.row
         [ Element.padding whitespaceTight
@@ -204,16 +316,9 @@ rightControls model =
             [ Element.spacing whitespaceTight
             ]
             [ UI.Core.controlButton
-                { content = Icon Icons.NewGame
-                , onPress = NewGame
+                { content = Icon (Icons.createIconId "new-game")
+                , onPress = Trigger UI.Model.NewGame
                 , selected = False
-                , disabled = False
-                , size = Large
-                }
-            , UI.Core.controlButton
-                { content = Icon Icons.DebugPanel
-                , onPress = ToggleDebugPanel
-                , selected = model.debug.showDebugPanel
                 , disabled = False
                 , size = Large
                 }
@@ -221,65 +326,38 @@ rightControls model =
         ]
 
 
-simulationControl : Bool -> Element Message
+simulationControl : Bool -> Element Msg
 simulationControl simulationActive =
     let
         ( iconKind, selected ) =
             if simulationActive then
-                ( Icons.Pause, False )
+                ( Icons.createIconId "pause", False )
 
             else
-                ( Icons.Resume, True )
+                ( Icons.createIconId "resume", True )
     in
     controlButton
         { content = Icon iconKind
-        , onPress = ToggleSimulationActive
+        , onPress = ToggleSimulationActive (not simulationActive)
         , selected = selected
         , disabled = False
         , size = Large
         }
 
 
-debugPanel : Liikennematto -> Element Message
-debugPanel model =
-    if model.debug.showDebugPanel then
-        DebugPanel.view model
+menu : UI -> Element Msg
+menu model =
+    if model.showMenu then
+        Element.none
 
     else
         Element.none
 
 
-devMenu : Liikennematto -> Element Message
-devMenu model =
-    if model.debug.showDevMenu then
-        DebugPanel.devMenu model
 
-    else
-        Element.none
-
-
-restoreGameControl : Maybe World -> Element Message
-restoreGameControl previousWorld =
-    case previousWorld of
-        Just _ ->
-            Element.el
-                [ Element.padding whitespaceTight
-                , Element.spacing whitespaceTight
-                , Element.alignTop
-                , Element.alignLeft
-                , Element.moveDown scrollbarAwareOffsetF
-                , Element.moveRight scrollbarAwareOffsetF
-                , Background.color colorMenuBackground
-                , Border.rounded borderRadiusPanel
-                ]
-                (UI.Core.controlButton
-                    { content = Icon Icons.Back
-                    , onPress = RestoreGame
-                    , selected = False
-                    , disabled = False
-                    , size = Large
-                    }
-                )
-
-        Nothing ->
-            Element.none
+-- devMenu : UI -> Element Msg
+-- devMenu model =
+--     if model.debug.showDevMenu then
+--         DebugPanel.devMenu model
+--     else
+--         Element.none

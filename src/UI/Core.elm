@@ -2,9 +2,7 @@ module UI.Core exposing
     ( ControlButtonConfig
     , ControlButtonContent(..)
     , ControlButtonSize(..)
-    , InputEvent
     , InputKind(..)
-    , ZoomLevel(..)
     , borderRadiusButton
     , borderRadiusPanel
     , borderSize
@@ -42,25 +40,12 @@ module UI.Core exposing
     )
 
 import Data.Colors as Colors exposing (uiCompat)
-import Data.Icons exposing (IconKind, chooseIcon)
+import Data.Icons exposing (IconId, chooseIcon)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Input as Input
 import Html
-import Tilemap.Cell exposing (Cell)
-
-
-type ZoomLevel
-    = Near
-    | Far
-    | VeryFar
-
-
-type alias InputEvent =
-    { cell : Cell
-    , kind : InputKind
-    }
 
 
 type InputKind
@@ -272,7 +257,7 @@ colorZoomStepGuide =
 
 
 type ControlButtonContent
-    = Icon IconKind
+    = Icon IconId
     | Text String
 
 

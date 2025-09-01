@@ -1,4 +1,8 @@
-module Tilemap.Update exposing (update)
+module Tilemap.Update exposing
+    ( onPrimaryInput
+    , onSecondaryInput
+    , update
+    )
 
 import Audio exposing (playSound)
 import Data.TileSet
@@ -49,7 +53,6 @@ import Tilemap.Tile as Tile
         )
 import Tilemap.WFC as WFC
 import Time
-import UI.Core exposing (InputKind(..))
 
 
 update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
@@ -117,14 +120,6 @@ update msg model =
 
                 Nothing ->
                     ( model, Cmd.none )
-
-        InputReceived inputEvent ->
-            case inputEvent.kind of
-                Primary ->
-                    onPrimaryInput inputEvent.cell model
-
-                Secondary ->
-                    onSecondaryInput inputEvent.cell model
 
         CheckQueues time delta ->
             case model.world.pendingTilemapChange of

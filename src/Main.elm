@@ -6,15 +6,20 @@ import Browser.Dom exposing (getViewport)
 import Browser.Events as Events
 import Duration exposing (Duration)
 import Element exposing (Element)
+import Html
 import Json.Decode as Decode
+import Length
 import Lib.FSM as FSM
 import Message exposing (Message(..))
 import Model.Debug
 import Model.Flags as Flags exposing (FlagsJson)
 import Model.Liikennematto as Liikennematto exposing (Liikennematto)
-import Model.RenderCache exposing (setPixelsToMetersRatio, setTilemapCache)
+import Model.RenderCache exposing (RenderCache, setTilemapCache)
 import Model.Screen as Screen
+import Pixels
+import Quantity
 import Render
+import Render.Conversion exposing (toPixelsValue)
 import Render.Debug
 import Simulation.Update as Simulation
 import Task
@@ -22,6 +27,7 @@ import Tilemap.Update as Tilemap
 import Time
 import UI.Core exposing (containerId, renderSafeAreaYSize)
 import UI.ErrorScreen
+import UI.Model
 import UI.SplashScreen
 import UI.UI
 
@@ -83,7 +89,7 @@ subscriptions model =
             , Events.onKeyUp keyReleasedDecoder
             , Time.every secondarySystemFrequencyMs (always (UpdateTilemap secondarySystemFrequencyDelta))
             , Audio.onAudioInitComplete (\_ -> AudioInitComplete)
-            , UI.UI.subscriptions model
+            , UI.UI.subscriptions model.ui |> Sub.map UIMsg
             ]
     in
     if not model.simulationActive then
@@ -102,7 +108,6 @@ subscriptions model =
 update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
 update msg model =
     updateBase msg model
-        |> withUpdate UI.UI.update msg
         |> withUpdate Tilemap.update msg
         |> withUpdate Simulation.update msg
 
@@ -174,57 +179,37 @@ updateBase msg model =
             , Cmd.none
             )
 
-        NewGame ->
+        UIMsg uiMsg ->
             let
-                previousWorld =
-                    Just model.world
+                ( nextUi, uiCmd, uiEvent ) =
+                    UI.UI.update model.world model.renderCache.pixelsToMetersRatio uiMsg model.ui
 
-                ( modelWithTransition, transitionActions ) =
-                    Liikennematto.triggerLoading model
+                ( modelWithUiEvent, uiEventCmd ) =
+                    case uiEvent of
+                        Just event ->
+                            case event of
+                                UI.UI.GameInputReceived inputEvent ->
+                                    case inputEvent.kind of
+                                        UI.Core.Primary ->
+                                            Tilemap.onPrimaryInput inputEvent.cell model
+
+                                        UI.Core.Secondary ->
+                                            Tilemap.onSecondaryInput inputEvent.cell model
+
+                                UI.UI.ButtonPressed buttonId ->
+                                    onUiButtonPressed buttonId model
+
+                                UI.UI.ZoomLevelChanged zoomLevel ->
+                                    onZoomLevelChanged zoomLevel model
+
+                        Nothing ->
+                            ( model, Cmd.none )
             in
-            ( Liikennematto.fromNewGame previousWorld modelWithTransition
-            , gameActionsToCmd transitionActions
-            )
-
-        RestoreGame ->
-            let
-                ( modelWithTransition, transitionActions ) =
-                    Liikennematto.triggerLoading model
-            in
-            ( Liikennematto.fromPreviousGame modelWithTransition
-            , gameActionsToCmd transitionActions
-            )
-
-        ToggleSimulationActive ->
-            ( { model | simulationActive = not model.simulationActive }, Cmd.none )
-
-        ZoomLevelChanged nextLevel ->
-            let
-                nextRenderCache =
-                    model.renderCache
-                        |> setPixelsToMetersRatio nextLevel
-                        |> setTilemapCache model.world.tilemap Nothing
-            in
-            ( { model | renderCache = nextRenderCache }
-            , Browser.Dom.getViewportOf containerId
-                |> Task.andThen
-                    (\domViewport ->
-                        let
-                            mapSizeChangeX =
-                                nextRenderCache.tilemapWidthPixels - model.renderCache.tilemapWidthPixels
-
-                            mapSizeChangeY =
-                                nextRenderCache.tilemapHeightPixels - model.renderCache.tilemapHeightPixels
-
-                            nextScrollX =
-                                (mapSizeChangeX / 2) + domViewport.viewport.x
-
-                            nextScrollY =
-                                (mapSizeChangeY / 2) + domViewport.viewport.y
-                        in
-                        Browser.Dom.setViewportOf containerId (max nextScrollX 0) (max nextScrollY 0)
-                    )
-                |> Task.attempt (\_ -> NoOp)
+            ( { modelWithUiEvent | ui = nextUi }
+            , Cmd.batch
+                [ uiEventCmd
+                , uiCmd |> Cmd.map UIMsg
+                ]
             )
 
         _ ->
@@ -262,7 +247,8 @@ gameActionToCmd action =
             Message.asCmd GameSetupComplete
 
         Liikennematto.TriggerPostLoadingEffects ->
-            Message.asCmd ToggleSimulationActive
+            -- Message.asCmd ToggleSimulationActive
+            Cmd.none
 
         Liikennematto.TriggerInGameEffects ->
             Browser.Dom.getViewportOf containerId
@@ -276,6 +262,98 @@ gameActionToCmd action =
                 |> Task.attempt (\_ -> NoOp)
 
 
+
+--
+-- UI events
+--
+
+
+onUiButtonPressed : UI.Model.ButtonKind -> Liikennematto -> ( Liikennematto, Cmd Message )
+onUiButtonPressed buttonId model =
+    case buttonId of
+        UI.Model.PauseSimulation ->
+            ( { model | simulationActive = False }, Cmd.none )
+
+        UI.Model.ResumeSimulation ->
+            ( { model | simulationActive = True }, Cmd.none )
+
+        UI.Model.NewGame ->
+            let
+                previousWorld =
+                    Just model.world
+
+                ( modelWithTransition, transitionActions ) =
+                    Liikennematto.triggerLoading model
+            in
+            ( Liikennematto.fromNewGame previousWorld modelWithTransition
+            , gameActionsToCmd transitionActions
+            )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+onZoomLevelChanged : UI.Model.ZoomLevel -> Liikennematto -> ( Liikennematto, Cmd Message )
+onZoomLevelChanged nextZoomLevel model =
+    let
+        nextRenderCache =
+            model.renderCache
+                |> setPixelsToMetersRatio nextZoomLevel
+                |> setTilemapCache model.world.tilemap Nothing
+    in
+    ( { model | renderCache = nextRenderCache }
+    , Browser.Dom.getViewportOf containerId
+        |> Task.andThen
+            (\domViewport ->
+                let
+                    mapSizeChangeX =
+                        nextRenderCache.tilemapWidthPixels - model.renderCache.tilemapWidthPixels
+
+                    mapSizeChangeY =
+                        nextRenderCache.tilemapHeightPixels - model.renderCache.tilemapHeightPixels
+
+                    nextScrollX =
+                        (mapSizeChangeX / 2) + domViewport.viewport.x
+
+                    nextScrollY =
+                        (mapSizeChangeY / 2) + domViewport.viewport.y
+                in
+                Browser.Dom.setViewportOf containerId (max nextScrollX 0) (max nextScrollY 0)
+            )
+        |> Task.attempt (\_ -> NoOp)
+    )
+
+
+setPixelsToMetersRatio : UI.Model.ZoomLevel -> RenderCache -> RenderCache
+setPixelsToMetersRatio zoomLevel cache =
+    let
+        nextPixelsPerMeter =
+            case zoomLevel of
+                UI.Model.VeryFar ->
+                    4
+
+                UI.Model.Far ->
+                    6
+
+                UI.Model.Near ->
+                    8
+
+        nextRatio =
+            Pixels.pixels nextPixelsPerMeter |> Quantity.per (Length.meters 1)
+    in
+    { cache
+        | pixelsToMetersRatio = nextRatio
+        , tilemapWidthPixels = toPixelsValue nextRatio cache.tilemapWidth
+        , tilemapHeightPixels = toPixelsValue nextRatio cache.tilemapHeight
+    }
+
+
+
+--
+-- View
+--
+
+
 view : Liikennematto -> Browser.Document Message
 view model =
     { title = "Liikennematto"
@@ -286,6 +364,7 @@ view model =
                     model
                     (render model)
                     (renderDebug model)
+                    |> Html.map UIMsg
 
             Liikennematto.Error ->
                 UI.ErrorScreen.view model.errorMessage

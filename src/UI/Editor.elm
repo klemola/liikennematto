@@ -1,5 +1,6 @@
 module UI.Editor exposing
-    ( Model
+    ( InputEvent
+    , Model
     , Msg
     , initialModel
     , subscriptions
@@ -23,7 +24,7 @@ import Model.RenderCache exposing (RenderCache)
 import Model.World exposing (World)
 import Point2d exposing (Point2d)
 import Quantity
-import Render.Conversion exposing (toPixelsValue)
+import Render.Conversion exposing (PixelsToMetersRatio, toPixelsValue)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
@@ -36,8 +37,7 @@ import Tilemap.Core
         )
 import UI.Core
     exposing
-        ( InputEvent
-        , InputKind(..)
+        ( InputKind(..)
         , borderRadiusButton
         , cellHighlightWidth
         , colorTransparent
@@ -75,6 +75,12 @@ type Msg
     | NoOp
 
 
+type alias InputEvent =
+    { cell : Cell
+    , kind : InputKind
+    }
+
+
 usingTouchDevice : Model -> Bool
 usingTouchDevice model =
     model.lastEventDevice == Pointer.MouseType
@@ -99,8 +105,8 @@ subscriptions _ =
 -- Update
 
 
-update : World -> RenderCache -> Msg -> Model -> ( Model, Maybe InputEvent )
-update world renderCache msg model =
+update : World -> PixelsToMetersRatio -> Msg -> Model -> ( Model, Maybe InputEvent )
+update world pixelsToMetersRatio msg model =
     let
         tilemapConfig =
             getTilemapConfig world.tilemap
@@ -114,7 +120,7 @@ update world renderCache msg model =
         OverlayPointerMove event ->
             case
                 pointerEventToCell
-                    renderCache
+                    pixelsToMetersRatio
                     tilemapConfig
                     event
             of
@@ -134,7 +140,7 @@ update world renderCache msg model =
             )
 
         OverlayPointerDown event ->
-            case pointerEventToCell renderCache tilemapConfig event of
+            case pointerEventToCell pixelsToMetersRatio tilemapConfig event of
                 Just eventCell ->
                     let
                         cellHasRoadTile =
@@ -161,11 +167,13 @@ update world renderCache msg model =
                         |> clearPointerDownEvent
                         |> resetLongPressTimer
             in
-            case pointerEventToCell renderCache tilemapConfig event of
+            case pointerEventToCell pixelsToMetersRatio tilemapConfig event of
                 Just pointerUpCell ->
                     let
                         pointerDownCell =
-                            model.pointerDownEvent |> Maybe.andThen (pointerEventToCell renderCache tilemapConfig)
+                            model.pointerDownEvent
+                                |> Maybe.andThen
+                                    (pointerEventToCell pixelsToMetersRatio tilemapConfig)
 
                         inputEvent =
                             resolvePointerUp
@@ -261,8 +269,8 @@ selectCell event eventCell hasRoadTile world initialEditor =
            )
 
 
-pointerEventToCell : RenderCache -> TilemapConfig -> Pointer.Event -> Maybe Cell
-pointerEventToCell cache constraints event =
+pointerEventToCell : PixelsToMetersRatio -> TilemapConfig -> Pointer.Event -> Maybe Cell
+pointerEventToCell pixelsToMetersRatio constraints event =
     let
         ( overlayX, overlayY ) =
             event.pointer.offsetPos
@@ -272,12 +280,12 @@ pointerEventToCell cache constraints event =
 
         overlayXMetersValue =
             overlayX
-                |> Render.Conversion.toMetersValue cache.pixelsToMetersRatio
+                |> Render.Conversion.toMetersValue pixelsToMetersRatio
                 |> Quantity.unwrap
 
         overlayYMetersValue =
             overlayY
-                |> Render.Conversion.toMetersValue cache.pixelsToMetersRatio
+                |> Render.Conversion.toMetersValue pixelsToMetersRatio
                 |> Quantity.unwrap
 
         coordinates =

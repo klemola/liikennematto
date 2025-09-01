@@ -1,4 +1,4 @@
-module UI.DebugPanel exposing (devMenu, update, view)
+module UI.DebugPanel exposing (devMenu, view)
 
 import Data.Icons as Icons
 import Element exposing (Element)
@@ -6,15 +6,11 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Lib.Collection as Collection
-import Message exposing (Message(..))
 import Model.Debug
     exposing
         ( DebugLayerKind(..)
         , DevAction(..)
         , DevOutput(..)
-        , selectDevOutput
-        , toggleDebugPanel
-        , toggleLayer
         )
 import Model.Liikennematto exposing (Liikennematto)
 import Model.World exposing (World, formatEvents)
@@ -45,29 +41,11 @@ import UI.StateDebug
         )
 
 
-update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
-update msg model =
-    case msg of
-        ToggleDebugPanel ->
-            ( { model | debug = toggleDebugPanel model.debug }
-            , Cmd.none
-            )
-
-        ToggleDebugLayer kind ->
-            ( { model | debug = toggleLayer kind model.debug }
-            , Cmd.none
-            )
-
-        SelectDevOutput output ->
-            ( { model | debug = selectDevOutput output model.debug }
-            , Cmd.none
-            )
-
-        _ ->
-            ( model, Cmd.none )
+type Msg
+    = NoOp
 
 
-view : Liikennematto -> Element Message
+view : Liikennematto -> Element Msg
 view model =
     Element.row
         [ Element.alignRight
@@ -78,7 +56,7 @@ view model =
         ]
 
 
-mainPanel : Liikennematto -> Element Message
+mainPanel : Liikennematto -> Element Msg
 mainPanel model =
     Element.column
         [ Element.padding whitespaceRegular
@@ -99,8 +77,10 @@ mainPanel model =
                 (Element.text "Peek under the hood")
             , Element.el [ Element.alignRight ]
                 (controlButton
-                    { content = Icon Icons.Close
-                    , onPress = ToggleDebugPanel
+                    { content = Icon (Icons.createIconId "close")
+
+                    -- , onPress = ToggleDebugPanel
+                    , onPress = NoOp
                     , selected = False
                     , disabled = False
                     , size = Small
@@ -111,7 +91,7 @@ mainPanel model =
         ]
 
 
-controls : Liikennematto -> Element Message
+controls : Liikennematto -> Element Msg
 controls model =
     Element.column [ Element.spacing whitespaceTight ]
         [ Element.row
@@ -119,29 +99,37 @@ controls model =
             , Font.size textSize
             ]
             [ controlButton
-                { content = Icon Icons.CarDebug
-                , onPress = ToggleDebugLayer CarDebug
+                { content = Icon (Icons.createIconId "car-debug")
+
+                -- , onPress = ToggleDebugLayer CarDebug
+                , onPress = NoOp
                 , selected = Model.Debug.isLayerEnabled CarDebug model.debug
                 , disabled = False
                 , size = Large
                 }
             , controlButton
-                { content = Icon Icons.SpawnCar
-                , onPress = TriggerDevAction SpawnTestCar
+                { content = Icon (Icons.createIconId "spawn-car")
+
+                -- , onPress = TriggerDevAction SpawnTestCar
+                , onPress = NoOp
                 , selected = False
                 , disabled = False
                 , size = Large
                 }
             , controlButton
-                { content = Icon Icons.LotDebug
-                , onPress = ToggleDebugLayer LotDebug
+                { content = Icon (Icons.createIconId "lot-debug")
+
+                -- , onPress = ToggleDebugLayer LotDebug
+                , onPress = NoOp
                 , selected = Model.Debug.isLayerEnabled LotDebug model.debug
                 , disabled = False
                 , size = Large
                 }
             , controlButton
-                { content = Icon Icons.GraphDebug
-                , onPress = ToggleDebugLayer RoadNetworkDebug
+                { content = Icon (Icons.createIconId "graph-debug")
+
+                -- , onPress = ToggleDebugLayer RoadNetworkDebug
+                , onPress = NoOp
                 , selected = Model.Debug.isLayerEnabled RoadNetworkDebug model.debug
                 , disabled = False
                 , size = Large
@@ -150,7 +138,7 @@ controls model =
         ]
 
 
-wfcOutput : List String -> Time.Posix -> DrivenWFC -> Element msg
+wfcOutput : List String -> Time.Posix -> DrivenWFC -> Element Msg
 wfcOutput wfcLog currentTime drivenWfc =
     Element.column
         [ Element.spacing whitespaceTight
@@ -181,7 +169,7 @@ wfcOutput wfcLog currentTime drivenWfc =
         )
 
 
-carsList : Liikennematto -> Element Message
+carsList : Liikennematto -> Element Msg
 carsList model =
     if Collection.size model.world.cars == 0 then
         Element.none
@@ -199,7 +187,7 @@ carsList model =
             )
 
 
-eventQueueList : Time.Posix -> World -> Element msg
+eventQueueList : Time.Posix -> World -> Element Msg
 eventQueueList time world =
     Element.column
         [ Element.spacing whitespaceTight
@@ -208,7 +196,7 @@ eventQueueList time world =
         (List.map eventCard (formatEvents time world))
 
 
-devMenu : Liikennematto -> Element Message
+devMenu : Liikennematto -> Element Msg
 devMenu model =
     Element.column
         [ Element.alignLeft
@@ -226,21 +214,27 @@ devMenu model =
             ]
             [ controlButton
                 { content = Text "Events"
-                , onPress = SelectDevOutput EventQueueList
+
+                -- , onPress = SelectDevOutput EventQueueList
+                , onPress = NoOp
                 , selected = model.debug.selectedDevOutput == EventQueueList
                 , disabled = False
                 , size = FitToContent
                 }
             , controlButton
                 { content = Text "WFC"
-                , onPress = SelectDevOutput WFCOutput
+
+                -- , onPress = SelectDevOutput WFCOutput
+                , onPress = NoOp
                 , selected = model.debug.selectedDevOutput == WFCOutput
                 , disabled = False
                 , size = FitToContent
                 }
             , controlButton
                 { content = Text "Cars"
-                , onPress = SelectDevOutput CarsList
+
+                -- , onPress = SelectDevOutput CarsList
+                , onPress = NoOp
                 , selected = model.debug.selectedDevOutput == CarsList
                 , disabled = False
                 , size = FitToContent

@@ -8,7 +8,6 @@ module Model.Debug exposing
     , initialDebugState
     , isLayerEnabled
     , selectDevOutput
-    , toggleDebugPanel
     , toggleDevMenu
     , toggleLayer
     )
@@ -17,8 +16,7 @@ import Bitwise
 
 
 type alias DebugState =
-    { showDebugPanel : Bool
-    , showDevMenu : Bool
+    { showDevMenu : Bool
     , selectedDevOutput : DevOutput
     , layers : DebugLayers
     , wfcLog : List String
@@ -49,17 +47,11 @@ type DevAction
 
 initialDebugState : DebugState
 initialDebugState =
-    { showDebugPanel = False
-    , showDevMenu = False
+    { showDevMenu = False
     , selectedDevOutput = EventQueueList
     , layers = 0
     , wfcLog = []
     }
-
-
-toggleDebugPanel : DebugState -> DebugState
-toggleDebugPanel debugState =
-    { debugState | showDebugPanel = not debugState.showDebugPanel }
 
 
 toggleDevMenu : DebugState -> DebugState

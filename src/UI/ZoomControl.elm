@@ -6,8 +6,7 @@ import Element.Border as Border
 import Element.Input as Input
 import UI.Core
     exposing
-        ( ZoomLevel(..)
-        , borderRadiusButton
+        ( borderRadiusButton
         , borderSize
         , colorBorder
         , colorMenuBackground
@@ -20,6 +19,7 @@ import UI.Core
         , zoomTrackHeight
         , zoomTrackWidth
         )
+import UI.Model exposing (ZoomLevel(..))
 
 
 type alias Model =
