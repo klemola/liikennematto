@@ -161,11 +161,13 @@ updateBase msg model =
             )
 
         KeyReleased key ->
-            if key == "§" then
-                ( { model | debug = Model.Debug.toggleDevMenu model.debug }, Cmd.none )
-
-            else
-                ( model, Cmd.none )
+            let
+                ( nextUi, uiMsg ) =
+                    UI.UI.onKeyPress key model.ui
+            in
+            ( { model | ui = nextUi }
+            , Cmd.map UIMsg uiMsg
+            )
 
         AudioInitComplete ->
             let
@@ -201,6 +203,16 @@ updateBase msg model =
 
                                 UI.UI.ZoomLevelChanged zoomLevel ->
                                     onZoomLevelChanged zoomLevel model
+
+                                UI.UI.DevViewSelected devView ->
+                                    ( { model
+                                        | debug =
+                                            Model.Debug.setLayer Model.Debug.WFCDebug
+                                                (devView == UI.Model.WFCOverview)
+                                                model.debug
+                                      }
+                                    , Cmd.none
+                                    )
 
                         Nothing ->
                             ( model, Cmd.none )

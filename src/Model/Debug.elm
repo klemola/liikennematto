@@ -3,12 +3,10 @@ module Model.Debug exposing
     , DebugLayers
     , DebugState
     , DevAction(..)
-    , DevOutput(..)
     , appendWfcLog
     , initialDebugState
     , isLayerEnabled
-    , selectDevOutput
-    , toggleDevMenu
+    , setLayer
     , toggleLayer
     )
 
@@ -16,9 +14,7 @@ import Bitwise
 
 
 type alias DebugState =
-    { showDevMenu : Bool
-    , selectedDevOutput : DevOutput
-    , layers : DebugLayers
+    { layers : DebugLayers
     , wfcLog : List String
     }
 
@@ -35,28 +31,15 @@ type DebugLayerKind
     | WFCDebug
 
 
-type DevOutput
-    = EventQueueList
-    | CarsList
-    | WFCOutput
-
-
 type DevAction
     = SpawnTestCar
 
 
 initialDebugState : DebugState
 initialDebugState =
-    { showDevMenu = False
-    , selectedDevOutput = EventQueueList
-    , layers = 0
+    { layers = 0
     , wfcLog = []
     }
-
-
-toggleDevMenu : DebugState -> DebugState
-toggleDevMenu debugState =
-    { debugState | showDevMenu = not debugState.showDevMenu }
 
 
 
@@ -130,9 +113,3 @@ appendWfcLog nextLog debugState =
     { debugState
         | wfcLog = List.append nextLog debugState.wfcLog
     }
-
-
-selectDevOutput : DevOutput -> DebugState -> DebugState
-selectDevOutput output debugState =
-    { debugState | selectedDevOutput = output }
-        |> setLayer WFCDebug (output == WFCOutput)

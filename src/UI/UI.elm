@@ -1,6 +1,7 @@
 module UI.UI exposing
     ( Msg
     , UIEvent(..)
+    , onKeyPress
     , subscriptions
     , update
     , view
@@ -13,7 +14,7 @@ import Element.Border as Border
 import Html exposing (Html)
 import Html.Attributes as HtmlAttribute
 import Html.Events.Extra.Mouse as Mouse
-import Model.Debug exposing (DebugLayerKind(..), DevOutput(..))
+import Model.Debug exposing (DebugLayerKind(..))
 import Model.Liikennematto exposing (Liikennematto)
 import Model.World exposing (World)
 import Render.Conversion exposing (PixelsToMetersRatio)
@@ -36,7 +37,8 @@ import UI.Core
         , whitespaceTight
         )
 import UI.Editor as Editor
-import UI.Model exposing (ButtonKind, UI, ZoomLevel(..))
+import UI.Model as Model exposing (ButtonKind, DevView, UI, ZoomLevel(..))
+import UI.StateDebug as StateDebug
 
 
 type Msg
@@ -45,6 +47,7 @@ type Msg
     | ZoomOut
     | Trigger ButtonKind
     | ToggleSimulationActive Bool
+    | SelectDevView DevView
     | EditorMsg Editor.Msg
     | NoOp
 
@@ -53,6 +56,7 @@ type UIEvent
     = GameInputReceived Editor.InputEvent
     | ZoomLevelChanged ZoomLevel
     | ButtonPressed ButtonKind
+    | DevViewSelected DevView
 
 
 baseLayoutOptions : List Element.Option
@@ -115,14 +119,20 @@ update world pixelsToMetersRatio msg model =
             let
                 buttonId =
                     if isActive then
-                        UI.Model.ResumeSimulation
+                        Model.ResumeSimulation
 
                     else
-                        UI.Model.PauseSimulation
+                        Model.PauseSimulation
             in
             ( model
             , Cmd.none
             , Just (ButtonPressed buttonId)
+            )
+
+        SelectDevView devView ->
+            ( { model | selectedDevView = devView }
+            , Cmd.none
+            , Just (DevViewSelected devView)
             )
 
         EditorMsg editorMsg ->
@@ -137,6 +147,15 @@ update world pixelsToMetersRatio msg model =
 
         NoOp ->
             ( model, Cmd.none, Nothing )
+
+
+onKeyPress : String -> Model.UI -> ( Model.UI, Cmd Msg )
+onKeyPress key model =
+    if key == "§" then
+        ( { model | showDevMenu = not model.showDevMenu }, Cmd.none )
+
+    else
+        ( model, Cmd.none )
 
 
 zoomIn : ZoomLevel -> ZoomLevel
@@ -211,8 +230,7 @@ view liikennematto render renderDebugLayers =
         , Element.inFront (rightControls liikennematto.ui)
         , Element.inFront (leftControls liikennematto.simulationActive)
         , Element.inFront (menu liikennematto.ui)
-
-        -- , Element.inFront (devMenu liikennematto.ui)
+        , Element.inFront (devMenu liikennematto liikennematto.ui)
         , Element.htmlAttribute (HtmlAttribute.id containerId)
         , Element.htmlAttribute (HtmlAttribute.style "touch-action" "pan-x pan-y")
         , Element.htmlAttribute (Mouse.onContextMenu (\_ -> NoOp))
@@ -317,7 +335,7 @@ rightControls model =
             ]
             [ UI.Core.controlButton
                 { content = Icon (Icons.createIconId "new-game")
-                , onPress = Trigger UI.Model.NewGame
+                , onPress = Trigger Model.NewGame
                 , selected = False
                 , disabled = False
                 , size = Large
@@ -354,10 +372,10 @@ menu model =
         Element.none
 
 
+devMenu : Liikennematto -> UI -> Element Msg
+devMenu liikennematto model =
+    if model.showDevMenu then
+        StateDebug.devMenu SelectDevView model.selectedDevView liikennematto
 
--- devMenu : UI -> Element Msg
--- devMenu model =
---     if model.debug.showDevMenu then
---         DebugPanel.devMenu model
---     else
---         Element.none
+    else
+        Element.none

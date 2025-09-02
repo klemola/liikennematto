@@ -1,7 +1,5 @@
 module UI.StateDebug exposing
-    ( carStateCard
-    , debugElementLength
-    , eventCard
+    ( devMenu
     , wfcContext
     , wfcCurrentCell
     , wfcStateDescription
@@ -14,7 +12,9 @@ import Element.Border as Border
 import Element.Font as Font
 import Length
 import Lib.Collection as Collection
+import Model.Liikennematto exposing (Liikennematto)
 import Model.RenderCache as RenderCache
+import Model.World exposing (World, formatEvents)
 import Point2d exposing (Point2d)
 import Quantity
 import Render.Conversion
@@ -22,20 +22,156 @@ import Round
 import Simulation.Car as Car exposing (Car)
 import Speed exposing (Speed)
 import Tilemap.Cell as Cell
+import Tilemap.DrivenWFC exposing (DrivenWFC(..), drivenWfcDebug)
 import Tilemap.WFC as WFC
+import Time
 import UI.Core
     exposing
-        ( borderRadiusButton
+        ( ControlButtonContent(..)
+        , ControlButtonSize(..)
+        , borderRadiusButton
         , borderSize
         , colorCardBackground
+        , colorMenuBackgroundInverse
         , colorText
+        , controlButton
+        , scrollbarAwareOffsetF
+        , whitespaceRegular
         , whitespaceTight
         )
+import UI.Model exposing (DevView(..))
 
 
 debugElementLength : Element.Length
 debugElementLength =
     Element.fill |> Element.maximum 420
+
+
+borderRadiusPanel : Int
+borderRadiusPanel =
+    15
+
+
+textSize : Int
+textSize =
+    14
+
+
+textSizeMini : Int
+textSizeMini =
+    12
+
+
+devMenu : (DevView -> msg) -> DevView -> Liikennematto -> Element msg
+devMenu onSelectView selectedView model =
+    Element.column
+        [ Element.alignLeft
+        , Element.moveRight scrollbarAwareOffsetF
+        , Element.moveDown scrollbarAwareOffsetF
+        , Element.padding whitespaceRegular
+        , Element.spacing whitespaceTight
+        , Element.width (Element.px 600)
+        , Background.color colorMenuBackgroundInverse
+        , Border.rounded borderRadiusPanel
+        ]
+        [ Element.row
+            [ Element.spacing whitespaceTight
+            , Font.size textSize
+            ]
+            [ controlButton
+                { content = Text "Events"
+                , onPress = onSelectView EventQueueList
+                , selected = selectedView == EventQueueList
+                , disabled = False
+                , size = FitToContent
+                }
+            , controlButton
+                { content = Text "WFC"
+                , onPress = onSelectView WFCOverview
+                , selected = selectedView == WFCOverview
+                , disabled = False
+                , size = FitToContent
+                }
+            , controlButton
+                { content = Text "Cars"
+                , onPress = onSelectView CarsList
+                , selected = selectedView == CarsList
+                , disabled = False
+                , size = FitToContent
+                }
+            ]
+        , case selectedView of
+            EventQueueList ->
+                eventQueueList model.time model.world
+
+            WFCOverview ->
+                wfcOutput model.debug.wfcLog model.time model.wfc
+
+            CarsList ->
+                carsList model
+        ]
+
+
+wfcOutput : List String -> Time.Posix -> DrivenWFC -> Element msg
+wfcOutput wfcLog currentTime drivenWfc =
+    Element.column
+        [ Element.spacing whitespaceTight
+        , Element.padding whitespaceRegular
+        , Element.width Element.fill
+        , Element.height (Element.px 420)
+        , Font.size textSizeMini
+        , Background.color colorCardBackground
+        , Border.rounded borderRadiusPanel
+        ]
+        (case drivenWfc of
+            WFCActive wfcModel ->
+                [ wfcStateDescription wfcModel
+                , wfcContext wfcModel
+                ]
+
+            _ ->
+                [ Element.el []
+                    (Element.text (drivenWfcDebug currentTime drivenWfc))
+                , Element.column
+                    [ Element.scrollbars
+                    , Element.height debugElementLength
+                    , Element.width Element.fill
+                    , Font.family [ Font.monospace ]
+                    ]
+                    (List.map (\row -> Element.text row) wfcLog)
+                ]
+        )
+
+
+carsList : Liikennematto -> Element msg
+carsList model =
+    if Collection.size model.world.cars == 0 then
+        Element.none
+
+    else
+        Element.column
+            [ Element.spacing whitespaceTight
+            , Element.width Element.fill
+            ]
+            (List.map
+                (carStateCard model.renderCache)
+                (Collection.values model.world.cars)
+            )
+
+
+eventQueueList : Time.Posix -> World -> Element msg
+eventQueueList time world =
+    Element.column
+        [ Element.spacing whitespaceTight
+        , Element.width Element.fill
+        ]
+        (List.map eventCard (formatEvents time world))
+
+
+
+--
+-- Card helpers
+--
 
 
 cardAttributes : Element.Length -> List (Element.Attribute msg)

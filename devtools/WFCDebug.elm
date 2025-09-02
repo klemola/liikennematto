@@ -47,6 +47,7 @@ import Tilemap.TileConfig as TileConfig
 import Tilemap.TileInventory exposing (TileInventory)
 import Tilemap.WFC as WFC
 import Time
+import UI.Core
 import UI.Editor as Editor
 import UI.StateDebug exposing (wfcContext, wfcCurrentCell, wfcStateDescription)
 
@@ -256,10 +257,10 @@ update msg model =
 
         InputReceived input ->
             case input.kind of
-                Editor.Secondary ->
+                UI.Core.Secondary ->
                     ( model, Cmd.none )
 
-                Editor.Primary ->
+                UI.Core.Primary ->
                     let
                         ( wfcModel, _ ) =
                             WFC.collapse input.cell model.wfcModel

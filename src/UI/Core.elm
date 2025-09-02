@@ -31,7 +31,6 @@ module UI.Core exposing
     , renderSafeAreaYSize
     , scrollbarAwareOffsetF
     , textSize
-    , textSizeMini
     , whitespaceRegular
     , whitespaceTight
     , zoomControlWidth
@@ -127,11 +126,6 @@ renderSafeAreaYSize =
 textSize : Int
 textSize =
     14
-
-
-textSizeMini : Int
-textSizeMini =
-    12
 
 
 zoomControlWidth : Int
