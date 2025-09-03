@@ -1,9 +1,5 @@
 module UI.Core exposing
-    ( ControlButtonConfig
-    , ControlButtonContent(..)
-    , ControlButtonSize(..)
-    , InputKind(..)
-    , borderRadiusButton
+    ( InputKind(..)
     , borderRadiusPanel
     , borderSize
     , cellHighlightWidth
@@ -25,7 +21,6 @@ module UI.Core exposing
     , colorZoomThumbBackground
     , colorZoomTrackBackground
     , containerId
-    , controlButton
     , overlayId
     , renderSafeAreaXSize
     , renderSafeAreaYSize
@@ -39,12 +34,7 @@ module UI.Core exposing
     )
 
 import Data.Colors as Colors exposing (uiCompat)
-import Data.Icons exposing (IconId, chooseIcon)
-import Element exposing (Element)
-import Element.Background as Background
-import Element.Border as Border
-import Element.Input as Input
-import Html
+import Element
 
 
 type InputKind
@@ -88,11 +78,6 @@ borderSize =
     2
 
 
-borderRadiusButton : Int
-borderRadiusButton =
-    10
-
-
 borderRadiusPanel : Int
 borderRadiusPanel =
     15
@@ -106,11 +91,6 @@ scrollbarAwareOffset =
 scrollbarAwareOffsetF : Float
 scrollbarAwareOffsetF =
     toFloat scrollbarAwareOffset
-
-
-controlButtonSize : Int
-controlButtonSize =
-    baseSpacing * 3
 
 
 renderSafeAreaXSize : Int
@@ -242,105 +222,3 @@ colorZoomThumbBackground =
 colorZoomStepGuide : Element.Color
 colorZoomStepGuide =
     uiCompat Colors.gray6
-
-
-
---
--- Control buttons
---
-
-
-type ControlButtonContent
-    = Icon IconId
-    | Text String
-
-
-type alias ControlButtonConfig msg =
-    { content : ControlButtonContent
-    , onPress : msg
-    , selected : Bool
-    , disabled : Bool
-    , size : ControlButtonSize
-    }
-
-
-type ControlButtonSize
-    = Large
-    | Small
-    | FitToContent
-
-
-controlButton : ControlButtonConfig msg -> Element msg
-controlButton =
-    buildControlButton
-
-
-buttonSize baseSize =
-    Element.px (baseSize - (2 * borderSize))
-
-
-buildControlButton : ControlButtonConfig msg -> Element msg
-buildControlButton { content, onPress, selected, disabled, size } =
-    let
-        ( width, height, padding ) =
-            case size of
-                Small ->
-                    ( buttonSize (controlButtonSize // 2), buttonSize (controlButtonSize // 2), 0 )
-
-                Large ->
-                    ( buttonSize controlButtonSize, buttonSize controlButtonSize, 0 )
-
-                FitToContent ->
-                    ( Element.fill, Element.fill, 4 )
-
-        alpha =
-            if disabled then
-                0.5
-
-            else
-                1
-
-        ( labelHtml, backgroundColor, activeBackgroundColor ) =
-            case content of
-                Icon iconKind ->
-                    chooseIcon iconKind
-
-                Text textContent ->
-                    ( Html.text textContent, Colors.gray5, Colors.gray1 )
-    in
-    Input.button
-        [ Background.color (uiCompat backgroundColor)
-        , Element.width width
-        , Element.height height
-        , Element.padding padding
-        , Element.alpha alpha
-        , Element.clip
-        , Element.mouseOver
-            [ Background.color (uiCompat activeBackgroundColor) ]
-        , Element.mouseDown
-            [ Background.color (uiCompat activeBackgroundColor) ]
-        , Border.width borderSize
-        , Border.rounded
-            (if size == Small then
-                borderRadiusButton // 2
-
-             else
-                borderRadiusButton
-            )
-        , Border.solid
-        , Border.color
-            (if selected then
-                colorSelected
-
-             else
-                colorBorder
-            )
-        ]
-        { onPress =
-            if disabled then
-                Nothing
-
-            else
-                Just onPress
-        , label = Element.html labelHtml
-        }

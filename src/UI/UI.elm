@@ -18,18 +18,15 @@ import Model.Debug exposing (DebugLayerKind(..))
 import Model.Liikennematto exposing (Liikennematto)
 import Model.World exposing (World)
 import Render.Conversion exposing (PixelsToMetersRatio)
+import UI.Button exposing (iconButton)
 import UI.Core
     exposing
-        ( ControlButtonContent(..)
-        , ControlButtonSize(..)
-        , borderRadiusButton
-        , borderRadiusPanel
+        ( borderRadiusPanel
         , borderSize
         , colorMainBackground
         , colorMenuBackground
         , colorRenderEdge
         , containerId
-        , controlButton
         , renderSafeAreaXSize
         , renderSafeAreaYSize
         , scrollbarAwareOffsetF
@@ -37,7 +34,13 @@ import UI.Core
         , whitespaceTight
         )
 import UI.Editor as Editor
-import UI.Model as Model exposing (ButtonKind, DevView, UI, ZoomLevel(..))
+import UI.Model as Model
+    exposing
+        ( ButtonKind
+        , DevView
+        , UI
+        , ZoomLevel(..)
+        )
 import UI.StateDebug as StateDebug
 
 
@@ -73,6 +76,10 @@ baseLayoutOptions =
 touchLayoutOptions : List Element.Option
 touchLayoutOptions =
     Element.noHover :: baseLayoutOptions
+
+
+borderRadiusRender =
+    10
 
 
 subscriptions : UI -> Sub Msg
@@ -281,7 +288,7 @@ renderWrapper { renderCache, world, screen } render debugLayers model =
             , Element.clip
             , verticalAlignment
             , Border.solid
-            , Border.rounded borderRadiusButton
+            , Border.rounded borderRadiusRender
             , Border.width borderSize
             , Border.color colorRenderEdge
             , Element.inFront
@@ -333,13 +340,12 @@ rightControls model =
         [ Element.row
             [ Element.spacing whitespaceTight
             ]
-            [ UI.Core.controlButton
-                { content = Icon (Icons.createIconId "new-game")
-                , onPress = Trigger Model.NewGame
+            [ iconButton
+                { onPress = Trigger Model.NewGame
                 , selected = False
                 , disabled = False
-                , size = Large
                 }
+                Icons.iconNewGame
             ]
         ]
 
@@ -347,20 +353,19 @@ rightControls model =
 simulationControl : Bool -> Element Msg
 simulationControl simulationActive =
     let
-        ( iconKind, selected ) =
+        ( iconSvg, selected ) =
             if simulationActive then
-                ( Icons.createIconId "pause", False )
+                ( Icons.iconPause, False )
 
             else
-                ( Icons.createIconId "resume", True )
+                ( Icons.iconResume, True )
     in
-    controlButton
-        { content = Icon iconKind
-        , onPress = ToggleSimulationActive (not simulationActive)
+    iconButton
+        { onPress = ToggleSimulationActive (not simulationActive)
         , selected = selected
         , disabled = False
-        , size = Large
         }
+        iconSvg
 
 
 menu : UI -> Element Msg

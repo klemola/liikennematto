@@ -1,6 +1,5 @@
 module UI.DebugPanel exposing (view)
 
-import Data.Icons as Icons
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -13,11 +12,8 @@ import Model.Debug
 import Model.Liikennematto exposing (Liikennematto)
 import UI.Core
     exposing
-        ( ControlButtonContent(..)
-        , ControlButtonSize(..)
-        , colorMenuBackgroundInverse
+        ( colorMenuBackgroundInverse
         , colorTextInverse
-        , controlButton
         , scrollbarAwareOffsetF
         , textSize
         , whitespaceRegular
@@ -59,17 +55,17 @@ mainPanel model =
                 , Font.color colorTextInverse
                 ]
                 (Element.text "Peek under the hood")
-            , Element.el [ Element.alignRight ]
-                (controlButton
-                    { content = Icon (Icons.createIconId "close")
 
-                    -- , onPress = ToggleDebugPanel
-                    , onPress = NoOp
-                    , selected = False
-                    , disabled = False
-                    , size = Small
-                    }
-                )
+            -- , Element.el [ Element.alignRight ]
+            --     (controlButton
+            --         { content = Icon (Icons.createIconId "close")
+            --         -- , onPress = ToggleDebugPanel
+            --         , onPress = NoOp
+            --         , selected = False
+            --         , disabled = False
+            --         , size = Small
+            --         }
+            --     )
             ]
         , controls model
         ]
@@ -82,41 +78,37 @@ controls model =
             [ Element.spacing whitespaceTight
             , Font.size textSize
             ]
-            [ controlButton
-                { content = Icon (Icons.createIconId "car-debug")
-
-                -- , onPress = ToggleDebugLayer CarDebug
-                , onPress = NoOp
-                , selected = Model.Debug.isLayerEnabled CarDebug model.debug
-                , disabled = False
-                , size = Large
-                }
-            , controlButton
-                { content = Icon (Icons.createIconId "spawn-car")
-
-                -- , onPress = TriggerDevAction SpawnTestCar
-                , onPress = NoOp
-                , selected = False
-                , disabled = False
-                , size = Large
-                }
-            , controlButton
-                { content = Icon (Icons.createIconId "lot-debug")
-
-                -- , onPress = ToggleDebugLayer LotDebug
-                , onPress = NoOp
-                , selected = Model.Debug.isLayerEnabled LotDebug model.debug
-                , disabled = False
-                , size = Large
-                }
-            , controlButton
-                { content = Icon (Icons.createIconId "graph-debug")
-
-                -- , onPress = ToggleDebugLayer RoadNetworkDebug
-                , onPress = NoOp
-                , selected = Model.Debug.isLayerEnabled RoadNetworkDebug model.debug
-                , disabled = False
-                , size = Large
-                }
+            [--     controlButton
+             --     { content = Icon (Icons.createIconId "car-debug")
+             --     -- , onPress = ToggleDebugLayer CarDebug
+             --     , onPress = NoOp
+             --     , selected = Model.Debug.isLayerEnabled CarDebug model.debug
+             --     , disabled = False
+             --     , size = Large
+             --     }
+             -- , controlButton
+             --     { content = Icon (Icons.createIconId "spawn-car")
+             --     -- , onPress = TriggerDevAction SpawnTestCar
+             --     , onPress = NoOp
+             --     , selected = False
+             --     , disabled = False
+             --     , size = Large
+             --     }
+             -- , controlButton
+             --     { content = Icon (Icons.createIconId "lot-debug")
+             --     -- , onPress = ToggleDebugLayer LotDebug
+             --     , onPress = NoOp
+             --     , selected = Model.Debug.isLayerEnabled LotDebug model.debug
+             --     , disabled = False
+             --     , size = Large
+             --     }
+             -- , controlButton
+             --     { content = Icon (Icons.createIconId "graph-debug")
+             --     -- , onPress = ToggleDebugLayer RoadNetworkDebug
+             --     , onPress = NoOp
+             --     , selected = Model.Debug.isLayerEnabled RoadNetworkDebug model.debug
+             --     , disabled = False
+             --     , size = Large
+             --     }
             ]
         ]

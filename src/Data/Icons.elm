@@ -1,66 +1,7 @@
-module Data.Icons exposing (IconId, chooseIcon, createIconId)
+module Data.Icons exposing (..)
 
-import Data.Colors as Colors
-import Dict exposing (Dict)
-import Html exposing (Html)
 import Svg exposing (Svg, path, svg)
 import Svg.Attributes as Attributes
-
-
-type IconId
-    = IconId String
-
-
-icons : Dict String (Html msg)
-icons =
-    Dict.fromList
-        [ ( "new-game", iconNewGame )
-        , ( "pause", iconPause )
-        , ( "resume", iconResume )
-        , ( "close", iconClose )
-        , ( "car-debug", iconCarDebug )
-        , ( "lot-debug", iconLotDebug )
-        , ( "graph-debug", iconGraphDebug )
-        , ( "spawn-car", iconSpawnCar )
-        ]
-
-
-chooseIcon : IconId -> ( Html msg, Colors.Color, Colors.Color )
-chooseIcon (IconId iconId) =
-    case Dict.get iconId icons of
-        Just iconHtml ->
-            ( iconHtml, Colors.gray7, Colors.gray1 )
-
-        Nothing ->
-            ( Html.div [] [], Colors.gray7, Colors.gray1 )
-
-
-createIconId : String -> IconId
-createIconId id =
-    IconId id
-
-
-
--- NewGame ->
---     ( iconNewGame, Colors.lightGreen, Colors.lightGreenDarker )
--- Pause ->
---     ( iconPause, Colors.darkBlue, Colors.darkBlueDarker )
--- Resume ->
---     ( iconResume, Colors.darkBlue, Colors.darkBlueDarker )
--- Back ->
---     ( iconBack, Colors.yellow, Colors.yellowDarker )
--- Close ->
---     ( iconClose, Colors.gray1, Colors.gray2 )
--- DebugPanel ->
---     ( iconDebug, Colors.red, Colors.redDarker )
--- CarDebug ->
---     ( iconCarDebug, Colors.gray5, Colors.gray6 )
--- LotDebug ->
---     ( iconLotDebug, Colors.gray5, Colors.gray6 )
--- GraphDebug ->
---     ( iconGraphDebug, Colors.gray5, Colors.gray6 )
--- SpawnCar ->
---     ( iconSpawnCar, Colors.gray5, Colors.gray6 )
 
 
 iconNewGame : Svg msg

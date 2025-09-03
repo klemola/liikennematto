@@ -25,16 +25,13 @@ import Tilemap.Cell as Cell
 import Tilemap.DrivenWFC exposing (DrivenWFC(..), drivenWfcDebug)
 import Tilemap.WFC as WFC
 import Time
+import UI.Button exposing (textButton)
 import UI.Core
     exposing
-        ( ControlButtonContent(..)
-        , ControlButtonSize(..)
-        , borderRadiusButton
-        , borderSize
+        ( borderSize
         , colorCardBackground
         , colorMenuBackgroundInverse
         , colorText
-        , controlButton
         , scrollbarAwareOffsetF
         , whitespaceRegular
         , whitespaceTight
@@ -78,27 +75,24 @@ devMenu onSelectView selectedView model =
             [ Element.spacing whitespaceTight
             , Font.size textSize
             ]
-            [ controlButton
-                { content = Text "Events"
-                , onPress = onSelectView EventQueueList
+            [ textButton
+                { onPress = onSelectView EventQueueList
                 , selected = selectedView == EventQueueList
                 , disabled = False
-                , size = FitToContent
                 }
-            , controlButton
-                { content = Text "WFC"
-                , onPress = onSelectView WFCOverview
+                "Events"
+            , textButton
+                { onPress = onSelectView WFCOverview
                 , selected = selectedView == WFCOverview
                 , disabled = False
-                , size = FitToContent
                 }
-            , controlButton
-                { content = Text "Cars"
-                , onPress = onSelectView CarsList
+                "WFC"
+            , textButton
+                { onPress = onSelectView CarsList
                 , selected = selectedView == CarsList
                 , disabled = False
-                , size = FitToContent
                 }
+                "Cars"
             ]
         , case selectedView of
             EventQueueList ->
@@ -185,7 +179,7 @@ cardAttributes height =
     , Font.size 13
     , Background.color colorCardBackground
     , Border.solid
-    , Border.rounded borderRadiusButton
+    , Border.rounded 10
     , Border.width borderSize
     , Border.color colorCardBackground
     ]

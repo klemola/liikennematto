@@ -38,7 +38,6 @@ import Tilemap.Core
 import UI.Core
     exposing
         ( InputKind(..)
-        , borderRadiusButton
         , cellHighlightWidth
         , colorTransparent
         , overlayId
@@ -79,6 +78,11 @@ type alias InputEvent =
     { cell : Cell
     , kind : InputKind
     }
+
+
+targetRadius : Int
+targetRadius =
+    10
 
 
 usingTouchDevice : Model -> Bool
@@ -398,7 +402,7 @@ cellHighlight cache world activeCell =
         , Element.moveRight (toFloat (cellX - 1) * tileSizePixels)
         , Element.moveDown (toFloat (cellY - 1) * tileSizePixels)
         , Border.width cellHighlightWidth
-        , Border.rounded borderRadiusButton
+        , Border.rounded targetRadius
         , Border.solid
         , Border.color
             (highlightColor world activeCell
@@ -438,7 +442,7 @@ highlightAreaView cache ( origin, area ) =
         , Element.moveRight x
         , Element.moveDown (cache.tilemapHeightPixels - y)
         , Border.width cellHighlightWidth
-        , Border.rounded borderRadiusButton
+        , Border.rounded targetRadius
         , Border.solid
         , Border.color UI.Core.colorDanger
         , Element.Background.color UI.Core.colorDanger

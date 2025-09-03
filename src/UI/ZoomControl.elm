@@ -6,8 +6,7 @@ import Element.Border as Border
 import Element.Input as Input
 import UI.Core
     exposing
-        ( borderRadiusButton
-        , borderSize
+        ( borderSize
         , colorBorder
         , colorMenuBackground
         , colorZoomStepGuide
@@ -110,7 +109,7 @@ view model =
         , Element.alignLeft
         , Element.alignBottom
         , Background.color colorMenuBackground
-        , Border.rounded borderRadiusButton
+        , Border.rounded 10
         ]
         (Input.slider
             [ Element.width (Element.px sliderWidth)
@@ -128,7 +127,7 @@ view model =
                     [ Element.width (Element.px thumbWidth)
                     , Element.height (Element.px thumbHeight)
                     , Background.color colorZoomThumbBackground
-                    , Border.rounded borderRadiusButton
+                    , Border.rounded 10
                     , Border.solid
                     , Border.width borderSize
                     , Border.color colorBorder
@@ -157,7 +156,7 @@ track =
         , Border.solid
         , Border.width borderSize
         , Border.color colorBorder
-        , Border.rounded borderRadiusButton
+        , Border.rounded 10
         , Element.inFront
             (Element.column
                 [ Element.height Element.fill
