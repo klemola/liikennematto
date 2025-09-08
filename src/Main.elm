@@ -25,11 +25,11 @@ import Simulation.Update as Simulation
 import Task
 import Tilemap.Update as Tilemap
 import Time
+import UI
 import UI.Core exposing (containerId, renderSafeAreaYSize)
 import UI.ErrorScreen
 import UI.Model
 import UI.SplashScreen
-import UI.UI
 
 
 main : Program FlagsJson Liikennematto Message
@@ -89,7 +89,7 @@ subscriptions model =
             , Events.onKeyUp keyReleasedDecoder
             , Time.every secondarySystemFrequencyMs (always (UpdateTilemap secondarySystemFrequencyDelta))
             , Audio.onAudioInitComplete (\_ -> AudioInitComplete)
-            , UI.UI.subscriptions model.ui |> Sub.map UIMsg
+            , UI.subscriptions model.ui |> Sub.map UIMsg
             ]
     in
     if not model.simulationActive then
@@ -163,7 +163,7 @@ updateBase msg model =
         KeyReleased key ->
             let
                 ( nextUi, uiMsg ) =
-                    UI.UI.onKeyPress key model.ui
+                    UI.onKeyPress key model.ui
             in
             ( { model | ui = nextUi }
             , Cmd.map UIMsg uiMsg
@@ -184,13 +184,13 @@ updateBase msg model =
         UIMsg uiMsg ->
             let
                 ( nextUi, uiCmd, uiEvent ) =
-                    UI.UI.update model.world model.renderCache.pixelsToMetersRatio uiMsg model.ui
+                    UI.update model.world model.renderCache.pixelsToMetersRatio uiMsg model.ui
 
                 ( modelWithUiEvent, uiEventCmd ) =
                     case uiEvent of
                         Just event ->
                             case event of
-                                UI.UI.GameInputReceived inputEvent ->
+                                UI.GameInputReceived inputEvent ->
                                     case inputEvent.kind of
                                         UI.Core.Primary ->
                                             Tilemap.onPrimaryInput inputEvent.cell model
@@ -198,13 +198,13 @@ updateBase msg model =
                                         UI.Core.Secondary ->
                                             Tilemap.onSecondaryInput inputEvent.cell model
 
-                                UI.UI.ButtonPressed buttonId ->
+                                UI.ButtonPressed buttonId ->
                                     onUiButtonPressed buttonId model
 
-                                UI.UI.ZoomLevelChanged zoomLevel ->
+                                UI.ZoomLevelChanged zoomLevel ->
                                     onZoomLevelChanged zoomLevel model
 
-                                UI.UI.DevViewSelected devView ->
+                                UI.DevViewSelected devView ->
                                     ( { model
                                         | debug =
                                             Model.Debug.setLayer Model.Debug.WFCDebug
@@ -372,7 +372,7 @@ view model =
     , body =
         [ case Liikennematto.currentState model of
             Liikennematto.InGame ->
-                UI.UI.view
+                UI.view
                     model
                     (render model)
                     (renderDebug model)

@@ -8,7 +8,7 @@ import Model.World exposing (LotPlacement, TilemapChange)
 import Task
 import Tilemap.DrivenWFC exposing (RunWFCResult)
 import Time
-import UI.UI
+import UI
 
 
 type Message
@@ -31,7 +31,7 @@ type Message
     | LotsPlaced (List LotPlacement)
     | TriggerDevAction DevAction
       -- UI
-    | UIMsg UI.UI.Msg
+    | UIMsg UI.Msg
 
 
 asCmd : Message -> Cmd Message

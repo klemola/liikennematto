@@ -1,4 +1,4 @@
-module UI.UI exposing
+module UI exposing
     ( Msg
     , UIEvent(..)
     , onKeyPress
