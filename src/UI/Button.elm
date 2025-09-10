@@ -1,6 +1,7 @@
 module UI.Button exposing
     ( ButtonConfig
     , iconButton
+    , iconButtonLarge
     , iconWithTextButton
     , textButton
     )
@@ -11,6 +12,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Svg exposing (Svg)
+import UI.Core exposing (whitespaceTight)
 
 
 borderRadiusPx : Int
@@ -25,7 +27,7 @@ borderSizePx =
 
 buttonHeightPx : Int
 buttonHeightPx =
-    42
+    48
 
 
 buttonHeightSmallPx : Int
@@ -70,13 +72,23 @@ buttonSize baseSize =
 
 
 iconButton : ButtonConfig msg -> Svg msg -> Element msg
-iconButton { onPress, selected, disabled } icon =
+iconButton =
+    createIconButton buttonHeightPx
+
+
+iconButtonLarge : ButtonConfig msg -> Svg msg -> Element msg
+iconButtonLarge =
+    createIconButton buttonHeightLargePx
+
+
+createIconButton : Int -> ButtonConfig msg -> Svg msg -> Element msg
+createIconButton buttonSizePx { onPress, selected, disabled } icon =
     let
         width =
-            buttonSize buttonHeightLargePx
+            buttonSize buttonSizePx
 
         height =
-            buttonSize buttonHeightLargePx
+            buttonSize buttonSizePx
 
         alpha =
             if disabled then
@@ -95,7 +107,13 @@ iconButton { onPress, selected, disabled } icon =
             [ Background.color bgColorActive ]
         , Element.mouseDown
             [ Background.color bgColorActive ]
-        , Background.color bgColor
+        , Background.color
+            (if selected then
+                bgColorActive
+
+             else
+                bgColor
+            )
         , Border.width borderSizePx
         , Border.rounded borderRadiusPx
         , Border.solid
@@ -120,9 +138,6 @@ iconButton { onPress, selected, disabled } icon =
 iconWithTextButton : ButtonConfig msg -> String -> Svg msg -> Element msg
 iconWithTextButton { onPress, selected, disabled } textContent icon =
     let
-        width =
-            Element.px 100
-
         height =
             buttonSize buttonHeightPx
 
@@ -135,7 +150,7 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
     in
     Input.button
         [ Background.color bgColor
-        , Element.width width
+        , Element.width Element.fill
         , Element.height height
         , Element.padding 0
         , Element.alpha alpha
@@ -147,7 +162,7 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
         , Font.bold
         , Font.size 14
         , Font.color contentColor
-        , Border.width borderSizePx
+        , Border.width 1
         , Border.rounded borderRadiusPx
         , Border.solid
         , Border.color
@@ -165,9 +180,16 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
             else
                 Just onPress
         , label =
-            Element.row []
-                [ Element.html icon
-                , Element.text textContent
+            Element.row
+                [ Element.spacing whitespaceTight
+                ]
+                [ Element.el
+                    [ Element.width (Element.px 80)
+                    , Element.height (Element.px 80)
+                    ]
+                    (Element.html icon)
+                , Element.el []
+                    (Element.text textContent)
                 ]
         }
 

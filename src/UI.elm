@@ -11,6 +11,7 @@ import Data.Icons as Icons
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Font as Font
 import Html exposing (Html)
 import Html.Attributes as HtmlAttribute
 import Html.Events.Extra.Mouse as Mouse
@@ -18,13 +19,14 @@ import Model.Debug exposing (DebugLayerKind(..))
 import Model.Liikennematto exposing (Liikennematto)
 import Model.World exposing (World)
 import Render.Conversion exposing (PixelsToMetersRatio)
-import UI.Button exposing (iconButton)
+import Tilemap.Cell exposing (bottomLeftCorner)
+import UI.Button exposing (iconButton, iconWithTextButton)
 import UI.Core
     exposing
         ( borderRadiusPanel
         , borderSize
+        , colorBorder
         , colorMainBackground
-        , colorMenuBackground
         , colorRenderEdge
         , containerId
         , renderSafeAreaXSize
@@ -36,7 +38,7 @@ import UI.Core
 import UI.Editor as Editor
 import UI.Model as Model
     exposing
-        ( ButtonKind
+        ( ButtonKind(..)
         , DevView
         , UI
         , ZoomLevel(..)
@@ -80,6 +82,29 @@ touchLayoutOptions =
 
 borderRadiusRender =
     10
+
+
+colorMenuBackground : Element.Color
+colorMenuBackground =
+    Element.rgb255 190 198 213
+
+
+colorMenuBackgroundAlt : Element.Color
+colorMenuBackgroundAlt =
+    Element.rgb255 177 187 205
+
+
+borderColor =
+    Element.rgb255 112 131 164
+
+
+uiButtonTxtColor =
+    Element.rgb255 44 53 68
+
+
+borderRadiusMenu : Int
+borderRadiusMenu =
+    8
 
 
 subscriptions : UI -> Sub Msg
@@ -234,8 +259,7 @@ view liikennematto render renderDebugLayers =
         , Element.width Element.fill
         , Element.height Element.fill
         , Element.scrollbars
-        , Element.inFront (rightControls liikennematto.ui)
-        , Element.inFront (leftControls liikennematto.simulationActive)
+        , Element.inFront (gameControls liikennematto.simulationActive)
         , Element.inFront (menu liikennematto.ui)
         , Element.inFront (devMenu liikennematto liikennematto.ui)
         , Element.htmlAttribute (HtmlAttribute.id containerId)
@@ -305,48 +329,21 @@ renderWrapper { renderCache, world, screen } render debugLayers model =
         )
 
 
-leftControls : Bool -> Element Msg
-leftControls simulationActive =
+gameControls : Bool -> Element Msg
+gameControls simulationActive =
     Element.row
         [ Element.spacing whitespaceTight
         , Element.alignBottom
         , Element.alignLeft
         , Element.moveUp scrollbarAwareOffsetF
-        , Element.moveRight scrollbarAwareOffsetF
         ]
         [ Element.el
             [ Element.padding whitespaceTight
             , Element.spacing whitespaceTight
             , Element.alignBottom
             , Background.color colorMenuBackground
-            , Border.rounded borderRadiusPanel
             ]
             (simulationControl simulationActive)
-        ]
-
-
-rightControls : UI -> Element Msg
-rightControls model =
-    Element.row
-        [ Element.padding whitespaceTight
-        , Element.spacing whitespaceTight
-        , Element.alignBottom
-        , Element.alignRight
-        , Element.moveUp scrollbarAwareOffsetF
-        , Element.moveLeft scrollbarAwareOffsetF
-        , Background.color colorMenuBackground
-        , Border.rounded borderRadiusPanel
-        ]
-        [ Element.row
-            [ Element.spacing whitespaceTight
-            ]
-            [ iconButton
-                { onPress = Trigger Model.NewGame
-                , selected = False
-                , disabled = False
-                }
-                Icons.iconNewGame
-            ]
         ]
 
 
@@ -370,11 +367,146 @@ simulationControl simulationActive =
 
 menu : UI -> Element Msg
 menu model =
-    if model.showMenu then
-        Element.none
+    Element.column
+        [ Element.alignTop
+        , Element.alignRight
+        , Element.width (Element.px 220)
+        , Element.moveDown 10
+        , Element.moveLeft scrollbarAwareOffsetF
+        , Background.color colorMenuBackground
+        , Border.rounded borderRadiusMenu
+        , Border.color borderColor
+        , Border.width 2
+        ]
+        [ Element.row
+            [ Element.spacing whitespaceTight
+            , Element.padding whitespaceRegular
+            , Element.width Element.fill
+            , Background.color colorMenuBackgroundAlt
+            , Border.roundEach
+                { topLeft = borderRadiusMenu
+                , topRight = borderRadiusMenu
+                , bottomLeft =
+                    if model.showMenu then
+                        0
 
-    else
-        Element.none
+                    else
+                        borderRadiusMenu
+                , bottomRight =
+                    if model.showMenu then
+                        0
+
+                    else
+                        borderRadiusMenu
+                }
+            ]
+            [ Element.el [ Element.alignRight ]
+                (iconButton
+                    { onPress = ToggleMenu
+                    , selected = model.showMenu
+                    , disabled = False
+                    }
+                    Icons.iconMenu
+                )
+            ]
+        , Element.column
+            [ Element.height
+                (if model.showMenu then
+                    Element.px 420
+
+                 else
+                    Element.px 0
+                )
+            , Element.width Element.fill
+            , Element.clipY
+            , Element.paddingXY 10 32
+            , Element.spacing 24
+            , Border.color borderColor
+            , Border.widthEach
+                { top =
+                    if model.showMenu then
+                        1
+
+                    else
+                        0
+                , left = 0
+                , bottom = 0
+                , right = 0
+                }
+            , Border.roundEach
+                { topLeft = 0
+                , topRight = 0
+                , bottomLeft = borderRadiusMenu
+                , bottomRight = borderRadiusMenu
+                }
+            ]
+            [ Element.column
+                [ Element.width Element.fill
+                ]
+                [ iconWithTextButton
+                    { onPress = Trigger NewGame
+                    , selected = False
+                    , disabled = False
+                    }
+                    "New game"
+                    Icons.iconNewGame
+                ]
+            , Element.column
+                [ Element.width Element.fill
+                , Element.paddingXY 8 6
+                , Element.spacing 6
+                , Background.color colorMenuBackgroundAlt
+                , Border.rounded borderRadiusMenu
+                , Border.color colorBorder
+                , Border.width 1
+                ]
+                [ Element.el
+                    [ Font.size 14
+                    , Font.bold
+                    , Font.color uiButtonTxtColor
+                    ]
+                    (Element.text "Peek under the hood")
+                , iconWithTextButton
+                    { onPress = Trigger ToggleLotDebug
+                    , selected = False
+                    , disabled = False
+                    }
+                    "Parking"
+                    Icons.iconLotDebug
+                , iconWithTextButton
+                    { onPress = Trigger ToggleCarDebug
+                    , selected = False
+                    , disabled = False
+                    }
+                    "Pathfinding"
+                    Icons.iconCarDebug
+                , iconWithTextButton
+                    { onPress = Trigger ToggleGraphDebug
+                    , selected = False
+                    , disabled = False
+                    }
+                    "Road network"
+                    Icons.iconGraphDebug
+                ]
+            , Element.column
+                [ Element.width Element.fill
+                , Element.paddingXY 8 6
+                , Element.spacing 6
+                , Background.color colorMenuBackgroundAlt
+                , Border.rounded borderRadiusMenu
+                , Border.color colorBorder
+                , Border.width 1
+                ]
+                [ iconWithTextButton
+                    { onPress = Trigger SpawnCar
+                    , selected = False
+                    , disabled = False
+                    }
+                    "Add car"
+                    Icons.iconSpawnCar
+                ]
+            ]
+        ]
 
 
 devMenu : Liikennematto -> UI -> Element Msg

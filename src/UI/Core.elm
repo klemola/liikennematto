@@ -8,7 +8,6 @@ module UI.Core exposing
     , colorDanger
     , colorErrorScreenBackground
     , colorMainBackground
-    , colorMenuBackground
     , colorMenuBackgroundInverse
     , colorNotAllowed
     , colorRenderEdge
@@ -149,11 +148,6 @@ colorMainBackground =
     uiCompat Colors.lightGreen
 
 
-colorMenuBackground : Element.Color
-colorMenuBackground =
-    uiCompat (Colors.withAlpha 0.35 Colors.gray7)
-
-
 colorMenuBackgroundInverse : Element.Color
 colorMenuBackgroundInverse =
     uiCompat (Colors.withAlpha 0.35 Colors.gray1)
@@ -171,11 +165,6 @@ colorText =
 
 colorTextInverse : Element.Color
 colorTextInverse =
-    uiCompat Colors.gray7
-
-
-colorSelected : Element.Color
-colorSelected =
     uiCompat Colors.gray7
 
 
