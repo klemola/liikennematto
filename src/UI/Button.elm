@@ -11,13 +11,14 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
+import Html
 import Svg exposing (Svg)
-import UI.Core exposing (whitespaceTight)
+import UI.Core exposing (whitespaceRegular, whitespaceTight)
 
 
 borderRadiusPx : Int
 borderRadiusPx =
-    10
+    4
 
 
 borderSizePx : Int
@@ -27,7 +28,7 @@ borderSizePx =
 
 buttonHeightPx : Int
 buttonHeightPx =
-    48
+    42
 
 
 buttonHeightSmallPx : Int
@@ -48,7 +49,7 @@ type alias ButtonConfig msg =
 
 
 bgColor =
-    Element.rgb255 239 241 245
+    Element.rgb255 233 236 241
 
 
 bgColorActive =
@@ -139,7 +140,7 @@ iconWithTextButton : ButtonConfig msg -> String -> Svg msg -> Element msg
 iconWithTextButton { onPress, selected, disabled } textContent icon =
     let
         height =
-            buttonSize buttonHeightPx
+            Element.px buttonHeightPx
 
         alpha =
             if disabled then
@@ -151,17 +152,12 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
     Input.button
         [ Background.color bgColor
         , Element.width Element.fill
-        , Element.height height
-        , Element.padding 0
+        , Element.height Element.shrink
         , Element.alpha alpha
-        , Element.clip
         , Element.mouseOver
             [ Background.color bgColorActive ]
         , Element.mouseDown
             [ Background.color bgColorActive ]
-        , Font.bold
-        , Font.size 14
-        , Font.color contentColor
         , Border.width 1
         , Border.rounded borderRadiusPx
         , Border.solid
@@ -181,14 +177,37 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
                 Just onPress
         , label =
             Element.row
-                [ Element.spacing whitespaceTight
+                [ Element.spacing whitespaceRegular
+                , Element.width Element.fill
+                , Element.height height
+                , Element.clip
                 ]
-                [ Element.el
-                    [ Element.width (Element.px 80)
-                    , Element.height (Element.px 80)
+                [ Element.html
+                    (Html.node "style"
+                        []
+                        [ Html.text "svg {width:42px;height: 42px;border-radius:3.1px 0 0 3.1px}" ]
+                    )
+                , Element.el
+                    [ Element.width height
+                    , Element.height Element.fill
+                    , Element.clip
+                    , Border.solid
+                    , Border.color borderColor
+                    , Border.widthEach
+                        { right = 1
+                        , top = 0
+                        , bottom = 0
+                        , left = 0
+                        }
                     ]
                     (Element.html icon)
-                , Element.el []
+                , Element.el
+                    [ Element.width Element.fill
+                    , Element.centerY
+                    , Font.bold
+                    , Font.size 14
+                    , Font.color contentColor
+                    ]
                     (Element.text textContent)
                 ]
         }
