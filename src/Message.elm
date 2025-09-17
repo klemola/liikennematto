@@ -3,7 +3,6 @@ module Message exposing (Message(..), asCmd)
 import Browser.Dom
 import Browser.Events exposing (Visibility)
 import Duration exposing (Duration)
-import Model.Debug exposing (DevAction)
 import Model.World exposing (LotPlacement, TilemapChange)
 import Task
 import Tilemap.DrivenWFC exposing (RunWFCResult)
@@ -29,7 +28,6 @@ type Message
     | WFCChunkProcessed RunWFCResult
     | TilemapChanged TilemapChange
     | LotsPlaced (List LotPlacement)
-    | TriggerDevAction DevAction
       -- UI
     | UIMsg UI.Msg
 

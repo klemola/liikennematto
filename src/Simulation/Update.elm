@@ -1,4 +1,4 @@
-module Simulation.Update exposing (addLot, update)
+module Simulation.Update exposing (addLot, spawnCar, update)
 
 import Common exposing (addMillisecondsToPosix)
 import Data.Lots exposing (NewLot)
@@ -117,19 +117,6 @@ update msg model =
             , Cmd.none
             )
 
-        TriggerDevAction action ->
-            case action of
-                SpawnTestCar ->
-                    ( { model
-                        | world =
-                            World.addEvent
-                                World.SpawnTestCar
-                                model.time
-                                model.world
-                      }
-                    , Cmd.none
-                    )
-
         _ ->
             ( model, Cmd.none )
 
@@ -195,6 +182,19 @@ removeOrphanLots tilemapChange world =
                         World.removeLot lotEntryLotId nextWorld
             )
             world
+
+
+spawnCar : Liikennematto -> ( Liikennematto, Cmd Message )
+spawnCar model =
+    ( { model
+        | world =
+            World.addEvent
+                World.SpawnTestCar
+                model.time
+                model.world
+      }
+    , Cmd.none
+    )
 
 
 

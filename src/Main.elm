@@ -301,8 +301,29 @@ onUiButtonPressed buttonId model =
             , gameActionsToCmd transitionActions
             )
 
-        _ ->
+        UI.Model.ZoomIn ->
             ( model, Cmd.none )
+
+        UI.Model.ZoomOut ->
+            ( model, Cmd.none )
+
+        UI.Model.SpawnCar ->
+            Simulation.spawnCar model
+
+        UI.Model.ToggleCarDebug ->
+            ( { model | debug = Model.Debug.toggleLayer Model.Debug.CarDebug model.debug }
+            , Cmd.none
+            )
+
+        UI.Model.ToggleLotDebug ->
+            ( { model | debug = Model.Debug.toggleLayer Model.Debug.LotDebug model.debug }
+            , Cmd.none
+            )
+
+        UI.Model.ToggleGraphDebug ->
+            ( { model | debug = Model.Debug.toggleLayer Model.Debug.RoadNetworkDebug model.debug }
+            , Cmd.none
+            )
 
 
 onZoomLevelChanged : UI.Model.ZoomLevel -> Liikennematto -> ( Liikennematto, Cmd Message )
