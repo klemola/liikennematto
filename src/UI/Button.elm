@@ -12,6 +12,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Html
+import Html.Attributes as HtmlAttribute
 import Svg exposing (Svg)
 import UI.Core exposing (whitespaceRegular, whitespaceTight)
 
@@ -181,11 +182,12 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
                 , Element.width Element.fill
                 , Element.height height
                 , Element.clip
+                , Element.htmlAttribute (HtmlAttribute.class "lm-ui-button")
                 ]
                 [ Element.html
                     (Html.node "style"
                         []
-                        [ Html.text "svg {width:42px;height: 42px;border-radius:3.1px 0 0 3.1px}" ]
+                        [ Html.text ".lm-ui-button svg {width:42px;height: 42px;border-radius:3.1px 0 0 3.1px}" ]
                     )
                 , Element.el
                     [ Element.width height
