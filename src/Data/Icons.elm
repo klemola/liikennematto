@@ -262,8 +262,8 @@ iconClose =
         ]
 
 
-iconGraphDebug : Svg msg
-iconGraphDebug =
+iconRoadNetworkDebug : Svg msg
+iconRoadNetworkDebug =
     Svg.svg
         [ Attr.width "256"
         , Attr.height "256"

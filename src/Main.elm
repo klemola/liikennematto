@@ -320,7 +320,7 @@ onUiButtonPressed buttonId model =
             , Cmd.none
             )
 
-        UI.Model.ToggleGraphDebug ->
+        UI.Model.ToggleRoadNetworkDebug ->
             ( { model | debug = Model.Debug.toggleLayer Model.Debug.RoadNetworkDebug model.debug }
             , Cmd.none
             )

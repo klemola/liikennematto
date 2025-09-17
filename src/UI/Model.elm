@@ -26,7 +26,7 @@ type ButtonKind
     | ZoomOut
     | ToggleCarDebug
     | ToggleLotDebug
-    | ToggleGraphDebug
+    | ToggleRoadNetworkDebug
     | SpawnCar
 
 

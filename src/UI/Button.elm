@@ -14,7 +14,7 @@ import Element.Input as Input
 import Html
 import Html.Attributes as HtmlAttribute
 import Svg exposing (Svg)
-import UI.Core exposing (whitespaceRegular, whitespaceTight)
+import UI.Core exposing (whitespaceRegular)
 
 
 borderRadiusPx : Int
@@ -260,26 +260,3 @@ textButton { onPress, selected, disabled } textContent =
                 Just onPress
         , label = Element.text textContent
         }
-
-
-
--- ( width, height, padding, content ) =
---             case kind of
---                 IconAndText content ->
---                     ( buttonSize (controlButtonSize // 2)
---                     , buttonSize (controlButtonSize // 2)
---                     , 0
---                     , content
---                     )
---                 IconAndText content ->
---                     ( buttonSize (controlButtonSize // 2)
---                     , buttonSize (controlButtonSize // 2)
---                     , 0
---                     , content
---                     )
---                 IconOnly ->
---                     ( buttonSize controlButtonSize
---                     , buttonSize controlButtonSize
---                     , 0
---                     , ""
---                     )

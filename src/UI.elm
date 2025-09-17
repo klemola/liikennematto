@@ -265,7 +265,7 @@ view liikennematto render renderDebugLayers =
         , Element.height Element.fill
         , Element.scrollbars
         , Element.inFront (gameControls liikennematto.simulationActive)
-        , Element.inFront (menu liikennematto.ui)
+        , Element.inFront (menu liikennematto.debug liikennematto.ui)
         , Element.inFront (devMenu liikennematto liikennematto.ui)
         , Element.htmlAttribute (HtmlAttribute.id containerId)
         , Element.htmlAttribute (HtmlAttribute.style "touch-action" "pan-x pan-y")
@@ -370,8 +370,8 @@ simulationControl simulationActive =
         iconSvg
 
 
-menu : UI -> Element Msg
-menu model =
+menu : Model.Debug.DebugState -> UI -> Element Msg
+menu debugState model =
     let
         contentSpacingPx =
             24
@@ -474,25 +474,25 @@ menu model =
                     (Element.text "Peek under the hood")
                 , iconWithTextButton
                     { onPress = Trigger ToggleLotDebug
-                    , selected = False
+                    , selected = Model.Debug.isLayerEnabled LotDebug debugState
                     , disabled = False
                     }
                     "Parking"
                     Icons.iconLotDebug
                 , iconWithTextButton
                     { onPress = Trigger ToggleCarDebug
-                    , selected = False
+                    , selected = Model.Debug.isLayerEnabled CarDebug debugState
                     , disabled = False
                     }
                     "Pathfinding"
                     Icons.iconCarDebug
                 , iconWithTextButton
-                    { onPress = Trigger ToggleGraphDebug
-                    , selected = False
+                    { onPress = Trigger ToggleRoadNetworkDebug
+                    , selected = Model.Debug.isLayerEnabled RoadNetworkDebug debugState
                     , disabled = False
                     }
                     "Road network"
-                    Icons.iconGraphDebug
+                    Icons.iconRoadNetworkDebug
                 ]
             , Element.column
                 menuSectionAttrs
