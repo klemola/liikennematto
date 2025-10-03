@@ -29,10 +29,8 @@ import UI.Button exposing (textButton)
 import UI.Core
     exposing
         ( borderSize
-        , colorCardBackground
-        , colorMenuBackgroundInverse
-        , colorText
         , scrollbarAwareOffsetF
+        , uiColorText
         , whitespaceRegular
         , whitespaceTight
         )
@@ -59,6 +57,16 @@ textSizeMini =
     12
 
 
+bgColor : Element.Color
+bgColor =
+    Element.rgba255 61 52 52 0.3
+
+
+cardBgColor : Element.Color
+cardBgColor =
+    Element.rgb 118 101 101
+
+
 devMenu : (DevView -> msg) -> DevView -> Liikennematto -> Element msg
 devMenu onSelectView selectedView model =
     Element.column
@@ -68,7 +76,7 @@ devMenu onSelectView selectedView model =
         , Element.padding whitespaceRegular
         , Element.spacing whitespaceTight
         , Element.width (Element.px 600)
-        , Background.color colorMenuBackgroundInverse
+        , Background.color bgColor
         , Border.rounded borderRadiusPanel
         ]
         [ Element.row
@@ -115,7 +123,7 @@ wfcOutput wfcLog currentTime drivenWfc =
         , Element.height (Element.px 420)
         , Font.family [ Font.monospace ]
         , Font.size textSizeMini
-        , Background.color colorCardBackground
+        , Background.color cardBgColor
         , Border.rounded borderRadiusPanel
         ]
         (case drivenWfc of
@@ -176,13 +184,13 @@ cardAttributes height =
     , Element.padding whitespaceTight
     , Element.spacing UI.Core.whitespaceTight
     , Element.clipX
-    , Font.color colorText
+    , Font.color uiColorText
     , Font.size 13
-    , Background.color colorCardBackground
+    , Background.color cardBgColor
     , Border.solid
     , Border.rounded 10
     , Border.width borderSize
-    , Border.color colorCardBackground
+    , Border.color cardBgColor
     ]
 
 

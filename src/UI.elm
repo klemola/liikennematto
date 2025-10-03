@@ -36,6 +36,8 @@ import UI.Core
         , renderSafeAreaXSize
         , renderSafeAreaYSize
         , scrollbarAwareOffsetF
+        , uiColorBorder
+        , uiColorText
         , whitespaceRegular
         , whitespaceTight
         )
@@ -91,20 +93,12 @@ uiFont =
 
 menuBackgroundColor : Element.Color
 menuBackgroundColor =
-    Element.rgb255 190 198 213
+    Element.rgb255 186 197 216
 
 
 menuBackgroundColorAlt : Element.Color
 menuBackgroundColorAlt =
-    Element.rgb255 177 187 205
-
-
-borderColor =
-    Element.rgb255 112 131 164
-
-
-uiButtonTxtColor =
-    Element.rgb255 44 53 68
+    Element.rgb255 173 186 209
 
 
 menuButtonSpacingPx =
@@ -473,7 +467,7 @@ menu debugState model =
         , Element.moveLeft scrollbarAwareOffsetF
         , Background.color menuBackgroundColor
         , Border.rounded borderRadiusMenuPx
-        , Border.color borderColor
+        , Border.color uiColorBorder
         , Border.width 2
         ]
         [ Element.row
@@ -505,7 +499,7 @@ menu debugState model =
         , Element.column
             ([ Element.width Element.fill
              , Element.spacing contentSpacingPx
-             , Border.color borderColor
+             , Border.color uiColorBorder
              , Border.roundEach
                 { topLeft = 0
                 , topRight = 0
@@ -537,7 +531,7 @@ menu debugState model =
                 [ Element.el
                     [ Font.size fontSizeSectionHeading
                     , Font.bold
-                    , Font.color uiButtonTxtColor
+                    , Font.color uiColorText
                     ]
                     (Element.text "Peek under the hood")
                 , iconWithTextButton
@@ -583,7 +577,7 @@ menuSectionAttrs =
     , Element.spacing menuButtonSpacingPx
     , Background.color menuBackgroundColorAlt
     , Border.rounded borderRadiusMenuPx
-    , Border.color borderColor
+    , Border.color uiColorBorder
     , Border.width 1
     ]
 

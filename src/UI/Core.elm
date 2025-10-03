@@ -1,35 +1,22 @@
 module UI.Core exposing
     ( InputKind(..)
-    , borderRadiusPanel
     , borderSize
     , cellHighlightWidth
-    , colorBorder
-    , colorCardBackground
     , colorDanger
-    , colorErrorScreenBackground
     , colorMainBackground
-    , colorMenuBackgroundInverse
     , colorNotAllowed
     , colorRenderEdge
-    , colorSplashScreenBackground
     , colorTarget
-    , colorText
-    , colorTextInverse
     , colorTransparent
-    , colorZoomStepGuide
-    , colorZoomThumbBackground
-    , colorZoomTrackBackground
     , containerId
     , overlayId
     , renderSafeAreaXSize
     , renderSafeAreaYSize
     , scrollbarAwareOffsetF
-    , textSize
+    , uiColorBorder
+    , uiColorText
     , whitespaceRegular
     , whitespaceTight
-    , zoomControlWidth
-    , zoomTrackHeight
-    , zoomTrackWidth
     )
 
 import Data.Colors as Colors exposing (uiCompat)
@@ -77,11 +64,6 @@ borderSize =
     2
 
 
-borderRadiusPanel : Int
-borderRadiusPanel =
-    15
-
-
 scrollbarAwareOffset : Int
 scrollbarAwareOffset =
     18
@@ -102,26 +84,6 @@ renderSafeAreaYSize =
     baseSpacing * 4 + scrollbarAwareOffset
 
 
-textSize : Int
-textSize =
-    14
-
-
-zoomControlWidth : Int
-zoomControlWidth =
-    baseSpacing + (whitespaceTight * 2)
-
-
-zoomTrackHeight : Int
-zoomTrackHeight =
-    baseSpacing * 8
-
-
-zoomTrackWidth : Int
-zoomTrackWidth =
-    14
-
-
 cellHighlightWidth : Int
 cellHighlightWidth =
     3
@@ -133,39 +95,19 @@ cellHighlightWidth =
 --
 
 
-colorSplashScreenBackground : Element.Color
-colorSplashScreenBackground =
-    uiCompat Colors.gray7
-
-
-colorErrorScreenBackground : Element.Color
-colorErrorScreenBackground =
-    uiCompat Colors.red
-
-
 colorMainBackground : Element.Color
 colorMainBackground =
     uiCompat Colors.lightGreen
 
 
-colorMenuBackgroundInverse : Element.Color
-colorMenuBackgroundInverse =
-    uiCompat (Colors.withAlpha 0.35 Colors.gray1)
+uiColorText : Element.Color
+uiColorText =
+    Element.rgb255 40 52 72
 
 
-colorCardBackground : Element.Color
-colorCardBackground =
-    uiCompat Colors.gray6
-
-
-colorText : Element.Color
-colorText =
-    uiCompat Colors.gray2
-
-
-colorTextInverse : Element.Color
-colorTextInverse =
-    uiCompat Colors.gray7
+uiColorBorder : Element.Color
+uiColorBorder =
+    Element.rgb255 105 129 171
 
 
 colorDanger : Element.Color
@@ -191,23 +133,3 @@ colorTransparent =
 colorRenderEdge : Element.Color
 colorRenderEdge =
     uiCompat Colors.darkGreen
-
-
-colorBorder : Element.Color
-colorBorder =
-    uiCompat Colors.gray1
-
-
-colorZoomTrackBackground : Element.Color
-colorZoomTrackBackground =
-    uiCompat Colors.darkBlue
-
-
-colorZoomThumbBackground : Element.Color
-colorZoomThumbBackground =
-    uiCompat Colors.gray6
-
-
-colorZoomStepGuide : Element.Color
-colorZoomStepGuide =
-    uiCompat Colors.gray6

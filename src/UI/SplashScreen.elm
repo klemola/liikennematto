@@ -6,7 +6,6 @@ import Html exposing (Html)
 import Model.Screen exposing (Screen)
 import Svg exposing (Svg, path, svg)
 import Svg.Attributes as Attributes
-import UI.Core exposing (colorSplashScreenBackground)
 
 
 view : Screen -> Html msg
@@ -24,7 +23,7 @@ view screen =
             min 640.0 (toFloat screen.width * logoWidthMultiplier)
     in
     Element.layout
-        [ Background.color colorSplashScreenBackground
+        [ Background.color (Element.rgb255 249 249 233)
         , Element.width Element.fill
         , Element.height Element.fill
         , Element.clip

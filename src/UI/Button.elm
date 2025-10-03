@@ -14,7 +14,12 @@ import Element.Input as Input
 import Html
 import Html.Attributes as HtmlAttribute
 import Svg exposing (Svg)
-import UI.Core exposing (whitespaceRegular)
+import UI.Core
+    exposing
+        ( uiColorBorder
+        , uiColorText
+        , whitespaceRegular
+        )
 
 
 defaultBorderRadiusPx : Int
@@ -40,23 +45,15 @@ type alias ButtonConfig msg =
 
 
 bgColor =
-    Element.rgb255 233 236 241
+    Element.rgb255 232 236 242
 
 
 bgColorActive =
     Element.rgb255 253 253 247
 
 
-borderColor =
-    Element.rgb255 112 131 164
-
-
 borderColorActive =
-    Element.rgb255 64 133 201
-
-
-contentColor =
-    Element.rgb255 44 53 68
+    Element.rgb255 69 133 196
 
 
 buttonSize baseSize =
@@ -114,7 +111,7 @@ createIconButton borderRadiusPx { onPress, selected, disabled } buttonSizePx ico
                 borderColorActive
 
              else
-                borderColor
+                uiColorBorder
             )
         ]
         { onPress =
@@ -157,7 +154,7 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
                 borderColorActive
 
              else
-                borderColor
+                uiColorBorder
             )
         ]
         { onPress =
@@ -184,7 +181,7 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
                     , Element.height Element.fill
                     , Element.clip
                     , Border.solid
-                    , Border.color borderColor
+                    , Border.color uiColorBorder
                     , Border.widthEach
                         { right = 1
                         , top = 0
@@ -198,7 +195,7 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
                     , Element.centerY
                     , Font.bold
                     , Font.size 14
-                    , Font.color contentColor
+                    , Font.color uiColorText
                     , Font.letterSpacing 0.5
                     ]
                     (Element.text textContent)
@@ -231,7 +228,7 @@ textButton { onPress, selected, disabled } textContent =
         , Element.mouseDown
             [ Background.color bgColorActive ]
         , Font.size 14
-        , Font.color contentColor
+        , Font.color uiColorText
         , Font.bold
         , Font.letterSpacing 0.5
         , Border.width borderSizePx
@@ -242,7 +239,7 @@ textButton { onPress, selected, disabled } textContent =
                 borderColorActive
 
              else
-                borderColor
+                uiColorBorder
             )
         ]
         { onPress =
