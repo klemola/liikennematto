@@ -199,6 +199,7 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
                     , Font.bold
                     , Font.size 14
                     , Font.color contentColor
+                    , Font.letterSpacing 0.5
                     ]
                     (Element.text textContent)
                 ]
@@ -229,8 +230,10 @@ textButton { onPress, selected, disabled } textContent =
             [ Background.color bgColorActive ]
         , Element.mouseDown
             [ Background.color bgColorActive ]
-        , Font.size 12
+        , Font.size 14
         , Font.color contentColor
+        , Font.bold
+        , Font.letterSpacing 0.5
         , Border.width borderSizePx
         , Border.rounded defaultBorderRadiusPx
         , Border.solid

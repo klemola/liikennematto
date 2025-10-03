@@ -84,6 +84,11 @@ touchLayoutOptions =
     Element.noHover :: baseLayoutOptions
 
 
+uiFont : Font.Font
+uiFont =
+    Font.typeface "M PLUS Rounded 1c"
+
+
 menuBackgroundColor : Element.Color
 menuBackgroundColor =
     Element.rgb255 190 198 213
@@ -258,6 +263,7 @@ view liikennematto render renderDebugLayers =
         , Element.htmlAttribute (HtmlAttribute.id containerId)
         , Element.htmlAttribute (HtmlAttribute.style "touch-action" "pan-x pan-y")
         , Element.htmlAttribute (Mouse.onContextMenu (\_ -> NoOp))
+        , Font.family [ uiFont, Font.sansSerif ]
         ]
         (renderWrapper liikennematto render renderDebugLayers liikennematto.ui)
 
@@ -460,7 +466,7 @@ menu debugState model =
     Element.column
         [ Element.alignTop
         , Element.alignRight
-        , Element.width (Element.px 200)
+        , Element.width (Element.px 208)
         , Element.height Element.shrink
         , Element.clipY
         , Element.moveDown 10
