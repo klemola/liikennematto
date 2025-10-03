@@ -1,8 +1,8 @@
 module UI.Button exposing
     ( ButtonConfig
     , iconButton
-    , iconButtonLarge
     , iconWithTextButton
+    , roundIconButton
     , textButton
     )
 
@@ -17,8 +17,8 @@ import Svg exposing (Svg)
 import UI.Core exposing (whitespaceRegular)
 
 
-borderRadiusPx : Int
-borderRadiusPx =
+defaultBorderRadiusPx : Int
+defaultBorderRadiusPx =
     4
 
 
@@ -30,16 +30,6 @@ borderSizePx =
 buttonHeightPx : Int
 buttonHeightPx =
     42
-
-
-buttonHeightSmallPx : Int
-buttonHeightSmallPx =
-    28
-
-
-buttonHeightLargePx : Int
-buttonHeightLargePx =
-    64
 
 
 type alias ButtonConfig msg =
@@ -73,18 +63,18 @@ buttonSize baseSize =
     Element.px (baseSize - (2 * borderSizePx))
 
 
-iconButton : ButtonConfig msg -> Svg msg -> Element msg
+iconButton : ButtonConfig msg -> Int -> Svg msg -> Element msg
 iconButton =
-    createIconButton buttonHeightPx
+    createIconButton defaultBorderRadiusPx
 
 
-iconButtonLarge : ButtonConfig msg -> Svg msg -> Element msg
-iconButtonLarge =
-    createIconButton buttonHeightLargePx
+roundIconButton : ButtonConfig msg -> Int -> Svg msg -> Element msg
+roundIconButton config buttonSizePx icon =
+    createIconButton (buttonSizePx // 2) config buttonSizePx icon
 
 
-createIconButton : Int -> ButtonConfig msg -> Svg msg -> Element msg
-createIconButton buttonSizePx { onPress, selected, disabled } icon =
+createIconButton : Int -> ButtonConfig msg -> Int -> Svg msg -> Element msg
+createIconButton borderRadiusPx { onPress, selected, disabled } buttonSizePx icon =
     let
         width =
             buttonSize buttonSizePx
@@ -94,7 +84,7 @@ createIconButton buttonSizePx { onPress, selected, disabled } icon =
 
         alpha =
             if disabled then
-                0.5
+                0.65
 
             else
                 1
@@ -160,7 +150,7 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
         , Element.mouseDown
             [ Background.color bgColorActive ]
         , Border.width 1
-        , Border.rounded borderRadiusPx
+        , Border.rounded defaultBorderRadiusPx
         , Border.solid
         , Border.color
             (if selected then
@@ -242,7 +232,7 @@ textButton { onPress, selected, disabled } textContent =
         , Font.size 12
         , Font.color contentColor
         , Border.width borderSizePx
-        , Border.rounded borderRadiusPx
+        , Border.rounded defaultBorderRadiusPx
         , Border.solid
         , Border.color
             (if selected then

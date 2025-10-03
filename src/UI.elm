@@ -19,7 +19,14 @@ import Model.Debug exposing (DebugLayerKind(..))
 import Model.Liikennematto exposing (Liikennematto)
 import Model.World exposing (World)
 import Render.Conversion exposing (PixelsToMetersRatio)
-import UI.Button exposing (iconButton, iconWithTextButton)
+import Svg
+import Svg.Attributes as SvgAttr
+import UI.Button
+    exposing
+        ( iconButton
+        , iconWithTextButton
+        , roundIconButton
+        )
 import UI.Core
     exposing
         ( borderSize
@@ -221,33 +228,14 @@ zoomOut currentLevel =
             VeryFar
 
 
-zoomLevelToUIValue : ZoomLevel -> Float
-zoomLevelToUIValue zoomLevel =
-    case zoomLevel of
-        VeryFar ->
-            1
-
-        Far ->
-            2
-
-        Near ->
-            3
+minZoomLevel : ZoomLevel
+minZoomLevel =
+    VeryFar
 
 
-uiValueToZoomLevel : Float -> ZoomLevel
-uiValueToZoomLevel value =
-    case floor value of
-        1 ->
-            VeryFar
-
-        2 ->
-            Far
-
-        3 ->
-            Near
-
-        _ ->
-            Far
+maxZoomLevel : ZoomLevel
+maxZoomLevel =
+    Near
 
 
 view : Liikennematto -> Element msg -> Element msg -> Html Msg
@@ -264,7 +252,7 @@ view liikennematto render renderDebugLayers =
         , Element.width Element.fill
         , Element.height Element.fill
         , Element.scrollbars
-        , Element.inFront (gameControls liikennematto.simulationActive)
+        , Element.inFront (gameControls liikennematto.ui liikennematto.simulationActive)
         , Element.inFront (menu liikennematto.debug liikennematto.ui)
         , Element.inFront (devMenu liikennematto liikennematto.ui)
         , Element.htmlAttribute (HtmlAttribute.id containerId)
@@ -334,21 +322,93 @@ renderWrapper { renderCache, world, screen } render debugLayers model =
         )
 
 
-gameControls : Bool -> Element Msg
-gameControls simulationActive =
-    Element.row
+gameControlSizePx : Int
+gameControlSizePx =
+    64
+
+
+gameControlSizeSmallPx : Int
+gameControlSizeSmallPx =
+    48
+
+
+navBarControlSizePx : Int
+navBarControlSizePx =
+    42
+
+
+gameControls : UI -> Bool -> Element Msg
+gameControls model simulationActive =
+    Element.el
         [ Element.spacing whitespaceTight
         , Element.alignBottom
         , Element.alignLeft
         , Element.moveUp scrollbarAwareOffsetF
+        , Element.inFront
+            (Element.el
+                [ Element.padding 20
+                , Element.alignBottom
+                ]
+                (simulationControl simulationActive)
+            )
+        , Element.inFront
+            (Element.el
+                [ Element.paddingXY 20 0
+                , Element.alignTop
+                , Element.moveUp 22
+                ]
+                (roundIconButton
+                    { onPress = ZoomIn
+                    , selected = False
+                    , disabled = model.zoomLevel == maxZoomLevel
+                    }
+                    gameControlSizePx
+                    Icons.iconZoomIn
+                )
+            )
+        , Element.inFront
+            (Element.el
+                [ Element.paddingXY 20 0
+                , Element.alignTop
+                , Element.moveDown 10
+                , Element.moveRight 60
+                ]
+                (roundIconButton
+                    { onPress = ZoomOut
+                    , selected = False
+                    , disabled = model.zoomLevel == minZoomLevel
+                    }
+                    gameControlSizeSmallPx
+                    Icons.iconZoomOut
+                )
+            )
         ]
-        [ Element.el
-            [ Element.padding whitespaceTight
-            , Element.spacing whitespaceTight
-            , Element.alignBottom
-            , Background.color menuBackgroundColor
+        (Element.html gameControlsBg)
+
+
+gameControlsBg : Html msg
+gameControlsBg =
+    Svg.svg
+        [ SvgAttr.width "155"
+        , SvgAttr.height "154"
+        , SvgAttr.viewBox "1 0 155 154"
+        , SvgAttr.fill "none"
+        ]
+        [ Svg.g
+            []
+            [ Svg.path
+                [ SvgAttr.d "M150.52 154H0.52002V4H26.52C93.52 4 150.52 57 150.52 129.347V154Z"
+                , SvgAttr.fill "#BEC6D5"
+                ]
+                []
+            , Svg.path
+                [ SvgAttr.d "M26.52 3C94.0582 3 151.52 56.4337 151.52 129.347V155H-0.47998V3H26.52Z"
+                , SvgAttr.fill "#BEC6D5"
+                , SvgAttr.stroke "#7083A4"
+                , SvgAttr.strokeWidth "3"
+                ]
+                []
             ]
-            (simulationControl simulationActive)
         ]
 
 
@@ -367,6 +427,7 @@ simulationControl simulationActive =
         , selected = selected
         , disabled = False
         }
+        gameControlSizePx
         iconSvg
 
 
@@ -431,6 +492,7 @@ menu debugState model =
                     , selected = model.showMenu
                     , disabled = False
                     }
+                    navBarControlSizePx
                     Icons.iconMenu
                 )
             ]

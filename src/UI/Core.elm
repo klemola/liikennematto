@@ -84,7 +84,7 @@ borderRadiusPanel =
 
 scrollbarAwareOffset : Int
 scrollbarAwareOffset =
-    baseSpacing
+    18
 
 
 scrollbarAwareOffsetF : Float
