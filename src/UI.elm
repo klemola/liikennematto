@@ -91,31 +91,9 @@ uiFont =
     Font.typeface "M PLUS Rounded 1c"
 
 
-menuBackgroundColor : Element.Color
-menuBackgroundColor =
-    Element.rgb255 186 197 216
-
-
-menuBackgroundColorAlt : Element.Color
-menuBackgroundColorAlt =
-    Element.rgb255 173 186 209
-
-
-menuButtonSpacingPx =
-    6
-
-
-borderRadiusMenuPx : Int
-borderRadiusMenuPx =
-    8
-
-
+borderRadiusRenderPx : Int
 borderRadiusRenderPx =
     10
-
-
-fontSizeSectionHeading =
-    14
 
 
 subscriptions : UI -> Sub Msg
@@ -322,6 +300,12 @@ renderWrapper { renderCache, world, screen } render debugLayers model =
         )
 
 
+
+--
+-- Game controls
+--
+
+
 gameControlSizePx : Int
 gameControlSizePx =
     64
@@ -337,6 +321,11 @@ navBarControlSizePx =
     42
 
 
+gameControlsPaddingPx : Int
+gameControlsPaddingPx =
+    20
+
+
 gameControls : UI -> Bool -> Element Msg
 gameControls model simulationActive =
     Element.el
@@ -346,14 +335,14 @@ gameControls model simulationActive =
         , Element.moveUp scrollbarAwareOffsetF
         , Element.inFront
             (Element.el
-                [ Element.padding 20
+                [ Element.padding gameControlsPaddingPx
                 , Element.alignBottom
                 ]
                 (simulationControl simulationActive)
             )
         , Element.inFront
             (Element.el
-                [ Element.paddingXY 20 0
+                [ Element.paddingXY gameControlsPaddingPx 0
                 , Element.alignTop
                 , Element.moveUp 22
                 ]
@@ -368,7 +357,7 @@ gameControls model simulationActive =
             )
         , Element.inFront
             (Element.el
-                [ Element.paddingXY 20 0
+                [ Element.paddingXY gameControlsPaddingPx 0
                 , Element.alignTop
                 , Element.moveDown 10
                 , Element.moveRight 60
@@ -431,6 +420,37 @@ simulationControl simulationActive =
         iconSvg
 
 
+
+--
+-- Menu
+--
+
+
+menuBackgroundColor : Element.Color
+menuBackgroundColor =
+    Element.rgb255 186 197 216
+
+
+menuBackgroundColorAlt : Element.Color
+menuBackgroundColorAlt =
+    Element.rgb255 173 186 209
+
+
+menuButtonSpacingPx : Int
+menuButtonSpacingPx =
+    6
+
+
+borderRadiusMenuPx : Int
+borderRadiusMenuPx =
+    8
+
+
+fontSizeSectionHeading : Int
+fontSizeSectionHeading =
+    14
+
+
 menu : Model.Debug.DebugState -> UI -> Element Msg
 menu debugState model =
     let
@@ -468,7 +488,7 @@ menu debugState model =
         , Background.color menuBackgroundColor
         , Border.rounded borderRadiusMenuPx
         , Border.color uiColorBorder
-        , Border.width 2
+        , Border.width borderSize
         ]
         [ Element.row
             [ Element.spacing whitespaceTight
