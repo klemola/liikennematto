@@ -24,7 +24,7 @@ import UI.Core
 
 defaultBorderRadiusPx : Int
 defaultBorderRadiusPx =
-    4
+    8
 
 
 borderSizePx : Int
@@ -146,7 +146,7 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
             [ Background.color bgColorActive ]
         , Element.mouseDown
             [ Background.color bgColorActive ]
-        , Border.width 1
+        , Border.width borderSizePx
         , Border.rounded defaultBorderRadiusPx
         , Border.solid
         , Border.color
@@ -174,7 +174,7 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
                 [ Element.html
                     (Html.node "style"
                         []
-                        [ Html.text ".lm-ui-button svg {width:42px;height: 42px;border-radius:3.1px 0 0 3.1px}" ]
+                        [ Html.text ".lm-ui-button svg {width:42px;height: 42px;border-radius:8px 0 0 8px}" ]
                     )
                 , Element.el
                     [ Element.width height

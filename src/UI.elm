@@ -96,6 +96,15 @@ borderRadiusRenderPx =
     10
 
 
+noSpacing : { top : Int, right : Int, bottom : Int, left : Int }
+noSpacing =
+    { top = 0
+    , right = 0
+    , bottom = 0
+    , left = 0
+    }
+
+
 subscriptions : UI -> Sub Msg
 subscriptions model =
     Sub.map EditorMsg (Editor.subscriptions model.editor)
@@ -470,11 +479,7 @@ menu debugState model =
                 , left = 10
                 }
             , Border.widthEach
-                { top = 1
-                , left = 0
-                , bottom = 0
-                , right = 0
-                }
+                { noSpacing | top = 1 }
             ]
     in
     Element.column
@@ -549,7 +554,8 @@ menu debugState model =
             , Element.column
                 menuSectionAttrs
                 [ Element.el
-                    [ Font.size fontSizeSectionHeading
+                    [ Element.paddingEach { noSpacing | bottom = 1 }
+                    , Font.size fontSizeSectionHeading
                     , Font.bold
                     , Font.color uiColorText
                     ]
