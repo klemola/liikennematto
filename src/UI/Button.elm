@@ -60,19 +60,22 @@ buttonSize baseSize =
     Element.px (baseSize - (2 * borderSizePx))
 
 
-iconButton : ButtonConfig msg -> Int -> Svg msg -> Element msg
+iconButton : ButtonConfig msg -> Int -> ( Element.Color, Svg msg ) -> Element msg
 iconButton =
     createIconButton defaultBorderRadiusPx
 
 
-roundIconButton : ButtonConfig msg -> Int -> Svg msg -> Element msg
+roundIconButton : ButtonConfig msg -> Int -> ( Element.Color, Svg msg ) -> Element msg
 roundIconButton config buttonSizePx icon =
     createIconButton (buttonSizePx // 2) config buttonSizePx icon
 
 
-createIconButton : Int -> ButtonConfig msg -> Int -> Svg msg -> Element msg
+createIconButton : Int -> ButtonConfig msg -> Int -> ( Element.Color, Svg msg ) -> Element msg
 createIconButton borderRadiusPx { onPress, selected, disabled } buttonSizePx icon =
     let
+        ( iconBg, iconSvg ) =
+            icon
+
         width =
             buttonSize buttonSizePx
 
@@ -101,7 +104,7 @@ createIconButton borderRadiusPx { onPress, selected, disabled } buttonSizePx ico
                 bgColorActive
 
              else
-                bgColor
+                iconBg
             )
         , Border.width borderSizePx
         , Border.rounded borderRadiusPx
@@ -120,13 +123,16 @@ createIconButton borderRadiusPx { onPress, selected, disabled } buttonSizePx ico
 
             else
                 Just onPress
-        , label = Element.html icon
+        , label = Element.html iconSvg
         }
 
 
-iconWithTextButton : ButtonConfig msg -> String -> Svg msg -> Element msg
+iconWithTextButton : ButtonConfig msg -> String -> ( Element.Color, Svg msg ) -> Element msg
 iconWithTextButton { onPress, selected, disabled } textContent icon =
     let
+        ( iconBg, iconSvg ) =
+            icon
+
         height =
             Element.px buttonHeightPx
 
@@ -140,8 +146,9 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
     Input.button
         [ Background.color bgColor
         , Element.width Element.fill
-        , Element.height Element.shrink
+        , Element.height (Element.px (buttonHeightPx + borderSizePx))
         , Element.alpha alpha
+        , Element.clip
         , Element.mouseOver
             [ Background.color bgColorActive ]
         , Element.mouseDown
@@ -168,18 +175,19 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
                 [ Element.spacing whitespaceRegular
                 , Element.width Element.fill
                 , Element.height height
-                , Element.clip
                 , Element.htmlAttribute (HtmlAttribute.class "lm-ui-button")
                 ]
                 [ Element.html
                     (Html.node "style"
                         []
-                        [ Html.text ".lm-ui-button svg {width:42px;height: 42px;border-radius:8px 0 0 8px}" ]
+                        [ Html.text ".lm-ui-button svg {width:38px;height:38px;}" ]
                     )
                 , Element.el
                     [ Element.width height
                     , Element.height Element.fill
+                    , Element.padding 2
                     , Element.clip
+                    , Background.color iconBg
                     , Border.solid
                     , Border.color uiColorBorder
                     , Border.widthEach
@@ -189,7 +197,7 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
                         , left = 0
                         }
                     ]
-                    (Element.html icon)
+                    (Element.html iconSvg)
                 , Element.el
                     [ Element.width Element.fill
                     , Element.centerY
