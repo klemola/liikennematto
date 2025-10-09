@@ -45,15 +45,19 @@ type alias ButtonConfig msg =
 
 
 bgColor =
-    Element.rgb255 232 236 242
+    Element.rgb255 222 228 237
 
 
 bgColorActive =
-    Element.rgb255 253 253 247
+    Element.rgb255 235 237 239
+
+
+iconBgColorActive =
+    Element.rgb255 157 188 241
 
 
 borderColorActive =
-    Element.rgb255 69 133 196
+    Element.rgb255 41 108 225
 
 
 buttonSize baseSize =
@@ -88,6 +92,11 @@ createIconButton borderRadiusPx { onPress, selected, disabled } buttonSizePx ico
 
             else
                 1
+
+        hoverAttrs =
+            [ Background.color iconBgColorActive
+            , Border.color borderColorActive
+            ]
     in
     Input.button
         [ Element.width width
@@ -95,13 +104,11 @@ createIconButton borderRadiusPx { onPress, selected, disabled } buttonSizePx ico
         , Element.padding 0
         , Element.alpha alpha
         , Element.clip
-        , Element.mouseOver
-            [ Background.color bgColorActive ]
-        , Element.mouseDown
-            [ Background.color bgColorActive ]
+        , Element.mouseOver hoverAttrs
+        , Element.mouseDown hoverAttrs
         , Background.color
             (if selected then
-                bgColorActive
+                iconBgColorActive
 
              else
                 iconBg
@@ -138,21 +145,37 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
 
         alpha =
             if disabled then
-                0.5
+                0.65
 
             else
                 1
+
+        hoverAttrs =
+            [ Background.color bgColorActive
+            , Border.color borderColorActive
+            ]
+
+        extraCSS =
+            """
+            .lm-ui-button svg {width:38px;height:38px;}
+            .lm-ui-button:hover .lm-ui-button__icon {background:rgb(157,188,241)}
+            .lm-ui-button.selected .lm-ui-button__icon {background:rgb(157,188,241)}
+            """
     in
     Input.button
-        [ Background.color bgColor
+        [ Background.color
+            (if selected then
+                bgColorActive
+
+             else
+                bgColor
+            )
         , Element.width Element.fill
         , Element.height (Element.px (buttonHeightPx + borderSizePx))
         , Element.alpha alpha
         , Element.clip
-        , Element.mouseOver
-            [ Background.color bgColorActive ]
-        , Element.mouseDown
-            [ Background.color bgColorActive ]
+        , Element.mouseOver hoverAttrs
+        , Element.mouseDown hoverAttrs
         , Border.width borderSizePx
         , Border.rounded defaultBorderRadiusPx
         , Border.solid
@@ -175,21 +198,36 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
                 [ Element.spacing whitespaceRegular
                 , Element.width Element.fill
                 , Element.height height
-                , Element.htmlAttribute (HtmlAttribute.class "lm-ui-button")
+                , Element.htmlAttribute
+                    (HtmlAttribute.class
+                        (if selected then
+                            "lm-ui-button selected"
+
+                         else
+                            "lm-ui-button"
+                        )
+                    )
                 ]
                 [ Element.html
                     (Html.node "style"
                         []
-                        [ Html.text ".lm-ui-button svg {width:38px;height:38px;}" ]
+                        [ Html.text extraCSS ]
                     )
                 , Element.el
                     [ Element.width height
                     , Element.height Element.fill
                     , Element.padding 2
                     , Element.clip
+                    , Element.htmlAttribute (HtmlAttribute.class "lm-ui-button__icon")
                     , Background.color iconBg
                     , Border.solid
-                    , Border.color uiColorBorder
+                    , Border.color
+                        (if selected then
+                            borderColorActive
+
+                         else
+                            uiColorBorder
+                        )
                     , Border.widthEach
                         { right = 1
                         , top = 0
