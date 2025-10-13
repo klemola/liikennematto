@@ -45,22 +45,27 @@ type ButtonSize
     | Large
 
 
+bgColor : Element.Color
 bgColor =
     Element.rgb255 222 228 237
 
 
+bgColorActive : Element.Color
 bgColorActive =
     Element.rgb255 235 237 239
 
 
+iconBgColorActive : Element.Color
 iconBgColorActive =
     Element.rgb255 130 169 237
 
 
+borderColorActive : Element.Color
 borderColorActive =
     Element.rgb255 41 108 225
 
 
+buttonSize : Int -> Element.Length
 buttonSize baseSize =
     Element.px (baseSize - (2 * borderSizePx))
 

@@ -301,12 +301,6 @@ onUiButtonPressed buttonId model =
             , gameActionsToCmd transitionActions
             )
 
-        UI.Model.ZoomIn ->
-            ( model, Cmd.none )
-
-        UI.Model.ZoomOut ->
-            ( model, Cmd.none )
-
         UI.Model.SpawnCar ->
             Simulation.spawnCar model
 

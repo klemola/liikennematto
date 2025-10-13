@@ -10,7 +10,6 @@ import Lib.FSM as FSM
 import Lib.OrthogonalDirection as OrthogonalDirection
 import List.Nonempty as Nonempty
 import Message exposing (Message(..))
-import Model.Debug exposing (DevAction(..))
 import Model.Liikennematto
     exposing
         ( Liikennematto

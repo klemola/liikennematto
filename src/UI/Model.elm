@@ -22,8 +22,6 @@ type ButtonKind
     = NewGame
     | PauseSimulation
     | ResumeSimulation
-    | ZoomIn
-    | ZoomOut
     | ToggleCarDebug
     | ToggleLotDebug
     | ToggleRoadNetworkDebug
