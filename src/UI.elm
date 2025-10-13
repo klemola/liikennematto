@@ -25,6 +25,7 @@ import UI.Button
     exposing
         ( iconButton
         , iconWithTextButton
+        , iconWithTextButtonLg
         , roundIconButton
         )
 import UI.Core
@@ -543,7 +544,7 @@ menu debugState model =
                 [ Element.width Element.fill
                 , Element.spacing menuButtonSpacingPx
                 ]
-                [ iconWithTextButton
+                [ iconWithTextButtonLg
                     { onPress = Trigger NewGame
                     , selected = False
                     , disabled = False
@@ -554,7 +555,7 @@ menu debugState model =
             , Element.column
                 menuSectionAttrs
                 [ Element.el
-                    [ Element.paddingEach { noSpacing | bottom = 1 }
+                    [ Element.paddingEach { noSpacing | bottom = 1, left = 1 }
                     , Font.size fontSizeSectionHeading
                     , Font.bold
                     , Font.color uiColorText
@@ -599,7 +600,7 @@ menu debugState model =
 menuSectionAttrs : List (Element.Attribute msg)
 menuSectionAttrs =
     [ Element.width Element.fill
-    , Element.paddingXY 8 6
+    , Element.padding 8
     , Element.spacing menuButtonSpacingPx
     , Background.color menuBackgroundColorAlt
     , Border.rounded borderRadiusMenuPx

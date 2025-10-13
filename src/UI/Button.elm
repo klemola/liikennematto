@@ -2,6 +2,7 @@ module UI.Button exposing
     ( ButtonConfig
     , iconButton
     , iconWithTextButton
+    , iconWithTextButtonLg
     , roundIconButton
     , textButton
     )
@@ -32,16 +33,16 @@ borderSizePx =
     2
 
 
-buttonHeightPx : Int
-buttonHeightPx =
-    42
-
-
 type alias ButtonConfig msg =
     { onPress : msg
     , selected : Bool
     , disabled : Bool
     }
+
+
+type ButtonSize
+    = Medium
+    | Large
 
 
 bgColor =
@@ -53,7 +54,7 @@ bgColorActive =
 
 
 iconBgColorActive =
-    Element.rgb255 157 188 241
+    Element.rgb255 130 169 237
 
 
 borderColorActive =
@@ -135,13 +136,31 @@ createIconButton borderRadiusPx { onPress, selected, disabled } buttonSizePx ico
 
 
 iconWithTextButton : ButtonConfig msg -> String -> ( Element.Color, Svg msg ) -> Element msg
-iconWithTextButton { onPress, selected, disabled } textContent icon =
+iconWithTextButton =
+    createIconWithTextButton Medium
+
+
+iconWithTextButtonLg : ButtonConfig msg -> String -> ( Element.Color, Svg msg ) -> Element msg
+iconWithTextButtonLg =
+    createIconWithTextButton Large
+
+
+createIconWithTextButton : ButtonSize -> ButtonConfig msg -> String -> ( Element.Color, Svg msg ) -> Element msg
+createIconWithTextButton size { onPress, selected, disabled } textContent icon =
     let
         ( iconBg, iconSvg ) =
             icon
 
+        ( heightPx, fontSizePx ) =
+            case size of
+                Medium ->
+                    ( 38, 14 )
+
+                Large ->
+                    ( 42, 16 )
+
         height =
-            Element.px buttonHeightPx
+            Element.px heightPx
 
         alpha =
             if disabled then
@@ -156,11 +175,11 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
             ]
 
         extraCSS =
-            """
-            .lm-ui-button svg {width:38px;height:38px;}
-            .lm-ui-button:hover .lm-ui-button__icon {background:rgb(157,188,241)}
-            .lm-ui-button.selected .lm-ui-button__icon {background:rgb(157,188,241)}
-            """
+            String.join " "
+                [ ".lm-ui-button svg {width:92%;height:92%;margin-top:4%;margin-left:4%;}"
+                , ".lm-ui-button:hover .lm-ui-button__icon {background:rgb(157,188,241)}"
+                , ".lm-ui-button.selected .lm-ui-button__icon {background:rgb(157,188,241)}"
+                ]
     in
     Input.button
         [ Background.color
@@ -171,12 +190,12 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
                 bgColor
             )
         , Element.width Element.fill
-        , Element.height (Element.px (buttonHeightPx + borderSizePx))
+        , Element.height (Element.px (heightPx + 1))
         , Element.alpha alpha
         , Element.clip
         , Element.mouseOver hoverAttrs
         , Element.mouseDown hoverAttrs
-        , Border.width borderSizePx
+        , Border.width 1
         , Border.rounded defaultBorderRadiusPx
         , Border.solid
         , Border.color
@@ -240,7 +259,7 @@ iconWithTextButton { onPress, selected, disabled } textContent icon =
                     [ Element.width Element.fill
                     , Element.centerY
                     , Font.bold
-                    , Font.size 14
+                    , Font.size fontSizePx
                     , Font.color uiColorText
                     , Font.letterSpacing 0.5
                     ]
