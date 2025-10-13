@@ -60,7 +60,7 @@ type Msg
     | InitSolve
     | SolveInitDone Time.Posix
     | EditorMsg Editor.Msg
-    | InputReceived UI.Core.InputEvent
+    | InputReceived Editor.InputEvent
 
 
 type alias Model =
@@ -285,7 +285,7 @@ update msg model =
         EditorMsg editorMsg ->
             let
                 ( editorModel, inputEvent ) =
-                    Editor.update model.world model.cache editorMsg model.editor
+                    Editor.update model.world model.cache.pixelsToMetersRatio editorMsg model.editor
             in
             ( { model | editor = editorModel }
             , inputEvent
