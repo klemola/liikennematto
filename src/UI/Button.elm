@@ -96,7 +96,6 @@ createIconButton borderRadiusPx { onPress, selected, disabled } buttonSizePx ico
 
         hoverAttrs =
             [ Background.color iconBgColorActive
-            , Border.color borderColorActive
             ]
     in
     Input.button
@@ -171,7 +170,6 @@ createIconWithTextButton size { onPress, selected, disabled } textContent icon =
 
         hoverAttrs =
             [ Background.color bgColorActive
-            , Border.color borderColorActive
             ]
 
         extraCSS =
