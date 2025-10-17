@@ -19,6 +19,7 @@ import Model.RenderCache exposing (refreshTilemapCache, setTilemapCache, setTile
 import Model.World as World exposing (LotPlacement, World)
 import Process
 import Quantity
+import Savegame
 import Task
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
@@ -181,10 +182,14 @@ update msg model =
 
                                     else
                                         playSound Audio.BuildLot
+
+                                nextWorld =
+                                    World.setTilemap nextTilemap model.world
                             in
                             ( { model
-                                | world = World.setTilemap nextTilemap model.world
+                                | world = nextWorld
                                 , wfc = updatedDrivenWfc
+                                , savegame = Just (Savegame.encode nextWorld)
                                 , renderCache = setTilemapCache nextTilemap Nothing model.renderCache
                                 , debug = appendWfcLog wfcLog model.debug
                               }

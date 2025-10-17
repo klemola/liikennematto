@@ -13,6 +13,7 @@ module Model.Liikennematto exposing
     )
 
 import Duration exposing (Duration)
+import Json.Encode as JE
 import Lib.FSM as FSM exposing (FSM)
 import Model.Debug exposing (DebugState, initialDebugState)
 import Model.Flags exposing (Flags, RuntimeEnvironment(..))
@@ -33,6 +34,7 @@ type alias Liikennematto =
     , world : World
     , wfc : DrivenWFC
     , previousWorld : Maybe World
+    , savegame : Maybe JE.Value
     , simulationActive : Bool
     , renderCache : RenderCache
     , debug : DebugState
@@ -250,6 +252,7 @@ initial flags =
     , previousWorld = Nothing
     , world = world
     , wfc = initialDrivenWfc
+    , savegame = Nothing
     , simulationActive = True
     , renderCache = RenderCache.new world
     , debug = initialDebugState

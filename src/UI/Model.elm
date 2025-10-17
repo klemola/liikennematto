@@ -38,6 +38,7 @@ type DevView
     = EventQueueList
     | CarsList
     | WFCOverview
+    | SavegameOutput
 
 
 initialModel : UI
