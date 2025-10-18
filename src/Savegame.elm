@@ -6,19 +6,21 @@ module Savegame exposing
     )
 
 import Array
-import Data.Lots exposing (NewLot, allLots)
+import Data.Lots as Lots exposing (NewLot)
 import Data.TileSet
 import Dict
 import Json.Decode as JD
 import Json.Encode as JE
 import Lib.Collection as Collection
+import Lib.OrthogonalDirection exposing (OrthogonalDirection)
 import Model.World as World exposing (World)
 import Random
 import Simulation.Lot as Lot exposing (Lot)
 import Simulation.Traffic
-import Tilemap.Cell as Cell
+import Tilemap.Cell as Cell exposing (CellCoordinates)
 import Tilemap.Core as Tilemap exposing (Tilemap)
 import Tilemap.Tile as Tile
+import Tilemap.TileConfig as TileConfig exposing (LargeTile, TileId)
 import Time
 
 
@@ -29,9 +31,6 @@ type alias SavegameData =
 
     -- 1D array of tile IDs (null if not tile has been set for the cell)
     , tilemap : List (Maybe Int)
-
-    -- Raw data for a lookup map to detect cells that are part of a large tile
-    , parentTiles : List ( Int, Int, Int )
 
     -- World.lotEntries equivalent
     , lots : List { name : String, anchorCell : ( Int, Int ) }
@@ -58,9 +57,6 @@ encode world =
         tilemapArray =
             extractTilemapTileIds world.tilemap
 
-        parentTilesList =
-            extractParentTilesInfo world.tilemap
-
         lotsList =
             Collection.values world.lots
                 |> List.filterMap (lotToSavegameData world)
@@ -75,7 +71,6 @@ encode world =
                 ]
           )
         , ( "tilemap", JE.list encodeMaybeTileId tilemapArray )
-        , ( "parentTiles", JE.list encodeParentTileInfo parentTilesList )
         , ( "lots"
           , JE.list
                 (\{ name, anchorCell } ->
@@ -103,35 +98,6 @@ extractTilemapTileIds tilemap =
 
                 _ ->
                     Nothing :: acc
-        )
-        []
-        tilemap
-        |> List.reverse
-
-
-extractParentTilesInfo : Tilemap -> List ( Int, Int, Int )
-extractParentTilesInfo tilemap =
-    let
-        tilemapConfig =
-            Tilemap.getTilemapConfig tilemap
-    in
-    Tilemap.foldTiles
-        (\cell tile acc ->
-            case tile.kind of
-                Tile.Fixed properties ->
-                    case properties.parentTile of
-                        Just ( parentTileId, subgridIndex ) ->
-                            let
-                                tileIndex =
-                                    Cell.array1DIndex tilemapConfig cell
-                            in
-                            ( tileIndex, parentTileId, subgridIndex ) :: acc
-
-                        Nothing ->
-                            acc
-
-                _ ->
-                    acc
         )
         []
         tilemap
@@ -188,11 +154,6 @@ encodeCellCoordinates ( x, y ) =
     JE.list JE.int [ x, y ]
 
 
-encodeParentTileInfo : ( Int, Int, Int ) -> JE.Value
-encodeParentTileInfo ( tileIndex, parentTileId, subgridIndex ) =
-    JE.list JE.int [ tileIndex, parentTileId, subgridIndex ]
-
-
 
 --
 -- Decoding
@@ -208,12 +169,11 @@ decode jsonValue =
 
 savegameDecoder : JD.Decoder SavegameData
 savegameDecoder =
-    JD.map6 SavegameData
+    JD.map5 SavegameData
         (JD.field "version" JD.string)
         (JD.field "seed" JD.string)
         (JD.field "tilemapSize" tilemapSizeDecoder)
         (JD.field "tilemap" (JD.list (JD.nullable JD.int)))
-        (JD.field "parentTiles" (JD.list parentTileInfoDecoder))
         (JD.field "lots" (JD.list lotDataDecoder))
 
 
@@ -245,24 +205,115 @@ cellCoordinatesDecoder =
             )
 
 
-parentTileInfoDecoder : JD.Decoder ( Int, Int, Int )
-parentTileInfoDecoder =
-    JD.list JD.int
-        |> JD.andThen
-            (\values ->
-                case values of
-                    [ tileIndex, parentTileId, subgridIndex ] ->
-                        JD.succeed ( tileIndex, parentTileId, subgridIndex )
-
-                    _ ->
-                        JD.fail "Expected array of 3 integers for parent tile info"
-            )
-
-
 
 --
 -- World reconstruction
 --
+
+
+coordinatesToString : CellCoordinates -> String
+coordinatesToString ( x, y ) =
+    "(" ++ String.fromInt x ++ ", " ++ String.fromInt y ++ ")"
+
+
+type alias LotMetadata =
+    { name : String
+    , entryCell : CellCoordinates
+    , entryDirection : OrthogonalDirection
+    , drivewayCell : Cell.Cell
+    , largeTile : LargeTile
+    }
+
+
+computeParentTilesFromLotMetadata : Tilemap.TilemapConfig -> List LotMetadata -> Dict.Dict CellCoordinates ( TileId, Int )
+computeParentTilesFromLotMetadata tilemapConfig lotMetadataList =
+    List.foldl
+        (\lotMetadata acc ->
+            addLotCellsToParentMap tilemapConfig lotMetadata.drivewayCell lotMetadata.largeTile acc
+        )
+        Dict.empty
+        lotMetadataList
+
+
+addLotCellsToParentMap : Tilemap.TilemapConfig -> Cell.Cell -> LargeTile -> Dict.Dict CellCoordinates ( TileId, Int ) -> Dict.Dict CellCoordinates ( TileId, Int )
+addLotCellsToParentMap tilemapConfig drivewayCell largeTile dict =
+    let
+        subgridConstraints =
+            { horizontalCellsAmount = largeTile.width
+            , verticalCellsAmount = largeTile.height
+            }
+
+        maybeTopLeftCell =
+            Tile.largeTileTopLeftCell tilemapConfig drivewayCell largeTile.anchorIndex largeTile
+    in
+    case maybeTopLeftCell of
+        Just topLeftCell ->
+            List.range 0 (largeTile.width * largeTile.height - 1)
+                |> List.filterMap
+                    (\subgridIndex ->
+                        Cell.fromArray1DIndex subgridConstraints subgridIndex
+                            |> Maybe.andThen (Cell.placeIn tilemapConfig topLeftCell)
+                            |> Maybe.map
+                                (\globalCell ->
+                                    ( Cell.coordinates globalCell
+                                    , ( largeTile.id, subgridIndex )
+                                    )
+                                )
+                    )
+                |> List.foldl
+                    (\( cellCoords, value ) acc -> Dict.insert cellCoords value acc)
+                    dict
+
+        Nothing ->
+            dict
+
+
+prepareLotMetadata : Tilemap.TilemapConfig -> { name : String, anchorCell : ( Int, Int ) } -> Result String LotMetadata
+prepareLotMetadata tilemapConfig lotData =
+    case ( Cell.fromCoordinates tilemapConfig lotData.anchorCell, Lots.findByName lotData.name ) of
+        ( Nothing, _ ) ->
+            Err ("Invalid lot entry cell coordinates: " ++ coordinatesToString lotData.anchorCell)
+
+        ( _, Nothing ) ->
+            Err ("Unknown lot name: " ++ lotData.name)
+
+        ( Just entryCell, Just newLot ) ->
+            case Cell.nextOrthogonalCell tilemapConfig newLot.entryDirection entryCell of
+                Nothing ->
+                    Err ("Cannot compute driveway cell for lot: " ++ lotData.name)
+
+                Just drivewayCell ->
+                    case findMatchingLargeTile newLot of
+                        Nothing ->
+                            Err ("No matching LargeTile found for lot: " ++ lotData.name)
+
+                        Just largeTile ->
+                            Ok
+                                { name = lotData.name
+                                , entryCell = lotData.anchorCell
+                                , entryDirection = newLot.entryDirection
+                                , drivewayCell = drivewayCell
+                                , largeTile = largeTile
+                                }
+
+
+findMatchingLargeTile : NewLot -> Maybe LargeTile
+findMatchingLargeTile lot =
+    Data.TileSet.lotTiles
+        |> List.filterMap
+            (\tileConfig ->
+                case tileConfig of
+                    TileConfig.Large largeTile ->
+                        if World.newLotMatchesTile largeTile lot then
+                            Just largeTile
+
+                        else
+                            Nothing
+
+                    _ ->
+                        Nothing
+            )
+        |> List.head
 
 
 worldFromSavegameData : SavegameData -> Result String World
@@ -271,22 +322,41 @@ worldFromSavegameData data =
         Err ("Unsupported savegame version: " ++ data.version)
 
     else
-        seedFromString data.seed
-            |> Result.andThen
-                (\seed ->
-                    let
-                        tilemapConfig =
-                            { horizontalCellsAmount = data.tilemapSize.width
-                            , verticalCellsAmount = data.tilemapSize.height
-                            }
+        let
+            prepareLotMetadataResult seed =
+                let
+                    tilemapConfig =
+                        { horizontalCellsAmount = data.tilemapSize.width
+                        , verticalCellsAmount = data.tilemapSize.height
+                        }
+                in
+                data.lots
+                    |> List.map (prepareLotMetadata tilemapConfig)
+                    |> combineResults
+                    |> Result.map (\lotMetadataList -> ( seed, tilemapConfig, lotMetadataList ))
 
-                        emptyWorld =
-                            World.empty seed tilemapConfig
-                    in
-                    restoreTilemap data.tilemap data.parentTiles tilemapConfig emptyWorld
-                        |> Result.andThen (restoreLots data.lots)
-                        |> Result.map World.updateRoadNetwork
-                )
+            restoreTilemapResult ( seed, tilemapConfig, lotMetadataList ) =
+                restoreTilemap data.tilemap lotMetadataList tilemapConfig (World.empty seed tilemapConfig)
+                    |> Result.map (\worldWithTilemap -> ( lotMetadataList, worldWithTilemap ))
+
+            restoreLotsResult ( lotMetadataList, worldWithTilemap ) =
+                restoreLots lotMetadataList worldWithTilemap
+                    |> Result.map World.updateRoadNetwork
+        in
+        seedFromString data.seed
+            |> Result.andThen prepareLotMetadataResult
+            |> Result.andThen restoreTilemapResult
+            |> Result.andThen restoreLotsResult
+
+
+combineResults : List (Result e a) -> Result e (List a)
+combineResults results =
+    List.foldr
+        (\result acc ->
+            Result.map2 (::) result acc
+        )
+        (Ok [])
+        results
 
 
 seedFromString : String -> Result String Random.Seed
@@ -299,8 +369,8 @@ seedFromString seedString =
             Err ("Invalid seed value: " ++ seedString)
 
 
-restoreTilemap : List (Maybe Int) -> List ( Int, Int, Int ) -> Tilemap.TilemapConfig -> World -> Result String World
-restoreTilemap tileIds parentTilesInfo tilemapConfig world =
+restoreTilemap : List (Maybe Int) -> List LotMetadata -> Tilemap.TilemapConfig -> World -> Result String World
+restoreTilemap tileIds lotMetadataList tilemapConfig world =
     let
         expectedLength =
             tilemapConfig.horizontalCellsAmount * tilemapConfig.verticalCellsAmount
@@ -319,7 +389,7 @@ restoreTilemap tileIds parentTilesInfo tilemapConfig world =
                 Array.fromList tileIds
 
             parentTilesDict =
-                buildParentTilesDict parentTilesInfo
+                computeParentTilesFromLotMetadata tilemapConfig lotMetadataList
 
             tilemap =
                 Tilemap.createTilemap tilemapConfig
@@ -328,7 +398,8 @@ restoreTilemap tileIds parentTilesInfo tilemapConfig world =
                             Just (Just tileId) ->
                                 let
                                     parentTileInfo =
-                                        Dict.get index parentTilesDict
+                                        Cell.fromArray1DIndex tilemapConfig index
+                                            |> Maybe.andThen (\cell -> Dict.get (Cell.coordinates cell) parentTilesDict)
                                 in
                                 createTileFromId tileId parentTileInfo
 
@@ -337,16 +408,6 @@ restoreTilemap tileIds parentTilesInfo tilemapConfig world =
                     )
         in
         Ok (World.setTilemap tilemap world)
-
-
-buildParentTilesDict : List ( Int, Int, Int ) -> Dict.Dict Int ( Int, Int )
-buildParentTilesDict parentTilesInfo =
-    List.foldl
-        (\( tileIndex, parentTileId, subgridIndex ) dict ->
-            Dict.insert tileIndex ( parentTileId, subgridIndex ) dict
-        )
-        Dict.empty
-        parentTilesInfo
 
 
 createTileFromId : Int -> Maybe ( Int, Int ) -> Tile.Tile
@@ -361,29 +422,29 @@ createTileFromId tileId parentTileInfo =
     tile
 
 
-restoreLots : List { name : String, anchorCell : ( Int, Int ) } -> World -> Result String World
-restoreLots lotsData world =
+restoreLots : List LotMetadata -> World -> Result String World
+restoreLots lotMetadataList world =
     List.foldl
-        (\lotData ->
-            Result.andThen (restoreSingleLot lotData)
+        (\lotMetadata ->
+            Result.andThen (restoreSingleLot lotMetadata)
         )
         (Ok world)
-        lotsData
+        lotMetadataList
 
 
-restoreSingleLot : { name : String, anchorCell : ( Int, Int ) } -> World -> Result String World
-restoreSingleLot lotData world =
+restoreSingleLot : LotMetadata -> World -> Result String World
+restoreSingleLot lotMetadata world =
     let
         tilemapConfig =
             Tilemap.getTilemapConfig world.tilemap
 
-        maybeAnchorCell =
-            Cell.fromCoordinates tilemapConfig lotData.anchorCell
+        maybeEntryCell =
+            Cell.fromCoordinates tilemapConfig lotMetadata.entryCell
 
         maybeNewLot =
-            findLotByName lotData.name
+            Lots.findByName lotMetadata.name
     in
-    case ( maybeAnchorCell, maybeNewLot ) of
+    case ( maybeEntryCell, maybeNewLot ) of
         ( Just lotEntryCell, Just newLot ) ->
             let
                 ( lot, nextLots ) =
@@ -399,19 +460,12 @@ restoreSingleLot lotData world =
 
         ( Nothing, _ ) ->
             Err
-                ("Invalid lot anchor cell coordinates: "
-                    ++ Debug.toString lotData.anchorCell
+                ("Invalid lot entry cell coordinates: "
+                    ++ coordinatesToString lotMetadata.entryCell
                 )
 
         ( _, Nothing ) ->
-            Err ("Unknown lot name: " ++ lotData.name)
-
-
-findLotByName : String -> Maybe NewLot
-findLotByName name =
-    allLots
-        |> List.filter (\lot -> lot.name == name)
-        |> List.head
+            Err ("Unknown lot name: " ++ lotMetadata.name)
 
 
 
@@ -424,7 +478,7 @@ spawnLotResidents : Time.Posix -> World -> World
 spawnLotResidents currentTime world =
     Collection.foldl
         (\lotId lot updatedWorld ->
-            case findLotByName lot.name of
+            case Lots.findByName lot.name of
                 Just newLot ->
                     Simulation.Traffic.addLotResidents currentTime lotId newLot.residents updatedWorld
 

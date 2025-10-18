@@ -1,18 +1,21 @@
 module SavegameTests exposing (suite)
 
+import Data.Lots as Lots exposing (NewLot)
+import Data.TileSet
 import Data.Worlds as Worlds
 import Dict exposing (Dict)
 import Expect
 import Json.Encode as JE
 import Lib.Collection as Collection
 import Lib.FSM as FSM
-import Model.World as World
+import Model.World as World exposing (World)
 import Savegame
 import Simulation.RoadNetwork as RoadNetwork
 import Test exposing (Test, describe, test)
-import Tilemap.Cell as Cell
+import Tilemap.Cell as Cell exposing (CellCoordinates)
 import Tilemap.Core as Tilemap
 import Tilemap.Tile as Tile
+import Tilemap.TileConfig as TileConfig exposing (LargeTile, TileId)
 
 
 suite : Test
@@ -22,6 +25,7 @@ suite =
         , decodeTests
         , roundTripTests
         , invalidInputTests
+        , parentTileComputationTests
         ]
 
 
@@ -45,7 +49,6 @@ encodeTests =
                     , \_ -> jsonString |> String.contains "\"seed\"" |> Expect.equal True
                     , \_ -> jsonString |> String.contains "\"tilemapSize\"" |> Expect.equal True
                     , \_ -> jsonString |> String.contains "\"tilemap\"" |> Expect.equal True
-                    , \_ -> jsonString |> String.contains "\"parentTiles\"" |> Expect.equal True
                     , \_ -> jsonString |> String.contains "\"lots\"" |> Expect.equal True
                     ]
                     ()
@@ -68,7 +71,7 @@ encodeTests =
                     ]
                     ()
             )
-        , test "encodes world with school lot including parent tiles"
+        , test "encodes world with school lot"
             (\_ ->
                 let
                     world =
@@ -83,7 +86,6 @@ encodeTests =
                 Expect.all
                     [ \_ -> jsonString |> String.contains "\"lots\"" |> Expect.equal True
                     , \_ -> jsonString |> String.contains "\"LotSchool\"" |> Expect.equal True
-                    , \_ -> jsonString |> String.contains "\"parentTiles\"" |> Expect.equal True
                     , \_ -> jsonString |> String.contains "\"anchorCell\"" |> Expect.equal True
                     ]
                     ()
@@ -460,7 +462,6 @@ invalidInputTests =
                             , ( "seed", JE.string "42" )
                             , ( "tilemapSize", JE.object [ ( "width", JE.int 10 ), ( "height", JE.int 10 ) ] )
                             , ( "tilemap", JE.list JE.int [] )
-                            , ( "parentTiles", JE.list (JE.list JE.int) [] )
                             , ( "lots", JE.list JE.string [] )
                             ]
 
@@ -486,7 +487,6 @@ invalidInputTests =
                             , ( "seed", JE.string "42" )
                             , ( "tilemapSize", JE.object [ ( "width", JE.int 5 ), ( "height", JE.int 5 ) ] )
                             , ( "tilemap", JE.list (Maybe.map JE.int >> Maybe.withDefault JE.null) [ Just 1, Just 2 ] )
-                            , ( "parentTiles", JE.list (JE.list JE.int) [] )
                             , ( "lots", JE.list JE.string [] )
                             ]
 
@@ -512,7 +512,6 @@ invalidInputTests =
                             , ( "seed", JE.string "42" )
                             , ( "tilemapSize", JE.object [ ( "width", JE.int 10 ), ( "height", JE.int 10 ) ] )
                             , ( "tilemap", JE.list (Maybe.map JE.int >> Maybe.withDefault JE.null) (List.repeat 100 Nothing) )
-                            , ( "parentTiles", JE.list (JE.list JE.int) [] )
                             , ( "lots"
                               , JE.list
                                     (\{ name, coords } ->
@@ -580,3 +579,184 @@ tilemapToParentTileMap tilemap =
         )
         Dict.empty
         tilemap
+
+
+
+--
+-- Parent tile computation tests
+--
+
+
+parentTileComputationTests : Test
+parentTileComputationTests =
+    describe "Parent tile computation from lot data"
+        [ test "computes parent tiles matching Savegame.encode output"
+            (\_ ->
+                let
+                    world =
+                        Worlds.worldWithSchool
+
+                    savedData =
+                        Savegame.encode world
+                            |> Savegame.decode
+                            |> Result.map
+                                (\decoded ->
+                                    extractParentTilesFromWorld decoded
+                                )
+
+                    parentTiles =
+                        parentTilesFromLots world
+                in
+                case savedData of
+                    Ok savedParentTiles ->
+                        Expect.equal (List.sort savedParentTiles) (List.sort parentTiles)
+                            |> Expect.onFail
+                                ("Parent tiles don't match.\nExpected (saved): "
+                                    ++ Debug.toString (List.sort savedParentTiles)
+                                    ++ "\nActual (computed): "
+                                    ++ Debug.toString (List.sort parentTiles)
+                                )
+
+                    Err error ->
+                        Expect.fail ("Failed to encode/decode savegame: " ++ error)
+            )
+        ]
+
+
+extractParentTilesFromWorld : World -> List ( Int, TileId, Int )
+extractParentTilesFromWorld world =
+    Tilemap.foldTiles
+        (\cell tile acc ->
+            case tile.kind of
+                Tile.Fixed properties ->
+                    case properties.parentTile of
+                        Just ( parentTileId, subgridIndex ) ->
+                            let
+                                arrayIndex =
+                                    Cell.array1DIndex (Tilemap.getTilemapConfig world.tilemap) cell
+                            in
+                            ( arrayIndex, parentTileId, subgridIndex ) :: acc
+
+                        Nothing ->
+                            acc
+
+                _ ->
+                    acc
+        )
+        []
+        world.tilemap
+
+
+parentTilesFromLots : World -> List ( Int, TileId, Int )
+parentTilesFromLots world =
+    let
+        tilemapConfig =
+            Tilemap.getTilemapConfig world.tilemap
+
+        -- Build map: cell coords (1-indexed) -> (parentTileId, subgridIndex)
+        parentTileMap : Dict CellCoordinates ( TileId, Int )
+        parentTileMap =
+            Collection.foldl
+                (\_ lot acc ->
+                    findLotAnchor world lot.id
+                        |> Maybe.andThen (\anchorCell -> Lots.findByName lot.name |> Maybe.map (Tuple.pair anchorCell))
+                        |> Maybe.andThen (\( anchorCell, newLot ) -> findMatchingLargeTile newLot |> Maybe.map (Tuple.pair anchorCell))
+                        |> Maybe.map
+                            (\( anchorCell, largeTile ) ->
+                                addLotCellsToParentMap tilemapConfig anchorCell largeTile acc
+                            )
+                        |> Maybe.withDefault acc
+                )
+                Dict.empty
+                world.lots
+    in
+    -- Convert to list format: (arrayIndex, parentTileId, subgridIndex)
+    Dict.toList parentTileMap
+        |> List.filterMap
+            (\( cellCoords, ( parentTileId, subgridIndex ) ) ->
+                Cell.fromCoordinates tilemapConfig cellCoords
+                    |> Maybe.map
+                        (\cell ->
+                            ( Cell.array1DIndex tilemapConfig cell
+                            , parentTileId
+                            , subgridIndex
+                            )
+                        )
+            )
+        |> List.sortBy (\( idx, _, _ ) -> idx)
+
+
+findLotAnchor : World -> Collection.Id -> Maybe Cell.Cell
+findLotAnchor world lotId =
+    let
+        tilemapConfig =
+            Tilemap.getTilemapConfig world.tilemap
+    in
+    Dict.toList world.lotEntries
+        |> List.filterMap
+            (\( cellCoords, ( entryLotId, entryDirection ) ) ->
+                if Collection.idMatches entryLotId lotId then
+                    -- Get entry cell, then find driveway cell (where lot actually starts)
+                    Cell.fromCoordinates tilemapConfig cellCoords
+                        |> Maybe.andThen (Cell.nextOrthogonalCell tilemapConfig entryDirection)
+
+                else
+                    Nothing
+            )
+        |> List.head
+
+
+findMatchingLargeTile : NewLot -> Maybe LargeTile
+findMatchingLargeTile lot =
+    Data.TileSet.lotTiles
+        |> List.filterMap
+            (\tileConfig ->
+                case tileConfig of
+                    TileConfig.Large largeTile ->
+                        if World.newLotMatchesTile largeTile lot then
+                            Just largeTile
+
+                        else
+                            Nothing
+
+                    _ ->
+                        Nothing
+            )
+        |> List.head
+
+
+addLotCellsToParentMap : Tilemap.TilemapConfig -> Cell.Cell -> LargeTile -> Dict CellCoordinates ( TileId, Int ) -> Dict CellCoordinates ( TileId, Int )
+addLotCellsToParentMap tilemapConfig drivewayCell largeTile dict =
+    let
+        subgridConstraints =
+            { horizontalCellsAmount = largeTile.width
+            , verticalCellsAmount = largeTile.height
+            }
+
+        -- Get top-left corner cell of the large tile
+        maybeTopLeftCell =
+            Tile.largeTileTopLeftCell tilemapConfig drivewayCell largeTile.anchorIndex largeTile
+    in
+    case maybeTopLeftCell of
+        Just topLeftCell ->
+            -- For each cell in subgrid
+            List.range 0 (largeTile.width * largeTile.height - 1)
+                |> List.filterMap
+                    (\subgridIndex ->
+                        -- Convert subgrid index to cell in subgrid coordinates
+                        Cell.fromArray1DIndex subgridConstraints subgridIndex
+                            -- Place into global coordinates using Cell.placeIn
+                            |> Maybe.andThen (Cell.placeIn tilemapConfig topLeftCell)
+                            |> Maybe.map
+                                (\globalCell ->
+                                    ( Cell.coordinates globalCell
+                                    , ( largeTile.id, subgridIndex )
+                                    )
+                                )
+                    )
+                |> List.foldl
+                    (\( coords, value ) acc -> Dict.insert coords value acc)
+                    dict
+
+        Nothing ->
+            dict

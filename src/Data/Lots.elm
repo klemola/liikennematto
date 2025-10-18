@@ -3,6 +3,7 @@ module Data.Lots exposing
     , ParkingRestriction(..)
     , allLots
     , drivewayOffset
+    , findByName
     , fireStation
     , residentialApartments1
     , residentialRow1
@@ -56,6 +57,13 @@ drivewayOffset : Length
 drivewayOffset =
     -- the offset of lot entry tiles' driveway (vs. center-positioned road)
     Cell.size |> Quantity.multiplyBy 0.2
+
+
+findByName : String -> Maybe NewLot
+findByName name =
+    allLots
+        |> List.filter (\lot -> lot.name == name)
+        |> List.head
 
 
 residentParking : Point2d Length.Meters LocalCoordinates -> ( Point2d Length.Meters LocalCoordinates, ParkingRestriction )
