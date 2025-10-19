@@ -21,6 +21,7 @@ import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Screen as Screen exposing (Screen)
 import Model.World as World exposing (World)
 import Random
+import Savegame
 import Tilemap.DrivenWFC exposing (DrivenWFC(..))
 import Time
 import UI.Model exposing (UI)
@@ -239,8 +240,20 @@ initial flags =
         initialSeed =
             Random.initialSeed (Time.posixToMillis flags.time)
 
-        world =
-            initialWorld initialSeed
+        ( world, maybeSavegame ) =
+            case flags.savegameData of
+                Just savegameJson ->
+                    case Savegame.decode savegameJson of
+                        Ok restoredWorld ->
+                            ( Savegame.spawnLotResidents flags.time restoredWorld
+                            , Just savegameJson
+                            )
+
+                        Err _ ->
+                            ( initialWorld initialSeed, Nothing )
+
+                Nothing ->
+                    ( initialWorld initialSeed, Nothing )
     in
     { game = appFsm
     , initSteps =
@@ -252,7 +265,7 @@ initial flags =
     , previousWorld = Nothing
     , world = world
     , wfc = initialDrivenWfc
-    , savegame = Nothing
+    , savegame = maybeSavegame
     , simulationActive = True
     , renderCache = RenderCache.new world
     , debug = initialDebugState

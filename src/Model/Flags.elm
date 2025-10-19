@@ -7,12 +7,14 @@ module Model.Flags exposing
     )
 
 import Json.Decode
+import Json.Encode as JE
 import Time
 
 
 type alias Flags =
     { runtimeEnvironment : RuntimeEnvironment
     , time : Time.Posix
+    , savegameData : Maybe JE.Value
     }
 
 
@@ -30,6 +32,7 @@ fallback : Flags
 fallback =
     { runtimeEnvironment = Unknown
     , time = Time.millisToPosix 42
+    , savegameData = Nothing
     }
 
 
@@ -42,7 +45,7 @@ fromJsonValue value =
 
 flagsDecoder : Json.Decode.Decoder Flags
 flagsDecoder =
-    Json.Decode.map2 Flags
+    Json.Decode.map3 Flags
         (Json.Decode.field "runtimeEnvironment"
             (Json.Decode.string
                 |> Json.Decode.andThen runtimeEnviromentFromString
@@ -51,6 +54,7 @@ flagsDecoder =
         (Json.Decode.field "time" Json.Decode.int
             |> Json.Decode.map Time.millisToPosix
         )
+        (Json.Decode.maybe (Json.Decode.field "savegameData" Json.Decode.value))
 
 
 runtimeEnviromentFromString : String -> Json.Decode.Decoder RuntimeEnvironment

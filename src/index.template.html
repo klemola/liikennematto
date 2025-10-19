@@ -20,12 +20,40 @@
         </style>
     </head>
     <body>
+        <script src="https://unpkg.com/fflate@0.8.2"></script>
         <script src="liikennematto.min.js"></script>
         <script>
+            function parseSavegameFromUrl() {
+                const hash = window.location.hash;
+
+                if (!hash || hash.length <= 1) {
+                    return null;
+                }
+
+                try {
+                    const base64Data = hash.substring(1); // Remove the # prefix
+                    const binaryString = atob(base64Data);
+                    const bytes = new Uint8Array(binaryString.length);
+
+                    for (let i = 0; i < binaryString.length; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                    }
+
+                    const decompressed = fflate.decompressSync(bytes);
+                    const asStr = fflate.strFromU8(decompressed);
+
+                    return JSON.parse(asStr);
+                } catch (e) {
+                    console.error("Failed to parse savegame from URL:", e);
+                    return null;
+                }
+            }
+
             var app = Elm.Main.init({
                 flags: {
                     runtimeEnvironment: "release",
                     time: Date.now(),
+                    savegameData: parseSavegameFromUrl(),
                 },
             });
 
@@ -40,7 +68,6 @@
             let soundSource_lot = null;
             let sounds = {};
 
-            // Load the game sounds
             Promise.all([
                 getBuffer("init"),
                 getBuffer("build_road_start"),
