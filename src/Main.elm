@@ -21,6 +21,7 @@ import Quantity
 import Render
 import Render.Conversion exposing (toPixelsValue)
 import Render.Debug
+import Savegame
 import Simulation.Update as Simulation
 import Task
 import Tilemap.Update as Tilemap
@@ -298,7 +299,10 @@ onUiButtonPressed buttonId model =
                     Liikennematto.triggerLoading model
             in
             ( Liikennematto.fromNewGame previousWorld modelWithTransition
-            , gameActionsToCmd transitionActions
+            , Cmd.batch
+                [ gameActionsToCmd transitionActions
+                , Savegame.clearSavegameUrl ()
+                ]
             )
 
         UI.Model.SpawnCar ->

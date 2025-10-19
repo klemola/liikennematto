@@ -1,5 +1,6 @@
 port module Savegame exposing
     ( SavegameData
+    , clearSavegameUrl
     , decode
     , encode
     , spawnLotResidents
@@ -44,6 +45,9 @@ currentSavegameVersion =
 
 
 port updateSavegameUrl : JE.Value -> Cmd msg
+
+
+port clearSavegameUrl : () -> Cmd msg
 
 
 

@@ -78,6 +78,10 @@
                 }
             });
 
+            app.ports.clearSavegameUrl.subscribe(function () {
+                window.location.hash = "";
+            });
+
             const AudioContext =
                 window.AudioContext || window.webkitAudioContext;
             const context = new AudioContext();
