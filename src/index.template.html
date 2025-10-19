@@ -57,6 +57,27 @@
                 },
             });
 
+            app.ports.updateSavegameUrl.subscribe(function (savegameJson) {
+                try {
+                    const jsonString = JSON.stringify(savegameJson);
+                    const bytes = fflate.strToU8(jsonString);
+                    const compressed = fflate.compressSync(bytes);
+
+                    const len = compressed.byteLength;
+                    let binary = "";
+
+                    for (let i = 0; i < len; i++) {
+                        binary += String.fromCharCode(compressed[i]);
+                    }
+
+                    const base64Data = btoa(binary);
+
+                    window.location.hash = base64Data;
+                } catch (e) {
+                    console.error("Failed to update savegame URL:", e);
+                }
+            });
+
             const AudioContext =
                 window.AudioContext || window.webkitAudioContext;
             const context = new AudioContext();

@@ -1,8 +1,9 @@
-module Savegame exposing
+port module Savegame exposing
     ( SavegameData
     , decode
     , encode
     , spawnLotResidents
+    , updateSavegameUrl
     )
 
 import Array
@@ -40,6 +41,9 @@ type alias SavegameData =
 currentSavegameVersion : String
 currentSavegameVersion =
     "1.0"
+
+
+port updateSavegameUrl : JE.Value -> Cmd msg
 
 
 

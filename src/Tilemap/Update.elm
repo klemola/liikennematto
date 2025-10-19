@@ -185,15 +185,22 @@ update msg model =
 
                                 nextWorld =
                                     World.setTilemap nextTilemap model.world
+
+                                nextSavegame =
+                                    Savegame.encode nextWorld
                             in
                             ( { model
                                 | world = nextWorld
                                 , wfc = updatedDrivenWfc
-                                , savegame = Just (Savegame.encode nextWorld)
+                                , savegame = Just nextSavegame
                                 , renderCache = setTilemapCache nextTilemap Nothing model.renderCache
                                 , debug = appendWfcLog wfcLog model.debug
                               }
-                            , Cmd.batch (audioCmd :: tileActionsToCmds tileActions)
+                            , Cmd.batch
+                                [ audioCmd
+                                , Savegame.updateSavegameUrl nextSavegame
+                                , Cmd.batch (tileActionsToCmds tileActions)
+                                ]
                             )
 
                         WFCPending _ _ ->
