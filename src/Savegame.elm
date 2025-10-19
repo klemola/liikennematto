@@ -456,8 +456,25 @@ restoreSingleLot lotMetadata world =
                         (Lot.build newLot lotEntryCell)
                         world.lots
 
+                nextTilemap =
+                    case
+                        Tile.largeTileTopLeftCell
+                            tilemapConfig
+                            lotMetadata.drivewayCell
+                            lotMetadata.largeTile.anchorIndex
+                            lotMetadata.largeTile
+                    of
+                        Just topLeftCell ->
+                            Tilemap.mapCell topLeftCell (Tile.withName lotMetadata.name) world.tilemap
+
+                        Nothing ->
+                            world.tilemap
+
                 nextWorld =
-                    { world | lots = nextLots }
+                    { world
+                        | lots = nextLots
+                        , tilemap = nextTilemap
+                    }
                         |> World.addLotEntry lotEntryCell lot.id newLot.entryDirection
             in
             Ok nextWorld
