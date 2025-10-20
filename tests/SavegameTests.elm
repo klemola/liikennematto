@@ -45,15 +45,15 @@ encodeTests =
                         JE.encode 0 json
                 in
                 Expect.all
-                    [ \_ -> jsonString |> String.contains "\"version\"" |> Expect.equal True
+                    [ \_ -> jsonString |> String.contains "\"v\"" |> Expect.equal True
                     , \_ -> jsonString |> String.contains "\"seed\"" |> Expect.equal True
-                    , \_ -> jsonString |> String.contains "\"tilemapSize\"" |> Expect.equal True
+                    , \_ -> jsonString |> String.contains "\"tmd\"" |> Expect.equal True
                     , \_ -> jsonString |> String.contains "\"tilemap\"" |> Expect.equal True
                     , \_ -> jsonString |> String.contains "\"lots\"" |> Expect.equal True
                     ]
                     ()
             )
-        , test "encodes tilemap size correctly"
+        , test "encodes tilemap dimensions correctly"
             (\_ ->
                 let
                     world =
@@ -65,9 +65,9 @@ encodeTests =
                     jsonString =
                         JE.encode 0 json
                 in
+                -- tmd is now an array [width, height]
                 Expect.all
-                    [ \_ -> jsonString |> String.contains "\"width\":10" |> Expect.equal True
-                    , \_ -> jsonString |> String.contains "\"height\":10" |> Expect.equal True
+                    [ \_ -> jsonString |> String.contains "\"tmd\":[10,10]" |> Expect.equal True
                     ]
                     ()
             )
@@ -83,10 +83,10 @@ encodeTests =
                     jsonString =
                         JE.encode 0 json
                 in
+                -- lots are now arrays [lotId, x, y] where LotSchool has ID 2
                 Expect.all
                     [ \_ -> jsonString |> String.contains "\"lots\"" |> Expect.equal True
-                    , \_ -> jsonString |> String.contains "\"LotSchool\"" |> Expect.equal True
-                    , \_ -> jsonString |> String.contains "\"anchorCell\"" |> Expect.equal True
+                    , \_ -> jsonString |> String.contains "[2," |> Expect.equal True
                     ]
                     ()
             )
@@ -458,11 +458,11 @@ invalidInputTests =
                 let
                     wrongVersionJson =
                         JE.object
-                            [ ( "version", JE.string "999.0" )
+                            [ ( "v", JE.int 999 )
                             , ( "seed", JE.string "42" )
-                            , ( "tilemapSize", JE.object [ ( "width", JE.int 10 ), ( "height", JE.int 10 ) ] )
+                            , ( "tmd", JE.list JE.int [ 10, 10 ] )
                             , ( "tilemap", JE.list JE.int [] )
-                            , ( "lots", JE.list JE.string [] )
+                            , ( "lots", JE.list (JE.list JE.int) [] )
                             ]
 
                     result =
@@ -478,16 +478,16 @@ invalidInputTests =
                             |> Expect.equal True
                             |> Expect.onFail ("Expected version error, got: " ++ error)
             )
-        , test "rejects tilemap size mismatch"
+        , test "rejects tilemap dimensions mismatch"
             (\_ ->
                 let
                     mismatchedJson =
                         JE.object
-                            [ ( "version", JE.string "1.0" )
+                            [ ( "v", JE.int 1 )
                             , ( "seed", JE.string "42" )
-                            , ( "tilemapSize", JE.object [ ( "width", JE.int 5 ), ( "height", JE.int 5 ) ] )
-                            , ( "tilemap", JE.list (Maybe.map JE.int >> Maybe.withDefault JE.null) [ Just 1, Just 2 ] )
-                            , ( "lots", JE.list JE.string [] )
+                            , ( "tmd", JE.list JE.int [ 5, 5 ] )
+                            , ( "tilemap", JE.list JE.int [ 1, 2 ] )
+                            , ( "lots", JE.list (JE.list JE.int) [] )
                             ]
 
                     result =
@@ -495,32 +495,26 @@ invalidInputTests =
                 in
                 case result of
                     Ok _ ->
-                        Expect.fail "Should have rejected tilemap size mismatch"
+                        Expect.fail "Should have rejected tilemap dimensions mismatch"
 
                     Err error ->
                         error
                             |> String.contains "mismatch"
                             |> Expect.equal True
-                            |> Expect.onFail ("Expected size mismatch error, got: " ++ error)
+                            |> Expect.onFail ("Expected dimensions mismatch error, got: " ++ error)
             )
-        , test "rejects invalid lot name"
+        , test "rejects invalid lot ID"
             (\_ ->
                 let
                     invalidLotJson =
                         JE.object
-                            [ ( "version", JE.string "1.0" )
+                            [ ( "v", JE.int 1 )
                             , ( "seed", JE.string "42" )
-                            , ( "tilemapSize", JE.object [ ( "width", JE.int 10 ), ( "height", JE.int 10 ) ] )
-                            , ( "tilemap", JE.list (Maybe.map JE.int >> Maybe.withDefault JE.null) (List.repeat 100 Nothing) )
+                            , ( "tmd", JE.list JE.int [ 10, 10 ] )
+                            , ( "tilemap", JE.list JE.int (List.repeat 100 0) )
                             , ( "lots"
-                              , JE.list
-                                    (\{ name, coords } ->
-                                        JE.object
-                                            [ ( "name", JE.string name )
-                                            , ( "anchorCell", JE.list JE.int coords )
-                                            ]
-                                    )
-                                    [ { name = "InvalidLotName", coords = [ 5, 5 ] } ]
+                              , JE.list (JE.list JE.int)
+                                    [ [ 999, 5, 5 ] ]
                               )
                             ]
 
@@ -529,13 +523,13 @@ invalidInputTests =
                 in
                 case result of
                     Ok _ ->
-                        Expect.fail "Should have rejected invalid lot name"
+                        Expect.fail "Should have rejected invalid lot ID"
 
                     Err error ->
                         error
                             |> String.contains "lot"
                             |> Expect.equal True
-                            |> Expect.onFail ("Expected lot name error, got: " ++ error)
+                            |> Expect.onFail ("Expected lot ID error, got: " ++ error)
             )
         ]
 
