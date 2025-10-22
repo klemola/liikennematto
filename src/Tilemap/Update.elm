@@ -202,7 +202,7 @@ update msg model =
                     -- WFC may already have been solved or failed, and the processed chunk is irrelevant
                     ( model, Cmd.none )
 
-        LotsPlaced lotPlacements ->
+        TilemapChangeProcessed lotPlacements ->
             let
                 nextWorld =
                     List.foldl
@@ -218,7 +218,12 @@ update msg model =
             ( { model
                 | world = nextWorld
                 , savegame = Just nextSavegame
-                , renderCache = setTilemapCache nextWorld.tilemap Nothing model.renderCache
+                , renderCache =
+                    if List.isEmpty lotPlacements then
+                        model.renderCache
+
+                    else
+                        setTilemapCache nextWorld.tilemap Nothing model.renderCache
               }
             , Savegame.updateSavegameUrl nextSavegame
             )

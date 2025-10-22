@@ -104,11 +104,7 @@ update msg model =
                     newLotsFromTilemapChange tilemapChange model.time model.world
             in
             ( { model | world = worldAfterTilemapChange tilemapChange worldWithLots }
-            , if List.isEmpty lotPlacements then
-                Cmd.none
-
-              else
-                Message.asCmd (LotsPlaced lotPlacements)
+            , Message.asCmd (TilemapChangeProcessed lotPlacements)
             )
 
         UpdateEnvironment ->

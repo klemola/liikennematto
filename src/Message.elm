@@ -27,7 +27,7 @@ type Message
     | UpdateTilemap Duration
     | WFCChunkProcessed RunWFCResult
     | TilemapChanged TilemapChange
-    | LotsPlaced (List LotPlacement)
+    | TilemapChangeProcessed (List LotPlacement)
       -- UI
     | UIMsg UI.Msg
 
