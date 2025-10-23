@@ -3,6 +3,7 @@ module Model.World exposing
     , PendingRoadNetworkUpdate
     , PendingTilemapChange
     , RNLookupEntry
+    , SeedState
     , TilemapChange
     , World
     , WorldEvent(..)
@@ -11,6 +12,7 @@ module Model.World exposing
     , createLookup
     , createPendingRoadNetworkUpdate
     , createRoadNetwork
+    , currentSeed
     , empty
     , findCarById
     , findLotById
@@ -26,12 +28,17 @@ module Model.World exposing
     , removeLot
     , resolveRoadNetworkUpdate
     , resolveTilemapUpdate
+    , seedStateFromInt
+    , seedStateFromIntAndSteps
     , setCar
     , setSeed
     , setTilemap
+    , stepSeed
+    , stepWithSeedFunction
     , tileInventoryCount
     , updateLot
     , updateRoadNetwork
+    , updateSeed
     )
 
 import BoundingBox2d exposing (BoundingBox2d)
@@ -55,6 +62,7 @@ import Point2d
 import QuadTree exposing (Bounded, QuadTree)
 import Quantity
 import Random
+import Random.List
 import Round
 import Set exposing (Set)
 import Simulation.Car as Car exposing (Car)
@@ -102,7 +110,7 @@ type alias World =
     , carLookup : QuadTree Length.Meters GlobalCoordinates Car
     , lotLookup : QuadTree Length.Meters GlobalCoordinates Lot
     , eventQueue : EventQueue WorldEvent
-    , seed : Random.Seed
+    , seedState : SeedState
     }
 
 
@@ -132,6 +140,13 @@ type alias RNLookupEntry =
     { id : Int
     , position : Point2d Length.Meters GlobalCoordinates
     , boundingBox : BoundingBox2d Length.Meters GlobalCoordinates
+    }
+
+
+type alias SeedState =
+    { initialSeed : Int
+    , currentSeed : Random.Seed
+    , stepCount : Int
     }
 
 
@@ -190,7 +205,7 @@ empty initialSeed tilemapConfig =
     , carLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
     , lotLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
     , eventQueue = EventQueue.empty
-    , seed = initialSeed
+    , seedState = seedStateFromSeed initialSeed
     }
 
 
@@ -327,14 +342,13 @@ updateLot lot world =
 prepareNewLot : LargeTile -> World -> ( NewLot, World )
 prepareNewLot largeTile world =
     let
-        ( ( newLot, remainingOptions ), nextSeed ) =
-            TileInventory.chooseRandom largeTile.id world.seed world.tileInventory
+        ( ( maybeNewLot, remainingOptions ), nextWorld ) =
+            stepSeed
+                (TileInventory.chooseRandom largeTile.id world.tileInventory)
+                world
     in
-    ( newLot |> Maybe.withDefault (newLotFallback largeTile)
-    , { world
-        | seed = nextSeed
-        , tileInventory = Dict.insert largeTile.id remainingOptions world.tileInventory
-      }
+    ( maybeNewLot |> Maybe.withDefault (newLotFallback largeTile)
+    , { nextWorld | tileInventory = Dict.insert largeTile.id remainingOptions world.tileInventory }
     )
 
 
@@ -436,7 +450,89 @@ createLookup lookupItems world =
 
 setSeed : Random.Seed -> World -> World
 setSeed seed world =
-    { world | seed = seed }
+    { world | seedState = seedStateFromSeed seed }
+
+
+seedStateFromSeed : Random.Seed -> SeedState
+seedStateFromSeed seed =
+    let
+        ( initialSeedInt, _ ) =
+            Random.step (Random.int Random.minInt Random.maxInt) seed
+    in
+    { initialSeed = initialSeedInt
+    , currentSeed = seed
+    , stepCount = 0
+    }
+
+
+seedStateFromInt : Int -> SeedState
+seedStateFromInt initialSeedInt =
+    { initialSeed = initialSeedInt
+    , currentSeed = Random.initialSeed initialSeedInt
+    , stepCount = 0
+    }
+
+
+seedStateFromIntAndSteps : Int -> Int -> SeedState
+seedStateFromIntAndSteps initialSeedInt steps =
+    let
+        steppedSeed =
+            stepNTimes steps (Random.initialSeed initialSeedInt)
+    in
+    { initialSeed = initialSeedInt
+    , currentSeed = steppedSeed
+    , stepCount = steps
+    }
+
+
+stepNTimes : Int -> Random.Seed -> Random.Seed
+stepNTimes n seed =
+    if n <= 0 then
+        seed
+
+    else
+        let
+            ( _, nextSeed ) =
+                Random.step (Random.int Random.minInt Random.maxInt) seed
+        in
+        stepNTimes (n - 1) nextSeed
+
+
+currentSeed : World -> Random.Seed
+currentSeed world =
+    world.seedState.currentSeed
+
+
+stepWithSeedFunction : (Random.Seed -> ( a, Random.Seed )) -> World -> ( a, World )
+stepWithSeedFunction fn world =
+    let
+        ( value, nextSeed ) =
+            fn world.seedState.currentSeed
+
+        nextSeedState =
+            { initialSeed = world.seedState.initialSeed
+            , currentSeed = nextSeed
+            , stepCount = world.seedState.stepCount + 1
+            }
+    in
+    ( value, { world | seedState = nextSeedState } )
+
+
+stepSeed : Random.Generator a -> World -> ( a, World )
+stepSeed generator world =
+    stepWithSeedFunction (Random.step generator) world
+
+
+updateSeed : SeedState -> World -> World
+updateSeed wfcSeedState world =
+    let
+        nextSeedState =
+            { initialSeed = world.seedState.initialSeed
+            , currentSeed = wfcSeedState.currentSeed
+            , stepCount = world.seedState.stepCount + wfcSeedState.stepCount
+            }
+    in
+    { world | seedState = nextSeedState }
 
 
 createRoadNetwork : Tilemap -> World -> World

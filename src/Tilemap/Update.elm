@@ -282,7 +282,7 @@ addTile cell model =
             let
                 ( withWfc, addTileActions ) =
                     addTileById
-                        world.seed
+                        (World.currentSeed world)
                         (World.tileInventoryCount world)
                         cell
                         tileId
@@ -303,7 +303,7 @@ removeTile cell model =
             model
 
         ( updatedWfcModel, actions ) =
-            onRemoveTile world.seed (World.tileInventoryCount world) cell world.tilemap
+            onRemoveTile (World.currentSeed world) (World.tileInventoryCount world) cell world.tilemap
     in
     ( resetDrivenWFC (WFC.toTilemap updatedWfcModel) model
     , Cmd.batch (playSound Audio.DestroyRoad :: tileActionsToCmds actions)
@@ -323,7 +323,7 @@ startWFC model =
             model
 
         initialWfc =
-            restartWfc world.seed
+            restartWfc (World.currentSeed world)
                 (World.tileInventoryCount world)
                 world.tilemap
     in

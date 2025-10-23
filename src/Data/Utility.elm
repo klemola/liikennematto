@@ -121,7 +121,7 @@ addTileInstantly cell tilemap =
                         world =
                             worldFromTilemap tilemap
                     in
-                    addTileById world.seed (World.tileInventoryCount world) cell tileId tilemap
+                    addTileById (World.currentSeed world) (World.tileInventoryCount world) cell tileId tilemap
 
                 Nothing ->
                     ( tilemap, [] )

@@ -270,19 +270,18 @@ addLotResidentsHelper time lotId remainingResidents world =
 
         resident :: others ->
             let
-                ( triggerAt, nextSeed ) =
-                    Random.step
+                ( triggerAt, nextWorld ) =
+                    World.stepSeed
                         (randomFutureTime ( 5000, 20000 ) time)
-                        world.seed
+                        world
 
-                nextWorld =
-                    world
-                        |> World.setSeed nextSeed
+                worldWithEvent =
+                    nextWorld
                         |> World.addEvent
                             (World.SpawnResident resident lotId)
                             triggerAt
             in
-            addLotResidentsHelper time lotId others nextWorld
+            addLotResidentsHelper time lotId others worldWithEvent
 
 
 spawnResident : Time.Posix -> CarMake -> Lot -> World -> Result String World
@@ -310,15 +309,14 @@ spawnResident time carMake lot world =
                         , parkingSpotId = parkingSpot.id
                         }
 
-                    ( routeTriggerAt, nextSeed ) =
-                        Random.step
+                    ( routeTriggerAt, nextWorld ) =
+                        World.stepSeed
                             (randomFutureTime ( 1000, 20000 ) time)
-                            world.seed
+                            world
                 in
-                world
+                nextWorld
                     |> World.refreshCars nextCars
                     |> World.updateLot lotWithReservedParkingSpot
-                    |> World.setSeed nextSeed
                     |> World.addEvent
                         (World.CreateRouteFromParkingSpot car.id parkingReservation)
                         routeTriggerAt
@@ -328,19 +326,18 @@ spawnResident time carMake lot world =
 spawnTestCar : World -> ( World, Maybe Collection.Id )
 spawnTestCar world =
     let
-        ( maybeRandomNodeCtx, seedAfterRandomNode ) =
-            RoadNetwork.getRandomNode
-                world.roadNetwork
-                world.seed
-                (\node -> node.label.kind == RoadNetwork.LaneConnector)
+        ( maybeRandomNodeCtx, worldAfterRandomNode ) =
+            World.stepWithSeedFunction
+                (\seed -> RoadNetwork.getRandomNode world.roadNetwork seed (\node -> node.label.kind == RoadNetwork.LaneConnector))
+                world
     in
     maybeRandomNodeCtx
-        |> Maybe.andThen (validateSpawnConditions world)
+        |> Maybe.andThen (validateSpawnConditions worldAfterRandomNode)
         |> Maybe.map
             (\nodeCtx ->
                 let
-                    ( carMake, nextSeed ) =
-                        Random.step Data.Cars.randomCarMake seedAfterRandomNode
+                    ( carMake, nextWorld ) =
+                        World.stepSeed Data.Cars.randomCarMake worldAfterRandomNode
 
                     builderFn =
                         Car.new carMake
@@ -349,11 +346,10 @@ spawnTestCar world =
                             |> Car.build Nothing
 
                     ( car, nextCars ) =
-                        Collection.addFromBuilder builderFn world.cars
+                        Collection.addFromBuilder builderFn nextWorld.cars
                 in
-                ( world
+                ( nextWorld
                     |> World.refreshCars nextCars
-                    |> World.setSeed nextSeed
                     |> World.addEvent
                         (World.CreateRouteFromNode car.id nodeCtx)
                         (Time.millisToPosix 0)

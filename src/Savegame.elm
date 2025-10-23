@@ -28,7 +28,7 @@ import Time
 
 type alias SavegameData =
     { version : Int
-    , seed : String
+    , seed : List Int
     , tilemapDimensions : ( Int, Int )
 
     -- 1D array of tile IDs (0 if not tile has been set for the cell)
@@ -71,7 +71,7 @@ encode world =
     in
     JE.object
         [ ( "v", JE.int currentSavegameVersion )
-        , ( "seed", encodeSeed world.seed )
+        , ( "seed", encodeSeedState world.seedState )
         , ( "tmd"
           , JE.list JE.int
                 [ tilemapConfig.horizontalCellsAmount
@@ -130,14 +130,12 @@ findLotEntryCell world lotId =
         |> List.head
 
 
-encodeSeed : Random.Seed -> JE.Value
-encodeSeed seed =
-    seed
-        -- TODO: consider what the seed value should be
-        |> Random.step (Random.int Random.minInt Random.maxInt)
-        |> Tuple.first
-        |> String.fromInt
-        |> JE.string
+encodeSeedState : World.SeedState -> JE.Value
+encodeSeedState seedState =
+    JE.list JE.int
+        [ seedState.initialSeed
+        , seedState.stepCount
+        ]
 
 
 
@@ -157,7 +155,7 @@ savegameDecoder : JD.Decoder SavegameData
 savegameDecoder =
     JD.map5 SavegameData
         (JD.field "v" JD.int)
-        (JD.field "seed" JD.string)
+        (JD.field "seed" (JD.list JD.int))
         (JD.field "tmd" tilemapDimensionsDecoder)
         (JD.field "tilemap" (JD.list JD.int))
         (JD.field "lots" (JD.list lotDataDecoder))
@@ -313,7 +311,7 @@ worldFromSavegameData data =
 
     else
         let
-            prepareLotMetadataResult seed =
+            prepareLotMetadataResult seedState =
                 let
                     ( width, height ) =
                         data.tilemapDimensions
@@ -326,10 +324,15 @@ worldFromSavegameData data =
                 data.lots
                     |> List.map (prepareLotMetadata tilemapConfig)
                     |> combineResults
-                    |> Result.map (\lotMetadataList -> ( seed, tilemapConfig, lotMetadataList ))
+                    |> Result.map (\lotMetadataList -> ( seedState, tilemapConfig, lotMetadataList ))
 
-            restoreTilemapResult ( seed, tilemapConfig, lotMetadataList ) =
-                restoreTilemap data.tilemap lotMetadataList tilemapConfig (World.empty seed tilemapConfig)
+            restoreTilemapResult ( seedState, tilemapConfig, lotMetadataList ) =
+                let
+                    worldWithSeed =
+                        World.empty seedState.currentSeed tilemapConfig
+                            |> (\world -> { world | seedState = seedState })
+                in
+                restoreTilemap data.tilemap lotMetadataList tilemapConfig worldWithSeed
                     |> Result.map (\worldWithTilemap -> ( lotMetadataList, worldWithTilemap ))
 
             restoreLotsResult ( lotMetadataList, worldWithTilemap ) =
@@ -352,14 +355,14 @@ combineResults results =
         results
 
 
-seedFromString : String -> Result String Random.Seed
-seedFromString seedString =
-    case String.toInt seedString of
-        Just seedInt ->
-            Ok (Random.initialSeed seedInt)
+seedFromString : List Int -> Result String World.SeedState
+seedFromString seedList =
+    case seedList of
+        [ initialSeed, stepCount ] ->
+            Ok (World.seedStateFromIntAndSteps initialSeed stepCount)
 
-        Nothing ->
-            Err ("Invalid seed value: " ++ seedString)
+        _ ->
+            Err ("Invalid seed format - expected array of 2 integers [initialSeed, stepCount]")
 
 
 restoreTilemap : List Int -> List LotMetadata -> Tilemap.TilemapConfig -> World -> Result String World

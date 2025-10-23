@@ -287,7 +287,7 @@ fromNewGame previousWorld model =
             -- TODO: use a new seed e.g. from Time.Posix
             case previousWorld of
                 Just pw ->
-                    pw.seed
+                    World.currentSeed pw
 
                 Nothing ->
                     Random.initialSeed 0
@@ -311,7 +311,7 @@ fromPreviousGame model =
         Just previousWorld ->
             { model
                 | world = previousWorld
-                , wfc = initialDrivenWfc previousWorld.seed
+                , wfc = initialDrivenWfc (World.currentSeed previousWorld)
                 , previousWorld = Nothing
                 , renderCache = RenderCache.new previousWorld
                 , simulationActive = True

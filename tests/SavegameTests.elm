@@ -9,6 +9,7 @@ import Json.Encode as JE
 import Lib.Collection as Collection
 import Lib.FSM as FSM
 import Model.World as World exposing (World)
+import Random
 import Savegame
 import Simulation.RoadNetwork as RoadNetwork
 import Test exposing (Test, describe, test)
@@ -26,6 +27,7 @@ suite =
         , roundTripTests
         , invalidInputTests
         , parentTileComputationTests
+        , seedDeterminismTests
         ]
 
 
@@ -459,7 +461,7 @@ invalidInputTests =
                     wrongVersionJson =
                         JE.object
                             [ ( "v", JE.int 999 )
-                            , ( "seed", JE.string "42" )
+                            , ( "seed", JE.list JE.int [ 42, 0 ] )
                             , ( "tmd", JE.list JE.int [ 10, 10 ] )
                             , ( "tilemap", JE.list JE.int [] )
                             , ( "lots", JE.list (JE.list JE.int) [] )
@@ -484,7 +486,7 @@ invalidInputTests =
                     mismatchedJson =
                         JE.object
                             [ ( "v", JE.int 1 )
-                            , ( "seed", JE.string "42" )
+                            , ( "seed", JE.list JE.int [ 42, 0 ] )
                             , ( "tmd", JE.list JE.int [ 5, 5 ] )
                             , ( "tilemap", JE.list JE.int [ 1, 2 ] )
                             , ( "lots", JE.list (JE.list JE.int) [] )
@@ -509,7 +511,7 @@ invalidInputTests =
                     invalidLotJson =
                         JE.object
                             [ ( "v", JE.int 1 )
-                            , ( "seed", JE.string "42" )
+                            , ( "seed", JE.list JE.int [ 42, 0 ] )
                             , ( "tmd", JE.list JE.int [ 10, 10 ] )
                             , ( "tilemap", JE.list JE.int (List.repeat 100 0) )
                             , ( "lots"
@@ -530,6 +532,95 @@ invalidInputTests =
                             |> String.contains "lot"
                             |> Expect.equal True
                             |> Expect.onFail ("Expected lot ID error, got: " ++ error)
+            )
+        ]
+
+
+seedDeterminismTests : Test
+seedDeterminismTests =
+    describe "Seed determinism"
+        [ test "encode/decode preserves seed state for deterministic random generation"
+            (\_ ->
+                let
+                    world =
+                        Worlds.simpleWorld
+                            |> (\w -> { w | seedState = World.seedStateFromInt 12345 })
+
+                    -- Step the seed multiple times to simulate game activity
+                    -- This represents the seed state after some game time has passed
+                    ( _, seed1 ) =
+                        Random.step (Random.int 0 100) world.seedState.currentSeed
+
+                    ( _, seed2 ) =
+                        Random.step (Random.int 0 100) seed1
+
+                    ( _, seed3 ) =
+                        Random.step (Random.int 0 100) seed2
+
+                    worldWithSteppedSeed =
+                        { world
+                            | seedState =
+                                { initialSeed = world.seedState.initialSeed
+                                , currentSeed = seed3
+                                , stepCount = world.seedState.stepCount + 3
+                                }
+                        }
+
+                    encoded =
+                        Savegame.encode worldWithSteppedSeed
+
+                    decoded =
+                        Savegame.decode encoded
+                in
+                case decoded of
+                    Ok restoredWorld ->
+                        let
+                            generator =
+                                Random.int Random.minInt Random.maxInt
+
+                            ( originalValue1, originalSeed1 ) =
+                                Random.step generator seed3
+
+                            ( originalValue2, originalSeed2 ) =
+                                Random.step generator originalSeed1
+
+                            ( originalValue3, _ ) =
+                                Random.step generator originalSeed2
+
+                            ( restoredValue1, restoredSeed1 ) =
+                                Random.step generator restoredWorld.seedState.currentSeed
+
+                            ( restoredValue2, restoredSeed2 ) =
+                                Random.step generator restoredSeed1
+
+                            ( restoredValue3, _ ) =
+                                Random.step generator restoredSeed2
+
+                            -- All three values should match
+                            allMatch =
+                                (originalValue1 == restoredValue1)
+                                    && (originalValue2 == restoredValue2)
+                                    && (originalValue3 == restoredValue3)
+                        in
+                        Expect.equal allMatch True
+                            |> Expect.onFail
+                                ("Seed does not continue from savegame - expected sequence ["
+                                    ++ String.fromInt originalValue1
+                                    ++ ", "
+                                    ++ String.fromInt originalValue2
+                                    ++ ", "
+                                    ++ String.fromInt originalValue3
+                                    ++ "] but got ["
+                                    ++ String.fromInt restoredValue1
+                                    ++ ", "
+                                    ++ String.fromInt restoredValue2
+                                    ++ ", "
+                                    ++ String.fromInt restoredValue3
+                                    ++ "]"
+                                )
+
+                    Err error ->
+                        Expect.fail ("Decode failed: " ++ error)
             )
         ]
 
