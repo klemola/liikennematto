@@ -47,7 +47,7 @@ type DrivenWFC
     = WFCPending Duration Time.Posix
     | WFCActive WFC.Model
     | WFCFailed (List String) Random.Seed
-    | WFCSolved (List String) (List ( Cell, TileId ))
+    | WFCSolved (List String) (List ( Cell, TileId )) Random.Seed
 
 
 type alias RunWFCResult =
@@ -86,7 +86,10 @@ runWfc tilemap wfc =
                     WFC.flushPendingActions wfc
             in
             ( WFC.toTilemap solvedWfc
-            , WFCSolved (WFC.log solvedWfc) (WFC.collapsedTiles solvedWfc)
+            , WFCSolved
+                (WFC.log solvedWfc)
+                (WFC.collapsedTiles solvedWfc)
+                (WFC.currentSeed solvedWfc)
             , tileActions
             )
 
@@ -393,5 +396,5 @@ drivenWfcDebug currentTime drivenWfc =
         WFCFailed _ _ ->
             "Failed"
 
-        WFCSolved _ _ ->
+        WFCSolved _ _ _ ->
             "Solved"

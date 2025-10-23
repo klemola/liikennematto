@@ -174,7 +174,7 @@ update msg model =
                             , scheduleWFCChunk wfc model.world
                             )
 
-                        WFCSolved wfcLog collapsedTiles ->
+                        WFCSolved wfcLog collapsedTiles nextSeed ->
                             let
                                 audioCmd =
                                     if List.isEmpty collapsedTiles then
@@ -184,7 +184,9 @@ update msg model =
                                         playSound Audio.BuildLot
 
                                 nextWorld =
-                                    World.setTilemap nextTilemap model.world
+                                    model.world
+                                        |> World.setTilemap nextTilemap
+                                        |> World.setSeed nextSeed
                             in
                             ( { model
                                 | world = nextWorld

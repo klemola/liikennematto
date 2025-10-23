@@ -202,9 +202,9 @@ triggerLoading model =
 --
 
 
-initialDrivenWfc : DrivenWFC
-initialDrivenWfc =
-    WFCSolved [] []
+initialDrivenWfc : Random.Seed -> DrivenWFC
+initialDrivenWfc initialSeed =
+    WFCSolved [] [] initialSeed
 
 
 horizontalCellsAmount : Int
@@ -264,7 +264,7 @@ initial flags =
     , time = Time.millisToPosix 0
     , previousWorld = Nothing
     , world = world
-    , wfc = initialDrivenWfc
+    , wfc = initialDrivenWfc initialSeed
     , savegame = maybeSavegame
     , simulationActive = True
     , renderCache = RenderCache.new world
@@ -284,6 +284,7 @@ fromNewGame : Maybe World -> Liikennematto -> Liikennematto
 fromNewGame previousWorld model =
     let
         initialSeed =
+            -- TODO: use a new seed e.g. from Time.Posix
             case previousWorld of
                 Just pw ->
                     pw.seed
@@ -296,7 +297,7 @@ fromNewGame previousWorld model =
     in
     { model
         | world = world
-        , wfc = initialDrivenWfc
+        , wfc = initialDrivenWfc initialSeed
         , previousWorld = previousWorld
         , renderCache = RenderCache.new world
         , simulationActive = True
@@ -310,7 +311,7 @@ fromPreviousGame model =
         Just previousWorld ->
             { model
                 | world = previousWorld
-                , wfc = initialDrivenWfc
+                , wfc = initialDrivenWfc previousWorld.seed
                 , previousWorld = Nothing
                 , renderCache = RenderCache.new previousWorld
                 , simulationActive = True

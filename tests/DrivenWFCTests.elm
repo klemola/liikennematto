@@ -14,6 +14,7 @@ import Expect
 import Lib.FSM as FSM
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import Maybe.Extra as Maybe
+import Random
 import Test exposing (Test, describe, test)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core exposing (Tilemap, createTilemap, fixedTileByCell, tileByCell, tileNeighborIn)
@@ -399,6 +400,81 @@ suite =
                                 |> Expect.onFail "tile remains fixed"
                         ]
                         ()
+                )
+            ]
+        , describe "seed propagation"
+            [ test "WFC internal seed changes during solving"
+                (\_ ->
+                    let
+                        tilemap =
+                            placeRoadAndUpdateBuffer
+                                [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ), ( 10, 5 ) ]
+                                emptyTilemap
+
+                        ( wfcModel, _ ) =
+                            restartWfc testSeed Dict.empty tilemap
+                                |> WFC.solve
+                                |> WFC.flushPendingActions
+
+                        initialSeed =
+                            testSeed
+
+                        finalSeed =
+                            WFC.currentSeed wfcModel
+
+                        seedsAreDifferent =
+                            -- Seeds are opaque - test by stepping them and comparing outputs
+                            let
+                                ( val1, _ ) =
+                                    Random.step (Random.int Random.minInt Random.maxInt) initialSeed
+
+                                ( val2, _ ) =
+                                    Random.step (Random.int Random.minInt Random.maxInt) finalSeed
+                            in
+                            val1 /= val2
+                    in
+                    Expect.equal seedsAreDifferent True
+                        |> Expect.onFail "WFC seed should be different from initial seed after solving"
+                )
+            , test "runWfc returns updated seed in WFCSolved"
+                (\_ ->
+                    let
+                        tilemap =
+                            placeRoadAndUpdateBuffer
+                                [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ), ( 10, 5 ) ]
+                                emptyTilemap
+
+                        initialWfc =
+                            restartWfc testSeed Dict.empty tilemap
+
+                        ( _, drivenWfcResult, _ ) =
+                            Tilemap.DrivenWFC.runWfc tilemap (WFC.solve initialWfc)
+
+                        resultSeed =
+                            case drivenWfcResult of
+                                Tilemap.DrivenWFC.WFCSolved _ _ seed ->
+                                    Just seed
+
+                                _ ->
+                                    Nothing
+
+                        seedsAreDifferent =
+                            case resultSeed of
+                                Just seed ->
+                                    let
+                                        ( val1, _ ) =
+                                            Random.step (Random.int Random.minInt Random.maxInt) testSeed
+
+                                        ( val2, _ ) =
+                                            Random.step (Random.int Random.minInt Random.maxInt) seed
+                                    in
+                                    val1 /= val2
+
+                                Nothing ->
+                                    False
+                    in
+                    Expect.equal seedsAreDifferent True
+                        |> Expect.onFail "runWfc should return updated seed in WFCSolved"
                 )
             ]
         ]
