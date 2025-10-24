@@ -72,14 +72,29 @@
 
                     const base64Data = btoa(binary);
 
-                    window.location.hash = base64Data;
+                    history.replaceState(null, '', '#' + base64Data);
                 } catch (e) {
                     console.error("Failed to update savegame URL:", e);
                 }
             });
 
             app.ports.clearSavegameUrl.subscribe(function () {
-                window.location.hash = "";
+                // Preserve current game in history before clearing
+                if (window.location.hash) {
+                    history.pushState(null, '', window.location.href);
+                }
+                history.replaceState(null, '', window.location.pathname + window.location.search);
+            });
+
+            window.addEventListener('hashchange', function () {
+                if (!window.location.hash || window.location.hash === '#') {
+                    app.ports.onHashCleared.send(null);
+                } else {
+                    const savegameJson = parseSavegameFromUrl();
+                    if (savegameJson) {
+                        app.ports.onHashChange.send(savegameJson);
+                    }
+                }
             });
 
             const AudioContext =

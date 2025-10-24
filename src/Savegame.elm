@@ -3,6 +3,8 @@ port module Savegame exposing
     , clearSavegameUrl
     , decode
     , encode
+    , onHashChange
+    , onHashCleared
     , spawnLotResidents
     , updateSavegameUrl
     )
@@ -48,6 +50,12 @@ port updateSavegameUrl : JE.Value -> Cmd msg
 
 
 port clearSavegameUrl : () -> Cmd msg
+
+
+port onHashChange : (JE.Value -> msg) -> Sub msg
+
+
+port onHashCleared : (() -> msg) -> Sub msg
 
 
 

@@ -3,6 +3,7 @@ module Message exposing (Message(..), asCmd)
 import Browser.Dom
 import Browser.Events exposing (Visibility)
 import Duration exposing (Duration)
+import Json.Encode as JE
 import Model.World exposing (LotPlacement, TilemapChange)
 import Task
 import Tilemap.DrivenWFC exposing (RunWFCResult)
@@ -20,6 +21,8 @@ type Message
     | KeyReleased String
     | AudioInitComplete
     | GameSetupComplete
+    | SavegameHashChanged JE.Value
+    | SavegameHashCleared
       -- Tilemap & Simulation
     | UpdateTraffic Duration
     | CheckQueues Time.Posix Duration
