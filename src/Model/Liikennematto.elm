@@ -284,21 +284,26 @@ initial flags =
 fromNewGame : Maybe World -> Liikennematto -> Liikennematto
 fromNewGame previousWorld model =
     let
-        initialSeed =
-            -- TODO: use a new seed e.g. from Time.Posix
+        currentWorldSeed =
             case previousWorld of
                 Just pw ->
                     World.currentSeed pw
 
                 Nothing ->
-                    Random.initialSeed 0
+                    World.currentSeed model.world
+
+        ( randomInt, _ ) =
+            Random.step (Random.int Random.minInt Random.maxInt) currentWorldSeed
+
+        newGameSeed =
+            Random.initialSeed randomInt
 
         world =
-            initialWorld initialSeed
+            initialWorld newGameSeed
     in
     { model
         | world = world
-        , wfc = initialDrivenWfc initialSeed
+        , wfc = initialDrivenWfc newGameSeed
         , previousWorld = previousWorld
         , renderCache = RenderCache.new world
         , simulationActive = True
