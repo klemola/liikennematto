@@ -13,6 +13,7 @@ import Dict
 import Expect
 import Lib.FSM as FSM
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
+import Lib.SeedState as SeedState
 import Maybe.Extra as Maybe
 import Random
 import Test exposing (Test, describe, test)
@@ -108,7 +109,7 @@ suite =
                             5
 
                         ( tilemapWithTile, _ ) =
-                            addTileById testSeed Dict.empty newCell deadendRightId tilemap
+                            addTileById (SeedState.fromSeed testSeed) Dict.empty newCell deadendRightId tilemap
                     in
                     Expect.all
                         [ cellHasTile newCell deadendRightId
@@ -135,7 +136,7 @@ suite =
                             16
 
                         ( tilemapWithTile, _ ) =
-                            addTileById testSeed Dict.empty newCell intersectionCrossId tilemap
+                            addTileById (SeedState.fromSeed testSeed) Dict.empty newCell intersectionCrossId tilemap
                     in
                     Expect.all
                         [ cellHasTile newCell intersectionCrossId
@@ -159,7 +160,7 @@ suite =
                             7
 
                         ( tilemapWithTile, _ ) =
-                            addTileById testSeed Dict.empty newCell deadendLeftId tilemap
+                            addTileById (SeedState.fromSeed testSeed) Dict.empty newCell deadendLeftId tilemap
                     in
                     Expect.all
                         [ cellHasTile newCell deadendLeftId
@@ -182,7 +183,7 @@ suite =
                             6
 
                         ( tilemapWithTile, _ ) =
-                            addTileById testSeed Dict.empty newCell deadendDownId tilemap
+                            addTileById (SeedState.fromSeed testSeed) Dict.empty newCell deadendDownId tilemap
                     in
                     Expect.all
                         [ cellHasTile newCell deadendDownId
@@ -206,7 +207,7 @@ suite =
                             createCell constraints 8 5
 
                         ( wfcModel, _ ) =
-                            onRemoveTile testSeed Dict.empty removedCell tilemap
+                            onRemoveTile (SeedState.fromSeed testSeed) Dict.empty removedCell tilemap
 
                         tilemapWithoutTile =
                             WFC.toTilemap wfcModel
@@ -232,7 +233,7 @@ suite =
                             createCell constraints 7 5
 
                         ( wfcModel, _ ) =
-                            onRemoveTile testSeed Dict.empty removedCell tilemap
+                            onRemoveTile (SeedState.fromSeed testSeed) Dict.empty removedCell tilemap
 
                         tilemapWithoutTile =
                             WFC.toTilemap wfcModel
@@ -257,7 +258,7 @@ suite =
 
                         ( wfcModel, _ ) =
                             -- The lot entry becames a deadend "cul-de-sac" to keep the lot entry
-                            onRemoveTile testSeed Dict.empty removedCell tilemap
+                            onRemoveTile (SeedState.fromSeed testSeed) Dict.empty removedCell tilemap
 
                         tilemapWithoutTile =
                             WFC.toTilemap wfcModel
@@ -279,7 +280,7 @@ suite =
                             placeRoadAndUpdateBuffer
                                 [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ), ( 10, 5 ) ]
                                 emptyTilemap
-                                |> restartWfc testSeed Dict.empty
+                                |> restartWfc (SeedState.fromSeed testSeed) Dict.empty
                                 |> WFC.toTilemap
 
                         firstHorizontalRoadCellOptions =
@@ -317,7 +318,7 @@ suite =
                             placeRoadAndUpdateBuffer
                                 [ ( 5, 5 ), ( 5, 6 ), ( 5, 7 ), ( 5, 8 ), ( 5, 9 ), ( 5, 10 ) ]
                                 emptyTilemap
-                                |> restartWfc testSeed Dict.empty
+                                |> restartWfc (SeedState.fromSeed testSeed) Dict.empty
                                 |> WFC.toTilemap
 
                         firstHorizontalRoadCellOptions =
@@ -357,7 +358,7 @@ suite =
                             placeRoadAndUpdateBuffer
                                 [ ( 2, 5 ), ( 2, 6 ), ( 2, 7 ), ( 2, 8 ), ( 2, 9 ), ( 2, 10 ) ]
                                 emptyTilemap
-                                |> restartWfc testSeed Dict.empty
+                                |> restartWfc (SeedState.fromSeed testSeed) Dict.empty
                                 |> WFC.toTilemap
 
                         firstHorizontalRoadCellOptions =
@@ -389,7 +390,7 @@ suite =
                             tilemapFromCoordinates
                                 constraints
                                 [ ( 5, 5 ), ( 5, 6 ), ( 5, 7 ), ( 5, 8 ) ]
-                                |> restartWfc testSeed Dict.empty
+                                |> restartWfc (SeedState.fromSeed testSeed) Dict.empty
                                 |> WFC.toTilemap
                     in
                     Expect.all
@@ -412,14 +413,14 @@ suite =
                                 emptyTilemap
 
                         ( wfcModel, _ ) =
-                            restartWfc testSeed Dict.empty tilemap
+                            restartWfc (SeedState.fromSeed testSeed) Dict.empty tilemap
                                 |> WFC.solve
                                 |> WFC.flushPendingActions
 
                         initialSeed =
                             testSeed
 
-                        finalSeed =
+                        finalSeedState =
                             WFC.currentSeed wfcModel
 
                         seedsAreDifferent =
@@ -429,7 +430,7 @@ suite =
                                     Random.step (Random.int Random.minInt Random.maxInt) initialSeed
 
                                 ( val2, _ ) =
-                                    Random.step (Random.int Random.minInt Random.maxInt) finalSeed
+                                    Random.step (Random.int Random.minInt Random.maxInt) finalSeedState.currentSeed
                             in
                             val1 /= val2
                     in
@@ -445,28 +446,28 @@ suite =
                                 emptyTilemap
 
                         initialWfc =
-                            restartWfc testSeed Dict.empty tilemap
+                            restartWfc (SeedState.fromSeed testSeed) Dict.empty tilemap
 
                         ( _, drivenWfcResult, _ ) =
                             Tilemap.DrivenWFC.runWfc tilemap (WFC.solve initialWfc)
 
-                        resultSeed =
+                        resultSeedState =
                             case drivenWfcResult of
-                                Tilemap.DrivenWFC.WFCSolved _ _ seed ->
-                                    Just seed
+                                Tilemap.DrivenWFC.WFCSolved _ _ seedState ->
+                                    Just seedState
 
                                 _ ->
                                     Nothing
 
                         seedsAreDifferent =
-                            case resultSeed of
-                                Just seed ->
+                            case resultSeedState of
+                                Just seedState ->
                                     let
                                         ( val1, _ ) =
                                             Random.step (Random.int Random.minInt Random.maxInt) testSeed
 
                                         ( val2, _ ) =
-                                            Random.step (Random.int Random.minInt Random.maxInt) seed
+                                            Random.step (Random.int Random.minInt Random.maxInt) seedState.currentSeed
                                     in
                                     val1 /= val2
 

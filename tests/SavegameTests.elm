@@ -8,6 +8,7 @@ import Expect
 import Json.Encode as JE
 import Lib.Collection as Collection
 import Lib.FSM as FSM
+import Lib.SeedState as SeedState
 import Model.World as World exposing (World)
 import Random
 import Savegame
@@ -544,7 +545,7 @@ seedDeterminismTests =
                 let
                     world =
                         Worlds.simpleWorld
-                            |> (\w -> { w | seedState = World.seedStateFromInt 12345 })
+                            |> (\w -> { w | seedState = SeedState.fromInt 12345 })
 
                     -- Step the seed multiple times to simulate game activity
                     -- This represents the seed state after some game time has passed

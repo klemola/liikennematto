@@ -17,8 +17,8 @@ import Json.Decode as JD
 import Json.Encode as JE
 import Lib.Collection as Collection
 import Lib.OrthogonalDirection exposing (OrthogonalDirection)
+import Lib.SeedState as SeedState exposing (SeedState)
 import Model.World as World exposing (World)
-import Random
 import Simulation.Lot as Lot exposing (Lot)
 import Simulation.Traffic
 import Tilemap.Cell as Cell exposing (CellCoordinates)
@@ -138,7 +138,7 @@ findLotEntryCell world lotId =
         |> List.head
 
 
-encodeSeedState : World.SeedState -> JE.Value
+encodeSeedState : SeedState -> JE.Value
 encodeSeedState seedState =
     JE.list JE.int
         [ seedState.initialSeed
@@ -363,14 +363,14 @@ combineResults results =
         results
 
 
-seedFromString : List Int -> Result String World.SeedState
+seedFromString : List Int -> Result String SeedState
 seedFromString seedList =
     case seedList of
         [ initialSeed, stepCount ] ->
-            Ok (World.seedStateFromIntAndSteps initialSeed stepCount)
+            Ok (SeedState.fromIntAndSteps initialSeed stepCount)
 
         _ ->
-            Err ("Invalid seed format - expected array of 2 integers [initialSeed, stepCount]")
+            Err "Invalid seed format - expected array of 2 integers [initialSeed, stepCount]"
 
 
 restoreTilemap : List Int -> List LotMetadata -> Tilemap.TilemapConfig -> World -> Result String World

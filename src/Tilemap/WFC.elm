@@ -36,8 +36,9 @@ import Data.TileSet as TileSet
         )
 import Dict
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
+import Lib.SeedState as SeedState exposing (SeedState)
 import List.Nonempty exposing (Nonempty)
-import Random exposing (Seed)
+import Random
 import Random.Extra
 import Stack exposing (Stack)
 import Tilemap.Cell as Cell exposing (Cell)
@@ -70,7 +71,7 @@ type Model
 
 
 type alias ModelDetails =
-    { seed : Seed
+    { seed : SeedState
     , state : WFCState
     , tilemap : Tilemap
     , currentCell : Maybe Cell
@@ -121,10 +122,10 @@ maxBacktrackCount =
 --
 
 
-fromTilemap : Tilemap -> Random.Seed -> Model
-fromTilemap tilemap initialSeed =
+fromTilemap : Tilemap -> SeedState -> Model
+fromTilemap tilemap initialSeedState =
     Model
-        { seed = initialSeed
+        { seed = initialSeedState
         , state = Solving
         , tilemap = tilemap
         , currentCell = Nothing
@@ -259,8 +260,8 @@ collapse cell model =
     case tileByCell modelDetails.tilemap cell |> Maybe.map .kind of
         Just (Superposition options) ->
             let
-                ( randomTileId, nextSeed ) =
-                    Random.step (Random.Extra.sample options) modelDetails.seed
+                ( randomTileId, nextSeedState ) =
+                    SeedState.step (Random.Extra.sample options) modelDetails.seed
             in
             case randomTileId |> Maybe.map tileById of
                 Just tileConfig ->
@@ -269,7 +270,7 @@ collapse cell model =
                             Model
                                 { modelDetails
                                     | openSteps = Collapse cell tileConfig :: modelDetails.openSteps
-                                    , seed = nextSeed
+                                    , seed = nextSeedState
                                     , state = Solving
                                 }
                     in
@@ -278,7 +279,7 @@ collapse cell model =
                     )
 
                 _ ->
-                    ( Model { modelDetails | seed = nextSeed }, Nothing )
+                    ( Model { modelDetails | seed = nextSeedState }, Nothing )
 
         _ ->
             ( model, Nothing )
@@ -657,13 +658,13 @@ pickRandom ({ openSteps, tilemap, seed } as modelDetails) =
         Just candidates ->
             let
                 ( randomCandidate, seedAfterCandidateGen ) =
-                    Random.step (List.Nonempty.sample candidates) seed
+                    SeedState.step (List.Nonempty.sample candidates) seed
 
                 randomOptionGen =
                     toWeightedOptions randomCandidate.options
 
-                ( randomOption, nextSeed ) =
-                    Random.step randomOptionGen seedAfterCandidateGen
+                ( randomOption, nextSeedState ) =
+                    SeedState.step randomOptionGen seedAfterCandidateGen
 
                 collapseStep =
                     [ Collapse randomCandidate.cell randomOption ]
@@ -672,7 +673,7 @@ pickRandom ({ openSteps, tilemap, seed } as modelDetails) =
                 | openSteps = collapseStep ++ openSteps
                 , currentCell = Nothing
                 , targetCell = Nothing
-                , seed = nextSeed
+                , seed = nextSeedState
             }
 
 
@@ -1011,7 +1012,7 @@ log (Model modelDetails) =
     modelDetails.log
 
 
-currentSeed : Model -> Random.Seed
+currentSeed : Model -> SeedState
 currentSeed (Model modelDetails) =
     modelDetails.seed
 

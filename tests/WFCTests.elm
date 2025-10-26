@@ -18,6 +18,7 @@ import Data.Utility
         )
 import Dict
 import Expect
+import Lib.SeedState as SeedState
 import Random
 import Test exposing (Test, describe, test)
 import Tilemap.Cell as Cell
@@ -81,7 +82,7 @@ suite =
                         emptyTilemap
 
                     model =
-                        WFC.fromTilemap tilemap testSeed
+                        WFC.fromTilemap tilemap (SeedState.fromSeed testSeed)
                 in
                 Expect.equal (WFC.currentState model) WFC.Solving
             )
@@ -92,7 +93,7 @@ suite =
                         emptyTilemapWithInitializedCells
 
                     model =
-                        WFC.fromTilemap tilemap testSeed
+                        WFC.fromTilemap tilemap (SeedState.fromSeed testSeed)
                             |> WFC.withTileInventory testTileInventory
                             |> WFC.solve
                 in
@@ -105,7 +106,7 @@ suite =
                         emptyTilemapWithInitializedCells
 
                     initialModel =
-                        WFC.fromTilemap tilemap testSeed
+                        WFC.fromTilemap tilemap (SeedState.fromSeed testSeed)
                             |> WFC.withTileInventory testTileInventory
 
                     cell =
@@ -151,7 +152,7 @@ suite =
                         emptyTilemapWithInitializedCells
 
                     initialModel =
-                        WFC.fromTilemap tilemap testSeed
+                        WFC.fromTilemap tilemap (SeedState.fromSeed testSeed)
                             |> WFC.withTileInventory testTileInventory
 
                     cell =
@@ -204,7 +205,7 @@ suite =
                         emptyTilemapWithInitializedCells
 
                     initialModel =
-                        WFC.fromTilemap tilemap testSeed
+                        WFC.fromTilemap tilemap (SeedState.fromSeed testSeed)
                             |> WFC.withTileInventory testTileInventory
 
                     steppedModel =
@@ -217,6 +218,43 @@ suite =
                         countSuperpositions (WFC.toTilemap steppedModel)
                 in
                 Expect.lessThan initialSuperpositions steppedSuperpositions
+            )
+        , test "WFC tracks step counts and updates seed during solving"
+            (\_ ->
+                let
+                    tilemap =
+                        emptyTilemapWithInitializedCells
+
+                    initialSeedState =
+                        SeedState.fromInt 12345
+
+                    model =
+                        WFC.fromTilemap tilemap initialSeedState
+                            |> WFC.withTileInventory testTileInventory
+                            |> WFC.solve
+
+                    finalSeedState =
+                        WFC.currentSeed model
+
+                    seedValueChanged =
+                        let
+                            ( val1, _ ) =
+                                Random.step (Random.int Random.minInt Random.maxInt) initialSeedState.currentSeed
+
+                            ( val2, _ ) =
+                                Random.step (Random.int Random.minInt Random.maxInt) finalSeedState.currentSeed
+                        in
+                        val1 /= val2
+                in
+                Expect.all
+                    [ \_ ->
+                        Expect.greaterThan 0 finalSeedState.stepCount
+                            |> Expect.onFail "WFC should increment step count during solving"
+                    , \_ ->
+                        Expect.equal seedValueChanged True
+                            |> Expect.onFail "WFC seed value should change during solving"
+                    ]
+                    ()
             )
         , test "solve handles backtracking (bad tile inventory)"
             (\_ ->
@@ -232,7 +270,7 @@ suite =
                         Random.initialSeed 60
 
                     model =
-                        WFC.fromTilemap tilemap seed
+                        WFC.fromTilemap tilemap (SeedState.fromSeed seed)
                             |> WFC.withTileInventory reducedTileInventory
                             |> WFC.solve
 
@@ -258,7 +296,7 @@ suite =
                         114
 
                     model =
-                        WFC.fromTilemap tilemap testSeed
+                        WFC.fromTilemap tilemap (SeedState.fromSeed testSeed)
                             |> WFC.withTileInventory testTileInventory
                             |> WFC.debug_collapseWithId cell threeByThreeLotLeftId
                             |> WFC.step WFC.StopAtEmptySteps

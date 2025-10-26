@@ -15,6 +15,7 @@ module Model.Liikennematto exposing
 import Duration exposing (Duration)
 import Json.Encode as JE
 import Lib.FSM as FSM exposing (FSM)
+import Lib.SeedState as SeedState
 import Model.Debug exposing (DebugState, initialDebugState)
 import Model.Flags exposing (Flags, RuntimeEnvironment(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
@@ -204,7 +205,7 @@ triggerLoading model =
 
 initialDrivenWfc : Random.Seed -> DrivenWFC
 initialDrivenWfc initialSeed =
-    WFCSolved [] [] initialSeed
+    WFCSolved [] [] (SeedState.fromSeed initialSeed)
 
 
 horizontalCellsAmount : Int

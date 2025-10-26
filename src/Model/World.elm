@@ -3,7 +3,6 @@ module Model.World exposing
     , PendingRoadNetworkUpdate
     , PendingTilemapChange
     , RNLookupEntry
-    , SeedState
     , TilemapChange
     , World
     , WorldEvent(..)
@@ -28,10 +27,7 @@ module Model.World exposing
     , removeLot
     , resolveRoadNetworkUpdate
     , resolveTilemapUpdate
-    , seedStateFromInt
-    , seedStateFromIntAndSteps
     , setCar
-    , setSeed
     , setTilemap
     , stepSeed
     , stepWithSeedFunction
@@ -54,6 +50,7 @@ import Length exposing (Length)
 import Lib.Collection as Collection exposing (Collection, Id)
 import Lib.EventQueue as EventQueue exposing (EventQueue)
 import Lib.OrthogonalDirection exposing (OrthogonalDirection)
+import Lib.SeedState as SeedState exposing (SeedState)
 import List.Nonempty exposing (Nonempty)
 import Point2d
     exposing
@@ -62,7 +59,6 @@ import Point2d
 import QuadTree exposing (Bounded, QuadTree)
 import Quantity
 import Random
-import Random.List
 import Round
 import Set exposing (Set)
 import Simulation.Car as Car exposing (Car)
@@ -143,13 +139,6 @@ type alias RNLookupEntry =
     }
 
 
-type alias SeedState =
-    { initialSeed : Int
-    , currentSeed : Random.Seed
-    , stepCount : Int
-    }
-
-
 initialTileInventory : TileInventory (List NewLot)
 initialTileInventory =
     lotTiles
@@ -205,7 +194,7 @@ empty initialSeed tilemapConfig =
     , carLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
     , lotLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
     , eventQueue = EventQueue.empty
-    , seedState = seedStateFromSeed initialSeed
+    , seedState = SeedState.fromSeed initialSeed
     }
 
 
@@ -448,79 +437,27 @@ createLookup lookupItems world =
         |> QuadTree.insertList lookupItems
 
 
-setSeed : Random.Seed -> World -> World
-setSeed seed world =
-    { world | seedState = seedStateFromSeed seed }
-
-
-seedStateFromSeed : Random.Seed -> SeedState
-seedStateFromSeed seed =
-    let
-        ( initialSeedInt, _ ) =
-            Random.step (Random.int Random.minInt Random.maxInt) seed
-    in
-    { initialSeed = initialSeedInt
-    , currentSeed = seed
-    , stepCount = 0
-    }
-
-
-seedStateFromInt : Int -> SeedState
-seedStateFromInt initialSeedInt =
-    { initialSeed = initialSeedInt
-    , currentSeed = Random.initialSeed initialSeedInt
-    , stepCount = 0
-    }
-
-
-seedStateFromIntAndSteps : Int -> Int -> SeedState
-seedStateFromIntAndSteps initialSeedInt steps =
-    let
-        steppedSeed =
-            stepNTimes steps (Random.initialSeed initialSeedInt)
-    in
-    { initialSeed = initialSeedInt
-    , currentSeed = steppedSeed
-    , stepCount = steps
-    }
-
-
-stepNTimes : Int -> Random.Seed -> Random.Seed
-stepNTimes n seed =
-    if n <= 0 then
-        seed
-
-    else
-        let
-            ( _, nextSeed ) =
-                Random.step (Random.int Random.minInt Random.maxInt) seed
-        in
-        stepNTimes (n - 1) nextSeed
-
-
 currentSeed : World -> Random.Seed
 currentSeed world =
-    world.seedState.currentSeed
+    SeedState.currentSeed world.seedState
 
 
 stepWithSeedFunction : (Random.Seed -> ( a, Random.Seed )) -> World -> ( a, World )
 stepWithSeedFunction fn world =
     let
-        ( value, nextSeed ) =
-            fn world.seedState.currentSeed
-
-        nextSeedState =
-            { initialSeed = world.seedState.initialSeed
-            , currentSeed = nextSeed
-            , stepCount = world.seedState.stepCount + 1
-            }
+        ( value, nextSeedState ) =
+            SeedState.stepWithFunction fn world.seedState
     in
     ( value, { world | seedState = nextSeedState } )
 
 
 stepSeed : Random.Generator a -> World -> ( a, World )
 stepSeed generator world =
-    stepWithSeedFunction (Random.step generator) world
+    let
+        ( value, nextSeedState ) =
+            SeedState.step generator world.seedState
+    in
+    ( value, { world | seedState = nextSeedState } )
 
 
 updateSeed : SeedState -> World -> World

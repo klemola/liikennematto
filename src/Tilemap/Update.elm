@@ -174,7 +174,7 @@ update msg model =
                             , scheduleWFCChunk wfc model.world
                             )
 
-                        WFCSolved wfcLog collapsedTiles nextSeed ->
+                        WFCSolved wfcLog collapsedTiles nextSeedState ->
                             let
                                 audioCmd =
                                     if List.isEmpty collapsedTiles then
@@ -186,7 +186,7 @@ update msg model =
                                 nextWorld =
                                     model.world
                                         |> World.setTilemap nextTilemap
-                                        |> World.setSeed nextSeed
+                                        |> World.updateSeed nextSeedState
                             in
                             ( { model
                                 | world = nextWorld
@@ -282,7 +282,7 @@ addTile cell model =
             let
                 ( withWfc, addTileActions ) =
                     addTileById
-                        (World.currentSeed world)
+                        world.seedState
                         (World.tileInventoryCount world)
                         cell
                         tileId
@@ -303,7 +303,7 @@ removeTile cell model =
             model
 
         ( updatedWfcModel, actions ) =
-            onRemoveTile (World.currentSeed world) (World.tileInventoryCount world) cell world.tilemap
+            onRemoveTile world.seedState (World.tileInventoryCount world) cell world.tilemap
     in
     ( resetDrivenWFC (WFC.toTilemap updatedWfcModel) model
     , Cmd.batch (playSound Audio.DestroyRoad :: tileActionsToCmds actions)
@@ -323,7 +323,7 @@ startWFC model =
             model
 
         initialWfc =
-            restartWfc (World.currentSeed world)
+            restartWfc world.seedState
                 (World.tileInventoryCount world)
                 world.tilemap
     in

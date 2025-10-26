@@ -18,6 +18,7 @@ import Element.Font
 import Element.Input as Input
 import Html exposing (Html)
 import Html.Attributes
+import Lib.SeedState as SeedState
 import List.Extra
 import Model.Debug
 import Model.RenderCache as RenderCache
@@ -142,7 +143,7 @@ initWFC seed =
             tilemapConfig
             (initTileWithSuperposition tilemapConfig defaultTiles)
         )
-        seed
+        (SeedState.fromSeed seed)
         |> WFC.withTileInventory initialTileInventory
 
 
