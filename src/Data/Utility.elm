@@ -77,7 +77,6 @@ tilemapFromCoordinates tilemapConfig cellCoordinates =
 worldFromTilemap : Tilemap -> World
 worldFromTilemap tilemap =
     World.empty testSeed (getTilemapConfig tilemap)
-        |> World.setSeed testSeed
         |> World.setTilemap tilemap
 
 
@@ -121,7 +120,7 @@ addTileInstantly cell tilemap =
                         world =
                             worldFromTilemap tilemap
                     in
-                    addTileById world.seed (World.tileInventoryCount world) cell tileId tilemap
+                    addTileById world.seedState (World.tileInventoryCount world) cell tileId tilemap
 
                 Nothing ->
                     ( tilemap, [] )

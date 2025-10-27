@@ -3,6 +3,8 @@ module Data.Lots exposing
     , ParkingRestriction(..)
     , allLots
     , drivewayOffset
+    , findById
+    , findByName
     , fireStation
     , residentialApartments1
     , residentialRow1
@@ -21,7 +23,8 @@ import Tilemap.Cell as Cell
 
 
 type alias NewLot =
-    { name : String
+    { id : Int
+    , name : String
     , horizontalTilesAmount : Int
     , verticalTilesAmount : Int
     , parkingSpotExitDirection : OrthogonalDirection
@@ -58,6 +61,20 @@ drivewayOffset =
     Cell.size |> Quantity.multiplyBy 0.2
 
 
+findByName : String -> Maybe NewLot
+findByName name =
+    allLots
+        |> List.filter (\lot -> lot.name == name)
+        |> List.head
+
+
+findById : Int -> Maybe NewLot
+findById id =
+    allLots
+        |> List.filter (\lot -> lot.id == id)
+        |> List.head
+
+
 residentParking : Point2d Length.Meters LocalCoordinates -> ( Point2d Length.Meters LocalCoordinates, ParkingRestriction )
 residentParking position =
     ( position, ResidentParkingOnly )
@@ -70,7 +87,8 @@ noRestrictions position =
 
 residentialSingle1 : NewLot
 residentialSingle1 =
-    { name = "LotResidentialSingle1"
+    { id = 1
+    , name = "LotResidentialSingle1"
     , horizontalTilesAmount = 2
     , verticalTilesAmount = 2
     , parkingSpotExitDirection = Right
@@ -88,7 +106,8 @@ residentialSingle1 =
 
 school : NewLot
 school =
-    { name = "LotSchool"
+    { id = 2
+    , name = "LotSchool"
     , horizontalTilesAmount = 3
     , verticalTilesAmount = 3
     , parkingSpotExitDirection = Down
@@ -110,7 +129,8 @@ school =
 
 cafe : NewLot
 cafe =
-    { name = "LotCafe"
+    { id = 3
+    , name = "LotCafe"
     , horizontalTilesAmount = 2
     , verticalTilesAmount = 2
     , parkingSpotExitDirection = Down
@@ -132,7 +152,8 @@ cafe =
 
 residentialRow1 : NewLot
 residentialRow1 =
-    { name = "LotResidentialRow1"
+    { id = 4
+    , name = "LotResidentialRow1"
     , horizontalTilesAmount = 3
     , verticalTilesAmount = 2
     , parkingSpotExitDirection = Down
@@ -154,7 +175,8 @@ residentialRow1 =
 
 residentialApartments1 : NewLot
 residentialApartments1 =
-    { name = "LotResidentialApartments1"
+    { id = 5
+    , name = "LotResidentialApartments1"
     , horizontalTilesAmount = 2
     , verticalTilesAmount = 3
     , parkingSpotExitDirection = Down
@@ -175,7 +197,8 @@ residentialApartments1 =
 
 fireStation : NewLot
 fireStation =
-    { name = "LotFireStation"
+    { id = 6
+    , name = "LotFireStation"
     , horizontalTilesAmount = 3
     , verticalTilesAmount = 2
     , parkingSpotExitDirection = Left
@@ -193,7 +216,8 @@ fireStation =
 
 park1 : NewLot
 park1 =
-    { name = "LotPark1"
+    { id = 7
+    , name = "LotPark1"
     , horizontalTilesAmount = 3
     , verticalTilesAmount = 3
     , parkingSpotExitDirection = Down
@@ -210,7 +234,8 @@ park1 =
 
 concertVenue : NewLot
 concertVenue =
-    { name = "LotConcertVenue"
+    { id = 8
+    , name = "LotConcertVenue"
     , horizontalTilesAmount = 3
     , verticalTilesAmount = 2
     , parkingSpotExitDirection = Down
@@ -227,7 +252,8 @@ concertVenue =
 
 flowerShop : NewLot
 flowerShop =
-    { name = "LotFlowerShop"
+    { id = 9
+    , name = "LotFlowerShop"
     , horizontalTilesAmount = 2
     , verticalTilesAmount = 3
     , parkingSpotExitDirection = Down

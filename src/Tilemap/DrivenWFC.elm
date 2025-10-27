@@ -20,6 +20,7 @@ import Data.TileSet
         )
 import Duration exposing (Duration)
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
+import Lib.SeedState exposing (SeedState)
 import List.Nonempty
 import Random
 import Round
@@ -46,8 +47,8 @@ import Time
 type DrivenWFC
     = WFCPending Duration Time.Posix
     | WFCActive WFC.Model
-    | WFCFailed (List String) Random.Seed
-    | WFCSolved (List String) (List ( Cell, TileId ))
+    | WFCFailed (List String) SeedState
+    | WFCSolved (List String) (List ( Cell, TileId )) SeedState
 
 
 type alias RunWFCResult =
@@ -86,7 +87,10 @@ runWfc tilemap wfc =
                     WFC.flushPendingActions wfc
             in
             ( WFC.toTilemap solvedWfc
-            , WFCSolved (WFC.log solvedWfc) (WFC.collapsedTiles solvedWfc)
+            , WFCSolved
+                (WFC.log solvedWfc)
+                (WFC.collapsedTiles solvedWfc)
+                (WFC.currentSeed solvedWfc)
             , tileActions
             )
 
@@ -102,19 +106,19 @@ runWfc tilemap wfc =
             ( tilemap, WFCActive nextWfc, [] )
 
 
-restartWfc : Random.Seed -> TileInventory Int -> Tilemap -> WFC.Model
-restartWfc seed tileInventory tilemap =
-    resetWfc seed
+restartWfc : SeedState -> TileInventory Int -> Tilemap -> WFC.Model
+restartWfc seedState tileInventory tilemap =
+    resetWfc seedState
         Nothing
         tileInventory
         (preprocessTilemap tilemap)
 
 
-resetWfc : Random.Seed -> Maybe Cell -> TileInventory Int -> Tilemap -> WFC.Model
-resetWfc seed changedCell tileInventory tilemap =
+resetWfc : SeedState -> Maybe Cell -> TileInventory Int -> Tilemap -> WFC.Model
+resetWfc seedState changedCell tileInventory tilemap =
     let
         wfcWithChangedTile =
-            WFC.fromTilemap tilemap seed
+            WFC.fromTilemap tilemap seedState
                 |> WFC.withTileInventory tileInventory
     in
     case changedCell of
@@ -125,8 +129,8 @@ resetWfc seed changedCell tileInventory tilemap =
             wfcWithChangedTile
 
 
-addTileById : Random.Seed -> TileInventory Int -> Cell -> TileId -> Tilemap -> ( Tilemap, List Action )
-addTileById seed tileInventory cell tileId tilemap =
+addTileById : SeedState -> TileInventory Int -> Cell -> TileId -> Tilemap -> ( Tilemap, List Action )
+addTileById seedState tileInventory cell tileId tilemap =
     let
         tileConfig =
             tileById tileId
@@ -135,7 +139,7 @@ addTileById seed tileInventory cell tileId tilemap =
             Tilemap.Core.addTile tileConfig cell tilemap
 
         wfcModel =
-            resetWfc seed (Just cell) tileInventory updatedTilemap
+            resetWfc seedState (Just cell) tileInventory updatedTilemap
 
         ( updatedWfcModel, wfcTileActions ) =
             updateTileNeighbors cell wfcModel
@@ -145,8 +149,8 @@ addTileById seed tileInventory cell tileId tilemap =
     )
 
 
-onRemoveTile : Random.Seed -> TileInventory Int -> Cell -> Tilemap -> ( WFC.Model, List Action )
-onRemoveTile seed tileInventory cell tilemap =
+onRemoveTile : SeedState -> TileInventory Int -> Cell -> Tilemap -> ( WFC.Model, List Action )
+onRemoveTile seedState tileInventory cell tilemap =
     let
         ( updatedTilemap, tilemapChangeActions ) =
             Tilemap.Core.removeTile cell tilemap
@@ -155,7 +159,7 @@ onRemoveTile seed tileInventory cell tilemap =
             removeBuffer cell updatedTilemap
 
         wfcModel =
-            resetWfc seed (Just cell) tileInventory withBufferRemoved
+            resetWfc seedState (Just cell) tileInventory withBufferRemoved
 
         ( wfcWithoutTile, wfcActions ) =
             updateTileNeighbors cell wfcModel
@@ -393,5 +397,5 @@ drivenWfcDebug currentTime drivenWfc =
         WFCFailed _ _ ->
             "Failed"
 
-        WFCSolved _ _ ->
+        WFCSolved _ _ _ ->
             "Solved"

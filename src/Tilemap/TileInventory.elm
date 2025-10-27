@@ -57,14 +57,11 @@ isAvailable tileId inventory =
 --
 
 
-chooseRandom : TileId -> Random.Seed -> TileInventory (List a) -> ( ( Maybe a, List a ), Random.Seed )
-chooseRandom tileId seed inventory =
-    let
-        options =
-            Dict.get tileId inventory
-                |> Maybe.withDefault []
-    in
-    Random.step (Random.List.choose options) seed
+chooseRandom : TileId -> TileInventory (List a) -> Random.Generator ( Maybe a, List a )
+chooseRandom tileId inventory =
+    Dict.get tileId inventory
+        |> Maybe.withDefault []
+        |> Random.List.choose
 
 
 restoreItem : (( TileId, a ) -> Bool) -> List ( TileId, a ) -> TileInventory (List a) -> TileInventory (List a)

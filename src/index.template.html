@@ -20,13 +20,81 @@
         </style>
     </head>
     <body>
+        <script src="https://unpkg.com/fflate@0.8.2"></script>
         <script src="liikennematto.min.js"></script>
         <script>
+            function parseSavegameFromUrl() {
+                const hash = window.location.hash;
+
+                if (!hash || hash.length <= 1) {
+                    return null;
+                }
+
+                try {
+                    const base64Data = hash.substring(1); // Remove the # prefix
+                    const binaryString = atob(base64Data);
+                    const bytes = new Uint8Array(binaryString.length);
+
+                    for (let i = 0; i < binaryString.length; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                    }
+
+                    const decompressed = fflate.decompressSync(bytes);
+                    const asStr = fflate.strFromU8(decompressed);
+
+                    return JSON.parse(asStr);
+                } catch (e) {
+                    console.error("Failed to parse savegame from URL:", e);
+                    return null;
+                }
+            }
+
             var app = Elm.Main.init({
                 flags: {
                     runtimeEnvironment: "release",
                     time: Date.now(),
+                    savegameData: parseSavegameFromUrl(),
                 },
+            });
+
+            app.ports.updateSavegameUrl.subscribe(function (savegameJson) {
+                try {
+                    const jsonString = JSON.stringify(savegameJson);
+                    const bytes = fflate.strToU8(jsonString);
+                    const compressed = fflate.compressSync(bytes);
+
+                    const len = compressed.byteLength;
+                    let binary = "";
+
+                    for (let i = 0; i < len; i++) {
+                        binary += String.fromCharCode(compressed[i]);
+                    }
+
+                    const base64Data = btoa(binary);
+
+                    history.replaceState(null, '', '#' + base64Data);
+                } catch (e) {
+                    console.error("Failed to update savegame URL:", e);
+                }
+            });
+
+            app.ports.clearSavegameUrl.subscribe(function () {
+                // Preserve current game in history before clearing
+                if (window.location.hash) {
+                    history.pushState(null, '', window.location.href);
+                }
+                history.replaceState(null, '', window.location.pathname + window.location.search);
+            });
+
+            window.addEventListener('hashchange', function () {
+                if (!window.location.hash || window.location.hash === '#') {
+                    app.ports.onHashCleared.send(null);
+                } else {
+                    const savegameJson = parseSavegameFromUrl();
+                    if (savegameJson) {
+                        app.ports.onHashChange.send(savegameJson);
+                    }
+                }
             });
 
             const AudioContext =
@@ -40,7 +108,6 @@
             let soundSource_lot = null;
             let sounds = {};
 
-            // Load the game sounds
             Promise.all([
                 getBuffer("init"),
                 getBuffer("build_road_start"),

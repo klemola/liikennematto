@@ -13,13 +13,16 @@ module Model.Liikennematto exposing
     )
 
 import Duration exposing (Duration)
+import Json.Encode as JE
 import Lib.FSM as FSM exposing (FSM)
+import Lib.SeedState as SeedState
 import Model.Debug exposing (DebugState, initialDebugState)
 import Model.Flags exposing (Flags, RuntimeEnvironment(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Screen as Screen exposing (Screen)
 import Model.World as World exposing (World)
 import Random
+import Savegame
 import Tilemap.DrivenWFC exposing (DrivenWFC(..))
 import Time
 import UI.Model exposing (UI)
@@ -33,6 +36,7 @@ type alias Liikennematto =
     , world : World
     , wfc : DrivenWFC
     , previousWorld : Maybe World
+    , savegame : Maybe JE.Value
     , simulationActive : Bool
     , renderCache : RenderCache
     , debug : DebugState
@@ -199,9 +203,9 @@ triggerLoading model =
 --
 
 
-initialDrivenWfc : DrivenWFC
-initialDrivenWfc =
-    WFCSolved [] []
+initialDrivenWfc : Random.Seed -> DrivenWFC
+initialDrivenWfc initialSeed =
+    WFCSolved [] [] (SeedState.fromSeed initialSeed)
 
 
 horizontalCellsAmount : Int
@@ -237,8 +241,20 @@ initial flags =
         initialSeed =
             Random.initialSeed (Time.posixToMillis flags.time)
 
-        world =
-            initialWorld initialSeed
+        ( world, maybeSavegame ) =
+            case flags.savegameData of
+                Just savegameJson ->
+                    case Savegame.decode savegameJson of
+                        Ok restoredWorld ->
+                            ( Savegame.spawnLotResidents flags.time restoredWorld
+                            , Just savegameJson
+                            )
+
+                        Err _ ->
+                            ( initialWorld initialSeed, Nothing )
+
+                Nothing ->
+                    ( initialWorld initialSeed, Nothing )
     in
     { game = appFsm
     , initSteps =
@@ -249,7 +265,8 @@ initial flags =
     , time = Time.millisToPosix 0
     , previousWorld = Nothing
     , world = world
-    , wfc = initialDrivenWfc
+    , wfc = initialDrivenWfc initialSeed
+    , savegame = maybeSavegame
     , simulationActive = True
     , renderCache = RenderCache.new world
     , debug = initialDebugState
@@ -267,20 +284,26 @@ initial flags =
 fromNewGame : Maybe World -> Liikennematto -> Liikennematto
 fromNewGame previousWorld model =
     let
-        initialSeed =
+        currentWorldSeed =
             case previousWorld of
                 Just pw ->
-                    pw.seed
+                    World.currentSeed pw
 
                 Nothing ->
-                    Random.initialSeed 0
+                    World.currentSeed model.world
+
+        ( randomInt, _ ) =
+            Random.step (Random.int Random.minInt Random.maxInt) currentWorldSeed
+
+        newGameSeed =
+            Random.initialSeed randomInt
 
         world =
-            initialWorld initialSeed
+            initialWorld newGameSeed
     in
     { model
         | world = world
-        , wfc = initialDrivenWfc
+        , wfc = initialDrivenWfc newGameSeed
         , previousWorld = previousWorld
         , renderCache = RenderCache.new world
         , simulationActive = True
@@ -294,7 +317,7 @@ fromPreviousGame model =
         Just previousWorld ->
             { model
                 | world = previousWorld
-                , wfc = initialDrivenWfc
+                , wfc = initialDrivenWfc (World.currentSeed previousWorld)
                 , previousWorld = Nothing
                 , renderCache = RenderCache.new previousWorld
                 , simulationActive = True

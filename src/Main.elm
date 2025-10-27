@@ -21,6 +21,7 @@ import Quantity
 import Render
 import Render.Conversion exposing (toPixelsValue)
 import Render.Debug
+import Savegame
 import Simulation.Update as Simulation
 import Task
 import Tilemap.Update as Tilemap
@@ -89,6 +90,8 @@ subscriptions model =
             , Events.onKeyUp keyReleasedDecoder
             , Time.every secondarySystemFrequencyMs (always (UpdateTilemap secondarySystemFrequencyDelta))
             , Audio.onAudioInitComplete (\_ -> AudioInitComplete)
+            , Savegame.onHashChange SavegameHashChanged
+            , Savegame.onHashCleared (\_ -> SavegameHashCleared)
             , UI.subscriptions model.ui |> Sub.map UIMsg
             ]
     in
@@ -178,6 +181,29 @@ updateBase msg model =
                     { initSteps | audioInitComplete = True }
             in
             ( { model | initSteps = nextInitSteps }
+            , Cmd.none
+            )
+
+        SavegameHashChanged savegameJson ->
+            case Savegame.decode savegameJson of
+                Ok restoredWorld ->
+                    let
+                        worldWithResidents =
+                            Savegame.spawnLotResidents model.time restoredWorld
+                    in
+                    ( { model
+                        | world = worldWithResidents
+                        , savegame = Just savegameJson
+                        , renderCache = Model.RenderCache.new worldWithResidents
+                      }
+                    , Cmd.none
+                    )
+
+                Err _ ->
+                    ( model, Cmd.none )
+
+        SavegameHashCleared ->
+            ( Liikennematto.fromNewGame (Just model.world) model
             , Cmd.none
             )
 
@@ -298,7 +324,10 @@ onUiButtonPressed buttonId model =
                     Liikennematto.triggerLoading model
             in
             ( Liikennematto.fromNewGame previousWorld modelWithTransition
-            , gameActionsToCmd transitionActions
+            , Cmd.batch
+                [ gameActionsToCmd transitionActions
+                , Savegame.clearSavegameUrl ()
+                ]
             )
 
         UI.Model.SpawnCar ->

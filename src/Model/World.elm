@@ -11,6 +11,7 @@ module Model.World exposing
     , createLookup
     , createPendingRoadNetworkUpdate
     , createRoadNetwork
+    , currentSeed
     , empty
     , findCarById
     , findLotById
@@ -27,11 +28,13 @@ module Model.World exposing
     , resolveRoadNetworkUpdate
     , resolveTilemapUpdate
     , setCar
-    , setSeed
     , setTilemap
+    , stepSeed
+    , stepWithSeedFunction
     , tileInventoryCount
     , updateLot
     , updateRoadNetwork
+    , updateSeed
     )
 
 import BoundingBox2d exposing (BoundingBox2d)
@@ -47,6 +50,7 @@ import Length exposing (Length)
 import Lib.Collection as Collection exposing (Collection, Id)
 import Lib.EventQueue as EventQueue exposing (EventQueue)
 import Lib.OrthogonalDirection exposing (OrthogonalDirection)
+import Lib.SeedState as SeedState exposing (SeedState)
 import List.Nonempty exposing (Nonempty)
 import Point2d
     exposing
@@ -102,7 +106,7 @@ type alias World =
     , carLookup : QuadTree Length.Meters GlobalCoordinates Car
     , lotLookup : QuadTree Length.Meters GlobalCoordinates Lot
     , eventQueue : EventQueue WorldEvent
-    , seed : Random.Seed
+    , seedState : SeedState
     }
 
 
@@ -190,7 +194,7 @@ empty initialSeed tilemapConfig =
     , carLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
     , lotLookup = QuadTree.init worldBB quadTreeLeafElementsAmount
     , eventQueue = EventQueue.empty
-    , seed = initialSeed
+    , seedState = SeedState.fromSeed initialSeed
     }
 
 
@@ -327,14 +331,13 @@ updateLot lot world =
 prepareNewLot : LargeTile -> World -> ( NewLot, World )
 prepareNewLot largeTile world =
     let
-        ( ( newLot, remainingOptions ), nextSeed ) =
-            TileInventory.chooseRandom largeTile.id world.seed world.tileInventory
+        ( ( maybeNewLot, remainingOptions ), nextWorld ) =
+            stepSeed
+                (TileInventory.chooseRandom largeTile.id world.tileInventory)
+                world
     in
-    ( newLot |> Maybe.withDefault (newLotFallback largeTile)
-    , { world
-        | seed = nextSeed
-        , tileInventory = Dict.insert largeTile.id remainingOptions world.tileInventory
-      }
+    ( maybeNewLot |> Maybe.withDefault (newLotFallback largeTile)
+    , { nextWorld | tileInventory = Dict.insert largeTile.id remainingOptions world.tileInventory }
     )
 
 
@@ -434,9 +437,39 @@ createLookup lookupItems world =
         |> QuadTree.insertList lookupItems
 
 
-setSeed : Random.Seed -> World -> World
-setSeed seed world =
-    { world | seed = seed }
+currentSeed : World -> Random.Seed
+currentSeed world =
+    SeedState.currentSeed world.seedState
+
+
+stepWithSeedFunction : (Random.Seed -> ( a, Random.Seed )) -> World -> ( a, World )
+stepWithSeedFunction fn world =
+    let
+        ( value, nextSeedState ) =
+            SeedState.stepWithFunction fn world.seedState
+    in
+    ( value, { world | seedState = nextSeedState } )
+
+
+stepSeed : Random.Generator a -> World -> ( a, World )
+stepSeed generator world =
+    let
+        ( value, nextSeedState ) =
+            SeedState.step generator world.seedState
+    in
+    ( value, { world | seedState = nextSeedState } )
+
+
+updateSeed : SeedState -> World -> World
+updateSeed wfcSeedState world =
+    let
+        nextSeedState =
+            { initialSeed = world.seedState.initialSeed
+            , currentSeed = wfcSeedState.currentSeed
+            , stepCount = world.seedState.stepCount + wfcSeedState.stepCount
+            }
+    in
+    { world | seedState = nextSeedState }
 
 
 createRoadNetwork : Tilemap -> World -> World

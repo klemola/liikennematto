@@ -10,6 +10,8 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Html
+import Json.Encode as JE
 import Length
 import Lib.Collection as Collection
 import Model.Liikennematto exposing (Liikennematto)
@@ -101,6 +103,12 @@ devMenu onSelectView selectedView model =
                 , disabled = False
                 }
                 "Cars"
+            , textButton
+                { onPress = onSelectView SavegameOutput
+                , selected = selectedView == SavegameOutput
+                , disabled = False
+                }
+                "Savegames"
             ]
         , case selectedView of
             EventQueueList ->
@@ -111,6 +119,9 @@ devMenu onSelectView selectedView model =
 
             CarsList ->
                 carsList model
+
+            SavegameOutput ->
+                savegameOutput model
         ]
 
 
@@ -169,6 +180,28 @@ eventQueueList time world =
         , Element.width Element.fill
         ]
         (List.map eventCard (formatEvents time world))
+
+
+savegameOutput : Liikennematto -> Element msg
+savegameOutput model =
+    Element.el
+        [ Element.padding whitespaceRegular
+        , Element.height (Element.px 600)
+        , Element.scrollbarY
+        ]
+        (Element.html
+            (Html.pre []
+                [ Html.text
+                    (case model.savegame of
+                        Just sg ->
+                            JE.encode 2 sg
+
+                        Nothing ->
+                            "<none>"
+                    )
+                ]
+            )
+        )
 
 
 

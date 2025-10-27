@@ -229,22 +229,21 @@ attemptGenerateRouteFromParkingSpot car parkingReservation world =
                     |> Maybe.andThen
                         (\start ->
                             let
-                                ( end, nextSeed ) =
+                                ( end, nextWorld ) =
                                     findRandomDestinationNode world car start
                             in
                             end
                                 |> Maybe.andThen
                                     (Route.fromParkedAtLot
                                         parkingReservation
-                                        world.lots
-                                        world.roadNetwork
+                                        nextWorld.lots
+                                        nextWorld.roadNetwork
                                         start
                                     )
                                 |> Maybe.map
                                     (\route ->
-                                        world
+                                        nextWorld
                                             |> World.setCar (Car.routed route car)
-                                            |> World.setSeed nextSeed
                                             |> World.updateLot lot
                                     )
                         )
@@ -265,37 +264,36 @@ attemptGenerateRouteFromNode car startNodeCtx world =
             |> Maybe.andThen
                 (\start ->
                     let
-                        ( end, nextSeed ) =
+                        ( end, nextWorld ) =
                             findRandomDestinationNode world car start
                     in
                     end
-                        |> Maybe.andThen (Tuple.pair start >> Route.fromStartAndEndNodes world.roadNetwork)
+                        |> Maybe.andThen (Tuple.pair start >> Route.fromStartAndEndNodes nextWorld.roadNetwork)
                         |> Maybe.map
                             (\route ->
-                                world
-                                    |> World.setSeed nextSeed
+                                nextWorld
                                     |> World.setCar (Car.routed route car)
                             )
                 )
             |> Result.fromMaybe "Could not generate route"
 
 
-findRandomDestinationNode : World -> Car -> RNNodeContext -> ( Maybe RNNodeContext, Random.Seed )
+findRandomDestinationNode : World -> Car -> RNNodeContext -> ( Maybe RNNodeContext, World )
 findRandomDestinationNode world car startNodeCtx =
     let
-        ( chance, seedAfterRandomFloat ) =
-            Random.step (Random.float 0 1) world.seed
+        ( chance, worldAfterRandomFloat ) =
+            World.stepSeed (Random.float 0 1) world
 
         lookingForLot =
             (chance > lotToNodeRouteTargetRatio)
-                && (Collection.size world.lots >= 2)
+                && (Collection.size worldAfterRandomFloat.lots >= 2)
 
         predicate =
             if lookingForLot then
                 case car.make.role of
                     None ->
                         randomLotMatchPredicate
-                            world
+                            worldAfterRandomFloat
                             car
                             startNodeCtx
 
@@ -311,8 +309,13 @@ findRandomDestinationNode world car startNodeCtx =
 
             else
                 randomNodeMatchPredicate startNodeCtx
+
+        ( maybeNode, finalWorld ) =
+            World.stepWithSeedFunction
+                (\seed -> RoadNetwork.getRandomNode worldAfterRandomFloat.roadNetwork seed predicate)
+                worldAfterRandomFloat
     in
-    RoadNetwork.getRandomNode world.roadNetwork seedAfterRandomFloat predicate
+    ( maybeNode, finalWorld )
 
 
 randomLotMatchPredicate :

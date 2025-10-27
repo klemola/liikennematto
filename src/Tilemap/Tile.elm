@@ -71,8 +71,9 @@ type TileState
 
 
 type TileOperation
-    = AddFromWFC
-    | Add
+    = Add
+    | AddFromWFC
+    | AddFromSaveGame
 
 
 defaultTileAnimation : Animation
@@ -101,6 +102,9 @@ fromTileConfig tileConfig parentTileProperties op =
             case op of
                 AddFromWFC ->
                     generated
+
+                AddFromSaveGame ->
+                    built
 
                 Add ->
                     constructing

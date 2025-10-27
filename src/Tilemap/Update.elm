@@ -19,6 +19,7 @@ import Model.RenderCache exposing (refreshTilemapCache, setTilemapCache, setTile
 import Model.World as World exposing (LotPlacement, World)
 import Process
 import Quantity
+import Savegame
 import Task
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
@@ -173,7 +174,7 @@ update msg model =
                             , scheduleWFCChunk wfc model.world
                             )
 
-                        WFCSolved wfcLog collapsedTiles ->
+                        WFCSolved wfcLog collapsedTiles nextSeedState ->
                             let
                                 audioCmd =
                                     if List.isEmpty collapsedTiles then
@@ -181,9 +182,14 @@ update msg model =
 
                                     else
                                         playSound Audio.BuildLot
+
+                                nextWorld =
+                                    model.world
+                                        |> World.setTilemap nextTilemap
+                                        |> World.updateSeed nextSeedState
                             in
                             ( { model
-                                | world = World.setTilemap nextTilemap model.world
+                                | world = nextWorld
                                 , wfc = updatedDrivenWfc
                                 , renderCache = setTilemapCache nextTilemap Nothing model.renderCache
                                 , debug = appendWfcLog wfcLog model.debug
@@ -198,7 +204,7 @@ update msg model =
                     -- WFC may already have been solved or failed, and the processed chunk is irrelevant
                     ( model, Cmd.none )
 
-        LotsPlaced lotPlacements ->
+        TilemapChangeProcessed lotPlacements ->
             let
                 nextWorld =
                     List.foldl
@@ -207,12 +213,21 @@ update msg model =
                         )
                         model.world
                         lotPlacements
+
+                nextSavegame =
+                    Savegame.encode nextWorld
             in
             ( { model
                 | world = nextWorld
-                , renderCache = setTilemapCache nextWorld.tilemap Nothing model.renderCache
+                , savegame = Just nextSavegame
+                , renderCache =
+                    if List.isEmpty lotPlacements then
+                        model.renderCache
+
+                    else
+                        setTilemapCache nextWorld.tilemap Nothing model.renderCache
               }
-            , Cmd.none
+            , Savegame.updateSavegameUrl nextSavegame
             )
 
         _ ->
@@ -267,7 +282,7 @@ addTile cell model =
             let
                 ( withWfc, addTileActions ) =
                     addTileById
-                        world.seed
+                        world.seedState
                         (World.tileInventoryCount world)
                         cell
                         tileId
@@ -288,7 +303,7 @@ removeTile cell model =
             model
 
         ( updatedWfcModel, actions ) =
-            onRemoveTile world.seed (World.tileInventoryCount world) cell world.tilemap
+            onRemoveTile world.seedState (World.tileInventoryCount world) cell world.tilemap
     in
     ( resetDrivenWFC (WFC.toTilemap updatedWfcModel) model
     , Cmd.batch (playSound Audio.DestroyRoad :: tileActionsToCmds actions)
@@ -308,7 +323,7 @@ startWFC model =
             model
 
         initialWfc =
-            restartWfc world.seed
+            restartWfc world.seedState
                 (World.tileInventoryCount world)
                 world.tilemap
     in

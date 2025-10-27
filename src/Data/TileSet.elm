@@ -430,12 +430,13 @@ connectionsByTile tileConfig =
 --
 -- Road tiles
 --
+-- ID 0 is reserved for "no tile"
 
 
 loneRoad : TileConfig
 loneRoad =
     TileConfig.Single
-        { id = 0
+        { id = 1
         , name = "RoadLone"
         , weight = defaultWeight
         , graphPriority = maxGraphPriority
@@ -453,7 +454,7 @@ loneRoad =
 horizontalRoad : TileConfig
 horizontalRoad =
     TileConfig.Single
-        { id = 1
+        { id = 2
         , name = "RoadHorizontal"
         , weight = 0.5
         , graphPriority = maxGraphPriority
@@ -470,13 +471,13 @@ horizontalRoad =
 
 verticalRoad : TileConfig
 verticalRoad =
-    rotatedClockwise 2 "RoadVertical" horizontalRoad
+    rotatedClockwise 3 "RoadVertical" horizontalRoad
 
 
 deadendUp : TileConfig
 deadendUp =
     TileConfig.Single
-        { id = 3
+        { id = 4
         , name = "RoadDeadendUp"
         , weight = 0.5
         , graphPriority = 0
@@ -493,23 +494,23 @@ deadendUp =
 
 deadendRight : TileConfig
 deadendRight =
-    rotatedClockwise 4 "RoadDeadendRight" deadendUp
+    rotatedClockwise 5 "RoadDeadendRight" deadendUp
 
 
 deadendDown : TileConfig
 deadendDown =
-    rotatedClockwise 5 "RoadDeadendDown" deadendRight
+    rotatedClockwise 6 "RoadDeadendDown" deadendRight
 
 
 deadendLeft : TileConfig
 deadendLeft =
-    rotatedClockwise 6 "RoadDeadendLeft" deadendDown
+    rotatedClockwise 7 "RoadDeadendLeft" deadendDown
 
 
 curveBottomRight : TileConfig
 curveBottomRight =
     TileConfig.Single
-        { id = 7
+        { id = 8
         , name = "RoadCurveBottomRight"
         , weight = 0.5
         , graphPriority = maxGraphPriority
@@ -526,17 +527,17 @@ curveBottomRight =
 
 curveBottomLeft : TileConfig
 curveBottomLeft =
-    rotatedClockwise 8 "RoadCurveBottomLeft" curveBottomRight
+    rotatedClockwise 9 "RoadCurveBottomLeft" curveBottomRight
 
 
 curveTopLeft : TileConfig
 curveTopLeft =
-    rotatedClockwise 9 "RoadCurveTopLeft" curveBottomLeft
+    rotatedClockwise 10 "RoadCurveTopLeft" curveBottomLeft
 
 
 curveTopRight : TileConfig
 curveTopRight =
-    rotatedClockwise 10 "RoadCurveTopRight" curveTopLeft
+    rotatedClockwise 11 "RoadCurveTopRight" curveTopLeft
 
 
 
@@ -546,7 +547,7 @@ curveTopRight =
 intersectionTUp : TileConfig
 intersectionTUp =
     TileConfig.Single
-        { id = 11
+        { id = 12
         , name = "RoadIntersectionTUp"
         , weight = 0.3
         , graphPriority = 0.2
@@ -563,13 +564,13 @@ intersectionTUp =
 
 intersectionTDown : TileConfig
 intersectionTDown =
-    mirroredVertically 12 "RoadIntersectionTDown" intersectionTUp
+    mirroredVertically 13 "RoadIntersectionTDown" intersectionTUp
 
 
 intersectionTLeft : TileConfig
 intersectionTLeft =
     TileConfig.Single
-        { id = 13
+        { id = 14
         , name = "RoadIntersectionTLeft"
         , weight = 0.3
         , graphPriority = 0.2
@@ -586,13 +587,13 @@ intersectionTLeft =
 
 intersectionTRight : TileConfig
 intersectionTRight =
-    mirroredHorizontally 14 "RoadIntersectionTRight" intersectionTLeft
+    mirroredHorizontally 15 "RoadIntersectionTRight" intersectionTLeft
 
 
 intersectionCross : TileConfig
 intersectionCross =
     TileConfig.Single
-        { id = 15
+        { id = 16
         , name = "RoadIntersectionCrossroads"
         , weight = 0.3
         , graphPriority = 0.2
@@ -610,7 +611,7 @@ intersectionCross =
 horizontalRoadLotEntryUp : TileConfig
 horizontalRoadLotEntryUp =
     TileConfig.Single
-        { id = 16
+        { id = 17
         , name = "RoadHorizontalLotEntryUp"
         , weight = 1.0
         , graphPriority = 0.1
@@ -626,13 +627,13 @@ horizontalRoadLotEntryUp =
 
 
 
--- ID 17 reserved for horizontalRoadLotEntryDown
+-- ID 18 reserved for horizontalRoadLotEntryDown
 
 
 verticalRoadLotEntryRight : TileConfig
 verticalRoadLotEntryRight =
     TileConfig.Single
-        { id = 18
+        { id = 19
         , name = "RoadVerticalLotEntryRight"
         , weight = 1.0
         , graphPriority = 0.1
@@ -650,7 +651,7 @@ verticalRoadLotEntryRight =
 verticalRoadLotEntryLeft : TileConfig
 verticalRoadLotEntryLeft =
     TileConfig.Single
-        { id = 19
+        { id = 20
         , name = "RoadVerticalLotEntryLeft"
         , weight = 1.0
         , graphPriority = 0.1
@@ -668,7 +669,7 @@ verticalRoadLotEntryLeft =
 deadendLeftLotEntryUp : TileConfig
 deadendLeftLotEntryUp =
     TileConfig.Single
-        { id = 20
+        { id = 21
         , name = "RoadDeadendLeftLotEntryUp"
         , weight = 1.0
         , graphPriority = 0.1
@@ -686,7 +687,7 @@ deadendLeftLotEntryUp =
 deadendLeftLotEntryLeft : TileConfig
 deadendLeftLotEntryLeft =
     TileConfig.Single
-        { id = 21
+        { id = 22
         , name = "RoadDeadendLeftLotEntryLeft"
         , weight = 1.0
         , graphPriority = 0.1
@@ -702,13 +703,13 @@ deadendLeftLotEntryLeft =
 
 
 
--- ID 22 reserved for deadendLeftLotEntryDown
+-- ID 23 reserved for deadendLeftLotEntryDown
 
 
 deadendRightLotEntryUp : TileConfig
 deadendRightLotEntryUp =
     TileConfig.Single
-        { id = 23
+        { id = 24
         , name = "RoadDeadendRightLotEntryUp"
         , weight = 1.0
         , graphPriority = 0.1
@@ -726,7 +727,7 @@ deadendRightLotEntryUp =
 deadendRightLotEntryRight : TileConfig
 deadendRightLotEntryRight =
     TileConfig.Single
-        { id = 24
+        { id = 25
         , name = "RoadDeadendRightLotEntryRight"
         , weight = 1.0
         , graphPriority = 0.1
@@ -742,13 +743,13 @@ deadendRightLotEntryRight =
 
 
 
--- ID 25 reserved for deadendRightLotEntryDown
+-- ID 26 reserved for deadendRightLotEntryDown
 
 
 deadendDownLotEntryLeft : TileConfig
 deadendDownLotEntryLeft =
     TileConfig.Single
-        { id = 26
+        { id = 27
         , name = "RoadDeadendDownLotEntryLeft"
         , weight = 1.0
         , graphPriority = 0.1
@@ -766,7 +767,7 @@ deadendDownLotEntryLeft =
 deadendDownLotEntryRight : TileConfig
 deadendDownLotEntryRight =
     TileConfig.Single
-        { id = 27
+        { id = 28
         , name = "RoadDeadendDownLotEntryRight"
         , weight = 1.0
         , graphPriority = 0.1
@@ -782,13 +783,13 @@ deadendDownLotEntryRight =
 
 
 
--- ID 28 reserved for deadendDownLotEntryDown
+-- ID 29 reserved for deadendDownLotEntryDown
 
 
 deadendUpLotEntryLeft : TileConfig
 deadendUpLotEntryLeft =
     TileConfig.Single
-        { id = 29
+        { id = 30
         , name = "RoadDeadendUpLotEntryLeft"
         , weight = 1.0
         , graphPriority = 0.1
@@ -806,7 +807,7 @@ deadendUpLotEntryLeft =
 deadendUpLotEntryRight : TileConfig
 deadendUpLotEntryRight =
     TileConfig.Single
-        { id = 30
+        { id = 31
         , name = "RoadDeadendUpLotEntryRight"
         , weight = 1.0
         , graphPriority = 0.1
@@ -824,7 +825,7 @@ deadendUpLotEntryRight =
 deadendUpLotEntryUp : TileConfig
 deadendUpLotEntryUp =
     TileConfig.Single
-        { id = 31
+        { id = 32
         , name = "RoadDeadendUpLotEntryUp"
         , weight = 1.0
         , graphPriority = 0.1
@@ -842,7 +843,7 @@ deadendUpLotEntryUp =
 curveBottomRightLotEntryRight : TileConfig
 curveBottomRightLotEntryRight =
     TileConfig.Single
-        { id = 32
+        { id = 33
         , name = "RoadCurveBottomRightLotEntryRight"
         , weight = 0.5
         , graphPriority = maxGraphPriority
@@ -858,13 +859,13 @@ curveBottomRightLotEntryRight =
 
 
 
--- ID 33 reserved for curveBottomRightLotEntryDown
+-- ID 34 reserved for curveBottomRightLotEntryDown
 
 
 curveBottomLeftLotEntryLeft : TileConfig
 curveBottomLeftLotEntryLeft =
     TileConfig.Single
-        { id = 34
+        { id = 35
         , name = "RoadCurveBottomLeftLotEntryLeft"
         , weight = 0.5
         , graphPriority = maxGraphPriority
@@ -880,13 +881,13 @@ curveBottomLeftLotEntryLeft =
 
 
 
--- ID 35 reserved for curveBottomLeftLotEntryDown
+-- ID 36 reserved for curveBottomLeftLotEntryDown
 
 
 curveTopLeftLotEntryLeft : TileConfig
 curveTopLeftLotEntryLeft =
     TileConfig.Single
-        { id = 36
+        { id = 37
         , name = "RoadCurveTopLeftLotEntryLeft"
         , weight = 0.5
         , graphPriority = maxGraphPriority
@@ -904,7 +905,7 @@ curveTopLeftLotEntryLeft =
 curveTopLeftLotEntryUp : TileConfig
 curveTopLeftLotEntryUp =
     TileConfig.Single
-        { id = 37
+        { id = 38
         , name = "RoadCurveTopLeftLotEntryUp"
         , weight = 0.5
         , graphPriority = maxGraphPriority
@@ -922,7 +923,7 @@ curveTopLeftLotEntryUp =
 curveTopRightLotEntryRight : TileConfig
 curveTopRightLotEntryRight =
     TileConfig.Single
-        { id = 38
+        { id = 39
         , name = "RoadCurveTopRightLotEntryRight"
         , weight = 0.5
         , graphPriority = maxGraphPriority
@@ -940,7 +941,7 @@ curveTopRightLotEntryRight =
 curveTopRightLotEntryUp : TileConfig
 curveTopRightLotEntryUp =
     TileConfig.Single
-        { id = 39
+        { id = 40
         , name = "RoadCurveTopRightLotEntryUp"
         , weight = 0.5
         , graphPriority = maxGraphPriority
@@ -958,7 +959,7 @@ curveTopRightLotEntryUp =
 intersectionTDownLotEntryUp : TileConfig
 intersectionTDownLotEntryUp =
     TileConfig.Single
-        { id = 40
+        { id = 41
         , name = "RoadIntersectionTDownLotEntryUp"
         , weight = 1.0
         , graphPriority = 0.1
@@ -976,7 +977,7 @@ intersectionTDownLotEntryUp =
 intersectionTRightLotEntryLeft : TileConfig
 intersectionTRightLotEntryLeft =
     TileConfig.Single
-        { id = 41
+        { id = 42
         , name = "RoadIntersectionTRightLotEntryLeft"
         , weight = 1.0
         , graphPriority = 0.1
@@ -994,7 +995,7 @@ intersectionTRightLotEntryLeft =
 intersectionTLeftLotEntryRight : TileConfig
 intersectionTLeftLotEntryRight =
     TileConfig.Single
-        { id = 42
+        { id = 43
         , name = "RoadIntersectionTLeftLotEntryRight"
         , weight = 1.0
         , graphPriority = 0.1
@@ -1010,7 +1011,7 @@ intersectionTLeftLotEntryRight =
 
 
 
--- ID 43 reserved for intersectionTUpLotEntryDown
+-- ID 44 reserved for intersectionTUpLotEntryDown
 --
 -- Lot tiles
 --

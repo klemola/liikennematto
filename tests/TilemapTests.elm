@@ -49,7 +49,7 @@ suite =
                             getTilemapConfig tilemap
 
                         intersectionTDownId =
-                            12
+                            13
                     in
                     Cell.fromCoordinates tilemapConfig ( 2, 1 )
                         |> Maybe.andThen (fixedTileByCell tilemap)
@@ -78,7 +78,7 @@ suite =
                             getTilemapConfig tilemap
 
                         curveTopLeftId =
-                            9
+                            10
                     in
                     Cell.fromCoordinates tilemapConfig ( 1, 1 )
                         |> Maybe.andThen (fixedTileByCell tilemap)

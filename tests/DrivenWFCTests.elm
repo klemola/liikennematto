@@ -13,7 +13,9 @@ import Dict
 import Expect
 import Lib.FSM as FSM
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
+import Lib.SeedState as SeedState
 import Maybe.Extra as Maybe
+import Random
 import Test exposing (Test, describe, test)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core exposing (Tilemap, createTilemap, fixedTileByCell, tileByCell, tileNeighborIn)
@@ -104,17 +106,17 @@ suite =
                             createCell constraints 9 5
 
                         deadendRightId =
-                            4
+                            5
 
                         ( tilemapWithTile, _ ) =
-                            addTileById testSeed Dict.empty newCell deadendRightId tilemap
+                            addTileById (SeedState.fromSeed testSeed) Dict.empty newCell deadendRightId tilemap
                     in
                     Expect.all
                         [ cellHasTile newCell deadendRightId
                         , neighborCellHasTile newCell OrthogonalDirection.Up Tile.Unintialized
                         , neighborCellHasTile newCell OrthogonalDirection.Right Tile.Unintialized
                         , neighborCellHasTile newCell OrthogonalDirection.Down Tile.Unintialized
-                        , neighborCellHasTile newCell OrthogonalDirection.Left (Tile.Fixed (fixedTileProps 1 "RoadHorizontal"))
+                        , neighborCellHasTile newCell OrthogonalDirection.Left (Tile.Fixed (fixedTileProps 2 "RoadHorizontal"))
                         ]
                         tilemapWithTile
                 )
@@ -131,17 +133,17 @@ suite =
                             createCell constraints 7 5
 
                         intersectionCrossId =
-                            15
+                            16
 
                         ( tilemapWithTile, _ ) =
-                            addTileById testSeed Dict.empty newCell intersectionCrossId tilemap
+                            addTileById (SeedState.fromSeed testSeed) Dict.empty newCell intersectionCrossId tilemap
                     in
                     Expect.all
                         [ cellHasTile newCell intersectionCrossId
-                        , neighborCellHasTile newCell OrthogonalDirection.Up (Tile.Fixed (fixedTileProps 3 "RoadDeadendUp"))
-                        , neighborCellHasTile newCell OrthogonalDirection.Right (Tile.Fixed (fixedTileProps 1 "RoadHorizontal"))
-                        , neighborCellHasTile newCell OrthogonalDirection.Down (Tile.Fixed (fixedTileProps 5 "RoadDeadendDown"))
-                        , neighborCellHasTile newCell OrthogonalDirection.Left (Tile.Fixed (fixedTileProps 1 "RoadHorizontal"))
+                        , neighborCellHasTile newCell OrthogonalDirection.Up (Tile.Fixed (fixedTileProps 4 "RoadDeadendUp"))
+                        , neighborCellHasTile newCell OrthogonalDirection.Right (Tile.Fixed (fixedTileProps 2 "RoadHorizontal"))
+                        , neighborCellHasTile newCell OrthogonalDirection.Down (Tile.Fixed (fixedTileProps 6 "RoadDeadendDown"))
+                        , neighborCellHasTile newCell OrthogonalDirection.Left (Tile.Fixed (fixedTileProps 2 "RoadHorizontal"))
                         ]
                         tilemapWithTile
                 )
@@ -155,16 +157,16 @@ suite =
                             createCell constraints 4 4
 
                         deadendLeftId =
-                            6
+                            7
 
                         ( tilemapWithTile, _ ) =
-                            addTileById testSeed Dict.empty newCell deadendLeftId tilemap
+                            addTileById (SeedState.fromSeed testSeed) Dict.empty newCell deadendLeftId tilemap
                     in
                     Expect.all
                         [ cellHasTile newCell deadendLeftId
                         , neighborCellHasTile newCell
                             OrthogonalDirection.Right
-                            (Tile.Fixed (fixedTileProps 42 "RoadIntersectionTLeftLotEntryRight"))
+                            (Tile.Fixed (fixedTileProps 43 "RoadIntersectionTLeftLotEntryRight"))
                         ]
                         tilemapWithTile
                 )
@@ -178,16 +180,16 @@ suite =
                             createCell constraints 6 6
 
                         deadendDownId =
-                            5
+                            6
 
                         ( tilemapWithTile, _ ) =
-                            addTileById testSeed Dict.empty newCell deadendDownId tilemap
+                            addTileById (SeedState.fromSeed testSeed) Dict.empty newCell deadendDownId tilemap
                     in
                     Expect.all
                         [ cellHasTile newCell deadendDownId
                         , neighborCellHasTile newCell
                             OrthogonalDirection.Up
-                            (Tile.Fixed (fixedTileProps 12 "RoadIntersectionTDown"))
+                            (Tile.Fixed (fixedTileProps 13 "RoadIntersectionTDown"))
                         ]
                         tilemapWithTile
                 )
@@ -205,7 +207,7 @@ suite =
                             createCell constraints 8 5
 
                         ( wfcModel, _ ) =
-                            onRemoveTile testSeed Dict.empty removedCell tilemap
+                            onRemoveTile (SeedState.fromSeed testSeed) Dict.empty removedCell tilemap
 
                         tilemapWithoutTile =
                             WFC.toTilemap wfcModel
@@ -215,7 +217,7 @@ suite =
                         , neighborCellHasTile removedCell OrthogonalDirection.Up Tile.Unintialized
                         , neighborCellHasTile removedCell OrthogonalDirection.Right Tile.Unintialized
                         , neighborCellHasTile removedCell OrthogonalDirection.Down Tile.Unintialized
-                        , neighborCellHasTile removedCell OrthogonalDirection.Left (Tile.Fixed (fixedTileProps 4 "RoadDeadendRight"))
+                        , neighborCellHasTile removedCell OrthogonalDirection.Left (Tile.Fixed (fixedTileProps 5 "RoadDeadendRight"))
                         ]
                         tilemapWithoutTile
                 )
@@ -231,17 +233,17 @@ suite =
                             createCell constraints 7 5
 
                         ( wfcModel, _ ) =
-                            onRemoveTile testSeed Dict.empty removedCell tilemap
+                            onRemoveTile (SeedState.fromSeed testSeed) Dict.empty removedCell tilemap
 
                         tilemapWithoutTile =
                             WFC.toTilemap wfcModel
                     in
                     Expect.all
                         [ cellTileIsBeingRemoved removedCell
-                        , neighborCellHasTile removedCell OrthogonalDirection.Up (Tile.Fixed (fixedTileProps 5 "RoadDeadendDown"))
-                        , neighborCellHasTile removedCell OrthogonalDirection.Right (Tile.Fixed (fixedTileProps 6 "RoadDeadendLeft"))
-                        , neighborCellHasTile removedCell OrthogonalDirection.Down (Tile.Fixed (fixedTileProps 3 "RoadDeadendUp"))
-                        , neighborCellHasTile removedCell OrthogonalDirection.Left (Tile.Fixed (fixedTileProps 4 "RoadDeadendRight"))
+                        , neighborCellHasTile removedCell OrthogonalDirection.Up (Tile.Fixed (fixedTileProps 6 "RoadDeadendDown"))
+                        , neighborCellHasTile removedCell OrthogonalDirection.Right (Tile.Fixed (fixedTileProps 7 "RoadDeadendLeft"))
+                        , neighborCellHasTile removedCell OrthogonalDirection.Down (Tile.Fixed (fixedTileProps 4 "RoadDeadendUp"))
+                        , neighborCellHasTile removedCell OrthogonalDirection.Left (Tile.Fixed (fixedTileProps 5 "RoadDeadendRight"))
                         ]
                         tilemapWithoutTile
                 )
@@ -256,7 +258,7 @@ suite =
 
                         ( wfcModel, _ ) =
                             -- The lot entry becames a deadend "cul-de-sac" to keep the lot entry
-                            onRemoveTile testSeed Dict.empty removedCell tilemap
+                            onRemoveTile (SeedState.fromSeed testSeed) Dict.empty removedCell tilemap
 
                         tilemapWithoutTile =
                             WFC.toTilemap wfcModel
@@ -265,7 +267,7 @@ suite =
                         [ cellTileIsBeingRemoved removedCell
                         , neighborCellHasTile removedCell
                             OrthogonalDirection.Up
-                            (Tile.Fixed (fixedTileProps 27 "RoadDeadendDownLotEntryRight"))
+                            (Tile.Fixed (fixedTileProps 28 "RoadDeadendDownLotEntryRight"))
                         ]
                         tilemapWithoutTile
                 )
@@ -278,7 +280,7 @@ suite =
                             placeRoadAndUpdateBuffer
                                 [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ), ( 10, 5 ) ]
                                 emptyTilemap
-                                |> restartWfc testSeed Dict.empty
+                                |> restartWfc (SeedState.fromSeed testSeed) Dict.empty
                                 |> WFC.toTilemap
 
                         firstHorizontalRoadCellOptions =
@@ -297,10 +299,10 @@ suite =
                                 |> Maybe.withDefault []
 
                         horizontalRoadId =
-                            1
+                            2
 
                         horizontalRoadLotEntryUpId =
-                            16
+                            17
                     in
                     Expect.all
                         [ \_ -> Expect.equal firstHorizontalRoadCellOptions [ horizontalRoadId, horizontalRoadLotEntryUpId ]
@@ -316,7 +318,7 @@ suite =
                             placeRoadAndUpdateBuffer
                                 [ ( 5, 5 ), ( 5, 6 ), ( 5, 7 ), ( 5, 8 ), ( 5, 9 ), ( 5, 10 ) ]
                                 emptyTilemap
-                                |> restartWfc testSeed Dict.empty
+                                |> restartWfc (SeedState.fromSeed testSeed) Dict.empty
                                 |> WFC.toTilemap
 
                         firstHorizontalRoadCellOptions =
@@ -330,13 +332,13 @@ suite =
                                 |> Maybe.withDefault []
 
                         verticalRoadId =
-                            2
+                            3
 
                         verticalRoadLotEntryLeftId =
-                            19
+                            20
 
                         verticalRoadLotEntryRightId =
-                            18
+                            19
                     in
                     Expect.all
                         [ \_ -> Expect.equal firstHorizontalRoadCellOptions []
@@ -356,7 +358,7 @@ suite =
                             placeRoadAndUpdateBuffer
                                 [ ( 2, 5 ), ( 2, 6 ), ( 2, 7 ), ( 2, 8 ), ( 2, 9 ), ( 2, 10 ) ]
                                 emptyTilemap
-                                |> restartWfc testSeed Dict.empty
+                                |> restartWfc (SeedState.fromSeed testSeed) Dict.empty
                                 |> WFC.toTilemap
 
                         firstHorizontalRoadCellOptions =
@@ -370,10 +372,10 @@ suite =
                                 |> Maybe.withDefault []
 
                         verticalRoadId =
-                            2
+                            3
 
                         verticalRoadLotEntryRightId =
-                            18
+                            19
                     in
                     Expect.all
                         [ \_ -> Expect.equal firstHorizontalRoadCellOptions []
@@ -388,7 +390,7 @@ suite =
                             tilemapFromCoordinates
                                 constraints
                                 [ ( 5, 5 ), ( 5, 6 ), ( 5, 7 ), ( 5, 8 ) ]
-                                |> restartWfc testSeed Dict.empty
+                                |> restartWfc (SeedState.fromSeed testSeed) Dict.empty
                                 |> WFC.toTilemap
                     in
                     Expect.all
@@ -399,6 +401,81 @@ suite =
                                 |> Expect.onFail "tile remains fixed"
                         ]
                         ()
+                )
+            ]
+        , describe "seed propagation"
+            [ test "WFC internal seed changes during solving"
+                (\_ ->
+                    let
+                        tilemap =
+                            placeRoadAndUpdateBuffer
+                                [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ), ( 10, 5 ) ]
+                                emptyTilemap
+
+                        ( wfcModel, _ ) =
+                            restartWfc (SeedState.fromSeed testSeed) Dict.empty tilemap
+                                |> WFC.solve
+                                |> WFC.flushPendingActions
+
+                        initialSeed =
+                            testSeed
+
+                        finalSeedState =
+                            WFC.currentSeed wfcModel
+
+                        seedsAreDifferent =
+                            -- Seeds are opaque - test by stepping them and comparing outputs
+                            let
+                                ( val1, _ ) =
+                                    Random.step (Random.int Random.minInt Random.maxInt) initialSeed
+
+                                ( val2, _ ) =
+                                    Random.step (Random.int Random.minInt Random.maxInt) finalSeedState.currentSeed
+                            in
+                            val1 /= val2
+                    in
+                    Expect.equal seedsAreDifferent True
+                        |> Expect.onFail "WFC seed should be different from initial seed after solving"
+                )
+            , test "runWfc returns updated seed in WFCSolved"
+                (\_ ->
+                    let
+                        tilemap =
+                            placeRoadAndUpdateBuffer
+                                [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ), ( 10, 5 ) ]
+                                emptyTilemap
+
+                        initialWfc =
+                            restartWfc (SeedState.fromSeed testSeed) Dict.empty tilemap
+
+                        ( _, drivenWfcResult, _ ) =
+                            Tilemap.DrivenWFC.runWfc tilemap (WFC.solve initialWfc)
+
+                        resultSeedState =
+                            case drivenWfcResult of
+                                Tilemap.DrivenWFC.WFCSolved _ _ seedState ->
+                                    Just seedState
+
+                                _ ->
+                                    Nothing
+
+                        seedsAreDifferent =
+                            case resultSeedState of
+                                Just seedState ->
+                                    let
+                                        ( val1, _ ) =
+                                            Random.step (Random.int Random.minInt Random.maxInt) testSeed
+
+                                        ( val2, _ ) =
+                                            Random.step (Random.int Random.minInt Random.maxInt) seedState.currentSeed
+                                    in
+                                    val1 /= val2
+
+                                Nothing ->
+                                    False
+                    in
+                    Expect.equal seedsAreDifferent True
+                        |> Expect.onFail "runWfc should return updated seed in WFCSolved"
                 )
             ]
         ]

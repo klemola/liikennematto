@@ -141,15 +141,14 @@ parkingCompleteEffects time =
                     nextCar =
                         { car | orientation = nextOrientation }
 
-                    ( triggerAt, nextSeed ) =
-                        Random.step
+                    ( triggerAt, nextWorld ) =
+                        World.stepSeed
                             (randomFutureTime ( 5000, 45000 ) time)
-                            world.seed
+                            world
                 in
-                world
+                nextWorld
                     |> World.setCar nextCar
                     |> World.updateLot (Lot.releaseParkingLock nextCar.id lot)
-                    |> World.setSeed nextSeed
                     |> World.addEvent
                         (World.CreateRouteFromParkingSpot car.id parkingReservation)
                         triggerAt
@@ -189,13 +188,12 @@ setupRespawn time =
                 minDelay =
                     maxDelay // 2
 
-                ( triggerAt, nextSeed ) =
-                    Random.step
+                ( triggerAt, nextWorld ) =
+                    World.stepSeed
                         (randomFutureTime ( minDelay, maxDelay ) time)
-                        world.seed
+                        world
             in
-            world
-                |> World.setSeed nextSeed
+            nextWorld
                 |> World.removeCar car.id
                 |> World.addEvent eventKind triggerAt
         )
