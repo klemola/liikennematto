@@ -7,7 +7,6 @@ module Model.Liikennematto exposing
     , Liikennematto
     , currentState
     , fromNewGame
-    , fromPreviousGame
     , initial
     , triggerLoading
     )
@@ -35,7 +34,6 @@ type alias Liikennematto =
     , time : Time.Posix
     , world : World
     , wfc : DrivenWFC
-    , previousWorld : Maybe World
     , savegame : Maybe JE.Value
     , simulationActive : Bool
     , renderCache : RenderCache
@@ -263,7 +261,6 @@ initial flags =
         }
     , screen = Screen.fallback
     , time = Time.millisToPosix 0
-    , previousWorld = Nothing
     , world = world
     , wfc = initialDrivenWfc initialSeed
     , savegame = maybeSavegame
@@ -281,19 +278,13 @@ initial flags =
 --
 
 
-fromNewGame : Maybe World -> Liikennematto -> Liikennematto
-fromNewGame previousWorld model =
+fromNewGame : Liikennematto -> Liikennematto
+fromNewGame model =
     let
-        currentWorldSeed =
-            case previousWorld of
-                Just pw ->
-                    World.currentSeed pw
-
-                Nothing ->
-                    World.currentSeed model.world
-
         ( randomInt, _ ) =
-            Random.step (Random.int Random.minInt Random.maxInt) currentWorldSeed
+            Random.step
+                (Random.int Random.minInt Random.maxInt)
+                (World.currentSeed model.world)
 
         newGameSeed =
             Random.initialSeed randomInt
@@ -304,25 +295,7 @@ fromNewGame previousWorld model =
     { model
         | world = world
         , wfc = initialDrivenWfc newGameSeed
-        , previousWorld = previousWorld
         , renderCache = RenderCache.new world
         , simulationActive = True
         , debug = initialDebugState
     }
-
-
-fromPreviousGame : Liikennematto -> Liikennematto
-fromPreviousGame model =
-    case model.previousWorld of
-        Just previousWorld ->
-            { model
-                | world = previousWorld
-                , wfc = initialDrivenWfc (World.currentSeed previousWorld)
-                , previousWorld = Nothing
-                , renderCache = RenderCache.new previousWorld
-                , simulationActive = True
-                , debug = initialDebugState
-            }
-
-        Nothing ->
-            fromNewGame Nothing model

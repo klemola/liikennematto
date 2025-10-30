@@ -230,16 +230,17 @@ computeParentTilesFromLotMetadata tilemapConfig lotMetadataList =
 addLotCellsToParentMap : Tilemap.TilemapConfig -> Cell.Cell -> LargeTile -> Dict.Dict CellCoordinates ( TileId, Int ) -> Dict.Dict CellCoordinates ( TileId, Int )
 addLotCellsToParentMap tilemapConfig drivewayCell largeTile dict =
     let
-        subgridConstraints =
-            { horizontalCellsAmount = largeTile.width
-            , verticalCellsAmount = largeTile.height
-            }
-
         maybeTopLeftCell =
             Tile.largeTileTopLeftCell tilemapConfig drivewayCell largeTile.anchorIndex largeTile
     in
     case maybeTopLeftCell of
         Just topLeftCell ->
+            let
+                subgridConstraints =
+                    { horizontalCellsAmount = largeTile.width
+                    , verticalCellsAmount = largeTile.height
+                    }
+            in
             List.range 0 (largeTile.width * largeTile.height - 1)
                 |> List.filterMap
                     (\subgridIndex ->

@@ -203,7 +203,7 @@ updateBase msg model =
                     ( model, Cmd.none )
 
         SavegameHashCleared ->
-            ( Liikennematto.fromNewGame (Just model.world) model
+            ( Liikennematto.fromNewGame model
             , Cmd.none
             )
 
@@ -317,13 +317,10 @@ onUiButtonPressed buttonId model =
 
         UI.Model.NewGame ->
             let
-                previousWorld =
-                    Just model.world
-
                 ( modelWithTransition, transitionActions ) =
                     Liikennematto.triggerLoading model
             in
-            ( Liikennematto.fromNewGame previousWorld modelWithTransition
+            ( Liikennematto.fromNewGame modelWithTransition
             , Cmd.batch
                 [ gameActionsToCmd transitionActions
                 , Savegame.clearSavegameUrl ()

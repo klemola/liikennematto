@@ -423,19 +423,13 @@ suite =
                         finalSeedState =
                             WFC.currentSeed wfcModel
 
-                        seedsAreDifferent =
-                            -- Seeds are opaque - test by stepping them and comparing outputs
-                            let
-                                ( val1, _ ) =
-                                    Random.step (Random.int Random.minInt Random.maxInt) initialSeed
+                        ( val1, _ ) =
+                            Random.step (Random.int Random.minInt Random.maxInt) initialSeed
 
-                                ( val2, _ ) =
-                                    Random.step (Random.int Random.minInt Random.maxInt) finalSeedState.currentSeed
-                            in
-                            val1 /= val2
+                        ( val2, _ ) =
+                            Random.step (Random.int Random.minInt Random.maxInt) finalSeedState.currentSeed
                     in
-                    Expect.equal seedsAreDifferent True
-                        |> Expect.onFail "WFC seed should be different from initial seed after solving"
+                    Expect.notEqual val1 val2
                 )
             , test "runWfc returns updated seed in WFCSolved"
                 (\_ ->
@@ -451,30 +445,21 @@ suite =
                         ( _, drivenWfcResult, _ ) =
                             Tilemap.DrivenWFC.runWfc tilemap (WFC.solve initialWfc)
 
-                        resultSeedState =
+                        currentSeed =
                             case drivenWfcResult of
                                 Tilemap.DrivenWFC.WFCSolved _ _ seedState ->
-                                    Just seedState
+                                    seedState.currentSeed
 
                                 _ ->
-                                    Nothing
+                                    Random.initialSeed 0
 
-                        seedsAreDifferent =
-                            case resultSeedState of
-                                Just seedState ->
-                                    let
-                                        ( val1, _ ) =
-                                            Random.step (Random.int Random.minInt Random.maxInt) testSeed
+                        ( val1, _ ) =
+                            Random.step (Random.int Random.minInt Random.maxInt) testSeed
 
-                                        ( val2, _ ) =
-                                            Random.step (Random.int Random.minInt Random.maxInt) seedState.currentSeed
-                                    in
-                                    val1 /= val2
-
-                                Nothing ->
-                                    False
+                        ( val2, _ ) =
+                            Random.step (Random.int Random.minInt Random.maxInt) currentSeed
                     in
-                    Expect.equal seedsAreDifferent True
+                    Expect.notEqual val1 val2
                         |> Expect.onFail "runWfc should return updated seed in WFCSolved"
                 )
             ]

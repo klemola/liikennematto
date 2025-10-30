@@ -23,7 +23,6 @@ import Maybe.Extra as Maybe
 import Model.World as World exposing (World, WorldEvent)
 import Point2d exposing (Point2d)
 import Quantity
-import Random
 import Simulation.Car as Car exposing (Car, CarState(..))
 import Simulation.Collision as Collision
 import Simulation.Lot as Lot exposing (Lot)

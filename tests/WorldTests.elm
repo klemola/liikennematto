@@ -2,7 +2,6 @@ module WorldTests exposing (suite)
 
 import Data.Utility exposing (tenByTenTilemap)
 import Expect
-import Lib.SeedState as SeedState
 import Model.World as World
 import Random
 import Test exposing (Test, describe, test)

@@ -689,12 +689,13 @@ parentTileComputationTests =
                                 (\decoded ->
                                     extractParentTilesFromWorld decoded
                                 )
-
-                    parentTiles =
-                        parentTilesFromLots world
                 in
                 case savedData of
                     Ok savedParentTiles ->
+                        let
+                            parentTiles =
+                                parentTilesFromLots world
+                        in
                         Expect.equal (List.sort savedParentTiles) (List.sort parentTiles)
                             |> Expect.onFail
                                 ("Parent tiles don't match.\nExpected (saved): "
@@ -813,19 +814,15 @@ findMatchingLargeTile lot =
 
 addLotCellsToParentMap : Tilemap.TilemapConfig -> Cell.Cell -> LargeTile -> Dict CellCoordinates ( TileId, Int ) -> Dict CellCoordinates ( TileId, Int )
 addLotCellsToParentMap tilemapConfig drivewayCell largeTile dict =
-    let
-        subgridConstraints =
-            { horizontalCellsAmount = largeTile.width
-            , verticalCellsAmount = largeTile.height
-            }
-
-        -- Get top-left corner cell of the large tile
-        maybeTopLeftCell =
-            Tile.largeTileTopLeftCell tilemapConfig drivewayCell largeTile.anchorIndex largeTile
-    in
-    case maybeTopLeftCell of
+    case Tile.largeTileTopLeftCell tilemapConfig drivewayCell largeTile.anchorIndex largeTile of
         Just topLeftCell ->
             -- For each cell in subgrid
+            let
+                subgridConstraints =
+                    { horizontalCellsAmount = largeTile.width
+                    , verticalCellsAmount = largeTile.height
+                    }
+            in
             List.range 0 (largeTile.width * largeTile.height - 1)
                 |> List.filterMap
                     (\subgridIndex ->

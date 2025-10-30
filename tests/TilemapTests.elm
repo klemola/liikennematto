@@ -7,7 +7,6 @@ import Data.Worlds
         , lowComplexityWorld
         )
 import Expect
-import Maybe.Extra as Maybe
 import Test exposing (Test, describe, test)
 import Tilemap.Cell as Cell
 import Tilemap.Core exposing (Tilemap, cellSupportsRoadPlacement, fixedTileByCell, getTilemapConfig)
@@ -47,9 +46,6 @@ suite =
 
                         tilemapConfig =
                             getTilemapConfig tilemap
-
-                        intersectionTDownId =
-                            13
                     in
                     Cell.fromCoordinates tilemapConfig ( 2, 1 )
                         |> Maybe.andThen (fixedTileByCell tilemap)
@@ -57,6 +53,10 @@ suite =
                             (\tile ->
                                 case tile.kind of
                                     Fixed properties ->
+                                        let
+                                            intersectionTDownId =
+                                                13
+                                        in
                                         properties.id == intersectionTDownId
 
                                     _ ->
@@ -76,9 +76,6 @@ suite =
 
                         tilemapConfig =
                             getTilemapConfig tilemap
-
-                        curveTopLeftId =
-                            10
                     in
                     Cell.fromCoordinates tilemapConfig ( 1, 1 )
                         |> Maybe.andThen (fixedTileByCell tilemap)
@@ -86,6 +83,10 @@ suite =
                             (\tile ->
                                 case tile.kind of
                                     Fixed properties ->
+                                        let
+                                            curveTopLeftId =
+                                                10
+                                        in
                                         properties.id == curveTopLeftId
 
                                     _ ->

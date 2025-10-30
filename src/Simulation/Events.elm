@@ -6,7 +6,6 @@ import Lib.Collection exposing (Id)
 import Lib.EventQueue as EventQueue
 import Lib.OrthogonalDirection as OrthogonalDirection
 import Model.World as World exposing (World, WorldEvent(..))
-import Random
 import Result.Extra
 import Simulation.Car as Car exposing (Car, CarEvent(..))
 import Simulation.Lot as Lot exposing (Lot)

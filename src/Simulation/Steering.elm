@@ -2,7 +2,6 @@ module Simulation.Steering exposing
     ( Steering
     , accelerate
     , accelerateToZeroOverDistance
-    , align
     , clampVelocity
     , goSlow
     , maxDeceleration
@@ -10,18 +9,14 @@ module Simulation.Steering exposing
     , none
     , reachTargetVelocity
     , reactToCollision
-    , seekAndFaceTarget
     , stop
     , stopAtDistance
     , stopAtPathEnd
     )
 
 import Acceleration exposing (Acceleration)
-import Angle exposing (Angle)
 import AngularAcceleration exposing (AngularAcceleration)
-import AngularSpeed exposing (AngularSpeed)
 import Common exposing (GlobalCoordinates, isCloseToZeroVelocity)
-import Duration
 import Length exposing (Length)
 import Point2d exposing (Point2d)
 import Quantity exposing (Quantity(..))
@@ -61,102 +56,10 @@ maxDeceleration =
     Acceleration.metersPerSecondSquared -20
 
 
-maxAngularAcceleration : AngularAcceleration
-maxAngularAcceleration =
-    AngularAcceleration.radiansPerSecondSquared 22.3
-
-
-maxRotation : AngularSpeed
-maxRotation =
-    AngularSpeed.radiansPerSecond 1
-
-
 
 --
 -- Steering behaviors
 --
-
-
-seekAndFaceTarget :
-    { currentRotation : AngularSpeed
-    , currentOrientation : Angle
-    , targetOrientation : Angle
-    }
-    -> Steering
-seekAndFaceTarget alignProps =
-    let
-        alignSteering =
-            align alignProps
-
-        accelerationForRotation angularSteering =
-            let
-                rawAngular =
-                    AngularAcceleration.inRadiansPerSecondSquared angularSteering
-            in
-            Acceleration.metersPerSecondSquared (-rawAngular * 2)
-    in
-    { linear = alignSteering.angular |> Maybe.map accelerationForRotation
-    , angular = alignSteering.angular
-    }
-
-
-align :
-    { currentRotation : AngularSpeed
-    , currentOrientation : Angle
-    , targetOrientation : Angle
-    }
-    -> Steering
-align { currentRotation, currentOrientation, targetOrientation } =
-    let
-        targetRadius =
-            Angle.radians 0.017
-
-        rotation =
-            targetOrientation
-                |> Quantity.minus currentOrientation
-                |> Angle.normalize
-
-        rotationSize =
-            Quantity.abs rotation
-    in
-    if rotationSize |> Quantity.lessThan targetRadius then
-        none
-
-    else
-        let
-            -- The time over which to achieve target speed
-            timeToTarget =
-                Duration.seconds 0.1
-
-            slowRadius =
-                Angle.radians 0.3
-
-            targetRotation : AngularSpeed
-            targetRotation =
-                if rotationSize |> Quantity.greaterThan slowRadius then
-                    maxRotation
-
-                else
-                    maxRotation |> Quantity.multiplyBy (Quantity.ratio rotationSize slowRadius)
-
-            targetRotationWithDirection : AngularSpeed
-            targetRotationWithDirection =
-                targetRotation
-                    |> Quantity.times rotation
-                    |> Quantity.over_ rotationSize
-
-            result : AngularAcceleration
-            result =
-                targetRotationWithDirection
-                    |> Quantity.minus currentRotation
-                    |> Quantity.per timeToTarget
-                    |> Quantity.clamp
-                        (Quantity.negate maxAngularAcceleration)
-                        maxAngularAcceleration
-        in
-        { linear = Nothing
-        , angular = Just result
-        }
 
 
 none : Steering

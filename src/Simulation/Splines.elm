@@ -21,7 +21,6 @@ import Quantity
 import Simulation.RoadNetwork
     exposing
         ( ConnectionEnvironment(..)
-        , ConnectionKind(..)
         , RNNodeContext
         )
 

@@ -5,7 +5,6 @@ module Lib.SeedState exposing
     , fromIntAndSteps
     , fromSeed
     , step
-    , stepNTimes
     , stepWithFunction
     )
 

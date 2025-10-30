@@ -309,13 +309,10 @@ findRandomDestinationNode world car startNodeCtx =
 
             else
                 randomNodeMatchPredicate startNodeCtx
-
-        ( maybeNode, finalWorld ) =
-            World.stepWithSeedFunction
-                (\seed -> RoadNetwork.getRandomNode worldAfterRandomFloat.roadNetwork seed predicate)
-                worldAfterRandomFloat
     in
-    ( maybeNode, finalWorld )
+    World.stepWithSeedFunction
+        (\seed -> RoadNetwork.getRandomNode worldAfterRandomFloat.roadNetwork seed predicate)
+        worldAfterRandomFloat
 
 
 randomLotMatchPredicate :

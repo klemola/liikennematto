@@ -22,7 +22,6 @@ import Duration exposing (Duration)
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import Lib.SeedState exposing (SeedState)
 import List.Nonempty
-import Random
 import Round
 import Set
 import Tilemap.Buffer exposing (removeBuffer, updateBufferCells)
