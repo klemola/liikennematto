@@ -19,12 +19,14 @@ import Lib.Collection as Collection
 import Lib.OrthogonalDirection exposing (OrthogonalDirection)
 import Lib.SeedState as SeedState exposing (SeedState)
 import Model.World as World exposing (World)
+import Set
 import Simulation.Lot as Lot exposing (Lot)
 import Simulation.Traffic
 import Tilemap.Cell as Cell exposing (CellCoordinates)
 import Tilemap.Core as Tilemap exposing (Tilemap)
 import Tilemap.Tile as Tile
 import Tilemap.TileConfig as TileConfig exposing (LargeTile, TileId)
+import Tilemap.TileInventory as TileInventory
 import Time
 
 
@@ -439,6 +441,25 @@ restoreLots lotMetadataList world =
         )
         (Ok world)
         lotMetadataList
+        |> Result.map rebuildTileInventory
+
+
+rebuildTileInventory : World -> World
+rebuildTileInventory world =
+    let
+        placedLots =
+            Collection.values world.lots
+                |> List.map .name
+                |> Set.fromList
+
+        updatedInventory =
+            Dict.map
+                (\_ newLots ->
+                    List.filter (\lot -> not (Set.member lot.name placedLots)) newLots
+                )
+                world.tileInventory
+    in
+    { world | tileInventory = updatedInventory }
 
 
 restoreSingleLot : LotMetadata -> World -> Result String World

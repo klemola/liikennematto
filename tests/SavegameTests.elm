@@ -18,6 +18,7 @@ import Tilemap.Cell as Cell exposing (CellCoordinates)
 import Tilemap.Core as Tilemap
 import Tilemap.Tile as Tile
 import Tilemap.TileConfig as TileConfig exposing (LargeTile, TileId)
+import Tilemap.TileInventory as TileInventory
 
 
 suite : Test
@@ -29,6 +30,7 @@ suite =
         , invalidInputTests
         , parentTileComputationTests
         , seedDeterminismTests
+        , tileInventoryTests
         ]
 
 
@@ -622,6 +624,60 @@ seedDeterminismTests =
 
                     Err error ->
                         Expect.fail ("Decode failed: " ++ error)
+            )
+        ]
+
+
+tileInventoryTests : Test
+tileInventoryTests =
+    describe "Tile inventory management"
+        [ test "tile inventory lots count is correct after savegame restore"
+            (\_ ->
+                let
+                    threeByThreeLotLeftLargeTileId =
+                        114
+
+                    inventoryCount tileId world =
+                        Dict.get tileId world.tileInventory
+                            |> Maybe.withDefault []
+                            |> List.length
+
+                    originalCount =
+                        inventoryCount threeByThreeLotLeftLargeTileId Worlds.worldWithSchool
+
+                    result =
+                        Savegame.encode Worlds.worldWithSchool
+                            |> Savegame.decode
+                in
+                case result of
+                    Ok restoredWorld ->
+                        let
+                            restoredCount =
+                                inventoryCount threeByThreeLotLeftLargeTileId restoredWorld
+
+                            schoolLotsInWorld =
+                                Collection.values restoredWorld.lots
+                                    |> List.filter (\lot -> lot.name == "LotSchool")
+                                    |> List.length
+                        in
+                        Expect.all
+                            [ \_ ->
+                                Expect.equal schoolLotsInWorld 1
+                                    |> Expect.onFail "Expected 1 school lot in restored world"
+                            , \_ ->
+                                Expect.equal restoredCount (originalCount - schoolLotsInWorld)
+                                    |> Expect.onFail
+                                        ("Expected tile inventory to have fewer lots available "
+                                            ++ "Original: "
+                                            ++ String.fromInt originalCount
+                                            ++ ", Restored: "
+                                            ++ String.fromInt restoredCount
+                                        )
+                            ]
+                            ()
+
+                    Err error ->
+                        Expect.fail ("Decoding failed: " ++ error)
             )
         ]
 
