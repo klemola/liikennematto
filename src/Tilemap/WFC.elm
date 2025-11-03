@@ -113,7 +113,7 @@ type alias PreviousSteps =
 
 maxBacktrackCount : Int
 maxBacktrackCount =
-    50
+    100
 
 
 
@@ -668,12 +668,35 @@ pickRandom ({ openSteps, tilemap, seed } as modelDetails) =
 
                 collapseStep =
                     [ Collapse randomCandidate.cell randomOption ]
+
+                logEntry =
+                    List.Nonempty.foldl
+                        (\c entry ->
+                            String.join "\n.."
+                                [ entry
+                                , String.join " "
+                                    (Cell.toString c.cell
+                                        :: (c.options
+                                                |> List.Nonempty.toList
+                                                |> List.map String.fromInt
+                                           )
+                                    )
+                                ]
+                        )
+                        (String.join " "
+                            [ ".Pick random: "
+                            , Cell.toString randomCandidate.cell
+                            , String.fromInt (TileConfig.tileConfigId randomOption)
+                            ]
+                        )
+                        candidates
             in
             { modelDetails
                 | openSteps = collapseStep ++ openSteps
                 , currentCell = Nothing
                 , targetCell = Nothing
                 , seed = nextSeedState
+                , log = logEntry :: modelDetails.log
             }
 
 

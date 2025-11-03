@@ -168,7 +168,7 @@ update msg model =
                                     restartWfc
                                         nextSeed
                                         (World.tileInventoryCount model.world)
-                                        nextTilemap
+                                        model.world.tilemap
                             in
                             ( { model | debug = appendWfcLog (">Restart WFC (failure)" :: wfcLog) model.debug }
                             , scheduleWFCChunk wfc model.world
