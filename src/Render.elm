@@ -23,7 +23,7 @@ import Model.World exposing (World)
 import Point2d exposing (Point2d)
 import Quantity
 import Render.Conversion exposing (pointToPixels, toPixelsValue)
-import Render.ViewBox as ViewBox exposing (ViewBox)
+import Render.Viewport as Viewport exposing (Viewport)
 import Simulation.Car exposing (Car)
 import Simulation.RoadNetwork
     exposing
@@ -71,8 +71,8 @@ styles =
 --
 
 
-view : World -> RenderCache -> Maybe ViewBox -> Html msg
-view { cars, roadNetwork, trafficLights } cache maybeViewBox =
+view : World -> RenderCache -> Maybe Viewport -> Html msg
+view { cars, roadNetwork, trafficLights } cache maybeViewport =
     let
         tilemapWidth =
             String.fromFloat cache.tilemapWidthPixels
@@ -81,11 +81,11 @@ view { cars, roadNetwork, trafficLights } cache maybeViewBox =
             String.fromFloat cache.tilemapHeightPixels
 
         ( svgWidth, svgHeight, viewBoxStr ) =
-            case maybeViewBox of
-                Just viewBox ->
-                    ( String.fromFloat viewBox.width
-                    , String.fromFloat viewBox.height
-                    , ViewBox.toString viewBox
+            case maybeViewport of
+                Just viewport ->
+                    ( String.fromFloat viewport.width
+                    , String.fromFloat viewport.height
+                    , Viewport.toSvgViewBox viewport
                     )
 
                 Nothing ->

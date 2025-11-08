@@ -8,7 +8,7 @@ import Json.Decode as JD
 import Model.RenderCache as RenderCache
 import Model.World as World
 import Render
-import Render.ViewBox as ViewBox exposing (ViewBox)
+import Render.Viewport as Viewport exposing (Viewport)
 import Savegame
 import UI.Editor as Editor
 import UI.Pan as Pan
@@ -23,7 +23,7 @@ type alias Model =
     { world : World.World
     , cache : RenderCache.RenderCache
     , editor : Editor.Model
-    , viewBox : ViewBox
+    , viewport : Viewport
     }
 
 
@@ -79,17 +79,18 @@ init _ =
                         cache =
                             RenderCache.new world
 
-                        viewBox =
-                            ViewBox.init
-                                cache.tilemapWidthPixels
-                                cache.tilemapHeightPixels
-                                720
-                                476
+                        viewport =
+                            Viewport.init
+                                { tilemapWidth = cache.tilemapWidthPixels
+                                , tilemapHeight = cache.tilemapHeightPixels
+                                , viewportWidth = 720
+                                , viewportHeight = 476
+                                }
                     in
                     ( { world = world
                       , cache = cache
                       , editor = Editor.initialModel
-                      , viewBox = viewBox
+                      , viewport = viewport
                       }
                     , Cmd.none
                     )
@@ -112,24 +113,24 @@ update msg model =
         EditorMsg editorMsg ->
             let
                 ( editorModel, effects ) =
-                    Editor.update model.world model.cache.pixelsToMetersRatio editorMsg model.editor
+                    Editor.update model.world model.cache.pixelsToMetersRatio model.viewport editorMsg model.editor
 
-                newViewBox =
+                newViewport =
                     effects
                         |> List.foldl
-                            (\effect vb ->
+                            (\effect vp ->
                                 case effect of
                                     Editor.ViewportChangeRequested deltaX deltaY ->
-                                        vb
-                                            |> ViewBox.applyPanDelta deltaX deltaY
-                                            |> ViewBox.clamp model.cache.tilemapWidthPixels model.cache.tilemapHeightPixels
+                                        vp
+                                            |> Viewport.applyPanDelta deltaX deltaY
+                                            |> Viewport.clamp model.cache.tilemapWidthPixels model.cache.tilemapHeightPixels
 
                                     _ ->
-                                        vb
+                                        vp
                             )
-                            model.viewBox
+                            model.viewport
             in
-            ( { model | editor = editorModel, viewBox = newViewBox }
+            ( { model | editor = editorModel, viewport = newViewport }
             , Cmd.none
             )
 
@@ -141,13 +142,13 @@ view : Model -> Html Msg
 view model =
     let
         renderWidth =
-            floor model.viewBox.width
+            floor model.viewport.width
 
         renderHeight =
-            floor model.viewBox.height
+            floor model.viewport.height
 
         render =
-            Render.view model.world model.cache (Just model.viewBox)
+            Render.view model.world model.cache (Just model.viewport)
                 |> Element.html
                 |> Element.el
                     [ Element.width (Element.px renderWidth)
@@ -155,6 +156,7 @@ view model =
                     , Element.inFront
                         (Editor.view
                             model.cache
+                            model.viewport
                             model.world
                             model.editor
                             |> Element.map EditorMsg
@@ -173,7 +175,7 @@ view model =
                 , Html.Attributes.style "border" "1px solid #ccc"
                 , Html.Attributes.style "border-radius" "4px"
                 ]
-                [ Html.text (panStateDebugString model.editor.panState model.viewBox) ]
+                [ Html.text (panStateDebugString model.editor.panState model.viewport) ]
     in
     Html.div []
         [ Element.layout [] render
@@ -181,8 +183,8 @@ view model =
         ]
 
 
-panStateDebugString : Pan.PanState -> ViewBox -> String
-panStateDebugString panState viewBox =
+panStateDebugString : Pan.PanState -> Viewport -> String
+panStateDebugString panState viewport =
     String.join "\n"
         [ "PanState:"
         , "  isDragging: "
@@ -200,9 +202,9 @@ panStateDebugString panState viewBox =
         , "  velocityY: " ++ String.fromFloat panState.velocityY
         , "  smoothTime: " ++ String.fromFloat panState.smoothTime
         , ""
-        , "ViewBox:"
-        , "  x: " ++ String.fromFloat viewBox.x
-        , "  y: " ++ String.fromFloat viewBox.y
-        , "  width: " ++ String.fromFloat viewBox.width
-        , "  height: " ++ String.fromFloat viewBox.height
+        , "Viewport:"
+        , "  x: " ++ String.fromFloat viewport.x
+        , "  y: " ++ String.fromFloat viewport.y
+        , "  width: " ++ String.fromFloat viewport.width
+        , "  height: " ++ String.fromFloat viewport.height
         ]

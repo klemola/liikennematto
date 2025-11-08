@@ -27,6 +27,7 @@ import Process
 import Random
 import Render
 import Render.Debug
+import Render.Viewport as Viewport
 import Svg exposing (Svg)
 import Svg.Attributes
 import Task
@@ -285,8 +286,16 @@ update msg model =
 
         EditorMsg editorMsg ->
             let
+                defaultViewport =
+                    Viewport.init
+                        { tilemapWidth = model.cache.tilemapWidthPixels
+                        , tilemapHeight = model.cache.tilemapHeightPixels
+                        , viewportWidth = model.cache.tilemapWidthPixels
+                        , viewportHeight = model.cache.tilemapHeightPixels
+                        }
+
                 ( editorModel, effects ) =
-                    Editor.update model.world model.cache.pixelsToMetersRatio editorMsg model.editor
+                    Editor.update model.world model.cache.pixelsToMetersRatio defaultViewport editorMsg model.editor
 
                 inputEvent =
                     effects
@@ -342,6 +351,13 @@ view model =
                     , Element.inFront
                         (Editor.view
                             model.cache
+                            (Viewport.init
+                                { tilemapWidth = model.cache.tilemapWidthPixels
+                                , tilemapHeight = model.cache.tilemapHeightPixels
+                                , viewportWidth = model.cache.tilemapWidthPixels
+                                , viewportHeight = model.cache.tilemapHeightPixels
+                                }
+                            )
                             model.world
                             model.editor
                             |> Element.map EditorMsg

@@ -18,9 +18,11 @@ import Html.Events.Extra.Mouse as Mouse
 import Model.Debug exposing (DebugLayerKind(..))
 import Model.Liikennematto exposing (Liikennematto)
 import Model.World exposing (World)
-import Render.Conversion exposing (PixelsToMetersRatio)
+import Render.Conversion exposing (PixelsToMetersRatio, toPixelsValue)
+import Render.Viewport as Viewport
 import Svg
 import Svg.Attributes as SvgAttr
+import Tilemap.Core exposing (getTilemapDimensions)
 import UI.Button
     exposing
         ( iconButton
@@ -178,8 +180,25 @@ update world pixelsToMetersRatio msg model =
 
         EditorMsg editorMsg ->
             let
+                tilemapDimensions =
+                    getTilemapDimensions world.tilemap
+
+                tilemapWidthPixels =
+                    toPixelsValue pixelsToMetersRatio tilemapDimensions.width
+
+                tilemapHeightPixels =
+                    toPixelsValue pixelsToMetersRatio tilemapDimensions.height
+
+                defaultViewport =
+                    Viewport.init
+                        { tilemapWidth = tilemapWidthPixels
+                        , tilemapHeight = tilemapHeightPixels
+                        , viewportWidth = tilemapWidthPixels
+                        , viewportHeight = tilemapHeightPixels
+                        }
+
                 ( editorModel, effects ) =
-                    Editor.update world pixelsToMetersRatio editorMsg model.editor
+                    Editor.update world pixelsToMetersRatio defaultViewport editorMsg model.editor
 
                 uiEvent =
                     effects
@@ -316,6 +335,13 @@ renderWrapper { renderCache, world, screen } render debugLayers model =
             , Element.inFront
                 (Editor.view
                     renderCache
+                    (Viewport.init
+                        { tilemapWidth = renderCache.tilemapWidthPixels
+                        , tilemapHeight = renderCache.tilemapHeightPixels
+                        , viewportWidth = renderCache.tilemapWidthPixels
+                        , viewportHeight = renderCache.tilemapHeightPixels
+                        }
+                    )
                     world
                     model.editor
                     |> Element.map EditorMsg

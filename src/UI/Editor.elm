@@ -27,6 +27,7 @@ import Model.World exposing (World)
 import Point2d exposing (Point2d)
 import Quantity
 import Render.Conversion exposing (PixelsToMetersRatio, toPixelsValue)
+import Render.Viewport exposing (Viewport)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
@@ -112,14 +113,10 @@ longTapIndicatorShowDelay =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.batch
         [ Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameReceived)
-        , if model.panState.isDragging then
-            Events.onMouseUp (Json.Decode.succeed GlobalPointerUp)
-
-          else
-            Sub.none
+        , Events.onMouseUp (Json.Decode.succeed GlobalPointerUp)
         ]
 
 
@@ -127,8 +124,8 @@ subscriptions model =
 -- Update
 
 
-update : World -> PixelsToMetersRatio -> Msg -> Model -> ( Model, List EditorEffect )
-update world pixelsToMetersRatio msg model =
+update : World -> PixelsToMetersRatio -> Viewport -> Msg -> Model -> ( Model, List EditorEffect )
+update world pixelsToMetersRatio viewport msg model =
     let
         tilemapConfig =
             getTilemapConfig world.tilemap
@@ -163,6 +160,7 @@ update world pixelsToMetersRatio msg model =
                 case
                     pointerEventToCell
                         pixelsToMetersRatio
+                        viewport
                         tilemapConfig
                         event
                 of
@@ -191,7 +189,7 @@ update world pixelsToMetersRatio msg model =
                 ( model, [] )
 
             else
-                case pointerEventToCell pixelsToMetersRatio tilemapConfig event of
+                case pointerEventToCell pixelsToMetersRatio viewport tilemapConfig event of
                     Just eventCell ->
                         let
                             cellHasRoadTile =
@@ -228,13 +226,13 @@ update world pixelsToMetersRatio msg model =
                     ( baseModel, [] )
 
                 else
-                    case pointerEventToCell pixelsToMetersRatio tilemapConfig event of
+                    case pointerEventToCell pixelsToMetersRatio viewport tilemapConfig event of
                         Just pointerUpCell ->
                             let
                                 pointerDownCell =
                                     model.pointerDownEvent
                                         |> Maybe.andThen
-                                            (pointerEventToCell pixelsToMetersRatio tilemapConfig)
+                                            (pointerEventToCell pixelsToMetersRatio viewport tilemapConfig)
 
                                 inputEvent =
                                     resolvePointerUp
@@ -364,14 +362,24 @@ selectCell event eventCell hasRoadTile world initialEditor =
            )
 
 
-pointerEventToCell : PixelsToMetersRatio -> TilemapConfig -> Pointer.Event -> Maybe Cell
-pointerEventToCell pixelsToMetersRatio constraints event =
+pointerEventToCell : PixelsToMetersRatio -> Viewport -> TilemapConfig -> Pointer.Event -> Maybe Cell
+pointerEventToCell pixelsToMetersRatio viewport constraints event =
     let
         ( overlayX, overlayY ) =
             event.pointer.offsetPos
 
         cellMetersValue =
             Quantity.unwrap Cell.size
+
+        viewportOffsetXMeters =
+            viewport.x
+                |> Render.Conversion.toMetersValue pixelsToMetersRatio
+                |> Quantity.unwrap
+
+        viewportOffsetYMeters =
+            viewport.y
+                |> Render.Conversion.toMetersValue pixelsToMetersRatio
+                |> Quantity.unwrap
 
         overlayXMetersValue =
             overlayX
@@ -383,9 +391,15 @@ pointerEventToCell pixelsToMetersRatio constraints event =
                 |> Render.Conversion.toMetersValue pixelsToMetersRatio
                 |> Quantity.unwrap
 
+        worldX =
+            overlayXMetersValue + viewportOffsetXMeters
+
+        worldY =
+            overlayYMetersValue + viewportOffsetYMeters
+
         coordinates =
-            ( 1 + floor (overlayXMetersValue / cellMetersValue)
-            , 1 + floor (overlayYMetersValue / cellMetersValue)
+            ( 1 + floor (worldX / cellMetersValue)
+            , 1 + floor (worldY / cellMetersValue)
             )
     in
     Cell.fromCoordinates constraints coordinates
@@ -424,19 +438,52 @@ resolvePointerUp pointerDownCell pointerUpCell pointerUpEvent model =
 -- Views
 
 
-view : RenderCache -> World -> Model -> Element Msg
-view cache world model =
+view : RenderCache -> Viewport -> World -> Model -> Element Msg
+view cache viewport world model =
     Element.el
         [ Element.width Element.fill
         , Element.height Element.fill
         , Element.htmlAttribute (Html.Attributes.id overlayId)
         , Element.inFront
-            (case model.highlightArea of
-                Just area ->
-                    highlightAreaView cache area
+            (Element.el
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Element.clip
+                ]
+                (Element.el
+                    [ Element.width Element.fill
+                    , Element.height Element.fill
+                    , Element.inFront
+                        (case model.highlightArea of
+                            Just area ->
+                                highlightAreaView cache viewport area
 
-                Nothing ->
-                    Element.none
+                            Nothing ->
+                                Element.none
+                        )
+                    ]
+                    (case model.activeCell of
+                        Just cell ->
+                            if model.lastEventDevice == Pointer.MouseType then
+                                cellHighlight cache viewport world cell
+
+                            else
+                                case model.longPressTimer of
+                                    Just elapsed ->
+                                        UI.TimerIndicator.view
+                                            longTapThreshold
+                                            longTapIndicatorShowDelay
+                                            cache.pixelsToMetersRatio
+                                            (Cell.coordinates cell)
+                                            elapsed
+
+                                    Nothing ->
+                                        Element.none
+
+                        Nothing ->
+                            Element.none
+                    )
+                )
             )
         , Element.inFront
             (Element.el
@@ -452,31 +499,11 @@ view cache world model =
                 Element.none
             )
         ]
-        (case model.activeCell of
-            Just cell ->
-                if model.lastEventDevice == Pointer.MouseType then
-                    cellHighlight cache world cell
-
-                else
-                    case model.longPressTimer of
-                        Just elapsed ->
-                            UI.TimerIndicator.view
-                                longTapThreshold
-                                longTapIndicatorShowDelay
-                                cache.pixelsToMetersRatio
-                                (Cell.coordinates cell)
-                                elapsed
-
-                        Nothing ->
-                            Element.none
-
-            Nothing ->
-                Element.none
-        )
+        Element.none
 
 
-cellHighlight : RenderCache -> World -> Cell -> Element Msg
-cellHighlight cache world activeCell =
+cellHighlight : RenderCache -> Viewport -> World -> Cell -> Element Msg
+cellHighlight cache viewport world activeCell =
     let
         tileSizePixels =
             Render.Conversion.toPixelsValue cache.pixelsToMetersRatio Cell.size
@@ -490,8 +517,8 @@ cellHighlight cache world activeCell =
     Element.el
         [ Element.width cellSize
         , Element.height cellSize
-        , Element.moveRight (toFloat (cellX - 1) * tileSizePixels)
-        , Element.moveDown (toFloat (cellY - 1) * tileSizePixels)
+        , Element.moveRight (toFloat (cellX - 1) * tileSizePixels - viewport.x)
+        , Element.moveDown (toFloat (cellY - 1) * tileSizePixels - viewport.y)
         , Border.width cellHighlightWidth
         , Border.rounded targetRadius
         , Border.solid
@@ -512,8 +539,8 @@ highlightColor world cell =
         Just UI.Core.colorNotAllowed
 
 
-highlightAreaView : RenderCache -> ( Point2d Meters GlobalCoordinates, BoundingBox2d Meters GlobalCoordinates ) -> Element msg
-highlightAreaView cache ( origin, area ) =
+highlightAreaView : RenderCache -> Viewport -> ( Point2d Meters GlobalCoordinates, BoundingBox2d Meters GlobalCoordinates ) -> Element msg
+highlightAreaView cache viewport ( origin, area ) =
     let
         { x, y } =
             Point2d.toRecord (toPixelsValue cache.pixelsToMetersRatio) origin
@@ -530,8 +557,8 @@ highlightAreaView cache ( origin, area ) =
     Element.el
         [ Element.width widthPixels
         , Element.height heightPixels
-        , Element.moveRight x
-        , Element.moveDown (cache.tilemapHeightPixels - y)
+        , Element.moveRight (x - viewport.x)
+        , Element.moveDown (cache.tilemapHeightPixels - y - viewport.y)
         , Border.width cellHighlightWidth
         , Border.rounded targetRadius
         , Border.solid
