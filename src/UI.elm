@@ -111,6 +111,16 @@ subscriptions model =
     Sub.map EditorMsg (Editor.subscriptions model.editor)
 
 
+editorEffectToUIEvent : Editor.EditorEffect -> Maybe UIEvent
+editorEffectToUIEvent effect =
+    case effect of
+        Editor.GameInput inputEvent ->
+            Just (GameInputReceived inputEvent)
+
+        Editor.ViewportChangeRequested _ _ ->
+            Nothing
+
+
 update : World -> PixelsToMetersRatio -> Msg -> UI -> ( UI, Cmd Msg, Maybe UIEvent )
 update world pixelsToMetersRatio msg model =
     case msg of
@@ -168,12 +178,17 @@ update world pixelsToMetersRatio msg model =
 
         EditorMsg editorMsg ->
             let
-                ( editorModel, inputEvent ) =
+                ( editorModel, effects ) =
                     Editor.update world pixelsToMetersRatio editorMsg model.editor
+
+                uiEvent =
+                    effects
+                        |> List.filterMap editorEffectToUIEvent
+                        |> List.head
             in
             ( { model | editor = editorModel }
             , Cmd.none
-            , inputEvent |> Maybe.map GameInputReceived
+            , uiEvent
             )
 
         NoOp ->

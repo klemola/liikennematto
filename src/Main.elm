@@ -431,7 +431,7 @@ view model =
 
 render : Liikennematto -> Element Message
 render model =
-    Render.view model.world model.renderCache
+    Render.view model.world model.renderCache Nothing
         |> Element.html
         |> Element.map (always NoOp)
 

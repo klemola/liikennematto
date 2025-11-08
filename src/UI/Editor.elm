@@ -1,5 +1,6 @@
 module UI.Editor exposing
-    ( InputEvent
+    ( EditorEffect(..)
+    , InputEvent
     , Model
     , Msg
     , initialModel
@@ -19,6 +20,7 @@ import Element.Border as Border
 import Html.Attributes
 import Html.Events.Extra.Mouse as Mouse
 import Html.Events.Extra.Pointer as Pointer
+import Json.Decode
 import Length exposing (Meters)
 import Model.RenderCache exposing (RenderCache)
 import Model.World exposing (World)
@@ -42,6 +44,7 @@ import UI.Core
         , colorTransparent
         , overlayId
         )
+import UI.Pan as Pan
 import UI.TimerIndicator
 
 
@@ -51,6 +54,7 @@ type alias Model =
     , longPressTimer : Maybe Duration
     , pointerDownEvent : Maybe Pointer.Event
     , lastEventDevice : Pointer.DeviceType
+    , panState : Pan.PanState
     }
 
 
@@ -61,6 +65,7 @@ initialModel =
     , longPressTimer = Nothing
     , pointerDownEvent = Nothing
     , lastEventDevice = Pointer.MouseType
+    , panState = Pan.init
     }
 
 
@@ -70,6 +75,7 @@ type Msg
     | OverlayPointerDown Pointer.Event
     | OverlayPointerUp Pointer.Event
     | OverlayPointerCancel Pointer.Event
+    | GlobalPointerUp
     | AnimationFrameReceived Duration
     | NoOp
 
@@ -78,6 +84,11 @@ type alias InputEvent =
     { cell : Cell
     , kind : InputKind
     }
+
+
+type EditorEffect
+    = GameInput InputEvent
+    | ViewportChangeRequested Float Float
 
 
 targetRadius : Int
@@ -101,15 +112,22 @@ longTapIndicatorShowDelay =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameReceived)
+subscriptions model =
+    Sub.batch
+        [ Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameReceived)
+        , if model.panState.isDragging then
+            Events.onMouseUp (Json.Decode.succeed GlobalPointerUp)
+
+          else
+            Sub.none
+        ]
 
 
 
 -- Update
 
 
-update : World -> PixelsToMetersRatio -> Msg -> Model -> ( Model, Maybe InputEvent )
+update : World -> PixelsToMetersRatio -> Msg -> Model -> ( Model, List EditorEffect )
 update world pixelsToMetersRatio msg model =
     let
         tilemapConfig =
@@ -117,93 +135,152 @@ update world pixelsToMetersRatio msg model =
     in
     case msg of
         AnimationFrameReceived delta ->
-            ( advanceLongPressTimer delta model
-            , Nothing
+            let
+                modelAfterLongPressTimerUpdate =
+                    advanceLongPressTimer delta model
+
+                stepResult =
+                    Pan.step delta modelAfterLongPressTimerUpdate.panState
+
+                panEffect =
+                    if abs stepResult.delta.x > 0.01 || abs stepResult.delta.y > 0.01 then
+                        [ ViewportChangeRequested stepResult.delta.x stepResult.delta.y ]
+
+                    else
+                        []
+            in
+            ( { modelAfterLongPressTimerUpdate | panState = stepResult.state }
+            , panEffect
             )
 
         OverlayPointerMove event ->
-            case
-                pointerEventToCell
-                    pixelsToMetersRatio
-                    tilemapConfig
-                    event
-            of
-                Just activeCell ->
-                    ( activateCell activeCell world model
-                    , Nothing
-                    )
+            if model.panState.isDragging then
+                ( { model | panState = Pan.updateDrag (pointerPosition event) model.panState }
+                , []
+                )
 
-                Nothing ->
-                    ( model, Nothing )
+            else
+                case
+                    pointerEventToCell
+                        pixelsToMetersRatio
+                        tilemapConfig
+                        event
+                of
+                    Just activeCell ->
+                        ( activateCell activeCell world model
+                        , []
+                        )
+
+                    Nothing ->
+                        ( model, [] )
 
         OverlayPointerLeave event ->
             ( model
                 |> setLastEventDevice event.pointerType
                 |> deactivateCell
-            , Nothing
+            , []
             )
 
         OverlayPointerDown event ->
-            case pointerEventToCell pixelsToMetersRatio tilemapConfig event of
-                Just eventCell ->
-                    let
-                        cellHasRoadTile =
-                            case roadTileFromCell eventCell world.tilemap of
-                                Just _ ->
-                                    True
+            if isMiddleButton event then
+                ( { model | panState = Pan.startDrag (pointerPosition event) model.panState }
+                , []
+                )
 
-                                Nothing ->
-                                    False
-                    in
-                    ( selectCell event eventCell cellHasRoadTile world model
-                    , Nothing
-                    )
+            else if model.panState.isDragging then
+                ( model, [] )
 
-                Nothing ->
-                    ( deactivateCell model
-                    , Nothing
-                    )
+            else
+                case pointerEventToCell pixelsToMetersRatio tilemapConfig event of
+                    Just eventCell ->
+                        let
+                            cellHasRoadTile =
+                                case roadTileFromCell eventCell world.tilemap of
+                                    Just _ ->
+                                        True
+
+                                    Nothing ->
+                                        False
+                        in
+                        ( selectCell event eventCell cellHasRoadTile world model
+                        , []
+                        )
+
+                    Nothing ->
+                        ( deactivateCell model
+                        , []
+                        )
 
         OverlayPointerUp event ->
-            let
-                baseModel =
-                    model
-                        |> clearPointerDownEvent
-                        |> resetLongPressTimer
-            in
-            case pointerEventToCell pixelsToMetersRatio tilemapConfig event of
-                Just pointerUpCell ->
-                    let
-                        pointerDownCell =
-                            model.pointerDownEvent
-                                |> Maybe.andThen
-                                    (pointerEventToCell pixelsToMetersRatio tilemapConfig)
+            if model.panState.isDragging && isMiddleButton event then
+                ( { model | panState = Pan.releaseDrag model.panState }
+                , []
+                )
 
-                        inputEvent =
-                            resolvePointerUp
-                                pointerDownCell
-                                pointerUpCell
-                                event
-                                model
-                    in
-                    ( activateCell pointerUpCell world baseModel
-                    , inputEvent
-                    )
+            else
+                let
+                    baseModel =
+                        model
+                            |> clearPointerDownEvent
+                            |> resetLongPressTimer
+                in
+                if model.panState.isDragging then
+                    ( baseModel, [] )
 
-                Nothing ->
-                    ( baseModel, Nothing )
+                else
+                    case pointerEventToCell pixelsToMetersRatio tilemapConfig event of
+                        Just pointerUpCell ->
+                            let
+                                pointerDownCell =
+                                    model.pointerDownEvent
+                                        |> Maybe.andThen
+                                            (pointerEventToCell pixelsToMetersRatio tilemapConfig)
+
+                                inputEvent =
+                                    resolvePointerUp
+                                        pointerDownCell
+                                        pointerUpCell
+                                        event
+                                        model
+                            in
+                            ( activateCell pointerUpCell world baseModel
+                            , inputEvent
+                                |> Maybe.map GameInput
+                                |> Maybe.map List.singleton
+                                |> Maybe.withDefault []
+                            )
+
+                        Nothing ->
+                            ( baseModel, [] )
 
         OverlayPointerCancel event ->
-            ( model
+            let
+                updatedModel =
+                    if model.panState.isDragging then
+                        { model | panState = Pan.releaseDrag model.panState }
+
+                    else
+                        model
+            in
+            ( updatedModel
                 |> clearPointerDownEvent
                 |> resetLongPressTimer
                 |> deactivateCell
                 |> setLastEventDevice event.pointerType
-            , Nothing
+            , []
             )
 
+        GlobalPointerUp ->
+            if model.panState.isDragging then
+                ( { model | panState = Pan.releaseDrag model.panState }
+                , []
+                )
+
+            else
+                ( model, [] )
+
         NoOp ->
-            ( model, Nothing )
+            ( model, [] )
 
 
 activateCell : Cell -> World -> Model -> Model
@@ -256,6 +333,20 @@ advanceLongPressTimer delta model =
 setLastEventDevice : Pointer.DeviceType -> Model -> Model
 setLastEventDevice deviceType model =
     { model | lastEventDevice = deviceType }
+
+
+isMiddleButton : Pointer.Event -> Bool
+isMiddleButton event =
+    event.pointer.button == Mouse.MiddleButton
+
+
+pointerPosition : Pointer.Event -> Pan.Position
+pointerPosition event =
+    let
+        ( x, y ) =
+            event.pointer.offsetPos
+    in
+    { x = x, y = y }
 
 
 selectCell : Pointer.Event -> Cell -> Bool -> World -> Model -> Model

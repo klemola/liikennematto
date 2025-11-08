@@ -32,6 +32,7 @@ check:
 	elm make devtools/PathfindingVisualization.elm --output /dev/null
 	elm make devtools/RouteVisualization.elm --output /dev/null
 	elm make devtools/WFCDebug.elm --output /dev/null
+	elm make devtools/EditorDebug.elm --output /dev/null
 
 dev:
 	elm reactor
@@ -58,6 +59,7 @@ devtools:
 	elm make devtools/PathfindingVisualization.elm --output build/pathfinding_visualization.html
 	elm make devtools/RouteVisualization.elm --output build/route_visualization.html
 	elm make devtools/WFCDebug.elm --output build/wfc_debug.html
+	elm make devtools/EditorDebug.elm --output build/editor_debug.html
 
 review:
 	elm-review --fix

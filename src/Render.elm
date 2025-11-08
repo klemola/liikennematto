@@ -23,6 +23,7 @@ import Model.World exposing (World)
 import Point2d exposing (Point2d)
 import Quantity
 import Render.Conversion exposing (pointToPixels, toPixelsValue)
+import Render.ViewBox as ViewBox exposing (ViewBox)
 import Simulation.Car exposing (Car)
 import Simulation.RoadNetwork
     exposing
@@ -70,19 +71,33 @@ styles =
 --
 
 
-view : World -> RenderCache -> Html msg
-view { cars, roadNetwork, trafficLights } cache =
+view : World -> RenderCache -> Maybe ViewBox -> Html msg
+view { cars, roadNetwork, trafficLights } cache maybeViewBox =
     let
         tilemapWidth =
             String.fromFloat cache.tilemapWidthPixels
 
         tilemapHeight =
             String.fromFloat cache.tilemapHeightPixels
+
+        ( svgWidth, svgHeight, viewBoxStr ) =
+            case maybeViewBox of
+                Just viewBox ->
+                    ( String.fromFloat viewBox.width
+                    , String.fromFloat viewBox.height
+                    , ViewBox.toString viewBox
+                    )
+
+                Nothing ->
+                    ( tilemapWidth
+                    , tilemapHeight
+                    , "0 0 " ++ tilemapWidth ++ " " ++ tilemapHeight
+                    )
     in
     Svg.svg
-        [ Attributes.width tilemapWidth
-        , Attributes.height tilemapHeight
-        , Attributes.viewBox <| "0 0 " ++ tilemapWidth ++ " " ++ tilemapHeight
+        [ Attributes.width svgWidth
+        , Attributes.height svgHeight
+        , Attributes.viewBox viewBoxStr
         , Attributes.style <| "background-color: " ++ Colors.lightGreenCSS ++ ";"
         ]
         [ styles

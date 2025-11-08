@@ -156,7 +156,7 @@ view model =
     in
     Html.div []
         [ Html.div [ MouseEvents.onClick WorldClicked ]
-            [ Render.view world model.cache
+            [ Render.view world model.cache Nothing
                 |> Element.html
                 |> Element.el
                     [ Element.width (Element.px renderWidth)

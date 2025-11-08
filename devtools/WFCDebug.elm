@@ -285,8 +285,21 @@ update msg model =
 
         EditorMsg editorMsg ->
             let
-                ( editorModel, inputEvent ) =
+                ( editorModel, effects ) =
                     Editor.update model.world model.cache.pixelsToMetersRatio editorMsg model.editor
+
+                inputEvent =
+                    effects
+                        |> List.filterMap
+                            (\effect ->
+                                case effect of
+                                    Editor.GameInput evt ->
+                                        Just evt
+
+                                    _ ->
+                                        Nothing
+                            )
+                        |> List.head
             in
             ( { model | editor = editorModel }
             , inputEvent
@@ -318,7 +331,7 @@ view model =
                 |> Element.html
 
         render =
-            Render.view model.world model.cache
+            Render.view model.world model.cache Nothing
                 |> Element.html
                 |> Element.el
                     [ Element.width (Element.px renderWidth)
