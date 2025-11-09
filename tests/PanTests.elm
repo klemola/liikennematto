@@ -190,6 +190,80 @@ suite =
                     -- No movement, no drift
                     Expect.within (Expect.Absolute 0.1) 0 state.targetX
             ]
+        , describe "catchDrift"
+            [ test "reduces remaining distance by 90%" <|
+                \() ->
+                    let
+                        init =
+                            Pan.init
+
+                        state =
+                            { init
+                                | currentX = 0
+                                , currentY = 0
+                                , targetX = 100
+                                , targetY = 100
+                            }
+                                |> Pan.catchDrift
+                    in
+                    Expect.all
+                        [ \s -> Expect.within (Expect.Absolute 0.1) 10 s.targetX
+                        , \s -> Expect.within (Expect.Absolute 0.1) 10 s.targetY
+                        ]
+                        state
+            , test "startDrag applies catch when drifting" <|
+                \() ->
+                    let
+                        init =
+                            Pan.init
+
+                        drifting =
+                            { init
+                                | currentX = 10
+                                , targetX = 100
+                                , isDragging = False
+                            }
+
+                        caught =
+                            Pan.startDrag { x = 50, y = 50 } drifting
+                    in
+                    -- Should reduce 90px remaining to 9px
+                    Expect.within (Expect.Absolute 1) 19 caught.targetX
+            ]
+        , describe "step output"
+            [ test "returns delta for viewport changes" <|
+                \() ->
+                    let
+                        state =
+                            Pan.init
+                                |> Pan.startDrag { x = 100, y = 100 }
+                                |> Pan.updateDrag { x = 150, y = 100 }
+
+                        result =
+                            Pan.step (Duration.milliseconds 16.67) state
+                    in
+                    Expect.all
+                        [ \r -> Expect.greaterThan 0 r.delta.x
+                        , \r -> Expect.equal 0 r.delta.y
+                        ]
+                        result
+            , test "negative deltas work (panning left/up)" <|
+                \() ->
+                    let
+                        state =
+                            Pan.init
+                                |> Pan.startDrag { x = 100, y = 100 }
+                                |> Pan.updateDrag { x = 50, y = 80 }
+
+                        result =
+                            Pan.step (Duration.milliseconds 16.67) state
+                    in
+                    Expect.all
+                        [ \r -> Expect.lessThan 0 r.delta.x
+                        , \r -> Expect.lessThan 0 r.delta.y
+                        ]
+                        result
+            ]
         ]
 
 

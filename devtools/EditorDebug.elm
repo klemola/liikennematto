@@ -1,15 +1,22 @@
 module EditorDebug exposing (main)
 
 import Browser
+import Browser.Dom exposing (Viewport)
+import Browser.Events as Events
 import Element
+import Element.Background
+import Element.Border
+import Element.Font
+import Element.Input
 import Html exposing (Html)
 import Html.Attributes
 import Json.Decode as JD
 import Model.RenderCache as RenderCache
 import Model.World as World
 import Render
-import Render.Viewport as Viewport exposing (Viewport)
+import Render.Viewport as RenderViewport
 import Savegame
+import Task
 import UI.Editor as Editor
 import UI.Pan as Pan
 
@@ -17,13 +24,24 @@ import UI.Pan as Pan
 type Msg
     = EditorMsg Editor.Msg
     | InputReceived Editor.InputEvent
+    | BrowserResized Int Int
+    | WindowResized Viewport
+    | ViewportModeToggled
+
+
+type ViewportMode
+    = Limited
+    | Fullscreen
 
 
 type alias Model =
     { world : World.World
     , cache : RenderCache.RenderCache
     , editor : Editor.Model
-    , viewport : Viewport
+    , viewport : RenderViewport.Viewport
+    , screenWidth : Int
+    , screenHeight : Int
+    , viewportMode : ViewportMode
     }
 
 
@@ -69,6 +87,16 @@ exampleSavegameJson =
 """
 
 
+defaultLimitedWidth : Int
+defaultLimitedWidth =
+    720
+
+
+defaultLimitedHeight : Int
+defaultLimitedHeight =
+    476
+
+
 init : () -> ( Model, Cmd Msg )
 init _ =
     case JD.decodeString JD.value exampleSavegameJson of
@@ -80,7 +108,7 @@ init _ =
                             RenderCache.new world
 
                         viewport =
-                            Viewport.init
+                            RenderViewport.init
                                 { tilemapWidth = cache.tilemapWidthPixels
                                 , tilemapHeight = cache.tilemapHeightPixels
                                 , viewportWidth = 720
@@ -91,8 +119,11 @@ init _ =
                       , cache = cache
                       , editor = Editor.initialModel
                       , viewport = viewport
+                      , screenWidth = defaultLimitedWidth
+                      , screenHeight = defaultLimitedHeight
+                      , viewportMode = Limited
                       }
-                    , Cmd.none
+                    , Task.perform WindowResized Browser.Dom.getViewport
                     )
 
                 Err error ->
@@ -104,7 +135,10 @@ init _ =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.map EditorMsg (Editor.subscriptions model.editor)
+    Sub.batch
+        [ Sub.map EditorMsg (Editor.subscriptions model.editor)
+        , Events.onResize BrowserResized
+        ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -122,8 +156,8 @@ update msg model =
                                 case effect of
                                     Editor.ViewportChangeRequested deltaX deltaY ->
                                         vp
-                                            |> Viewport.applyPanDelta deltaX deltaY
-                                            |> Viewport.clamp model.cache.tilemapWidthPixels model.cache.tilemapHeightPixels
+                                            |> RenderViewport.applyPanDelta deltaX deltaY
+                                            |> RenderViewport.clamp model.cache.tilemapWidthPixels model.cache.tilemapHeightPixels
 
                                     _ ->
                                         vp
@@ -137,6 +171,112 @@ update msg model =
         InputReceived _ ->
             ( model, Cmd.none )
 
+        WindowResized domViewport ->
+            let
+                width =
+                    floor domViewport.viewport.width
+
+                height =
+                    floor domViewport.viewport.height
+
+                newViewport =
+                    case model.viewportMode of
+                        Fullscreen ->
+                            updateViewportSize width height model
+
+                        Limited ->
+                            model.viewport
+            in
+            ( { model
+                | screenWidth = width
+                , screenHeight = height
+                , viewport = newViewport
+              }
+            , Cmd.none
+            )
+
+        BrowserResized width height ->
+            let
+                newViewport =
+                    case model.viewportMode of
+                        Fullscreen ->
+                            updateViewportSize width height model
+
+                        Limited ->
+                            model.viewport
+            in
+            ( { model
+                | screenWidth = width
+                , screenHeight = height
+                , viewport = newViewport
+              }
+            , Cmd.none
+            )
+
+        ViewportModeToggled ->
+            let
+                newMode =
+                    case model.viewportMode of
+                        Limited ->
+                            Fullscreen
+
+                        Fullscreen ->
+                            Limited
+
+                newViewport =
+                    case newMode of
+                        Fullscreen ->
+                            updateViewportSize model.screenWidth model.screenHeight model
+
+                        Limited ->
+                            { x = 0
+                            , y = 0
+                            , width = toFloat defaultLimitedWidth
+                            , height = toFloat defaultLimitedHeight
+                            }
+            in
+            ( { model
+                | viewportMode = newMode
+                , viewport = newViewport
+              }
+            , Cmd.none
+            )
+
+
+updateViewportSize : Int -> Int -> Model -> RenderViewport.Viewport
+updateViewportSize width height model =
+    let
+        currentViewport =
+            model.viewport
+
+        newWidth =
+            toFloat width
+
+        newHeight =
+            toFloat height
+
+        -- Calculate center point before resize
+        centerX =
+            currentViewport.x + currentViewport.width / 2
+
+        centerY =
+            currentViewport.y + currentViewport.height / 2
+
+        -- Recalculate position to keep center
+        newX =
+            centerX - newWidth / 2
+
+        newY =
+            centerY - newHeight / 2
+    in
+    { currentViewport
+        | width = newWidth
+        , height = newHeight
+        , x = newX
+        , y = newY
+    }
+        |> RenderViewport.clamp model.cache.tilemapWidthPixels model.cache.tilemapHeightPixels
+
 
 view : Model -> Html Msg
 view model =
@@ -147,7 +287,7 @@ view model =
         renderHeight =
             floor model.viewport.height
 
-        render =
+        renderAndEditor =
             Render.view model.world model.cache (Just model.viewport)
                 |> Element.html
                 |> Element.el
@@ -164,26 +304,60 @@ view model =
                     ]
 
         debugInfo =
-            Html.pre
-                [ Html.Attributes.style "position" "absolute"
-                , Html.Attributes.style "left" "10px"
-                , Html.Attributes.style "bottom" "10px"
-                , Html.Attributes.style "background" "rgba(255,255,255,0.9)"
-                , Html.Attributes.style "padding" "10px"
-                , Html.Attributes.style "font-family" "monospace"
-                , Html.Attributes.style "font-size" "12px"
-                , Html.Attributes.style "border" "1px solid #ccc"
-                , Html.Attributes.style "border-radius" "4px"
+            Element.el
+                [ Element.alignLeft
+                , Element.alignBottom
+                , Element.moveUp 10
+                , Element.moveRight 10
+                , Element.width (Element.px 320)
                 ]
-                [ Html.text (panStateDebugString model.editor.panState model.viewport) ]
+                (Element.html
+                    (Html.pre
+                        [ Html.Attributes.style "background" "rgba(255,255,255,0.9)"
+                        , Html.Attributes.style "padding" "10px"
+                        , Html.Attributes.style "font-family" "monospace"
+                        , Html.Attributes.style "font-size" "12px"
+                        , Html.Attributes.style "border" "1px solid #ccc"
+                        , Html.Attributes.style "border-radius" "4px"
+                        ]
+                        [ Html.text (panStateDebugString model.editor.panState model.viewport) ]
+                    )
+                )
+
+        viewportToggle =
+            Element.Input.button
+                [ Element.alignRight
+                , Element.alignBottom
+                , Element.moveUp 10
+                , Element.moveLeft 10
+                , Element.Background.color (Element.rgb 1 1 1)
+                , Element.padding 10
+                , Element.Border.width 1
+                , Element.Border.color (Element.rgb 0.8 0.8 0.8)
+                , Element.Border.rounded 4
+                , Element.Font.size 14
+                , Element.Font.family [ Element.Font.monospace ]
+                ]
+                { onPress = Just ViewportModeToggled
+                , label =
+                    Element.text
+                        (case model.viewportMode of
+                            Limited ->
+                                "Limited (" ++ String.fromInt defaultLimitedWidth ++ "×" ++ String.fromInt defaultLimitedHeight ++ ")"
+
+                            Fullscreen ->
+                                "Fullscreen (" ++ String.fromInt model.screenWidth ++ "×" ++ String.fromInt model.screenHeight ++ ")"
+                        )
+                }
     in
-    Html.div []
-        [ Element.layout [] render
-        , debugInfo
+    Element.layout
+        [ Element.inFront debugInfo
+        , Element.inFront viewportToggle
         ]
+        renderAndEditor
 
 
-panStateDebugString : Pan.PanState -> Viewport -> String
+panStateDebugString : Pan.PanState -> RenderViewport.Viewport -> String
 panStateDebugString panState viewport =
     String.join "\n"
         [ "PanState:"

@@ -264,10 +264,10 @@ view liikennematto render renderDebugLayers =
     Element.layoutWith
         { options =
             if Editor.usingTouchDevice liikennematto.ui.editor then
-                baseLayoutOptions
+                touchLayoutOptions
 
             else
-                touchLayoutOptions
+                baseLayoutOptions
         }
         [ Background.color colorMainBackground
         , Element.width Element.fill

@@ -13,6 +13,7 @@ module UI.Editor exposing
 import BoundingBox2d exposing (BoundingBox2d)
 import Browser.Events as Events
 import Common exposing (GlobalCoordinates)
+import Dict exposing (Dict)
 import Duration exposing (Duration)
 import Element exposing (Color, Element)
 import Element.Background
@@ -49,6 +50,12 @@ import UI.Pan as Pan
 import UI.TimerIndicator
 
 
+type alias PointerInfo =
+    { event : Pointer.Event
+    , position : Pan.Position
+    }
+
+
 type alias Model =
     { activeCell : Maybe Cell
     , highlightArea : Maybe ( Point2d Meters GlobalCoordinates, BoundingBox2d Meters GlobalCoordinates )
@@ -56,6 +63,7 @@ type alias Model =
     , pointerDownEvent : Maybe Pointer.Event
     , lastEventDevice : Pointer.DeviceType
     , panState : Pan.PanState
+    , activePointers : Dict Int PointerInfo
     }
 
 
@@ -67,6 +75,7 @@ initialModel =
     , pointerDownEvent = Nothing
     , lastEventDevice = Pointer.MouseType
     , panState = Pan.init
+    , activePointers = Dict.empty
     }
 
 
@@ -99,7 +108,7 @@ targetRadius =
 
 usingTouchDevice : Model -> Bool
 usingTouchDevice model =
-    model.lastEventDevice == Pointer.MouseType
+    model.lastEventDevice == Pointer.TouchType
 
 
 longTapThreshold : Duration
@@ -155,8 +164,26 @@ update world pixelsToMetersRatio viewport msg model =
             )
 
         OverlayPointerMove event ->
+            let
+                -- Update pointer position in cache
+                updatedPointers =
+                    if Dict.member event.pointerId model.activePointers then
+                        Dict.update event.pointerId
+                            (Maybe.map
+                                (\info ->
+                                    { info | position = pointerPosition event }
+                                )
+                            )
+                            model.activePointers
+
+                    else
+                        model.activePointers
+
+                updatedModel =
+                    { model | activePointers = updatedPointers }
+            in
             if model.panState.isDragging then
-                ( { model | panState = Pan.updateDrag (pointerPosition event) model.panState }
+                ( { updatedModel | panState = Pan.updateDrag (getPanPosition event updatedModel) model.panState }
                 , []
                 )
 
@@ -169,12 +196,12 @@ update world pixelsToMetersRatio viewport msg model =
                         event
                 of
                     Just activeCell ->
-                        ( activateCell activeCell world model
+                        ( activateCell activeCell world updatedModel
                         , []
                         )
 
                     Nothing ->
-                        ( model, [] )
+                        ( updatedModel, [] )
 
         OverlayPointerLeave event ->
             let
@@ -192,13 +219,26 @@ update world pixelsToMetersRatio viewport msg model =
             )
 
         OverlayPointerDown event ->
-            if isMiddleButton event then
-                ( { model | panState = Pan.startDrag (pointerPosition event) model.panState }
+            let
+                -- Add to active pointers cache
+                pointerInfo =
+                    { event = event
+                    , position = pointerPosition event
+                    }
+
+                updatedPointers =
+                    Dict.insert event.pointerId pointerInfo model.activePointers
+
+                updatedModel =
+                    { model | activePointers = updatedPointers }
+            in
+            if shouldStartPan event updatedModel then
+                ( { updatedModel | panState = Pan.startDrag (getPanPosition event updatedModel) model.panState }
                 , []
                 )
 
             else if model.panState.isDragging then
-                ( model, [] )
+                ( updatedModel, [] )
 
             else
                 case pointerEventToCell pixelsToMetersRatio viewport tilemapConfig event of
@@ -212,25 +252,51 @@ update world pixelsToMetersRatio viewport msg model =
                                     Nothing ->
                                         False
                         in
-                        ( selectCell event eventCell cellHasRoadTile world model
+                        ( selectCell event eventCell cellHasRoadTile world updatedModel
                         , []
                         )
 
                     Nothing ->
-                        ( deactivateCell model
+                        ( deactivateCell updatedModel
                         , []
                         )
 
         OverlayPointerUp event ->
+            let
+                -- Remove from active pointers cache
+                updatedPointers =
+                    Dict.remove event.pointerId model.activePointers
+
+                -- If panning with 2 fingers and one lifts, end pan
+                shouldEndTwoFingerPan =
+                    model.panState.isDragging
+                        && model.lastEventDevice
+                        == Pointer.TouchType
+                        && Dict.size updatedPointers
+                        < 2
+
+                updatedPanState =
+                    if shouldEndTwoFingerPan then
+                        Pan.releaseDrag model.panState
+
+                    else
+                        model.panState
+            in
             if model.panState.isDragging && isMiddleButton event then
-                ( { model | panState = Pan.releaseDrag model.panState }
+                ( { model
+                    | panState = Pan.releaseDrag model.panState
+                    , activePointers = updatedPointers
+                  }
                 , []
                 )
 
             else
                 let
                     baseModel =
-                        model
+                        { model
+                            | activePointers = updatedPointers
+                            , panState = updatedPanState
+                        }
                             |> clearPointerDownEvent
                             |> resetLongPressTimer
                 in
@@ -265,12 +331,19 @@ update world pixelsToMetersRatio viewport msg model =
 
         OverlayPointerCancel event ->
             let
+                -- Clear active pointers on cancel
+                clearedPointers =
+                    Dict.empty
+
                 updatedModel =
                     if model.panState.isDragging then
-                        { model | panState = Pan.releaseDrag model.panState }
+                        { model
+                            | panState = Pan.releaseDrag model.panState
+                            , activePointers = clearedPointers
+                        }
 
                     else
-                        model
+                        { model | activePointers = clearedPointers }
             in
             ( updatedModel
                 |> clearPointerDownEvent
@@ -357,6 +430,50 @@ pointerPosition event =
             event.pointer.offsetPos
     in
     { x = x, y = y }
+
+
+shouldStartPan : Pointer.Event -> Model -> Bool
+shouldStartPan event model =
+    case event.pointerType of
+        Pointer.MouseType ->
+            isMiddleButton event
+
+        Pointer.TouchType ->
+            Dict.size model.activePointers == 2
+
+        Pointer.PenType ->
+            isMiddleButton event
+
+
+getPanPosition : Pointer.Event -> Model -> Pan.Position
+getPanPosition event model =
+    case event.pointerType of
+        Pointer.TouchType ->
+            twoFingerAveragePosition model.activePointers
+                |> Maybe.withDefault (pointerPosition event)
+
+        _ ->
+            pointerPosition event
+
+
+twoFingerAveragePosition : Dict Int PointerInfo -> Maybe Pan.Position
+twoFingerAveragePosition pointers =
+    if Dict.size pointers == 2 then
+        let
+            positions =
+                Dict.values pointers
+                    |> List.map .position
+
+            sumX =
+                List.sum (List.map .x positions)
+
+            sumY =
+                List.sum (List.map .y positions)
+        in
+        Just { x = sumX / 2, y = sumY / 2 }
+
+    else
+        Nothing
 
 
 selectCell : Pointer.Event -> Cell -> Bool -> World -> Model -> Model
