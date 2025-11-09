@@ -113,10 +113,14 @@ longTapIndicatorShowDelay =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
+subscriptions model =
     Sub.batch
         [ Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameReceived)
-        , Events.onMouseUp (Json.Decode.succeed GlobalPointerUp)
+        , if model.panState.isDragging then
+            Events.onMouseUp (Json.Decode.succeed GlobalPointerUp)
+
+          else
+            Sub.none
         ]
 
 
@@ -173,7 +177,15 @@ update world pixelsToMetersRatio viewport msg model =
                         ( model, [] )
 
         OverlayPointerLeave event ->
-            ( model
+            let
+                updatedModel =
+                    if model.panState.isDragging then
+                        { model | panState = Pan.releaseDrag model.panState }
+
+                    else
+                        model
+            in
+            ( updatedModel
                 |> setLastEventDevice event.pointerType
                 |> deactivateCell
             , []
