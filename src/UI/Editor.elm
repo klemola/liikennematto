@@ -18,10 +18,13 @@ import Duration exposing (Duration)
 import Element exposing (Color, Element)
 import Element.Background
 import Element.Border as Border
+import Html
 import Html.Attributes
+import Html.Events
 import Html.Events.Extra.Mouse as Mouse
 import Html.Events.Extra.Pointer as Pointer
-import Json.Decode
+import Html.Events.Extra.Wheel as Wheel
+import Json.Decode as Decode
 import Length exposing (Meters)
 import Model.RenderCache exposing (RenderCache)
 import Model.World exposing (World)
@@ -87,7 +90,16 @@ type Msg
     | OverlayPointerCancel Pointer.Event
     | GlobalPointerUp
     | AnimationFrameReceived Duration
+    | OverlayWheelEvent WheelEventExtended
     | NoOp
+
+
+type alias WheelEventExtended =
+    { mouseEvent : Mouse.Event
+    , deltaX : Float
+    , deltaY : Float
+    , deltaMode : Wheel.DeltaMode
+    }
 
 
 type alias InputEvent =
@@ -126,7 +138,7 @@ subscriptions model =
     Sub.batch
         [ Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameReceived)
         , if model.panState.isDragging then
-            Events.onMouseUp (Json.Decode.succeed GlobalPointerUp)
+            Events.onMouseUp (Decode.succeed GlobalPointerUp)
 
           else
             Sub.none
@@ -362,6 +374,38 @@ update world pixelsToMetersRatio viewport msg model =
             else
                 ( model, [] )
 
+        OverlayWheelEvent wheelEvent ->
+            let
+                scaleFactor =
+                    case wheelEvent.deltaMode of
+                        Wheel.DeltaPixel ->
+                            1.0
+
+                        Wheel.DeltaLine ->
+                            16.0
+
+                        Wheel.DeltaPage ->
+                            800.0
+
+                deltaX =
+                    -wheelEvent.deltaX * scaleFactor
+
+                deltaY =
+                    -wheelEvent.deltaY * scaleFactor
+
+                panState =
+                    model.panState
+
+                updatedPanState =
+                    { panState
+                        | targetX = panState.targetX + deltaX
+                        , targetY = panState.targetY + deltaY
+                    }
+            in
+            ( { model | panState = updatedPanState }
+            , []
+            )
+
         NoOp ->
             ( model, [] )
 
@@ -474,6 +518,45 @@ twoFingerAveragePosition pointers =
 
     else
         Nothing
+
+
+wheelEventDecoder : Decode.Decoder WheelEventExtended
+wheelEventDecoder =
+    Decode.map4 WheelEventExtended
+        Mouse.eventDecoder
+        (Decode.field "deltaX" Decode.float)
+        (Decode.field "deltaY" Decode.float)
+        (Decode.field "deltaMode" deltaModeDecoder)
+
+
+deltaModeDecoder : Decode.Decoder Wheel.DeltaMode
+deltaModeDecoder =
+    let
+        intToMode int =
+            case int of
+                1 ->
+                    Wheel.DeltaLine
+
+                2 ->
+                    Wheel.DeltaPage
+
+                _ ->
+                    Wheel.DeltaPixel
+    in
+    Decode.map intToMode Decode.int
+
+
+onWheelExtended : (WheelEventExtended -> msg) -> Html.Attribute msg
+onWheelExtended tag =
+    wheelEventDecoder
+        |> Decode.map
+            (\ev ->
+                { message = tag ev
+                , stopPropagation = False
+                , preventDefault = True
+                }
+            )
+        |> Html.Events.custom "wheel"
 
 
 selectCell : Pointer.Event -> Cell -> Bool -> World -> Model -> Model
@@ -624,6 +707,7 @@ view cache viewport world model =
                 , Element.htmlAttribute (Pointer.onUp OverlayPointerUp)
                 , Element.htmlAttribute (Pointer.onCancel OverlayPointerCancel)
                 , Element.htmlAttribute (Mouse.onContextMenu (\_ -> NoOp))
+                , Element.htmlAttribute (onWheelExtended OverlayWheelEvent)
                 ]
                 Element.none
             )
