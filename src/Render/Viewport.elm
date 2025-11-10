@@ -42,9 +42,30 @@ applyPanDelta deltaX deltaY viewport =
 
 clamp : Float -> Float -> Viewport -> Viewport
 clamp tilemapWidth tilemapHeight viewport =
+    let
+        maxX =
+            tilemapWidth - viewport.width
+
+        maxY =
+            tilemapHeight - viewport.height
+
+        clampedX =
+            if maxX < 0 then
+                maxX / 2
+
+            else
+                Basics.clamp 0 maxX viewport.x
+
+        clampedY =
+            if maxY < 0 then
+                maxY / 2
+
+            else
+                Basics.clamp 0 maxY viewport.y
+    in
     { viewport
-        | x = Basics.clamp 0 (tilemapWidth - viewport.width) viewport.x
-        , y = Basics.clamp 0 (tilemapHeight - viewport.height) viewport.y
+        | x = clampedX
+        , y = clampedY
     }
 
 

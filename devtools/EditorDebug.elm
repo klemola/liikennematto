@@ -117,7 +117,9 @@ init _ =
                     in
                     ( { world = world
                       , cache = cache
-                      , editor = Editor.initialModel
+                      , editor =
+                            Editor.initialModel
+                                |> Editor.onViewportChanged cache viewport
                       , viewport = viewport
                       , screenWidth = defaultLimitedWidth
                       , screenHeight = defaultLimitedHeight
@@ -149,7 +151,7 @@ update msg model =
                 ( editorModel, effects ) =
                     Editor.update model.world model.cache.pixelsToMetersRatio model.viewport editorMsg model.editor
 
-                newViewport =
+                nextViewport =
                     effects
                         |> List.foldl
                             (\effect vp ->
@@ -164,7 +166,7 @@ update msg model =
                             )
                             model.viewport
             in
-            ( { model | editor = editorModel, viewport = newViewport }
+            ( { model | editor = editorModel, viewport = nextViewport }
             , Cmd.none
             )
 
@@ -179,7 +181,7 @@ update msg model =
                 height =
                     floor domViewport.viewport.height
 
-                newViewport =
+                nextViewport =
                     case model.viewportMode of
                         Fullscreen ->
                             updateViewportSize width height model
@@ -190,14 +192,15 @@ update msg model =
             ( { model
                 | screenWidth = width
                 , screenHeight = height
-                , viewport = newViewport
+                , viewport = nextViewport
+                , editor = Editor.onViewportChanged model.cache nextViewport model.editor
               }
             , Cmd.none
             )
 
         BrowserResized width height ->
             let
-                newViewport =
+                nextViewport =
                     case model.viewportMode of
                         Fullscreen ->
                             updateViewportSize width height model
@@ -208,14 +211,15 @@ update msg model =
             ( { model
                 | screenWidth = width
                 , screenHeight = height
-                , viewport = newViewport
+                , viewport = nextViewport
+                , editor = Editor.onViewportChanged model.cache nextViewport model.editor
               }
             , Cmd.none
             )
 
         ViewportModeToggled ->
             let
-                newMode =
+                nextMode =
                     case model.viewportMode of
                         Limited ->
                             Fullscreen
@@ -223,8 +227,8 @@ update msg model =
                         Fullscreen ->
                             Limited
 
-                newViewport =
-                    case newMode of
+                nextViewport =
+                    case nextMode of
                         Fullscreen ->
                             updateViewportSize model.screenWidth model.screenHeight model
 
@@ -234,10 +238,17 @@ update msg model =
                             , width = toFloat defaultLimitedWidth
                             , height = toFloat defaultLimitedHeight
                             }
+
+                editor =
+                    model.editor
+
+                clearedEditor =
+                    { editor | panState = Pan.init }
             in
             ( { model
-                | viewportMode = newMode
-                , viewport = newViewport
+                | viewportMode = nextMode
+                , viewport = nextViewport
+                , editor = Editor.onViewportChanged model.cache nextViewport clearedEditor
               }
             , Cmd.none
             )
@@ -249,10 +260,10 @@ updateViewportSize width height model =
         currentViewport =
             model.viewport
 
-        newWidth =
+        nextWidth =
             toFloat width
 
-        newHeight =
+        nextHeight =
             toFloat height
 
         -- Calculate center point before resize
@@ -263,17 +274,17 @@ updateViewportSize width height model =
             currentViewport.y + currentViewport.height / 2
 
         -- Recalculate position to keep center
-        newX =
-            centerX - newWidth / 2
+        nextX =
+            centerX - nextWidth / 2
 
-        newY =
-            centerY - newHeight / 2
+        nextY =
+            centerY - nextHeight / 2
     in
     { currentViewport
-        | width = newWidth
-        , height = newHeight
-        , x = newX
-        , y = newY
+        | width = nextWidth
+        , height = nextHeight
+        , x = nextX
+        , y = nextY
     }
         |> RenderViewport.clamp model.cache.tilemapWidthPixels model.cache.tilemapHeightPixels
 

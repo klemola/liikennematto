@@ -4,6 +4,7 @@ module UI.Editor exposing
     , Model
     , Msg
     , initialModel
+    , onViewportChanged
     , subscriptions
     , update
     , usingTouchDevice
@@ -67,6 +68,7 @@ type alias Model =
     , lastEventDevice : Pointer.DeviceType
     , panState : Pan.PanState
     , activePointers : Dict Int PointerInfo
+    , panEnabled : Bool
     }
 
 
@@ -79,6 +81,7 @@ initialModel =
     , lastEventDevice = Pointer.MouseType
     , panState = Pan.init
     , activePointers = Dict.empty
+    , panEnabled = True
     }
 
 
@@ -123,6 +126,26 @@ usingTouchDevice model =
     model.lastEventDevice == Pointer.TouchType
 
 
+onViewportChanged : RenderCache -> Viewport -> Model -> Model
+onViewportChanged cache viewport model =
+    let
+        canPan =
+            cache.tilemapWidthPixels > viewport.width
+                || cache.tilemapHeightPixels > viewport.height
+
+        clearedPanState =
+            if canPan then
+                model.panState
+
+            else
+                Pan.init
+    in
+    { model
+        | panEnabled = canPan
+        , panState = clearedPanState
+    }
+
+
 longTapThreshold : Duration
 longTapThreshold =
     Duration.milliseconds 1500
@@ -165,7 +188,7 @@ update world pixelsToMetersRatio viewport msg model =
                     Pan.step delta modelAfterLongPressTimerUpdate.panState
 
                 panEffect =
-                    if abs stepResult.delta.x > 0.01 || abs stepResult.delta.y > 0.01 then
+                    if model.panEnabled && (abs stepResult.delta.x > 0.01 || abs stepResult.delta.y > 0.01) then
                         [ ViewportChangeRequested stepResult.delta.x stepResult.delta.y ]
 
                     else
@@ -244,7 +267,7 @@ update world pixelsToMetersRatio viewport msg model =
                 updatedModel =
                     { model | activePointers = updatedPointers }
             in
-            if shouldStartPan event updatedModel then
+            if model.panEnabled && shouldStartPan event updatedModel then
                 ( { updatedModel | panState = Pan.startDrag (getPanPosition event updatedModel) model.panState }
                 , []
                 )
@@ -375,36 +398,40 @@ update world pixelsToMetersRatio viewport msg model =
                 ( model, [] )
 
         OverlayWheelEvent wheelEvent ->
-            let
-                scaleFactor =
-                    case wheelEvent.deltaMode of
-                        Wheel.DeltaPixel ->
-                            1.0
+            if not model.panEnabled then
+                ( model, [] )
 
-                        Wheel.DeltaLine ->
-                            16.0
+            else
+                let
+                    scaleFactor =
+                        case wheelEvent.deltaMode of
+                            Wheel.DeltaPixel ->
+                                1.0
 
-                        Wheel.DeltaPage ->
-                            800.0
+                            Wheel.DeltaLine ->
+                                16.0
 
-                deltaX =
-                    -wheelEvent.deltaX * scaleFactor
+                            Wheel.DeltaPage ->
+                                800.0
 
-                deltaY =
-                    -wheelEvent.deltaY * scaleFactor
+                    deltaX =
+                        -wheelEvent.deltaX * scaleFactor
 
-                panState =
-                    model.panState
+                    deltaY =
+                        -wheelEvent.deltaY * scaleFactor
 
-                updatedPanState =
-                    { panState
-                        | targetX = panState.targetX + deltaX
-                        , targetY = panState.targetY + deltaY
-                    }
-            in
-            ( { model | panState = updatedPanState }
-            , []
-            )
+                    panState =
+                        model.panState
+
+                    updatedPanState =
+                        { panState
+                            | targetX = panState.targetX + deltaX
+                            , targetY = panState.targetY + deltaY
+                        }
+                in
+                ( { model | panState = updatedPanState }
+                , []
+                )
 
         NoOp ->
             ( model, [] )
