@@ -701,6 +701,7 @@ view cache viewport world model =
             (Element.el
                 [ Element.width Element.fill
                 , Element.height Element.fill
+                , Element.htmlAttribute (Html.Attributes.style "touch-action" "none")
                 , Element.htmlAttribute (Pointer.onMove OverlayPointerMove)
                 , Element.htmlAttribute (Pointer.onLeave OverlayPointerLeave)
                 , Element.htmlAttribute (Pointer.onDown OverlayPointerDown)
