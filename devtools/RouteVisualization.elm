@@ -152,6 +152,7 @@ view model =
                     |> Model.Debug.toggleLayer Model.Debug.CarDebug
                     |> Model.Debug.toggleLayer Model.Debug.RoadNetworkDebug
                 )
+                Nothing
                 |> Element.html
     in
     Html.div []

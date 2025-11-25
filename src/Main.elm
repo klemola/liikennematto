@@ -21,13 +21,15 @@ import Quantity
 import Render
 import Render.Conversion exposing (toPixelsValue)
 import Render.Debug
+import Render.Viewport as Viewport
 import Savegame
 import Simulation.Update as Simulation
 import Task
 import Tilemap.Update as Tilemap
 import Time
 import UI
-import UI.Core exposing (containerId, renderSafeAreaYSize)
+import UI.Core exposing (containerId)
+import UI.Editor as Editor
 import UI.ErrorScreen
 import UI.Model
 import UI.SplashScreen
@@ -155,10 +157,27 @@ updateBase msg model =
 
                 nextInitSteps =
                     { initSteps | viewportSizeSet = True }
+
+                nextViewport =
+                    updateViewportSize
+                        (round domViewport.viewport.width)
+                        (round domViewport.viewport.height)
+                        model
+
+                ui =
+                    model.ui
+
+                nextEditor =
+                    Editor.onViewportChanged model.renderCache nextViewport ui.editor
+
+                nextUi =
+                    { ui | editor = nextEditor }
             in
             ( { model
                 | screen = nextScreen
                 , initSteps = nextInitSteps
+                , viewport = nextViewport
+                , ui = nextUi
               }
             , Cmd.none
             )
@@ -210,7 +229,7 @@ updateBase msg model =
         UIMsg uiMsg ->
             let
                 ( nextUi, uiCmd, uiEvent ) =
-                    UI.update model.world model.renderCache.pixelsToMetersRatio uiMsg model.ui
+                    UI.update model.world model.renderCache.pixelsToMetersRatio model.viewport uiMsg model.ui
 
                 ( modelWithUiEvent, uiEventCmd ) =
                     case uiEvent of
@@ -229,6 +248,9 @@ updateBase msg model =
 
                                 UI.ZoomLevelChanged zoomLevel ->
                                     onZoomLevelChanged zoomLevel model
+
+                                UI.ViewportChanged deltaX deltaY ->
+                                    onViewportChanged deltaX deltaY model
 
                                 UI.DevViewSelected devView ->
                                     ( { model
@@ -295,7 +317,7 @@ gameActionToCmd action =
                         Browser.Dom.setViewportOf
                             containerId
                             ((domViewport.scene.width - domViewport.viewport.width) / 2)
-                            ((domViewport.scene.height - domViewport.viewport.height - toFloat renderSafeAreaYSize) / 2)
+                            ((domViewport.scene.height - domViewport.viewport.height) / 2)
                     )
                 |> Task.attempt (\_ -> NoOp)
 
@@ -346,6 +368,52 @@ onUiButtonPressed buttonId model =
             )
 
 
+onViewportChanged : Float -> Float -> Liikennematto -> ( Liikennematto, Cmd Message )
+onViewportChanged deltaX deltaY model =
+    let
+        nextViewport =
+            model.viewport
+                |> Viewport.applyPanDelta deltaX deltaY
+                |> Viewport.clamp model.renderCache.tilemapWidthPixels model.renderCache.tilemapHeightPixels
+    in
+    ( { model | viewport = nextViewport }
+    , Cmd.none
+    )
+
+
+updateViewportSize : Int -> Int -> Liikennematto -> Viewport.Viewport
+updateViewportSize width height model =
+    let
+        currentViewport =
+            model.viewport
+
+        nextWidth =
+            toFloat width
+
+        nextHeight =
+            toFloat height
+
+        centerX =
+            currentViewport.x + currentViewport.width / 2
+
+        centerY =
+            currentViewport.y + currentViewport.height / 2
+
+        nextX =
+            centerX - nextWidth / 2
+
+        nextY =
+            centerY - nextHeight / 2
+    in
+    { currentViewport
+        | width = nextWidth
+        , height = nextHeight
+        , x = nextX
+        , y = nextY
+    }
+        |> Viewport.clamp model.renderCache.tilemapWidthPixels model.renderCache.tilemapHeightPixels
+
+
 onZoomLevelChanged : UI.Model.ZoomLevel -> Liikennematto -> ( Liikennematto, Cmd Message )
 onZoomLevelChanged nextZoomLevel model =
     let
@@ -353,27 +421,36 @@ onZoomLevelChanged nextZoomLevel model =
             model.renderCache
                 |> setPixelsToMetersRatio nextZoomLevel
                 |> setTilemapCache model.world.tilemap Nothing
+
+        tilemapSizeChangeX =
+            nextRenderCache.tilemapWidthPixels - model.renderCache.tilemapWidthPixels
+
+        tilemapSizeChangeY =
+            nextRenderCache.tilemapHeightPixels - model.renderCache.tilemapHeightPixels
+
+        nextViewport =
+            { x = model.viewport.x + (tilemapSizeChangeX / 2)
+            , y = model.viewport.y + (tilemapSizeChangeY / 2)
+            , width = model.viewport.width
+            , height = model.viewport.height
+            }
+                |> Viewport.clamp nextRenderCache.tilemapWidthPixels nextRenderCache.tilemapHeightPixels
+
+        ui =
+            model.ui
+
+        nextEditor =
+            Editor.onViewportChanged nextRenderCache nextViewport ui.editor
+
+        nextUi =
+            { ui | editor = nextEditor }
     in
-    ( { model | renderCache = nextRenderCache }
-    , Browser.Dom.getViewportOf containerId
-        |> Task.andThen
-            (\domViewport ->
-                let
-                    mapSizeChangeX =
-                        nextRenderCache.tilemapWidthPixels - model.renderCache.tilemapWidthPixels
-
-                    mapSizeChangeY =
-                        nextRenderCache.tilemapHeightPixels - model.renderCache.tilemapHeightPixels
-
-                    nextScrollX =
-                        (mapSizeChangeX / 2) + domViewport.viewport.x
-
-                    nextScrollY =
-                        (mapSizeChangeY / 2) + domViewport.viewport.y
-                in
-                Browser.Dom.setViewportOf containerId (max nextScrollX 0) (max nextScrollY 0)
-            )
-        |> Task.attempt (\_ -> NoOp)
+    ( { model
+        | renderCache = nextRenderCache
+        , viewport = nextViewport
+        , ui = nextUi
+      }
+    , Cmd.none
     )
 
 
@@ -429,15 +506,13 @@ view model =
     }
 
 
-render : Liikennematto -> Element Message
+render : Liikennematto -> Element msg
 render model =
-    Render.view model.world model.renderCache Nothing
+    Render.view model.world model.renderCache (Just model.viewport)
         |> Element.html
-        |> Element.map (always NoOp)
 
 
-renderDebug : Liikennematto -> Element Message
+renderDebug : Liikennematto -> Element msg
 renderDebug model =
-    Render.Debug.view model.world model.renderCache model.debug
+    Render.Debug.view model.world model.renderCache model.debug (Just model.viewport)
         |> Element.html
-        |> Element.map (always NoOp)

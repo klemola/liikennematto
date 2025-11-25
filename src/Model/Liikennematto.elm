@@ -21,6 +21,7 @@ import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.Screen as Screen exposing (Screen)
 import Model.World as World exposing (World)
 import Random
+import Render.Viewport as Viewport exposing (Viewport)
 import Savegame
 import Tilemap.DrivenWFC exposing (DrivenWFC(..))
 import Time
@@ -37,6 +38,7 @@ type alias Liikennematto =
     , savegame : Maybe JE.Value
     , simulationActive : Bool
     , renderCache : RenderCache
+    , viewport : Viewport
     , debug : DebugState
     , errorMessage : Maybe String
     , ui : UI
@@ -254,6 +256,18 @@ initial flags =
                 Nothing ->
                     ( initialWorld initialSeed, Nothing )
     in
+    let
+        initialRenderCache =
+            RenderCache.new world
+
+        initialViewport =
+            Viewport.init
+                { tilemapWidth = initialRenderCache.tilemapWidthPixels
+                , tilemapHeight = initialRenderCache.tilemapHeightPixels
+                , viewportWidth = 720.0
+                , viewportHeight = 476.0
+                }
+    in
     { game = appFsm
     , initSteps =
         { audioInitComplete = skipExternalInit
@@ -265,7 +279,8 @@ initial flags =
     , wfc = initialDrivenWfc initialSeed
     , savegame = maybeSavegame
     , simulationActive = True
-    , renderCache = RenderCache.new world
+    , renderCache = initialRenderCache
+    , viewport = initialViewport
     , debug = initialDebugState
     , errorMessage = Nothing
     , ui = UI.Model.initialModel

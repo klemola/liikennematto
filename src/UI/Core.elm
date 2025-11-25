@@ -10,9 +10,6 @@ module UI.Core exposing
     , colorTransparent
     , containerId
     , overlayId
-    , renderSafeAreaXSize
-    , renderSafeAreaYSize
-    , scrollbarAwareOffsetF
     , uiColorBorder
     , uiColorText
     , whitespaceRegular
@@ -44,11 +41,6 @@ overlayId =
 --
 
 
-baseSpacing : Int
-baseSpacing =
-    20
-
-
 whitespaceRegular : Int
 whitespaceRegular =
     10
@@ -62,26 +54,6 @@ whitespaceTight =
 borderSize : Int
 borderSize =
     2
-
-
-scrollbarAwareOffset : Int
-scrollbarAwareOffset =
-    18
-
-
-scrollbarAwareOffsetF : Float
-scrollbarAwareOffsetF =
-    toFloat scrollbarAwareOffset
-
-
-renderSafeAreaXSize : Int
-renderSafeAreaXSize =
-    baseSpacing * 4 + scrollbarAwareOffset
-
-
-renderSafeAreaYSize : Int
-renderSafeAreaYSize =
-    baseSpacing * 4 + scrollbarAwareOffset
 
 
 cellHighlightWidth : Int

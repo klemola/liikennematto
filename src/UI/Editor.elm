@@ -130,8 +130,10 @@ onViewportChanged : RenderCache -> Viewport -> Model -> Model
 onViewportChanged cache viewport model =
     let
         canPan =
-            cache.tilemapWidthPixels > viewport.width
-                || cache.tilemapHeightPixels > viewport.height
+            cache.tilemapWidthPixels
+                > viewport.width
+                || cache.tilemapHeightPixels
+                > viewport.height
 
         clearedPanState =
             if canPan then

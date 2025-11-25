@@ -337,6 +337,7 @@ view model =
                 (Model.Debug.initialDebugState
                     |> Model.Debug.toggleLayer Model.Debug.WFCDebug
                 )
+                Nothing
                 |> Element.html
 
         render =

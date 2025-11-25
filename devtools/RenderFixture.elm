@@ -33,6 +33,7 @@ main =
                     |> Model.Debug.toggleLayer Model.Debug.RoadNetworkDebug
                     |> Model.Debug.toggleLayer Model.Debug.WFCDebug
                 )
+                Nothing
                 |> Element.html
     in
     Render.view world cache Nothing
