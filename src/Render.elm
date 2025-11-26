@@ -148,6 +148,7 @@ renderTile renderable =
                 Nothing ->
                     ""
             )
+        , Attributes.style "will-change: transform; backface-visibility: hidden;"
         ]
 
 

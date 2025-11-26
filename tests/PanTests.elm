@@ -264,6 +264,157 @@ suite =
                         ]
                         result
             ]
+        , describe "viewport snapping to integers"
+            [ test "snaps to integer when close and velocity is low" <|
+                \() ->
+                    let
+                        init =
+                            Pan.init
+
+                        -- State with position close to integer and very low velocity
+                        state =
+                            { init
+                                | currentX = 100.3
+                                , currentY = 50.4
+                                , targetX = 100.3
+                                , targetY = 50.4
+                                , velocityX = 0.005
+                                , velocityY = 0.005
+                            }
+
+                        result =
+                            Pan.step (Duration.milliseconds 16.67) state
+                    in
+                    Expect.all
+                        [ \r -> Expect.equal 100.0 r.state.currentX
+                        , \r -> Expect.equal 50.0 r.state.currentY
+                        ]
+                        result
+            , test "does not snap when not close to integer" <|
+                \() ->
+                    let
+                        init =
+                            Pan.init
+
+                        -- State with position far from integer
+                        state =
+                            { init
+                                | currentX = 100.7
+                                , currentY = 50.8
+                                , targetX = 100.7
+                                , targetY = 50.8
+                                , velocityX = 0.005
+                                , velocityY = 0.005
+                            }
+
+                        result =
+                            Pan.step (Duration.milliseconds 16.67) state
+                    in
+                    Expect.all
+                        [ \r -> Expect.notEqual 100.0 r.state.currentX
+                        , \r -> Expect.notEqual 50.0 r.state.currentY
+                        ]
+                        result
+            , test "does not snap when velocity is still high" <|
+                \() ->
+                    let
+                        init =
+                            Pan.init
+
+                        -- State with position close to integer but high velocity
+                        state =
+                            { init
+                                | currentX = 100.3
+                                , currentY = 50.4
+                                , targetX = 150.0
+                                , targetY = 100.0
+                                , velocityX = 5.0
+                                , velocityY = 5.0
+                            }
+
+                        result =
+                            Pan.step (Duration.milliseconds 16.67) state
+                    in
+                    -- With high velocity, SmoothDamp moves position toward target
+                    -- Should NOT snap to 100.0 or 50.0
+                    Expect.all
+                        [ \r -> Expect.greaterThan 100.0 r.state.currentX
+                        , \r -> Expect.greaterThan 50.0 r.state.currentY
+                        ]
+                        result
+            , test "snaps X and Y independently" <|
+                \() ->
+                    let
+                        init =
+                            Pan.init
+
+                        -- X close to integer (0.2 from 100), Y far from integer (0.6 from 50, 0.4 from 51)
+                        state =
+                            { init
+                                | currentX = 100.2
+                                , currentY = 50.6
+                                , targetX = 100.2
+                                , targetY = 50.6
+                                , velocityX = 0.005
+                                , velocityY = 0.005
+                            }
+
+                        result =
+                            Pan.step (Duration.milliseconds 16.67) state
+                    in
+                    Expect.all
+                        [ \r -> Expect.equal 100.0 r.state.currentX
+                        , \r -> Expect.within (Expect.Absolute 0.01) 51.0 r.state.currentY
+                        ]
+                        result
+            , test "snaps boundary case within threshold" <|
+                \() ->
+                    let
+                        init =
+                            Pan.init
+
+                        -- Close to threshold (0.4px from 100, within 0.5px snap threshold)
+                        state =
+                            { init
+                                | currentX = 100.4
+                                , currentY = 50.3
+                                , targetX = 100.4
+                                , targetY = 50.3
+                                , velocityX = 0.005
+                                , velocityY = 0.005
+                            }
+
+                        result =
+                            Pan.step (Duration.milliseconds 16.67) state
+                    in
+                    -- Should snap to nearest integer
+                    Expect.all
+                        [ \r -> Expect.equal 100.0 r.state.currentX
+                        , \r -> Expect.equal 50.0 r.state.currentY
+                        ]
+                        result
+            , test "full pan and settle scenario snaps to integer" <|
+                \() ->
+                    let
+                        state =
+                            Pan.init
+                                |> Pan.startDrag { x = 100, y = 100 }
+                                |> Pan.updateDrag { x = 110, y = 105 }
+                                |> Pan.releaseDrag
+
+                        -- Step many times to let it fully settle
+                        finalState =
+                            stepNTimes 200 state
+                    in
+                    -- After settling, should be at integer coordinates with near-zero velocity
+                    Expect.all
+                        [ \s -> Expect.within (Expect.Absolute 0.01) (toFloat (round s.currentX)) s.currentX
+                        , \s -> Expect.within (Expect.Absolute 0.01) (toFloat (round s.currentY)) s.currentY
+                        , \s -> Expect.within (Expect.Absolute 0.02) 0 s.velocityX
+                        , \s -> Expect.within (Expect.Absolute 0.02) 0 s.velocityY
+                        ]
+                        finalState
+            ]
         ]
 
 

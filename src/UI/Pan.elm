@@ -59,6 +59,16 @@ velocityThreshold =
     0.01
 
 
+snapThreshold : Float
+snapThreshold =
+    0.5
+
+
+targetSnapDistance : Float
+targetSnapDistance =
+    2.0
+
+
 catchFraction : Float
 catchFraction =
     0.9
@@ -97,6 +107,8 @@ startDrag pos state =
                 { x = caughtState.currentX
                 , y = caughtState.currentY
                 }
+        , targetX = snapToNearestEven caughtState.targetX
+        , targetY = snapToNearestEven caughtState.targetY
         , smoothTime = draggingSmoothTimeSeconds
     }
 
@@ -111,10 +123,22 @@ updateDrag pos state =
 
                 deltaY =
                     pos.y - startPos.y
+
+                rawTargetX =
+                    startCurrent.x + deltaX
+
+                rawTargetY =
+                    startCurrent.y + deltaY
+
+                snappedTargetX =
+                    snapTargetToEvenInteger state.currentX rawTargetX
+
+                snappedTargetY =
+                    snapTargetToEvenInteger state.currentY rawTargetY
             in
             { state
-                | targetX = startCurrent.x + deltaX
-                , targetY = startCurrent.y + deltaY
+                | targetX = snappedTargetX
+                , targetY = snappedTargetY
             }
 
         _ ->
@@ -135,13 +159,19 @@ releaseDrag state =
 
         driftY =
             remainingY * driftMultiplier
+
+        snappedTargetX =
+            snapToNearestEven (state.targetX + driftX)
+
+        snappedTargetY =
+            snapToNearestEven (state.targetY + driftY)
     in
     { state
         | isDragging = False
         , dragStartPos = Nothing
         , dragStartCurrent = Nothing
-        , targetX = state.targetX + driftX
-        , targetY = state.targetY + driftY
+        , targetX = snappedTargetX
+        , targetY = snappedTargetY
         , smoothTime = coastingSmoothTimeSeconds
     }
 
@@ -191,37 +221,105 @@ step duration state =
                 , deltaTime = deltaTime
                 }
 
+        ( snappedX, snappedVelocityX, snappedTargetX ) =
+            if abs newVelocityX < velocityThreshold then
+                if isCloseToInteger newX then
+                    let
+                        snapped =
+                            toFloat (round newX)
+                    in
+                    ( snapped, 0, snapped )
+
+                else if isCloseToInteger state.targetX then
+                    let
+                        snapped =
+                            toFloat (round state.targetX)
+                    in
+                    ( snapped, 0, snapped )
+
+                else
+                    ( state.targetX, 0, state.targetX )
+
+            else
+                ( newX, newVelocityX, state.targetX )
+
+        ( snappedY, snappedVelocityY, snappedTargetY ) =
+            if abs newVelocityY < velocityThreshold then
+                if isCloseToInteger newY then
+                    let
+                        snapped =
+                            toFloat (round newY)
+                    in
+                    ( snapped, 0, snapped )
+
+                else if isCloseToInteger state.targetY then
+                    let
+                        snapped =
+                            toFloat (round state.targetY)
+                    in
+                    ( snapped, 0, snapped )
+
+                else
+                    ( state.targetY, 0, state.targetY )
+
+            else
+                ( newY, newVelocityY, state.targetY )
+
         deltaX =
-            newX - state.currentX
+            snappedX - state.currentX
 
         deltaY =
-            newY - state.currentY
-
-        ( finalX, finalVelocityX ) =
-            if abs newVelocityX < velocityThreshold then
-                ( state.targetX, 0 )
-
-            else
-                ( newX, newVelocityX )
-
-        ( finalY, finalVelocityY ) =
-            if abs newVelocityY < velocityThreshold then
-                ( state.targetY, 0 )
-
-            else
-                ( newY, newVelocityY )
+            snappedY - state.currentY
 
         newState =
             { state
-                | currentX = finalX
-                , currentY = finalY
-                , velocityX = finalVelocityX
-                , velocityY = finalVelocityY
+                | currentX = snappedX
+                , currentY = snappedY
+                , targetX = snappedTargetX
+                , targetY = snappedTargetY
+                , velocityX = snappedVelocityX
+                , velocityY = snappedVelocityY
             }
     in
     { state = newState
     , delta = { x = deltaX, y = deltaY }
     }
+
+
+snapToNearestEven : Float -> Float
+snapToNearestEven value =
+    toFloat (round (value / 2.0) * 2)
+
+
+isCloseToInteger : Float -> Bool
+isCloseToInteger value =
+    let
+        nearest =
+            toFloat (round value)
+
+        distance =
+            abs (value - nearest)
+    in
+    distance <= snapThreshold
+
+
+snapTargetToEvenInteger : Float -> Float -> Float
+snapTargetToEvenInteger current target =
+    let
+        distance =
+            abs (target - current)
+
+        nearestEven =
+            snapToNearestEven target
+
+        distanceToEven =
+            abs (target - nearestEven)
+    in
+    if distance > targetSnapDistance && distanceToEven < snapThreshold then
+        nearestEven
+
+    else
+        target
 
 
 type alias SmoothDampParams =
