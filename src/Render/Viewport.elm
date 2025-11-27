@@ -3,6 +3,8 @@ module Render.Viewport exposing
     , applyPanDelta
     , clamp
     , init
+    , snapToEven
+    , snapToInteger
     , toSvgViewBox
     )
 
@@ -37,6 +39,22 @@ applyPanDelta deltaX deltaY viewport =
     { viewport
         | x = viewport.x - deltaX
         , y = viewport.y - deltaY
+    }
+
+
+snapToInteger : Viewport -> Viewport
+snapToInteger viewport =
+    { viewport
+        | x = toFloat (round viewport.x)
+        , y = toFloat (round viewport.y)
+    }
+
+
+snapToEven : Viewport -> Viewport
+snapToEven viewport =
+    { viewport
+        | x = toFloat (round (viewport.x / 2.0) * 2)
+        , y = toFloat (round (viewport.y / 2.0) * 2)
     }
 
 

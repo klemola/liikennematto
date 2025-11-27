@@ -113,7 +113,7 @@ type alias InputEvent =
 
 type EditorEffect
     = GameInput InputEvent
-    | ViewportChangeRequested Float Float
+    | ViewportChangeRequested Float Float Bool
 
 
 targetRadius : Int
@@ -189,9 +189,12 @@ update world pixelsToMetersRatio viewport msg model =
                 stepResult =
                     Pan.step delta modelAfterLongPressTimerUpdate.panState
 
+                shouldSnap =
+                    abs stepResult.state.velocityX < 0.5 && abs stepResult.state.velocityY < 0.5
+
                 panEffect =
-                    if model.panEnabled && (abs stepResult.delta.x > 0.01 || abs stepResult.delta.y > 0.01) then
-                        [ ViewportChangeRequested stepResult.delta.x stepResult.delta.y ]
+                    if model.panEnabled && (abs stepResult.delta.x > 0.001 || abs stepResult.delta.y > 0.001 || shouldSnap) then
+                        [ ViewportChangeRequested stepResult.delta.x stepResult.delta.y shouldSnap ]
 
                     else
                         []

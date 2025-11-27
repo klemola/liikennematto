@@ -18,11 +18,10 @@ import Html.Events.Extra.Mouse as Mouse
 import Model.Debug exposing (DebugLayerKind(..))
 import Model.Liikennematto exposing (Liikennematto)
 import Model.World exposing (World)
-import Render.Conversion exposing (PixelsToMetersRatio, toPixelsValue)
+import Render.Conversion exposing (PixelsToMetersRatio)
 import Render.Viewport as Viewport
 import Svg
 import Svg.Attributes as SvgAttr
-import Tilemap.Core exposing (getTilemapDimensions)
 import UI.Button
     exposing
         ( iconButton
@@ -66,7 +65,7 @@ type UIEvent
     | ZoomLevelChanged ZoomLevel
     | ButtonPressed ButtonKind
     | DevViewSelected DevView
-    | ViewportChanged Float Float
+    | ViewportChanged Float Float Bool
 
 
 baseLayoutOptions : List Element.Option
@@ -110,8 +109,8 @@ editorEffectToUIEvent effect =
         Editor.GameInput inputEvent ->
             Just (GameInputReceived inputEvent)
 
-        Editor.ViewportChangeRequested deltaX deltaY ->
-            Just (ViewportChanged deltaX deltaY)
+        Editor.ViewportChangeRequested deltaX deltaY shouldSnap ->
+            Just (ViewportChanged deltaX deltaY shouldSnap)
 
 
 update : World -> PixelsToMetersRatio -> Viewport.Viewport -> Msg -> UI -> ( UI, Cmd Msg, Maybe UIEvent )

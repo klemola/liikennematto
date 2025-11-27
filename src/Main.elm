@@ -249,8 +249,8 @@ updateBase msg model =
                                 UI.ZoomLevelChanged zoomLevel ->
                                     onZoomLevelChanged zoomLevel model
 
-                                UI.ViewportChanged deltaX deltaY ->
-                                    onViewportChanged deltaX deltaY model
+                                UI.ViewportChanged deltaX deltaY shouldSnap ->
+                                    onViewportChanged deltaX deltaY shouldSnap model
 
                                 UI.DevViewSelected devView ->
                                     ( { model
@@ -368,13 +368,19 @@ onUiButtonPressed buttonId model =
             )
 
 
-onViewportChanged : Float -> Float -> Liikennematto -> ( Liikennematto, Cmd Message )
-onViewportChanged deltaX deltaY model =
+onViewportChanged : Float -> Float -> Bool -> Liikennematto -> ( Liikennematto, Cmd Message )
+onViewportChanged deltaX deltaY shouldSnap model =
     let
         nextViewport =
             model.viewport
                 |> Viewport.applyPanDelta deltaX deltaY
                 |> Viewport.clamp model.renderCache.tilemapWidthPixels model.renderCache.tilemapHeightPixels
+                |> (if shouldSnap then
+                        Viewport.snapToEven
+
+                    else
+                        identity
+                   )
     in
     ( { model | viewport = nextViewport }
     , Cmd.none

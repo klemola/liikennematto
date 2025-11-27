@@ -156,10 +156,16 @@ update msg model =
                         |> List.foldl
                             (\effect vp ->
                                 case effect of
-                                    Editor.ViewportChangeRequested deltaX deltaY ->
+                                    Editor.ViewportChangeRequested deltaX deltaY shouldSnap ->
                                         vp
                                             |> RenderViewport.applyPanDelta deltaX deltaY
                                             |> RenderViewport.clamp model.cache.tilemapWidthPixels model.cache.tilemapHeightPixels
+                                            |> (if shouldSnap then
+                                                    RenderViewport.snapToEven
+
+                                                else
+                                                    identity
+                                               )
 
                                     _ ->
                                         vp

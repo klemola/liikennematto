@@ -66,7 +66,7 @@ snapThreshold =
 
 targetSnapDistance : Float
 targetSnapDistance =
-    2.0
+    1.0
 
 
 catchFraction : Float
@@ -107,8 +107,8 @@ startDrag pos state =
                 { x = caughtState.currentX
                 , y = caughtState.currentY
                 }
-        , targetX = snapToNearestEven caughtState.targetX
-        , targetY = snapToNearestEven caughtState.targetY
+        , targetX = snapToNearestInteger caughtState.targetX
+        , targetY = snapToNearestInteger caughtState.targetY
         , smoothTime = draggingSmoothTimeSeconds
     }
 
@@ -131,10 +131,10 @@ updateDrag pos state =
                     startCurrent.y + deltaY
 
                 snappedTargetX =
-                    snapTargetToEvenInteger state.currentX rawTargetX
+                    snapTargetToInteger state.currentX rawTargetX
 
                 snappedTargetY =
-                    snapTargetToEvenInteger state.currentY rawTargetY
+                    snapTargetToInteger state.currentY rawTargetY
             in
             { state
                 | targetX = snappedTargetX
@@ -161,10 +161,10 @@ releaseDrag state =
             remainingY * driftMultiplier
 
         snappedTargetX =
-            snapToNearestEven (state.targetX + driftX)
+            snapToNearestInteger (state.targetX + driftX)
 
         snappedTargetY =
-            snapToNearestEven (state.targetY + driftY)
+            snapToNearestInteger (state.targetY + driftY)
     in
     { state
         | isDragging = False
@@ -286,16 +286,16 @@ step duration state =
     }
 
 
-snapToNearestEven : Float -> Float
-snapToNearestEven value =
-    toFloat (round (value / 2.0) * 2)
+snapToNearestInteger : Float -> Float
+snapToNearestInteger value =
+    toFloat (round value)
 
 
 isCloseToInteger : Float -> Bool
 isCloseToInteger value =
     let
         nearest =
-            toFloat (round value)
+            snapToNearestInteger value
 
         distance =
             abs (value - nearest)
@@ -303,20 +303,20 @@ isCloseToInteger value =
     distance <= snapThreshold
 
 
-snapTargetToEvenInteger : Float -> Float -> Float
-snapTargetToEvenInteger current target =
+snapTargetToInteger : Float -> Float -> Float
+snapTargetToInteger current target =
     let
         distance =
             abs (target - current)
 
-        nearestEven =
-            snapToNearestEven target
+        nearestInt =
+            snapToNearestInteger target
 
-        distanceToEven =
-            abs (target - nearestEven)
+        distanceToInt =
+            abs (target - nearestInt)
     in
-    if distance > targetSnapDistance && distanceToEven < snapThreshold then
-        nearestEven
+    if distance > targetSnapDistance && distanceToInt < snapThreshold then
+        nearestInt
 
     else
         target
