@@ -292,6 +292,7 @@ update msg model =
                         , tilemapHeight = model.cache.tilemapHeightPixels
                         , viewportWidth = model.cache.tilemapWidthPixels
                         , viewportHeight = model.cache.tilemapHeightPixels
+                        , pixelsToMetersRatio = model.cache.pixelsToMetersRatio
                         }
 
                 ( editorModel, effects ) =
@@ -357,6 +358,7 @@ view model =
                                 , tilemapHeight = model.cache.tilemapHeightPixels
                                 , viewportWidth = model.cache.tilemapWidthPixels
                                 , viewportHeight = model.cache.tilemapHeightPixels
+                                , pixelsToMetersRatio = model.cache.pixelsToMetersRatio
                                 }
                             )
                             model.world

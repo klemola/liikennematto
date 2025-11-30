@@ -98,14 +98,16 @@ view { cars, roadNetwork, trafficLights } cache maybeViewport =
         [ Attributes.width svgWidth
         , Attributes.height svgHeight
         , Attributes.viewBox viewBoxStr
-        , Attributes.style <| "background-color: " ++ Colors.lightGreenCSS ++ ";"
         ]
         [ styles
+        , renderBackground cache maybeViewport
+        , renderTilemapBackground cache
         , Svg.Lazy.lazy renderTilemap cache.tilemap
         , renderDynamicTiles cache
         , renderCars cache cars
         , Svg.Lazy.lazy2 renderTrafficLights cache trafficLights
         , Svg.Lazy.lazy2 renderTrafficSigns cache roadNetwork
+        , renderTilemapBorder cache
         ]
 
 
@@ -113,6 +115,69 @@ assetByName : String -> ( Svg msg, String )
 assetByName name =
     Dict.get name assets
         |> Maybe.withDefault ( Svg.g [] [], "" )
+
+
+renderBackground : RenderCache -> Maybe Viewport -> Svg msg
+renderBackground cache maybeViewport =
+    let
+        ( viewportWidth, viewportHeight ) =
+            case maybeViewport of
+                Just vp ->
+                    ( vp.width, vp.height )
+
+                Nothing ->
+                    ( cache.tilemapWidthPixels, cache.tilemapHeightPixels )
+
+        bounds =
+            Viewport.calculatePannableBounds
+                { pixelsToMetersRatio = cache.pixelsToMetersRatio
+                , tilemapWidth = cache.tilemapWidthPixels
+                , tilemapHeight = cache.tilemapHeightPixels
+                , viewportWidth = viewportWidth
+                , viewportHeight = viewportHeight
+                }
+
+        bgWidth =
+            cache.tilemapWidthPixels + 2 * bounds.paddingX
+
+        bgHeight =
+            cache.tilemapHeightPixels + 2 * bounds.paddingY
+    in
+    Svg.rect
+        [ Attributes.x (String.fromFloat bounds.minX)
+        , Attributes.y (String.fromFloat bounds.minY)
+        , Attributes.width (String.fromFloat bgWidth)
+        , Attributes.height (String.fromFloat bgHeight)
+        , Attributes.fill Colors.gray5CSS
+        ]
+        []
+
+
+renderTilemapBackground : RenderCache -> Svg msg
+renderTilemapBackground cache =
+    Svg.rect
+        [ Attributes.x "0"
+        , Attributes.y "0"
+        , Attributes.width (String.fromFloat cache.tilemapWidthPixels)
+        , Attributes.height (String.fromFloat cache.tilemapHeightPixels)
+        , Attributes.fill Colors.lightGreenCSS
+        ]
+        []
+
+
+renderTilemapBorder : RenderCache -> Svg msg
+renderTilemapBorder cache =
+    Svg.rect
+        [ Attributes.x "0"
+        , Attributes.y "0"
+        , Attributes.width (String.fromFloat cache.tilemapWidthPixels)
+        , Attributes.height (String.fromFloat cache.tilemapHeightPixels)
+        , Attributes.fill "none"
+        , Attributes.stroke Colors.darkGreenCSS
+        , Attributes.strokeWidth "4"
+        , Attributes.rx "4"
+        ]
+        []
 
 
 

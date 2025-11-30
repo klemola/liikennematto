@@ -113,6 +113,7 @@ init _ =
                                 , tilemapHeight = cache.tilemapHeightPixels
                                 , viewportWidth = 720
                                 , viewportHeight = 476
+                                , pixelsToMetersRatio = cache.pixelsToMetersRatio
                                 }
                     in
                     ( { world = world
@@ -159,7 +160,7 @@ update msg model =
                                     Editor.ViewportChangeRequested deltaX deltaY shouldSnap ->
                                         vp
                                             |> RenderViewport.applyPanDelta deltaX deltaY
-                                            |> RenderViewport.clamp model.cache.tilemapWidthPixels model.cache.tilemapHeightPixels
+                                            |> RenderViewport.clamp model.cache.pixelsToMetersRatio model.cache.tilemapWidthPixels model.cache.tilemapHeightPixels
                                             |> (if shouldSnap then
                                                     RenderViewport.snapToEven
 
@@ -292,7 +293,7 @@ updateViewportSize width height model =
         , x = nextX
         , y = nextY
     }
-        |> RenderViewport.clamp model.cache.tilemapWidthPixels model.cache.tilemapHeightPixels
+        |> RenderViewport.clamp model.cache.pixelsToMetersRatio model.cache.tilemapWidthPixels model.cache.tilemapHeightPixels
 
 
 view : Model -> Html Msg

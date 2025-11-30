@@ -374,7 +374,7 @@ onViewportChanged deltaX deltaY shouldSnap model =
         nextViewport =
             model.viewport
                 |> Viewport.applyPanDelta deltaX deltaY
-                |> Viewport.clamp model.renderCache.tilemapWidthPixels model.renderCache.tilemapHeightPixels
+                |> Viewport.clamp model.renderCache.pixelsToMetersRatio model.renderCache.tilemapWidthPixels model.renderCache.tilemapHeightPixels
                 |> (if shouldSnap then
                         Viewport.snapToEven
 
@@ -417,7 +417,7 @@ updateViewportSize width height model =
         , x = nextX
         , y = nextY
     }
-        |> Viewport.clamp model.renderCache.tilemapWidthPixels model.renderCache.tilemapHeightPixels
+        |> Viewport.clamp model.renderCache.pixelsToMetersRatio model.renderCache.tilemapWidthPixels model.renderCache.tilemapHeightPixels
 
 
 onZoomLevelChanged : UI.Model.ZoomLevel -> Liikennematto -> ( Liikennematto, Cmd Message )
@@ -440,7 +440,7 @@ onZoomLevelChanged nextZoomLevel model =
             , width = model.viewport.width
             , height = model.viewport.height
             }
-                |> Viewport.clamp nextRenderCache.tilemapWidthPixels nextRenderCache.tilemapHeightPixels
+                |> Viewport.clamp nextRenderCache.pixelsToMetersRatio nextRenderCache.tilemapWidthPixels nextRenderCache.tilemapHeightPixels
 
         ui =
             model.ui
