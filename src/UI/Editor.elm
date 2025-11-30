@@ -184,7 +184,11 @@ update world pixelsToMetersRatio viewport msg model =
         AnimationFrameReceived delta ->
             let
                 modelAfterLongPressTimerUpdate =
-                    advanceLongPressTimer delta model
+                    if model.panState.isDragging then
+                        model
+
+                    else
+                        advanceLongPressTimer delta model
 
                 stepResult =
                     Pan.step delta modelAfterLongPressTimerUpdate.panState
@@ -274,6 +278,8 @@ update world pixelsToMetersRatio viewport msg model =
             in
             if model.panEnabled && shouldStartPan event updatedModel then
                 ( { updatedModel | panState = Pan.startDrag (getPanPosition event updatedModel) model.panState }
+                    |> resetLongPressTimer
+                    |> clearHighlightArea
                 , []
                 )
 
@@ -480,6 +486,11 @@ clearPointerDownEvent model =
 resetLongPressTimer : Model -> Model
 resetLongPressTimer model =
     { model | longPressTimer = Nothing }
+
+
+clearHighlightArea : Model -> Model
+clearHighlightArea model =
+    { model | highlightArea = Nothing }
 
 
 advanceLongPressTimer : Duration -> Model -> Model
@@ -708,7 +719,7 @@ view cache viewport world model =
                     ]
                     (case model.activeCell of
                         Just cell ->
-                            if model.lastEventDevice == Pointer.MouseType then
+                            if model.lastEventDevice == Pointer.MouseType && not model.panState.isDragging then
                                 cellHighlight cache viewport world cell
 
                             else
@@ -734,6 +745,18 @@ view cache viewport world model =
                 [ Element.width Element.fill
                 , Element.height Element.fill
                 , Element.htmlAttribute (Html.Attributes.style "touch-action" "none")
+                , Element.htmlAttribute
+                    (Html.Attributes.style "cursor"
+                        (if model.panState.isDragging then
+                            "grabbing"
+
+                         else if model.panEnabled then
+                            "grab"
+
+                         else
+                            "auto"
+                        )
+                    )
                 , Element.htmlAttribute (Pointer.onMove OverlayPointerMove)
                 , Element.htmlAttribute (Pointer.onLeave OverlayPointerLeave)
                 , Element.htmlAttribute (Pointer.onDown OverlayPointerDown)
