@@ -246,6 +246,9 @@ view liikennematto render renderDebugLayers =
         , Element.inFront (gameControls liikennematto.ui liikennematto.simulationActive)
         , Element.inFront (menu liikennematto.debug liikennematto.ui)
         , Element.inFront (devMenu liikennematto liikennematto.ui)
+        , Element.clip
+        , Element.width Element.fill
+        , Element.height Element.fill
         , Element.htmlAttribute (HtmlAttribute.id containerId)
         , Element.htmlAttribute (HtmlAttribute.style "touch-action" "pan-x pan-y")
         , Element.htmlAttribute (Mouse.onContextMenu (\_ -> NoOp))
