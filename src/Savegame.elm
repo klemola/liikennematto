@@ -26,7 +26,6 @@ import Tilemap.Cell as Cell exposing (CellCoordinates)
 import Tilemap.Core as Tilemap exposing (Tilemap)
 import Tilemap.Tile as Tile
 import Tilemap.TileConfig as TileConfig exposing (LargeTile, TileId)
-import Tilemap.TileInventory as TileInventory
 import Time
 
 

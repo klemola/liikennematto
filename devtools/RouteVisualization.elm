@@ -152,11 +152,12 @@ view model =
                     |> Model.Debug.toggleLayer Model.Debug.CarDebug
                     |> Model.Debug.toggleLayer Model.Debug.RoadNetworkDebug
                 )
+                Nothing
                 |> Element.html
     in
     Html.div []
         [ Html.div [ MouseEvents.onClick WorldClicked ]
-            [ Render.view world model.cache
+            [ Render.view world model.cache Nothing
                 |> Element.html
                 |> Element.el
                     [ Element.width (Element.px renderWidth)

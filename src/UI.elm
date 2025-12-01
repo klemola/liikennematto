@@ -19,6 +19,7 @@ import Model.Debug exposing (DebugLayerKind(..))
 import Model.Liikennematto exposing (Liikennematto)
 import Model.World exposing (World)
 import Render.Conversion exposing (PixelsToMetersRatio)
+import Render.Viewport as Viewport
 import Svg
 import Svg.Attributes as SvgAttr
 import UI.Button
@@ -31,12 +32,7 @@ import UI.Button
 import UI.Core
     exposing
         ( borderSize
-        , colorMainBackground
-        , colorRenderEdge
         , containerId
-        , renderSafeAreaXSize
-        , renderSafeAreaYSize
-        , scrollbarAwareOffsetF
         , uiColorBorder
         , uiColorText
         , whitespaceRegular
@@ -69,6 +65,7 @@ type UIEvent
     | ZoomLevelChanged ZoomLevel
     | ButtonPressed ButtonKind
     | DevViewSelected DevView
+    | ViewportChanged Float Float Bool
 
 
 baseLayoutOptions : List Element.Option
@@ -92,11 +89,6 @@ uiFont =
     Font.typeface "M PLUS Rounded 1c"
 
 
-borderRadiusRenderPx : Int
-borderRadiusRenderPx =
-    10
-
-
 noSpacing : { top : Int, right : Int, bottom : Int, left : Int }
 noSpacing =
     { top = 0
@@ -111,8 +103,18 @@ subscriptions model =
     Sub.map EditorMsg (Editor.subscriptions model.editor)
 
 
-update : World -> PixelsToMetersRatio -> Msg -> UI -> ( UI, Cmd Msg, Maybe UIEvent )
-update world pixelsToMetersRatio msg model =
+editorEffectToUIEvent : Editor.EditorEffect -> Maybe UIEvent
+editorEffectToUIEvent effect =
+    case effect of
+        Editor.GameInput inputEvent ->
+            Just (GameInputReceived inputEvent)
+
+        Editor.ViewportChangeRequested deltaX deltaY shouldSnap ->
+            Just (ViewportChanged deltaX deltaY shouldSnap)
+
+
+update : World -> PixelsToMetersRatio -> Viewport.Viewport -> Msg -> UI -> ( UI, Cmd Msg, Maybe UIEvent )
+update world pixelsToMetersRatio viewport msg model =
     case msg of
         ToggleMenu ->
             ( { model | showMenu = not model.showMenu }
@@ -168,12 +170,17 @@ update world pixelsToMetersRatio msg model =
 
         EditorMsg editorMsg ->
             let
-                ( editorModel, inputEvent ) =
-                    Editor.update world pixelsToMetersRatio editorMsg model.editor
+                ( editorModel, effects ) =
+                    Editor.update world pixelsToMetersRatio viewport editorMsg model.editor
+
+                uiEvent =
+                    effects
+                        |> List.filterMap editorEffectToUIEvent
+                        |> List.head
             in
             ( { model | editor = editorModel }
             , Cmd.none
-            , inputEvent |> Maybe.map GameInputReceived
+            , uiEvent
             )
 
         NoOp ->
@@ -230,79 +237,34 @@ view liikennematto render renderDebugLayers =
     Element.layoutWith
         { options =
             if Editor.usingTouchDevice liikennematto.ui.editor then
-                baseLayoutOptions
+                touchLayoutOptions
 
             else
-                touchLayoutOptions
+                baseLayoutOptions
         }
-        [ Background.color colorMainBackground
-        , Element.width Element.fill
-        , Element.height Element.fill
-        , Element.scrollbars
+        [ Background.color uiColorText
         , Element.inFront (gameControls liikennematto.ui liikennematto.simulationActive)
         , Element.inFront (menu liikennematto.debug liikennematto.ui)
         , Element.inFront (devMenu liikennematto liikennematto.ui)
+        , Element.clip
+        , Element.width Element.fill
+        , Element.height Element.fill
         , Element.htmlAttribute (HtmlAttribute.id containerId)
         , Element.htmlAttribute (HtmlAttribute.style "touch-action" "pan-x pan-y")
         , Element.htmlAttribute (Mouse.onContextMenu (\_ -> NoOp))
         , Font.family [ uiFont, Font.sansSerif ]
         ]
-        (renderWrapper liikennematto render renderDebugLayers liikennematto.ui)
-
-
-renderWrapper : Liikennematto -> Element msg -> Element msg -> UI -> Element Msg
-renderWrapper { renderCache, world, screen } render debugLayers model =
-    let
-        renderWidth =
-            floor renderCache.tilemapWidthPixels + (borderSize * 2)
-
-        renderHeight =
-            floor renderCache.tilemapHeightPixels + (borderSize * 2)
-
-        wrapperWidth =
-            renderWidth + (borderSize * 2) + renderSafeAreaXSize
-
-        wrapperHeight =
-            renderHeight + (borderSize * 2) + renderSafeAreaYSize
-
-        horizontalAlignment =
-            if wrapperWidth < screen.width then
-                Element.centerX
-
-            else
-                Element.alignLeft
-
-        ( verticalAlignment, renderTopOffset ) =
-            if wrapperHeight < screen.height then
-                ( Element.centerY, 0 )
-
-            else
-                ( Element.alignTop, toFloat whitespaceRegular )
-    in
-    Element.el
-        [ Element.width (Element.px wrapperWidth)
-        , Element.height (Element.px wrapperHeight)
-        , horizontalAlignment
-        , verticalAlignment
-        ]
         (Element.el
-            [ Element.width (Element.px renderWidth)
-            , Element.height (Element.px renderHeight)
-            , Element.htmlAttribute (HtmlAttribute.style "top" (String.fromFloat renderTopOffset ++ "px"))
-            , Element.centerX
-            , Element.clip
-            , verticalAlignment
-            , Border.solid
-            , Border.rounded borderRadiusRenderPx
-            , Border.width borderSize
-            , Border.color colorRenderEdge
+            [ Element.width (Element.px (floor liikennematto.viewport.width))
+            , Element.height (Element.px (floor liikennematto.viewport.height))
             , Element.inFront
-                (debugLayers |> Element.map (\_ -> NoOp))
+                (renderDebugLayers |> Element.map (\_ -> NoOp))
             , Element.inFront
                 (Editor.view
-                    renderCache
-                    world
-                    model.editor
+                    liikennematto.renderCache
+                    liikennematto.viewport
+                    liikennematto.world
+                    liikennematto.ui.editor
                     |> Element.map EditorMsg
                 )
             ]
@@ -342,7 +304,6 @@ gameControls model simulationActive =
         [ Element.spacing whitespaceTight
         , Element.alignBottom
         , Element.alignLeft
-        , Element.moveUp scrollbarAwareOffsetF
         , Element.inFront
             (Element.el
                 [ Element.padding gameControlsPaddingPx
@@ -490,7 +451,7 @@ menu debugState model =
         , Element.height Element.shrink
         , Element.clipY
         , Element.moveDown 10
-        , Element.moveLeft scrollbarAwareOffsetF
+        , Element.moveLeft 10
         , Background.color menuBackgroundColor
         , Border.rounded borderRadiusMenuPx
         , Border.color uiColorBorder

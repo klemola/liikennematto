@@ -3,16 +3,11 @@ module UI.Core exposing
     , borderSize
     , cellHighlightWidth
     , colorDanger
-    , colorMainBackground
     , colorNotAllowed
-    , colorRenderEdge
     , colorTarget
     , colorTransparent
     , containerId
     , overlayId
-    , renderSafeAreaXSize
-    , renderSafeAreaYSize
-    , scrollbarAwareOffsetF
     , uiColorBorder
     , uiColorText
     , whitespaceRegular
@@ -44,11 +39,6 @@ overlayId =
 --
 
 
-baseSpacing : Int
-baseSpacing =
-    20
-
-
 whitespaceRegular : Int
 whitespaceRegular =
     10
@@ -64,26 +54,6 @@ borderSize =
     2
 
 
-scrollbarAwareOffset : Int
-scrollbarAwareOffset =
-    18
-
-
-scrollbarAwareOffsetF : Float
-scrollbarAwareOffsetF =
-    toFloat scrollbarAwareOffset
-
-
-renderSafeAreaXSize : Int
-renderSafeAreaXSize =
-    baseSpacing * 4 + scrollbarAwareOffset
-
-
-renderSafeAreaYSize : Int
-renderSafeAreaYSize =
-    baseSpacing * 4 + scrollbarAwareOffset
-
-
 cellHighlightWidth : Int
 cellHighlightWidth =
     3
@@ -93,11 +63,6 @@ cellHighlightWidth =
 --
 -- UI colors
 --
-
-
-colorMainBackground : Element.Color
-colorMainBackground =
-    uiCompat Colors.lightGreen
 
 
 uiColorText : Element.Color
@@ -128,8 +93,3 @@ colorTarget =
 colorTransparent : Element.Color
 colorTransparent =
     Element.rgba255 0 0 0 0
-
-
-colorRenderEdge : Element.Color
-colorRenderEdge =
-    uiCompat Colors.darkGreen

@@ -27,6 +27,7 @@ import Process
 import Random
 import Render
 import Render.Debug
+import Render.Viewport as Viewport
 import Svg exposing (Svg)
 import Svg.Attributes
 import Task
@@ -285,8 +286,30 @@ update msg model =
 
         EditorMsg editorMsg ->
             let
-                ( editorModel, inputEvent ) =
-                    Editor.update model.world model.cache.pixelsToMetersRatio editorMsg model.editor
+                defaultViewport =
+                    Viewport.init
+                        { tilemapWidth = model.cache.tilemapWidthPixels
+                        , tilemapHeight = model.cache.tilemapHeightPixels
+                        , viewportWidth = model.cache.tilemapWidthPixels
+                        , viewportHeight = model.cache.tilemapHeightPixels
+                        , pixelsToMetersRatio = model.cache.pixelsToMetersRatio
+                        }
+
+                ( editorModel, effects ) =
+                    Editor.update model.world model.cache.pixelsToMetersRatio defaultViewport editorMsg model.editor
+
+                inputEvent =
+                    effects
+                        |> List.filterMap
+                            (\effect ->
+                                case effect of
+                                    Editor.GameInput evt ->
+                                        Just evt
+
+                                    _ ->
+                                        Nothing
+                            )
+                        |> List.head
             in
             ( { model | editor = editorModel }
             , inputEvent
@@ -315,10 +338,11 @@ view model =
                 (Model.Debug.initialDebugState
                     |> Model.Debug.toggleLayer Model.Debug.WFCDebug
                 )
+                Nothing
                 |> Element.html
 
         render =
-            Render.view model.world model.cache
+            Render.view model.world model.cache Nothing
                 |> Element.html
                 |> Element.el
                     [ Element.width (Element.px renderWidth)
@@ -329,6 +353,14 @@ view model =
                     , Element.inFront
                         (Editor.view
                             model.cache
+                            (Viewport.init
+                                { tilemapWidth = model.cache.tilemapWidthPixels
+                                , tilemapHeight = model.cache.tilemapHeightPixels
+                                , viewportWidth = model.cache.tilemapWidthPixels
+                                , viewportHeight = model.cache.tilemapHeightPixels
+                                , pixelsToMetersRatio = model.cache.pixelsToMetersRatio
+                                }
+                            )
                             model.world
                             model.editor
                             |> Element.map EditorMsg

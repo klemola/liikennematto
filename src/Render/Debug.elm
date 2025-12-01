@@ -16,6 +16,7 @@ import Polygon2d
 import Quantity
 import Render.Conversion exposing (pointToPixels, toPixelsValue)
 import Render.Shape
+import Render.Viewport as Viewport exposing (Viewport)
 import Simulation.Car exposing (Car)
 import Simulation.Collision as Collision
 import Simulation.Lot exposing (Lot, ParkingSpot)
@@ -42,19 +43,33 @@ nodeRadius =
     Length.meters 0.8
 
 
-view : World -> RenderCache -> DebugState -> Svg msg
-view world cache debugState =
+view : World -> RenderCache -> DebugState -> Maybe Viewport -> Svg msg
+view world cache debugState maybeViewport =
     let
         tilemapWidth =
             String.fromFloat cache.tilemapWidthPixels
 
         tilemapHeight =
             String.fromFloat cache.tilemapHeightPixels
+
+        ( svgWidth, svgHeight, viewBoxStr ) =
+            case maybeViewport of
+                Just viewport ->
+                    ( String.fromFloat viewport.width
+                    , String.fromFloat viewport.height
+                    , Viewport.toSvgViewBox viewport
+                    )
+
+                Nothing ->
+                    ( tilemapWidth
+                    , tilemapHeight
+                    , "0 0 " ++ tilemapWidth ++ " " ++ tilemapHeight
+                    )
     in
     Svg.svg
-        [ Attributes.width tilemapWidth
-        , Attributes.height tilemapHeight
-        , Attributes.viewBox <| "0 0 " ++ tilemapWidth ++ " " ++ tilemapHeight
+        [ Attributes.width svgWidth
+        , Attributes.height svgHeight
+        , Attributes.viewBox viewBoxStr
         ]
         (debugLayerViews
             world

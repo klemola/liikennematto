@@ -31,7 +31,6 @@ import UI.Button exposing (textButton)
 import UI.Core
     exposing
         ( borderSize
-        , scrollbarAwareOffsetF
         , uiColorText
         , whitespaceRegular
         , whitespaceTight
@@ -73,8 +72,8 @@ devMenu : (DevView -> msg) -> DevView -> Liikennematto -> Element msg
 devMenu onSelectView selectedView model =
     Element.column
         [ Element.alignLeft
-        , Element.moveRight scrollbarAwareOffsetF
-        , Element.moveDown scrollbarAwareOffsetF
+        , Element.moveRight 10
+        , Element.moveDown 10
         , Element.padding whitespaceRegular
         , Element.spacing whitespaceTight
         , Element.width (Element.px 600)

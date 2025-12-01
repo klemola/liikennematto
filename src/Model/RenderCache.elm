@@ -7,6 +7,7 @@ module Model.RenderCache exposing
     , setTileListFilter
     , setTilemapCache
     , setTilemapDebugCache
+    , updatePannableBounds
     )
 
 import Common exposing (applyTuple2)
@@ -24,6 +25,7 @@ import Render.Conversion
         , pointToPixels
         , toPixelsValue
         )
+import Render.Viewport as Viewport
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
@@ -50,6 +52,7 @@ type alias RenderCache =
     , tilemapWidth : Length.Length
     , tilemapHeight : Length.Length
     , tileListFilter : TileListFilter
+    , pannableBounds : Viewport.PannableBounds
     }
 
 
@@ -83,6 +86,21 @@ new { tilemap } =
 
         initialTileListFilter =
             StaticTiles
+
+        initialViewportWidth =
+            720.0
+
+        initialViewportHeight =
+            476.0
+
+        initialBounds =
+            Viewport.calculatePannableBounds
+                { pixelsToMetersRatio = defaultPixelsToMetersRatio
+                , tilemapWidth = tilemapWidthPixels
+                , tilemapHeight = tilemapHeigthPixels
+                , viewportWidth = initialViewportWidth
+                , viewportHeight = initialViewportHeight
+                }
     in
     { pixelsToMetersRatio = defaultPixelsToMetersRatio
     , tilemap =
@@ -98,6 +116,7 @@ new { tilemap } =
     , tilemapWidth = tilemapDimensions.width
     , tilemapHeight = tilemapDimensions.height
     , tileListFilter = initialTileListFilter
+    , pannableBounds = initialBounds
     }
 
 
@@ -129,7 +148,27 @@ setTilemapCache tilemap unsolvedWFCTilemap cache =
 
 setTilemapDebugCache : WFC.Model -> RenderCache -> RenderCache
 setTilemapDebugCache wfcModel cache =
-    { cache | tilemapDebug = tilemapToList debugItemFromTile NoFilter (WFC.toTilemap wfcModel) }
+    { cache
+        | tilemapDebug =
+            tilemapToList
+                debugItemFromTile
+                NoFilter
+                (WFC.toTilemap wfcModel)
+    }
+
+
+updatePannableBounds : Float -> Float -> RenderCache -> RenderCache
+updatePannableBounds viewportWidth viewportHeight cache =
+    { cache
+        | pannableBounds =
+            Viewport.calculatePannableBounds
+                { pixelsToMetersRatio = cache.pixelsToMetersRatio
+                , tilemapWidth = cache.tilemapWidthPixels
+                , tilemapHeight = cache.tilemapHeightPixels
+                , viewportWidth = viewportWidth
+                , viewportHeight = viewportHeight
+                }
+    }
 
 
 refreshTilemapCache : TilemapUpdateResult -> RenderCache -> RenderCache

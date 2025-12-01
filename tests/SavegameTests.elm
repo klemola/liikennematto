@@ -18,7 +18,6 @@ import Tilemap.Cell as Cell exposing (CellCoordinates)
 import Tilemap.Core as Tilemap
 import Tilemap.Tile as Tile
 import Tilemap.TileConfig as TileConfig exposing (LargeTile, TileId)
-import Tilemap.TileInventory as TileInventory
 
 
 suite : Test
@@ -634,16 +633,10 @@ tileInventoryTests =
         [ test "tile inventory lots count is correct after savegame restore"
             (\_ ->
                 let
-                    threeByThreeLotLeftLargeTileId =
-                        114
-
                     inventoryCount tileId world =
                         Dict.get tileId world.tileInventory
                             |> Maybe.withDefault []
                             |> List.length
-
-                    originalCount =
-                        inventoryCount threeByThreeLotLeftLargeTileId Worlds.worldWithSchool
 
                     result =
                         Savegame.encode Worlds.worldWithSchool
@@ -652,6 +645,12 @@ tileInventoryTests =
                 case result of
                     Ok restoredWorld ->
                         let
+                            threeByThreeLotLeftLargeTileId =
+                                114
+
+                            originalCount =
+                                inventoryCount threeByThreeLotLeftLargeTileId Worlds.worldWithSchool
+
                             restoredCount =
                                 inventoryCount threeByThreeLotLeftLargeTileId restoredWorld
 
