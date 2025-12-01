@@ -306,11 +306,19 @@ fromNewGame model =
 
         world =
             initialWorld newGameSeed
+
+        cache =
+            RenderCache.clear model.viewport model.renderCache world
+
+        initialUi =
+            UI.Model.initialModel
     in
     { model
         | world = world
         , wfc = initialDrivenWfc newGameSeed
-        , renderCache = RenderCache.new world
+        , renderCache = cache
         , simulationActive = True
         , debug = initialDebugState
+        , ui = { initialUi | zoomLevel = model.ui.zoomLevel }
+        , viewport = Viewport.centerViewport cache.pannableBounds model.viewport
     }

@@ -4,6 +4,7 @@ module Render.Viewport exposing
     , ViewportConfig
     , applyPanDelta
     , calculatePannableBounds
+    , centerViewport
     , clamp
     , clampWithBounds
     , init
@@ -84,6 +85,14 @@ init config =
     , y = (bounds.minY + bounds.maxY) / 2
     , width = config.viewportWidth
     , height = config.viewportHeight
+    }
+
+
+centerViewport : PannableBounds -> Viewport -> Viewport
+centerViewport bounds viewport =
+    { viewport
+        | x = (bounds.minX + bounds.maxX) / 2
+        , y = (bounds.minY + bounds.maxY) / 2
     }
 
 

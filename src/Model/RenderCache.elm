@@ -2,6 +2,7 @@ module Model.RenderCache exposing
     ( RenderCache
     , Renderable
     , TilemapDebugItem(..)
+    , clear
     , new
     , refreshTilemapCache
     , setTileListFilter
@@ -117,6 +118,47 @@ new { tilemap } =
     , tilemapHeight = tilemapDimensions.height
     , tileListFilter = initialTileListFilter
     , pannableBounds = initialBounds
+    }
+
+
+clear : Viewport.Viewport -> RenderCache -> World -> RenderCache
+clear viewport oldCache { tilemap } =
+    let
+        tilemapDimensions =
+            getTilemapDimensions tilemap
+
+        tilemapWidthPixels =
+            toPixelsValue oldCache.pixelsToMetersRatio tilemapDimensions.width
+
+        tilemapHeigthPixels =
+            toPixelsValue oldCache.pixelsToMetersRatio tilemapDimensions.height
+
+        initialTileListFilter =
+            StaticTiles
+
+        newBounds =
+            Viewport.calculatePannableBounds
+                { pixelsToMetersRatio = oldCache.pixelsToMetersRatio
+                , tilemapWidth = tilemapWidthPixels
+                , tilemapHeight = tilemapHeigthPixels
+                , viewportWidth = viewport.width
+                , viewportHeight = viewport.height
+                }
+    in
+    { pixelsToMetersRatio = oldCache.pixelsToMetersRatio
+    , tilemap =
+        tilemapToList
+            (renderableFromTile tilemapHeigthPixels oldCache.pixelsToMetersRatio)
+            initialTileListFilter
+            tilemap
+    , tilemapDebug = tilemapToList debugItemFromTile NoFilter tilemap
+    , dynamicTiles = []
+    , tilemapWidthPixels = tilemapWidthPixels
+    , tilemapHeightPixels = tilemapHeigthPixels
+    , tilemapWidth = tilemapDimensions.width
+    , tilemapHeight = tilemapDimensions.height
+    , tileListFilter = initialTileListFilter
+    , pannableBounds = newBounds
     }
 
 

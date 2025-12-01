@@ -221,7 +221,7 @@ updateBase msg model =
                     ( { model
                         | world = worldWithResidents
                         , savegame = Just savegameJson
-                        , renderCache = Model.RenderCache.new worldWithResidents
+                        , renderCache = Model.RenderCache.clear model.viewport model.renderCache worldWithResidents
                       }
                     , Cmd.none
                     )
