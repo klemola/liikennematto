@@ -158,17 +158,24 @@ updateBase msg model =
                 nextInitSteps =
                     { initSteps | viewportSizeSet = True }
 
-                nextViewport =
+                unclampedViewport =
                     updateViewportSize
                         (round domViewport.viewport.width)
                         (round domViewport.viewport.height)
                         model
 
+                nextRenderCache =
+                    model.renderCache
+                        |> Model.RenderCache.updatePannableBounds unclampedViewport.width unclampedViewport.height
+
+                nextViewport =
+                    Viewport.clampWithBounds nextRenderCache.pannableBounds unclampedViewport
+
                 ui =
                     model.ui
 
                 nextEditor =
-                    Editor.onViewportChanged model.renderCache nextViewport ui.editor
+                    Editor.onViewportChanged nextRenderCache nextViewport ui.editor
 
                 nextUi =
                     { ui | editor = nextEditor }
@@ -177,6 +184,7 @@ updateBase msg model =
                 | screen = nextScreen
                 , initSteps = nextInitSteps
                 , viewport = nextViewport
+                , renderCache = nextRenderCache
                 , ui = nextUi
               }
             , Cmd.none
@@ -374,7 +382,7 @@ onViewportChanged deltaX deltaY shouldSnap model =
         nextViewport =
             model.viewport
                 |> Viewport.applyPanDelta deltaX deltaY
-                |> Viewport.clamp model.renderCache.pixelsToMetersRatio model.renderCache.tilemapWidthPixels model.renderCache.tilemapHeightPixels
+                |> Viewport.clampWithBounds model.renderCache.pannableBounds
                 |> (if shouldSnap then
                         Viewport.snapToEven
 
@@ -417,16 +425,19 @@ updateViewportSize width height model =
         , x = nextX
         , y = nextY
     }
-        |> Viewport.clamp model.renderCache.pixelsToMetersRatio model.renderCache.tilemapWidthPixels model.renderCache.tilemapHeightPixels
 
 
 onZoomLevelChanged : UI.Model.ZoomLevel -> Liikennematto -> ( Liikennematto, Cmd Message )
 onZoomLevelChanged nextZoomLevel model =
     let
-        nextRenderCache =
+        cacheAfterZoom =
             model.renderCache
                 |> setPixelsToMetersRatio nextZoomLevel
                 |> setTilemapCache model.world.tilemap Nothing
+
+        nextRenderCache =
+            cacheAfterZoom
+                |> Model.RenderCache.updatePannableBounds model.viewport.width model.viewport.height
 
         tilemapSizeChangeX =
             nextRenderCache.tilemapWidthPixels - model.renderCache.tilemapWidthPixels
@@ -440,7 +451,7 @@ onZoomLevelChanged nextZoomLevel model =
             , width = model.viewport.width
             , height = model.viewport.height
             }
-                |> Viewport.clamp nextRenderCache.pixelsToMetersRatio nextRenderCache.tilemapWidthPixels nextRenderCache.tilemapHeightPixels
+                |> Viewport.clampWithBounds nextRenderCache.pannableBounds
 
         ui =
             model.ui

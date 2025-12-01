@@ -120,22 +120,8 @@ assetByName name =
 renderBackground : RenderCache -> Maybe Viewport -> Svg msg
 renderBackground cache maybeViewport =
     let
-        ( viewportWidth, viewportHeight ) =
-            case maybeViewport of
-                Just vp ->
-                    ( vp.width, vp.height )
-
-                Nothing ->
-                    ( cache.tilemapWidthPixels, cache.tilemapHeightPixels )
-
         bounds =
-            Viewport.calculatePannableBounds
-                { pixelsToMetersRatio = cache.pixelsToMetersRatio
-                , tilemapWidth = cache.tilemapWidthPixels
-                , tilemapHeight = cache.tilemapHeightPixels
-                , viewportWidth = viewportWidth
-                , viewportHeight = viewportHeight
-                }
+            cache.pannableBounds
 
         bgWidth =
             cache.tilemapWidthPixels + 2 * bounds.paddingX

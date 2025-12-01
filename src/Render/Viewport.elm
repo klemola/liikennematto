@@ -5,6 +5,7 @@ module Render.Viewport exposing
     , applyPanDelta
     , calculatePannableBounds
     , clamp
+    , clampWithBounds
     , init
     , snapToEven
     , toSvgViewBox
@@ -132,6 +133,21 @@ clamp pixelsToMetersRatio tilemapWidth tilemapHeight viewport =
                 , viewportHeight = viewport.height
                 }
 
+        clampedX =
+            Basics.clamp bounds.minX bounds.maxX viewport.x
+
+        clampedY =
+            Basics.clamp bounds.minY bounds.maxY viewport.y
+    in
+    { viewport
+        | x = clampedX
+        , y = clampedY
+    }
+
+
+clampWithBounds : PannableBounds -> Viewport -> Viewport
+clampWithBounds bounds viewport =
+    let
         clampedX =
             Basics.clamp bounds.minX bounds.maxX viewport.x
 

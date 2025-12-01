@@ -289,7 +289,7 @@ updateViewportSize width height model =
         , x = nextX
         , y = nextY
     }
-        |> RenderViewport.clamp model.cache.pixelsToMetersRatio model.cache.tilemapWidthPixels model.cache.tilemapHeightPixels
+        |> RenderViewport.clampWithBounds model.cache.pannableBounds
 
 
 view : Model -> Html Msg
