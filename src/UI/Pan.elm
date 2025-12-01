@@ -185,15 +185,15 @@ catchDrift state =
         remainingY =
             state.targetY - state.currentY
 
-        newTargetX =
+        nextTargetX =
             state.currentX + (remainingX * (1 - catchFraction))
 
-        newTargetY =
+        nextTargetY =
             state.currentY + (remainingY * (1 - catchFraction))
     in
     { state
-        | targetX = newTargetX
-        , targetY = newTargetY
+        | targetX = nextTargetX
+        , targetY = nextTargetY
     }
 
 
@@ -203,7 +203,7 @@ step duration state =
         deltaTime =
             Duration.inSeconds duration
 
-        ( newX, newVelocityX ) =
+        ( nextX, nextVelocityX ) =
             smoothDamp
                 { current = state.currentX
                 , target = state.targetX
@@ -212,7 +212,7 @@ step duration state =
                 , deltaTime = deltaTime
                 }
 
-        ( newY, newVelocityY ) =
+        ( nextY, nextVelocityY ) =
             smoothDamp
                 { current = state.currentY
                 , target = state.targetY
@@ -222,10 +222,10 @@ step duration state =
                 }
 
         ( snappedX, snappedVelocityX, snappedTargetX ) =
-            snapAxisWithVelocity newX newVelocityX state.targetX
+            snapAxisWithVelocity nextX nextVelocityX state.targetX
 
         ( snappedY, snappedVelocityY, snappedTargetY ) =
-            snapAxisWithVelocity newY newVelocityY state.targetY
+            snapAxisWithVelocity nextY nextVelocityY state.targetY
 
         deltaX =
             snappedX - state.currentX
@@ -233,7 +233,7 @@ step duration state =
         deltaY =
             snappedY - state.currentY
 
-        newState =
+        nextState =
             { state
                 | currentX = snappedX
                 , currentY = snappedY
@@ -243,7 +243,7 @@ step duration state =
                 , velocityY = snappedVelocityY
             }
     in
-    { state = newState
+    { state = nextState
     , delta = { x = deltaX, y = deltaY }
     }
 
@@ -285,12 +285,12 @@ snapTargetToInteger current target =
 
 
 snapAxisWithVelocity : Float -> Float -> Float -> ( Float, Float, Float )
-snapAxisWithVelocity newValue newVelocity targetValue =
-    if abs newVelocity < velocityThreshold then
-        if isCloseToInteger newValue then
+snapAxisWithVelocity nextValue nextVelocity targetValue =
+    if abs nextVelocity < velocityThreshold then
+        if isCloseToInteger nextValue then
             let
                 snapped =
-                    toFloat (round newValue)
+                    toFloat (round nextValue)
             in
             ( snapped, 0, snapped )
 
@@ -305,7 +305,7 @@ snapAxisWithVelocity newValue newVelocity targetValue =
             ( targetValue, 0, targetValue )
 
     else
-        ( newValue, newVelocity, targetValue )
+        ( nextValue, nextVelocity, targetValue )
 
 
 type alias SmoothDampParams =
@@ -338,10 +338,10 @@ smoothDamp params =
         temp =
             (params.currentVelocity + omega * change) * params.deltaTime
 
-        newVelocity =
+        nextVelocity =
             (params.currentVelocity - omega * temp) * exp
 
-        newValue =
+        nextValue =
             params.target + (change + temp) * exp
     in
-    ( newValue, newVelocity )
+    ( nextValue, nextVelocity )

@@ -92,9 +92,9 @@ type Msg
     | OverlayPointerDown Pointer.Event
     | OverlayPointerUp Pointer.Event
     | OverlayPointerCancel Pointer.Event
+    | OverlayWheelEvent WheelEventExtended
     | GlobalPointerUp
     | AnimationFrameReceived Duration
-    | OverlayWheelEvent WheelEventExtended
     | NoOp
 
 
@@ -131,10 +131,8 @@ onViewportChanged : RenderCache -> Viewport -> Model -> Model
 onViewportChanged cache viewport model =
     let
         canPan =
-            cache.tilemapWidthPixels
-                > viewport.width
-                || cache.tilemapHeightPixels
-                > viewport.height
+            (cache.tilemapWidthPixels > viewport.width)
+                || (cache.tilemapHeightPixels > viewport.height)
 
         clearedPanState =
             if canPan then
@@ -210,7 +208,6 @@ update world pixelsToMetersRatio viewport msg model =
 
         OverlayPointerMove event ->
             let
-                -- Update pointer position in cache
                 updatedPointers =
                     if Dict.member event.pointerId model.activePointers then
                         Dict.update event.pointerId
@@ -265,7 +262,6 @@ update world pixelsToMetersRatio viewport msg model =
 
         OverlayPointerDown event ->
             let
-                -- Add to active pointers cache
                 pointerInfo =
                     { event = event
                     , position = pointerPosition event
@@ -310,11 +306,8 @@ update world pixelsToMetersRatio viewport msg model =
 
         OverlayPointerUp event ->
             let
-                -- Remove from active pointers cache
                 updatedPointers =
                     Dict.remove event.pointerId model.activePointers
-
-                -- If panning with 2 fingers and one lifts, end pan
             in
             if model.panState.isDragging && isMiddleButton event then
                 ( { model
@@ -377,7 +370,6 @@ update world pixelsToMetersRatio viewport msg model =
 
         OverlayPointerCancel event ->
             let
-                -- Clear active pointers on cancel
                 clearedPointers =
                     Dict.empty
 
@@ -423,7 +415,8 @@ update world pixelsToMetersRatio viewport msg model =
                                 16.0
 
                             Wheel.DeltaPage ->
-                                800.0
+                                -- Ignore massive delta
+                                0
 
                     deltaX =
                         -wheelEvent.deltaX * scaleFactor

@@ -110,8 +110,8 @@ init _ =
                             RenderViewport.init
                                 { tilemapWidth = cache.tilemapWidthPixels
                                 , tilemapHeight = cache.tilemapHeightPixels
-                                , viewportWidth = 720
-                                , viewportHeight = 476
+                                , viewportWidth = toFloat defaultLimitedWidth
+                                , viewportHeight = toFloat defaultLimitedHeight
                                 , pixelsToMetersRatio = cache.pixelsToMetersRatio
                                 }
                     in

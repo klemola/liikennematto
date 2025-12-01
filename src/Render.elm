@@ -100,7 +100,7 @@ view { cars, roadNetwork, trafficLights } cache maybeViewport =
         , Attributes.viewBox viewBoxStr
         ]
         [ styles
-        , renderBackground cache maybeViewport
+        , renderBackground cache
         , renderTilemapBackground cache
         , Svg.Lazy.lazy renderTilemap cache.tilemap
         , renderDynamicTiles cache
@@ -117,8 +117,8 @@ assetByName name =
         |> Maybe.withDefault ( Svg.g [] [], "" )
 
 
-renderBackground : RenderCache -> Maybe Viewport -> Svg msg
-renderBackground cache maybeViewport =
+renderBackground : RenderCache -> Svg msg
+renderBackground cache =
     let
         bounds =
             cache.pannableBounds

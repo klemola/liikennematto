@@ -64,23 +64,11 @@ calculatePannableBounds config =
 
         paddingY =
             max minPaddingPixels paddingYForViewport
-
-        minX =
-            -paddingX
-
-        maxX =
-            config.tilemapWidth + paddingX - config.viewportWidth
-
-        minY =
-            -paddingY
-
-        maxY =
-            config.tilemapHeight + paddingY - config.viewportHeight
     in
-    { minX = minX
-    , maxX = maxX
-    , minY = minY
-    , maxY = maxY
+    { minX = -paddingX
+    , maxX = config.tilemapWidth + paddingX - config.viewportWidth
+    , minY = -paddingY
+    , maxY = config.tilemapHeight + paddingY - config.viewportHeight
     , paddingX = paddingX
     , paddingY = paddingY
     }
@@ -91,15 +79,9 @@ init config =
     let
         bounds =
             calculatePannableBounds config
-
-        initialX =
-            (bounds.minX + bounds.maxX) / 2
-
-        initialY =
-            (bounds.minY + bounds.maxY) / 2
     in
-    { x = initialX
-    , y = initialY
+    { x = (bounds.minX + bounds.maxX) / 2
+    , y = (bounds.minY + bounds.maxY) / 2
     , width = config.viewportWidth
     , height = config.viewportHeight
     }
@@ -132,31 +114,18 @@ clamp pixelsToMetersRatio tilemapWidth tilemapHeight viewport =
                 , viewportWidth = viewport.width
                 , viewportHeight = viewport.height
                 }
-
-        clampedX =
-            Basics.clamp bounds.minX bounds.maxX viewport.x
-
-        clampedY =
-            Basics.clamp bounds.minY bounds.maxY viewport.y
     in
     { viewport
-        | x = clampedX
-        , y = clampedY
+        | x = Basics.clamp bounds.minX bounds.maxX viewport.x
+        , y = Basics.clamp bounds.minY bounds.maxY viewport.y
     }
 
 
 clampWithBounds : PannableBounds -> Viewport -> Viewport
 clampWithBounds bounds viewport =
-    let
-        clampedX =
-            Basics.clamp bounds.minX bounds.maxX viewport.x
-
-        clampedY =
-            Basics.clamp bounds.minY bounds.maxY viewport.y
-    in
     { viewport
-        | x = clampedX
-        , y = clampedY
+        | x = Basics.clamp bounds.minX bounds.maxX viewport.x
+        , y = Basics.clamp bounds.minY bounds.maxY viewport.y
     }
 
 
