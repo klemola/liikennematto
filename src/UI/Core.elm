@@ -10,6 +10,7 @@ module UI.Core exposing
     , overlayId
     , uiColorBorder
     , uiColorText
+    , whitespaceCondensed
     , whitespaceRegular
     , whitespaceTight
     )
@@ -42,6 +43,11 @@ overlayId =
 whitespaceRegular : Int
 whitespaceRegular =
     10
+
+
+whitespaceCondensed : Int
+whitespaceCondensed =
+    8
 
 
 whitespaceTight : Int

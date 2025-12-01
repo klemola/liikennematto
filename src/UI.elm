@@ -35,7 +35,7 @@ import UI.Core
         , containerId
         , uiColorBorder
         , uiColorText
-        , whitespaceRegular
+        , whitespaceCondensed
         , whitespaceTight
         )
 import UI.Editor as Editor
@@ -425,6 +425,9 @@ fontSizeSectionHeading =
 menu : Model.Debug.DebugState -> UI -> Element Msg
 menu debugState model =
     let
+        menuWidthPx =
+            208
+
         contentSpacingPx =
             24
 
@@ -437,7 +440,7 @@ menu debugState model =
             , Element.paddingEach
                 { top = 32
                 , right = 10
-                , bottom = 16
+                , bottom = 12
                 , left = 10
                 }
             , Border.widthEach
@@ -447,31 +450,39 @@ menu debugState model =
     Element.column
         [ Element.alignTop
         , Element.alignRight
-        , Element.width (Element.px 208)
+        , Element.width (Element.px menuWidthPx)
         , Element.height Element.shrink
         , Element.clipY
-        , Element.moveDown 10
-        , Element.moveLeft 10
         , Background.color menuBackgroundColor
-        , Border.rounded borderRadiusMenuPx
+        , Border.roundEach
+            { topLeft = 0
+            , topRight = 0
+            , bottomLeft = borderRadiusMenuPx
+            , bottomRight = 0
+            }
         , Border.color uiColorBorder
-        , Border.width borderSize
+        , Border.widthEach
+            { top = 0
+            , right = 0
+            , bottom = borderSize
+            , left = borderSize
+            }
         ]
         [ Element.row
             [ Element.spacing whitespaceTight
-            , Element.padding whitespaceRegular
+            , Element.padding whitespaceCondensed
             , Element.width Element.fill
             , Background.color menuBackgroundColorAlt
             , if model.showMenu then
-                Border.roundEach
-                    { topLeft = borderRadiusMenuPx
-                    , topRight = borderRadiusMenuPx
-                    , bottomLeft = 0
-                    , bottomRight = 0
-                    }
+                Border.rounded 0
 
               else
-                Border.rounded borderRadiusMenuPx
+                Border.roundEach
+                    { topLeft = 0
+                    , topRight = 0
+                    , bottomLeft = borderRadiusMenuPx
+                    , bottomRight = 0
+                    }
             ]
             [ Element.el [ Element.alignRight ]
                 (iconButton
@@ -561,7 +572,7 @@ menu debugState model =
 menuSectionAttrs : List (Element.Attribute msg)
 menuSectionAttrs =
     [ Element.width Element.fill
-    , Element.padding 8
+    , Element.padding whitespaceCondensed
     , Element.spacing menuButtonSpacingPx
     , Background.color menuBackgroundColorAlt
     , Border.rounded borderRadiusMenuPx
