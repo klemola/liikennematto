@@ -3,9 +3,7 @@ module UI.Core exposing
     , borderSize
     , cellHighlightWidth
     , colorDanger
-    , colorMainBackground
     , colorNotAllowed
-    , colorRenderEdge
     , colorTarget
     , colorTransparent
     , containerId
@@ -67,11 +65,6 @@ cellHighlightWidth =
 --
 
 
-colorMainBackground : Element.Color
-colorMainBackground =
-    uiCompat Colors.lightGreen
-
-
 uiColorText : Element.Color
 uiColorText =
     Element.rgb255 40 52 72
@@ -100,8 +93,3 @@ colorTarget =
 colorTransparent : Element.Color
 colorTransparent =
     Element.rgba255 0 0 0 0
-
-
-colorRenderEdge : Element.Color
-colorRenderEdge =
-    uiCompat Colors.darkGreen

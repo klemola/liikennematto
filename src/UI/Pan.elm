@@ -222,48 +222,10 @@ step duration state =
                 }
 
         ( snappedX, snappedVelocityX, snappedTargetX ) =
-            if abs newVelocityX < velocityThreshold then
-                if isCloseToInteger newX then
-                    let
-                        snapped =
-                            toFloat (round newX)
-                    in
-                    ( snapped, 0, snapped )
-
-                else if isCloseToInteger state.targetX then
-                    let
-                        snapped =
-                            toFloat (round state.targetX)
-                    in
-                    ( snapped, 0, snapped )
-
-                else
-                    ( state.targetX, 0, state.targetX )
-
-            else
-                ( newX, newVelocityX, state.targetX )
+            snapAxisWithVelocity newX newVelocityX state.targetX
 
         ( snappedY, snappedVelocityY, snappedTargetY ) =
-            if abs newVelocityY < velocityThreshold then
-                if isCloseToInteger newY then
-                    let
-                        snapped =
-                            toFloat (round newY)
-                    in
-                    ( snapped, 0, snapped )
-
-                else if isCloseToInteger state.targetY then
-                    let
-                        snapped =
-                            toFloat (round state.targetY)
-                    in
-                    ( snapped, 0, snapped )
-
-                else
-                    ( state.targetY, 0, state.targetY )
-
-            else
-                ( newY, newVelocityY, state.targetY )
+            snapAxisWithVelocity newY newVelocityY state.targetY
 
         deltaX =
             snappedX - state.currentX
@@ -320,6 +282,30 @@ snapTargetToInteger current target =
 
     else
         target
+
+
+snapAxisWithVelocity : Float -> Float -> Float -> ( Float, Float, Float )
+snapAxisWithVelocity newValue newVelocity targetValue =
+    if abs newVelocity < velocityThreshold then
+        if isCloseToInteger newValue then
+            let
+                snapped =
+                    toFloat (round newValue)
+            in
+            ( snapped, 0, snapped )
+
+        else if isCloseToInteger targetValue then
+            let
+                snapped =
+                    toFloat (round targetValue)
+            in
+            ( snapped, 0, snapped )
+
+        else
+            ( targetValue, 0, targetValue )
+
+    else
+        ( newValue, newVelocity, targetValue )
 
 
 type alias SmoothDampParams =

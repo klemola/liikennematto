@@ -255,8 +255,7 @@ initial flags =
 
                 Nothing ->
                     ( initialWorld initialSeed, Nothing )
-    in
-    let
+
         initialRenderCache =
             RenderCache.new world
 

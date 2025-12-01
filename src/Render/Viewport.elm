@@ -1,12 +1,12 @@
 module Render.Viewport exposing
     ( PannableBounds
     , Viewport
+    , ViewportConfig
     , applyPanDelta
     , calculatePannableBounds
     , clamp
     , init
     , snapToEven
-    , snapToInteger
     , toSvgViewBox
     )
 
@@ -112,14 +112,6 @@ applyPanDelta deltaX deltaY viewport =
     }
 
 
-snapToInteger : Viewport -> Viewport
-snapToInteger viewport =
-    { viewport
-        | x = toFloat (round viewport.x)
-        , y = toFloat (round viewport.y)
-    }
-
-
 snapToEven : Viewport -> Viewport
 snapToEven viewport =
     { viewport
@@ -154,10 +146,9 @@ clamp pixelsToMetersRatio tilemapWidth tilemapHeight viewport =
 
 toSvgViewBox : Viewport -> String
 toSvgViewBox vb =
-    String.fromFloat vb.x
-        ++ " "
-        ++ String.fromFloat vb.y
-        ++ " "
-        ++ String.fromFloat vb.width
-        ++ " "
-        ++ String.fromFloat vb.height
+    String.join " "
+        [ String.fromFloat vb.x
+        , String.fromFloat vb.y
+        , String.fromFloat vb.width
+        , String.fromFloat vb.height
+        ]

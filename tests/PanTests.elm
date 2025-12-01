@@ -1,4 +1,4 @@
-module PanTests exposing (..)
+module PanTests exposing (suite)
 
 import Duration
 import Expect

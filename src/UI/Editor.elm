@@ -3,6 +3,7 @@ module UI.Editor exposing
     , InputEvent
     , Model
     , Msg
+    , PointerInfo
     , initialModel
     , onViewportChanged
     , subscriptions
@@ -314,19 +315,6 @@ update world pixelsToMetersRatio viewport msg model =
                     Dict.remove event.pointerId model.activePointers
 
                 -- If panning with 2 fingers and one lifts, end pan
-                shouldEndTwoFingerPan =
-                    model.panState.isDragging
-                        && model.lastEventDevice
-                        == Pointer.TouchType
-                        && Dict.size updatedPointers
-                        < 2
-
-                updatedPanState =
-                    if shouldEndTwoFingerPan then
-                        Pan.releaseDrag model.panState
-
-                    else
-                        model.panState
             in
             if model.panState.isDragging && isMiddleButton event then
                 ( { model
@@ -338,6 +326,18 @@ update world pixelsToMetersRatio viewport msg model =
 
             else
                 let
+                    shouldEndTwoFingerPan =
+                        model.panState.isDragging
+                            && (model.lastEventDevice == Pointer.TouchType)
+                            && (Dict.size updatedPointers < 2)
+
+                    updatedPanState =
+                        if shouldEndTwoFingerPan then
+                            Pan.releaseDrag model.panState
+
+                        else
+                            model.panState
+
                     baseModel =
                         { model
                             | activePointers = updatedPointers
@@ -624,27 +624,27 @@ pointerEventToCell pixelsToMetersRatio viewport constraints event =
             event.pointer.offsetPos
 
         cellMetersValue =
-            Quantity.unwrap Cell.size
+            Length.inMeters Cell.size
 
         viewportOffsetXMeters =
             viewport.x
                 |> Render.Conversion.toMetersValue pixelsToMetersRatio
-                |> Quantity.unwrap
+                |> Length.inMeters
 
         viewportOffsetYMeters =
             viewport.y
                 |> Render.Conversion.toMetersValue pixelsToMetersRatio
-                |> Quantity.unwrap
+                |> Length.inMeters
 
         overlayXMetersValue =
             overlayX
                 |> Render.Conversion.toMetersValue pixelsToMetersRatio
-                |> Quantity.unwrap
+                |> Length.inMeters
 
         overlayYMetersValue =
             overlayY
                 |> Render.Conversion.toMetersValue pixelsToMetersRatio
-                |> Quantity.unwrap
+                |> Length.inMeters
 
         worldX =
             overlayXMetersValue + viewportOffsetXMeters
@@ -749,9 +749,6 @@ view cache viewport world model =
                     (Html.Attributes.style "cursor"
                         (if model.panState.isDragging then
                             "grabbing"
-
-                         else if model.panEnabled then
-                            "grab"
 
                          else
                             "auto"

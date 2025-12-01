@@ -23,7 +23,6 @@ import UI.Pan as Pan
 
 type Msg
     = EditorMsg Editor.Msg
-    | InputReceived Editor.InputEvent
     | BrowserResized Int Int
     | WindowResized Viewport
     | ViewportModeToggled
@@ -176,9 +175,6 @@ update msg model =
             ( { model | editor = editorModel, viewport = nextViewport }
             , Cmd.none
             )
-
-        InputReceived _ ->
-            ( model, Cmd.none )
 
         WindowResized domViewport ->
             let
