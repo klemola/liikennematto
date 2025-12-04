@@ -239,6 +239,9 @@ updateBase msg model =
                 ( nextUi, uiCmd, uiEvent ) =
                     UI.update model.world model.renderCache.pixelsToMetersRatio model.viewport uiMsg model.ui
 
+                modelWithNextUi =
+                    { model | ui = nextUi }
+
                 ( modelWithUiEvent, uiEventCmd ) =
                     case uiEvent of
                         Just event ->
@@ -246,34 +249,34 @@ updateBase msg model =
                                 UI.GameInputReceived inputEvent ->
                                     case inputEvent.kind of
                                         UI.Core.Primary ->
-                                            Tilemap.onPrimaryInput inputEvent.cell model
+                                            Tilemap.onPrimaryInput inputEvent.cell modelWithNextUi
 
                                         UI.Core.Secondary ->
-                                            Tilemap.onSecondaryInput inputEvent.cell model
+                                            Tilemap.onSecondaryInput inputEvent.cell modelWithNextUi
 
                                 UI.ButtonPressed buttonId ->
-                                    onUiButtonPressed buttonId model
+                                    onUiButtonPressed buttonId modelWithNextUi
 
                                 UI.ZoomLevelChanged zoomLevel ->
-                                    onZoomLevelChanged zoomLevel model
+                                    onZoomLevelChanged zoomLevel modelWithNextUi
 
                                 UI.ViewportChanged deltaX deltaY shouldSnap ->
-                                    onViewportChanged deltaX deltaY shouldSnap model
+                                    onViewportChanged deltaX deltaY shouldSnap modelWithNextUi
 
                                 UI.DevViewSelected devView ->
-                                    ( { model
+                                    ( { modelWithNextUi
                                         | debug =
                                             Model.Debug.setLayer Model.Debug.WFCDebug
                                                 (devView == UI.Model.WFCOverview)
-                                                model.debug
+                                                modelWithNextUi.debug
                                       }
                                     , Cmd.none
                                     )
 
                         Nothing ->
-                            ( model, Cmd.none )
+                            ( modelWithNextUi, Cmd.none )
             in
-            ( { modelWithUiEvent | ui = nextUi }
+            ( modelWithUiEvent
             , Cmd.batch
                 [ uiEventCmd
                 , uiCmd |> Cmd.map UIMsg
@@ -340,10 +343,14 @@ onUiButtonPressed : UI.Model.ButtonKind -> Liikennematto -> ( Liikennematto, Cmd
 onUiButtonPressed buttonId model =
     case buttonId of
         UI.Model.PauseSimulation ->
-            ( { model | simulationActive = False }, Cmd.none )
+            ( { model | simulationActive = False }
+            , Cmd.none
+            )
 
         UI.Model.ResumeSimulation ->
-            ( { model | simulationActive = True }, Cmd.none )
+            ( { model | simulationActive = True }
+            , Cmd.none
+            )
 
         UI.Model.NewGame ->
             let
