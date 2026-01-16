@@ -44,7 +44,10 @@ type ParkingRestriction
 allLots : List NewLot
 allLots =
     [ residentialSingle1
+    , residentialSingle2
     , residentialRow1
+    , residentialRow2
+    , residentialRow3
     , residentialApartments1
     , school
     , cafe
@@ -52,6 +55,8 @@ allLots =
     , park1
     , concertVenue
     , flowerShop
+    , iceCreamStand
+    , hotel
     ]
 
 
@@ -267,4 +272,106 @@ flowerShop =
     , residents =
         [ Cars.sedan Colors.pink Colors.pinkDarker
         ]
+    }
+
+
+residentialSingle2 : NewLot
+residentialSingle2 =
+    { id = 10
+    , name = "LotResidentialSingle2"
+    , horizontalTilesAmount = 2
+    , verticalTilesAmount = 2
+    , parkingSpotExitDirection = Left
+    , parkingSpots =
+        [ residentParking <| Point2d.fromMeters { x = 14.125, y = 3.125 }
+        , residentParking <| Point2d.fromMeters { x = 14.125, y = 7.75 }
+        ]
+    , entryDirection = Right
+    , parkingLaneStartPoint = Point2d.fromMeters { x = 10.75, y = 3.75 }
+    , parkingLaneStartDirection = Right
+    , residents =
+        [ Cars.sedan Colors.yellow Colors.yellowDarker
+        ]
+    }
+
+
+residentialRow2 : NewLot
+residentialRow2 =
+    { id = 11
+    , name = "LotResidentialRow2"
+    , horizontalTilesAmount = 3
+    , verticalTilesAmount = 2
+    , parkingSpotExitDirection = Right
+    , parkingSpots =
+        [ noRestrictions <| Point2d.fromMeters { x = 35.375, y = 3.125 }
+        , noRestrictions <| Point2d.fromMeters { x = 35.375, y = 7.75 }
+        ]
+    , entryDirection = Left
+    , parkingLaneStartPoint = Point2d.fromMeters { x = 37.25, y = 3.75 }
+    , parkingLaneStartDirection = Left
+    , residents =
+        [ Cars.hatchback Colors.red Colors.redDarker
+        ]
+    }
+
+
+residentialRow3 : NewLot
+residentialRow3 =
+    { id = 12
+    , name = "LotResidentialRow3"
+    , horizontalTilesAmount = 3
+    , verticalTilesAmount = 3
+    , parkingSpotExitDirection = Down
+    , parkingSpots =
+        [ residentParking <| Point2d.fromMeters { x = 24.375, y = 9.125 }
+        , noRestrictions <| Point2d.fromMeters { x = 28.8125, y = 9.125 }
+        , noRestrictions <| Point2d.fromMeters { x = 33.375, y = 9.125 }
+        , noRestrictions <| Point2d.fromMeters { x = 37.875, y = 9.125 }
+        ]
+    , entryDirection = Left
+    , parkingLaneStartPoint = Point2d.fromMeters { x = 40.5, y = 3.75 }
+    , parkingLaneStartDirection = Left
+    , residents =
+        [ Cars.hatchback Colors.darkBlue Colors.darkBlueDarker
+        ]
+    }
+
+
+iceCreamStand : NewLot
+iceCreamStand =
+    { id = 13
+    , name = "LotIceCreamStand"
+    , horizontalTilesAmount = 2
+    , verticalTilesAmount = 2
+    , parkingSpotExitDirection = Down
+    , parkingSpots =
+        [ noRestrictions <| Point2d.fromMeters { x = 9.75, y = 9.125 }
+        , noRestrictions <| Point2d.fromMeters { x = 14.25, y = 9.125 }
+        , noRestrictions <| Point2d.fromMeters { x = 18.6875, y = 9.125 }
+        ]
+    , entryDirection = Right
+    , parkingLaneStartPoint = Point2d.fromMeters { x = 7.5, y = 3.75 }
+    , parkingLaneStartDirection = Right
+    , residents = []
+    }
+
+
+hotel : NewLot
+hotel =
+    { id = 14
+    , name = "LotHotel"
+    , horizontalTilesAmount = 3
+    , verticalTilesAmount = 3
+    , parkingSpotExitDirection = Down
+    , parkingSpots =
+        [ noRestrictions <| Point2d.fromMeters { x = 19.875, y = 9.125 }
+        , noRestrictions <| Point2d.fromMeters { x = 24.375, y = 9.125 }
+        , noRestrictions <| Point2d.fromMeters { x = 28.8125, y = 9.125 }
+        , noRestrictions <| Point2d.fromMeters { x = 33.375, y = 9.125 }
+        , noRestrictions <| Point2d.fromMeters { x = 37.875, y = 9.125 }
+        ]
+    , entryDirection = Left
+    , parkingLaneStartPoint = Point2d.fromMeters { x = 40.5, y = 3.75 }
+    , parkingLaneStartDirection = Left
+    , residents = []
     }

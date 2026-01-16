@@ -187,6 +187,9 @@ allTiles =
     , threeByTwoLotUp
     , threeByTwoLotLeft
     , twoByThreeLotUp
+    , twoByTwoLotLeft
+    , threeByTwoLotRight
+    , threeByThreeLotRight
 
     --
     , natureSingle1
@@ -1371,6 +1374,92 @@ twoByThreeLotUp =
         , anchorIndex = 4
         , entryDirection = Just OrthogonalDirection.Up
         }
+
+
+twoByTwoLotLeft : TileConfig
+twoByTwoLotLeft =
+    TileConfig.Large twoByTwoLotLeftLargeTile
+
+
+twoByTwoLotLeftLargeTile : LargeTile
+twoByTwoLotLeftLargeTile =
+    { id = 118
+    , name = "TwoByTwoLotLeft"
+    , weight = 1.0
+    , biome = TileConfig.Lot
+    , tiles =
+        Array.fromList
+            [ lotTopLeftCorner
+            , lotTopRightCorner
+
+            --
+            , lotDrivewayLeft
+            , lotBottomRightCorner
+            ]
+    , width = 2
+    , height = 2
+    , anchorIndex = 2
+    , entryDirection = Just OrthogonalDirection.Right
+    }
+
+
+threeByTwoLotRight : TileConfig
+threeByTwoLotRight =
+    TileConfig.Large
+        { id = 119
+        , name = "ThreeByTwoLotRight"
+        , weight = 1.0
+        , biome = TileConfig.Lot
+        , tiles =
+            Array.fromList
+                [ lotTopLeftCorner
+                , lotTopEdge
+                , lotTopRightCorner
+
+                --
+                , lotBottomLeftCorner
+                , lotBottomEdge
+                , lotDrivewayRight
+                ]
+        , width = 3
+        , height = 2
+        , anchorIndex = 5
+        , entryDirection = Just OrthogonalDirection.Left
+        }
+
+
+threeByThreeLotRight : TileConfig
+threeByThreeLotRight =
+    TileConfig.Large threeByThreeLotRightLargeTile
+
+
+threeByThreeLotRightLargeTile : LargeTile
+threeByThreeLotRightLargeTile =
+    { id = 120
+    , name = "ThreeByThreeLotRight"
+    , weight = 1.0
+    , biome = TileConfig.Lot
+    , tiles =
+        Array.fromList
+            [ lotTopLeftCorner
+            , lotTopEdge
+            , lotTopRightCorner
+
+            --
+            , lotLeftEdge
+            , lotInnerSpace
+            , lotRightEdge
+
+            --
+            , lotBottomLeftCorner
+            , lotBottomEdge
+            , lotDrivewayRight
+            ]
+    , width = 3
+    , height = 3
+    , anchorIndex = 8
+    , entryDirection = Just OrthogonalDirection.Left
+    }
 
 
 
