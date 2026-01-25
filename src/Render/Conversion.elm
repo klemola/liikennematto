@@ -19,7 +19,7 @@ type alias PixelsToMetersRatio =
 
 defaultPixelsToMetersRatio : PixelsToMetersRatio
 defaultPixelsToMetersRatio =
-    Pixels.pixels 6 |> Quantity.per (Length.meters 1)
+    Pixels.pixels 16 |> Quantity.per (Length.meters 1)
 
 
 toPixelsValue : PixelsToMetersRatio -> Length -> Float

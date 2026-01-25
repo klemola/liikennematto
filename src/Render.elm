@@ -95,8 +95,8 @@ view { cars, roadNetwork, trafficLights } cache maybeViewport =
                     )
     in
     Svg.svg
-        [ Attributes.width svgWidth
-        , Attributes.height svgHeight
+        [ Attributes.width tilemapWidth
+        , Attributes.height tilemapHeight
         , Attributes.viewBox viewBoxStr
         ]
         [ styles
@@ -367,13 +367,7 @@ tileElement renderable groupAttrs =
     in
     Svg.g
         groupAttrs
-        [ Svg.svg
-            [ Attributes.width (String.fromInt renderable.width)
-            , Attributes.height (String.fromInt renderable.height)
-            , Attributes.fill "none"
-            , Attributes.viewBox viewBox
-            ]
-            [ asset ]
+        [ asset
         ]
 
 
@@ -541,13 +535,7 @@ renderCar cache position orientation make =
             |> String.join " "
             |> Attributes.style
         ]
-        [ Svg.svg
-            [ Attributes.width (String.fromFloat carLengthPixels)
-            , Attributes.height (String.fromFloat carWidthPixels)
-            , Attributes.fill "none"
-            , Attributes.viewBox viewBox
-            ]
-            [ asset ]
+        [ asset
         ]
 
 
@@ -627,7 +615,7 @@ renderYieldSign : RenderCache -> Node Connection -> Svg msg
 renderYieldSign cache node =
     let
         size =
-            toPixelsValue cache.pixelsToMetersRatio signDiameter
+            64
 
         sizeStr =
             String.fromFloat size
@@ -642,12 +630,5 @@ renderYieldSign cache node =
             assetByName "TrafficSignYield"
     in
     Svg.g [ Attributes.transform translateStr ]
-        [ Svg.svg
-            [ Attributes.width sizeStr
-            , Attributes.height sizeStr
-            , Attributes.viewBox viewBox
-            , Attributes.fill "none"
-            ]
-            [ asset
-            ]
+        [ asset
         ]
