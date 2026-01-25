@@ -5,6 +5,7 @@ import Element
 import Html exposing (Html)
 import Model.Debug
 import Model.RenderCache as RenderCache
+import Model.Screen as Screen
 import Render
 import Render.Debug
 
@@ -24,6 +25,10 @@ main =
         renderHeight =
             floor cache.tilemapHeightPixels
 
+        -- For devtools, use tilemap size as screen (no scaling)
+        screen =
+            Screen.fromDimensions renderWidth renderHeight
+
         renderDebug =
             Render.Debug.view
                 world
@@ -33,10 +38,11 @@ main =
                     |> Model.Debug.toggleLayer Model.Debug.RoadNetworkDebug
                     |> Model.Debug.toggleLayer Model.Debug.WFCDebug
                 )
+                screen
                 Nothing
                 |> Element.html
     in
-    Render.view world cache Nothing
+    Render.view world cache screen Nothing
         |> Element.html
         |> Element.el
             [ Element.width (Element.px renderWidth)

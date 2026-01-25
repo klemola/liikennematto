@@ -22,6 +22,7 @@ import Lib.SeedState as SeedState
 import List.Extra
 import Model.Debug
 import Model.RenderCache as RenderCache
+import Model.Screen as Screen
 import Model.World as World
 import Process
 import Random
@@ -295,8 +296,13 @@ update msg model =
                         , pixelsToMetersRatio = model.cache.pixelsToMetersRatio
                         }
 
+                screen =
+                    Screen.fromDimensions
+                        (floor model.cache.tilemapWidthPixels)
+                        (floor model.cache.tilemapHeightPixels)
+
                 ( editorModel, effects ) =
-                    Editor.update model.world model.cache.pixelsToMetersRatio defaultViewport editorMsg model.editor
+                    Editor.update model.world model.cache.pixelsToMetersRatio defaultViewport screen editorMsg model.editor
 
                 inputEvent =
                     effects
@@ -331,6 +337,9 @@ view model =
         renderHeight =
             floor model.cache.tilemapHeightPixels
 
+        screen =
+            Screen.fromDimensions renderWidth renderHeight
+
         renderDebug =
             Render.Debug.view
                 model.world
@@ -338,11 +347,12 @@ view model =
                 (Model.Debug.initialDebugState
                     |> Model.Debug.toggleLayer Model.Debug.WFCDebug
                 )
+                screen
                 Nothing
                 |> Element.html
 
         render =
-            Render.view model.world model.cache Nothing
+            Render.view model.world model.cache screen Nothing
                 |> Element.html
                 |> Element.el
                     [ Element.width (Element.px renderWidth)
@@ -361,6 +371,7 @@ view model =
                                 , pixelsToMetersRatio = model.cache.pixelsToMetersRatio
                                 }
                             )
+                            screen
                             model.world
                             model.editor
                             |> Element.map EditorMsg

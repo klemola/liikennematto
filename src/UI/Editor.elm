@@ -29,6 +29,7 @@ import Html.Events.Extra.Wheel as Wheel
 import Json.Decode as Decode
 import Length exposing (Meters)
 import Model.RenderCache exposing (RenderCache)
+import Model.Screen exposing (Screen)
 import Model.World exposing (World)
 import Point2d exposing (Point2d)
 import Quantity
@@ -173,8 +174,8 @@ subscriptions model =
 -- Update
 
 
-update : World -> PixelsToMetersRatio -> Viewport -> Msg -> Model -> ( Model, List EditorEffect )
-update world pixelsToMetersRatio viewport msg model =
+update : World -> PixelsToMetersRatio -> Viewport -> Screen -> Msg -> Model -> ( Model, List EditorEffect )
+update world pixelsToMetersRatio viewport screen msg model =
     let
         tilemapConfig =
             getTilemapConfig world.tilemap
@@ -234,6 +235,7 @@ update world pixelsToMetersRatio viewport msg model =
                     pointerEventToCell
                         pixelsToMetersRatio
                         viewport
+                        screen
                         tilemapConfig
                         event
                 of
@@ -284,7 +286,7 @@ update world pixelsToMetersRatio viewport msg model =
                 ( updatedModel, [] )
 
             else
-                case pointerEventToCell pixelsToMetersRatio viewport tilemapConfig event of
+                case pointerEventToCell pixelsToMetersRatio viewport screen tilemapConfig event of
                     Just eventCell ->
                         let
                             cellHasRoadTile =
@@ -343,13 +345,13 @@ update world pixelsToMetersRatio viewport msg model =
                     ( baseModel, [] )
 
                 else
-                    case pointerEventToCell pixelsToMetersRatio viewport tilemapConfig event of
+                    case pointerEventToCell pixelsToMetersRatio viewport screen tilemapConfig event of
                         Just pointerUpCell ->
                             let
                                 pointerDownCell =
                                     model.pointerDownEvent
                                         |> Maybe.andThen
-                                            (pointerEventToCell pixelsToMetersRatio viewport tilemapConfig)
+                                            (pointerEventToCell pixelsToMetersRatio viewport screen tilemapConfig)
 
                                 inputEvent =
                                     resolvePointerUp
@@ -610,11 +612,24 @@ selectCell event eventCell hasRoadTile world initialEditor =
            )
 
 
-pointerEventToCell : PixelsToMetersRatio -> Viewport -> TilemapConfig -> Pointer.Event -> Maybe Cell
-pointerEventToCell pixelsToMetersRatio viewport constraints event =
+pointerEventToCell : PixelsToMetersRatio -> Viewport -> Screen -> TilemapConfig -> Pointer.Event -> Maybe Cell
+pointerEventToCell pixelsToMetersRatio viewport screen constraints event =
     let
-        ( overlayX, overlayY ) =
+        ( screenX, screenY ) =
             event.pointer.offsetPos
+
+        -- Scale screen coordinates to viewBox coordinates
+        scaleX =
+            viewport.width / toFloat screen.width
+
+        scaleY =
+            viewport.height / toFloat screen.height
+
+        viewBoxX =
+            screenX * scaleX
+
+        viewBoxY =
+            screenY * scaleY
 
         cellMetersValue =
             Length.inMeters Cell.size
@@ -629,21 +644,21 @@ pointerEventToCell pixelsToMetersRatio viewport constraints event =
                 |> Render.Conversion.toMetersValue pixelsToMetersRatio
                 |> Length.inMeters
 
-        overlayXMetersValue =
-            overlayX
+        viewBoxXMeters =
+            viewBoxX
                 |> Render.Conversion.toMetersValue pixelsToMetersRatio
                 |> Length.inMeters
 
-        overlayYMetersValue =
-            overlayY
+        viewBoxYMeters =
+            viewBoxY
                 |> Render.Conversion.toMetersValue pixelsToMetersRatio
                 |> Length.inMeters
 
         worldX =
-            overlayXMetersValue + viewportOffsetXMeters
+            viewBoxXMeters + viewportOffsetXMeters
 
         worldY =
-            overlayYMetersValue + viewportOffsetYMeters
+            viewBoxYMeters + viewportOffsetYMeters
 
         coordinates =
             ( 1 + floor (worldX / cellMetersValue)
@@ -686,8 +701,8 @@ resolvePointerUp pointerDownCell pointerUpCell pointerUpEvent model =
 -- Views
 
 
-view : RenderCache -> Viewport -> World -> Model -> Element Msg
-view cache viewport world model =
+view : RenderCache -> Viewport -> Screen -> World -> Model -> Element Msg
+view cache viewport screen world model =
     Element.el
         [ Element.width Element.fill
         , Element.height Element.fill
@@ -704,7 +719,7 @@ view cache viewport world model =
                     , Element.inFront
                         (case model.highlightArea of
                             Just area ->
-                                highlightAreaView cache viewport area
+                                highlightAreaView cache viewport screen area
 
                             Nothing ->
                                 Element.none
@@ -713,7 +728,7 @@ view cache viewport world model =
                     (case model.activeCell of
                         Just cell ->
                             if model.lastEventDevice == Pointer.MouseType && not model.panState.isDragging then
-                                cellHighlight cache viewport world cell
+                                cellHighlight cache viewport screen world cell
 
                             else
                                 case model.longPressTimer of
@@ -761,23 +776,44 @@ view cache viewport world model =
         Element.none
 
 
-cellHighlight : RenderCache -> Viewport -> World -> Cell -> Element Msg
-cellHighlight cache viewport world activeCell =
+cellHighlight : RenderCache -> Viewport -> Screen -> World -> Cell -> Element Msg
+cellHighlight cache viewport screen world activeCell =
     let
+        -- Scale factor from viewBox-space to screen-space
+        scaleX =
+            toFloat screen.width / viewport.width
+
+        scaleY =
+            toFloat screen.height / viewport.height
+
         tileSizePixels =
             Render.Conversion.toPixelsValue cache.pixelsToMetersRatio Cell.size
 
         ( cellX, cellY ) =
             Cell.coordinates activeCell
 
-        cellSize =
-            Element.px (floor tileSizePixels)
+        -- Position in viewBox coordinates
+        viewBoxX =
+            toFloat (cellX - 1) * tileSizePixels - viewport.x
+
+        viewBoxY =
+            toFloat (cellY - 1) * tileSizePixels - viewport.y
+
+        -- Scale to screen coordinates
+        screenX =
+            viewBoxX * scaleX
+
+        screenY =
+            viewBoxY * scaleY
+
+        screenTileSize =
+            tileSizePixels * scaleX
     in
     Element.el
-        [ Element.width cellSize
-        , Element.height cellSize
-        , Element.moveRight (toFloat (cellX - 1) * tileSizePixels - viewport.x)
-        , Element.moveDown (toFloat (cellY - 1) * tileSizePixels - viewport.y)
+        [ Element.width (Element.px (floor screenTileSize))
+        , Element.height (Element.px (floor screenTileSize))
+        , Element.moveRight screenX
+        , Element.moveDown screenY
         , Border.width cellHighlightWidth
         , Border.rounded targetRadius
         , Border.solid
@@ -798,26 +834,47 @@ highlightColor world cell =
         Just UI.Core.colorNotAllowed
 
 
-highlightAreaView : RenderCache -> Viewport -> ( Point2d Meters GlobalCoordinates, BoundingBox2d Meters GlobalCoordinates ) -> Element msg
-highlightAreaView cache viewport ( origin, area ) =
+highlightAreaView : RenderCache -> Viewport -> Screen -> ( Point2d Meters GlobalCoordinates, BoundingBox2d Meters GlobalCoordinates ) -> Element msg
+highlightAreaView cache viewport screen ( origin, area ) =
     let
+        -- Scale factor from viewBox-space to screen-space
+        scaleX =
+            toFloat screen.width / viewport.width
+
+        scaleY =
+            toFloat screen.height / viewport.height
+
         { x, y } =
             Point2d.toRecord (toPixelsValue cache.pixelsToMetersRatio) origin
 
         ( width, height ) =
             BoundingBox2d.dimensions area
 
-        widthPixels =
-            Element.px (floor (toPixelsValue cache.pixelsToMetersRatio width))
+        -- Position in viewBox coordinates
+        viewBoxX =
+            x - viewport.x
 
-        heightPixels =
-            Element.px (floor (toPixelsValue cache.pixelsToMetersRatio height))
+        viewBoxY =
+            cache.tilemapHeightPixels - y - viewport.y
+
+        -- Scale to screen coordinates
+        screenX =
+            viewBoxX * scaleX
+
+        screenY =
+            viewBoxY * scaleY
+
+        screenWidth =
+            toPixelsValue cache.pixelsToMetersRatio width * scaleX
+
+        screenHeight =
+            toPixelsValue cache.pixelsToMetersRatio height * scaleY
     in
     Element.el
-        [ Element.width widthPixels
-        , Element.height heightPixels
-        , Element.moveRight (x - viewport.x)
-        , Element.moveDown (cache.tilemapHeightPixels - y - viewport.y)
+        [ Element.width (Element.px (floor screenWidth))
+        , Element.height (Element.px (floor screenHeight))
+        , Element.moveRight screenX
+        , Element.moveDown screenY
         , Border.width cellHighlightWidth
         , Border.rounded targetRadius
         , Border.solid

@@ -10,6 +10,7 @@ import Lib.Collection as Collection exposing (Collection)
 import List.Extra
 import Model.Debug exposing (DebugLayerKind(..), DebugState, isLayerEnabled)
 import Model.RenderCache as RenderCache exposing (RenderCache)
+import Model.Screen exposing (Screen)
 import Model.World exposing (World)
 import Point2d exposing (Point2d)
 import Polygon2d
@@ -43,8 +44,8 @@ nodeRadius =
     Length.meters 0.8
 
 
-view : World -> RenderCache -> DebugState -> Maybe Viewport -> Svg msg
-view world cache debugState maybeViewport =
+view : World -> RenderCache -> DebugState -> Screen -> Maybe Viewport -> Svg msg
+view world cache debugState screen maybeViewport =
     let
         tilemapWidth =
             String.fromFloat cache.tilemapWidthPixels
@@ -52,19 +53,19 @@ view world cache debugState maybeViewport =
         tilemapHeight =
             String.fromFloat cache.tilemapHeightPixels
 
-        ( svgWidth, svgHeight, viewBoxStr ) =
+        svgWidth =
+            String.fromInt screen.width
+
+        svgHeight =
+            String.fromInt screen.height
+
+        viewBoxStr =
             case maybeViewport of
                 Just viewport ->
-                    ( String.fromFloat viewport.width
-                    , String.fromFloat viewport.height
-                    , Viewport.toSvgViewBox viewport
-                    )
+                    Viewport.toSvgViewBox viewport
 
                 Nothing ->
-                    ( tilemapWidth
-                    , tilemapHeight
-                    , "0 0 " ++ tilemapWidth ++ " " ++ tilemapHeight
-                    )
+                    "0 0 " ++ tilemapWidth ++ " " ++ tilemapHeight
     in
     Svg.svg
         [ Attributes.width svgWidth

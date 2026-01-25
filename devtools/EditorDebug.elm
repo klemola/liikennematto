@@ -12,6 +12,7 @@ import Html exposing (Html)
 import Html.Attributes
 import Json.Decode as JD
 import Model.RenderCache as RenderCache
+import Model.Screen as Screen
 import Model.World as World
 import Render
 import Render.Viewport as RenderViewport
@@ -148,8 +149,11 @@ update msg model =
     case msg of
         EditorMsg editorMsg ->
             let
+                screen =
+                    Screen.fromDimensions (floor model.viewport.width) (floor model.viewport.height)
+
                 ( editorModel, effects ) =
-                    Editor.update model.world model.cache.pixelsToMetersRatio model.viewport editorMsg model.editor
+                    Editor.update model.world model.cache.pixelsToMetersRatio model.viewport screen editorMsg model.editor
 
                 nextViewport =
                     effects
@@ -301,8 +305,11 @@ view model =
         renderHeight =
             floor model.viewport.height
 
+        screen =
+            Screen.fromDimensions renderWidth renderHeight
+
         renderAndEditor =
-            Render.view model.world model.cache (Just model.viewport)
+            Render.view model.world model.cache screen (Just model.viewport)
                 |> Element.html
                 |> Element.el
                     [ Element.width (Element.px renderWidth)
@@ -311,6 +318,7 @@ view model =
                         (Editor.view
                             model.cache
                             model.viewport
+                            screen
                             model.world
                             model.editor
                             |> Element.map EditorMsg

@@ -10,6 +10,7 @@ import Length
 import Maybe.Extra as Maybe
 import Model.Debug
 import Model.RenderCache as RenderCache exposing (RenderCache)
+import Model.Screen as Screen
 import Model.World as World exposing (World)
 import Point2d exposing (Point2d)
 import Quantity
@@ -144,6 +145,9 @@ view model =
         renderHeight =
             floor model.cache.tilemapHeightPixels
 
+        screen =
+            Screen.fromDimensions renderWidth renderHeight
+
         renderDebug =
             Render.Debug.view
                 world
@@ -152,12 +156,13 @@ view model =
                     |> Model.Debug.toggleLayer Model.Debug.CarDebug
                     |> Model.Debug.toggleLayer Model.Debug.RoadNetworkDebug
                 )
+                screen
                 Nothing
                 |> Element.html
     in
     Html.div []
         [ Html.div [ MouseEvents.onClick WorldClicked ]
-            [ Render.view world model.cache Nothing
+            [ Render.view world model.cache screen Nothing
                 |> Element.html
                 |> Element.el
                     [ Element.width (Element.px renderWidth)

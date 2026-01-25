@@ -19,6 +19,7 @@ import Lib.Collection as Collection exposing (Collection)
 import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Model.Animation as Animation exposing (Animation)
 import Model.RenderCache exposing (RenderCache, Renderable)
+import Model.Screen exposing (Screen)
 import Model.World exposing (World)
 import Point2d exposing (Point2d)
 import Quantity
@@ -71,32 +72,26 @@ styles =
 --
 
 
-view : World -> RenderCache -> Maybe Viewport -> Html msg
-view { cars, roadNetwork, trafficLights } cache maybeViewport =
+view : World -> RenderCache -> Screen -> Maybe Viewport -> Html msg
+view { cars, roadNetwork, trafficLights } cache screen maybeViewport =
     let
-        tilemapWidth =
-            String.fromFloat cache.tilemapWidthPixels
+        svgWidth =
+            String.fromInt screen.width
 
-        tilemapHeight =
-            String.fromFloat cache.tilemapHeightPixels
+        svgHeight =
+            String.fromInt screen.height
 
-        ( svgWidth, svgHeight, viewBoxStr ) =
+        viewBoxStr =
             case maybeViewport of
                 Just viewport ->
-                    ( String.fromFloat viewport.width
-                    , String.fromFloat viewport.height
-                    , Viewport.toSvgViewBox viewport
-                    )
+                    Viewport.toSvgViewBox viewport
 
                 Nothing ->
-                    ( tilemapWidth
-                    , tilemapHeight
-                    , "0 0 " ++ tilemapWidth ++ " " ++ tilemapHeight
-                    )
+                    "0 0 " ++ String.fromFloat cache.tilemapWidthPixels ++ " " ++ String.fromFloat cache.tilemapHeightPixels
     in
     Svg.svg
-        [ Attributes.width tilemapWidth
-        , Attributes.height tilemapHeight
+        [ Attributes.width svgWidth
+        , Attributes.height svgHeight
         , Attributes.viewBox viewBoxStr
         ]
         [ styles
@@ -362,7 +357,7 @@ animationOverflowTile tileSizePixels animationDirection =
 tileElement : Renderable -> List (Svg.Attribute msg) -> Svg msg
 tileElement renderable groupAttrs =
     let
-        ( asset, viewBox ) =
+        ( asset, _ ) =
             assetByName renderable.assetName
     in
     Svg.g
@@ -520,7 +515,7 @@ renderCar cache position orientation make =
         translateStr =
             "translate(" ++ String.fromFloat renderX ++ " " ++ String.fromFloat renderY ++ ")"
 
-        ( asset, viewBox ) =
+        ( asset, _ ) =
             assetByName (carStyleToString make.style)
     in
     Svg.g
@@ -626,7 +621,7 @@ renderYieldSign cache node =
         translateStr =
             "translate(" ++ String.fromFloat (x - size / 2) ++ "," ++ String.fromFloat (cache.tilemapHeightPixels - y - (size / 2)) ++ ")"
 
-        ( asset, viewBox ) =
+        ( asset, _ ) =
             assetByName "TrafficSignYield"
     in
     Svg.g [ Attributes.transform translateStr ]

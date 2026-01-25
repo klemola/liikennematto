@@ -17,6 +17,7 @@ import Html.Attributes as HtmlAttribute
 import Html.Events.Extra.Mouse as Mouse
 import Model.Debug exposing (DebugLayerKind(..))
 import Model.Liikennematto exposing (Liikennematto)
+import Model.Screen exposing (Screen)
 import Model.World exposing (World)
 import Render.Conversion exposing (PixelsToMetersRatio)
 import Render.Viewport as Viewport
@@ -113,8 +114,8 @@ editorEffectToUIEvent effect =
             Just (ViewportChanged deltaX deltaY shouldSnap)
 
 
-update : World -> PixelsToMetersRatio -> Viewport.Viewport -> Msg -> UI -> ( UI, Cmd Msg, Maybe UIEvent )
-update world pixelsToMetersRatio viewport msg model =
+update : World -> PixelsToMetersRatio -> Viewport.Viewport -> Screen -> Msg -> UI -> ( UI, Cmd Msg, Maybe UIEvent )
+update world pixelsToMetersRatio viewport screen msg model =
     case msg of
         ToggleMenu ->
             ( { model | showMenu = not model.showMenu }
@@ -171,7 +172,7 @@ update world pixelsToMetersRatio viewport msg model =
         EditorMsg editorMsg ->
             let
                 ( editorModel, effects ) =
-                    Editor.update world pixelsToMetersRatio viewport editorMsg model.editor
+                    Editor.update world pixelsToMetersRatio viewport screen editorMsg model.editor
 
                 uiEvent =
                     effects
@@ -255,14 +256,15 @@ view liikennematto render renderDebugLayers =
         , Font.family [ uiFont, Font.sansSerif ]
         ]
         (Element.el
-            [ Element.width (Element.px (floor liikennematto.viewport.width))
-            , Element.height (Element.px (floor liikennematto.viewport.height))
+            [ Element.width (Element.px liikennematto.screen.width)
+            , Element.height (Element.px liikennematto.screen.height)
             , Element.inFront
                 (renderDebugLayers |> Element.map (\_ -> NoOp))
             , Element.inFront
                 (Editor.view
                     liikennematto.renderCache
                     liikennematto.viewport
+                    liikennematto.screen
                     liikennematto.world
                     liikennematto.ui.editor
                     |> Element.map EditorMsg
