@@ -19,7 +19,6 @@ import Model.Debug exposing (DebugLayerKind(..))
 import Model.Liikennematto exposing (Liikennematto)
 import Model.Screen exposing (Screen)
 import Model.World exposing (World)
-import Render.Conversion exposing (PixelsToMetersRatio)
 import Render.Viewport as Viewport
 import Svg
 import Svg.Attributes as SvgAttr
@@ -114,8 +113,8 @@ editorEffectToUIEvent effect =
             Just (ViewportChanged deltaX deltaY shouldSnap)
 
 
-update : World -> PixelsToMetersRatio -> Viewport.Viewport -> Screen -> Msg -> UI -> ( UI, Cmd Msg, Maybe UIEvent )
-update world pixelsToMetersRatio viewport screen msg model =
+update : World -> Viewport.Viewport -> Screen -> Msg -> UI -> ( UI, Cmd Msg, Maybe UIEvent )
+update world viewport screen msg model =
     case msg of
         ToggleMenu ->
             ( { model | showMenu = not model.showMenu }
@@ -172,7 +171,7 @@ update world pixelsToMetersRatio viewport screen msg model =
         EditorMsg editorMsg ->
             let
                 ( editorModel, effects ) =
-                    Editor.update world pixelsToMetersRatio viewport screen editorMsg model.editor
+                    Editor.update world viewport screen editorMsg model.editor
 
                 uiEvent =
                     effects

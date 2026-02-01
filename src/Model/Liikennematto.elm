@@ -265,7 +265,6 @@ initial flags =
                 , tilemapHeight = initialRenderCache.tilemapHeightPixels
                 , viewportWidth = 720.0
                 , viewportHeight = 476.0
-                , pixelsToMetersRatio = initialRenderCache.pixelsToMetersRatio
                 }
     in
     { game = appFsm

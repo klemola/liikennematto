@@ -24,7 +24,7 @@ import Model.World as World exposing (World)
 import Point2d exposing (Point2d)
 import Quantity
 import Render
-import Render.Conversion exposing (toPixelsValue)
+import Render.Conversion exposing (defaultPixelsToMetersRatio, toPixelsValue)
 import Render.Shape
 import Round
 import Simulation.Car as Car exposing (Car)
@@ -74,12 +74,12 @@ renderArea =
 
 renderAreaWidthStr : String
 renderAreaWidthStr =
-    String.fromFloat (toPixelsValue renderCache.pixelsToMetersRatio renderArea)
+    String.fromFloat (toPixelsValue defaultPixelsToMetersRatio renderArea)
 
 
 renderAreaHeightStr : String
 renderAreaHeightStr =
-    String.fromFloat (toPixelsValue renderCache.pixelsToMetersRatio renderArea)
+    String.fromFloat (toPixelsValue defaultPixelsToMetersRatio renderArea)
 
 
 nodes : List ( Point2d Length.Meters GlobalCoordinates, Direction2d GlobalCoordinates )

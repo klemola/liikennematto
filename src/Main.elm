@@ -249,7 +249,7 @@ updateBase msg model =
         UIMsg uiMsg ->
             let
                 ( nextUi, uiCmd, uiEvent ) =
-                    UI.update model.world model.renderCache.pixelsToMetersRatio model.viewport model.screen uiMsg model.ui
+                    UI.update model.world model.viewport model.screen uiMsg model.ui
 
                 modelWithNextUi =
                     { model | ui = nextUi }

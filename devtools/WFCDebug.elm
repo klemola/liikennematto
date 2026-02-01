@@ -293,7 +293,6 @@ update msg model =
                         , tilemapHeight = model.cache.tilemapHeightPixels
                         , viewportWidth = model.cache.tilemapWidthPixels
                         , viewportHeight = model.cache.tilemapHeightPixels
-                        , pixelsToMetersRatio = model.cache.pixelsToMetersRatio
                         }
 
                 screen =
@@ -302,7 +301,7 @@ update msg model =
                         (floor model.cache.tilemapHeightPixels)
 
                 ( editorModel, effects ) =
-                    Editor.update model.world model.cache.pixelsToMetersRatio defaultViewport screen editorMsg model.editor
+                    Editor.update model.world defaultViewport screen editorMsg model.editor
 
                 inputEvent =
                     effects
@@ -359,7 +358,7 @@ view model =
                     , Element.height (Element.px renderHeight)
                     , Element.inFront renderDebug
                     , Element.inFront
-                        (wfcCurrentCell model.cache model.wfcModel)
+                        (wfcCurrentCell model.wfcModel)
                     , Element.inFront
                         (Editor.view
                             model.cache
@@ -368,7 +367,6 @@ view model =
                                 , tilemapHeight = model.cache.tilemapHeightPixels
                                 , viewportWidth = model.cache.tilemapWidthPixels
                                 , viewportHeight = model.cache.tilemapHeightPixels
-                                , pixelsToMetersRatio = model.cache.pixelsToMetersRatio
                                 }
                             )
                             screen

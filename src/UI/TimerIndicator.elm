@@ -4,17 +4,17 @@ import Data.Colors as Colors
 import Duration exposing (Duration)
 import Element exposing (Element)
 import Quantity
-import Render.Conversion exposing (PixelsToMetersRatio)
+import Render.Conversion exposing (defaultPixelsToMetersRatio)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Tilemap.Cell as Cell
 
 
-view : Duration -> Duration -> PixelsToMetersRatio -> Cell.CellCoordinates -> Duration -> Element msg
-view maxTimerValue showDelay pixelsToMetersRatio cellCoordinates timerElapsed =
+view : Duration -> Duration -> Cell.CellCoordinates -> Duration -> Element msg
+view maxTimerValue showDelay cellCoordinates timerElapsed =
     let
         renderSize =
-            Render.Conversion.toPixelsValue pixelsToMetersRatio Cell.size
+            Render.Conversion.toPixelsValue defaultPixelsToMetersRatio Cell.size
 
         ( cellX, cellY ) =
             cellCoordinates

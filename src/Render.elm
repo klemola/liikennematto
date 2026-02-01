@@ -23,7 +23,7 @@ import Model.Screen exposing (Screen)
 import Model.World exposing (World)
 import Point2d exposing (Point2d)
 import Quantity
-import Render.Conversion exposing (pointToPixels, toPixelsValue)
+import Render.Conversion exposing (defaultPixelsToMetersRatio, pointToPixels, toPixelsValue)
 import Render.Viewport as Viewport exposing (Viewport)
 import Simulation.Car exposing (Car)
 import Simulation.RoadNetwork
@@ -259,7 +259,7 @@ renderDynamicTiles : RenderCache -> Svg msg
 renderDynamicTiles cache =
     let
         tileSizePixels =
-            toPixelsValue cache.pixelsToMetersRatio Cell.size
+            toPixelsValue defaultPixelsToMetersRatio Cell.size
     in
     cache.dynamicTiles
         |> List.map
@@ -488,13 +488,13 @@ renderCar : RenderCache -> Point2d Length.Meters GlobalCoordinates -> Angle.Angl
 renderCar cache position orientation make =
     let
         { x, y } =
-            pointToPixels cache.pixelsToMetersRatio position
+            pointToPixels defaultPixelsToMetersRatio position
 
         carWidthPixels =
-            toPixelsValue cache.pixelsToMetersRatio make.width
+            toPixelsValue defaultPixelsToMetersRatio make.width
 
         carLengthPixels =
-            toPixelsValue cache.pixelsToMetersRatio make.length
+            toPixelsValue defaultPixelsToMetersRatio make.length
 
         renderX =
             x - (carLengthPixels / 2)
@@ -558,12 +558,12 @@ renderTrafficLight : RenderCache -> TrafficLight -> Svg msg
 renderTrafficLight cache trafficLight =
     let
         { x, y } =
-            pointToPixels cache.pixelsToMetersRatio trafficLight.position
+            pointToPixels defaultPixelsToMetersRatio trafficLight.position
 
         radius =
             trafficLightDiameter
                 |> Quantity.half
-                |> toPixelsValue cache.pixelsToMetersRatio
+                |> toPixelsValue defaultPixelsToMetersRatio
 
         color =
             case TrafficLight.color trafficLight of
@@ -616,7 +616,7 @@ renderYieldSign cache node =
             String.fromFloat size
 
         { x, y } =
-            pointToPixels cache.pixelsToMetersRatio node.label.position
+            pointToPixels defaultPixelsToMetersRatio node.label.position
 
         translateStr =
             "translate(" ++ String.fromFloat (x - size / 2) ++ "," ++ String.fromFloat (cache.tilemapHeightPixels - y - (size / 2)) ++ ")"

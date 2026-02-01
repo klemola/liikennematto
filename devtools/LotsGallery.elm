@@ -10,7 +10,7 @@ import Lib.Collection as Collection exposing (Id, nextId)
 import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
 import Model.RenderCache as RenderCache exposing (RenderCache)
 import Model.World as World exposing (World)
-import Render.Conversion exposing (pointToPixels, toPixelsValue)
+import Render.Conversion exposing (defaultPixelsToMetersRatio, pointToPixels, toPixelsValue)
 import Render.Shape
 import Simulation.Lot exposing (Lot, ParkingSpot)
 import Svg exposing (Svg)
@@ -127,13 +127,13 @@ renderLot : RenderCache -> Lot -> Svg msg
 renderLot cache lot =
     let
         { x, y } =
-            pointToPixels cache.pixelsToMetersRatio lot.position
+            pointToPixels defaultPixelsToMetersRatio lot.position
 
         width =
-            toPixelsValue cache.pixelsToMetersRatio lot.width
+            toPixelsValue defaultPixelsToMetersRatio lot.width
 
         height =
-            toPixelsValue cache.pixelsToMetersRatio lot.height
+            toPixelsValue defaultPixelsToMetersRatio lot.height
 
         renderX =
             x - width / 2

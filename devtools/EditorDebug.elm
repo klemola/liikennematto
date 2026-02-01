@@ -113,7 +113,6 @@ init _ =
                                 , tilemapHeight = cache.tilemapHeightPixels
                                 , viewportWidth = toFloat defaultLimitedWidth
                                 , viewportHeight = toFloat defaultLimitedHeight
-                                , pixelsToMetersRatio = cache.pixelsToMetersRatio
                                 }
                     in
                     ( { world = world
@@ -153,7 +152,7 @@ update msg model =
                     Screen.fromDimensions (floor model.viewport.width) (floor model.viewport.height)
 
                 ( editorModel, effects ) =
-                    Editor.update model.world model.cache.pixelsToMetersRatio model.viewport screen editorMsg model.editor
+                    Editor.update model.world model.viewport screen editorMsg model.editor
 
                 nextViewport =
                     effects
@@ -163,7 +162,7 @@ update msg model =
                                     Editor.ViewportChangeRequested deltaX deltaY shouldSnap ->
                                         vp
                                             |> RenderViewport.applyPanDelta deltaX deltaY
-                                            |> RenderViewport.clamp model.cache.pixelsToMetersRatio model.cache.tilemapWidthPixels model.cache.tilemapHeightPixels
+                                            |> RenderViewport.clamp model.cache.tilemapWidthPixels model.cache.tilemapHeightPixels
                                             |> (if shouldSnap then
                                                     RenderViewport.snapToEven
 
