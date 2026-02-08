@@ -51,11 +51,6 @@ import Svg.Lazy
 --
 
 
-signDiameter : Length
-signDiameter =
-    Length.meters 2.4
-
-
 trafficLightDiameter : Length
 trafficLightDiameter =
     Length.meters 2
@@ -609,10 +604,7 @@ renderYieldSign : RenderCache -> Node Connection -> Svg msg
 renderYieldSign cache node =
     let
         size =
-            64
-
-        sizeStr =
-            String.fromFloat size
+            34
 
         { x, y } =
             pointToPixels defaultPixelsToMetersRatio node.label.position
