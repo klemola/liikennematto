@@ -13,6 +13,7 @@ module Common exposing
     , isInTheNormalPlaneOf
     , randomFutureTime
     , rightAnglePoint
+    , roundToEven
     , splitBoundingBoxHorizontally
     , splitBoundingBoxVertically
     )
@@ -28,6 +29,12 @@ import Random
 import Speed exposing (Speed)
 import Time
 import Vector2d
+
+
+
+--
+-- elm-geometry and elm-units
+--
 
 
 type GlobalCoordinates
@@ -192,6 +199,12 @@ isCloseToZeroVelocity =
     Quantity.abs >> Quantity.lessThan (Speed.metersPerSecond 0.1)
 
 
+
+--
+-- Time
+--
+
+
 addMillisecondsToPosix : Int -> Time.Posix -> Time.Posix
 addMillisecondsToPosix millis time =
     Time.posixToMillis time + millis |> Time.millisToPosix
@@ -205,7 +218,7 @@ randomFutureTime ( minDelay, maxDelay ) now =
 
 
 --
--- Maybe utility
+-- Maybe
 --
 
 
@@ -218,7 +231,7 @@ andCarry nextFn carried =
 
 
 --
--- Result utility
+-- Result
 --
 
 
@@ -259,10 +272,21 @@ attemptFoldList fn acc list =
 
 
 --
--- Tuple utility
+-- Tuple
 --
 
 
 applyTuple2 : (a -> b -> c) -> ( a, b ) -> c
 applyTuple2 fn ( a, b ) =
     fn a b
+
+
+
+--
+-- Number
+--
+
+
+roundToEven : Float -> Float
+roundToEven n =
+    toFloat (round (n / 2.0) * 2)

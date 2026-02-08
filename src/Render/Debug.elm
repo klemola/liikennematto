@@ -15,7 +15,13 @@ import Model.World exposing (World)
 import Point2d exposing (Point2d)
 import Polygon2d
 import Quantity
-import Render.Conversion exposing (defaultPixelsToMetersRatio, pointToPixels, toPixelsValue)
+import Render.Conversion
+    exposing
+        ( defaultPixelsToMetersRatio
+        , pointToPixels
+        , tileSizePixels
+        , toPixelsValue
+        )
 import Render.Shape
 import Render.Viewport as Viewport exposing (Viewport)
 import Simulation.Car exposing (Car)
@@ -373,9 +379,6 @@ renderWFC cache =
                 let
                     { x, y } =
                         Cell.bottomLeftCorner cell |> pointToPixels defaultPixelsToMetersRatio
-
-                    tileSizePixels =
-                        toPixelsValue defaultPixelsToMetersRatio Cell.size
 
                     yAdjusted =
                         cache.tilemapHeightPixels - tileSizePixels - y

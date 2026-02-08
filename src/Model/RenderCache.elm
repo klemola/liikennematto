@@ -23,6 +23,7 @@ import Render.Conversion
     exposing
         ( defaultPixelsToMetersRatio
         , pointToPixels
+        , tileSizePixels
         , toPixelsValue
         )
 import Render.Viewport as Viewport
@@ -328,9 +329,6 @@ baseRenderable tilemapHeightPixels cell ( width, height ) =
     let
         { x, y } =
             Cell.bottomLeftCorner cell |> pointToPixels defaultPixelsToMetersRatio
-
-        tileSizePixels =
-            toPixelsValue defaultPixelsToMetersRatio Cell.size
 
         yAdjusted =
             tilemapHeightPixels - tileSizePixels - y

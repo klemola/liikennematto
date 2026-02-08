@@ -2,6 +2,7 @@ module Render.Conversion exposing
     ( PixelsToMetersRatio
     , defaultPixelsToMetersRatio
     , pointToPixels
+    , tileSizePixels
     , toMetersValue
     , toPixelsValue
     )
@@ -11,6 +12,7 @@ import Length exposing (Length)
 import Pixels
 import Point2d exposing (Point2d)
 import Quantity exposing (Quantity, Rate)
+import Tilemap.Cell as Cell
 
 
 type alias PixelsToMetersRatio =
@@ -20,6 +22,11 @@ type alias PixelsToMetersRatio =
 defaultPixelsToMetersRatio : PixelsToMetersRatio
 defaultPixelsToMetersRatio =
     Pixels.pixels 16 |> Quantity.per (Length.meters 1)
+
+
+tileSizePixels : Float
+tileSizePixels =
+    toPixelsValue defaultPixelsToMetersRatio Cell.size
 
 
 toPixelsValue : PixelsToMetersRatio -> Length -> Float

@@ -23,7 +23,13 @@ import Model.Screen exposing (Screen)
 import Model.World exposing (World)
 import Point2d exposing (Point2d)
 import Quantity
-import Render.Conversion exposing (defaultPixelsToMetersRatio, pointToPixels, toPixelsValue)
+import Render.Conversion
+    exposing
+        ( defaultPixelsToMetersRatio
+        , pointToPixels
+        , tileSizePixels
+        , toPixelsValue
+        )
 import Render.Viewport as Viewport exposing (Viewport)
 import Simulation.Car exposing (Car)
 import Simulation.RoadNetwork
@@ -37,7 +43,6 @@ import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Svg.Keyed
 import Svg.Lazy
-import Tilemap.Cell as Cell
 
 
 
@@ -257,17 +262,13 @@ staticTileStyles =
 
 renderDynamicTiles : RenderCache -> Svg msg
 renderDynamicTiles cache =
-    let
-        tileSizePixels =
-            toPixelsValue defaultPixelsToMetersRatio Cell.size
-    in
     cache.dynamicTiles
         |> List.map
             (\renderable ->
                 ( renderableKey renderable
                 , case renderable.animation of
                     Just animation ->
-                        renderAnimatedTile tileSizePixels renderable animation
+                        renderAnimatedTile renderable animation
 
                     Nothing ->
                         renderTile renderable
@@ -276,23 +277,21 @@ renderDynamicTiles cache =
         |> Svg.Keyed.node "g" []
 
 
-renderAnimatedTile : Float -> Renderable -> Animation -> Svg msg
-renderAnimatedTile tileSizePixels renderable animation =
+renderAnimatedTile : Renderable -> Animation -> Svg msg
+renderAnimatedTile renderable animation =
     let
         animationStyleString =
             Animation.toStyleString animation
 
         tileStyles =
             String.concat
-                [ tileAnimationProperties
-                    tileSizePixels
-                    animation
+                [ tileAnimationProperties animation
                 , animationStyleString
                 ]
 
         ( overflowTile, clipStyles ) =
             animation.direction
-                |> Maybe.map (animationOverflowTile tileSizePixels)
+                |> Maybe.map animationOverflowTile
                 |> Maybe.withDefault ( nothing, "" )
 
         transform =
@@ -310,8 +309,8 @@ renderAnimatedTile tileSizePixels renderable animation =
         ]
 
 
-animationOverflowTile : Float -> OrthogonalDirection -> ( Svg msg, String )
-animationOverflowTile tileSizePixels animationDirection =
+animationOverflowTile : OrthogonalDirection -> ( Svg msg, String )
+animationOverflowTile animationDirection =
     let
         clipAmount =
             String.fromFloat tileSizePixels ++ "px"
@@ -366,8 +365,8 @@ tileElement renderable groupAttrs =
         ]
 
 
-tileAnimationProperties : Float -> Animation -> String
-tileAnimationProperties tileSizePixels animation =
+tileAnimationProperties : Animation -> String
+tileAnimationProperties animation =
     let
         halfTile =
             tileSizePixels / 2

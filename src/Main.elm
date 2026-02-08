@@ -4,6 +4,7 @@ import Audio
 import Browser
 import Browser.Dom exposing (getViewport)
 import Browser.Events as Events
+import Common
 import Duration exposing (Duration)
 import Element exposing (Element)
 import Html
@@ -16,6 +17,7 @@ import Model.Liikennematto as Liikennematto exposing (Liikennematto)
 import Model.RenderCache
 import Model.Screen as Screen
 import Render
+import Render.Conversion exposing (tileSizePixels)
 import Render.Debug
 import Render.Viewport as Viewport
 import Savegame
@@ -155,7 +157,9 @@ updateBase msg model =
                     { initSteps | viewportSizeSet = True }
 
                 zoomedViewport =
-                    viewportForZoom model.ui.zoomLevel
+                    viewportForZoom
+                        model.renderCache
+                        model.ui.zoomLevel
                         { screenWidth = toFloat (round domViewport.viewport.width)
                         , screenHeight = toFloat (round domViewport.viewport.height)
                         }
@@ -433,7 +437,9 @@ updateViewportSize screenWidth screenHeight model =
             model.viewport
 
         nextViewport =
-            viewportForZoom model.ui.zoomLevel
+            viewportForZoom
+                model.renderCache
+                model.ui.zoomLevel
                 { screenWidth = toFloat screenWidth
                 , screenHeight = toFloat screenHeight
                 }
@@ -456,7 +462,9 @@ onZoomLevelChanged : UI.Model.ZoomLevel -> Liikennematto -> ( Liikennematto, Cmd
 onZoomLevelChanged nextZoomLevel model =
     let
         viewportWithZoom =
-            viewportForZoom nextZoomLevel
+            viewportForZoom
+                model.renderCache
+                nextZoomLevel
                 { screenWidth = toFloat model.screen.width
                 , screenHeight = toFloat model.screen.height
                 }
@@ -497,36 +505,26 @@ onZoomLevelChanged nextZoomLevel model =
     )
 
 
-viewportForZoom : UI.Model.ZoomLevel -> { screenWidth : Float, screenHeight : Float } -> { width : Float, height : Float }
-viewportForZoom zoomLevel { screenWidth, screenHeight } =
+viewportForZoom : Model.RenderCache.RenderCache -> UI.Model.ZoomLevel -> { screenWidth : Float, screenHeight : Float } -> { width : Float, height : Float }
+viewportForZoom cache zoomLevel { screenWidth, screenHeight } =
     let
-        cellSizePixels =
-            256
-
-        -- Target visible cells amount in the bigger dimensions of the screen
-        targetCellsHeight =
+        viewportHeight =
             case zoomLevel of
                 UI.Model.Near ->
-                    5
+                    6 * tileSizePixels
 
                 UI.Model.Far ->
-                    10
+                    10 * tileSizePixels
 
                 UI.Model.VeryFar ->
-                    -- Tilemap is 12 cells; show it at 90% of viewport
-                    -- TODO: don't use hardcoded value
-                    12 / 0.9
-
-        viewportHeight =
-            targetCellsHeight * cellSizePixels
+                    cache.tilemapHeightPixels + cache.pannableBounds.paddingY * 2
 
         aspectRatio =
             screenWidth / screenHeight
-
-        viewportWidth =
-            viewportHeight * aspectRatio
     in
-    { width = viewportWidth, height = viewportHeight }
+    { width = Common.roundToEven (viewportHeight * aspectRatio)
+    , height = Common.roundToEven viewportHeight
+    }
 
 
 
