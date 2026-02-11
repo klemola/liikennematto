@@ -9,6 +9,7 @@ import Element.Border
 import Element.Font
 import Element.Input
 import Html exposing (Html)
+import Helpers
 import Html.Attributes
 import Json.Decode as JD
 import Model.RenderCache as RenderCache
@@ -97,6 +98,16 @@ defaultLimitedHeight =
     476
 
 
+containerSize : Model -> ( Int, Int )
+containerSize model =
+    case model.viewportMode of
+        Limited ->
+            ( defaultLimitedWidth, defaultLimitedHeight )
+
+        Fullscreen ->
+            ( model.screenWidth, model.screenHeight )
+
+
 init : () -> ( Model, Cmd Msg )
 init _ =
     case JD.decodeString JD.value exampleSavegameJson of
@@ -111,8 +122,8 @@ init _ =
                             RenderViewport.init
                                 { tilemapWidth = cache.tilemapWidthPixels
                                 , tilemapHeight = cache.tilemapHeightPixels
-                                , viewportWidth = toFloat defaultLimitedWidth
-                                , viewportHeight = toFloat defaultLimitedHeight
+                                , viewportWidth = Helpers.screenToViewBox (toFloat defaultLimitedWidth)
+                                , viewportHeight = Helpers.screenToViewBox (toFloat defaultLimitedHeight)
                                 }
                     in
                     ( { world = world
@@ -148,8 +159,11 @@ update msg model =
     case msg of
         EditorMsg editorMsg ->
             let
+                ( containerWidth, containerHeight ) =
+                    containerSize model
+
                 screen =
-                    Screen.fromDimensions (floor model.viewport.width) (floor model.viewport.height)
+                    Screen.fromDimensions containerWidth containerHeight
 
                 ( editorModel, effects ) =
                     Editor.update model.world model.viewport screen editorMsg model.editor
@@ -241,8 +255,8 @@ update msg model =
                         Limited ->
                             { x = 0
                             , y = 0
-                            , width = toFloat defaultLimitedWidth
-                            , height = toFloat defaultLimitedHeight
+                            , width = Helpers.screenToViewBox (toFloat defaultLimitedWidth)
+                            , height = Helpers.screenToViewBox (toFloat defaultLimitedHeight)
                             }
 
                 editor =
@@ -267,10 +281,10 @@ updateViewportSize width height model =
             model.viewport
 
         nextWidth =
-            toFloat width
+            Helpers.screenToViewBox (toFloat width)
 
         nextHeight =
-            toFloat height
+            Helpers.screenToViewBox (toFloat height)
 
         -- Calculate center point before resize
         centerX =
@@ -298,21 +312,18 @@ updateViewportSize width height model =
 view : Model -> Html Msg
 view model =
     let
-        renderWidth =
-            floor model.viewport.width
-
-        renderHeight =
-            floor model.viewport.height
+        ( containerWidth, containerHeight ) =
+            containerSize model
 
         screen =
-            Screen.fromDimensions renderWidth renderHeight
+            Screen.fromDimensions containerWidth containerHeight
 
         renderAndEditor =
             Render.view model.world model.cache screen (Just model.viewport)
                 |> Element.html
                 |> Element.el
-                    [ Element.width (Element.px renderWidth)
-                    , Element.height (Element.px renderHeight)
+                    [ Element.width (Element.px containerWidth)
+                    , Element.height (Element.px containerHeight)
                     , Element.inFront
                         (Editor.view
                             model.cache

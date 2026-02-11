@@ -16,6 +16,7 @@ import Element
 import Element.Background
 import Element.Font
 import Element.Input as Input
+import Helpers
 import Html exposing (Html)
 import Html.Attributes
 import Lib.SeedState as SeedState
@@ -297,8 +298,8 @@ update msg model =
 
                 screen =
                     Screen.fromDimensions
-                        (floor model.cache.tilemapWidthPixels)
-                        (floor model.cache.tilemapHeightPixels)
+                        (floor (Helpers.viewBoxToScreen model.cache.tilemapWidthPixels))
+                        (floor (Helpers.viewBoxToScreen model.cache.tilemapHeightPixels))
 
                 ( editorModel, effects ) =
                     Editor.update model.world defaultViewport screen editorMsg model.editor
@@ -330,14 +331,22 @@ update msg model =
 view : Model -> Html Msg
 view model =
     let
-        renderWidth =
-            floor model.cache.tilemapWidthPixels
+        screenWidth =
+            floor (Helpers.viewBoxToScreen model.cache.tilemapWidthPixels)
 
-        renderHeight =
-            floor model.cache.tilemapHeightPixels
+        screenHeight =
+            floor (Helpers.viewBoxToScreen model.cache.tilemapHeightPixels)
 
         screen =
-            Screen.fromDimensions renderWidth renderHeight
+            Screen.fromDimensions screenWidth screenHeight
+
+        viewport =
+            Viewport.init
+                { tilemapWidth = model.cache.tilemapWidthPixels
+                , tilemapHeight = model.cache.tilemapHeightPixels
+                , viewportWidth = model.cache.tilemapWidthPixels
+                , viewportHeight = model.cache.tilemapHeightPixels
+                }
 
         renderDebug =
             Render.Debug.view
@@ -347,28 +356,22 @@ view model =
                     |> Model.Debug.toggleLayer Model.Debug.WFCDebug
                 )
                 screen
-                Nothing
+                (Just viewport)
                 |> Element.html
 
         render =
-            Render.view model.world model.cache screen Nothing
+            Render.view model.world model.cache screen (Just viewport)
                 |> Element.html
                 |> Element.el
-                    [ Element.width (Element.px renderWidth)
-                    , Element.height (Element.px renderHeight)
+                    [ Element.width (Element.px screenWidth)
+                    , Element.height (Element.px screenHeight)
                     , Element.inFront renderDebug
                     , Element.inFront
                         (wfcCurrentCell model.wfcModel)
                     , Element.inFront
                         (Editor.view
                             model.cache
-                            (Viewport.init
-                                { tilemapWidth = model.cache.tilemapWidthPixels
-                                , tilemapHeight = model.cache.tilemapHeightPixels
-                                , viewportWidth = model.cache.tilemapWidthPixels
-                                , viewportHeight = model.cache.tilemapHeightPixels
-                                }
-                            )
+                            viewport
                             screen
                             model.world
                             model.editor
@@ -383,7 +386,7 @@ view model =
             [ render
             , sidePanel model.mode model.wfcModel
             ]
-        , bottomPanel renderWidth
+        , bottomPanel screenWidth
         ]
         |> Element.layout
             [ Element.width Element.fill
