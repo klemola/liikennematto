@@ -21,9 +21,9 @@ import Model.World exposing (World)
 import Quantity
 import Render.Conversion
     exposing
-        ( PixelsToMetersRatio
-        , defaultPixelsToMetersRatio
+        ( defaultPixelsToMetersRatio
         , pointToPixels
+        , tileSizePixels
         , toPixelsValue
         )
 import Render.Viewport as Viewport
@@ -44,8 +44,7 @@ import Tilemap.WFC as WFC
 
 
 type alias RenderCache =
-    { pixelsToMetersRatio : PixelsToMetersRatio
-    , tilemap : List Renderable
+    { tilemap : List Renderable
     , tilemapDebug : List ( Cell, TilemapDebugItem )
     , dynamicTiles : List Renderable
     , tilemapWidthPixels : Float
@@ -96,17 +95,15 @@ new { tilemap } =
 
         initialBounds =
             Viewport.calculatePannableBounds
-                { pixelsToMetersRatio = defaultPixelsToMetersRatio
-                , tilemapWidth = tilemapWidthPixels
+                { tilemapWidth = tilemapWidthPixels
                 , tilemapHeight = tilemapHeigthPixels
                 , viewportWidth = initialViewportWidth
                 , viewportHeight = initialViewportHeight
                 }
     in
-    { pixelsToMetersRatio = defaultPixelsToMetersRatio
-    , tilemap =
+    { tilemap =
         tilemapToList
-            (renderableFromTile tilemapHeigthPixels defaultPixelsToMetersRatio)
+            (renderableFromTile tilemapHeigthPixels)
             initialTileListFilter
             tilemap
     , tilemapDebug = tilemapToList debugItemFromTile NoFilter tilemap
@@ -122,33 +119,31 @@ new { tilemap } =
 
 
 clear : Viewport.Viewport -> RenderCache -> World -> RenderCache
-clear viewport oldCache { tilemap } =
+clear viewport _ { tilemap } =
     let
         tilemapDimensions =
             getTilemapDimensions tilemap
 
         tilemapWidthPixels =
-            toPixelsValue oldCache.pixelsToMetersRatio tilemapDimensions.width
+            toPixelsValue defaultPixelsToMetersRatio tilemapDimensions.width
 
         tilemapHeigthPixels =
-            toPixelsValue oldCache.pixelsToMetersRatio tilemapDimensions.height
+            toPixelsValue defaultPixelsToMetersRatio tilemapDimensions.height
 
         initialTileListFilter =
             StaticTiles
 
         newBounds =
             Viewport.calculatePannableBounds
-                { pixelsToMetersRatio = oldCache.pixelsToMetersRatio
-                , tilemapWidth = tilemapWidthPixels
+                { tilemapWidth = tilemapWidthPixels
                 , tilemapHeight = tilemapHeigthPixels
                 , viewportWidth = viewport.width
                 , viewportHeight = viewport.height
                 }
     in
-    { pixelsToMetersRatio = oldCache.pixelsToMetersRatio
-    , tilemap =
+    { tilemap =
         tilemapToList
-            (renderableFromTile tilemapHeigthPixels oldCache.pixelsToMetersRatio)
+            (renderableFromTile tilemapHeigthPixels)
             initialTileListFilter
             tilemap
     , tilemapDebug = tilemapToList debugItemFromTile NoFilter tilemap
@@ -172,7 +167,7 @@ setTilemapCache tilemap unsolvedWFCTilemap cache =
     { cache
         | tilemap =
             tilemapToList
-                (renderableFromTile cache.tilemapHeightPixels cache.pixelsToMetersRatio)
+                (renderableFromTile cache.tilemapHeightPixels)
                 cache.tileListFilter
                 tilemap
 
@@ -204,8 +199,7 @@ updatePannableBounds viewportWidth viewportHeight cache =
     { cache
         | pannableBounds =
             Viewport.calculatePannableBounds
-                { pixelsToMetersRatio = cache.pixelsToMetersRatio
-                , tilemapWidth = cache.tilemapWidthPixels
+                { tilemapWidth = cache.tilemapWidthPixels
                 , tilemapHeight = cache.tilemapHeightPixels
                 , viewportWidth = viewportWidth
                 , viewportHeight = viewportHeight
@@ -236,8 +230,8 @@ refreshTilemapCache tilemapUpdateResult cache =
     { nextCache | dynamicTiles = nextDynamicTiles }
 
 
-renderableFromTile : Float -> PixelsToMetersRatio -> Cell -> Tile -> Maybe Renderable
-renderableFromTile tilemapHeightPixels pixelsToMetersRatio cell tile =
+renderableFromTile : Float -> Cell -> Tile -> Maybe Renderable
+renderableFromTile tilemapHeightPixels cell tile =
     case tile.kind of
         Tile.Fixed props ->
             let
@@ -248,7 +242,7 @@ renderableFromTile tilemapHeightPixels pixelsToMetersRatio cell tile =
                 Just largeTile ->
                     let
                         base =
-                            baseRenderable tilemapHeightPixels pixelsToMetersRatio cell ( largeTile.width, largeTile.height )
+                            baseRenderable tilemapHeightPixels cell ( largeTile.width, largeTile.height )
                     in
                     Just
                         { base
@@ -268,7 +262,7 @@ renderableFromTile tilemapHeightPixels pixelsToMetersRatio cell tile =
                     else
                         let
                             base =
-                                baseRenderable tilemapHeightPixels pixelsToMetersRatio cell ( 1, 1 )
+                                baseRenderable tilemapHeightPixels cell ( 1, 1 )
                         in
                         Just
                             { base
@@ -318,7 +312,7 @@ renderableFromDynamicTile cache ( cell, tile ) =
         Tile.Fixed props ->
             let
                 base =
-                    baseRenderable cache.tilemapHeightPixels cache.pixelsToMetersRatio cell ( 1, 1 )
+                    baseRenderable cache.tilemapHeightPixels cell ( 1, 1 )
             in
             Just
                 { base
@@ -330,14 +324,11 @@ renderableFromDynamicTile cache ( cell, tile ) =
             Nothing
 
 
-baseRenderable : Float -> PixelsToMetersRatio -> Cell -> ( Int, Int ) -> Renderable
-baseRenderable tilemapHeightPixels pixelsToMetersRatio cell ( width, height ) =
+baseRenderable : Float -> Cell -> ( Int, Int ) -> Renderable
+baseRenderable tilemapHeightPixels cell ( width, height ) =
     let
         { x, y } =
-            Cell.bottomLeftCorner cell |> pointToPixels pixelsToMetersRatio
-
-        tileSizePixels =
-            toPixelsValue pixelsToMetersRatio Cell.size
+            Cell.bottomLeftCorner cell |> pointToPixels defaultPixelsToMetersRatio
 
         yAdjusted =
             tilemapHeightPixels - tileSizePixels - y

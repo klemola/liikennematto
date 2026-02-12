@@ -13,7 +13,11 @@ module Render.Viewport exposing
     )
 
 import Length
-import Render.Conversion exposing (PixelsToMetersRatio, toPixelsValue)
+import Render.Conversion
+    exposing
+        ( defaultPixelsToMetersRatio
+        , toPixelsValue
+        )
 
 
 type alias Viewport =
@@ -29,7 +33,6 @@ type alias ViewportConfig =
     , tilemapHeight : Float
     , viewportWidth : Float
     , viewportHeight : Float
-    , pixelsToMetersRatio : PixelsToMetersRatio
     }
 
 
@@ -52,7 +55,7 @@ calculatePannableBounds : ViewportConfig -> PannableBounds
 calculatePannableBounds config =
     let
         minPaddingPixels =
-            toPixelsValue config.pixelsToMetersRatio minPadding
+            toPixelsValue defaultPixelsToMetersRatio minPadding
 
         paddingXForViewport =
             max 0 ((config.viewportWidth - config.tilemapWidth) / 2)
@@ -112,13 +115,12 @@ snapToEven viewport =
     }
 
 
-clamp : PixelsToMetersRatio -> Float -> Float -> Viewport -> Viewport
-clamp pixelsToMetersRatio tilemapWidth tilemapHeight viewport =
+clamp : Float -> Float -> Viewport -> Viewport
+clamp tilemapWidth tilemapHeight viewport =
     let
         bounds =
             calculatePannableBounds
-                { pixelsToMetersRatio = pixelsToMetersRatio
-                , tilemapWidth = tilemapWidth
+                { tilemapWidth = tilemapWidth
                 , tilemapHeight = tilemapHeight
                 , viewportWidth = viewport.width
                 , viewportHeight = viewport.height

@@ -15,7 +15,6 @@ import Json.Encode as JE
 import Length
 import Lib.Collection as Collection
 import Model.Liikennematto exposing (Liikennematto)
-import Model.RenderCache as RenderCache
 import Model.World exposing (World, formatEvents)
 import Point2d exposing (Point2d)
 import Quantity
@@ -167,7 +166,7 @@ carsList model =
             , Element.width Element.fill
             ]
             (List.map
-                (carStateCard model.renderCache)
+                carStateCard
                 (Collection.values model.world.cars)
             )
 
@@ -226,13 +225,13 @@ cardAttributes height =
     ]
 
 
-carStateCard : RenderCache.RenderCache -> Car -> Element msg
-carStateCard cache car =
+carStateCard : Car -> Element msg
+carStateCard car =
     Element.row
         (cardAttributes (Element.px 64))
         [ Element.text ("# " ++ Collection.idToString car.id)
         , Element.column [ Element.spacing whitespaceTight ]
-            [ Element.text (pointToString cache car.position)
+            [ Element.text (pointToString car.position)
             , Element.text (speedToString car.velocity)
             , Element.text (Car.statusDescription car)
             ]
@@ -295,13 +294,13 @@ wfcContext wfcModel =
         ]
 
 
-wfcCurrentCell : RenderCache.RenderCache -> WFC.Model -> Element msg
-wfcCurrentCell cache wfcModel =
+wfcCurrentCell : WFC.Model -> Element msg
+wfcCurrentCell wfcModel =
     case WFC.toCurrentCell wfcModel of
         Just cell ->
             let
                 tileSizePixels =
-                    Render.Conversion.toPixelsValue cache.pixelsToMetersRatio Cell.size
+                    Render.Conversion.toPixelsValue Render.Conversion.defaultPixelsToMetersRatio Cell.size
 
                 ( cellX, cellY ) =
                     Cell.coordinates cell
@@ -351,12 +350,12 @@ speedToString speed =
     "Speed: " ++ speedValue ++ " m/s"
 
 
-pointToString : RenderCache.RenderCache -> Point2d Length.Meters a -> String
-pointToString cache point =
+pointToString : Point2d Length.Meters a -> String
+pointToString point =
     let
         { x, y } =
             point
-                |> Point2d.at cache.pixelsToMetersRatio
+                |> Point2d.at Render.Conversion.defaultPixelsToMetersRatio
                 |> Point2d.toPixels
 
         format n =

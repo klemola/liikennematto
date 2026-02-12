@@ -22,6 +22,7 @@ import Model.RenderCache exposing (RenderCache)
 import Point2d exposing (Point2d)
 import Polyline2d
 import Quantity
+import Render.Conversion exposing (defaultPixelsToMetersRatio)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 
@@ -37,7 +38,7 @@ cubicSpline cache color spline =
             flipSplineYCoordinate cache.tilemapHeight spline
 
         splinePixels =
-            CubicSpline2d.at cache.pixelsToMetersRatio splineInSVGCoords
+            CubicSpline2d.at defaultPixelsToMetersRatio splineInSVGCoords
     in
     Svg.g
         [ Attributes.stroke (Color.toCssString color)
@@ -71,7 +72,7 @@ cubicSplineDebug cache color spline =
             flipSplineYCoordinate cache.tilemapHeight spline
 
         splinePixels =
-            CubicSpline2d.at cache.pixelsToMetersRatio splineInSVGCoords
+            CubicSpline2d.at defaultPixelsToMetersRatio splineInSVGCoords
 
         controlPoints =
             [ CubicSpline2d.firstControlPoint spline
@@ -98,7 +99,7 @@ cubicSplineDebug cache color spline =
                 (controlPoints
                     |> List.map
                         (flipPointYCoordinate cache.tilemapHeight
-                            >> Point2d.at cache.pixelsToMetersRatio
+                            >> Point2d.at defaultPixelsToMetersRatio
                         )
                 )
             )
@@ -121,10 +122,10 @@ circle cache fillColor strokeProperties radius centerPoint =
         centerPointInSVGCoords =
             centerPoint
                 |> flipPointYCoordinate cache.tilemapHeight
-                |> Point2d.at cache.pixelsToMetersRatio
+                |> Point2d.at defaultPixelsToMetersRatio
 
         radiusPixels =
-            radius |> Quantity.at cache.pixelsToMetersRatio
+            radius |> Quantity.at defaultPixelsToMetersRatio
 
         strokeAttrs =
             case strokeProperties of
@@ -148,10 +149,10 @@ line cache color lineSegment =
             LineSegment2d.fromEndpoints
                 ( LineSegment2d.startPoint lineSegment
                     |> flipPointYCoordinate cache.tilemapHeight
-                    |> Point2d.at cache.pixelsToMetersRatio
+                    |> Point2d.at defaultPixelsToMetersRatio
                 , LineSegment2d.endPoint lineSegment
                     |> flipPointYCoordinate cache.tilemapHeight
-                    |> Point2d.at cache.pixelsToMetersRatio
+                    |> Point2d.at defaultPixelsToMetersRatio
                 )
     in
     Svg.lineSegment2d
@@ -167,12 +168,12 @@ arc cache color theArc =
         start =
             Arc2d.startPoint theArc
                 |> flipPointYCoordinate cache.tilemapHeight
-                |> Point2d.at cache.pixelsToMetersRatio
+                |> Point2d.at defaultPixelsToMetersRatio
 
         center =
             Arc2d.centerPoint theArc
                 |> flipPointYCoordinate cache.tilemapHeight
-                |> Point2d.at cache.pixelsToMetersRatio
+                |> Point2d.at defaultPixelsToMetersRatio
 
         arcInSVGCoords =
             start
@@ -194,12 +195,12 @@ boundingBox cache color bb =
         centerPointPixels =
             BoundingBox2d.centerPoint bb
                 |> flipPointYCoordinate cache.tilemapHeight
-                |> Point2d.at cache.pixelsToMetersRatio
+                |> Point2d.at defaultPixelsToMetersRatio
 
         dimensionsPixels =
             BoundingBox2d.dimensions bb
-                |> Tuple.mapBoth (Quantity.at cache.pixelsToMetersRatio)
-                    (Quantity.at cache.pixelsToMetersRatio)
+                |> Tuple.mapBoth (Quantity.at defaultPixelsToMetersRatio)
+                    (Quantity.at defaultPixelsToMetersRatio)
     in
     Svg.boundingBox2d
         [ Attributes.fill (Color.toCssString color) ]

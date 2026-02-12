@@ -10,11 +10,18 @@ import Lib.Collection as Collection exposing (Collection)
 import List.Extra
 import Model.Debug exposing (DebugLayerKind(..), DebugState, isLayerEnabled)
 import Model.RenderCache as RenderCache exposing (RenderCache)
+import Model.Screen exposing (Screen)
 import Model.World exposing (World)
 import Point2d exposing (Point2d)
 import Polygon2d
 import Quantity
-import Render.Conversion exposing (pointToPixels, toPixelsValue)
+import Render.Conversion
+    exposing
+        ( defaultPixelsToMetersRatio
+        , pointToPixels
+        , tileSizePixels
+        , toPixelsValue
+        )
 import Render.Shape
 import Render.Viewport as Viewport exposing (Viewport)
 import Simulation.Car exposing (Car)
@@ -43,28 +50,29 @@ nodeRadius =
     Length.meters 0.8
 
 
-view : World -> RenderCache -> DebugState -> Maybe Viewport -> Svg msg
-view world cache debugState maybeViewport =
+view : World -> RenderCache -> DebugState -> Screen -> Maybe Viewport -> Svg msg
+view world cache debugState screen maybeViewport =
     let
-        tilemapWidth =
-            String.fromFloat cache.tilemapWidthPixels
+        svgWidth =
+            String.fromInt screen.width
 
-        tilemapHeight =
-            String.fromFloat cache.tilemapHeightPixels
+        svgHeight =
+            String.fromInt screen.height
 
-        ( svgWidth, svgHeight, viewBoxStr ) =
+        viewBoxStr =
             case maybeViewport of
                 Just viewport ->
-                    ( String.fromFloat viewport.width
-                    , String.fromFloat viewport.height
-                    , Viewport.toSvgViewBox viewport
-                    )
+                    Viewport.toSvgViewBox viewport
 
                 Nothing ->
-                    ( tilemapWidth
-                    , tilemapHeight
-                    , "0 0 " ++ tilemapWidth ++ " " ++ tilemapHeight
-                    )
+                    let
+                        tilemapWidth =
+                            String.fromFloat cache.tilemapWidthPixels
+
+                        tilemapHeight =
+                            String.fromFloat cache.tilemapHeightPixels
+                    in
+                    "0 0 " ++ tilemapWidth ++ " " ++ tilemapHeight
     in
     Svg.svg
         [ Attributes.width svgWidth
@@ -142,19 +150,19 @@ renderRoadNetwork cache roadNetwork =
                     (\nodeCtx acc ->
                         let
                             radius =
-                                toPixelsValue cache.pixelsToMetersRatio nodeRadius
+                                toPixelsValue defaultPixelsToMetersRatio nodeRadius
 
                             { position, kind } =
                                 nodeCtx.node.label
 
                             nodeXY =
-                                pointToPixels cache.pixelsToMetersRatio position
+                                pointToPixels defaultPixelsToMetersRatio position
 
                             helperPos =
                                 position |> Point2d.translateIn nodeCtx.node.label.direction (Quantity.half nodeRadius)
 
                             helperXY =
-                                pointToPixels cache.pixelsToMetersRatio helperPos
+                                pointToPixels defaultPixelsToMetersRatio helperPos
                         in
                         ( "Node-" ++ String.fromInt nodeCtx.node.id
                         , Svg.g []
@@ -195,10 +203,10 @@ renderRoadNetwork cache roadNetwork =
                             (\fromNodeCtx toNodeCtx ->
                                 let
                                     from =
-                                        pointToPixels cache.pixelsToMetersRatio fromNodeCtx.node.label.position
+                                        pointToPixels defaultPixelsToMetersRatio fromNodeCtx.node.label.position
 
                                     to =
-                                        pointToPixels cache.pixelsToMetersRatio toNodeCtx.node.label.position
+                                        pointToPixels defaultPixelsToMetersRatio toNodeCtx.node.label.position
 
                                     fromStr =
                                         String.fromFloat from.x ++ " " ++ String.fromFloat (cache.tilemapHeightPixels - from.y)
@@ -296,7 +304,7 @@ toPointsString cache points =
         (\point acc ->
             let
                 { x, y } =
-                    pointToPixels cache.pixelsToMetersRatio point
+                    pointToPixels defaultPixelsToMetersRatio point
 
                 pointStr =
                     String.fromFloat x ++ "," ++ String.fromFloat (cache.tilemapHeightPixels - y) ++ " "
@@ -370,10 +378,7 @@ renderWFC cache =
             (\( cell, variant ) ->
                 let
                     { x, y } =
-                        Cell.bottomLeftCorner cell |> pointToPixels cache.pixelsToMetersRatio
-
-                    tileSizePixels =
-                        toPixelsValue cache.pixelsToMetersRatio Cell.size
+                        Cell.bottomLeftCorner cell |> pointToPixels defaultPixelsToMetersRatio
 
                     yAdjusted =
                         cache.tilemapHeightPixels - tileSizePixels - y

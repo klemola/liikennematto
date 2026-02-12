@@ -4,22 +4,20 @@ import Audio
 import Browser
 import Browser.Dom exposing (getViewport)
 import Browser.Events as Events
+import Common
 import Duration exposing (Duration)
 import Element exposing (Element)
 import Html
 import Json.Decode as Decode
-import Length
 import Lib.FSM as FSM
 import Message exposing (Message(..))
 import Model.Debug
 import Model.Flags as Flags exposing (FlagsJson)
 import Model.Liikennematto as Liikennematto exposing (Liikennematto)
-import Model.RenderCache exposing (RenderCache, setTilemapCache)
+import Model.RenderCache
 import Model.Screen as Screen
-import Pixels
-import Quantity
 import Render
-import Render.Conversion exposing (toPixelsValue)
+import Render.Conversion exposing (tileSizePixels)
 import Render.Debug
 import Render.Viewport as Viewport
 import Savegame
@@ -158,24 +156,42 @@ updateBase msg model =
                 nextInitSteps =
                     { initSteps | viewportSizeSet = True }
 
-                unclampedViewport =
-                    updateViewportSize
-                        (round domViewport.viewport.width)
-                        (round domViewport.viewport.height)
-                        model
+                zoomedViewport =
+                    viewportForZoom
+                        model.renderCache
+                        model.ui.zoomLevel
+                        { screenWidth = toFloat (round domViewport.viewport.width)
+                        , screenHeight = toFloat (round domViewport.viewport.height)
+                        }
 
                 nextRenderCache =
                     model.renderCache
-                        |> Model.RenderCache.updatePannableBounds unclampedViewport.width unclampedViewport.height
+                        |> Model.RenderCache.updatePannableBounds zoomedViewport.width zoomedViewport.height
 
-                nextViewport =
+                unclampedViewport =
+                    if initSteps.viewportSizeSet then
+                        -- Subsequent resizes: maintain center
+                        updateViewportSize
+                            (round domViewport.viewport.width)
+                            (round domViewport.viewport.height)
+                            model
+
+                    else
+                        -- First load: center tilemap in viewport
+                        { x = (model.renderCache.tilemapWidthPixels - zoomedViewport.width) / 2
+                        , y = (model.renderCache.tilemapHeightPixels - zoomedViewport.height) / 2
+                        , width = zoomedViewport.width
+                        , height = zoomedViewport.height
+                        }
+
+                centeredViewport =
                     Viewport.clampWithBounds nextRenderCache.pannableBounds unclampedViewport
 
                 ui =
                     model.ui
 
                 nextEditor =
-                    Editor.onViewportChanged nextRenderCache nextViewport ui.editor
+                    Editor.onViewportChanged nextRenderCache centeredViewport ui.editor
 
                 nextUi =
                     { ui | editor = nextEditor }
@@ -183,7 +199,7 @@ updateBase msg model =
             ( { model
                 | screen = nextScreen
                 , initSteps = nextInitSteps
-                , viewport = nextViewport
+                , viewport = centeredViewport
                 , renderCache = nextRenderCache
                 , ui = nextUi
               }
@@ -237,7 +253,7 @@ updateBase msg model =
         UIMsg uiMsg ->
             let
                 ( nextUi, uiCmd, uiEvent ) =
-                    UI.update model.world model.renderCache.pixelsToMetersRatio model.viewport uiMsg model.ui
+                    UI.update model.world model.viewport model.screen uiMsg model.ui
 
                 modelWithNextUi =
                     { model | ui = nextUi }
@@ -386,9 +402,21 @@ onUiButtonPressed buttonId model =
 onViewportChanged : Float -> Float -> Bool -> Liikennematto -> ( Liikennematto, Cmd Message )
 onViewportChanged deltaX deltaY shouldSnap model =
     let
+        scaleX =
+            model.viewport.width / toFloat model.screen.width
+
+        scaleY =
+            model.viewport.height / toFloat model.screen.height
+
+        scaledDeltaX =
+            deltaX * scaleX
+
+        scaledDeltaY =
+            deltaY * scaleY
+
         nextViewport =
             model.viewport
-                |> Viewport.applyPanDelta deltaX deltaY
+                |> Viewport.applyPanDelta scaledDeltaX scaledDeltaY
                 |> Viewport.clampWithBounds model.renderCache.pannableBounds
                 |> (if shouldSnap then
                         Viewport.snapToEven
@@ -403,60 +431,59 @@ onViewportChanged deltaX deltaY shouldSnap model =
 
 
 updateViewportSize : Int -> Int -> Liikennematto -> Viewport.Viewport
-updateViewportSize width height model =
+updateViewportSize screenWidth screenHeight model =
     let
         currentViewport =
             model.viewport
 
-        nextWidth =
-            toFloat width
-
-        nextHeight =
-            toFloat height
+        nextViewport =
+            viewportForZoom
+                model.renderCache
+                model.ui.zoomLevel
+                { screenWidth = toFloat screenWidth
+                , screenHeight = toFloat screenHeight
+                }
 
         centerX =
             currentViewport.x + currentViewport.width / 2
 
         centerY =
             currentViewport.y + currentViewport.height / 2
-
-        nextX =
-            centerX - nextWidth / 2
-
-        nextY =
-            centerY - nextHeight / 2
     in
     { currentViewport
-        | width = nextWidth
-        , height = nextHeight
-        , x = nextX
-        , y = nextY
+        | width = nextViewport.width
+        , height = nextViewport.height
+        , x = centerX - nextViewport.width / 2
+        , y = centerY - nextViewport.height / 2
     }
 
 
 onZoomLevelChanged : UI.Model.ZoomLevel -> Liikennematto -> ( Liikennematto, Cmd Message )
 onZoomLevelChanged nextZoomLevel model =
     let
-        cacheAfterZoom =
-            model.renderCache
-                |> setPixelsToMetersRatio nextZoomLevel
-                |> setTilemapCache model.world.tilemap Nothing
+        viewportWithZoom =
+            viewportForZoom
+                model.renderCache
+                nextZoomLevel
+                { screenWidth = toFloat model.screen.width
+                , screenHeight = toFloat model.screen.height
+                }
+
+        centerX =
+            model.viewport.x + model.viewport.width / 2
+
+        centerY =
+            model.viewport.y + model.viewport.height / 2
 
         nextRenderCache =
-            cacheAfterZoom
-                |> Model.RenderCache.updatePannableBounds model.viewport.width model.viewport.height
+            model.renderCache
+                |> Model.RenderCache.updatePannableBounds viewportWithZoom.width viewportWithZoom.height
 
-        tilemapSizeChangeX =
-            nextRenderCache.tilemapWidthPixels - model.renderCache.tilemapWidthPixels
-
-        tilemapSizeChangeY =
-            nextRenderCache.tilemapHeightPixels - model.renderCache.tilemapHeightPixels
-
-        nextViewport =
-            { x = model.viewport.x + (tilemapSizeChangeX / 2)
-            , y = model.viewport.y + (tilemapSizeChangeY / 2)
-            , width = model.viewport.width
-            , height = model.viewport.height
+        centeredViewport =
+            { x = centerX - viewportWithZoom.width / 2
+            , y = centerY - viewportWithZoom.height / 2
+            , width = viewportWithZoom.width
+            , height = viewportWithZoom.height
             }
                 |> Viewport.clampWithBounds nextRenderCache.pannableBounds
 
@@ -464,41 +491,39 @@ onZoomLevelChanged nextZoomLevel model =
             model.ui
 
         nextEditor =
-            Editor.onViewportChanged nextRenderCache nextViewport ui.editor
+            Editor.onViewportChanged nextRenderCache centeredViewport ui.editor
 
         nextUi =
             { ui | editor = nextEditor }
     in
     ( { model
         | renderCache = nextRenderCache
-        , viewport = nextViewport
+        , viewport = centeredViewport
         , ui = nextUi
       }
     , Cmd.none
     )
 
 
-setPixelsToMetersRatio : UI.Model.ZoomLevel -> RenderCache -> RenderCache
-setPixelsToMetersRatio zoomLevel cache =
+viewportForZoom : Model.RenderCache.RenderCache -> UI.Model.ZoomLevel -> { screenWidth : Float, screenHeight : Float } -> { width : Float, height : Float }
+viewportForZoom cache zoomLevel { screenWidth, screenHeight } =
     let
-        nextPixelsPerMeter =
+        viewportHeight =
             case zoomLevel of
-                UI.Model.VeryFar ->
-                    4
+                UI.Model.Near ->
+                    6 * tileSizePixels
 
                 UI.Model.Far ->
-                    6
+                    10 * tileSizePixels
 
-                UI.Model.Near ->
-                    8
+                UI.Model.VeryFar ->
+                    cache.tilemapHeightPixels + cache.pannableBounds.paddingY * 2
 
-        nextRatio =
-            Pixels.pixels nextPixelsPerMeter |> Quantity.per (Length.meters 1)
+        aspectRatio =
+            screenWidth / screenHeight
     in
-    { cache
-        | pixelsToMetersRatio = nextRatio
-        , tilemapWidthPixels = toPixelsValue nextRatio cache.tilemapWidth
-        , tilemapHeightPixels = toPixelsValue nextRatio cache.tilemapHeight
+    { width = Common.roundToEven (viewportHeight * aspectRatio)
+    , height = Common.roundToEven viewportHeight
     }
 
 
@@ -532,11 +557,11 @@ view model =
 
 render : Liikennematto -> Element msg
 render model =
-    Render.view model.world model.renderCache (Just model.viewport)
+    Render.view model.world model.renderCache model.screen (Just model.viewport)
         |> Element.html
 
 
 renderDebug : Liikennematto -> Element msg
 renderDebug model =
-    Render.Debug.view model.world model.renderCache model.debug (Just model.viewport)
+    Render.Debug.view model.world model.renderCache model.debug model.screen (Just model.viewport)
         |> Element.html

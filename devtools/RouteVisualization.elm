@@ -4,18 +4,21 @@ import Browser
 import Common exposing (GlobalCoordinates)
 import Data.RuleSetups as RuleSetups
 import Element
+import Helpers
 import Html exposing (Html)
 import Html.Events.Extra.Mouse as MouseEvents
 import Length
 import Maybe.Extra as Maybe
 import Model.Debug
 import Model.RenderCache as RenderCache exposing (RenderCache)
+import Model.Screen as Screen
 import Model.World as World exposing (World)
 import Point2d exposing (Point2d)
 import Quantity
 import Render
 import Render.Conversion
 import Render.Debug
+import Render.Viewport as Viewport
 import Simulation.AStar as AStar
 import Simulation.Car exposing (Car)
 import Simulation.Route as Route
@@ -76,19 +79,25 @@ update msg model =
                 { activeCar, world } =
                     model
 
-                ( offsetX, offsetY ) =
+                ( screenX, screenY ) =
                     event.offsetPos
+
+                offsetX =
+                    Helpers.screenToViewBox screenX
+
+                offsetY =
+                    Helpers.screenToViewBox screenY
 
                 clickWorldPosition =
                     Point2d.xy
                         (Render.Conversion.toMetersValue
-                            model.cache.pixelsToMetersRatio
+                            Render.Conversion.defaultPixelsToMetersRatio
                             offsetX
                         )
                         (model.cache.tilemapHeight
                             |> Quantity.minus
                                 (Render.Conversion.toMetersValue
-                                    model.cache.pixelsToMetersRatio
+                                    Render.Conversion.defaultPixelsToMetersRatio
                                     offsetY
                                 )
                         )
@@ -138,11 +147,22 @@ view model =
         world =
             model.world
 
-        renderWidth =
-            floor model.cache.tilemapWidthPixels
+        screenWidth =
+            floor (Helpers.viewBoxToScreen model.cache.tilemapWidthPixels)
 
-        renderHeight =
-            floor model.cache.tilemapHeightPixels
+        screenHeight =
+            floor (Helpers.viewBoxToScreen model.cache.tilemapHeightPixels)
+
+        screen =
+            Screen.fromDimensions screenWidth screenHeight
+
+        viewport =
+            Viewport.init
+                { tilemapWidth = model.cache.tilemapWidthPixels
+                , tilemapHeight = model.cache.tilemapHeightPixels
+                , viewportWidth = model.cache.tilemapWidthPixels
+                , viewportHeight = model.cache.tilemapHeightPixels
+                }
 
         renderDebug =
             Render.Debug.view
@@ -152,16 +172,17 @@ view model =
                     |> Model.Debug.toggleLayer Model.Debug.CarDebug
                     |> Model.Debug.toggleLayer Model.Debug.RoadNetworkDebug
                 )
-                Nothing
+                screen
+                (Just viewport)
                 |> Element.html
     in
     Html.div []
         [ Html.div [ MouseEvents.onClick WorldClicked ]
-            [ Render.view world model.cache Nothing
+            [ Render.view world model.cache screen (Just viewport)
                 |> Element.html
                 |> Element.el
-                    [ Element.width (Element.px renderWidth)
-                    , Element.height (Element.px renderHeight)
+                    [ Element.width (Element.px screenWidth)
+                    , Element.height (Element.px screenHeight)
                     , Element.inFront renderDebug
                     ]
                 |> Element.map (always NoOp)

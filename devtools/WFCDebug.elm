@@ -16,12 +16,14 @@ import Element
 import Element.Background
 import Element.Font
 import Element.Input as Input
+import Helpers
 import Html exposing (Html)
 import Html.Attributes
 import Lib.SeedState as SeedState
 import List.Extra
 import Model.Debug
 import Model.RenderCache as RenderCache
+import Model.Screen as Screen
 import Model.World as World
 import Process
 import Random
@@ -292,11 +294,15 @@ update msg model =
                         , tilemapHeight = model.cache.tilemapHeightPixels
                         , viewportWidth = model.cache.tilemapWidthPixels
                         , viewportHeight = model.cache.tilemapHeightPixels
-                        , pixelsToMetersRatio = model.cache.pixelsToMetersRatio
                         }
 
+                screen =
+                    Screen.fromDimensions
+                        (floor (Helpers.viewBoxToScreen model.cache.tilemapWidthPixels))
+                        (floor (Helpers.viewBoxToScreen model.cache.tilemapHeightPixels))
+
                 ( editorModel, effects ) =
-                    Editor.update model.world model.cache.pixelsToMetersRatio defaultViewport editorMsg model.editor
+                    Editor.update model.world defaultViewport screen editorMsg model.editor
 
                 inputEvent =
                     effects
@@ -325,11 +331,22 @@ update msg model =
 view : Model -> Html Msg
 view model =
     let
-        renderWidth =
-            floor model.cache.tilemapWidthPixels
+        screenWidth =
+            floor (Helpers.viewBoxToScreen model.cache.tilemapWidthPixels)
 
-        renderHeight =
-            floor model.cache.tilemapHeightPixels
+        screenHeight =
+            floor (Helpers.viewBoxToScreen model.cache.tilemapHeightPixels)
+
+        screen =
+            Screen.fromDimensions screenWidth screenHeight
+
+        viewport =
+            Viewport.init
+                { tilemapWidth = model.cache.tilemapWidthPixels
+                , tilemapHeight = model.cache.tilemapHeightPixels
+                , viewportWidth = model.cache.tilemapWidthPixels
+                , viewportHeight = model.cache.tilemapHeightPixels
+                }
 
         renderDebug =
             Render.Debug.view
@@ -338,29 +355,24 @@ view model =
                 (Model.Debug.initialDebugState
                     |> Model.Debug.toggleLayer Model.Debug.WFCDebug
                 )
-                Nothing
+                screen
+                (Just viewport)
                 |> Element.html
 
         render =
-            Render.view model.world model.cache Nothing
+            Render.view model.world model.cache screen (Just viewport)
                 |> Element.html
                 |> Element.el
-                    [ Element.width (Element.px renderWidth)
-                    , Element.height (Element.px renderHeight)
+                    [ Element.width (Element.px screenWidth)
+                    , Element.height (Element.px screenHeight)
                     , Element.inFront renderDebug
                     , Element.inFront
-                        (wfcCurrentCell model.cache model.wfcModel)
+                        (wfcCurrentCell model.wfcModel)
                     , Element.inFront
                         (Editor.view
                             model.cache
-                            (Viewport.init
-                                { tilemapWidth = model.cache.tilemapWidthPixels
-                                , tilemapHeight = model.cache.tilemapHeightPixels
-                                , viewportWidth = model.cache.tilemapWidthPixels
-                                , viewportHeight = model.cache.tilemapHeightPixels
-                                , pixelsToMetersRatio = model.cache.pixelsToMetersRatio
-                                }
-                            )
+                            viewport
+                            screen
                             model.world
                             model.editor
                             |> Element.map EditorMsg
@@ -374,7 +386,7 @@ view model =
             [ render
             , sidePanel model.mode model.wfcModel
             ]
-        , bottomPanel renderWidth
+        , bottomPanel screenWidth
         ]
         |> Element.layout
             [ Element.width Element.fill
