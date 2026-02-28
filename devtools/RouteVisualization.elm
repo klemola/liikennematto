@@ -162,6 +162,7 @@ view model =
                 , tilemapHeight = model.cache.tilemapHeightPixels
                 , viewportWidth = model.cache.tilemapWidthPixels
                 , viewportHeight = model.cache.tilemapHeightPixels
+                , screenWidth = model.cache.tilemapWidthPixels
                 }
 
         renderDebug =

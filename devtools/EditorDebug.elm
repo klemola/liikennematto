@@ -124,6 +124,7 @@ init _ =
                                 , tilemapHeight = cache.tilemapHeightPixels
                                 , viewportWidth = Helpers.screenToViewBox (toFloat defaultLimitedWidth)
                                 , viewportHeight = Helpers.screenToViewBox (toFloat defaultLimitedHeight)
+                                , screenWidth = toFloat defaultLimitedWidth
                                 }
                     in
                     ( { world = world
@@ -176,7 +177,7 @@ update msg model =
                                     Editor.ViewportChangeRequested deltaX deltaY shouldSnap ->
                                         vp
                                             |> RenderViewport.applyPanDelta deltaX deltaY
-                                            |> RenderViewport.clamp model.cache.tilemapWidthPixels model.cache.tilemapHeightPixels
+                                            |> RenderViewport.clampWithBounds model.cache.pannableBounds
                                             |> (if shouldSnap then
                                                     RenderViewport.snapToEven
 

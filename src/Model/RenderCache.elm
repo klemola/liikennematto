@@ -99,6 +99,7 @@ new { tilemap } =
                 , tilemapHeight = tilemapHeigthPixels
                 , viewportWidth = initialViewportWidth
                 , viewportHeight = initialViewportHeight
+                , screenWidth = initialViewportWidth
                 }
     in
     { tilemap =
@@ -118,8 +119,8 @@ new { tilemap } =
     }
 
 
-clear : Viewport.Viewport -> RenderCache -> World -> RenderCache
-clear viewport _ { tilemap } =
+clear : Float -> Viewport.Viewport -> RenderCache -> World -> RenderCache
+clear screenWidth viewport _ { tilemap } =
     let
         tilemapDimensions =
             getTilemapDimensions tilemap
@@ -139,6 +140,7 @@ clear viewport _ { tilemap } =
                 , tilemapHeight = tilemapHeigthPixels
                 , viewportWidth = viewport.width
                 , viewportHeight = viewport.height
+                , screenWidth = screenWidth
                 }
     in
     { tilemap =
@@ -194,8 +196,8 @@ setTilemapDebugCache wfcModel cache =
     }
 
 
-updatePannableBounds : Float -> Float -> RenderCache -> RenderCache
-updatePannableBounds viewportWidth viewportHeight cache =
+updatePannableBounds : Float -> Float -> Float -> RenderCache -> RenderCache
+updatePannableBounds screenWidth viewportWidth viewportHeight cache =
     { cache
         | pannableBounds =
             Viewport.calculatePannableBounds
@@ -203,6 +205,7 @@ updatePannableBounds viewportWidth viewportHeight cache =
                 , tilemapHeight = cache.tilemapHeightPixels
                 , viewportWidth = viewportWidth
                 , viewportHeight = viewportHeight
+                , screenWidth = screenWidth
                 }
     }
 
