@@ -18,7 +18,15 @@ import Maybe.Extra as Maybe
 import Random
 import Test exposing (Test, describe, test)
 import Tilemap.Cell as Cell exposing (Cell)
-import Tilemap.Core exposing (Tilemap, createTilemap, fixedTileByCell, tileByCell, tileNeighborIn)
+import Tilemap.Core
+    exposing
+        ( Tilemap
+        , createTilemap
+        , fixedTileByCell
+        , setSuperpositionOptions
+        , tileByCell
+        , tileNeighborIn
+        )
 import Tilemap.DrivenWFC exposing (addTileById, onRemoveTile, restartWfc)
 import Tilemap.Tile as Tile exposing (Tile)
 import Tilemap.TileConfig exposing (TileId)
@@ -401,6 +409,53 @@ suite =
                                 |> Expect.onFail "tile remains fixed"
                         ]
                         ()
+                )
+            ]
+        , describe "road tile stability"
+            [ test "Road neighbor should remain Fixed even when an adjacent Superposition tile has incompatible options"
+                (\_ ->
+                    let
+                        tilemapWithRoads =
+                            placeRoadAndUpdateBuffer
+                                [ ( 5, 5 ), ( 6, 5 ) ]
+                                emptyTilemap
+
+                        -- Surgically replace the Buffer at (5,6) with Superposition [verticalRoad].
+                        -- WFC propagation from (5,5) DOWN to (5,6) will find no valid options (incompatible sockets)
+                        -- triggering the backtrack cascade.
+                        verticalRoadId =
+                            3
+
+                        tilemapWithIncompatibleNeighbor =
+                            setSuperpositionOptions
+                                (createCell constraints 5 6)
+                                [ verticalRoadId ]
+                                tilemapWithRoads
+
+                        -- Place a new road at (5,4), directly above (5,5).
+                        -- processTileNeighbor recollpases (5,5), then propagates DOWN to (5,6).
+                        -- (5,5) ends up as Superposition [] instead of Fixed
+                        deadendUpId =
+                            4
+
+                        ( resultTilemap, _ ) =
+                            addTileById
+                                (SeedState.fromSeed testSeed)
+                                Dict.empty
+                                (createCell constraints 5 4)
+                                deadendUpId
+                                tilemapWithIncompatibleNeighbor
+
+                        neighborCell =
+                            createCell constraints 5 5
+                    in
+                    tileByCell resultTilemap neighborCell
+                        |> Maybe.unwrap False Tile.isFixed
+                        |> Expect.equal True
+                        |> Expect.onFail
+                            ("Road at (5,5) should remain Fixed after addTileById, "
+                                ++ "but the WFC cascade backtrack left it as Superposition"
+                            )
                 )
             ]
         , describe "seed propagation"
