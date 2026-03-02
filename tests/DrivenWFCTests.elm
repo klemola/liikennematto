@@ -443,11 +443,11 @@ suite =
                             restartWfc (SeedState.fromSeed testSeed) Dict.empty tilemap
 
                         ( _, drivenWfcResult, _ ) =
-                            Tilemap.DrivenWFC.runWfc tilemap (WFC.solve initialWfc)
+                            Tilemap.DrivenWFC.runWfc 0 tilemap (WFC.solve initialWfc)
 
                         currentSeed =
                             case drivenWfcResult of
-                                Tilemap.DrivenWFC.WFCSolved _ _ seedState ->
+                                Tilemap.DrivenWFC.WFCSolved _ _ _ seedState ->
                                     seedState.currentSeed
 
                                 _ ->

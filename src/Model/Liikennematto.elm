@@ -205,7 +205,7 @@ triggerLoading model =
 
 initialDrivenWfc : Random.Seed -> DrivenWFC
 initialDrivenWfc initialSeed =
-    WFCSolved [] [] (SeedState.fromSeed initialSeed)
+    WFCSolved 0 [] [] (SeedState.fromSeed initialSeed)
 
 
 horizontalCellsAmount : Int

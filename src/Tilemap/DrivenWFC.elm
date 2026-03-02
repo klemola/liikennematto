@@ -45,9 +45,9 @@ import Time
 
 type DrivenWFC
     = WFCPending Duration Time.Posix
-    | WFCActive WFC.Model
+    | WFCActive Int WFC.Model
     | WFCFailed (List String) SeedState
-    | WFCSolved (List String) (List ( Cell, TileId )) SeedState
+    | WFCSolved Int (List String) (List ( Cell, TileId )) SeedState
 
 
 type alias RunWFCResult =
@@ -69,8 +69,8 @@ wfcStepsPerCycle =
     3500
 
 
-runWfc : Tilemap -> WFC.Model -> RunWFCResult
-runWfc tilemap wfc =
+runWfc : Int -> Tilemap -> WFC.Model -> RunWFCResult
+runWfc runId tilemap wfc =
     case WFC.currentState wfc of
         WFC.Failed _ ->
             ( tilemap
@@ -87,6 +87,7 @@ runWfc tilemap wfc =
             in
             ( WFC.toTilemap solvedWfc
             , WFCSolved
+                runId
                 (WFC.log solvedWfc)
                 (WFC.collapsedTiles solvedWfc)
                 (WFC.currentSeed solvedWfc)
@@ -102,7 +103,7 @@ runWfc tilemap wfc =
                         wfcStepsPerCycle
                         wfc
             in
-            ( tilemap, WFCActive nextWfc, [] )
+            ( tilemap, WFCActive runId nextWfc, [] )
 
 
 restartWfc : SeedState -> TileInventory Int -> Tilemap -> WFC.Model
@@ -390,11 +391,11 @@ drivenWfcDebug currentTime drivenWfc =
                     ((Time.posixToMillis currentTime - Time.posixToMillis initTime) // 1000)
                 ]
 
-        WFCActive _ ->
+        WFCActive _ _ ->
             "Active"
 
         WFCFailed _ _ ->
             "Failed"
 
-        WFCSolved _ _ _ ->
+        WFCSolved _ _ _ _ ->
             "Solved"
