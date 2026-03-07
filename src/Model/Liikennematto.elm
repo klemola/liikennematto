@@ -265,6 +265,7 @@ initial flags =
                 , tilemapHeight = initialRenderCache.tilemapHeightPixels
                 , viewportWidth = 720.0
                 , viewportHeight = 476.0
+                , screenWidth = 720.0
                 }
     in
     { game = appFsm
@@ -307,7 +308,7 @@ fromNewGame model =
             initialWorld newGameSeed
 
         cache =
-            RenderCache.clear model.viewport model.renderCache world
+            RenderCache.clear (toFloat model.screen.width) model.viewport model.renderCache world
 
         initialUi =
             UI.Model.initialModel

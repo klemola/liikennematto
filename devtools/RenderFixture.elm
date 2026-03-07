@@ -36,6 +36,7 @@ main =
                 , tilemapHeight = cache.tilemapHeightPixels
                 , viewportWidth = cache.tilemapWidthPixels
                 , viewportHeight = cache.tilemapHeightPixels
+                , screenWidth = cache.tilemapWidthPixels
                 }
 
         renderDebug =

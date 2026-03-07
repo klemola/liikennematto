@@ -46,17 +46,17 @@ draggingSmoothTimeSeconds =
 
 coastingSmoothTimeSeconds : Float
 coastingSmoothTimeSeconds =
-    0.6
+    0.4
 
 
 driftMultiplier : Float
 driftMultiplier =
-    1.5
+    1.3
 
 
 velocityThreshold : Float
 velocityThreshold =
-    0.01
+    0.1
 
 
 snapThreshold : Float

@@ -160,7 +160,7 @@ suite =
                                 |> Pan.startDrag { x = 100, y = 100 }
                                 |> Pan.releaseDrag
                     in
-                    Expect.within (Expect.Absolute 0.01) 0.6 state.smoothTime
+                    Expect.within (Expect.Absolute 0.01) 0.4 state.smoothTime
             ]
         , describe "drag and release scenario"
             [ test "small drag has small drift" <|

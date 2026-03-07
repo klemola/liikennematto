@@ -5,19 +5,11 @@ module Render.Viewport exposing
     , applyPanDelta
     , calculatePannableBounds
     , centerViewport
-    , clamp
     , clampWithBounds
     , init
     , snapToEven
     , toSvgViewBox
     )
-
-import Length
-import Render.Conversion
-    exposing
-        ( defaultPixelsToMetersRatio
-        , toPixelsValue
-        )
 
 
 type alias Viewport =
@@ -33,6 +25,7 @@ type alias ViewportConfig =
     , tilemapHeight : Float
     , viewportWidth : Float
     , viewportHeight : Float
+    , screenWidth : Float
     }
 
 
@@ -46,16 +39,32 @@ type alias PannableBounds =
     }
 
 
-minPadding : Length.Length
-minPadding =
-    Length.meters 20
+uiMinPaddingScreenPixels : Float
+uiMinPaddingScreenPixels =
+    160
+
+
+minPaddingFractionX : Float
+minPaddingFractionX =
+    0.2
+
+
+minPaddingFractionY : Float
+minPaddingFractionY =
+    0.1
 
 
 calculatePannableBounds : ViewportConfig -> PannableBounds
 calculatePannableBounds config =
     let
-        minPaddingPixels =
-            toPixelsValue defaultPixelsToMetersRatio minPadding
+        uiMinPaddingViewBox =
+            uiMinPaddingScreenPixels * (config.viewportWidth / config.screenWidth)
+
+        minPaddingX =
+            max uiMinPaddingViewBox (config.viewportWidth * minPaddingFractionX)
+
+        minPaddingY =
+            config.viewportHeight * minPaddingFractionY
 
         paddingXForViewport =
             max 0 ((config.viewportWidth - config.tilemapWidth) / 2)
@@ -64,10 +73,10 @@ calculatePannableBounds config =
             max 0 ((config.viewportHeight - config.tilemapHeight) / 2)
 
         paddingX =
-            max minPaddingPixels paddingXForViewport
+            max minPaddingX paddingXForViewport
 
         paddingY =
-            max minPaddingPixels paddingYForViewport
+            max minPaddingY paddingYForViewport
     in
     { minX = -paddingX
     , maxX = config.tilemapWidth + paddingX - config.viewportWidth
@@ -114,22 +123,6 @@ snapToEven viewport =
         , y = toFloat (round (viewport.y / 2.0) * 2)
     }
 
-
-clamp : Float -> Float -> Viewport -> Viewport
-clamp tilemapWidth tilemapHeight viewport =
-    let
-        bounds =
-            calculatePannableBounds
-                { tilemapWidth = tilemapWidth
-                , tilemapHeight = tilemapHeight
-                , viewportWidth = viewport.width
-                , viewportHeight = viewport.height
-                }
-    in
-    { viewport
-        | x = Basics.clamp bounds.minX bounds.maxX viewport.x
-        , y = Basics.clamp bounds.minY bounds.maxY viewport.y
-    }
 
 
 clampWithBounds : PannableBounds -> Viewport -> Viewport

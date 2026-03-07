@@ -164,9 +164,12 @@ updateBase msg model =
                         , screenHeight = toFloat (round domViewport.viewport.height)
                         }
 
+                screenWidth =
+                    toFloat (round domViewport.viewport.width)
+
                 nextRenderCache =
                     model.renderCache
-                        |> Model.RenderCache.updatePannableBounds zoomedViewport.width zoomedViewport.height
+                        |> Model.RenderCache.updatePannableBounds screenWidth zoomedViewport.width zoomedViewport.height
 
                 unclampedViewport =
                     if initSteps.viewportSizeSet then
@@ -237,7 +240,7 @@ updateBase msg model =
                     ( { model
                         | world = worldWithResidents
                         , savegame = Just savegameJson
-                        , renderCache = Model.RenderCache.clear model.viewport model.renderCache worldWithResidents
+                        , renderCache = Model.RenderCache.clear (toFloat model.screen.width) model.viewport model.renderCache worldWithResidents
                       }
                     , Cmd.none
                     )
@@ -477,7 +480,7 @@ onZoomLevelChanged nextZoomLevel model =
 
         nextRenderCache =
             model.renderCache
-                |> Model.RenderCache.updatePannableBounds viewportWithZoom.width viewportWithZoom.height
+                |> Model.RenderCache.updatePannableBounds (toFloat model.screen.width) viewportWithZoom.width viewportWithZoom.height
 
         centeredViewport =
             { x = centerX - viewportWithZoom.width / 2
