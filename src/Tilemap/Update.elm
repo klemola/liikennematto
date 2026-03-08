@@ -153,13 +153,13 @@ update msg model =
 
         WFCChunkProcessed ( nextTilemap, updatedDrivenWfc, tileActions ) ->
             case model.wfc of
-                WFCActive _ ->
+                WFCActive activeRunId _ ->
                     case updatedDrivenWfc of
-                        WFCActive wfc ->
+                        WFCActive _ wfc ->
                             ( { model
                                 | renderCache = setTilemapDebugCache wfc model.renderCache
                               }
-                            , scheduleWFCChunk wfc model.world
+                            , scheduleWFCChunk activeRunId wfc model.world
                             )
 
                         WFCFailed wfcLog nextSeed ->
@@ -171,31 +171,36 @@ update msg model =
                                         model.world.tilemap
                             in
                             ( { model | debug = appendWfcLog (">Restart WFC (failure)" :: wfcLog) model.debug }
-                            , scheduleWFCChunk wfc model.world
+                            , scheduleWFCChunk activeRunId wfc model.world
                             )
 
-                        WFCSolved wfcLog collapsedTiles nextSeedState ->
-                            let
-                                audioCmd =
-                                    if List.isEmpty collapsedTiles then
-                                        Cmd.none
+                        WFCSolved solvedRunId wfcLog collapsedTiles nextSeedState ->
+                            if solvedRunId /= activeRunId then
+                                -- Stale result from a previous WFC run, discard
+                                ( model, Cmd.none )
 
-                                    else
-                                        playSound Audio.BuildLot
+                            else
+                                let
+                                    audioCmd =
+                                        if List.isEmpty collapsedTiles then
+                                            Cmd.none
 
-                                nextWorld =
-                                    model.world
-                                        |> World.setTilemap nextTilemap
-                                        |> World.updateSeed nextSeedState
-                            in
-                            ( { model
-                                | world = nextWorld
-                                , wfc = updatedDrivenWfc
-                                , renderCache = setTilemapCache nextTilemap Nothing model.renderCache
-                                , debug = appendWfcLog wfcLog model.debug
-                              }
-                            , Cmd.batch (audioCmd :: tileActionsToCmds tileActions)
-                            )
+                                        else
+                                            playSound Audio.BuildLot
+
+                                    nextWorld =
+                                        model.world
+                                            |> World.setTilemap nextTilemap
+                                            |> World.updateSeed nextSeedState
+                                in
+                                ( { model
+                                    | world = nextWorld
+                                    , wfc = updatedDrivenWfc
+                                    , renderCache = setTilemapCache nextTilemap Nothing model.renderCache
+                                    , debug = appendWfcLog wfcLog model.debug
+                                  }
+                                , Cmd.batch (audioCmd :: tileActionsToCmds tileActions)
+                                )
 
                         WFCPending _ _ ->
                             ( model, Cmd.none )
@@ -322,24 +327,27 @@ startWFC model =
         { world } =
             model
 
+        runId =
+            Time.posixToMillis model.time
+
         initialWfc =
             restartWfc world.seedState
                 (World.tileInventoryCount world)
                 world.tilemap
     in
     ( { model
-        | wfc = WFCActive initialWfc
+        | wfc = WFCActive runId initialWfc
         , debug = appendWfcLog [ ">Restart WFC (timer)" ] model.debug
       }
-    , scheduleWFCChunk initialWfc world
+    , scheduleWFCChunk runId initialWfc world
     )
 
 
-scheduleWFCChunk : WFC.Model -> World -> Cmd Message
-scheduleWFCChunk wfcModel world =
+scheduleWFCChunk : Int -> WFC.Model -> World -> Cmd Message
+scheduleWFCChunk runId wfcModel world =
     -- Small delay to allow for interrupts
     Process.sleep 1
-        |> Task.map (\_ -> runWfc world.tilemap wfcModel)
+        |> Task.map (\_ -> runWfc runId world.tilemap wfcModel)
         |> Task.perform WFCChunkProcessed
 
 

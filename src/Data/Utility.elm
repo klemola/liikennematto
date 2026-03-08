@@ -4,6 +4,7 @@ module Data.Utility exposing
     , cellsByTileKind
     , cellsByTileKindFromAscii
     , createCell
+    , gameModelFromWorld
     , getStartAndEndNode
     , initTileWithSuperposition
     , multilineGridDebug
@@ -28,6 +29,9 @@ import Data.TileSet
         )
 import Duration
 import Lib.OrthogonalDirection as OrthogonalDirection
+import Model.Flags
+import Model.Liikennematto exposing (Liikennematto)
+import Model.RenderCache
 import Model.World as World exposing (World, newLotMatchesTile)
 import Random
 import Simulation.RoadNetwork as RoadNetwork exposing (RNNodeContext)
@@ -78,6 +82,18 @@ worldFromTilemap : Tilemap -> World
 worldFromTilemap tilemap =
     World.empty testSeed (getTilemapConfig tilemap)
         |> World.setTilemap tilemap
+
+
+gameModelFromWorld : World -> Liikennematto
+gameModelFromWorld world =
+    let
+        base =
+            Model.Liikennematto.initial Model.Flags.fallback
+    in
+    { base
+        | world = world
+        , renderCache = Model.RenderCache.new world
+    }
 
 
 tilemapFromCells : TilemapConfig -> List Cell -> Tilemap

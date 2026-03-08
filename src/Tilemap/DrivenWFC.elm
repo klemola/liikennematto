@@ -29,6 +29,7 @@ import Tilemap.Cell exposing (Cell)
 import Tilemap.Core
     exposing
         ( Tilemap
+        , addTileFromWfc
         , foldTiles
         , resetFixedTileBySurroundings
         , resetTileBySurroundings
@@ -45,9 +46,9 @@ import Time
 
 type DrivenWFC
     = WFCPending Duration Time.Posix
-    | WFCActive WFC.Model
+    | WFCActive Int WFC.Model
     | WFCFailed (List String) SeedState
-    | WFCSolved (List String) (List ( Cell, TileId )) SeedState
+    | WFCSolved Int (List String) (List ( Cell, TileId )) SeedState
 
 
 type alias RunWFCResult =
@@ -69,8 +70,8 @@ wfcStepsPerCycle =
     3500
 
 
-runWfc : Tilemap -> WFC.Model -> RunWFCResult
-runWfc tilemap wfc =
+runWfc : Int -> Tilemap -> WFC.Model -> RunWFCResult
+runWfc runId tilemap wfc =
     case WFC.currentState wfc of
         WFC.Failed _ ->
             ( tilemap
@@ -87,6 +88,7 @@ runWfc tilemap wfc =
             in
             ( WFC.toTilemap solvedWfc
             , WFCSolved
+                runId
                 (WFC.log solvedWfc)
                 (WFC.collapsedTiles solvedWfc)
                 (WFC.currentSeed solvedWfc)
@@ -102,7 +104,7 @@ runWfc tilemap wfc =
                         wfcStepsPerCycle
                         wfc
             in
-            ( tilemap, WFCActive nextWfc, [] )
+            ( tilemap, WFCActive runId nextWfc, [] )
 
 
 restartWfc : SeedState -> TileInventory Int -> Tilemap -> WFC.Model
@@ -137,14 +139,11 @@ addTileById seedState tileInventory cell tileId tilemap =
         ( updatedTilemap, tilemapChangeActions ) =
             Tilemap.Core.addTile tileConfig cell tilemap
 
-        wfcModel =
-            resetWfc seedState (Just cell) tileInventory updatedTilemap
-
-        ( updatedWfcModel, wfcTileActions ) =
-            updateTileNeighbors cell wfcModel
+        updatedWfcModel =
+            resetWfc seedState (Just cell) tileInventory (updateTileNeighbors cell updatedTilemap)
     in
     ( updateBufferCells cell (WFC.toTilemap updatedWfcModel)
-    , tilemapChangeActions ++ wfcTileActions
+    , tilemapChangeActions
     )
 
 
@@ -157,13 +156,10 @@ onRemoveTile seedState tileInventory cell tilemap =
         withBufferRemoved =
             removeBuffer cell updatedTilemap
 
-        wfcModel =
-            resetWfc seedState (Just cell) tileInventory withBufferRemoved
-
-        ( wfcWithoutTile, wfcActions ) =
-            updateTileNeighbors cell wfcModel
+        wfcWithoutTile =
+            resetWfc seedState (Just cell) tileInventory (updateTileNeighbors cell withBufferRemoved)
     in
-    ( wfcWithoutTile, tilemapChangeActions ++ wfcActions )
+    ( wfcWithoutTile, tilemapChangeActions )
 
 
 
@@ -172,54 +168,60 @@ onRemoveTile seedState tileInventory cell tilemap =
 --
 
 
-updateTileNeighbors : Cell -> WFC.Model -> ( WFC.Model, List Action )
-updateTileNeighbors cell wfcModel =
-    wfcModel
-        |> updateTileNeighborsHelper cell OrthogonalDirection.all
-        |> WFC.flushPendingActions
+updateTileNeighbors : Cell -> Tilemap -> Tilemap
+updateTileNeighbors cell tilemap =
+    updateTileNeighborsHelper cell OrthogonalDirection.all tilemap
 
 
-updateTileNeighborsHelper : Cell -> List OrthogonalDirection -> WFC.Model -> WFC.Model
-updateTileNeighborsHelper origin remainingDirs wfcModel =
+updateTileNeighborsHelper : Cell -> List OrthogonalDirection -> Tilemap -> Tilemap
+updateTileNeighborsHelper origin remainingDirs tilemap =
     case remainingDirs of
         [] ->
-            wfcModel
+            tilemap
 
         dir :: otherDirs ->
             let
                 maybeTile =
-                    tileNeighborIn dir origin tileByCell (WFC.toTilemap wfcModel)
+                    tileNeighborIn dir origin tileByCell tilemap
 
-                nextWFCModel =
-                    processTileNeighbor maybeTile wfcModel
+                nextTilemap =
+                    processTileNeighbor maybeTile tilemap
             in
-            updateTileNeighborsHelper origin otherDirs nextWFCModel
+            updateTileNeighborsHelper origin otherDirs nextTilemap
 
 
-processTileNeighbor : Maybe ( Cell, Tile ) -> WFC.Model -> WFC.Model
-processTileNeighbor maybeTile wfcModel =
+processTileNeighbor : Maybe ( Cell, Tile ) -> Tilemap -> Tilemap
+processTileNeighbor maybeTile tilemap =
     case maybeTile of
         Just ( cell, tile ) ->
             case tile.kind of
                 Fixed properties ->
                     if TileConfig.biome (tileById properties.id) == TileConfig.Road then
-                        wfcModel
-                            |> WFC.withTilemapUpdate
-                                (\wfcTilemap ->
-                                    resetFixedTileBySurroundings cell wfcTilemap
-                                )
-                            |> WFC.collapse cell
-                            |> Tuple.first
+                        tilemap
+                            |> resetFixedTileBySurroundings cell
+                            |> collapseNeighborDirectly cell
 
                     else
-                        wfcModel
+                        tilemap
 
                 -- Does not change Superposition, Buffer or Uninitialized
                 _ ->
-                    wfcModel
+                    tilemap
 
         Nothing ->
-            wfcModel
+            tilemap
+
+
+collapseNeighborDirectly : Cell -> Tilemap -> Tilemap
+collapseNeighborDirectly cell tilemap =
+    case tileByCell tilemap cell |> Maybe.map .kind of
+        -- Room for improvement: if cosmetic road variations are added, this should be a random pick
+        Just (Superposition (first :: _)) ->
+            addTileFromWfc Nothing (tileById first) cell tilemap
+                |> Tuple.first
+
+        _ ->
+            tilemap
 
 
 
@@ -390,11 +392,11 @@ drivenWfcDebug currentTime drivenWfc =
                     ((Time.posixToMillis currentTime - Time.posixToMillis initTime) // 1000)
                 ]
 
-        WFCActive _ ->
+        WFCActive _ _ ->
             "Active"
 
         WFCFailed _ _ ->
             "Failed"
 
-        WFCSolved _ _ _ ->
+        WFCSolved _ _ _ _ ->
             "Solved"
