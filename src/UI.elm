@@ -473,6 +473,12 @@ menu debugState model =
             [ Element.spacing whitespaceTight
             , Element.padding whitespaceCondensed
             , Element.width Element.fill
+            , Border.roundEach
+                { topLeft = 0
+                , topRight = 0
+                , bottomLeft = borderRadiusMenuPx
+                , bottomRight = 0
+                }
             , Background.color menuBackgroundColorAlt
             , if model.showMenu then
                 Border.rounded 0
