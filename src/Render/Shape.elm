@@ -44,7 +44,7 @@ cubicSpline cache color spline =
         [ Attributes.stroke (Color.toCssString color)
         ]
         [ Svg.cubicSpline2d
-            [ Attributes.strokeWidth "4"
+            [ Attributes.strokeWidth "5"
             , Attributes.strokeLinecap "round"
             , Attributes.stroke (Color.toCssString color)
             , Attributes.fill "none"

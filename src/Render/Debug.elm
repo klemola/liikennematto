@@ -217,7 +217,7 @@ renderRoadNetwork cache roadNetwork =
                                 ( "Edge-" ++ String.fromInt fromNodeCtx.node.id ++ String.fromInt toNodeCtx.node.id
                                 , Svg.path
                                     [ Attributes.stroke <| Color.toCssString <| Colors.withAlpha 0.35 Colors.orange
-                                    , Attributes.strokeWidth <| "2"
+                                    , Attributes.strokeWidth <| "4"
                                     , Attributes.d <| "M " ++ fromStr ++ " L " ++ toStr
                                     ]
                                     []
