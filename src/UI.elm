@@ -569,7 +569,7 @@ menu debugState model =
                     , selected = False
                     , disabled = False
                     }
-                    "Add car"
+                    "Add traffic"
                     Icons.iconSpawnCar
                 ]
             ]
