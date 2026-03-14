@@ -131,9 +131,12 @@ usingTouchDevice model =
 onViewportChanged : RenderCache -> Viewport -> Model -> Model
 onViewportChanged cache viewport model =
     let
+        bounds =
+            cache.pannableBounds
+
         canPan =
-            (cache.tilemapWidthPixels > viewport.width)
-                || (cache.tilemapHeightPixels > viewport.height)
+            (bounds.minX < bounds.maxX)
+                || (bounds.minY < bounds.maxY)
 
         clearedPanState =
             if canPan then
