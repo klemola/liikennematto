@@ -755,6 +755,8 @@ view cache viewport screen world model =
                                 case model.longPressTimer of
                                     Just elapsed ->
                                         UI.TimerIndicator.view
+                                            viewport
+                                            screen
                                             longTapThreshold
                                             longTapIndicatorShowDelay
                                             (Cell.coordinates cell)

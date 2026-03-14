@@ -3,26 +3,44 @@ module UI.TimerIndicator exposing (view)
 import Data.Colors as Colors
 import Duration exposing (Duration)
 import Element exposing (Element)
+import Model.Screen exposing (Screen)
 import Quantity
 import Render.Conversion exposing (defaultPixelsToMetersRatio)
+import Render.Viewport exposing (Viewport)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Tilemap.Cell as Cell
 
 
-view : Duration -> Duration -> Cell.CellCoordinates -> Duration -> Element msg
-view maxTimerValue showDelay cellCoordinates timerElapsed =
+view : Viewport -> Screen -> Duration -> Duration -> Cell.CellCoordinates -> Duration -> Element msg
+view viewport screen maxTimerValue showDelay cellCoordinates timerElapsed =
     let
-        renderSize =
+        scaleX =
+            toFloat screen.width / viewport.width
+
+        scaleY =
+            toFloat screen.height / viewport.height
+
+        tileSizePixels =
             Render.Conversion.toPixelsValue defaultPixelsToMetersRatio Cell.size
 
         ( cellX, cellY ) =
             cellCoordinates
 
-        ( x, y ) =
-            ( toFloat (cellX - 1) * renderSize
-            , toFloat (cellY - 1) * renderSize
-            )
+        viewBoxX =
+            toFloat (cellX - 1) * tileSizePixels - viewport.x
+
+        viewBoxY =
+            toFloat (cellY - 1) * tileSizePixels - viewport.y
+
+        screenX =
+            viewBoxX * scaleX
+
+        screenY =
+            viewBoxY * scaleY
+
+        renderSize =
+            tileSizePixels * scaleX
 
         elapsedWithDelay =
             timerElapsed
@@ -39,8 +57,8 @@ view maxTimerValue showDelay cellCoordinates timerElapsed =
             timerElapsed |> Quantity.greaterThan showDelay
     in
     Element.el
-        [ Element.moveRight x
-        , Element.moveDown y
+        [ Element.moveRight screenX
+        , Element.moveDown screenY
         ]
         (Element.html
             (circleIndicator
