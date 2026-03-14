@@ -230,6 +230,9 @@ update world viewport screen msg model =
                 , []
                 )
 
+            else if event.pointerType == Pointer.TouchType then
+                ( updatedModel, [] )
+
             else
                 case
                     pointerEventToCell
@@ -340,7 +343,7 @@ update world viewport screen msg model =
                             |> clearPointerDownEvent
                             |> resetLongPressTimer
                 in
-                if model.panState.isDragging then
+                if model.panState.isDragging || model.pointerDownEvent == Nothing then
                     ( baseModel, [] )
 
                 else
@@ -358,8 +361,23 @@ update world viewport screen msg model =
                                         pointerUpCell
                                         event
                                         model
+
+                                updatedModel =
+                                    if event.pointerType == Pointer.TouchType then
+                                        baseModel
+
+                                    else
+                                        activateCell pointerUpCell world baseModel
+
+                                modelAfterInput =
+                                    case inputEvent of
+                                        Just _ ->
+                                            clearHighlightArea updatedModel
+
+                                        Nothing ->
+                                            updatedModel
                             in
-                            ( activateCell pointerUpCell world baseModel
+                            ( modelAfterInput
                             , inputEvent
                                 |> Maybe.map GameInput
                                 |> Maybe.map List.singleton
@@ -716,12 +734,16 @@ view cache viewport screen world model =
                     [ Element.width Element.fill
                     , Element.height Element.fill
                     , Element.inFront
-                        (case model.highlightArea of
-                            Just area ->
-                                highlightAreaView cache viewport screen area
+                        (if model.lastEventDevice == Pointer.MouseType then
+                            case model.highlightArea of
+                                Just area ->
+                                    highlightAreaView cache viewport screen area
 
-                            Nothing ->
-                                Element.none
+                                Nothing ->
+                                    Element.none
+
+                         else
+                            Element.none
                         )
                     ]
                     (case model.activeCell of
