@@ -520,7 +520,10 @@ viewportForZoom cache zoomLevel { screenWidth, screenHeight } =
                     10 * tileSizePixels
 
                 UI.Model.VeryFar ->
-                    cache.tilemapHeightPixels + cache.pannableBounds.paddingY * 2
+                    -- Tilemap occupies 80% of viewport (10% min padding each side).
+                    -- Using a self-consistent formula avoids a mismatch between
+                    -- the viewport height and the recalculated pannable bounds.
+                    cache.tilemapHeightPixels / 0.8
 
         aspectRatio =
             screenWidth / screenHeight
