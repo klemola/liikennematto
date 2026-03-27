@@ -51,6 +51,7 @@ import Tilemap.Tile as Tile
     exposing
         ( Action(..)
         , isBuilt
+        , isDynamic
         )
 import Tilemap.WFC as WFC
 import Time
@@ -97,12 +98,35 @@ update msg model =
 
                 nextRenderCache =
                     refreshTilemapCache withRemovedEffects renderCache
+
+                hasConstructingTiles =
+                    List.any
+                        (\cell ->
+                            case fixedTileByCell withRemovedEffects.tilemap cell of
+                                Just tile ->
+                                    isDynamic tile && not (isBuilt tile)
+
+                                Nothing ->
+                                    False
+                        )
+                        withRemovedEffects.dynamicCells
+
+                filteredActions =
+                    -- Room for improvement: this is a band-aid to prevent build road end sound
+                    -- from playing while a new road is built
+                    if hasConstructingTiles then
+                        List.filter
+                            (\a -> a /= PlayAudio Audio.BuildRoadEnd)
+                            withRemovedEffects.actions
+
+                    else
+                        withRemovedEffects.actions
             in
             ( { model
                 | world = nextWorld
                 , renderCache = nextRenderCache
               }
-            , Cmd.batch (tilemapChangedEffects :: tileActionsToCmds withRemovedEffects.actions)
+            , Cmd.batch (tilemapChangedEffects :: tileActionsToCmds filteredActions)
             )
 
         GameSetupComplete ->

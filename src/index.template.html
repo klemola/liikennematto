@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
@@ -72,7 +72,7 @@
 
                     const base64Data = btoa(binary);
 
-                    history.replaceState(null, '', '#' + base64Data);
+                    history.replaceState(null, "", "#" + base64Data);
                 } catch (e) {
                     console.error("Failed to update savegame URL:", e);
                 }
@@ -81,13 +81,17 @@
             app.ports.clearSavegameUrl.subscribe(function () {
                 // Preserve current game in history before clearing
                 if (window.location.hash) {
-                    history.pushState(null, '', window.location.href);
+                    history.pushState(null, "", window.location.href);
                 }
-                history.replaceState(null, '', window.location.pathname + window.location.search);
+                history.replaceState(
+                    null,
+                    "",
+                    window.location.pathname + window.location.search,
+                );
             });
 
-            window.addEventListener('hashchange', function () {
-                if (!window.location.hash || window.location.hash === '#') {
+            window.addEventListener("hashchange", function () {
+                if (!window.location.hash || window.location.hash === "#") {
                     app.ports.onHashCleared.send(null);
                 } else {
                     const savegameJson = parseSavegameFromUrl();
@@ -105,6 +109,7 @@
             const lotGainNode = context.createGain();
             const lotStereoPannerNode = context.createStereoPanner();
             let soundSource_road = null;
+            let roadSoundLabel = null;
             let soundSource_lot = null;
             let sounds = {};
 
@@ -145,9 +150,9 @@
                         playSound("init");
                         document.body.removeEventListener(
                             "pointerenter",
-                            arguments.callee
+                            arguments.callee,
                         );
-                    }
+                    },
                 );
             }
 
@@ -158,7 +163,7 @@
                     .then((response) => {
                         if (!response.ok) {
                             throw new Error(
-                                `Could not load a sound, status = ${response.status}`
+                                `Could not load a sound, status = ${response.status}`,
                             );
                         }
                         return response.arrayBuffer();
@@ -168,40 +173,68 @@
                     .catch((error) => console.log(error));
             }
 
+            const fadeOutDurationMs = 30;
+
             function playSound(soundLabel) {
                 const buffer = sounds[soundLabel];
-                const source = context.createBufferSource();
-                const isLotSound = soundLabel === "build_lot";
 
                 if (!buffer) {
                     return;
                 }
 
-                stopAudioSource(
-                    isLotSound ? soundSource_lot : soundSource_road
-                );
+                const isLotSound = soundLabel === "build_lot";
+                const oldSource = isLotSound
+                    ? soundSource_lot
+                    : soundSource_road;
+
+                const shouldFadeOut =
+                    soundLabel === "build_road_start" &&
+                    roadSoundLabel === "build_road_end";
+
+                stopSource(oldSource, shouldFadeOut);
+
+                const source = context.createBufferSource();
+                const sourceGain = context.createGain();
+
+                source.buffer = buffer;
+                source.__gainNode = sourceGain;
 
                 if (isLotSound) {
                     soundSource_lot = source;
-                    soundSource_lot.connect(lotGainNode);
+                    sourceGain.connect(lotGainNode);
                     source.onended = function () {
                         soundSource_lot = null;
                     };
                 } else {
                     soundSource_road = source;
-                    soundSource_road.connect(roadGainNode);
+                    roadSoundLabel = soundLabel;
+                    sourceGain.connect(roadGainNode);
                     source.onended = function () {
                         soundSource_road = null;
+                        roadSoundLabel = null;
                     };
                 }
 
-                source.buffer = buffer;
+                source.connect(sourceGain);
                 source.start(0);
             }
 
-            function stopAudioSource(source) {
-                if (source) {
-                    source.onended = null;
+            function stopSource(source, shouldFadeOut) {
+                if (!source) {
+                    return;
+                }
+
+                source.onended = null;
+
+                if (shouldFadeOut && source.__gainNode) {
+                    const fadeDuration = fadeOutDurationMs / 1000;
+                    const now = context.currentTime;
+                    const gain = source.__gainNode;
+
+                    gain.gain.setValueAtTime(gain.gain.value, now);
+                    gain.gain.linearRampToValueAtTime(0, now + fadeDuration);
+                    source.stop(context.currentTime + fadeDuration);
+                } else {
                     source.stop(0);
                 }
             }
