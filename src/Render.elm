@@ -108,14 +108,14 @@ view { cars, roadNetwork, trafficLights } cache screen viewport =
             , Html.Attributes.style "transform-origin" "0 0"
             ]
             [ styles
-            , renderBackground cache
-            , renderTilemapBackground cache
+            , Svg.Lazy.lazy renderBackground cache
+            , Svg.Lazy.lazy renderTilemapBackground cache
             , Svg.Lazy.lazy renderTilemap cache.tilemap
-            , renderDynamicTiles cache
+            , Svg.Lazy.lazy renderDynamicTiles cache
             , renderCars cache cars
             , Svg.Lazy.lazy2 renderTrafficLights cache trafficLights
             , Svg.Lazy.lazy2 renderTrafficSigns cache roadNetwork
-            , renderTilemapBorder cache
+            , Svg.Lazy.lazy renderTilemapBorder cache
             ]
         ]
 
