@@ -33,6 +33,8 @@ import Simulation.RoadNetwork
         , RoadNetwork
         )
 import Simulation.Route as Route
+import Html
+import Html.Attributes
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Svg.Keyed
@@ -50,40 +52,43 @@ nodeRadius =
     Length.meters 0.8
 
 
-view : World -> RenderCache -> DebugState -> Screen -> Maybe Viewport -> Svg msg
-view world cache debugState screen maybeViewport =
+view : World -> RenderCache -> DebugState -> Screen -> Viewport -> Html.Html msg
+view world cache debugState screen viewport =
     let
-        svgWidth =
-            String.fromInt screen.width
+        bounds =
+            cache.pannableBounds
 
-        svgHeight =
-            String.fromInt screen.height
+        pxPerUnit =
+            Viewport.pixelsPerUnit { screenWidth = toFloat screen.width } viewport
+
+        extent =
+            Viewport.pannableExtentPixels bounds cache.tilemapWidthPixels cache.tilemapHeightPixels pxPerUnit
+
+        ( tx, ty ) =
+            Viewport.cssTranslate bounds viewport pxPerUnit
+
+        translateStr =
+            "translate(" ++ String.fromFloat tx ++ "px, " ++ String.fromFloat ty ++ "px)"
 
         viewBoxStr =
-            case maybeViewport of
-                Just viewport ->
-                    Viewport.toSvgViewBox viewport
-
-                Nothing ->
-                    let
-                        tilemapWidth =
-                            String.fromFloat cache.tilemapWidthPixels
-
-                        tilemapHeight =
-                            String.fromFloat cache.tilemapHeightPixels
-                    in
-                    "0 0 " ++ tilemapWidth ++ " " ++ tilemapHeight
+            Viewport.fixedViewBox bounds cache.tilemapWidthPixels cache.tilemapHeightPixels
     in
-    Svg.svg
-        [ Attributes.width svgWidth
-        , Attributes.height svgHeight
-        , Attributes.viewBox viewBoxStr
+    Html.div
+        [ Html.Attributes.style "overflow" "hidden"
+        , Html.Attributes.style "width" (String.fromInt screen.width ++ "px")
+        , Html.Attributes.style "height" (String.fromInt screen.height ++ "px")
+        , Html.Attributes.style "pointer-events" "none"
         ]
-        (debugLayerViews
-            world
-            cache
-            debugState
-        )
+        [ Svg.svg
+            [ Attributes.width (String.fromFloat extent.width)
+            , Attributes.height (String.fromFloat extent.height)
+            , Attributes.viewBox viewBoxStr
+            , Html.Attributes.style "will-change" "transform"
+            , Html.Attributes.style "transform" translateStr
+            , Html.Attributes.style "transform-origin" "0 0"
+            ]
+            (debugLayerViews world cache debugState)
+        ]
 
 
 debugLayerViews : World -> RenderCache -> DebugState -> List (Svg msg)

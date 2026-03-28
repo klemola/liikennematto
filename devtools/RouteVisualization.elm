@@ -174,12 +174,12 @@ view model =
                     |> Model.Debug.toggleLayer Model.Debug.RoadNetworkDebug
                 )
                 screen
-                (Just viewport)
+                viewport
                 |> Element.html
     in
     Html.div []
         [ Html.div [ MouseEvents.onClick WorldClicked ]
-            [ Render.view world model.cache screen (Just viewport)
+            [ Render.view world model.cache screen viewport
                 |> Element.html
                 |> Element.el
                     [ Element.width (Element.px screenWidth)

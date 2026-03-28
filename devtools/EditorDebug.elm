@@ -320,7 +320,7 @@ view model =
             Screen.fromDimensions containerWidth containerHeight
 
         renderAndEditor =
-            Render.view model.world model.cache screen (Just model.viewport)
+            Render.view model.world model.cache screen model.viewport
                 |> Element.html
                 |> Element.el
                     [ Element.width (Element.px containerWidth)

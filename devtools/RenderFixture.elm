@@ -49,10 +49,10 @@ main =
                     |> Model.Debug.toggleLayer Model.Debug.WFCDebug
                 )
                 screen
-                (Just viewport)
+                viewport
                 |> Element.html
     in
-    Render.view world cache screen (Just viewport)
+    Render.view world cache screen viewport
         |> Element.html
         |> Element.el
             [ Element.width (Element.px screenWidth)
