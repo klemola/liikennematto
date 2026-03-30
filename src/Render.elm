@@ -14,6 +14,7 @@ import Dict
 import Duration
 import Graph exposing (Node)
 import Html exposing (Html)
+import Html.Attributes
 import Length exposing (Length)
 import Lib.Collection as Collection exposing (Collection)
 import Lib.OrthogonalDirection exposing (OrthogonalDirection(..))
@@ -72,37 +73,50 @@ styles =
 --
 
 
-view : World -> RenderCache -> Screen -> Maybe Viewport -> Html msg
-view { cars, roadNetwork, trafficLights } cache screen maybeViewport =
+view : World -> RenderCache -> Screen -> Viewport -> Html msg
+view { cars, roadNetwork, trafficLights } cache screen viewport =
     let
-        svgWidth =
-            String.fromInt screen.width
+        bounds =
+            cache.pannableBounds
 
-        svgHeight =
-            String.fromInt screen.height
+        pxPerUnit =
+            Viewport.pixelsPerUnit { screenWidth = toFloat screen.width } viewport
+
+        extent =
+            Viewport.pannableExtentPixels bounds cache.tilemapWidthPixels cache.tilemapHeightPixels pxPerUnit
+
+        ( tx, ty ) =
+            Viewport.cssTranslate bounds viewport pxPerUnit
+
+        translateStr =
+            "translate(" ++ String.fromFloat tx ++ "px, " ++ String.fromFloat ty ++ "px)"
 
         viewBoxStr =
-            case maybeViewport of
-                Just viewport ->
-                    Viewport.toSvgViewBox viewport
-
-                Nothing ->
-                    "0 0 " ++ String.fromFloat cache.tilemapWidthPixels ++ " " ++ String.fromFloat cache.tilemapHeightPixels
+            Viewport.fixedViewBox bounds cache.tilemapWidthPixels cache.tilemapHeightPixels
     in
-    Svg.svg
-        [ Attributes.width svgWidth
-        , Attributes.height svgHeight
-        , Attributes.viewBox viewBoxStr
+    Html.div
+        [ Html.Attributes.style "overflow" "hidden"
+        , Html.Attributes.style "width" (String.fromInt screen.width ++ "px")
+        , Html.Attributes.style "height" (String.fromInt screen.height ++ "px")
         ]
-        [ styles
-        , renderBackground cache
-        , renderTilemapBackground cache
-        , Svg.Lazy.lazy renderTilemap cache.tilemap
-        , renderDynamicTiles cache
-        , renderCars cache cars
-        , Svg.Lazy.lazy2 renderTrafficLights cache trafficLights
-        , Svg.Lazy.lazy2 renderTrafficSigns cache roadNetwork
-        , renderTilemapBorder cache
+        [ Svg.svg
+            [ Attributes.width (String.fromFloat extent.width)
+            , Attributes.height (String.fromFloat extent.height)
+            , Attributes.viewBox viewBoxStr
+            , Html.Attributes.style "will-change" "transform"
+            , Html.Attributes.style "transform" translateStr
+            , Html.Attributes.style "transform-origin" "0 0"
+            ]
+            [ styles
+            , Svg.Lazy.lazy renderBackground cache
+            , Svg.Lazy.lazy renderTilemapBackground cache
+            , Svg.Lazy.lazy renderTilemap cache.tilemap
+            , Svg.Lazy.lazy renderDynamicTiles cache
+            , renderCars cache cars
+            , Svg.Lazy.lazy2 renderTrafficLights cache trafficLights
+            , Svg.Lazy.lazy2 renderTrafficSigns cache roadNetwork
+            , Svg.Lazy.lazy renderTilemapBorder cache
+            ]
         ]
 
 

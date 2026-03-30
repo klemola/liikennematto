@@ -563,11 +563,11 @@ view model =
 
 render : Liikennematto -> Element msg
 render model =
-    Render.view model.world model.renderCache model.screen (Just model.viewport)
+    Render.view model.world model.renderCache model.screen model.viewport
         |> Element.html
 
 
 renderDebug : Liikennematto -> Element msg
 renderDebug model =
-    Render.Debug.view model.world model.renderCache model.debug model.screen (Just model.viewport)
+    Render.Debug.view model.world model.renderCache model.debug model.screen model.viewport
         |> Element.html

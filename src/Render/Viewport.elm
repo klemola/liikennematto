@@ -6,7 +6,11 @@ module Render.Viewport exposing
     , calculatePannableBounds
     , centerViewport
     , clampWithBounds
+    , cssTranslate
+    , fixedViewBox
     , init
+    , pannableExtentPixels
+    , pixelsPerUnit
     , snapToEven
     , toSvgViewBox
     )
@@ -124,7 +128,6 @@ snapToEven viewport =
     }
 
 
-
 clampWithBounds : PannableBounds -> Viewport -> Viewport
 clampWithBounds bounds viewport =
     { viewport
@@ -141,3 +144,50 @@ toSvgViewBox vb =
         , String.fromFloat vb.width
         , String.fromFloat vb.height
         ]
+
+
+{-| ViewBox covering the full pannable extent. Fixed during pan, changes only on zoom.
+-}
+fixedViewBox : PannableBounds -> Float -> Float -> String
+fixedViewBox bounds tilemapWidth tilemapHeight =
+    let
+        extentWidth =
+            tilemapWidth + 2 * bounds.paddingX
+
+        extentHeight =
+            tilemapHeight + 2 * bounds.paddingY
+    in
+    String.join " "
+        [ String.fromFloat bounds.minX
+        , String.fromFloat bounds.minY
+        , String.fromFloat extentWidth
+        , String.fromFloat extentHeight
+        ]
+
+
+{-| Pixel dimensions for the full pannable extent at the current zoom's display resolution.
+-}
+pannableExtentPixels : PannableBounds -> Float -> Float -> Float -> { width : Float, height : Float }
+pannableExtentPixels bounds tilemapWidth tilemapHeight pxPerUnit =
+    let
+        extentWidth =
+            tilemapWidth + 2 * bounds.paddingX
+
+        extentHeight =
+            tilemapHeight + 2 * bounds.paddingY
+    in
+    { width = extentWidth * pxPerUnit
+    , height = extentHeight * pxPerUnit
+    }
+
+
+pixelsPerUnit : { screenWidth : Float } -> Viewport -> Float
+pixelsPerUnit screen viewport =
+    screen.screenWidth / viewport.width
+
+
+cssTranslate : PannableBounds -> Viewport -> Float -> ( Float, Float )
+cssTranslate bounds viewport pxPerUnit =
+    ( -(viewport.x - bounds.minX) * pxPerUnit
+    , -(viewport.y - bounds.minY) * pxPerUnit
+    )

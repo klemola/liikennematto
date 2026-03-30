@@ -358,11 +358,11 @@ view model =
                     |> Model.Debug.toggleLayer Model.Debug.WFCDebug
                 )
                 screen
-                (Just viewport)
+                viewport
                 |> Element.html
 
         render =
-            Render.view model.world model.cache screen (Just viewport)
+            Render.view model.world model.cache screen viewport
                 |> Element.html
                 |> Element.el
                     [ Element.width (Element.px screenWidth)
