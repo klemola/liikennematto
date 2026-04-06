@@ -12,6 +12,7 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Element.Lazy
 import Html exposing (Html)
 import Html.Attributes as HtmlAttribute
 import Html.Events.Extra.Mouse as Mouse
@@ -244,15 +245,16 @@ view liikennematto render renderDebugLayers =
         }
         [ Background.color uiColorText
         , Element.inFront
-            (gameControls
-                liikennematto.ui
+            (Element.Lazy.lazy3 gameControls
+                liikennematto.ui.zoomLevel
                 liikennematto.screen
                 liikennematto.simulationActive
             )
         , Element.inFront
-            (menu liikennematto.debug
+            (Element.Lazy.lazy3 menu
+                liikennematto.debug
                 liikennematto.screen
-                liikennematto.ui
+                liikennematto.ui.showMenu
             )
         , Element.inFront (devMenu liikennematto liikennematto.ui)
         , Element.clip
@@ -308,8 +310,8 @@ gameControlsPaddingPx =
     20
 
 
-gameControls : UI -> Screen -> Bool -> Element Msg
-gameControls model screen simulationActive =
+gameControls : ZoomLevel -> Screen -> Bool -> Element Msg
+gameControls zoomLevel screen simulationActive =
     let
         config =
             if Screen.categoryAtMost Screen.SizeLG screen then
@@ -360,7 +362,7 @@ gameControls model screen simulationActive =
                 (roundIconButton
                     { onPress = ZoomIn
                     , selected = False
-                    , disabled = model.zoomLevel == maxZoomLevel
+                    , disabled = zoomLevel == maxZoomLevel
                     }
                     (gameControlSizePx + config.iconSizeDiffPx)
                     Icons.iconZoomIn
@@ -376,7 +378,7 @@ gameControls model screen simulationActive =
                 (roundIconButton
                     { onPress = ZoomOut
                     , selected = False
-                    , disabled = model.zoomLevel == minZoomLevel
+                    , disabled = zoomLevel == minZoomLevel
                     }
                     (gameControlSizeSmallPx + config.iconSizeDiffPx)
                     Icons.iconZoomOut
@@ -461,8 +463,8 @@ fontSizeSectionHeading =
     14
 
 
-menu : Model.Debug.DebugState -> Screen -> UI -> Element Msg
-menu debugState screen model =
+menu : Model.Debug.DebugState -> Screen -> Bool -> Element Msg
+menu debugState screen showMenu =
     let
         menuWidthPx =
             208
@@ -522,7 +524,7 @@ menu debugState screen model =
                 , bottomRight = 0
                 }
             , Background.color menuBackgroundColorAlt
-            , if model.showMenu then
+            , if showMenu then
                 Border.rounded 0
 
               else
@@ -536,7 +538,7 @@ menu debugState screen model =
             [ Element.el [ Element.alignRight ]
                 (iconButton
                     { onPress = ToggleMenu
-                    , selected = model.showMenu
+                    , selected = showMenu
                     , disabled = False
                     }
                     navBarControlSizePx
@@ -554,7 +556,7 @@ menu debugState screen model =
                 , bottomRight = borderRadiusMenuPx
                 }
              ]
-                ++ (if model.showMenu then
+                ++ (if showMenu then
                         menuVisibleContentAttrs
 
                     else
