@@ -476,6 +476,8 @@ menu debugState screen showMenu =
 
         menuHiddenContentAttrs =
             [ Element.height (Element.px 0)
+            , Element.clip
+            , Element.htmlAttribute (HtmlAttribute.style "min-height" "0")
             ]
 
         menuVisibleContentAttrs =
