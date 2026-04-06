@@ -316,14 +316,16 @@ gameControls zoomLevel screen simulationActive =
         config =
             if Screen.categoryAtMost Screen.SizeLG screen then
                 { bg = gameControlsBgSmall
-                , buttonDistance = 6
-                , zoomOutOffsetY = -6
+                , buttonDistance = 8
+                , zoomInOffsetY = 2
+                , zoomOutOffsetY = -2
                 , iconSizeDiffPx = -4
                 }
 
             else
                 { bg = gameControlsBg
                 , buttonDistance = 10
+                , zoomInOffsetY = 0
                 , zoomOutOffsetY = 0
                 , iconSizeDiffPx = 0
                 }
@@ -357,7 +359,7 @@ gameControls zoomLevel screen simulationActive =
             (Element.el
                 [ Element.paddingXY gameControlsPaddingPx 0
                 , Element.alignTop
-                , Element.moveDown -24
+                , Element.moveDown (-26 + config.zoomInOffsetY)
                 ]
                 (roundIconButton
                     { onPress = ZoomIn
@@ -372,7 +374,7 @@ gameControls zoomLevel screen simulationActive =
             (Element.el
                 [ Element.paddingXY gameControlsPaddingPx 0
                 , Element.alignTop
-                , Element.moveDown (10 + config.zoomOutOffsetY)
+                , Element.moveDown (6 + config.zoomOutOffsetY)
                 , Element.moveRight (52 + config.buttonDistance)
                 ]
                 (roundIconButton
