@@ -17,7 +17,7 @@ import Html.Attributes as HtmlAttribute
 import Html.Events.Extra.Mouse as Mouse
 import Model.Debug exposing (DebugLayerKind(..))
 import Model.Liikennematto exposing (Liikennematto)
-import Model.Screen exposing (Screen)
+import Model.Screen as Screen exposing (Screen)
 import Model.World exposing (World)
 import Render.Viewport as Viewport
 import Svg
@@ -243,7 +243,12 @@ view liikennematto render renderDebugLayers =
                 baseLayoutOptions
         }
         [ Background.color uiColorText
-        , Element.inFront (gameControls liikennematto.ui liikennematto.simulationActive)
+        , Element.inFront
+            (gameControls
+                liikennematto.ui
+                liikennematto.screen
+                liikennematto.simulationActive
+            )
         , Element.inFront (menu liikennematto.debug liikennematto.ui)
         , Element.inFront (devMenu liikennematto liikennematto.ui)
         , Element.clip
@@ -299,8 +304,31 @@ gameControlsPaddingPx =
     20
 
 
-gameControls : UI -> Bool -> Element Msg
-gameControls model simulationActive =
+gameControls : UI -> Screen -> Bool -> Element Msg
+gameControls model screen simulationActive =
+    let
+        config =
+            if Screen.categoryAtMost Screen.SizeLG screen then
+                { bg = gameControlsBgSmall
+                , buttonDistance = 6
+                , zoomOutOffsetY = -6
+                , iconSizeDiffPx = -4
+                }
+
+            else
+                { bg = gameControlsBg
+                , buttonDistance = 10
+                , zoomOutOffsetY = 0
+                , iconSizeDiffPx = 0
+                }
+
+        ( simulationIcon, simulationSelected ) =
+            if simulationActive then
+                ( Icons.iconPause, False )
+
+            else
+                ( Icons.iconResume, True )
+    in
     Element.el
         [ Element.spacing whitespaceTight
         , Element.alignBottom
@@ -310,20 +338,27 @@ gameControls model simulationActive =
                 [ Element.padding gameControlsPaddingPx
                 , Element.alignBottom
                 ]
-                (simulationControl simulationActive)
+                (iconButton
+                    { onPress = ToggleSimulationActive (not simulationActive)
+                    , selected = simulationSelected
+                    , disabled = False
+                    }
+                    (gameControlSizePx + config.iconSizeDiffPx)
+                    simulationIcon
+                )
             )
         , Element.inFront
             (Element.el
                 [ Element.paddingXY gameControlsPaddingPx 0
                 , Element.alignTop
-                , Element.moveUp 22
+                , Element.moveDown -24
                 ]
                 (roundIconButton
                     { onPress = ZoomIn
                     , selected = False
                     , disabled = model.zoomLevel == maxZoomLevel
                     }
-                    gameControlSizePx
+                    (gameControlSizePx + config.iconSizeDiffPx)
                     Icons.iconZoomIn
                 )
             )
@@ -331,65 +366,64 @@ gameControls model simulationActive =
             (Element.el
                 [ Element.paddingXY gameControlsPaddingPx 0
                 , Element.alignTop
-                , Element.moveDown 10
-                , Element.moveRight 60
+                , Element.moveDown (10 + config.zoomOutOffsetY)
+                , Element.moveRight (52 + config.buttonDistance)
                 ]
                 (roundIconButton
                     { onPress = ZoomOut
                     , selected = False
                     , disabled = model.zoomLevel == minZoomLevel
                     }
-                    gameControlSizeSmallPx
+                    (gameControlSizeSmallPx + config.iconSizeDiffPx)
                     Icons.iconZoomOut
                 )
             )
         ]
-        (Element.html gameControlsBg)
+        (Element.html config.bg)
 
 
 gameControlsBg : Html msg
 gameControlsBg =
     Svg.svg
-        [ SvgAttr.width "155"
-        , SvgAttr.height "154"
-        , SvgAttr.viewBox "1 0 155 154"
+        [ SvgAttr.width "152"
+        , SvgAttr.height "152"
+        , SvgAttr.viewBox "0 0 152 152"
         , SvgAttr.fill "none"
         ]
-        [ Svg.g
-            []
-            [ Svg.path
-                [ SvgAttr.d "M150.52 154H0.52002V4H26.52C93.52 4 150.52 57 150.52 129.347V154Z"
-                , SvgAttr.fill "#BEC6D5"
-                ]
-                []
-            , Svg.path
-                [ SvgAttr.d "M26.52 3C94.0582 3 151.52 56.4337 151.52 129.347V155H-0.47998V3H26.52Z"
-                , SvgAttr.fill "#BEC6D5"
-                , SvgAttr.stroke "#7083A4"
-                , SvgAttr.strokeWidth "3"
-                ]
-                []
+        [ Svg.path
+            [ SvgAttr.d "M150 152H0V2H26C93 2 150 55 150 127.347V152Z"
+            , SvgAttr.fill "#BAC5D8"
             ]
+            []
+        , Svg.path
+            [ SvgAttr.d "M150 152V127.347C150 55 93 2 26 2H0"
+            , SvgAttr.stroke "#6981AB"
+            , SvgAttr.strokeWidth "3"
+            ]
+            []
         ]
 
 
-simulationControl : Bool -> Element Msg
-simulationControl simulationActive =
-    let
-        ( iconSvg, selected ) =
-            if simulationActive then
-                ( Icons.iconPause, False )
-
-            else
-                ( Icons.iconResume, True )
-    in
-    iconButton
-        { onPress = ToggleSimulationActive (not simulationActive)
-        , selected = selected
-        , disabled = False
-        }
-        gameControlSizePx
-        iconSvg
+gameControlsBgSmall : Html msg
+gameControlsBgSmall =
+    Svg.svg
+        [ SvgAttr.width "142"
+        , SvgAttr.height "132"
+        , SvgAttr.viewBox "0 0 142 132"
+        , SvgAttr.fill "none"
+        ]
+        [ Svg.path
+            [ SvgAttr.d "M140 132H0V2H26C93 2 140 45 140 107.347V132Z"
+            , SvgAttr.fill "#BAC5D8"
+            ]
+            []
+        , Svg.path
+            [ SvgAttr.d "M140 132V107.347C140 45 93 2 26 2H0"
+            , SvgAttr.stroke "#6981AB"
+            , SvgAttr.strokeWidth "3"
+            ]
+            []
+        ]
 
 
 
