@@ -300,11 +300,14 @@ suite =
                             |> WFC.withTileInventory testTileInventory
                             |> WFC.debug_collapseWithId cell threeByThreeLotLeftId
                             |> WFC.step WFC.StopAtEmptySteps
-
-                    wfcContext =
-                        WFC.contextDebug model
                 in
-                Expect.atLeast 1 wfcContext.backtrackCount
+                -- A bad tile pick with no alternatives exhausts the backtrack stack and fails
+                case WFC.currentState model of
+                    WFC.Failed _ ->
+                        Expect.pass
+
+                    other ->
+                        Expect.fail ("Expected Failed state, got " ++ Debug.toString other)
             )
         , describe ".checkLargeTileFit"
             [ test "Should find fitting tiles (vertical road)"

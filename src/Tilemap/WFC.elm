@@ -184,7 +184,7 @@ step endCondition model =
     case steppedModel.state of
         Recovering _ ->
             case backtrack steppedModel.previousSteps steppedModel.tileInventory steppedModel.tilemap of
-                Ok ( prunedPreviousSteps, updatedTileInventory, tilemapAfterBacktrack ) ->
+                Ok result ->
                     if steppedModel.backtrackCount + 1 > maxBacktrackCount then
                         let
                             nextState =
@@ -193,7 +193,7 @@ step endCondition model =
                         Model
                             { steppedModel
                                 | state = nextState
-                                , log = ("<" ++ stateDebugInternal nextState) :: steppedModel.log
+                                , log = ("<" ++ stateDebugInternal nextState) :: (result.log ++ steppedModel.log)
                             }
 
                     else
@@ -205,11 +205,11 @@ step endCondition model =
                             { steppedModel
                                 | state = Solving
                                 , openSteps = []
-                                , previousSteps = prunedPreviousSteps
+                                , previousSteps = result.previousSteps
                                 , backtrackCount = nextBacktrackCount
-                                , log = ("<Backtrack successful, count: " ++ String.fromInt nextBacktrackCount) :: steppedModel.log
-                                , tilemap = tilemapAfterBacktrack
-                                , tileInventory = updatedTileInventory
+                                , log = ("<Backtrack successful, count: " ++ String.fromInt nextBacktrackCount) :: (result.log ++ steppedModel.log)
+                                , tilemap = result.tilemap
+                                , tileInventory = result.tileInventory
                             }
 
                 Err failure ->
@@ -574,38 +574,66 @@ stepTileId theStep =
 --
 
 
-backtrack : PreviousSteps -> TileInventory Int -> Tilemap -> Result WFCFailure ( PreviousSteps, TileInventory Int, Tilemap )
+type alias BacktrackResult =
+    { previousSteps : PreviousSteps
+    , tileInventory : TileInventory Int
+    , tilemap : Tilemap
+    , log : List String
+    }
+
+
+backtrack : PreviousSteps -> TileInventory Int -> Tilemap -> Result WFCFailure BacktrackResult
 backtrack previousSteps tileInventory tilemap =
+    backtrackHelper [] previousSteps tileInventory tilemap
+
+
+backtrackHelper : List String -> PreviousSteps -> TileInventory Int -> Tilemap -> Result WFCFailure BacktrackResult
+backtrackHelper logEntries previousSteps tileInventory tilemap =
     let
         ( stepCtx, remainingPreviousSteps ) =
             Stack.pop previousSteps
     in
     case stepCtx of
         Nothing ->
-            -- No steps left, should be possible to continue
-            Ok ( remainingPreviousSteps, tileInventory, tilemap )
+            Err BacktrackFailed
 
         Just ( theStep, previousSuperposition ) ->
             let
-                ( remainingSuperposition, updatedInventory, reverted ) =
+                reverted =
                     revertStep theStep previousSuperposition tileInventory tilemap
+
+                nextLogEntries =
+                    reverted.log ++ logEntries
 
                 backtrackedEnough =
                     case theStep of
                         Collapse _ _ ->
-                            List.length remainingSuperposition > 0
+                            List.length reverted.remainingSuperposition > 0
 
                         _ ->
                             False
             in
             if backtrackedEnough then
-                Ok ( remainingPreviousSteps, updatedInventory, reverted )
+                Ok
+                    { previousSteps = remainingPreviousSteps
+                    , tileInventory = reverted.tileInventory
+                    , tilemap = reverted.tilemap
+                    , log = nextLogEntries
+                    }
 
             else
-                backtrack remainingPreviousSteps updatedInventory reverted
+                backtrackHelper nextLogEntries remainingPreviousSteps reverted.tileInventory reverted.tilemap
 
 
-revertStep : Step -> Nonempty TileId -> TileInventory Int -> Tilemap -> ( List TileId, TileInventory Int, Tilemap )
+type alias RevertStepResult =
+    { remainingSuperposition : List TileId
+    , tileInventory : TileInventory Int
+    , tilemap : Tilemap
+    , log : List String
+    }
+
+
+revertStep : Step -> Nonempty TileId -> TileInventory Int -> Tilemap -> RevertStepResult
 revertStep theStep previousSuperposition tileInventory tilemap =
     let
         targetCell =
@@ -623,11 +651,19 @@ revertStep theStep previousSuperposition tileInventory tilemap =
 
                 Nothing ->
                     ( psList, tileInventory )
+
+        logEntries =
+            if List.isEmpty nextSuperpositionOptions then
+                [ "!revertStep produced Superposition [] at " ++ Cell.toString targetCell ]
+
+            else
+                []
     in
-    ( nextSuperpositionOptions
-    , updatedInventory
-    , setSuperpositionOptions targetCell nextSuperpositionOptions tilemap
-    )
+    { remainingSuperposition = nextSuperpositionOptions
+    , tileInventory = updatedInventory
+    , tilemap = setSuperpositionOptions targetCell nextSuperpositionOptions tilemap
+    , log = logEntries
+    }
 
 
 
