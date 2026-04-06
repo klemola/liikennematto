@@ -249,7 +249,11 @@ view liikennematto render renderDebugLayers =
                 liikennematto.screen
                 liikennematto.simulationActive
             )
-        , Element.inFront (menu liikennematto.debug liikennematto.ui)
+        , Element.inFront
+            (menu liikennematto.debug
+                liikennematto.screen
+                liikennematto.ui
+            )
         , Element.inFront (devMenu liikennematto liikennematto.ui)
         , Element.clip
         , Element.width Element.fill
@@ -457,8 +461,8 @@ fontSizeSectionHeading =
     14
 
 
-menu : Model.Debug.DebugState -> UI -> Element Msg
-menu debugState model =
+menu : Model.Debug.DebugState -> Screen -> UI -> Element Msg
+menu debugState screen model =
     let
         menuWidthPx =
             208
@@ -505,7 +509,11 @@ menu debugState model =
         ]
         [ Element.row
             [ Element.spacing whitespaceTight
-            , Element.padding whitespaceCondensed
+            , if Screen.categoryAtMost Screen.SizeLG screen then
+                Element.paddingXY whitespaceCondensed whitespaceTight
+
+              else
+                Element.padding whitespaceCondensed
             , Element.width Element.fill
             , Border.roundEach
                 { topLeft = 0
