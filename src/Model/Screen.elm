@@ -1,7 +1,7 @@
 module Model.Screen exposing
     ( Screen
     , ScreenCategory(..)
-    , breakpointXL
+    , categoryAtMost
     , fallback
     , fromDimensions
     )
@@ -84,3 +84,27 @@ screenCategory width height =
 
     else
         SizeXXL
+
+
+categoryAtMost : ScreenCategory -> Screen -> Bool
+categoryAtMost maxCategory screen =
+    categoryToInt screen.category <= categoryToInt maxCategory
+
+
+categoryToInt : ScreenCategory -> Int
+categoryToInt category =
+    case category of
+        SizeSM ->
+            0
+
+        SizeMD ->
+            1
+
+        SizeLG ->
+            2
+
+        SizeXL ->
+            3
+
+        SizeXXL ->
+            4
