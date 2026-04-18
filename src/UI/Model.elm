@@ -15,6 +15,7 @@ type alias UI =
     , showDevMenu : Bool
     , selectedDevView : DevView
     , editor : UI.Editor.Model
+    , showLmInfo : Bool
     }
 
 
@@ -48,4 +49,5 @@ initialModel =
     , showDevMenu = False
     , selectedDevView = EventQueueList
     , editor = UI.Editor.initialModel
+    , showLmInfo = False
     }

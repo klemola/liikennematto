@@ -16,6 +16,7 @@ import Element.Lazy
 import Html exposing (Html)
 import Html.Attributes as HtmlAttribute
 import Html.Events.Extra.Mouse as Mouse
+import Html.Events.Extra.Pointer as Pointer
 import Model.Debug exposing (DebugLayerKind(..))
 import Model.Liikennematto exposing (Liikennematto)
 import Model.Screen as Screen exposing (Screen)
@@ -40,6 +41,7 @@ import UI.Core
         , whitespaceTight
         )
 import UI.Editor as Editor
+import UI.LmInfo
 import UI.Model as Model
     exposing
         ( ButtonKind(..)
@@ -52,6 +54,7 @@ import UI.StateDebug as StateDebug
 
 type Msg
     = ToggleMenu
+    | ToggleLmInfo
     | ZoomIn
     | ZoomOut
     | Trigger ButtonKind
@@ -119,6 +122,12 @@ update world viewport screen msg model =
     case msg of
         ToggleMenu ->
             ( { model | showMenu = not model.showMenu }
+            , Cmd.none
+            , Nothing
+            )
+
+        ToggleLmInfo ->
+            ( { model | showLmInfo = not model.showLmInfo }
             , Cmd.none
             , Nothing
             )
@@ -251,11 +260,14 @@ view liikennematto render renderDebugLayers =
                 liikennematto.simulationActive
             )
         , Element.inFront
-            (Element.Lazy.lazy3 menu
+            (Element.Lazy.lazy4 menu
                 liikennematto.debug
                 liikennematto.screen
                 liikennematto.ui.showMenu
+                liikennematto.ui.showLmInfo
             )
+        , Element.inFront
+            (Element.Lazy.lazy2 lmInfo liikennematto.ui.showLmInfo Pointer.MouseType)
         , Element.inFront (devMenu liikennematto liikennematto.ui)
         , Element.clip
         , Element.width Element.fill
@@ -465,8 +477,8 @@ fontSizeSectionHeading =
     14
 
 
-menu : Model.Debug.DebugState -> Screen -> Bool -> Element Msg
-menu debugState screen showMenu =
+menu : Model.Debug.DebugState -> Screen -> Bool -> Bool -> Element Msg
+menu debugState screen showMenu showLmInfo =
     let
         menuWidthPx =
             208
@@ -539,7 +551,16 @@ menu debugState screen showMenu =
                     , bottomRight = 0
                     }
             ]
-            [ Element.el [ Element.alignRight ]
+            [ Element.el [ Element.alignLeft ]
+                (iconButton
+                    { onPress = ToggleLmInfo
+                    , selected = showLmInfo
+                    , disabled = False
+                    }
+                    navBarControlSizePx
+                    Icons.iconHelp
+                )
+            , Element.el [ Element.alignRight ]
                 (iconButton
                     { onPress = ToggleMenu
                     , selected = showMenu
@@ -634,6 +655,62 @@ menuSectionAttrs =
     , Border.color uiColorBorder
     , Border.width 1
     ]
+
+
+lmInfo : Bool -> Pointer.DeviceType -> Element Msg
+lmInfo showLmInfo deviceType =
+    if showLmInfo then
+        Element.column
+            [ Element.centerY
+            , Element.centerX
+            , Element.moveUp 24
+            , Element.width (Element.px 360)
+            , Element.height Element.shrink
+            , Element.scrollbarY
+            , Background.color menuBackgroundColorAlt
+            , Border.rounded borderRadiusMenuPx
+            , Border.color uiColorBorder
+            , Border.width borderSize
+            ]
+            [ Element.row
+                [ Element.padding whitespaceCondensed
+                , Element.width Element.fill
+                , Background.color menuBackgroundColorAlt
+                , Border.color uiColorBorder
+                , Border.roundEach
+                    { topLeft = borderRadiusMenuPx
+                    , topRight = borderRadiusMenuPx
+                    , bottomLeft = 0
+                    , bottomRight = 0
+                    }
+                , Border.widthEach
+                    { top = 0
+                    , right = 0
+                    , bottom = 1
+                    , left = 0
+                    }
+                , Font.bold
+                , Font.center
+                ]
+                [ Element.el
+                    [ Element.paddingEach { noSpacing | left = 8 }
+                    ]
+                    (Element.text "Liikennematto")
+                , Element.el [ Element.alignRight ]
+                    (iconButton
+                        { onPress = ToggleLmInfo
+                        , selected = False
+                        , disabled = False
+                        }
+                        navBarControlSizePx
+                        Icons.iconClose
+                    )
+                ]
+            , UI.LmInfo.view deviceType
+            ]
+
+    else
+        Element.none
 
 
 devMenu : Liikennematto -> UI -> Element Msg
