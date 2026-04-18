@@ -6,6 +6,7 @@ module Tilemap.DrivenWFC exposing
     , drivenWfcDebug
     , initDrivenWfc
     , onRemoveTile
+    , pruneUnfittableLargeTiles
     , restartWfc
     , runWfc
     )
@@ -238,6 +239,7 @@ preprocessTilemap : Tilemap -> Tilemap
 preprocessTilemap tilemap =
     tilemap
         |> bufferToSuperposition
+        |> pruneUnfittableLargeTiles
         |> reopenRoads
 
 
@@ -254,6 +256,39 @@ bufferToSuperposition tilemap =
         )
         tilemap
         tilemap
+
+
+pruneUnfittableLargeTiles : Tilemap -> Tilemap
+pruneUnfittableLargeTiles tilemap =
+    foldTiles
+        (\cell tile nextTilemap ->
+            case tile.kind of
+                Superposition options ->
+                    let
+                        remaining =
+                            List.filter (largeTileFitsAt nextTilemap cell) options
+                    in
+                    if List.length remaining == List.length options then
+                        nextTilemap
+
+                    else
+                        setSuperpositionOptions cell remaining nextTilemap
+
+                _ ->
+                    nextTilemap
+        )
+        tilemap
+        tilemap
+
+
+largeTileFitsAt : Tilemap -> Cell -> TileId -> Bool
+largeTileFitsAt tilemap cell tileId =
+    case tileById tileId of
+        TileConfig.Large largeTile ->
+            WFC.checkLargeTileFit tilemap cell largeTile /= Nothing
+
+        TileConfig.Single _ ->
+            True
 
 
 reopenRoads : Tilemap -> Tilemap
