@@ -130,21 +130,26 @@ update msg model =
             )
 
         GameSetupComplete ->
-            let
-                tilemapConfig =
-                    getTilemapConfig model.world.tilemap
-            in
-            case
-                Cell.fromCoordinates tilemapConfig
-                    ( tilemapConfig.horizontalCellsAmount // 2
-                    , tilemapConfig.verticalCellsAmount // 2
-                    )
-            of
-                Just cell ->
-                    addTile cell model
+            case model.savegame of
+                Just _ ->
+                    ( model, Cmd.none )
 
                 Nothing ->
-                    ( model, Cmd.none )
+                    let
+                        tilemapConfig =
+                            getTilemapConfig model.world.tilemap
+                    in
+                    case
+                        Cell.fromCoordinates tilemapConfig
+                            ( tilemapConfig.horizontalCellsAmount // 2
+                            , tilemapConfig.verticalCellsAmount // 2
+                            )
+                    of
+                        Just cell ->
+                            addTile cell model
+
+                        Nothing ->
+                            ( model, Cmd.none )
 
         CheckQueues time delta ->
             case model.world.pendingTilemapChange of

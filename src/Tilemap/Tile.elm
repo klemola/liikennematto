@@ -129,7 +129,7 @@ fromTileConfig tileConfig parentTileProperties op =
                 , name = name
                 , parentTile = parentTileProperties
                 , animation =
-                    if isMainTile && TileConfig.biome tileConfig == TileConfig.Nature then
+                    if isMainTile && op /= AddFromSaveGame && TileConfig.biome tileConfig == TileConfig.Nature then
                         Just defaultTileAnimation
 
                     else
