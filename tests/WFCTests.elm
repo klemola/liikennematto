@@ -309,6 +309,51 @@ suite =
                     other ->
                         Expect.fail ("Expected Failed state, got " ++ Debug.toString other)
             )
+        , describe "exhausted blueprint handling"
+            [ describe "Filters exhausted lot blueprint at pick time (no backtrack)"
+                (List.map exhaustedBlueprintCase [ 42, 100, 200, 300, 400 ])
+            , test "Does not filter when inventory entry is missing (treated as available)"
+                (\_ ->
+                    let
+                        targetCell =
+                            createCell constraints 5 5
+
+                        natureSingle1Id =
+                            211
+
+                        tilemap =
+                            setSuperpositionOptions targetCell
+                                [ natureSingle1Id ]
+                                emptyTilemap
+
+                        model =
+                            WFC.fromTilemap tilemap (SeedState.fromSeed testSeed)
+                                |> WFC.withTileInventory Dict.empty
+                                |> WFC.solve
+
+                        wfcContext =
+                            WFC.contextDebug model
+
+                        collapsedTileId =
+                            tileByCell (WFC.toTilemap model) targetCell
+                                |> Maybe.andThen
+                                    (\tile ->
+                                        case tile.kind of
+                                            Fixed props ->
+                                                Just props.id
+
+                                            _ ->
+                                                Nothing
+                                    )
+                    in
+                    Expect.all
+                        [ \_ -> Expect.equal (WFC.currentState model) WFC.Done
+                        , \_ -> Expect.equal 0 wfcContext.backtrackCount
+                        , \_ -> Expect.equal (Just natureSingle1Id) collapsedTileId
+                        ]
+                        ()
+                )
+            ]
         , describe ".checkLargeTileFit"
             [ test "Should find fitting tiles (vertical road)"
                 (\_ ->
@@ -422,3 +467,58 @@ countSuperpositions tilemap =
         )
         0
         tilemap
+
+
+exhaustedBlueprintCase : Int -> Test
+exhaustedBlueprintCase seedInt =
+    test ("seed " ++ String.fromInt seedInt)
+        (\_ ->
+            let
+                targetCell =
+                    createCell constraints 5 5
+
+                twoByTwoLotRightId =
+                    113
+
+                natureSingle1Id =
+                    211
+
+                tilemap =
+                    setSuperpositionOptions targetCell
+                        [ twoByTwoLotRightId, natureSingle1Id ]
+                        emptyTilemap
+
+                exhaustedInventory =
+                    Dict.fromList [ ( twoByTwoLotRightId, 0 ) ]
+
+                model =
+                    WFC.fromTilemap tilemap (SeedState.fromSeed (Random.initialSeed seedInt))
+                        |> WFC.withTileInventory exhaustedInventory
+                        |> WFC.solve
+
+                wfcContext =
+                    WFC.contextDebug model
+
+                collapsedTileId =
+                    tileByCell (WFC.toTilemap model) targetCell
+                        |> Maybe.andThen
+                            (\tile ->
+                                case tile.kind of
+                                    Fixed props ->
+                                        Just props.id
+
+                                    _ ->
+                                        Nothing
+                            )
+            in
+            Expect.all
+                [ \_ -> Expect.equal (WFC.currentState model) WFC.Done
+                , \_ ->
+                    Expect.equal 0 wfcContext.backtrackCount
+                        |> Expect.onFail "Expected zero backtracks — exhausted tile should be filtered at pick time"
+                , \_ ->
+                    Expect.equal (Just natureSingle1Id) collapsedTileId
+                        |> Expect.onFail "Expected target cell to collapse to the available alternative"
+                ]
+                ()
+        )

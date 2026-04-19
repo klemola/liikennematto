@@ -696,8 +696,15 @@ pickRandom ({ openSteps, tilemap, seed } as modelDetails) =
                 ( randomCandidate, seedAfterCandidateGen ) =
                     SeedState.step (List.Nonempty.sample candidates) seed
 
+                availableOptions =
+                    randomCandidate.options
+                        |> List.Nonempty.toList
+                        |> List.filter (\tileId -> TileInventory.isAvailable tileId modelDetails.tileInventory)
+                        |> List.Nonempty.fromList
+                        |> Maybe.withDefault randomCandidate.options
+
                 randomOptionGen =
-                    toWeightedOptions randomCandidate.options
+                    toWeightedOptions availableOptions
 
                 ( randomOption, nextSeedState ) =
                     SeedState.step randomOptionGen seedAfterCandidateGen
