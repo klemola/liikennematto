@@ -31,6 +31,7 @@ import Common exposing (attemptFoldList, attemptMapList)
 import Data.TileSet as TileSet
     exposing
         ( defaultSocket
+        , largeTileInnerEdgeSocket
         , pairingsForSocket
         , tileById
         )
@@ -763,7 +764,7 @@ toWeightedOptions options =
 nextCandidates : Tilemap -> List Candidate
 nextCandidates tilemap =
     let
-        toCandidate cell tile ( candidates, minEntropy ) =
+        toCandidate cell tile (( candidates, minPriority, minEntropy ) as acc) =
             case tile.kind of
                 Superposition options ->
                     case List.Nonempty.fromList options of
@@ -771,30 +772,52 @@ nextCandidates tilemap =
                             let
                                 currentEntropy =
                                     List.Nonempty.length nonemptyOptions
+
+                                -- Lower priority = picked earlier. Negate the
+                                -- cell's max option weight so high-weight tiles
+                                -- (e.g. lot large tiles at 1.0) jump the line
+                                -- ahead of pure Nature cells.
+                                currentPriority =
+                                    optionsPriority nonemptyOptions
+
+                                candidate =
+                                    { cell = cell, options = nonemptyOptions }
                             in
-                            if currentEntropy > minEntropy then
-                                ( candidates, minEntropy )
+                            if currentPriority < minPriority then
+                                ( [ candidate ], currentPriority, currentEntropy )
+
+                            else if currentPriority > minPriority then
+                                acc
 
                             else if currentEntropy < minEntropy then
-                                ( [ { cell = cell, options = nonemptyOptions } ]
-                                , currentEntropy
-                                )
+                                ( [ candidate ], currentPriority, currentEntropy )
+
+                            else if currentEntropy > minEntropy then
+                                acc
 
                             else
-                                -- Same entropy
-                                ( { cell = cell, options = nonemptyOptions } :: candidates
-                                , currentEntropy
-                                )
+                                ( candidate :: candidates, currentPriority, currentEntropy )
 
                         Nothing ->
-                            ( candidates, minEntropy )
+                            acc
 
                 _ ->
-                    ( candidates, minEntropy )
+                    acc
+
+        ( finalCandidates, _, _ ) =
+            foldTiles toCandidate ( [], 1 / 0, TileSet.allTilesAmount + 1 ) tilemap
     in
-    tilemap
-        |> foldTiles toCandidate ( [], TileSet.allTilesAmount + 1 )
-        |> Tuple.first
+    finalCandidates
+
+
+optionsPriority : Nonempty TileId -> Float
+optionsPriority options =
+    options
+        |> List.Nonempty.toList
+        |> List.map (tileById >> TileConfig.weight)
+        |> List.maximum
+        |> Maybe.withDefault 0
+        |> negate
 
 
 
@@ -964,12 +987,12 @@ attemptTileNeighborUpdate currentTile originCell tilemap =
                         Err "Can't dock fixed neighbor"
 
                 Superposition _ ->
-                    if nuCtx.neighborSocket == defaultSocket then
-                        Ok (PropagateConstraints originCell nuCtx.neighborCell :: nuCtx.steps)
+                    if nuCtx.neighborSocket == largeTileInnerEdgeSocket then
+                        -- Skip: neighbor is another subgrid tile in the same large tile
+                        Ok nuCtx.steps
 
                     else
-                        -- Don't try to propagate constraints for edges that will match another subgrid tile or the entry point
-                        Ok nuCtx.steps
+                        Ok (PropagateConstraints originCell nuCtx.neighborCell :: nuCtx.steps)
 
                 Unintialized ->
                     -- Allow docking on unitialized neighbor like it was the edge of the map

@@ -354,6 +354,76 @@ suite =
                         ()
                 )
             ]
+        , describe "candidate ordering"
+            [ test "Picks high-max-weight cell before a lower-max-weight cell, even at higher entropy"
+                (\_ ->
+                    let
+                        lowWeightCell =
+                            createCell constraints 2 2
+
+                        highWeightCell =
+                            createCell constraints 5 5
+
+                        natureSingle1Id =
+                            211
+
+                        natureSingle3Id =
+                            213
+
+                        tilemap =
+                            emptyTilemap
+                                |> setSuperpositionOptions lowWeightCell
+                                    [ natureSingle3Id ]
+                                |> setSuperpositionOptions highWeightCell
+                                    [ natureSingle3Id, natureSingle1Id ]
+
+                        model =
+                            WFC.fromTilemap tilemap (SeedState.fromSeed testSeed)
+                                |> WFC.solve
+
+                        firstCollapsedCell =
+                            WFC.collapsedTiles model
+                                |> List.head
+                                |> Maybe.map Tuple.first
+                    in
+                    Expect.equal (Just highWeightCell) firstCollapsedCell
+                        |> Expect.onFail "Expected the cell with max weight 0.3 to collapse before the cell with max weight 0.2"
+                )
+            , test "Falls back to entropy ordering within the same priority class"
+                (\_ ->
+                    let
+                        lowEntropyCell =
+                            createCell constraints 2 2
+
+                        highEntropyCell =
+                            createCell constraints 5 5
+
+                        natureSingle1Id =
+                            211
+
+                        natureSingle2Id =
+                            212
+
+                        tilemap =
+                            emptyTilemap
+                                |> setSuperpositionOptions lowEntropyCell
+                                    [ natureSingle1Id ]
+                                |> setSuperpositionOptions highEntropyCell
+                                    [ natureSingle1Id, natureSingle2Id ]
+
+                        model =
+                            WFC.fromTilemap tilemap (SeedState.fromSeed testSeed)
+                                |> WFC.solve
+
+                        firstCollapsedCell =
+                            WFC.collapsedTiles model
+                                |> List.head
+                                |> Maybe.map Tuple.first
+                    in
+                    Expect.equal (Just lowEntropyCell) firstCollapsedCell
+                        |> Expect.onFail "Within a tied priority class the lower-entropy cell should still win"
+                )
+            ]
         , describe ".checkLargeTileFit"
             [ test "Should find fitting tiles (vertical road)"
                 (\_ ->
