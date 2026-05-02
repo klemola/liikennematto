@@ -10,6 +10,7 @@ module Data.TileSet exposing
     , defaultTiles
     , extractLotEntryTile
     , horizontalRoadLotEntryUp
+    , largeTileInnerEdgeSocket
     , lotDrivewaySocket
     , lotDrivewayTileIds
     , lotEntrySocket
@@ -616,7 +617,7 @@ horizontalRoadLotEntryUp =
     TileConfig.Single
         { id = 17
         , name = "RoadHorizontalLotEntryUp"
-        , weight = 1.0
+        , weight = 0.9
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -638,7 +639,7 @@ verticalRoadLotEntryRight =
     TileConfig.Single
         { id = 19
         , name = "RoadVerticalLotEntryRight"
-        , weight = 1.0
+        , weight = 0.9
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -656,7 +657,7 @@ verticalRoadLotEntryLeft =
     TileConfig.Single
         { id = 20
         , name = "RoadVerticalLotEntryLeft"
-        , weight = 1.0
+        , weight = 0.9
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -674,7 +675,7 @@ deadendLeftLotEntryUp =
     TileConfig.Single
         { id = 21
         , name = "RoadDeadendLeftLotEntryUp"
-        , weight = 1.0
+        , weight = 0.9
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -692,7 +693,7 @@ deadendLeftLotEntryLeft =
     TileConfig.Single
         { id = 22
         , name = "RoadDeadendLeftLotEntryLeft"
-        , weight = 1.0
+        , weight = 0.9
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -714,7 +715,7 @@ deadendRightLotEntryUp =
     TileConfig.Single
         { id = 24
         , name = "RoadDeadendRightLotEntryUp"
-        , weight = 1.0
+        , weight = 0.9
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -732,7 +733,7 @@ deadendRightLotEntryRight =
     TileConfig.Single
         { id = 25
         , name = "RoadDeadendRightLotEntryRight"
-        , weight = 1.0
+        , weight = 0.9
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -754,7 +755,7 @@ deadendDownLotEntryLeft =
     TileConfig.Single
         { id = 27
         , name = "RoadDeadendDownLotEntryLeft"
-        , weight = 1.0
+        , weight = 0.9
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -772,7 +773,7 @@ deadendDownLotEntryRight =
     TileConfig.Single
         { id = 28
         , name = "RoadDeadendDownLotEntryRight"
-        , weight = 1.0
+        , weight = 0.9
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -794,7 +795,7 @@ deadendUpLotEntryLeft =
     TileConfig.Single
         { id = 30
         , name = "RoadDeadendUpLotEntryLeft"
-        , weight = 1.0
+        , weight = 0.9
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -812,7 +813,7 @@ deadendUpLotEntryRight =
     TileConfig.Single
         { id = 31
         , name = "RoadDeadendUpLotEntryRight"
-        , weight = 1.0
+        , weight = 0.9
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -830,7 +831,7 @@ deadendUpLotEntryUp =
     TileConfig.Single
         { id = 32
         , name = "RoadDeadendUpLotEntryUp"
-        , weight = 1.0
+        , weight = 0.9
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -964,7 +965,7 @@ intersectionTDownLotEntryUp =
     TileConfig.Single
         { id = 41
         , name = "RoadIntersectionTDownLotEntryUp"
-        , weight = 1.0
+        , weight = 0.9
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -982,7 +983,7 @@ intersectionTRightLotEntryLeft =
     TileConfig.Single
         { id = 42
         , name = "RoadIntersectionTRightLotEntryLeft"
-        , weight = 1.0
+        , weight = 0.9
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =
@@ -1000,7 +1001,7 @@ intersectionTLeftLotEntryRight =
     TileConfig.Single
         { id = 43
         , name = "RoadIntersectionTLeftLotEntryRight"
-        , weight = 1.0
+        , weight = 0.9
         , graphPriority = 0.1
         , biome = TileConfig.Road
         , sockets =

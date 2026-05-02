@@ -27,7 +27,14 @@ import Tilemap.Core
         , tileByCell
         , tileNeighborIn
         )
-import Tilemap.DrivenWFC exposing (addTileById, onRemoveTile, restartWfc)
+import Tilemap.DrivenWFC
+    exposing
+        ( addTileById
+        , bufferToSuperposition
+        , onRemoveTile
+        , pruneUnfittableLargeTiles
+        , restartWfc
+        )
 import Tilemap.Tile as Tile exposing (Tile)
 import Tilemap.TileConfig exposing (TileId)
 import Tilemap.WFC as WFC
@@ -518,4 +525,108 @@ suite =
                         |> Expect.onFail "runWfc should return updated seed in WFCSolved"
                 )
             ]
+        , describe ".pruneUnfittableLargeTiles"
+            [ test "Prunes Nature 2x2 quads from 1-wide buffer strips"
+                (\_ ->
+                    let
+                        tilemap =
+                            placeRoadAndUpdateBuffer
+                                [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ) ]
+                                emptyTilemap
+                                |> bufferToSuperposition
+                                |> pruneUnfittableLargeTiles
+
+                        bufferCellOptions y =
+                            tileByCell tilemap (createCell constraints 6 y)
+                                |> Maybe.map tileSuperposition
+                                |> Maybe.withDefault []
+
+                        hasAny tileIds options =
+                            List.any (\id -> List.member id tileIds) options
+
+                        quadIds =
+                            [ natureQuad1Id, natureQuad2Id ]
+                    in
+                    Expect.all
+                        [ \_ ->
+                            bufferCellOptions 2
+                                |> hasAny quadIds
+                                |> Expect.equal False
+                                |> Expect.onFail "NatureQuads should be pruned at (6,2)"
+                        , \_ ->
+                            bufferCellOptions 3
+                                |> hasAny quadIds
+                                |> Expect.equal False
+                                |> Expect.onFail "NatureQuads should be pruned at (6,3)"
+                        , \_ ->
+                            bufferCellOptions 7
+                                |> hasAny quadIds
+                                |> Expect.equal False
+                                |> Expect.onFail "NatureQuads should be pruned at (6,7)"
+                        , \_ ->
+                            bufferCellOptions 3
+                                |> List.member natureSingle1Id
+                                |> Expect.equal True
+                                |> Expect.onFail "Nature singles should be retained"
+                        ]
+                        ()
+                )
+            , test "Retains Nature 2x2 quads at anchors where they fit"
+                (\_ ->
+                    let
+                        tilemap =
+                            placeRoadAndUpdateBuffer
+                                [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ) ]
+                                emptyTilemap
+                                |> bufferToSuperposition
+                                |> pruneUnfittableLargeTiles
+
+                        -- Anchor at (6, 2) covers cells (6,2)(7,2)(6,3)(7,3), all buffer
+                        fitAnchorOptions =
+                            tileByCell tilemap (createCell constraints 6 2)
+                                |> Maybe.map tileSuperposition
+                                |> Maybe.withDefault []
+
+                        -- Anchor at (8, 2) covers (8,2)(9,2)(8,3)(9,3). X=9 is not buffer,
+                        noFitAnchorOptions =
+                            tileByCell tilemap (createCell constraints 8 2)
+                                |> Maybe.map tileSuperposition
+                                |> Maybe.withDefault []
+                    in
+                    Expect.all
+                        [ \_ ->
+                            List.member natureQuad1Id fitAnchorOptions
+                                |> Expect.equal True
+                                |> Expect.onFail "NatureQuad1 should be kept at (6,2) where it fits"
+                        , \_ ->
+                            List.member natureQuad2Id fitAnchorOptions
+                                |> Expect.equal True
+                                |> Expect.onFail "NatureQuad2 should be kept at (6,2) where it fits"
+                        , \_ ->
+                            List.member natureQuad1Id noFitAnchorOptions
+                                |> Expect.equal False
+                                |> Expect.onFail "NatureQuad1 should be pruned at (8,2) where it doesn't fit"
+                        , \_ ->
+                            List.member natureQuad2Id noFitAnchorOptions
+                                |> Expect.equal False
+                                |> Expect.onFail "NatureQuad2 should be pruned at (8,2) where it doesn't fit"
+                        ]
+                        ()
+                )
+            ]
         ]
+
+
+natureSingle1Id : TileId
+natureSingle1Id =
+    211
+
+
+natureQuad1Id : TileId
+natureQuad1Id =
+    217
+
+
+natureQuad2Id : TileId
+natureQuad2Id =
+    218

@@ -30,6 +30,7 @@ suite =
         , parentTileComputationTests
         , seedDeterminismTests
         , tileInventoryTests
+        , natureLargeTileTests
         ]
 
 
@@ -865,6 +866,188 @@ findMatchingLargeTile lot =
                         Nothing
             )
         |> List.head
+
+
+
+--
+-- Nature large tile tests
+--
+
+
+natureQuad1Id : TileId
+natureQuad1Id =
+    217
+
+
+{-| A 10x10 world with a single NatureQuad1 placed with its top-left at (5, 5).
+-}
+worldWithNatureQuad : World
+worldWithNatureQuad =
+    let
+        tilemapConfig =
+            { horizontalCellsAmount = 10, verticalCellsAmount = 10 }
+
+        natureSubgridCells =
+            [ ( ( 5, 5 ), ( 200, 0 ) )
+            , ( ( 6, 5 ), ( 201, 1 ) )
+            , ( ( 5, 6 ), ( 203, 2 ) )
+            , ( ( 6, 6 ), ( 202, 3 ) )
+            ]
+
+        cellByIndex =
+            natureSubgridCells
+                |> List.filterMap
+                    (\( coords, payload ) ->
+                        Cell.fromCoordinates tilemapConfig coords
+                            |> Maybe.map
+                                (\cell -> ( Cell.array1DIndex tilemapConfig cell, payload ))
+                    )
+                |> Dict.fromList
+
+        tilemap =
+            Tilemap.createTilemap tilemapConfig
+                (\index ->
+                    case Dict.get index cellByIndex of
+                        Just ( tileId, subgridIndex ) ->
+                            Tile.fromTileConfig
+                                (Data.TileSet.tileById tileId)
+                                (Just ( natureQuad1Id, subgridIndex ))
+                                Tile.AddFromSaveGame
+                                |> Tuple.first
+
+                        Nothing ->
+                            Tile.init Tile.Unintialized
+                )
+    in
+    World.empty (Random.initialSeed 42) tilemapConfig
+        |> World.setTilemap tilemap
+
+
+natureLargeTileTests : Test
+natureLargeTileTests =
+    describe "Nature large tile persistence"
+        [ test "encode emits a 'nature' field with the anchor coordinates"
+            (\_ ->
+                let
+                    json =
+                        Savegame.encode worldWithNatureQuad
+
+                    jsonString =
+                        JE.encode 0 json
+                in
+                Expect.all
+                    [ \_ ->
+                        jsonString
+                            |> String.contains "\"nature\""
+                            |> Expect.equal True
+                            |> Expect.onFail "Expected 'nature' field in encoded JSON"
+                    , \_ ->
+                        jsonString
+                            |> String.contains "[217,5,5]"
+                            |> Expect.equal True
+                            |> Expect.onFail
+                                ("Expected anchor entry [217,5,5] in JSON, got: " ++ jsonString)
+                    ]
+                    ()
+            )
+        , test "round-trip preserves nature subgrid parent tile info"
+            (\_ ->
+                let
+                    originalParentMap =
+                        tilemapToParentTileMap worldWithNatureQuad.tilemap
+
+                    result =
+                        Savegame.encode worldWithNatureQuad
+                            |> Savegame.decode
+                in
+                case result of
+                    Ok decodedWorld ->
+                        let
+                            decodedParentMap =
+                                tilemapToParentTileMap decodedWorld.tilemap
+                        in
+                        decodedParentMap
+                            |> Expect.equal originalParentMap
+                            |> Expect.onFail
+                                ("Parent tile info mismatch.\nOriginal: "
+                                    ++ Debug.toString originalParentMap
+                                    ++ "\nDecoded: "
+                                    ++ Debug.toString decodedParentMap
+                                )
+
+                    Err error ->
+                        Expect.fail ("Round-trip failed: " ++ error)
+            )
+        , test "round-trip preserves nature subgrid tile ids"
+            (\_ ->
+                let
+                    originalTileMap =
+                        tilemapToTileIdMap worldWithNatureQuad.tilemap
+
+                    result =
+                        Savegame.encode worldWithNatureQuad
+                            |> Savegame.decode
+                in
+                case result of
+                    Ok decodedWorld ->
+                        tilemapToTileIdMap decodedWorld.tilemap
+                            |> Expect.equal originalTileMap
+
+                    Err error ->
+                        Expect.fail ("Round-trip failed: " ++ error)
+            )
+        , test "decoding savegame without 'nature' field still succeeds"
+            (\_ ->
+                let
+                    legacyJson =
+                        JE.object
+                            [ ( "v", JE.int 1 )
+                            , ( "seed", JE.list JE.int [ 42, 0 ] )
+                            , ( "tmd", JE.list JE.int [ 10, 10 ] )
+                            , ( "tilemap", JE.list JE.int (List.repeat 100 0) )
+                            , ( "lots", JE.list (JE.list JE.int) [] )
+                            ]
+
+                    result =
+                        Savegame.decode legacyJson
+                in
+                case result of
+                    Ok _ ->
+                        Expect.pass
+
+                    Err error ->
+                        Expect.fail
+                            ("Expected legacy savegame (no 'nature' field) to decode, got: " ++ error)
+            )
+        , test "decoding ignores nature anchors that don't refer to a Nature large tile"
+            (\_ ->
+                let
+                    bogusNatureJson =
+                        JE.object
+                            [ ( "v", JE.int 1 )
+                            , ( "seed", JE.list JE.int [ 42, 0 ] )
+                            , ( "tmd", JE.list JE.int [ 10, 10 ] )
+                            , ( "tilemap", JE.list JE.int (List.repeat 100 0) )
+                            , ( "lots", JE.list (JE.list JE.int) [] )
+                            , ( "nature"
+                              , JE.list (JE.list JE.int)
+                                    [ [ 999, 5, 5 ] ]
+                              )
+                            ]
+
+                    result =
+                        Savegame.decode bogusNatureJson
+                in
+                case result of
+                    Ok decodedWorld ->
+                        tilemapToParentTileMap decodedWorld.tilemap
+                            |> Expect.equal Dict.empty
+                            |> Expect.onFail "Expected unknown nature anchor to be silently dropped"
+
+                    Err error ->
+                        Expect.fail ("Decode failed: " ++ error)
+            )
+        ]
 
 
 addLotCellsToParentMap : Tilemap.TilemapConfig -> Cell.Cell -> LargeTile -> Dict CellCoordinates ( TileId, Int ) -> Dict CellCoordinates ( TileId, Int )
