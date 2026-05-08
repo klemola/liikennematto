@@ -39,6 +39,9 @@ type alias SavegameData =
 
     -- World.lotEntries equivalent as [lotTypeId, x, y]
     , lots : List ( Int, Int, Int )
+
+    -- Nature large tile anchors as [largeTileId, topLeftX, topLeftY].
+    , nature : List ( Int, Int, Int )
     }
 
 
@@ -77,6 +80,9 @@ encode world =
         lotsList =
             Collection.values world.lots
                 |> List.filterMap (lotToSavegameData world)
+
+        natureList =
+            extractNatureLargeTileAnchors world.tilemap
     in
     JE.object
         [ ( "v", JE.int currentSavegameVersion )
@@ -95,7 +101,67 @@ encode world =
                 )
                 lotsList
           )
+        , ( "nature"
+          , JE.list
+                (\( largeTileId, x, y ) ->
+                    JE.list JE.int [ largeTileId, x, y ]
+                )
+                natureList
+          )
         ]
+
+
+extractNatureLargeTileAnchors : Tilemap -> List ( Int, Int, Int )
+extractNatureLargeTileAnchors tilemap =
+    Tilemap.foldTiles
+        (\cell tile acc ->
+            case natureLargeTileAnchorAt cell tile of
+                Just anchor ->
+                    anchor :: acc
+
+                Nothing ->
+                    acc
+        )
+        []
+        tilemap
+
+
+natureLargeTileAnchorAt : Cell.Cell -> Tile.Tile -> Maybe ( Int, Int, Int )
+natureLargeTileAnchorAt cell tile =
+    fixedParentTile tile
+        |> Maybe.andThen anchorIdOfNatureLargeTile
+        |> Maybe.map
+            (\largeTileId ->
+                let
+                    ( x, y ) =
+                        Cell.coordinates cell
+                in
+                ( largeTileId, x, y )
+            )
+
+
+fixedParentTile : Tile.Tile -> Maybe ( TileId, Int )
+fixedParentTile tile =
+    case tile.kind of
+        Tile.Fixed { parentTile } ->
+            parentTile
+
+        _ ->
+            Nothing
+
+
+anchorIdOfNatureLargeTile : ( TileId, Int ) -> Maybe TileId
+anchorIdOfNatureLargeTile ( largeTileId, subgridIndex ) =
+    case ( subgridIndex, Data.TileSet.tileById largeTileId ) of
+        ( 0, TileConfig.Large largeTile ) ->
+            if largeTile.biome == TileConfig.Nature then
+                Just largeTileId
+
+            else
+                Nothing
+
+        _ ->
+            Nothing
 
 
 extractTilemapTileIds : Tilemap -> List Int
@@ -162,12 +228,17 @@ decode jsonValue =
 
 savegameDecoder : JD.Decoder SavegameData
 savegameDecoder =
-    JD.map5 SavegameData
+    JD.map6 SavegameData
         (JD.field "v" JD.int)
         (JD.field "seed" (JD.list JD.int))
         (JD.field "tmd" tilemapDimensionsDecoder)
         (JD.field "tilemap" (JD.list JD.int))
         (JD.field "lots" (JD.list lotDataDecoder))
+        (JD.oneOf
+            [ JD.field "nature" (JD.list natureDataDecoder)
+            , JD.succeed []
+            ]
+        )
 
 
 tilemapDimensionsDecoder : JD.Decoder ( Int, Int )
@@ -198,6 +269,20 @@ lotDataDecoder =
             )
 
 
+natureDataDecoder : JD.Decoder ( Int, Int, Int )
+natureDataDecoder =
+    JD.list JD.int
+        |> JD.andThen
+            (\data ->
+                case data of
+                    [ largeTileId, topLeftX, topLeftY ] ->
+                        JD.succeed ( largeTileId, topLeftX, topLeftY )
+
+                    _ ->
+                        JD.fail "Expected array of 3 integers for nature data [largeTileId, topLeftX, topLeftY]"
+            )
+
+
 
 --
 -- World reconstruction
@@ -218,8 +303,8 @@ type alias LotMetadata =
     }
 
 
-computeParentTilesFromLotMetadata : Tilemap.TilemapConfig -> List LotMetadata -> Dict.Dict CellCoordinates ( TileId, Int )
-computeParentTilesFromLotMetadata tilemapConfig lotMetadataList =
+parentTilesFromLotMetadata : Tilemap.TilemapConfig -> List LotMetadata -> Dict.Dict CellCoordinates ( TileId, Int )
+parentTilesFromLotMetadata tilemapConfig lotMetadataList =
     List.foldl
         (\lotMetadata acc ->
             addLotCellsToParentMap tilemapConfig lotMetadata.drivewayCell lotMetadata.largeTile acc
@@ -228,38 +313,72 @@ computeParentTilesFromLotMetadata tilemapConfig lotMetadataList =
         lotMetadataList
 
 
-addLotCellsToParentMap : Tilemap.TilemapConfig -> Cell.Cell -> LargeTile -> Dict.Dict CellCoordinates ( TileId, Int ) -> Dict.Dict CellCoordinates ( TileId, Int )
+addLotCellsToParentMap :
+    Tilemap.TilemapConfig
+    -> Cell.Cell
+    -> LargeTile
+    -> Dict.Dict CellCoordinates ( TileId, Int )
+    -> Dict.Dict CellCoordinates ( TileId, Int )
 addLotCellsToParentMap tilemapConfig drivewayCell largeTile dict =
-    let
-        maybeTopLeftCell =
-            Tile.largeTileTopLeftCell tilemapConfig drivewayCell largeTile.anchorIndex largeTile
-    in
-    case maybeTopLeftCell of
+    case Tile.largeTileTopLeftCell tilemapConfig drivewayCell largeTile.anchorIndex largeTile of
         Just topLeftCell ->
-            let
-                subgridConstraints =
-                    { horizontalCellsAmount = largeTile.width
-                    , verticalCellsAmount = largeTile.height
-                    }
-            in
-            List.range 0 (largeTile.width * largeTile.height - 1)
-                |> List.filterMap
-                    (\subgridIndex ->
-                        Cell.fromArray1DIndex subgridConstraints subgridIndex
-                            |> Maybe.andThen (Cell.placeIn tilemapConfig topLeftCell)
-                            |> Maybe.map
-                                (\globalCell ->
-                                    ( Cell.coordinates globalCell
-                                    , ( largeTile.id, subgridIndex )
-                                    )
-                                )
-                    )
-                |> List.foldl
-                    (\( cellCoords, value ) acc -> Dict.insert cellCoords value acc)
-                    dict
+            addLargeTileCellsToParentMap tilemapConfig topLeftCell largeTile dict
 
         Nothing ->
             dict
+
+
+addLargeTileCellsToParentMap :
+    Tilemap.TilemapConfig
+    -> Cell.Cell
+    -> LargeTile
+    -> Dict.Dict CellCoordinates ( TileId, Int )
+    -> Dict.Dict CellCoordinates ( TileId, Int )
+addLargeTileCellsToParentMap tilemapConfig topLeftCell largeTile dict =
+    let
+        subgridConstraints =
+            { horizontalCellsAmount = largeTile.width
+            , verticalCellsAmount = largeTile.height
+            }
+    in
+    List.range 0 (largeTile.width * largeTile.height - 1)
+        |> List.filterMap
+            (\subgridIndex ->
+                Cell.fromArray1DIndex subgridConstraints subgridIndex
+                    |> Maybe.andThen (Cell.placeIn tilemapConfig topLeftCell)
+                    |> Maybe.map
+                        (\globalCell ->
+                            ( Cell.coordinates globalCell
+                            , ( largeTile.id, subgridIndex )
+                            )
+                        )
+            )
+        |> List.foldl
+            (\( cellCoords, value ) acc -> Dict.insert cellCoords value acc)
+            dict
+
+
+parentTilesFromNatureAnchors :
+    Tilemap.TilemapConfig
+    -> List ( Int, Int, Int )
+    -> Dict.Dict CellCoordinates ( TileId, Int )
+    -> Dict.Dict CellCoordinates ( TileId, Int )
+parentTilesFromNatureAnchors tilemapConfig natureAnchors dict =
+    List.foldl
+        (\( largeTileId, x, y ) acc ->
+            case ( Cell.fromCoordinates tilemapConfig ( x, y ), Data.TileSet.tileById largeTileId ) of
+                ( Just topLeftCell, TileConfig.Large largeTile ) ->
+                    if largeTile.biome == TileConfig.Nature then
+                        addLargeTileCellsToParentMap tilemapConfig topLeftCell largeTile acc
+
+                    else
+                        acc
+
+                _ ->
+                    acc
+        )
+        dict
+        natureAnchors
 
 
 prepareLotMetadata : Tilemap.TilemapConfig -> ( Int, Int, Int ) -> Result String LotMetadata
@@ -342,7 +461,7 @@ worldFromSavegameData data =
                         World.empty seedState.currentSeed tilemapConfig
                             |> (\world -> { world | seedState = seedState })
                 in
-                restoreTilemap data.tilemap lotMetadataList tilemapConfig worldWithSeed
+                restoreTilemap data.tilemap lotMetadataList data.nature tilemapConfig worldWithSeed
                     |> Result.map (\worldWithTilemap -> ( lotMetadataList, worldWithTilemap ))
 
             restoreLotsResult ( lotMetadataList, worldWithTilemap ) =
@@ -375,8 +494,14 @@ seedFromString seedList =
             Err "Invalid seed format - expected array of 2 integers [initialSeed, stepCount]"
 
 
-restoreTilemap : List Int -> List LotMetadata -> Tilemap.TilemapConfig -> World -> Result String World
-restoreTilemap tileIds lotMetadataList tilemapConfig world =
+restoreTilemap :
+    List Int
+    -> List LotMetadata
+    -> List ( Int, Int, Int )
+    -> Tilemap.TilemapConfig
+    -> World
+    -> Result String World
+restoreTilemap tileIds lotMetadataList natureAnchors tilemapConfig world =
     let
         expectedLength =
             tilemapConfig.horizontalCellsAmount * tilemapConfig.verticalCellsAmount
@@ -395,7 +520,8 @@ restoreTilemap tileIds lotMetadataList tilemapConfig world =
                 Array.fromList tileIds
 
             parentTilesDict =
-                computeParentTilesFromLotMetadata tilemapConfig lotMetadataList
+                parentTilesFromLotMetadata tilemapConfig lotMetadataList
+                    |> parentTilesFromNatureAnchors tilemapConfig natureAnchors
 
             tilemap =
                 Tilemap.createTilemap tilemapConfig
