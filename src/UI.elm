@@ -61,6 +61,7 @@ type Msg
     | ToggleSimulationActive Bool
     | SelectDevView DevView
     | EditorMsg Editor.Msg
+    | PointerDeviceDetected Pointer.DeviceType
     | NoOp
 
 
@@ -178,6 +179,16 @@ update world viewport screen msg model =
             , Just (DevViewSelected devView)
             )
 
+        PointerDeviceDetected deviceType ->
+            if deviceType == model.lastEventDevice then
+                ( model, Cmd.none, Nothing )
+
+            else
+                ( { model | lastEventDevice = deviceType }
+                , Cmd.none
+                , Nothing
+                )
+
         EditorMsg editorMsg ->
             let
                 ( editorModel, effects ) =
@@ -246,7 +257,7 @@ view : Liikennematto -> Element msg -> Element msg -> Html Msg
 view liikennematto render renderDebugLayers =
     Element.layoutWith
         { options =
-            if Editor.usingTouchDevice liikennematto.ui.editor then
+            if liikennematto.ui.lastEventDevice == Pointer.TouchType then
                 touchLayoutOptions
 
             else
@@ -267,7 +278,7 @@ view liikennematto render renderDebugLayers =
                 liikennematto.ui.showLmInfo
             )
         , Element.inFront
-            (Element.Lazy.lazy2 lmInfo liikennematto.ui.showLmInfo Pointer.MouseType)
+            (Element.Lazy.lazy2 lmInfo liikennematto.ui.showLmInfo liikennematto.ui.lastEventDevice)
         , Element.inFront (devMenu liikennematto liikennematto.ui)
         , Element.clip
         , Element.width Element.fill
@@ -275,6 +286,7 @@ view liikennematto render renderDebugLayers =
         , Element.htmlAttribute (HtmlAttribute.id containerId)
         , Element.htmlAttribute (HtmlAttribute.style "touch-action" "pan-x pan-y")
         , Element.htmlAttribute (Mouse.onContextMenu (\_ -> NoOp))
+        , Element.htmlAttribute (Pointer.onDown (\event -> PointerDeviceDetected event.pointerType))
         , Font.family [ uiFont, Font.sansSerif ]
         ]
         (Element.el

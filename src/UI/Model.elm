@@ -6,6 +6,7 @@ module UI.Model exposing
     , initialModel
     )
 
+import Html.Events.Extra.Pointer as Pointer
 import UI.Editor
 
 
@@ -16,6 +17,7 @@ type alias UI =
     , selectedDevView : DevView
     , editor : UI.Editor.Model
     , showLmInfo : Bool
+    , lastEventDevice : Pointer.DeviceType
     }
 
 
@@ -50,4 +52,5 @@ initialModel =
     , selectedDevView = EventQueueList
     , editor = UI.Editor.initialModel
     , showLmInfo = False
+    , lastEventDevice = Pointer.MouseType
     }

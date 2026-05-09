@@ -5,18 +5,15 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
-import Element.Lazy
 import Html
 import Html.Attributes as HtmlAttr
 import Html.Events.Extra.Pointer as Pointer
 import Svg exposing (Svg)
 import UI.Core
     exposing
-        ( borderSize
-        , uiColorBorder
+        ( uiColorBorder
         , uiColorText
         , whitespaceCondensed
-        , whitespaceTight
         )
 
 
@@ -41,6 +38,7 @@ view deviceType =
         [ Element.width Element.fill
         , Element.spacing 24
         , Element.paddingXY 12 24
+        , Background.color backgroundColor
         , Border.color uiColorBorder
         , Border.roundEach
             { topLeft = 0
@@ -49,12 +47,27 @@ view deviceType =
             , bottomRight = borderRadiusPx
             }
         ]
-        [ controls
+        [ controls deviceType
         ]
 
 
-controls : Element msg
-controls =
+controls : Pointer.DeviceType -> Element msg
+controls deviceType =
+    let
+        ( buildIcon, removeIcon, panIcon ) =
+            case deviceType of
+                Pointer.TouchType ->
+                    ( Icons.touchOneFingerTap
+                    , Icons.touchOneFingerLongPress
+                    , Icons.touchTwoFingerPress
+                    )
+
+                _ ->
+                    ( Icons.mouseLeftButton
+                    , Icons.mouseRightButton
+                    , Icons.mouseMiddleButton
+                    )
+    in
     Element.column
         [ Element.width Element.fill
         , Element.padding whitespaceCondensed
@@ -72,19 +85,19 @@ controls =
             ]
             (Element.text "Controls")
         , controlRow
-            { inputIcon = Icons.mouseLeftButton
+            { inputIcon = buildIcon
             , explanationIcon = Icons.buildRoad
             , explanationIconWidthPx = 108
             , label = "Build road"
             }
         , controlRow
-            { inputIcon = Icons.mouseRightButton
+            { inputIcon = removeIcon
             , explanationIcon = Icons.removeRoad
             , explanationIconWidthPx = 108
             , label = "Remove road"
             }
         , controlRow
-            { inputIcon = Icons.mouseMiddleButton
+            { inputIcon = panIcon
             , explanationIcon = Icons.panMap
             , explanationIconWidthPx = 48
             , label = "Pan map"
