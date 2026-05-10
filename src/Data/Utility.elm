@@ -4,10 +4,12 @@ module Data.Utility exposing
     , cellsByTileKind
     , cellsByTileKindFromAscii
     , createCell
+    , forceFixNatureTile
     , gameModelFromWorld
     , getStartAndEndNode
     , initTileWithSuperposition
     , multilineGridDebug
+    , placeRoad
     , placeRoadAndUpdateBuffer
     , removeRoadAndUpdateBuffer
     , tenByTenTilemap
@@ -22,6 +24,7 @@ import Data.TileSet
     exposing
         ( horizontalRoadLotEntryUp
         , lotTiles
+        , tileById
         , tileIdByBitmask
         , tileIdsByOrthogonalMatch
         , verticalRoadLotEntryLeft
@@ -42,6 +45,7 @@ import Tilemap.Core
     exposing
         ( Tilemap
         , TilemapConfig
+        , addTileFromSavegame
         , addTileFromWfc
         , cellBitmask
         , createTilemap
@@ -353,6 +357,23 @@ placeRoadAndUpdateBuffer cellsToPlace tilemap =
         cellsToPlace
 
 
+{-| Same as `placeRoadAndUpdateBuffer` but skips the redundant explicit
+`updateBufferCells` call so the build history accumulates naturally.
+-}
+placeRoad : List CellCoordinates -> Tilemap -> Tilemap
+placeRoad cellsToPlace tilemap =
+    List.foldl
+        (\( x, y ) nextTilemap ->
+            let
+                cell =
+                    createCell (getTilemapConfig tilemap) x y
+            in
+            addTileInstantly cell nextTilemap
+        )
+        tilemap
+        cellsToPlace
+
+
 removeRoadAndUpdateBuffer : CellCoordinates -> Tilemap -> Tilemap
 removeRoadAndUpdateBuffer ( x, y ) tilemap =
     let
@@ -362,6 +383,21 @@ removeRoadAndUpdateBuffer ( x, y ) tilemap =
     tilemap
         |> removeTileInstantly cell
         |> removeBuffer cell
+
+
+{-| Force a Nature `Single` tile into a cell as if WFC had collapsed it. Skips
+animation/audio so tests can simulate "WFC has filled the side buffer".
+-}
+forceFixNatureTile : TileConfig.TileId -> CellCoordinates -> Tilemap -> Tilemap
+forceFixNatureTile tileId ( x, y ) tilemap =
+    let
+        cell =
+            createCell (getTilemapConfig tilemap) x y
+
+        ( nextTilemap, _ ) =
+            addTileFromSavegame (tileById tileId) cell tilemap
+    in
+    nextTilemap
 
 
 

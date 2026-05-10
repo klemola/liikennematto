@@ -74,6 +74,12 @@ type TileOperation
     = Add
     | AddFromWFC
     | AddFromSaveGame
+    | RestoreFromTrail
+
+
+suppressesNatureAnimation : TileOperation -> Bool
+suppressesNatureAnimation op =
+    op == AddFromSaveGame || op == RestoreFromTrail
 
 
 defaultTileAnimation : Animation
@@ -106,6 +112,9 @@ fromTileConfig tileConfig parentTileProperties op =
                 AddFromSaveGame ->
                     built
 
+                RestoreFromTrail ->
+                    built
+
                 Add ->
                     constructing
 
@@ -129,7 +138,7 @@ fromTileConfig tileConfig parentTileProperties op =
                 , name = name
                 , parentTile = parentTileProperties
                 , animation =
-                    if isMainTile && op /= AddFromSaveGame && TileConfig.biome tileConfig == TileConfig.Nature then
+                    if isMainTile && not (suppressesNatureAnimation op) && TileConfig.biome tileConfig == TileConfig.Nature then
                         Just defaultTileAnimation
 
                     else

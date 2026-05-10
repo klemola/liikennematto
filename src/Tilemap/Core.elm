@@ -5,6 +5,8 @@ module Tilemap.Core exposing
     , TilemapUpdateResult
     , addAnimationTimer
     , addTile
+    , addTileFromSavegame
+    , addTileFromTrail
     , addTileFromWfc
     , cellBitmask
     , cellSupportsRoadPlacement
@@ -16,17 +18,22 @@ module Tilemap.Core exposing
     , fixedTileByCell
     , foldTiles
     , getBuildHistory
+    , getSavedNatureTiles
     , getTilemapConfig
     , getTilemapDimensions
+    , insertSavedNatureTile
     , isDestructivePlacement
+    , largeTileBounds
     , mapCell
     , removeLargeTileIfExists
+    , removeSavedNatureTile
     , removeTile
     , resetFixedTileBySurroundings
     , resetSuperposition
     , resetTileBySurroundings
     , roadTileFromCell
     , setBuildHistory
+    , setSavedNatureTiles
     , setSuperpositionOptions
     , tileByCell
     , tileNeighborIn
@@ -52,6 +59,7 @@ import Data.TileSet
         , tileIdsByOrthogonalMatch
         , tilesByBaseTileId
         )
+import Dict exposing (Dict)
 import Direction2d
 import Duration exposing (Duration)
 import Length exposing (Length, Meters)
@@ -63,7 +71,7 @@ import List.Nonempty
 import Maybe.Extra as Maybe
 import Point2d exposing (Point2d)
 import Quantity
-import Tilemap.Cell as Cell exposing (Cell, nextOrthogonalCell)
+import Tilemap.Cell as Cell exposing (Cell, CellCoordinates, nextOrthogonalCell)
 import Tilemap.Tile as Tile
     exposing
         ( Tile
@@ -82,6 +90,7 @@ type Tilemap
         , boundingBox : BoundingBox2d Length.Meters GlobalCoordinates
         , config : TilemapConfig
         , recentPlacements : List Cell
+        , savedNatureTiles : Dict CellCoordinates TileId
         , animationTimers : List ( Cell, Duration )
         }
 
@@ -111,6 +120,7 @@ createTilemap tilemapConfig initTileFn =
         , boundingBox = Common.boundingBoxWithDimensions width height Point2d.origin
         , config = tilemapConfig
         , recentPlacements = []
+        , savedNatureTiles = Dict.empty
         , animationTimers = []
         }
 
@@ -270,6 +280,32 @@ setBuildHistory history (Tilemap tilemapContents) =
 getBuildHistory : Tilemap -> List Cell
 getBuildHistory (Tilemap tilemapContents) =
     tilemapContents.recentPlacements
+
+
+getSavedNatureTiles : Tilemap -> Dict CellCoordinates TileId
+getSavedNatureTiles (Tilemap tilemapContents) =
+    tilemapContents.savedNatureTiles
+
+
+setSavedNatureTiles : Dict CellCoordinates TileId -> Tilemap -> Tilemap
+setSavedNatureTiles saved (Tilemap tilemapContents) =
+    Tilemap { tilemapContents | savedNatureTiles = saved }
+
+
+insertSavedNatureTile : CellCoordinates -> TileId -> Tilemap -> Tilemap
+insertSavedNatureTile coords tileId (Tilemap tilemapContents) =
+    Tilemap
+        { tilemapContents
+            | savedNatureTiles = Dict.insert coords tileId tilemapContents.savedNatureTiles
+        }
+
+
+removeSavedNatureTile : CellCoordinates -> Tilemap -> Tilemap
+removeSavedNatureTile coords (Tilemap tilemapContents) =
+    Tilemap
+        { tilemapContents
+            | savedNatureTiles = Dict.remove coords tilemapContents.savedNatureTiles
+        }
 
 
 addAnimationTimer : Cell -> Duration -> Tilemap -> Tilemap
@@ -584,6 +620,16 @@ addTile =
 addTileFromWfc : Maybe ( TileId, Int ) -> TileConfig -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
 addTileFromWfc parentTile =
     applyTilemapOperation Tile.AddFromWFC parentTile
+
+
+addTileFromSavegame : TileConfig -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
+addTileFromSavegame =
+    applyTilemapOperation Tile.AddFromSaveGame Nothing
+
+
+addTileFromTrail : TileConfig -> Cell -> Tilemap -> ( Tilemap, List Tile.Action )
+addTileFromTrail =
+    applyTilemapOperation Tile.RestoreFromTrail Nothing
 
 
 removeTile : Cell -> Tilemap -> ( Tilemap, List Tile.Action )

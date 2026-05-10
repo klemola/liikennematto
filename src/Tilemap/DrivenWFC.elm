@@ -19,13 +19,20 @@ import Data.TileSet
         , tileById
         , tilesByBaseTileId
         )
+import Dict
 import Duration exposing (Duration)
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import Lib.SeedState exposing (SeedState)
 import List.Nonempty
 import Round
 import Set
-import Tilemap.Buffer exposing (removeBuffer, updateBufferCells)
+import Tilemap.Buffer
+    exposing
+        ( removeBuffer
+        , revertTrailToBuffer
+        , trailCells
+        , updateBufferCells
+        )
 import Tilemap.Cell exposing (Cell)
 import Tilemap.Core
     exposing
@@ -34,6 +41,7 @@ import Tilemap.Core
         , foldTiles
         , resetFixedTileBySurroundings
         , resetTileBySurroundings
+        , setSavedNatureTiles
         , setSuperpositionOptions
         , tileByCell
         , tileNeighborIn
@@ -142,8 +150,17 @@ addTileById seedState tileInventory cell tileId tilemap =
 
         updatedWfcModel =
             resetWfc seedState (Just cell) tileInventory (updateTileNeighbors cell updatedTilemap)
+
+        placed =
+            WFC.toTilemap updatedWfcModel
+
+        -- Order matters: trailCells must read the build history BEFORE
+        -- updateBufferCells pushes `cell` onto it, so it sees the prior
+        -- placements (the cells whose side buffers form the trail).
+        reverted =
+            revertTrailToBuffer (trailCells cell placed) placed
     in
-    ( updateBufferCells cell (WFC.toTilemap updatedWfcModel)
+    ( updateBufferCells cell reverted
     , tilemapChangeActions
     )
 
@@ -155,7 +172,9 @@ onRemoveTile seedState tileInventory cell tilemap =
             Tilemap.Core.removeTile cell tilemap
 
         withBufferRemoved =
-            removeBuffer cell updatedTilemap
+            updatedTilemap
+                |> removeBuffer cell
+                |> setSavedNatureTiles Dict.empty
 
         wfcWithoutTile =
             resetWfc seedState (Just cell) tileInventory (updateTileNeighbors cell withBufferRemoved)

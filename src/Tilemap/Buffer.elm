@@ -1,22 +1,35 @@
-module Tilemap.Buffer exposing (removeBuffer, updateBufferCells)
+module Tilemap.Buffer exposing
+    ( reconcileSavedNatureTiles
+    , removeBuffer
+    , revertTrailToBuffer
+    , trailCells
+    , updateBufferCells
+    )
 
 import Data.TileSet exposing (connectionsByTile, tileById)
+import Dict
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
 import Quantity exposing (Unitless)
 import Tilemap.Cell as Cell exposing (Cell, CellCoordinates)
 import Tilemap.Core
     exposing
         ( Tilemap
+        , TilemapConfig
+        , addTileFromTrail
         , clearTile
         , extractRoadTile
         , getBuildHistory
+        , getSavedNatureTiles
         , getTilemapConfig
+        , insertSavedNatureTile
         , mapCell
         , roadTileFromCell
         , setBuildHistory
+        , setSavedNatureTiles
         , tileByCell
         )
 import Tilemap.Tile as Tile exposing (Tile, TileKind(..))
+import Tilemap.TileConfig as TileConfig exposing (TileId)
 import Vector2d exposing (Vector2d)
 
 
@@ -361,3 +374,194 @@ roadConnectionDirections tile =
 
         Nothing ->
             []
+
+
+
+--
+-- Buffer trail (revert side strips of recent straight road cells)
+--
+
+
+trailCells : Cell -> Tilemap -> List Cell
+trailCells builtCell tilemap =
+    case roadNeighbors builtCell tilemap of
+        [] ->
+            []
+
+        [ _ ] ->
+            -- Continuation: the placed cell extends a road. Walk recent build history.
+            getBuildHistory tilemap
+                |> List.take maxBufferDepth
+                |> List.concatMap (sideStripIfStraight tilemap)
+                |> dedupeCells
+
+        manyNeighbors ->
+            -- Join: the placed cell connects to ≥2 road neighbors. Walk along each
+            -- neighbor direction up to 2 cells, collecting side strips of straight cells.
+            manyNeighbors
+                |> List.concatMap (\nm -> walkAxis tilemap nm.direction nm.cell trailJoinDepth)
+                |> List.concatMap (sideStripIfStraight tilemap)
+                |> dedupeCells
+
+
+trailJoinDepth : Int
+trailJoinDepth =
+    2
+
+
+sideStripIfStraight : Tilemap -> Cell -> List Cell
+sideStripIfStraight tilemap cell =
+    case roadDirectionByNeighbors cell tilemap of
+        DirectionContinuous _ _ axis ->
+            directionalBuffer cell axis ( maxBufferDepth, 0 ) tilemap
+
+        _ ->
+            []
+
+
+walkAxis : Tilemap -> OrthogonalDirection -> Cell -> Int -> List Cell
+walkAxis tilemap dir cell budget =
+    if budget <= 0 then
+        []
+
+    else
+        case roadTileFromCell cell tilemap of
+            Nothing ->
+                []
+
+            Just _ ->
+                cell
+                    :: (case Cell.nextOrthogonalCell (getTilemapConfig tilemap) dir cell of
+                            Just nextCell ->
+                                walkAxis tilemap dir nextCell (budget - 1)
+
+                            Nothing ->
+                                []
+                       )
+
+
+dedupeCells : List Cell -> List Cell
+dedupeCells cells =
+    cells
+        |> List.foldl
+            (\cell ( seen, acc ) ->
+                let
+                    coords =
+                        Cell.coordinates cell
+                in
+                if List.member coords seen then
+                    ( seen, acc )
+
+                else
+                    ( coords :: seen, cell :: acc )
+            )
+            ( [], [] )
+        |> Tuple.second
+
+
+revertTrailToBuffer : List Cell -> Tilemap -> Tilemap
+revertTrailToBuffer cells tilemap =
+    List.foldl revertTrailCell tilemap cells
+
+
+revertTrailCell : Cell -> Tilemap -> Tilemap
+revertTrailCell cell tilemap =
+    case tileByCell tilemap cell of
+        Just tile ->
+            case tile.kind of
+                Fixed props ->
+                    if props.parentTile == Nothing && isSingleNatureTile props.id then
+                        tilemap
+                            |> insertSavedNatureTile (Cell.coordinates cell) props.id
+                            |> mapCell cell (\_ -> Tile.init Tile.Buffer)
+
+                    else
+                        tilemap
+
+                _ ->
+                    tilemap
+
+        Nothing ->
+            tilemap
+
+
+isSingleNatureTile : TileId -> Bool
+isSingleNatureTile tileId =
+    case tileById tileId of
+        TileConfig.Single singleTile ->
+            singleTile.biome == TileConfig.Nature
+
+        TileConfig.Large _ ->
+            False
+
+
+reconcileSavedNatureTiles : Tilemap -> Tilemap
+reconcileSavedNatureTiles tilemap =
+    let
+        constraints =
+            getTilemapConfig tilemap
+
+        ( restoredTilemap, remainingDict ) =
+            getSavedNatureTiles tilemap
+                |> Dict.foldl
+                    (reconcileEntry constraints)
+                    ( tilemap, Dict.empty )
+    in
+    setSavedNatureTiles remainingDict restoredTilemap
+
+
+reconcileEntry :
+    TilemapConfig
+    -> CellCoordinates
+    -> TileId
+    -> ( Tilemap, Dict.Dict CellCoordinates TileId )
+    -> ( Tilemap, Dict.Dict CellCoordinates TileId )
+reconcileEntry constraints coords savedId ( tilemap, dict ) =
+    case Cell.fromCoordinates constraints coords of
+        Nothing ->
+            ( tilemap, dict )
+
+        Just cell ->
+            case tileByCell tilemap cell of
+                Just tile ->
+                    case tile.kind of
+                        Fixed props ->
+                            if props.parentTile /= Nothing then
+                                -- Lot subgrid; leave as-is.
+                                ( tilemap, dict )
+
+                            else
+                                case tileById props.id of
+                                    TileConfig.Large _ ->
+                                        ( tilemap, dict )
+
+                                    TileConfig.Single singleTile ->
+                                        if singleTile.biome == TileConfig.Lot then
+                                            ( tilemap, dict )
+
+                                        else if props.id == savedId then
+                                            ( tilemap, dict )
+
+                                        else
+                                            ( restoreCell cell savedId tilemap, dict )
+
+                        Buffer ->
+                            ( restoreCell cell savedId tilemap, dict )
+
+                        Superposition _ ->
+                            ( restoreCell cell savedId tilemap, dict )
+
+                        Unintialized ->
+                            ( tilemap, dict )
+
+                Nothing ->
+                    ( tilemap, dict )
+
+
+restoreCell : Cell -> TileId -> Tilemap -> Tilemap
+restoreCell cell tileId tilemap =
+    let
+        ( nextTilemap, _ ) =
+            addTileFromTrail (tileById tileId) cell tilemap
+    in
+    nextTilemap

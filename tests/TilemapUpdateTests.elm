@@ -4,19 +4,23 @@ import Data.Utility
     exposing
         ( createCell
         , gameModelFromWorld
+        , placeRoad
         , tenByTenTilemap
+        , testSeed
         )
 import Data.Worlds exposing (worldWithSchool)
 import Dict
+import Duration
 import Expect
 import Message exposing (Message(..))
 import Model.World as World
 import Test exposing (Test, describe, test)
 import Tilemap.Core exposing (isDestructivePlacement, roadTileFromCell)
-import Tilemap.DrivenWFC exposing (DrivenWFC(..), addTileById, restartWfc, runWfc)
+import Tilemap.DrivenWFC exposing (DrivenWFC(..), addTileById, initDrivenWfc, restartWfc, runWfc)
 import Tilemap.Tile as Tile
 import Tilemap.Update
 import Tilemap.WFC as WFC
+import Time
 
 
 suite : Test
@@ -124,6 +128,39 @@ suite =
                 (\_ ->
                     World.describeDestructiveTarget (createCell tenByTenTilemap 1 1) worldWithSchool
                         |> Expect.equal Nothing
+                )
+            ]
+        , describe "CheckQueues"
+            [ test "Stays Pending when build history has fewer than 3 cells, regardless of elapsed time"
+                (\_ ->
+                    let
+                        emptyWorld =
+                            World.empty testSeed tenByTenTilemap
+
+                        baseModel =
+                            gameModelFromWorld emptyWorld
+
+                        tilemapWithTwoRoads =
+                            placeRoad [ ( 5, 5 ), ( 6, 5 ) ] emptyWorld.tilemap
+
+                        modelWithTwoRoads =
+                            { baseModel
+                                | world = World.setTilemap tilemapWithTwoRoads baseModel.world
+                                , wfc = initDrivenWfc (Time.millisToPosix 0)
+                            }
+
+                        -- 3000ms elapsed, well past the old 2s waitedEnough threshold.
+                        ( resultModel, _ ) =
+                            Tilemap.Update.update
+                                (CheckQueues (Time.millisToPosix 3000) (Duration.milliseconds 3000))
+                                modelWithTwoRoads
+                    in
+                    case resultModel.wfc of
+                        WFCPending _ _ ->
+                            Expect.pass
+
+                        _ ->
+                            Expect.fail "Expected WFC to remain Pending with only 2 placements"
                 )
             ]
         ]

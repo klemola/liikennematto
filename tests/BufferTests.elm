@@ -1,28 +1,40 @@
 module BufferTests exposing (suite)
 
+import Data.TileSet exposing (defaultTileId)
 import Data.Utility
     exposing
         ( cellsByTileKind
         , cellsByTileKindFromAscii
         , createCell
+        , forceFixNatureTile
         , multilineGridDebug
+        , placeRoad
         , placeRoadAndUpdateBuffer
         , removeRoadAndUpdateBuffer
         , tenByTenTilemap
+        , testSeed
         , tilemapToAscii
         )
+import Dict
 import Expect
+import Lib.SeedState as SeedState
 import Test exposing (Test, describe, test)
+import Tilemap.Buffer exposing (reconcileSavedNatureTiles)
 import Tilemap.Cell as Cell
 import Tilemap.Core
     exposing
         ( Tilemap
         , createTilemap
         , getBuildHistory
+        , getSavedNatureTiles
         , getTilemapConfig
+        , insertSavedNatureTile
+        , mapCell
         , tileByCell
         )
-import Tilemap.Tile as Tile
+import Tilemap.DrivenWFC
+import Tilemap.Tile as Tile exposing (TileKind(..))
+import Tilemap.WFC
 
 
 constraints : Cell.Constraints {}
@@ -593,4 +605,304 @@ suite =
                     expectCellsMatch expectedTilemap tilemapAfterRemove
                 )
             ]
+        , describe ".trailCells / .revertTrailToBuffer"
+            [ test "Case 1 (continuation): reverts side strips of the 3 most-recent straight cells"
+                (\_ ->
+                    let
+                        -- Build a 5-cell horizontal road (5,5)..(9,5).
+                        roadOnly =
+                            placeRoad
+                                [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ) ]
+                                emptyTilemap
+
+                        -- Force-fix side buffer cells to a known Nature tile id, simulating a
+                        -- WFC pass that filled the buffer with Nature.
+                        sideBufferCells =
+                            cartesian [ 6, 7, 8 ] [ 2, 3, 4, 6, 7, 8 ]
+
+                        withFixedNature =
+                            List.foldl (forceFixNatureTile defaultTileId) roadOnly sideBufferCells
+
+                        -- Place the 6th adjacent cell. The trail logic in addTileById should
+                        -- revert side strips of the 3 most-recent straight cells (cols 7, 8, 9).
+                        afterPlacement =
+                            placeRoad [ ( 10, 5 ) ] withFixedNature
+
+                        bufferRows =
+                            [ 2, 3, 4, 6, 7, 8 ]
+
+                        revertedCells =
+                            cartesian [ 7, 8 ] bufferRows
+                    in
+                    Expect.all
+                        [ \tm ->
+                            -- Cells in cols 7-8 (recent) became Buffer.
+                            revertedCells
+                                |> List.map (cellKindAt tm)
+                                |> Expect.equalLists (List.repeat (List.length revertedCells) (Just Buffer))
+                        , \tm ->
+                            -- Col 6 (older than the 3-cell window) stays Fixed Nature.
+                            cartesian [ 6 ] bufferRows
+                                |> List.map (cellKindAt tm)
+                                |> List.all (Maybe.map isFixedKind >> Maybe.withDefault False)
+                                |> Expect.equal True
+                        , \tm ->
+                            -- Saved dict matches the reverted cells.
+                            Dict.keys (getSavedNatureTiles tm)
+                                |> List.sort
+                                |> Expect.equalLists (List.sort revertedCells)
+                        ]
+                        afterPlacement
+                )
+            , test "Case 2 (join): walks ≤2 cells along each axis from the placed cell"
+                (\_ ->
+                    let
+                        -- Two 3-cell horizontal stubs separated by a 1-cell gap.
+                        stubs =
+                            placeRoad
+                                [ ( 3, 5 ), ( 4, 5 ), ( 5, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ) ]
+                                emptyTilemap
+
+                        -- Force-fix the side buffers around both stubs (cols 4 and 8).
+                        natureCells =
+                            cartesian [ 4, 8 ] [ 2, 3, 4, 6, 7, 8 ]
+
+                        withFixedNature =
+                            List.foldl (forceFixNatureTile defaultTileId) stubs natureCells
+
+                        -- Place the joining cell.
+                        afterJoin =
+                            placeRoad [ ( 6, 5 ) ] withFixedNature
+                    in
+                    Expect.all
+                        [ \tm ->
+                            -- Col 4 (≤2 cells from the placed cell) reverted on left branch.
+                            cartesian [ 4 ] [ 2, 3, 4, 6, 7, 8 ]
+                                |> List.map (cellKindAt tm)
+                                |> Expect.equalLists (List.repeat 6 (Just Buffer))
+                        , \tm ->
+                            -- Col 8 reverted on the right branch.
+                            cartesian [ 8 ] [ 2, 3, 4, 6, 7, 8 ]
+                                |> List.map (cellKindAt tm)
+                                |> Expect.equalLists (List.repeat 6 (Just Buffer))
+                        ]
+                        afterJoin
+                )
+            , test "Skips Fixed cells that belong to a large tile (parentTile = Just _)"
+                (\_ ->
+                    let
+                        roadOnly =
+                            placeRoad
+                                [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ) ]
+                                emptyTilemap
+
+                        -- Force-fix the side buffer at col 7 rows 4 and 6 to Nature, but
+                        -- mark col 8 row 4 as a large-tile member that must not be reverted.
+                        withFixedNature =
+                            roadOnly
+                                |> forceFixNatureTile defaultTileId ( 7, 4 )
+                                |> forceFixNatureTile defaultTileId ( 7, 6 )
+
+                        largeTileMember =
+                            Tile.init
+                                (Fixed
+                                    { id = defaultTileId
+                                    , name = "test-large"
+                                    , parentTile = Just ( 999, 1 )
+                                    , animation = Nothing
+                                    }
+                                )
+
+                        protectedCell =
+                            createCell constraints 8 4
+
+                        withProtected =
+                            mapCell protectedCell (\_ -> largeTileMember) withFixedNature
+
+                        afterPlacement =
+                            placeRoad [ ( 10, 5 ) ] withProtected
+                    in
+                    Expect.all
+                        [ \tm ->
+                            -- Protected cell is still Fixed (not reverted).
+                            cellKindAt tm ( 8, 4 )
+                                |> Maybe.map isFixedKind
+                                |> Expect.equal (Just True)
+                        , \tm ->
+                            -- Saved dict does not include the protected cell.
+                            getSavedNatureTiles tm
+                                |> Dict.member ( 8, 4 )
+                                |> Expect.equal False
+                        , \tm ->
+                            -- Sanity: ordinary Nature cells in the trail did get reverted.
+                            cellKindAt tm ( 7, 4 )
+                                |> Expect.equal (Just Buffer)
+                        , \tm ->
+                            getSavedNatureTiles tm
+                                |> Dict.member ( 7, 4 )
+                                |> Expect.equal True
+                        ]
+                        afterPlacement
+                )
+            , test "Buffer cells in the trail are a no-op (not added to the saved dict)"
+                (\_ ->
+                    let
+                        -- Build 5 cells so the buffer system populates side Buffer cells
+                        -- around cols 6-8. No force-fix, so the trail zone holds Buffer
+                        -- (not Fixed Nature).
+                        roadOnly =
+                            placeRoad
+                                [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ) ]
+                                emptyTilemap
+
+                        preCheck =
+                            cellKindAt roadOnly ( 7, 4 ) == Just Buffer
+
+                        -- Extend to (10,5). Trail covers side strips of cols 7-9; those
+                        -- cells are already Buffer, so they must stay Buffer and the
+                        -- saved dict must stay empty.
+                        afterPlacement =
+                            placeRoad [ ( 10, 5 ) ] roadOnly
+
+                        trailSideCells =
+                            cartesian [ 7, 8 ] [ 2, 3, 4, 6, 7, 8 ]
+                    in
+                    Expect.all
+                        [ \_ -> Expect.equal True preCheck
+                        , \tm ->
+                            trailSideCells
+                                |> List.map (cellKindAt tm)
+                                |> Expect.equalLists
+                                    (List.repeat (List.length trailSideCells) (Just Buffer))
+                        , \tm ->
+                            getSavedNatureTiles tm
+                                |> Dict.isEmpty
+                                |> Expect.equal True
+                        ]
+                        afterPlacement
+                )
+            , test "reconcileSavedNatureTiles: drops lot-member entries and restores Buffer cells"
+                (\_ ->
+                    let
+                        cellA =
+                            createCell constraints 7 3
+
+                        cellB =
+                            createCell constraints 7 7
+
+                        bufferLikeTilemap =
+                            emptyTilemap
+                                |> mapCell cellA (\_ -> Tile.init Buffer)
+                                |> mapCell cellB (\_ -> Tile.init Buffer)
+                                |> insertSavedNatureTile ( 7, 3 ) defaultTileId
+                                |> insertSavedNatureTile ( 7, 7 ) defaultTileId
+
+                        -- Simulate a lot landing at cellA after WFC.
+                        lotMember =
+                            Tile.init
+                                (Fixed
+                                    { id = defaultTileId
+                                    , name = "test-lot"
+                                    , parentTile = Just ( 1234, 0 )
+                                    , animation = Nothing
+                                    }
+                                )
+
+                        beforeReconcile =
+                            mapCell cellA (\_ -> lotMember) bufferLikeTilemap
+
+                        afterReconcile =
+                            reconcileSavedNatureTiles beforeReconcile
+                    in
+                    Expect.all
+                        [ \tm ->
+                            -- Lot member preserved.
+                            cellKindAt tm ( 7, 3 )
+                                |> Maybe.map isFixedKind
+                                |> Expect.equal (Just True)
+                        , \tm ->
+                            -- Buffer cell restored to Fixed.
+                            cellKindAt tm ( 7, 7 )
+                                |> Maybe.map isFixedKind
+                                |> Expect.equal (Just True)
+                        , \tm ->
+                            -- Restored cell has the saved id.
+                            tileByCell tm cellB
+                                |> Maybe.andThen Tile.id
+                                |> Expect.equal (Just defaultTileId)
+                        , \tm ->
+                            getSavedNatureTiles tm
+                                |> Dict.isEmpty
+                                |> Expect.equal True
+                        ]
+                        afterReconcile
+                )
+            , test "Removing a road clears the saved dict"
+                (\_ ->
+                    let
+                        cell10 =
+                            createCell constraints 10 5
+
+                        roadOnly =
+                            placeRoad
+                                [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ) ]
+                                emptyTilemap
+
+                        withFixedNature =
+                            List.foldl
+                                (forceFixNatureTile defaultTileId)
+                                roadOnly
+                                (cartesian [ 6, 7, 8 ] [ 2, 3, 4, 6, 7, 8 ])
+
+                        afterPlacement =
+                            placeRoad [ ( 10, 5 ) ] withFixedNature
+
+                        ( wfcAfterRemove, _ ) =
+                            Tilemap.DrivenWFC.onRemoveTile
+                                (SeedState.fromSeed testSeed)
+                                Dict.empty
+                                cell10
+                                afterPlacement
+
+                        afterRemoval =
+                            Tilemap.WFC.toTilemap wfcAfterRemove
+                    in
+                    Expect.all
+                        [ \_ ->
+                            -- Sanity: dict was non-empty before removal.
+                            getSavedNatureTiles afterPlacement
+                                |> Dict.isEmpty
+                                |> Expect.equal False
+                        , \_ ->
+                            getSavedNatureTiles afterRemoval
+                                |> Dict.isEmpty
+                                |> Expect.equal True
+                        ]
+                        ()
+                )
+            ]
         ]
+
+
+cartesian : List Int -> List Int -> List ( Int, Int )
+cartesian xs ys =
+    List.concatMap (\x -> List.map (\y -> ( x, y )) ys) xs
+
+
+cellKindAt : Tilemap -> ( Int, Int ) -> Maybe TileKind
+cellKindAt tilemap coords =
+    let
+        cell =
+            createCell (getTilemapConfig tilemap) (Tuple.first coords) (Tuple.second coords)
+    in
+    tileByCell tilemap cell |> Maybe.map .kind
+
+
+isFixedKind : TileKind -> Bool
+isFixedKind kind =
+    case kind of
+        Fixed _ ->
+            True
+
+        _ ->
+            False

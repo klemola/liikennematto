@@ -22,6 +22,7 @@ import Process
 import Quantity
 import Savegame
 import Task
+import Tilemap.Buffer exposing (reconcileSavedNatureTiles)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
@@ -154,7 +155,7 @@ update msg model =
                         Nothing ->
                             ( model, Cmd.none )
 
-        CheckQueues time delta ->
+        CheckQueues _ delta ->
             case model.world.pendingTilemapChange of
                 Just _ ->
                     ( model, Cmd.none )
@@ -169,12 +170,9 @@ update msg model =
                                         |> Quantity.max Quantity.zero
 
                                 builtEnough =
-                                    List.length (getBuildHistory model.world.tilemap) >= 5
-
-                                waitedEnough =
-                                    (Time.posixToMillis time - Time.posixToMillis initTime) > 2000
+                                    List.length (getBuildHistory model.world.tilemap) >= 3
                             in
-                            if Quantity.lessThanOrEqualToZero nextTimer && (builtEnough || waitedEnough) then
+                            if Quantity.lessThanOrEqualToZero nextTimer && builtEnough then
                                 startWFC model
 
                             else
@@ -220,15 +218,18 @@ update msg model =
                                         else
                                             playSound Audio.BuildLot
 
+                                    reconciledTilemap =
+                                        reconcileSavedNatureTiles nextTilemap
+
                                     nextWorld =
                                         model.world
-                                            |> World.setTilemap nextTilemap
+                                            |> World.setTilemap reconciledTilemap
                                             |> World.updateSeed nextSeedState
                                 in
                                 ( { model
                                     | world = nextWorld
                                     , wfc = updatedDrivenWfc
-                                    , renderCache = setTilemapCache nextTilemap Nothing model.renderCache
+                                    , renderCache = setTilemapCache reconciledTilemap Nothing model.renderCache
                                     , debug = appendWfcLog wfcLog model.debug
                                   }
                                 , Cmd.batch (audioCmd :: tileActionsToCmds tileActions)
