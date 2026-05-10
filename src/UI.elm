@@ -122,13 +122,19 @@ update : World -> Viewport.Viewport -> Screen -> Msg -> UI -> ( UI, Cmd Msg, May
 update world viewport screen msg model =
     case msg of
         ToggleMenu ->
-            ( { model | showMenu = not model.showMenu }
+            ( { model
+                | showLmInfo = False
+                , showMenu = not model.showMenu
+              }
             , Cmd.none
             , Nothing
             )
 
         ToggleLmInfo ->
-            ( { model | showLmInfo = not model.showLmInfo }
+            ( { model
+                | showLmInfo = not model.showLmInfo
+                , showMenu = False
+              }
             , Cmd.none
             , Nothing
             )
