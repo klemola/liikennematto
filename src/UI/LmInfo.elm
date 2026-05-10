@@ -37,7 +37,12 @@ view deviceType =
     Element.column
         [ Element.width Element.fill
         , Element.spacing 24
-        , Element.paddingXY 12 24
+        , Element.paddingEach
+            { top = 24
+            , right = 12
+            , bottom = 16
+            , left = 12
+            }
         , Background.color backgroundColor
         , Border.color uiColorBorder
         , Border.roundEach
@@ -47,8 +52,22 @@ view deviceType =
             , bottomRight = borderRadiusPx
             }
         ]
-        [ controls deviceType
+        [ info
+        , controls deviceType
         ]
+
+
+info : Element msg
+info =
+    Element.el
+        [ Font.size 16
+        , Font.color uiColorText
+        ]
+        (Element.paragraph []
+            [ Element.text
+                "Liikennematto is a tiny town building game for children and grown-ups alike. The gameplay is simple: you only build the roads! Lots, buildings and their residents pop up after."
+            ]
+        )
 
 
 controls : Pointer.DeviceType -> Element msg
@@ -128,6 +147,7 @@ controlRow { inputIcon, explanationIcon, explanationIconWidthPx, label } =
             Element.none
         , Element.el
             [ Font.size 14
+            , Font.color uiColorText
             , Element.width (Element.px 92)
             ]
             (Element.text label)

@@ -712,6 +712,8 @@ lmInfo showLmInfo deviceType =
                 ]
                 [ Element.el
                     [ Element.paddingEach { noSpacing | left = 8 }
+                    , Element.centerY
+                    , Font.color uiColorText
                     ]
                     (Element.text "Liikennematto")
                 , Element.el [ Element.alignRight ]
