@@ -8,6 +8,7 @@ build:
 	@echo ">> Building"
 	elm make --optimize src/Main.elm --output=./build/liikennematto.js
 	terser --compress $(COMPRESS_ARGS) ./build/liikennematto.js --output ./build/liikennematto.min.js
+	rm ./build/liikennematto.js
 
 	@echo ">> Copying files"
 	@mkdir -p ./build/sounds
@@ -19,7 +20,6 @@ build:
 	@echo ">> Done!"
 
 check:
-	clear
 	elm make src/Main.elm --output /dev/null
 	elm make benchmarks/RoadNetworkBenchmark.elm --output /dev/null
 	elm make benchmarks/TrafficBenchmark.elm --output /dev/null
@@ -41,7 +41,6 @@ serve:
 	python3 -m http.server --directory ./build
 
 test:
-	clear
 	elm-test
 
 benchmark:
