@@ -15,7 +15,7 @@ import Expect
 import Message exposing (Message(..))
 import Model.World as World
 import Test exposing (Test, describe, test)
-import Tilemap.Core exposing (isDestructivePlacement, roadTileFromCell)
+import Tilemap.Core exposing (isDestructivePlacement, roadTileFromCell, setBuildHistory)
 import Tilemap.DrivenWFC exposing (DrivenWFC(..), addTileById, initDrivenWfc, restartWfc, runWfc)
 import Tilemap.Tile as Tile
 import Tilemap.Update
@@ -161,6 +161,74 @@ suite =
 
                         _ ->
                             Expect.fail "Expected WFC to remain Pending with only 2 placements"
+                )
+            , test "Transitions to Active with a single placement that extends pre-existing road"
+                (\_ ->
+                    let
+                        emptyWorld =
+                            World.empty testSeed tenByTenTilemap
+
+                        baseModel =
+                            gameModelFromWorld emptyWorld
+
+                        -- Pre-existing road (simulating prior building phase). Clear history so
+                        -- those cells are not counted as part of the current build building phase.
+                        preExistingRoad =
+                            placeRoad [ ( 4, 5 ), ( 5, 5 ), ( 6, 5 ) ] emptyWorld.tilemap
+                                |> setBuildHistory []
+
+                        -- One new placement that connects to the pre-existing road.
+                        extendedTilemap =
+                            placeRoad [ ( 7, 5 ) ] preExistingRoad
+
+                        modelExtending =
+                            { baseModel
+                                | world = World.setTilemap extendedTilemap baseModel.world
+                                , wfc = initDrivenWfc (Time.millisToPosix 0)
+                            }
+
+                        ( resultModel, _ ) =
+                            Tilemap.Update.update
+                                (CheckQueues (Time.millisToPosix 3000) (Duration.milliseconds 3000))
+                                modelExtending
+                    in
+                    case resultModel.wfc of
+                        WFCActive _ _ ->
+                            Expect.pass
+
+                        _ ->
+                            Expect.fail
+                                "Expected WFC to transition to Active when extending a pre-existing road"
+                )
+            , test "Stays Pending with 1 placement that does not connect to existing road (cold start)"
+                (\_ ->
+                    let
+                        emptyWorld =
+                            World.empty testSeed tenByTenTilemap
+
+                        baseModel =
+                            gameModelFromWorld emptyWorld
+
+                        singlePlacement =
+                            placeRoad [ ( 5, 5 ) ] emptyWorld.tilemap
+
+                        modelOnePlacement =
+                            { baseModel
+                                | world = World.setTilemap singlePlacement baseModel.world
+                                , wfc = initDrivenWfc (Time.millisToPosix 0)
+                            }
+
+                        ( resultModel, _ ) =
+                            Tilemap.Update.update
+                                (CheckQueues (Time.millisToPosix 3000) (Duration.milliseconds 3000))
+                                modelOnePlacement
+                    in
+                    case resultModel.wfc of
+                        WFCPending _ _ ->
+                            Expect.pass
+
+                        _ ->
+                            Expect.fail "Expected WFC to stay Pending for cold-start with only 1 placement"
                 )
             ]
         ]

@@ -22,7 +22,7 @@ import Process
 import Quantity
 import Savegame
 import Task
-import Tilemap.Buffer exposing (reconcileSavedNatureTiles)
+import Tilemap.Buffer exposing (reconcileSavedNatureTiles, roadBuildingInProgress)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
@@ -169,8 +169,15 @@ update msg model =
                                         |> Quantity.minus delta
                                         |> Quantity.max Quantity.zero
 
+                                historyLength =
+                                    List.length (getBuildHistory model.world.tilemap)
+
+                                -- Cold-start needs `>= 3` to give WFC enough buffer context;
+                                -- extending an existing road already has that context, so one
+                                -- placement is enough.
                                 builtEnough =
-                                    List.length (getBuildHistory model.world.tilemap) >= 3
+                                    historyLength >= 3
+                                        || (historyLength >= 1 && roadBuildingInProgress model.world.tilemap)
                             in
                             if Quantity.lessThanOrEqualToZero nextTimer && builtEnough then
                                 startWFC model

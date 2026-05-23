@@ -2,6 +2,7 @@ module Tilemap.Buffer exposing
     ( reconcileSavedNatureTiles
     , removeBuffer
     , revertTrailToBuffer
+    , roadBuildingInProgress
     , trailCells
     , updateBufferCells
     )
@@ -10,6 +11,7 @@ import Data.TileSet exposing (connectionsByTile, tileById)
 import Dict
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
 import Quantity exposing (Unitless)
+import Set
 import Tilemap.Cell as Cell exposing (Cell, CellCoordinates)
 import Tilemap.Core
     exposing
@@ -296,6 +298,25 @@ type alias NeighborMeta =
     , tile : Tile
     , direction : OrthogonalDirection
     }
+
+
+roadBuildingInProgress : Tilemap -> Bool
+roadBuildingInProgress tilemap =
+    let
+        history =
+            getBuildHistory tilemap
+
+        historyCoords =
+            history
+                |> List.map Cell.coordinates
+                |> Set.fromList
+
+        connectsOutside cell =
+            roadNeighbors cell tilemap
+                |> List.any
+                    (\n -> not (Set.member (Cell.coordinates n.cell) historyCoords))
+    in
+    List.any connectsOutside history
 
 
 roadNeighbors : Cell -> Tilemap -> List NeighborMeta
