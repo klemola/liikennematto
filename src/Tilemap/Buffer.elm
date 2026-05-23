@@ -44,11 +44,43 @@ maxBufferDepth =
 updateBufferCells : Cell -> Tilemap -> Tilemap
 updateBufferCells builtCell tilemap =
     let
+        priorHistory =
+            getBuildHistory tilemap
+
         updatedHistory =
-            nextCellHistory builtCell (getBuildHistory tilemap)
+            nextCellHistory builtCell priorHistory
+
+        -- A placement that neither extends the most recent cell nor joins
+        -- existing roads means the player moved to a different area. Any
+        -- captured nature tiles from the previous building phase are no
+        -- longer relevant: the live tilemap was never reverted (capture only
+        -- writes to the dict), so dropping the entries is enough — nothing
+        -- needs to be restored. Joins (≥2 road neighbors) are still part of
+        -- the same building phase even if they bridge a non-adjacent gap.
+        isJoinPlacement =
+            case roadNeighbors builtCell tilemap of
+                _ :: _ :: _ ->
+                    True
+
+                _ ->
+                    False
+
+        clearStaleDict =
+            case priorHistory of
+                previous :: _ ->
+                    if Cell.isAdjacent builtCell previous || isJoinPlacement then
+                        identity
+
+                    else
+                        setSavedNatureTiles Dict.empty
+
+                [] ->
+                    identity
 
         withUpdatedHistory =
-            setBuildHistory updatedHistory tilemap
+            tilemap
+                |> clearStaleDict
+                |> setBuildHistory updatedHistory
     in
     List.foldl
         (\cell nextTilemap ->

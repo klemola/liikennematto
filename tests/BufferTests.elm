@@ -919,6 +919,51 @@ suite =
                         ]
                         ()
                 )
+            , test "Non-adjacent placement clears the saved dict (player moved to a different area)"
+                (\_ ->
+                    let
+                        -- Phase 1: build a road and capture trail entries into the dict.
+                        roadOnly =
+                            placeRoad
+                                [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ) ]
+                                emptyTilemap
+
+                        withFixedNature =
+                            List.foldl
+                                (forceFixNatureTile defaultTileId)
+                                roadOnly
+                                (cartesian [ 6, 7, 8 ] [ 2, 3, 4, 6, 7, 8 ])
+
+                        afterPhase1 =
+                            placeRoad [ ( 10, 5 ) ] withFixedNature
+
+                        -- Phase 2: place far away (non-adjacent to (10,5)).
+                        afterPhase2 =
+                            placeRoad [ ( 2, 2 ) ] afterPhase1
+
+                        priorDict =
+                            getSavedNatureTiles afterPhase1
+                    in
+                    Expect.all
+                        [ \_ ->
+                            -- Precondition: phase 1 populated the dict.
+                            Dict.isEmpty priorDict
+                                |> Expect.equal False
+                        , \_ ->
+                            -- Non-adjacent placement clears the dict.
+                            getSavedNatureTiles afterPhase2
+                                |> Dict.isEmpty
+                                |> Expect.equal True
+                        , \_ ->
+                            -- Live cells from phase 1's trail are still Fixed Nature
+                            -- (capture never mutated them, and the dict reset doesn't either).
+                            cartesian [ 7, 8 ] [ 2, 3, 4, 6, 7, 8 ]
+                                |> List.map (cellKindAt afterPhase2)
+                                |> List.all (Maybe.map isFixedKind >> Maybe.withDefault False)
+                                |> Expect.equal True
+                        ]
+                        ()
+                )
             ]
         ]
 
