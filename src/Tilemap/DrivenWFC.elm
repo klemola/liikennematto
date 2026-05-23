@@ -28,8 +28,8 @@ import Round
 import Set
 import Tilemap.Buffer
     exposing
-        ( removeBuffer
-        , revertTrailToBuffer
+        ( captureTrail
+        , removeBuffer
         , trailCells
         , updateBufferCells
         )
@@ -157,10 +157,13 @@ addTileById seedState tileInventory cell tileId tilemap =
         -- Order matters: trailCells must read the build history BEFORE
         -- updateBufferCells pushes `cell` onto it, so it sees the prior
         -- placements (the cells whose side buffers form the trail).
-        reverted =
-            revertTrailToBuffer (trailCells cell placed) placed
+        -- captureTrail only records original tile ids into savedNatureTiles;
+        -- the actual revert to Buffer is deferred to startWFC so the live
+        -- tilemap stays visually intact through the debounce window.
+        captured =
+            captureTrail (trailCells cell placed) placed
     in
-    ( updateBufferCells cell reverted
+    ( updateBufferCells cell captured
     , tilemapChangeActions
     )
 

@@ -1,7 +1,8 @@
 module Tilemap.Buffer exposing
-    ( reconcileSavedNatureTiles
+    ( applyRevertFromDict
+    , captureTrail
+    , reconcileSavedNatureTiles
     , removeBuffer
-    , revertTrailToBuffer
     , roadBuildingInProgress
     , trailCells
     , updateBufferCells
@@ -480,21 +481,22 @@ dedupeCells cells =
         |> Tuple.second
 
 
-revertTrailToBuffer : List Cell -> Tilemap -> Tilemap
-revertTrailToBuffer cells tilemap =
-    List.foldl revertTrailCell tilemap cells
+{-| Records the original tile ids of trail cells into `savedNatureTiles` without
+mutating the cells.
+-}
+captureTrail : List Cell -> Tilemap -> Tilemap
+captureTrail cells tilemap =
+    List.foldl captureTrailCell tilemap cells
 
 
-revertTrailCell : Cell -> Tilemap -> Tilemap
-revertTrailCell cell tilemap =
+captureTrailCell : Cell -> Tilemap -> Tilemap
+captureTrailCell cell tilemap =
     case tileByCell tilemap cell of
         Just tile ->
             case tile.kind of
                 Fixed props ->
                     if props.parentTile == Nothing && isSingleNatureTile props.id then
-                        tilemap
-                            |> insertSavedNatureTile (Cell.coordinates cell) props.id
-                            |> mapCell cell (\_ -> Tile.init Tile.Buffer)
+                        insertSavedNatureTile (Cell.coordinates cell) props.id tilemap
 
                     else
                         tilemap
@@ -503,6 +505,21 @@ revertTrailCell cell tilemap =
                     tilemap
 
         Nothing ->
+            tilemap
+
+
+applyRevertFromDict : Tilemap -> Tilemap
+applyRevertFromDict tilemap =
+    getSavedNatureTiles tilemap
+        |> Dict.foldl
+            (\coords _ acc ->
+                case Cell.fromCoordinates (getTilemapConfig acc) coords of
+                    Just cell ->
+                        mapCell cell (\_ -> Tile.init Tile.Buffer) acc
+
+                    Nothing ->
+                        acc
+            )
             tilemap
 
 

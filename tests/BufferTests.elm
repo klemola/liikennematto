@@ -19,7 +19,7 @@ import Dict
 import Expect
 import Lib.SeedState as SeedState
 import Test exposing (Test, describe, test)
-import Tilemap.Buffer exposing (reconcileSavedNatureTiles)
+import Tilemap.Buffer exposing (applyRevertFromDict, reconcileSavedNatureTiles)
 import Tilemap.Cell as Cell
 import Tilemap.Core
     exposing
@@ -623,8 +623,9 @@ suite =
                         withFixedNature =
                             List.foldl (forceFixNatureTile defaultTileId) roadOnly sideBufferCells
 
-                        -- Place the 6th adjacent cell. The trail logic in addTileById should
-                        -- revert side strips of the 3 most-recent straight cells (cols 7, 8, 9).
+                        -- Place the 6th adjacent cell. captureTrail records side strips of
+                        -- the 3 most-recent straight cells (cols 7, 8, 9) into the dict but
+                        -- leaves the cells as Fixed Nature on the live tilemap.
                         afterPlacement =
                             placeRoad [ ( 10, 5 ) ] withFixedNature
 
@@ -633,26 +634,39 @@ suite =
 
                         revertedCells =
                             cartesian [ 7, 8 ] bufferRows
+
+                        -- The actual mutation lives behind applyRevertFromDict, which
+                        -- runs against the WFC.Model fork in startWFC.
+                        afterApply =
+                            applyRevertFromDict afterPlacement
                     in
                     Expect.all
-                        [ \tm ->
-                            -- Cells in cols 7-8 (recent) became Buffer.
+                        [ \_ ->
+                            -- Live tilemap (post-capture) keeps cells as Fixed Nature.
                             revertedCells
-                                |> List.map (cellKindAt tm)
-                                |> Expect.equalLists (List.repeat (List.length revertedCells) (Just Buffer))
-                        , \tm ->
-                            -- Col 6 (older than the 3-cell window) stays Fixed Nature.
-                            cartesian [ 6 ] bufferRows
-                                |> List.map (cellKindAt tm)
+                                |> List.map (cellKindAt afterPlacement)
                                 |> List.all (Maybe.map isFixedKind >> Maybe.withDefault False)
                                 |> Expect.equal True
-                        , \tm ->
-                            -- Saved dict matches the reverted cells.
-                            Dict.keys (getSavedNatureTiles tm)
+                        , \_ ->
+                            -- Saved dict matches the captured cells.
+                            Dict.keys (getSavedNatureTiles afterPlacement)
                                 |> List.sort
                                 |> Expect.equalLists (List.sort revertedCells)
+                        , \_ ->
+                            -- After applying the revert (fork view), cells become Buffer.
+                            revertedCells
+                                |> List.map (cellKindAt afterApply)
+                                |> Expect.equalLists
+                                    (List.repeat (List.length revertedCells) (Just Buffer))
+                        , \_ ->
+                            -- Col 6 (older than the 3-cell window) stays Fixed Nature
+                            -- in both phases.
+                            cartesian [ 6 ] bufferRows
+                                |> List.map (cellKindAt afterApply)
+                                |> List.all (Maybe.map isFixedKind >> Maybe.withDefault False)
+                                |> Expect.equal True
                         ]
-                        afterPlacement
+                        ()
                 )
             , test "Case 2 (join): walks ≤2 cells along each axis from the placed cell"
                 (\_ ->
@@ -673,20 +687,41 @@ suite =
                         -- Place the joining cell.
                         afterJoin =
                             placeRoad [ ( 6, 5 ) ] withFixedNature
+
+                        afterApply =
+                            applyRevertFromDict afterJoin
+
+                        leftBranch =
+                            cartesian [ 4 ] [ 2, 3, 4, 6, 7, 8 ]
+
+                        rightBranch =
+                            cartesian [ 8 ] [ 2, 3, 4, 6, 7, 8 ]
                     in
                     Expect.all
-                        [ \tm ->
-                            -- Col 4 (≤2 cells from the placed cell) reverted on left branch.
-                            cartesian [ 4 ] [ 2, 3, 4, 6, 7, 8 ]
-                                |> List.map (cellKindAt tm)
+                        [ \_ ->
+                            -- Live tilemap (post-capture) keeps both branches as Fixed Nature.
+                            leftBranch
+                                ++ rightBranch
+                                |> List.map (cellKindAt afterJoin)
+                                |> List.all (Maybe.map isFixedKind >> Maybe.withDefault False)
+                                |> Expect.equal True
+                        , \_ ->
+                            -- Dict captures both branches.
+                            Dict.keys (getSavedNatureTiles afterJoin)
+                                |> List.sort
+                                |> Expect.equalLists (List.sort (leftBranch ++ rightBranch))
+                        , \_ ->
+                            -- After applying the revert, col 4 (left branch) becomes Buffer.
+                            leftBranch
+                                |> List.map (cellKindAt afterApply)
                                 |> Expect.equalLists (List.repeat 6 (Just Buffer))
-                        , \tm ->
-                            -- Col 8 reverted on the right branch.
-                            cartesian [ 8 ] [ 2, 3, 4, 6, 7, 8 ]
-                                |> List.map (cellKindAt tm)
+                        , \_ ->
+                            -- And col 8 (right branch) becomes Buffer.
+                            rightBranch
+                                |> List.map (cellKindAt afterApply)
                                 |> Expect.equalLists (List.repeat 6 (Just Buffer))
                         ]
-                        afterJoin
+                        ()
                 )
             , test "Skips Fixed cells that belong to a large tile (parentTile = Just _)"
                 (\_ ->
@@ -721,28 +756,32 @@ suite =
 
                         afterPlacement =
                             placeRoad [ ( 10, 5 ) ] withProtected
+
+                        afterApply =
+                            applyRevertFromDict afterPlacement
                     in
                     Expect.all
-                        [ \tm ->
-                            -- Protected cell is still Fixed (not reverted).
-                            cellKindAt tm ( 8, 4 )
+                        [ \_ ->
+                            -- Protected cell is still Fixed both before and after applying.
+                            cellKindAt afterApply ( 8, 4 )
                                 |> Maybe.map isFixedKind
                                 |> Expect.equal (Just True)
-                        , \tm ->
-                            -- Saved dict does not include the protected cell.
-                            getSavedNatureTiles tm
+                        , \_ ->
+                            -- Dict never includes the protected cell.
+                            getSavedNatureTiles afterPlacement
                                 |> Dict.member ( 8, 4 )
                                 |> Expect.equal False
-                        , \tm ->
-                            -- Sanity: ordinary Nature cells in the trail did get reverted.
-                            cellKindAt tm ( 7, 4 )
-                                |> Expect.equal (Just Buffer)
-                        , \tm ->
-                            getSavedNatureTiles tm
+                        , \_ ->
+                            -- Ordinary Nature cells were captured into the dict.
+                            getSavedNatureTiles afterPlacement
                                 |> Dict.member ( 7, 4 )
                                 |> Expect.equal True
+                        , \_ ->
+                            -- After applying the revert, the ordinary Nature cells become Buffer.
+                            cellKindAt afterApply ( 7, 4 )
+                                |> Expect.equal (Just Buffer)
                         ]
-                        afterPlacement
+                        ()
                 )
             , test "Buffer cells in the trail are a no-op (not added to the saved dict)"
                 (\_ ->
