@@ -33,6 +33,11 @@ borderSizePx =
     2
 
 
+backgroundTransition : Element.Attribute msg
+backgroundTransition =
+    Element.htmlAttribute (HtmlAttribute.style "transition" "background-color 150ms ease-in-out")
+
+
 type alias ButtonConfig msg =
     { onPress : msg
     , selected : Bool
@@ -111,6 +116,7 @@ createIconButton borderRadiusPx { onPress, selected, disabled } buttonSizePx ico
         , Element.clip
         , Element.mouseOver hoverAttrs
         , Element.mouseDown hoverAttrs
+        , backgroundTransition
         , Background.color
             (if selected then
                 iconBgColorActive
@@ -185,7 +191,8 @@ createIconWithTextButton size { onPress, selected, disabled } textContent icon =
                 ]
     in
     Input.button
-        [ Background.color
+        [ backgroundTransition
+        , Background.color
             (if selected then
                 bgColorActive
 
@@ -241,6 +248,7 @@ createIconWithTextButton size { onPress, selected, disabled } textContent icon =
                     , Element.padding 2
                     , Element.clip
                     , Element.htmlAttribute (HtmlAttribute.class "lm-ui-button__icon")
+                    , backgroundTransition
                     , Background.color iconBg
                     , Border.solid
                     , Border.color
@@ -285,7 +293,8 @@ textButton { onPress, selected, disabled } textContent =
                 1
     in
     Input.button
-        [ Background.color bgColor
+        [ backgroundTransition
+        , Background.color bgColor
         , Element.width width
         , Element.height Element.fill
         , Element.paddingXY 8 4
