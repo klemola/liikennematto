@@ -8,7 +8,6 @@ module UI.Editor exposing
     , onViewportChanged
     , subscriptions
     , update
-    , usingTouchDevice
     , view
     )
 
@@ -121,11 +120,6 @@ type EditorEffect
 targetRadius : Int
 targetRadius =
     10
-
-
-usingTouchDevice : Model -> Bool
-usingTouchDevice model =
-    model.lastEventDevice == Pointer.TouchType
 
 
 onViewportChanged : RenderCache -> Viewport -> Model -> Model

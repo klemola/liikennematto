@@ -5,18 +5,15 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
-import Element.Lazy
 import Html
 import Html.Attributes as HtmlAttr
 import Html.Events.Extra.Pointer as Pointer
 import Svg exposing (Svg)
 import UI.Core
     exposing
-        ( borderSize
-        , uiColorBorder
+        ( uiColorBorder
         , uiColorText
         , whitespaceCondensed
-        , whitespaceTight
         )
 
 
@@ -40,7 +37,13 @@ view deviceType =
     Element.column
         [ Element.width Element.fill
         , Element.spacing 24
-        , Element.paddingXY 12 24
+        , Element.paddingEach
+            { top = 24
+            , right = 12
+            , bottom = 16
+            , left = 12
+            }
+        , Background.color backgroundColor
         , Border.color uiColorBorder
         , Border.roundEach
             { topLeft = 0
@@ -49,12 +52,41 @@ view deviceType =
             , bottomRight = borderRadiusPx
             }
         ]
-        [ controls
+        [ info
+        , controls deviceType
         ]
 
 
-controls : Element msg
-controls =
+info : Element msg
+info =
+    Element.el
+        [ Font.size 16
+        , Font.color uiColorText
+        ]
+        (Element.paragraph []
+            [ Element.text
+                "Liikennematto is a tiny town building game for children and grown-ups alike. The gameplay is simple: you only build the roads! Lots, buildings and their residents pop up after."
+            ]
+        )
+
+
+controls : Pointer.DeviceType -> Element msg
+controls deviceType =
+    let
+        ( buildIcon, removeIcon, panIcon ) =
+            case deviceType of
+                Pointer.TouchType ->
+                    ( Icons.touchOneFingerTap
+                    , Icons.touchOneFingerLongPress
+                    , Icons.touchTwoFingerPress
+                    )
+
+                _ ->
+                    ( Icons.mouseLeftButton
+                    , Icons.mouseRightButton
+                    , Icons.mouseMiddleButton
+                    )
+    in
     Element.column
         [ Element.width Element.fill
         , Element.padding whitespaceCondensed
@@ -72,19 +104,19 @@ controls =
             ]
             (Element.text "Controls")
         , controlRow
-            { inputIcon = Icons.mouseLeftButton
+            { inputIcon = buildIcon
             , explanationIcon = Icons.buildRoad
             , explanationIconWidthPx = 108
             , label = "Build road"
             }
         , controlRow
-            { inputIcon = Icons.mouseRightButton
+            { inputIcon = removeIcon
             , explanationIcon = Icons.removeRoad
             , explanationIconWidthPx = 108
             , label = "Remove road"
             }
         , controlRow
-            { inputIcon = Icons.mouseMiddleButton
+            { inputIcon = panIcon
             , explanationIcon = Icons.panMap
             , explanationIconWidthPx = 48
             , label = "Pan map"
@@ -115,6 +147,7 @@ controlRow { inputIcon, explanationIcon, explanationIconWidthPx, label } =
             Element.none
         , Element.el
             [ Font.size 14
+            , Font.color uiColorText
             , Element.width (Element.px 92)
             ]
             (Element.text label)

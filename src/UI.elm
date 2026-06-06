@@ -61,6 +61,7 @@ type Msg
     | ToggleSimulationActive Bool
     | SelectDevView DevView
     | EditorMsg Editor.Msg
+    | PointerDeviceDetected Pointer.DeviceType
     | NoOp
 
 
@@ -121,13 +122,19 @@ update : World -> Viewport.Viewport -> Screen -> Msg -> UI -> ( UI, Cmd Msg, May
 update world viewport screen msg model =
     case msg of
         ToggleMenu ->
-            ( { model | showMenu = not model.showMenu }
+            ( { model
+                | showLmInfo = False
+                , showMenu = not model.showMenu
+              }
             , Cmd.none
             , Nothing
             )
 
         ToggleLmInfo ->
-            ( { model | showLmInfo = not model.showLmInfo }
+            ( { model
+                | showLmInfo = not model.showLmInfo
+                , showMenu = False
+              }
             , Cmd.none
             , Nothing
             )
@@ -177,6 +184,16 @@ update world viewport screen msg model =
             , Cmd.none
             , Just (DevViewSelected devView)
             )
+
+        PointerDeviceDetected deviceType ->
+            if deviceType == model.lastEventDevice then
+                ( model, Cmd.none, Nothing )
+
+            else
+                ( { model | lastEventDevice = deviceType }
+                , Cmd.none
+                , Nothing
+                )
 
         EditorMsg editorMsg ->
             let
@@ -246,7 +263,7 @@ view : Liikennematto -> Element msg -> Element msg -> Html Msg
 view liikennematto render renderDebugLayers =
     Element.layoutWith
         { options =
-            if Editor.usingTouchDevice liikennematto.ui.editor then
+            if liikennematto.ui.lastEventDevice == Pointer.TouchType then
                 touchLayoutOptions
 
             else
@@ -267,7 +284,7 @@ view liikennematto render renderDebugLayers =
                 liikennematto.ui.showLmInfo
             )
         , Element.inFront
-            (Element.Lazy.lazy2 lmInfo liikennematto.ui.showLmInfo Pointer.MouseType)
+            (Element.Lazy.lazy2 lmInfo liikennematto.ui.showLmInfo liikennematto.ui.lastEventDevice)
         , Element.inFront (devMenu liikennematto liikennematto.ui)
         , Element.clip
         , Element.width Element.fill
@@ -275,6 +292,7 @@ view liikennematto render renderDebugLayers =
         , Element.htmlAttribute (HtmlAttribute.id containerId)
         , Element.htmlAttribute (HtmlAttribute.style "touch-action" "pan-x pan-y")
         , Element.htmlAttribute (Mouse.onContextMenu (\_ -> NoOp))
+        , Element.htmlAttribute (Pointer.onDown (\event -> PointerDeviceDetected event.pointerType))
         , Font.family [ uiFont, Font.sansSerif ]
         ]
         (Element.el
@@ -694,6 +712,8 @@ lmInfo showLmInfo deviceType =
                 ]
                 [ Element.el
                     [ Element.paddingEach { noSpacing | left = 8 }
+                    , Element.centerY
+                    , Font.color uiColorText
                     ]
                     (Element.text "Liikennematto")
                 , Element.el [ Element.alignRight ]
