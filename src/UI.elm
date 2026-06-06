@@ -669,6 +669,11 @@ menuSectionAttrs =
     ]
 
 
+lmInfoFadeInCss : String
+lmInfoFadeInCss =
+    "@keyframes lmInfoFadeIn{from{opacity:0}to{opacity:1}}.lm-info-panel{animation:lmInfoFadeIn 200ms ease-in-out 120ms backwards}"
+
+
 lmInfo : Bool -> Pointer.DeviceType -> Element Msg
 lmInfo showLmInfo deviceType =
     if showLmInfo then
@@ -683,8 +688,11 @@ lmInfo showLmInfo deviceType =
             , Border.rounded borderRadiusMenuPx
             , Border.color uiColorBorder
             , Border.width borderSize
+            , Element.htmlAttribute (HtmlAttribute.class "lm-info-panel")
             ]
-            [ Element.row
+            [ Element.html
+                (Html.node "style" [] [ Html.text lmInfoFadeInCss ])
+            , Element.row
                 [ Element.padding whitespaceCondensed
                 , Element.width Element.fill
                 , Background.color menuBackgroundColorAlt
