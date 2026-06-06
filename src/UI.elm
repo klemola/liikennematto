@@ -38,6 +38,7 @@ import UI.Core
         , uiColorBorder
         , uiColorText
         , whitespaceCondensed
+        , whitespaceRegular
         , whitespaceTight
         )
 import UI.Editor as Editor
@@ -270,6 +271,14 @@ view liikennematto render renderDebugLayers =
                 baseLayoutOptions
         }
         [ Background.color uiColorText
+        , Element.clip
+        , Element.width Element.fill
+        , Element.height Element.fill
+        , Element.htmlAttribute (HtmlAttribute.id containerId)
+        , Element.htmlAttribute (HtmlAttribute.style "touch-action" "pan-x pan-y")
+        , Element.htmlAttribute (Mouse.onContextMenu (\_ -> NoOp))
+        , Element.htmlAttribute (Pointer.onDown (\event -> PointerDeviceDetected event.pointerType))
+        , Font.family [ uiFont, Font.sansSerif ]
         , Element.inFront
             (Element.Lazy.lazy3 gameControls
                 liikennematto.ui.zoomLevel
@@ -284,16 +293,11 @@ view liikennematto render renderDebugLayers =
                 liikennematto.ui.showLmInfo
             )
         , Element.inFront
-            (Element.Lazy.lazy2 lmInfo liikennematto.ui.showLmInfo liikennematto.ui.lastEventDevice)
+            (Element.Lazy.lazy2 lmInfo
+                liikennematto.ui.showLmInfo
+                liikennematto.ui.lastEventDevice
+            )
         , Element.inFront (devMenu liikennematto liikennematto.ui)
-        , Element.clip
-        , Element.width Element.fill
-        , Element.height Element.fill
-        , Element.htmlAttribute (HtmlAttribute.id containerId)
-        , Element.htmlAttribute (HtmlAttribute.style "touch-action" "pan-x pan-y")
-        , Element.htmlAttribute (Mouse.onContextMenu (\_ -> NoOp))
-        , Element.htmlAttribute (Pointer.onDown (\event -> PointerDeviceDetected event.pointerType))
-        , Font.family [ uiFont, Font.sansSerif ]
         ]
         (Element.el
             [ Element.width (Element.px liikennematto.screen.width)
@@ -503,108 +507,83 @@ menu debugState screen showMenu showLmInfo =
 
         contentSpacingPx =
             24
-
-        menuHiddenContentAttrs =
-            [ Element.height (Element.px 0)
-            , Element.clip
-            , Element.htmlAttribute (HtmlAttribute.style "min-height" "0")
-            ]
-
-        menuVisibleContentAttrs =
-            [ Element.height Element.shrink
-            , Element.paddingEach
-                { top = 32
-                , right = 10
-                , bottom = 12
-                , left = 10
-                }
-            , Border.widthEach
-                { noSpacing | top = 1 }
-            ]
     in
     Element.column
         [ Element.alignTop
         , Element.alignRight
-        , Element.width (Element.px menuWidthPx)
-        , Element.height Element.shrink
-        , Element.clipY
-        , Background.color menuBackgroundColor
-        , Border.roundEach
-            { topLeft = 0
-            , topRight = 0
-            , bottomLeft = borderRadiusMenuPx
-            , bottomRight = 0
-            }
-        , Border.color uiColorBorder
-        , Border.widthEach
-            { top = 0
-            , right = 0
-            , bottom = borderSize
-            , left = borderSize
-            }
+        , Element.spacing whitespaceRegular
         ]
         [ Element.row
-            [ Element.spacing whitespaceTight
-            , if Screen.categoryAtMost Screen.SizeLG screen then
-                Element.paddingXY whitespaceCondensed whitespaceTight
-
-              else
-                Element.padding whitespaceCondensed
-            , Element.width Element.fill
+            [ Element.spacing whitespaceRegular
+            , Element.alignRight
+            , Background.color menuBackgroundColor
             , Border.roundEach
                 { topLeft = 0
                 , topRight = 0
                 , bottomLeft = borderRadiusMenuPx
                 , bottomRight = 0
                 }
-            , Background.color menuBackgroundColorAlt
-            , if showMenu then
-                Border.rounded 0
+            , Border.color uiColorBorder
+            , Border.widthEach
+                { top = 0
+                , right = 0
+                , bottom = borderSize
+                , left = borderSize
+                }
+            , if Screen.categoryAtMost Screen.SizeLG screen then
+                Element.paddingXY whitespaceCondensed whitespaceTight
 
               else
-                Border.roundEach
-                    { topLeft = 0
-                    , topRight = 0
-                    , bottomLeft = borderRadiusMenuPx
-                    , bottomRight = 0
-                    }
-            ]
-            [ Element.el [ Element.alignLeft ]
-                (iconButton
-                    { onPress = ToggleLmInfo
-                    , selected = showLmInfo
-                    , disabled = False
-                    }
-                    navBarControlSizePx
-                    Icons.iconHelp
-                )
-            , Element.el [ Element.alignRight ]
-                (iconButton
-                    { onPress = ToggleMenu
-                    , selected = showMenu
-                    , disabled = False
-                    }
-                    navBarControlSizePx
-                    Icons.iconMenu
-                )
-            ]
-        , Element.column
-            ([ Element.width Element.fill
-             , Element.spacing contentSpacingPx
-             , Border.color uiColorBorder
-             , Border.roundEach
+                Element.padding whitespaceCondensed
+            , Background.color menuBackgroundColorAlt
+            , Border.roundEach
                 { topLeft = 0
                 , topRight = 0
                 , bottomLeft = borderRadiusMenuPx
-                , bottomRight = borderRadiusMenuPx
+                , bottomRight = 0
+                }
+            ]
+            [ iconButton
+                { onPress = ToggleLmInfo
+                , selected = showLmInfo
+                , disabled = False
+                }
+                navBarControlSizePx
+                Icons.iconHelp
+            , iconButton
+                { onPress = ToggleMenu
+                , selected = showMenu
+                , disabled = False
+                }
+                navBarControlSizePx
+                Icons.iconMenu
+            ]
+        , Element.column
+            ([ Element.width (Element.px menuWidthPx)
+             , Element.spacing contentSpacingPx
+             , Background.color menuBackgroundColor
+             , Border.color uiColorBorder
+             , Border.roundEach
+                { topLeft = borderRadiusMenuPx
+                , topRight = 0
+                , bottomLeft = borderRadiusMenuPx
+                , bottomRight = 0
+                }
+             , Element.height Element.shrink
+             , Element.paddingEach
+                { top = 12
+                , right = 10
+                , bottom = 12
+                , left = 10
+                }
+             , Border.widthEach
+                { top = 2
+                , right = 0
+                , bottom = 2
+                , left = 2
                 }
              ]
-                ++ (if showMenu then
-                        menuVisibleContentAttrs
-
-                    else
-                        menuHiddenContentAttrs
-                   )
+                ++ menuSlideAttrs showMenu
             )
             [ Element.column
                 [ Element.width Element.fill
@@ -661,6 +640,21 @@ menu debugState screen showMenu showLmInfo =
                 ]
             ]
         ]
+
+
+menuSlideAttrs : Bool -> List (Element.Attribute msg)
+menuSlideAttrs showMenu =
+    [ Element.htmlAttribute
+        (HtmlAttribute.style "transform"
+            (if showMenu then
+                "translateX(0)"
+
+             else
+                "translateX(100%)"
+            )
+        )
+    , Element.htmlAttribute (HtmlAttribute.style "transition" "transform 250ms ease-in-out")
+    ]
 
 
 menuSectionAttrs : List (Element.Attribute msg)
