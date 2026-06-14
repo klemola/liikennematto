@@ -1,8 +1,10 @@
 module RoadNetworkTests exposing (suite)
 
+import Data.Lots
 import Data.Utility
     exposing
-        ( placeRoadAndUpdateBuffer
+        ( addLotByEntryCell
+        , placeRoadAndUpdateBuffer
         , tenByTenTilemap
         , tilemapFromCoordinates
         , worldFromTilemap
@@ -16,8 +18,9 @@ import Model.World as World exposing (World)
 import Point2d
 import Simulation.RoadNetwork as RoadNetwork
 import Test exposing (Test, describe, test)
-import Tilemap.Cell exposing (CellCoordinates)
+import Tilemap.Cell as Cell exposing (CellCoordinates)
 import Tilemap.Core exposing (Tilemap, createTilemap)
+import Tilemap.DrivenWFC exposing (bufferToSuperposition)
 import Tilemap.Tile as Tile
 
 
@@ -220,6 +223,54 @@ withLotsTests =
                         validateAllConnections world
                             |> List.isEmpty
                             |> Expect.equal True
+                    ]
+                    ()
+            )
+        , test "four-way intersection with adjacent lot keeps a traffic light on every direction"
+            (\_ ->
+                let
+                    tilemap =
+                        emptyTilemap
+                            |> placeRoadAndUpdateBuffer
+                                [ ( 5, 1 )
+                                , ( 5, 2 )
+                                , ( 5, 3 )
+                                , ( 5, 4 )
+                                , ( 5, 5 )
+                                , ( 5, 6 )
+                                , ( 5, 7 )
+                                , ( 3, 5 )
+                                , ( 4, 5 )
+                                , ( 6, 5 )
+                                , ( 7, 5 )
+                                ]
+                            |> bufferToSuperposition
+
+                    baseWorld =
+                        worldFromTilemap tilemap
+
+                    -- School lot entry is on (5, 4), the first cell in the up direction from the intersection.
+                    world =
+                        addLotByEntryCell
+                            (Cell.fromCoordinatesUnsafe tenByTenTilemap ( 5, 4 ))
+                            Data.Lots.school
+                            baseWorld
+                            |> Result.withDefault baseWorld
+                            |> World.updateRoadNetwork
+
+                    debugData =
+                        RoadNetwork.toDebugData world.roadNetwork
+                in
+                Expect.all
+                    [ \_ ->
+                        -- Guard: the lot must actually be placed, otherwise the intersection is a normal one
+                        List.length (filterLotEntryNodes debugData)
+                            |> Expect.equal 1
+                            |> Expect.onFail "Expected the lot to be placed next to the intersection"
+                    , \_ ->
+                        List.length (filterSignalNodes debugData)
+                            |> Expect.equal 4
+                            |> Expect.onFail "Expected a traffic light on each of the four-way intersection's entry directions"
                     ]
                     ()
             )
@@ -644,6 +695,20 @@ filterLotExitNodes debugData =
         (\nodeCtx ->
             case nodeCtx.node.label.kind of
                 RoadNetwork.LotExit _ ->
+                    True
+
+                _ ->
+                    False
+        )
+        debugData.nodes
+
+
+filterSignalNodes : RoadNetwork.DebugData -> List RoadNetwork.RNNodeContext
+filterSignalNodes debugData =
+    List.filter
+        (\nodeCtx ->
+            case nodeCtx.node.label.trafficControl of
+                RoadNetwork.Signal _ ->
                     True
 
                 _ ->

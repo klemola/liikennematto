@@ -44,7 +44,7 @@ type alias SingleTile =
     { id : TileId
     , name : String
     , weight : Float -- 0.0 to 1.0
-    , graphPriority : Float -- 0.0. to 1.0
+    , graphPriority : Float -- 0.0 to 1.0; road network nodes are created lowest-first, so when two adjacent tiles emit a node at the same position the lower-priority tile wins.
     , biome : TileBiome
     , sockets : Sockets
     , baseTileId : Maybe TileId
