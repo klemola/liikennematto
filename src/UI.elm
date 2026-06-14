@@ -512,10 +512,12 @@ menu debugState screen showMenu showLmInfo =
         [ Element.alignTop
         , Element.alignRight
         , Element.spacing whitespaceRegular
+        , Element.htmlAttribute (HtmlAttribute.style "pointer-events" "none")
         ]
         [ Element.row
             [ Element.spacing whitespaceRegular
             , Element.alignRight
+            , Element.htmlAttribute (HtmlAttribute.style "pointer-events" "auto")
             , Background.color menuBackgroundColor
             , Border.roundEach
                 { topLeft = 0
@@ -654,6 +656,15 @@ menuSlideAttrs showMenu =
             )
         )
     , Element.htmlAttribute (HtmlAttribute.style "transition" "transform 250ms ease-in-out")
+    , Element.htmlAttribute
+        (HtmlAttribute.style "pointer-events"
+            (if showMenu then
+                "auto"
+
+             else
+                "none"
+            )
+        )
     ]
 
 
