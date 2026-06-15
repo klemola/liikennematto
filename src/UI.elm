@@ -11,25 +11,32 @@ import Data.Icons as Icons
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events as Events
 import Element.Font as Font
 import Element.Lazy
 import Html exposing (Html)
 import Html.Attributes as HtmlAttribute
+import Html.Events
 import Html.Events.Extra.Mouse as Mouse
 import Html.Events.Extra.Pointer as Pointer
+import Json.Decode as Decode
 import Model.Debug exposing (DebugLayerKind(..))
 import Model.Liikennematto exposing (Liikennematto)
+import Model.RenderCache exposing (RenderCache)
 import Model.Screen as Screen exposing (Screen)
-import Model.World exposing (World)
+import Model.World exposing (DestructiveTarget(..), World, describeDestructiveTarget)
 import Render.Viewport as Viewport
 import Svg
 import Svg.Attributes as SvgAttr
+import Tilemap.Cell exposing (Cell)
+import Tilemap.Core
 import UI.Button
     exposing
         ( iconButton
         , iconWithTextButton
         , iconWithTextButtonLg
         , roundIconButton
+        , textButton
         )
 import UI.Core
     exposing
@@ -298,6 +305,14 @@ view liikennematto render renderDebugLayers =
                 liikennematto.ui.lastEventDevice
             )
         , Element.inFront (devMenu liikennematto liikennematto.ui)
+        , Element.inFront
+            (confirmationDialog
+                liikennematto.renderCache
+                liikennematto.viewport
+                liikennematto.screen
+                liikennematto.world
+                liikennematto.ui.pendingDestructiveCell
+            )
         ]
         (Element.el
             [ Element.width (Element.px liikennematto.screen.width)
@@ -744,6 +759,104 @@ lmInfo showLmInfo deviceType =
 
     else
         Element.none
+
+
+dialogBackdropColor : Element.Color
+dialogBackdropColor =
+    Element.rgba255 24 33 48 0.55
+
+
+{-| Modal shown before a road placement that would erase a lot or large nature
+tile. The full-screen backdrop blocks input to the canvas beneath.
+-}
+confirmationDialog : RenderCache -> Viewport.Viewport -> Screen -> World -> Maybe Cell -> Element Msg
+confirmationDialog cache viewport screen world maybePendingCell =
+    case maybePendingCell of
+        Just cell ->
+            Element.el
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Background.color dialogBackdropColor
+                , Events.onClick (Trigger CancelDestructive)
+                , Element.behindContent
+                    (case Tilemap.Core.destructiveTileBounds cell world.tilemap of
+                        Just bounds ->
+                            Editor.highlightAreaView cache viewport screen bounds
+
+                        Nothing ->
+                            Element.none
+                    )
+                ]
+                (confirmationPanel (describeDestructiveTarget cell world))
+
+        Nothing ->
+            Element.none
+
+
+confirmationPanel : Maybe DestructiveTarget -> Element Msg
+confirmationPanel target =
+    Element.column
+        [ Element.centerX
+        , Element.centerY
+        , Element.width (Element.px 320)
+        , Element.padding whitespaceRegular
+        , Background.color menuBackgroundColorAlt
+        , Border.rounded borderRadiusMenuPx
+        , Border.color uiColorBorder
+        , Border.width borderSize
+        , Element.htmlAttribute
+            (Html.Events.stopPropagationOn "click"
+                (Decode.succeed ( NoOp, True ))
+            )
+        ]
+        [ Element.el
+            [ Element.centerX ]
+            (Element.html Icons.uiDestructiveAction)
+        , Element.column
+            [ Element.spacing whitespaceRegular
+            ]
+            [ Element.el
+                [ Font.bold
+                , Font.color uiColorText
+                ]
+                (Element.text "Remove what's already here?")
+            , Element.paragraph
+                [ Font.color uiColorText
+                , Font.size 14
+                ]
+                [ Element.text (destructiveTargetSentence target) ]
+            , Element.row
+                [ Element.alignRight
+                , Element.spacing whitespaceRegular
+                ]
+                [ textButton
+                    { onPress = Trigger CancelDestructive
+                    , selected = False
+                    , disabled = False
+                    }
+                    "Cancel"
+                , textButton
+                    { onPress = Trigger ConfirmDestructive
+                    , selected = False
+                    , disabled = False
+                    }
+                    "Build anyway"
+                ]
+            ]
+        ]
+
+
+destructiveTargetSentence : Maybe DestructiveTarget -> String
+destructiveTargetSentence target =
+    case target of
+        Just DestructiveNature ->
+            "Building a road here removes a nature area. This can't be undone."
+
+        Just DestructiveLot ->
+            "Building a road here removes the building that's in this spot. This can't be undone."
+
+        Nothing ->
+            "Building a road here removes what's already on these tiles. This can't be undone."
 
 
 devMenu : Liikennematto -> UI -> Element Msg

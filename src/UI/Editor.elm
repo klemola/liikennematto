@@ -4,6 +4,7 @@ module UI.Editor exposing
     , Model
     , Msg
     , PointerInfo
+    , highlightAreaView
     , initialModel
     , onViewportChanged
     , subscriptions
@@ -39,9 +40,8 @@ import Tilemap.Core
     exposing
         ( TilemapConfig
         , cellSupportsRoadPlacement
-        , fixedTileByCell
+        , destructiveTileBounds
         , getTilemapConfig
-        , largeTileBounds
         , roadTileFromCell
         )
 import UI.Core
@@ -471,9 +471,7 @@ activateCell cell world model =
         { model
             | activeCell = Just cell
             , highlightArea =
-                Maybe.andThen
-                    (\tile -> largeTileBounds cell tile world.tilemap)
-                    (fixedTileByCell world.tilemap cell)
+                destructiveTileBounds cell world.tilemap
         }
 
 

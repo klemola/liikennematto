@@ -1,5 +1,6 @@
 module Tilemap.Update exposing
-    ( onPrimaryInput
+    ( addTile
+    , onPrimaryInput
     , onSecondaryInput
     , update
     )
@@ -32,6 +33,7 @@ import Tilemap.Core
         , fixedTileByCell
         , getBuildHistory
         , getTilemapConfig
+        , isDestructivePlacement
         , mapCell
         , resetSuperposition
         , roadTileFromCell
@@ -55,6 +57,7 @@ import Tilemap.Tile as Tile
         )
 import Tilemap.WFC as WFC
 import Time
+import UI.Model
 
 
 update : Message -> Liikennematto -> ( Liikennematto, Cmd Message )
@@ -274,7 +277,15 @@ onPrimaryInput cell model =
         Maybe.isNothing (roadTileFromCell cell model.world.tilemap)
             && cellSupportsRoadPlacement cell model.world.tilemap
     then
-        addTile cell model
+        if isDestructivePlacement cell model.world.tilemap then
+            -- Placing here would erase a lot or large nature tile (no undo), so
+            -- defer the commit until the player confirms via the dialog.
+            ( { model | ui = UI.Model.requestConfirmation cell model.ui }
+            , Cmd.none
+            )
+
+        else
+            addTile cell model
 
     else
         ( model, Cmd.none )

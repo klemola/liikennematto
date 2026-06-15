@@ -3,10 +3,13 @@ module UI.Model exposing
     , DevView(..)
     , UI
     , ZoomLevel(..)
+    , clearConfirmation
     , initialModel
+    , requestConfirmation
     )
 
 import Html.Events.Extra.Pointer as Pointer
+import Tilemap.Cell exposing (Cell)
 import UI.Editor
 
 
@@ -17,6 +20,7 @@ type alias UI =
     , selectedDevView : DevView
     , editor : UI.Editor.Model
     , showLmInfo : Bool
+    , pendingDestructiveCell : Maybe Cell
     , lastEventDevice : Pointer.DeviceType
     }
 
@@ -29,6 +33,8 @@ type ButtonKind
     | ToggleLotDebug
     | ToggleRoadNetworkDebug
     | SpawnCar
+    | ConfirmDestructive
+    | CancelDestructive
 
 
 type ZoomLevel
@@ -52,5 +58,24 @@ initialModel =
     , selectedDevView = EventQueueList
     , editor = UI.Editor.initialModel
     , showLmInfo = False
+    , pendingDestructiveCell = Nothing
     , lastEventDevice = Pointer.MouseType
     }
+
+
+{-| Show the destructive-placement confirmation for `cell`, closing any other
+open panel so the dialog has exclusive focus (same mutual-exclusion pattern as
+the menu and LmInfo toggles).
+-}
+requestConfirmation : Cell -> UI -> UI
+requestConfirmation cell ui =
+    { ui
+        | pendingDestructiveCell = Just cell
+        , showMenu = False
+        , showLmInfo = False
+    }
+
+
+clearConfirmation : UI -> UI
+clearConfirmation ui =
+    { ui | pendingDestructiveCell = Nothing }
