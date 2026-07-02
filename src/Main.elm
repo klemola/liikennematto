@@ -75,6 +75,17 @@ secondarySystemFrequencyDelta =
     Duration.milliseconds secondarySystemFrequencyMs
 
 
+maxFrameDeltaMs : Float
+maxFrameDeltaMs =
+    -- Cap the animation-frame delta due to long deltas after the game is de-suspended
+    32
+
+
+clampedFrameDelta : Float -> Duration
+clampedFrameDelta ms =
+    Duration.milliseconds (min maxFrameDeltaMs ms)
+
+
 keyReleasedDecoder : Decode.Decoder Message
 keyReleasedDecoder =
     Decode.map KeyReleased (Decode.field "key" Decode.string)
@@ -86,7 +97,7 @@ subscriptions model =
         defaultSubs =
             [ Events.onResize (\_ _ -> ResizeTriggered)
             , Events.onVisibilityChange VisibilityChanged
-            , Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameReceived)
+            , Events.onAnimationFrameDelta (clampedFrameDelta >> AnimationFrameReceived)
             , Events.onKeyUp keyReleasedDecoder
             , Time.every secondarySystemFrequencyMs (always (UpdateTilemap secondarySystemFrequencyDelta))
             , Audio.onAudioInitComplete (\_ -> AudioInitComplete)
@@ -101,7 +112,7 @@ subscriptions model =
     else
         Sub.batch
             (defaultSubs
-                ++ [ Events.onAnimationFrameDelta (Duration.milliseconds >> UpdateTraffic)
+                ++ [ Events.onAnimationFrameDelta (clampedFrameDelta >> UpdateTraffic)
                    , Time.every environmentUpdateFrequencyMs (always UpdateEnvironment)
                    , Time.every secondarySystemFrequencyMs (\time -> CheckQueues time secondarySystemFrequencyDelta)
                    ]
