@@ -36,7 +36,6 @@ import UI.Button
         , iconWithTextButton
         , iconWithTextButtonLg
         , roundIconButton
-        , textButton
         )
 import UI.Core
     exposing
@@ -763,7 +762,7 @@ lmInfo showLmInfo deviceType =
 
 dialogBackdropColor : Element.Color
 dialogBackdropColor =
-    Element.rgba255 24 33 48 0.55
+    Element.rgba255 40 52 72 0.7
 
 
 {-| Modal shown before a road placement that would erase a lot or large nature
@@ -798,7 +797,7 @@ confirmationPanel target =
     Element.column
         [ Element.centerX
         , Element.centerY
-        , Element.width (Element.px 320)
+        , Element.width (Element.px 330)
         , Element.padding whitespaceRegular
         , Background.color menuBackgroundColorAlt
         , Border.rounded borderRadiusMenuPx
@@ -827,20 +826,25 @@ confirmationPanel target =
                 [ Element.text (destructiveTargetSentence target) ]
             , Element.row
                 [ Element.alignRight
-                , Element.spacing whitespaceRegular
+                , Element.spacing whitespaceCondensed
+                , Element.paddingEach { noSpacing | top = 4 }
                 ]
-                [ textButton
+                [ iconWithTextButton
                     { onPress = Trigger CancelDestructive
                     , selected = False
                     , disabled = False
                     }
                     "Cancel"
-                , textButton
-                    { onPress = Trigger ConfirmDestructive
-                    , selected = False
-                    , disabled = False
-                    }
-                    "Build anyway"
+                    Icons.iconClose
+                , Element.el [ Element.width Element.fill ]
+                    (iconWithTextButton
+                        { onPress = Trigger ConfirmDestructive
+                        , selected = False
+                        , disabled = False
+                        }
+                        "Build anyway"
+                        Icons.iconBuild
+                    )
                 ]
             ]
         ]

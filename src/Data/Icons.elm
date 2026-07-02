@@ -1,5 +1,6 @@
 module Data.Icons exposing
     ( buildRoad
+    , iconBuild
     , iconCarDebug
     , iconClose
     , iconHelp
@@ -660,6 +661,35 @@ iconZoomOutSvg =
             [ Attr.fillRule "evenodd"
             , Attr.clipRule "evenodd"
             , Attr.d "M117.967 85.0278C120.297 85.0278 122.186 86.9166 122.186 89.2466C122.186 91.5765 120.297 93.4653 117.967 93.4653C82.6276 93.4653 107.744 93.4653 72.4048 93.4653C70.0748 93.4653 68.186 91.5765 68.186 89.2466C68.186 86.9166 70.0748 85.0278 72.4048 85.0278C107.744 85.0278 82.6276 85.0278 117.967 85.0278Z"
+            , Attr.fill "#283448"
+            ]
+            []
+        ]
+
+
+iconBuild : ( Element.Color, Svg msg )
+iconBuild =
+    ( Element.rgb255 211 198 125, iconBuildSvg )
+
+
+iconBuildSvg : Svg msg
+iconBuildSvg =
+    Svg.svg
+        [ Attr.width "256"
+        , Attr.height "256"
+        , Attr.viewBox "0 0 256 256"
+        , Attr.fill "none"
+        ]
+        [ Svg.path
+            [ Attr.d "M188.384 191.073L102.842 105.531"
+            , Attr.stroke "#283448"
+            , Attr.strokeWidth "25"
+            , Attr.strokeLinecap "round"
+            , Attr.strokeLinejoin "round"
+            ]
+            []
+        , Svg.path
+            [ Attr.d "M128.657 103.743L89.0604 143.34C85.1942 147.206 78.9258 147.206 75.0596 143.34L62.0004 130.28C58.1342 126.414 58.1342 120.146 62.0004 116.28L101.597 76.6825C102.25 76.0301 103.011 75.4967 103.847 75.1064L142.37 57.1213C146.094 55.3827 149.957 59.2455 148.219 62.9695L130.234 101.493C129.843 102.329 129.31 103.09 128.657 103.743Z"
             , Attr.fill "#283448"
             ]
             []

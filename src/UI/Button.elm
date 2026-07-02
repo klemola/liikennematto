@@ -224,8 +224,7 @@ createIconWithTextButton size { onPress, selected, disabled } textContent icon =
                 Just onPress
         , label =
             Element.row
-                [ Element.spacing whitespaceRegular
-                , Element.width Element.fill
+                [ Element.width Element.fill
                 , Element.height height
                 , Element.htmlAttribute
                     (HtmlAttribute.class
@@ -269,6 +268,7 @@ createIconWithTextButton size { onPress, selected, disabled } textContent icon =
                 , Element.el
                     [ Element.width Element.fill
                     , Element.centerY
+                    , Element.paddingXY 8 0
                     , Font.bold
                     , Font.size fontSizePx
                     , Font.color uiColorText
