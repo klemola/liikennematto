@@ -10,13 +10,15 @@ module Tilemap.Core exposing
     , cellSupportsRoadPlacement
     , clearTile
     , createTilemap
+    , destructiveLargeTile
+    , destructiveTileBounds
     , extractRoadTile
     , fixedTileByCell
     , foldTiles
     , getBuildHistory
     , getTilemapConfig
     , getTilemapDimensions
-    , largeTileBounds
+    , isDestructivePlacement
     , mapCell
     , removeLargeTileIfExists
     , removeTile
@@ -712,6 +714,56 @@ largeTileBounds cell tile (Tilemap tilemapContents) =
                     lowerRightCorner
                 )
             )
+
+
+{-| Resolve a cell to the large tile (lot or large nature tile) that placing a
+road there would erase (Nothing if the target is not a large tile).
+-}
+destructiveLargeTile : Cell -> Tilemap -> Maybe ( Cell, TileConfig )
+destructiveLargeTile cell ((Tilemap tilemapContents) as tilemap) =
+    fixedTileByCell tilemap cell
+        |> Maybe.andThen
+            (\tile ->
+                case tileParentTile tile of
+                    Just ( parentTileId, _ ) ->
+                        Just ( cell, tileById parentTileId )
+
+                    Nothing ->
+                        Tile.id tile
+                            |> Maybe.andThen extractLotEntryTile
+                            |> Maybe.andThen
+                                (\( _, directionToLot ) ->
+                                    nextOrthogonalCell tilemapContents.config directionToLot cell
+                                )
+                            |> Maybe.andThen
+                                (\drivewayCell ->
+                                    fixedTileByCell tilemap drivewayCell
+                                        |> Maybe.andThen tileParentTile
+                                        |> Maybe.map
+                                            (\( parentTileId, _ ) ->
+                                                ( drivewayCell, tileById parentTileId )
+                                            )
+                                )
+            )
+
+
+{-| Bounds of the large tile that placing a road on this cell would erase, or
+`Nothing` if placement is non-destructive.
+-}
+destructiveTileBounds : Cell -> Tilemap -> Maybe ( Point2d Meters GlobalCoordinates, BoundingBox2d Meters GlobalCoordinates )
+destructiveTileBounds cell tilemap =
+    destructiveLargeTile cell tilemap
+        |> Maybe.andThen
+            (\( representativeCell, _ ) ->
+                fixedTileByCell tilemap representativeCell
+                    |> Maybe.andThen
+                        (\tile -> largeTileBounds representativeCell tile tilemap)
+            )
+
+
+isDestructivePlacement : Cell -> Tilemap -> Bool
+isDestructivePlacement cell tilemap =
+    destructiveLargeTile cell tilemap /= Nothing
 
 
 removeLargeTileIfExists : Cell -> Tilemap -> Tilemap

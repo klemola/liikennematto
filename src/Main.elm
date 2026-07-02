@@ -401,6 +401,20 @@ onUiButtonPressed buttonId model =
             , Cmd.none
             )
 
+        UI.Model.ConfirmDestructive ->
+            case model.ui.pendingDestructiveCell of
+                Just cell ->
+                    Tilemap.addTile cell
+                        { model | ui = UI.Model.clearConfirmation model.ui }
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        UI.Model.CancelDestructive ->
+            ( { model | ui = UI.Model.clearConfirmation model.ui }
+            , Cmd.none
+            )
+
 
 onViewportChanged : Float -> Float -> Bool -> Liikennematto -> ( Liikennematto, Cmd Message )
 onViewportChanged deltaX deltaY shouldSnap model =

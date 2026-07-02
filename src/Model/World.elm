@@ -1,5 +1,6 @@
 module Model.World exposing
-    ( LotPlacement
+    ( DestructiveTarget(..)
+    , LotPlacement
     , PendingRoadNetworkUpdate
     , PendingTilemapChange
     , RNLookupEntry
@@ -12,6 +13,7 @@ module Model.World exposing
     , createPendingRoadNetworkUpdate
     , createRoadNetwork
     , currentSeed
+    , describeDestructiveTarget
     , empty
     , findCarById
     , findLotById
@@ -38,6 +40,7 @@ module Model.World exposing
     )
 
 import BoundingBox2d exposing (BoundingBox2d)
+import Char
 import Common exposing (GlobalCoordinates)
 import Data.Cars exposing (CarMake)
 import Data.Lots exposing (NewLot, allLots)
@@ -72,6 +75,7 @@ import Tilemap.Core
         , TilemapConfig
         , TilemapUpdateResult
         , createTilemap
+        , destructiveLargeTile
         , getTilemapConfig
         , tilemapBoundingBox
         )
@@ -217,6 +221,24 @@ findCarById id world =
 findLotById : Id -> World -> Maybe Lot
 findLotById id world =
     Collection.get id world.lots
+
+
+type DestructiveTarget
+    = DestructiveNature
+    | DestructiveLot
+
+
+describeDestructiveTarget : Cell -> World -> Maybe DestructiveTarget
+describeDestructiveTarget cell world =
+    destructiveLargeTile cell world.tilemap
+        |> Maybe.map
+            (\( _, largeTileConfig ) ->
+                if TileConfig.biome largeTileConfig == TileConfig.Lot then
+                    DestructiveLot
+
+                else
+                    DestructiveNature
+            )
 
 
 findLotByCarPosition : Car -> World -> Maybe Lot
