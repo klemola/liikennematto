@@ -964,6 +964,53 @@ suite =
                         ]
                         ()
                 )
+            , test "restartWfc applies the saved-trail revert to its fork (failure-restart parity)"
+                (\_ ->
+                    let
+                        roadOnly =
+                            placeRoad
+                                [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ) ]
+                                emptyTilemap
+
+                        withFixedNature =
+                            List.foldl
+                                (forceFixNatureTile defaultTileId)
+                                roadOnly
+                                (cartesian [ 6, 7, 8 ] [ 2, 3, 4, 6, 7, 8 ])
+
+                        afterPlacement =
+                            placeRoad [ ( 10, 5 ) ] withFixedNature
+
+                        -- The WFCFailed handler restarts from the live tilemap; the fork
+                        -- must include the trail revert just like startWFC's fork does.
+                        forkTilemap =
+                            Tilemap.DrivenWFC.restartWfc
+                                (SeedState.fromSeed testSeed)
+                                Dict.empty
+                                afterPlacement
+                                |> Tilemap.WFC.toTilemap
+
+                        capturedCells =
+                            Dict.keys (getSavedNatureTiles afterPlacement)
+                    in
+                    Expect.all
+                        [ \_ ->
+                            -- Sanity: the trail was captured.
+                            List.isEmpty capturedCells
+                                |> Expect.equal False
+                        , \_ ->
+                            -- Captured cells must not remain Fixed Nature in the fork.
+                            capturedCells
+                                |> List.filter
+                                    (\coords ->
+                                        cellKindAt forkTilemap coords
+                                            |> Maybe.map isFixedKind
+                                            |> Maybe.withDefault False
+                                    )
+                                |> Expect.equalLists []
+                        ]
+                        ()
+                )
             ]
         ]
 

@@ -22,7 +22,7 @@ import Process
 import Quantity
 import Savegame
 import Task
-import Tilemap.Buffer exposing (applyRevertFromDict, reconcileSavedNatureTiles, roadBuildingInProgress)
+import Tilemap.Buffer exposing (reconcileSavedNatureTiles, roadBuildingInProgress)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
@@ -378,16 +378,10 @@ startWFC model =
         runId =
             Time.posixToMillis model.time
 
-        -- Apply the trail revert only inside the WFC.Model fork. The live
-        -- world.tilemap keeps its Fixed Nature tiles until WFCSolved publishes
-        -- the merged result via reconcileSavedNatureTiles.
-        forkedTilemap =
-            applyRevertFromDict world.tilemap
-
         initialWfc =
             restartWfc world.seedState
                 (World.tileInventoryCount world)
-                forkedTilemap
+                world.tilemap
     in
     ( { model
         | wfc = WFCActive runId initialWfc

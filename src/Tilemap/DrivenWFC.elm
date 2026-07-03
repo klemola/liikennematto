@@ -28,7 +28,8 @@ import Round
 import Set
 import Tilemap.Buffer
     exposing
-        ( captureTrail
+        ( applyRevertFromDict
+        , captureTrail
         , removeBuffer
         , trailCells
         , updateBufferCells
@@ -116,12 +117,15 @@ runWfc runId tilemap wfc =
             ( tilemap, WFCActive runId nextWfc, [] )
 
 
+{-| The revert is applied here rather than at call sites so that every restart
+(initial run and failure retry both) forks the same view of the trail area.
+-}
 restartWfc : SeedState -> TileInventory Int -> Tilemap -> WFC.Model
 restartWfc seedState tileInventory tilemap =
     resetWfc seedState
         Nothing
         tileInventory
-        (preprocessTilemap tilemap)
+        (preprocessTilemap (applyRevertFromDict tilemap))
 
 
 resetWfc : SeedState -> Maybe Cell -> TileInventory Int -> Tilemap -> WFC.Model
