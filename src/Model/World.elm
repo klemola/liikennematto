@@ -1,5 +1,6 @@
 module Model.World exposing
-    ( DestructiveTarget(..)
+    ( CarLookupEntry
+    , DestructiveTarget(..)
     , LotPlacement
     , PendingRoadNetworkUpdate
     , PendingTilemapChange
@@ -9,6 +10,7 @@ module Model.World exposing
     , WorldEvent(..)
     , addEvent
     , addLotEntry
+    , carLookupEntry
     , createLookup
     , createPendingRoadNetworkUpdate
     , createRoadNetwork
@@ -107,8 +109,8 @@ type alias World =
     , lots : Collection Lot
     , cars : Collection Car
     , roadNetworkLookup : QuadTree Length.Meters GlobalCoordinates RNLookupEntry
-    , carLookup : QuadTree Length.Meters GlobalCoordinates Car
-    , lotLookup : QuadTree Length.Meters GlobalCoordinates Lot
+    , carLookup : QuadTree Length.Meters GlobalCoordinates CarLookupEntry
+    , lotLookup : QuadTree Length.Meters GlobalCoordinates LotLookupEntry
     , eventQueue : EventQueue WorldEvent
     , seedState : SeedState
     }
@@ -140,6 +142,38 @@ type alias RNLookupEntry =
     { id : Int
     , position : Point2d Length.Meters GlobalCoordinates
     , boundingBox : BoundingBox2d Length.Meters GlobalCoordinates
+    }
+
+
+{-| The car lookup stores only ids and bounding boxes, not whole `Car` records.
+`Car` contains an FSM whose transitions are functions, and the QuadTree dedupes
+neighbor results with `(==)`, which crashes on functions.
+-}
+type alias CarLookupEntry =
+    { id : Id
+    , boundingBox : BoundingBox2d Length.Meters GlobalCoordinates
+    }
+
+
+carLookupEntry : Car -> CarLookupEntry
+carLookupEntry car =
+    { id = car.id
+    , boundingBox = car.boundingBox
+    }
+
+
+{-| Store only Ids of lots, see CarLookupEntry above.
+-}
+type alias LotLookupEntry =
+    { id : Id
+    , boundingBox : BoundingBox2d Length.Meters GlobalCoordinates
+    }
+
+
+lotLookupEntry : Lot -> LotLookupEntry
+lotLookupEntry lot =
+    { id = lot.id
+    , boundingBox = lot.boundingBox
     }
 
 
@@ -246,6 +280,7 @@ findLotByCarPosition car world =
     world.lotLookup
         |> findNearbyEntitiesFromPoint (Length.meters 0.1) car.position
         |> List.head
+        |> Maybe.andThen (\entry -> Collection.get entry.id world.lots)
 
 
 findNodeByPosition : World -> Point2d Length.Meters GlobalCoordinates -> Maybe RNNodeContext
@@ -341,7 +376,7 @@ refreshLots : Lot -> Collection Lot -> World -> World
 refreshLots lot nextLots world =
     { world
         | lots = nextLots
-        , lotLookup = QuadTree.insert lot world.lotLookup
+        , lotLookup = QuadTree.insert (lotLookupEntry lot) world.lotLookup
     }
 
 
@@ -440,7 +475,12 @@ removeLot lotId world =
             { worldWithoutLotEntry
                 | lots = nextLots
                 , cars = nextCars
-                , lotLookup = createLookup (Collection.values nextLots) worldWithoutLotEntry
+                , lotLookup =
+                    createLookup
+                        (Collection.values nextLots
+                            |> List.map lotLookupEntry
+                        )
+                        worldWithoutLotEntry
                 , tileInventory = tileInventoryWithRestoredLot
             }
 

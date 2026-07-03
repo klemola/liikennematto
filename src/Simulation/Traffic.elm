@@ -94,7 +94,14 @@ updateTraffic :
 updateTraffic { updateQueue, world, delta, events } =
     case updateQueue of
         [] ->
-            ( { world | carLookup = World.createLookup (Collection.values world.cars) world }
+            ( { world
+                | carLookup =
+                    World.createLookup
+                        (Collection.values world.cars
+                            |> List.map World.carLookupEntry
+                        )
+                        world
+              }
             , events
             )
 
@@ -139,7 +146,14 @@ updateCar delta world car =
         otherCars =
             world.carLookup
                 |> World.findNearbyEntities nearbyTrafficRadius carWithFsmUpdate.boundingBox
-                |> List.filter (\theCar -> theCar.id /= carWithFsmUpdate.id)
+                |> List.filterMap
+                    (\entry ->
+                        if entry.id == carWithFsmUpdate.id then
+                            Nothing
+
+                        else
+                            Collection.get entry.id world.cars
+                    )
 
         worldEvents =
             pathfindingEvent :: List.map (World.CarStateChange carWithFsmUpdate.id) fsmEvents
