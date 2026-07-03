@@ -10,6 +10,7 @@ module Tilemap.Core exposing
     , addTileFromWfc
     , cellBitmask
     , cellSupportsRoadPlacement
+    , clearSavedNature
     , clearTile
     , createTilemap
     , destructiveLargeTile
@@ -18,10 +19,12 @@ module Tilemap.Core exposing
     , fixedTileByCell
     , foldTiles
     , getBuildHistory
+    , getSavedNatureAnchors
     , getSavedNatureTiles
     , getTilemapConfig
     , getTilemapDimensions
     , hasSuperpositionCells
+    , insertSavedNatureAnchor
     , insertSavedNatureTile
     , isDestructivePlacement
     , mapCell
@@ -32,7 +35,6 @@ module Tilemap.Core exposing
     , resetTileBySurroundings
     , roadTileFromCell
     , setBuildHistory
-    , setSavedNatureTiles
     , setSuperpositionOptions
     , tileByCell
     , tileNeighborIn
@@ -90,6 +92,7 @@ type Tilemap
         , config : TilemapConfig
         , recentPlacements : List Cell
         , savedNatureTiles : Dict CellCoordinates TileId
+        , savedNatureAnchors : Dict CellCoordinates TileId
         , animationTimers : List ( Cell, Duration )
         }
 
@@ -120,6 +123,7 @@ createTilemap tilemapConfig initTileFn =
         , config = tilemapConfig
         , recentPlacements = []
         , savedNatureTiles = Dict.empty
+        , savedNatureAnchors = Dict.empty
         , animationTimers = []
         }
 
@@ -286,16 +290,33 @@ getSavedNatureTiles (Tilemap tilemapContents) =
     tilemapContents.savedNatureTiles
 
 
-setSavedNatureTiles : Dict CellCoordinates TileId -> Tilemap -> Tilemap
-setSavedNatureTiles saved (Tilemap tilemapContents) =
-    Tilemap { tilemapContents | savedNatureTiles = saved }
-
-
 insertSavedNatureTile : CellCoordinates -> TileId -> Tilemap -> Tilemap
 insertSavedNatureTile coords tileId (Tilemap tilemapContents) =
     Tilemap
         { tilemapContents
             | savedNatureTiles = Dict.insert coords tileId tilemapContents.savedNatureTiles
+        }
+
+
+getSavedNatureAnchors : Tilemap -> Dict CellCoordinates TileId
+getSavedNatureAnchors (Tilemap tilemapContents) =
+    tilemapContents.savedNatureAnchors
+
+
+insertSavedNatureAnchor : CellCoordinates -> TileId -> Tilemap -> Tilemap
+insertSavedNatureAnchor coords tileId (Tilemap tilemapContents) =
+    Tilemap
+        { tilemapContents
+            | savedNatureAnchors = Dict.insert coords tileId tilemapContents.savedNatureAnchors
+        }
+
+
+clearSavedNature : Tilemap -> Tilemap
+clearSavedNature (Tilemap tilemapContents) =
+    Tilemap
+        { tilemapContents
+            | savedNatureTiles = Dict.empty
+            , savedNatureAnchors = Dict.empty
         }
 
 

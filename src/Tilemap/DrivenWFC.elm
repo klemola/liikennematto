@@ -32,15 +32,17 @@ import Tilemap.Buffer
         , registerPlacement
         , removeBuffer
         )
-import Tilemap.Cell exposing (Cell)
+import Tilemap.Cell as Cell exposing (Cell, CellCoordinates)
 import Tilemap.Core
     exposing
         ( Tilemap
         , addTileFromWfc
+        , clearSavedNature
         , foldTiles
+        , getSavedNatureAnchors
+        , getTilemapConfig
         , resetFixedTileBySurroundings
         , resetTileBySurroundings
-        , setSavedNatureTiles
         , setSuperpositionOptions
         , tileByCell
         , tileNeighborIn
@@ -170,7 +172,7 @@ onRemoveTile seedState tileInventory cell tilemap =
         withBufferRemoved =
             updatedTilemap
                 |> removeBuffer cell
-                |> setSavedNatureTiles Dict.empty
+                |> clearSavedNature
 
         wfcWithoutTile =
             resetWfc seedState (Just cell) tileInventory (updateTileNeighbors cell withBufferRemoved)
@@ -256,6 +258,7 @@ preprocessTilemap tilemap =
         |> bufferToSuperposition
         |> pruneUnfittableLargeTiles
         |> reopenRoads
+        |> restrictReclaimedFootprints
 
 
 bufferToSuperposition : Tilemap -> Tilemap
@@ -427,6 +430,59 @@ resetDrivewayNeighbors drivewayNeighbors tilemap =
         )
         tilemap
         drivewayNeighbors
+
+
+{-| The large tile fit check only requires covered cells to be in
+superposition, so the filter extends one cell beyond the footprint — otherwise
+a neighboring anchor could span back into it. The margin needs to grow if
+nature tiles larger than 1x2 are added. Runs last so that lot options from
+reopened roads survive.
+-}
+restrictReclaimedFootprints : Tilemap -> Tilemap
+restrictReclaimedFootprints tilemap =
+    Dict.foldl restrictFootprintAndMargin tilemap (getSavedNatureAnchors tilemap)
+
+
+restrictFootprintAndMargin : CellCoordinates -> TileId -> Tilemap -> Tilemap
+restrictFootprintAndMargin topLeftCoords largeTileId tilemap =
+    case ( Cell.fromCoordinates (getTilemapConfig tilemap) topLeftCoords, tileById largeTileId ) of
+        ( Just topLeftCell, TileConfig.Large largeTile ) ->
+            let
+                constraints =
+                    getTilemapConfig tilemap
+
+                footprint =
+                    Tile.largeTileCells constraints topLeftCell largeTile
+
+                margin =
+                    footprint
+                        |> List.concatMap
+                            (Cell.orthogonalNeighbors constraints >> List.map Tuple.second)
+            in
+            List.foldl restrictCellOptions tilemap (footprint ++ margin)
+
+        _ ->
+            tilemap
+
+
+restrictCellOptions : Cell -> Tilemap -> Tilemap
+restrictCellOptions cell tilemap =
+    case tileByCell tilemap cell |> Maybe.map .kind of
+        Just (Superposition options) ->
+            setSuperpositionOptions cell (List.filter (not << isNatureLargeTile) options) tilemap
+
+        _ ->
+            tilemap
+
+
+isNatureLargeTile : TileId -> Bool
+isNatureLargeTile tileId =
+    case tileById tileId of
+        TileConfig.Large largeTile ->
+            largeTile.biome == TileConfig.Nature
+
+        TileConfig.Single _ ->
+            False
 
 
 drivenWfcDebug : Time.Posix -> DrivenWFC -> String

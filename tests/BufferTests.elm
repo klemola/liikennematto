@@ -1,11 +1,12 @@
 module BufferTests exposing (suite)
 
-import Data.TileSet exposing (defaultTileId)
+import Data.TileSet exposing (defaultTileId, tileById, twoByTwoLotRightLargeTile)
 import Data.Utility
     exposing
         ( cellsByTileKind
         , cellsByTileKindFromAscii
         , createCell
+        , forceFixLargeNatureTile
         , forceFixNatureTile
         , multilineGridDebug
         , placeRoad
@@ -26,14 +27,17 @@ import Tilemap.Core
         ( Tilemap
         , createTilemap
         , getBuildHistory
+        , getSavedNatureAnchors
         , getSavedNatureTiles
         , getTilemapConfig
+        , insertSavedNatureAnchor
         , insertSavedNatureTile
         , mapCell
         , tileByCell
         )
 import Tilemap.DrivenWFC
 import Tilemap.Tile as Tile exposing (TileKind(..))
+import Tilemap.TileConfig as TileConfig
 import Tilemap.WFC
 
 
@@ -45,6 +49,18 @@ constraints =
 emptyTilemap : Tilemap
 emptyTilemap =
     createTilemap constraints (\_ -> Tile.init Tile.Unintialized)
+
+
+{-| NatureDouble1: a 1x2 Large Nature tile
+-}
+natureDouble1Id : TileConfig.TileId
+natureDouble1Id =
+    215
+
+
+lotLargeTileId : TileConfig.TileId
+lotLargeTileId =
+    twoByTwoLotRightLargeTile.id
 
 
 expectCellsMatch : String -> Tilemap -> Expect.Expectation
@@ -1055,6 +1071,212 @@ suite =
                         ()
                 )
             ]
+        , describe "Large nature tile footprint trail"
+            [ test "Capture + revert: a force-fixed double partially overlapping the trail reverts its whole footprint"
+                (\_ ->
+                    let
+                        roadOnly =
+                            placeRoad
+                                [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ) ]
+                                emptyTilemap
+
+                        -- NatureDouble1 (1x2) top-left at (8,1) covers (8,1) and (8,2).
+                        -- Only (8,2) is inside the trail's captured rows (2-4, 6-8)
+                        withFixedDouble =
+                            forceFixLargeNatureTile natureDouble1Id ( 8, 1 ) roadOnly
+
+                        afterPlacement =
+                            placeRoad [ ( 10, 5 ) ] withFixedDouble
+
+                        footprint =
+                            [ ( 8, 1 ), ( 8, 2 ) ]
+
+                        afterApply =
+                            applyRevertFromDict afterPlacement
+                    in
+                    Expect.all
+                        [ \_ ->
+                            -- Sanity check: the live tilemap (post-capture) keeps the double intact.
+                            footprint
+                                |> List.map (cellKindAt afterPlacement)
+                                |> List.all (Maybe.map isFixedKind >> Maybe.withDefault False)
+                                |> Expect.equal True
+                        , \_ ->
+                            getSavedNatureAnchors afterPlacement
+                                |> Dict.toList
+                                |> Expect.equalLists [ ( ( 8, 1 ), natureDouble1Id ) ]
+                        , \_ ->
+                            footprint
+                                |> List.map (cellKindAt afterApply)
+                                |> Expect.equalLists [ Just Buffer, Just Buffer ]
+                        ]
+                        ()
+                )
+            , test "restartWfc removes Nature-biome Large ids from the reclaimed footprint and its margin, but not beyond it"
+                (\_ ->
+                    let
+                        roadOnly =
+                            placeRoad
+                                [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ) ]
+                                emptyTilemap
+
+                        withFixedDouble =
+                            forceFixLargeNatureTile natureDouble1Id ( 8, 1 ) roadOnly
+
+                        afterPlacement =
+                            placeRoad [ ( 10, 5 ) ] withFixedDouble
+
+                        forkTilemap =
+                            Tilemap.DrivenWFC.restartWfc
+                                (SeedState.fromSeed testSeed)
+                                Dict.empty
+                                afterPlacement
+                                |> Tilemap.WFC.toTilemap
+
+                        -- Footprint (8,1)-(8,2) plus its 1-cell orthogonal margin.
+                        marginCells =
+                            [ ( 7, 1 ), ( 9, 1 ), ( 7, 2 ), ( 9, 2 ), ( 8, 3 ) ]
+
+                        restrictedCandidates =
+                            List.filterMap (optionsAtCell forkTilemap) (( 8, 1 ) :: ( 8, 2 ) :: marginCells)
+
+                        -- Well outside the footprint/margin, but still part of the
+                        -- trail's side buffer, so it stays open to Nature Large ids.
+                        outsideMarginCell =
+                            ( 8, 7 )
+                    in
+                    Expect.all
+                        [ \_ ->
+                            -- Sanity check: some margin cells actually ended up in Superposition.
+                            List.isEmpty restrictedCandidates
+                                |> Expect.equal False
+                        , \_ ->
+                            restrictedCandidates
+                                |> List.concat
+                                |> List.any isNatureLargeId
+                                |> Expect.equal False
+                        , \_ ->
+                            optionsAtCell forkTilemap outsideMarginCell
+                                |> Maybe.map (List.any isNatureLargeId)
+                                |> Expect.equal (Just True)
+                        ]
+                        ()
+                )
+            , test "reconcileSavedNatureTiles: reinstates the large tile exactly when its area is unclaimed"
+                (\_ ->
+                    let
+                        -- Simulate a WFC pass that filled the tile area with single cell Nature tiles
+                        -- instead of the original double.
+                        beforeReconcile =
+                            emptyTilemap
+                                |> forceFixNatureTile defaultTileId ( 7, 3 )
+                                |> forceFixNatureTile defaultTileId ( 7, 4 )
+                                |> insertSavedNatureAnchor ( 7, 3 ) natureDouble1Id
+
+                        afterReconcile =
+                            reconcileSavedNatureTiles beforeReconcile
+                    in
+                    Expect.all
+                        [ \_ ->
+                            -- Sanity check: before reconcile, neither cell is a large-tile member.
+                            [ ( 7, 3 ), ( 7, 4 ) ]
+                                |> List.map (fixedParentAt beforeReconcile)
+                                |> Expect.equalLists [ Nothing, Nothing ]
+                        , \_ ->
+                            fixedParentAt afterReconcile ( 7, 3 )
+                                |> Expect.equal (Just ( natureDouble1Id, 0 ))
+                        , \_ ->
+                            fixedParentAt afterReconcile ( 7, 4 )
+                                |> Expect.equal (Just ( natureDouble1Id, 1 ))
+                        , \_ ->
+                            getSavedNatureAnchors afterReconcile
+                                |> Dict.isEmpty
+                                |> Expect.equal True
+                        , \_ ->
+                            getSavedNatureTiles afterReconcile
+                                |> Dict.isEmpty
+                                |> Expect.equal True
+                        ]
+                        ()
+                )
+            , test "reconcileSavedNatureTiles: drops the entry when a lot claims a footprint cell"
+                (\_ ->
+                    let
+                        lotMember =
+                            Tile.init
+                                (Fixed
+                                    { id = defaultTileId
+                                    , name = "test-lot"
+                                    , parentTile = Just ( lotLargeTileId, 0 )
+                                    , animation = Nothing
+                                    }
+                                )
+
+                        beforeReconcile =
+                            emptyTilemap
+                                |> mapCell (createCell constraints 7 3) (\_ -> lotMember)
+                                |> forceFixNatureTile defaultTileId ( 7, 4 )
+                                |> insertSavedNatureAnchor ( 7, 3 ) natureDouble1Id
+
+                        afterReconcile =
+                            reconcileSavedNatureTiles beforeReconcile
+                    in
+                    Expect.all
+                        [ \_ ->
+                            fixedParentAt afterReconcile ( 7, 3 )
+                                |> Expect.equal (Just ( lotLargeTileId, 0 ))
+                        , \_ ->
+                            -- Partial coverage drops the whole entry.
+                            tileByCell afterReconcile (createCell constraints 7 4)
+                                |> Maybe.andThen Tile.id
+                                |> Expect.equal (Just defaultTileId)
+                        , \_ ->
+                            getSavedNatureAnchors afterReconcile
+                                |> Dict.isEmpty
+                                |> Expect.equal True
+                        ]
+                        ()
+                )
+            , test "Removing a road clears the saved nature anchors dict too"
+                (\_ ->
+                    let
+                        cell10 =
+                            createCell constraints 10 5
+
+                        roadOnly =
+                            placeRoad
+                                [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ) ]
+                                emptyTilemap
+
+                        withFixedDouble =
+                            forceFixLargeNatureTile natureDouble1Id ( 8, 1 ) roadOnly
+
+                        afterPlacement =
+                            placeRoad [ ( 10, 5 ) ] withFixedDouble
+
+                        ( wfcAfterRemove, _ ) =
+                            Tilemap.DrivenWFC.onRemoveTile
+                                (SeedState.fromSeed testSeed)
+                                Dict.empty
+                                cell10
+                                afterPlacement
+
+                        afterRemoval =
+                            Tilemap.WFC.toTilemap wfcAfterRemove
+                    in
+                    Expect.all
+                        [ \_ ->
+                            getSavedNatureAnchors afterPlacement
+                                |> Dict.isEmpty
+                                |> Expect.equal False
+                        , \_ ->
+                            getSavedNatureAnchors afterRemoval
+                                |> Dict.isEmpty
+                                |> Expect.equal True
+                        ]
+                        ()
+                )
+            ]
         ]
 
 
@@ -1079,4 +1301,34 @@ isFixedKind kind =
             True
 
         _ ->
+            False
+
+
+fixedParentAt : Tilemap -> ( Int, Int ) -> Maybe ( TileConfig.TileId, Int )
+fixedParentAt tilemap coords =
+    case cellKindAt tilemap coords of
+        Just (Fixed props) ->
+            props.parentTile
+
+        _ ->
+            Nothing
+
+
+optionsAtCell : Tilemap -> ( Int, Int ) -> Maybe (List TileConfig.TileId)
+optionsAtCell tilemap coords =
+    case cellKindAt tilemap coords of
+        Just (Superposition options) ->
+            Just options
+
+        _ ->
+            Nothing
+
+
+isNatureLargeId : TileConfig.TileId -> Bool
+isNatureLargeId tileId =
+    case tileById tileId of
+        TileConfig.Large largeTile ->
+            largeTile.biome == TileConfig.Nature
+
+        TileConfig.Single _ ->
             False

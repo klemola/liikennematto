@@ -4,6 +4,7 @@ module Data.Utility exposing
     , cellsByTileKind
     , cellsByTileKindFromAscii
     , createCell
+    , forceFixLargeNatureTile
     , forceFixNatureTile
     , gameModelFromWorld
     , getStartAndEndNode
@@ -19,6 +20,7 @@ module Data.Utility exposing
     , worldFromTilemap
     )
 
+import Array
 import Data.Lots exposing (NewLot)
 import Data.TileSet
     exposing
@@ -386,7 +388,7 @@ removeRoadAndUpdateBuffer ( x, y ) tilemap =
 
 
 {-| Force a Nature `Single` tile into a cell as if WFC had collapsed it. Skips
-animation/audio so tests can simulate "WFC has filled the side buffer".
+side-effects.
 -}
 forceFixNatureTile : TileConfig.TileId -> CellCoordinates -> Tilemap -> Tilemap
 forceFixNatureTile tileId ( x, y ) tilemap =
@@ -398,6 +400,46 @@ forceFixNatureTile tileId ( x, y ) tilemap =
             addTileFromSavegame (tileById tileId) cell tilemap
     in
     nextTilemap
+
+
+{-| Force a large Nature tile into place with its top-left member at the given
+coordinates, as if WFC or a savegame had placed it. Skips side-effects.
+-}
+forceFixLargeNatureTile : TileConfig.TileId -> CellCoordinates -> Tilemap -> Tilemap
+forceFixLargeNatureTile largeTileId ( x, y ) tilemap =
+    case tileById largeTileId of
+        TileConfig.Large largeTile ->
+            let
+                topLeftCell =
+                    createCell (getTilemapConfig tilemap) x y
+
+                subgridConstraints =
+                    { horizontalCellsAmount = largeTile.width
+                    , verticalCellsAmount = largeTile.height
+                    }
+            in
+            largeTile.tiles
+                |> Array.toIndexedList
+                |> List.foldl
+                    (\( subgridIndex, singleTile ) acc ->
+                        Cell.fromArray1DIndex subgridConstraints subgridIndex
+                            |> Maybe.andThen (Cell.placeIn (getTilemapConfig acc) topLeftCell)
+                            |> Maybe.map (\globalCell -> mapCell globalCell (\_ -> largeTileMember largeTileId subgridIndex singleTile) acc)
+                            |> Maybe.withDefault acc
+                    )
+                    tilemap
+
+        TileConfig.Single _ ->
+            tilemap
+
+
+largeTileMember : TileConfig.TileId -> Int -> TileConfig.SingleTile -> Tile
+largeTileMember largeTileId subgridIndex singleTile =
+    Tile.fromTileConfig
+        (TileConfig.Single singleTile)
+        (Just ( largeTileId, subgridIndex ))
+        Tile.AddFromSaveGame
+        |> Tuple.first
 
 
 
