@@ -495,13 +495,13 @@ dedupeCells cells =
                     coords =
                         Cell.coordinates cell
                 in
-                if List.member coords seen then
+                if Set.member coords seen then
                     ( seen, acc )
 
                 else
-                    ( coords :: seen, cell :: acc )
+                    ( Set.insert coords seen, cell :: acc )
             )
-            ( [], [] )
+            ( Set.empty, [] )
         |> Tuple.second
 
 
@@ -559,29 +559,16 @@ isSingleNatureTile tileId =
 
 reconcileSavedNatureTiles : Tilemap -> Tilemap
 reconcileSavedNatureTiles tilemap =
-    let
-        constraints =
-            getTilemapConfig tilemap
-
-        ( restoredTilemap, remainingDict ) =
-            getSavedNatureTiles tilemap
-                |> Dict.foldl
-                    (reconcileEntry constraints)
-                    ( tilemap, Dict.empty )
-    in
-    setSavedNatureTiles remainingDict restoredTilemap
+    getSavedNatureTiles tilemap
+        |> Dict.foldl (reconcileEntry (getTilemapConfig tilemap)) tilemap
+        |> setSavedNatureTiles Dict.empty
 
 
-reconcileEntry :
-    TilemapConfig
-    -> CellCoordinates
-    -> TileId
-    -> ( Tilemap, Dict.Dict CellCoordinates TileId )
-    -> ( Tilemap, Dict.Dict CellCoordinates TileId )
-reconcileEntry constraints coords savedId ( tilemap, dict ) =
+reconcileEntry : TilemapConfig -> CellCoordinates -> TileId -> Tilemap -> Tilemap
+reconcileEntry constraints coords savedId tilemap =
     case Cell.fromCoordinates constraints coords of
         Nothing ->
-            ( tilemap, dict )
+            tilemap
 
         Just cell ->
             case tileByCell tilemap cell of
@@ -590,34 +577,34 @@ reconcileEntry constraints coords savedId ( tilemap, dict ) =
                         Fixed props ->
                             if props.parentTile /= Nothing then
                                 -- Lot subgrid; leave as-is.
-                                ( tilemap, dict )
+                                tilemap
 
                             else
                                 case tileById props.id of
                                     TileConfig.Large _ ->
-                                        ( tilemap, dict )
+                                        tilemap
 
                                     TileConfig.Single singleTile ->
                                         if singleTile.biome == TileConfig.Lot then
-                                            ( tilemap, dict )
+                                            tilemap
 
                                         else if props.id == savedId then
-                                            ( tilemap, dict )
+                                            tilemap
 
                                         else
-                                            ( restoreCell cell savedId tilemap, dict )
+                                            restoreCell cell savedId tilemap
 
                         Buffer ->
-                            ( restoreCell cell savedId tilemap, dict )
+                            restoreCell cell savedId tilemap
 
                         Superposition _ ->
-                            ( restoreCell cell savedId tilemap, dict )
+                            restoreCell cell savedId tilemap
 
                         Unintialized ->
-                            ( tilemap, dict )
+                            tilemap
 
                 Nothing ->
-                    ( tilemap, dict )
+                    tilemap
 
 
 restoreCell : Cell -> TileId -> Tilemap -> Tilemap

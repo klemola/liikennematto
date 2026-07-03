@@ -23,10 +23,8 @@ module Tilemap.Core exposing
     , getTilemapDimensions
     , insertSavedNatureTile
     , isDestructivePlacement
-    , largeTileBounds
     , mapCell
     , removeLargeTileIfExists
-    , removeSavedNatureTile
     , removeTile
     , resetFixedTileBySurroundings
     , resetSuperposition
@@ -297,14 +295,6 @@ insertSavedNatureTile coords tileId (Tilemap tilemapContents) =
     Tilemap
         { tilemapContents
             | savedNatureTiles = Dict.insert coords tileId tilemapContents.savedNatureTiles
-        }
-
-
-removeSavedNatureTile : CellCoordinates -> Tilemap -> Tilemap
-removeSavedNatureTile coords (Tilemap tilemapContents) =
-    Tilemap
-        { tilemapContents
-            | savedNatureTiles = Dict.remove coords tilemapContents.savedNatureTiles
         }
 
 

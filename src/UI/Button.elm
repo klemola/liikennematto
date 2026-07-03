@@ -19,7 +19,6 @@ import UI.Core
     exposing
         ( uiColorBorder
         , uiColorText
-        , whitespaceRegular
         )
 
 

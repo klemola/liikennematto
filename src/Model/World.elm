@@ -42,7 +42,6 @@ module Model.World exposing
     )
 
 import BoundingBox2d exposing (BoundingBox2d)
-import Char
 import Common exposing (GlobalCoordinates)
 import Data.Cars exposing (CarMake)
 import Data.Lots exposing (NewLot, allLots)
