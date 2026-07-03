@@ -21,6 +21,7 @@ module Tilemap.Core exposing
     , getSavedNatureTiles
     , getTilemapConfig
     , getTilemapDimensions
+    , hasSuperpositionCells
     , insertSavedNatureTile
     , isDestructivePlacement
     , mapCell
@@ -296,6 +297,26 @@ insertSavedNatureTile coords tileId (Tilemap tilemapContents) =
         { tilemapContents
             | savedNatureTiles = Dict.insert coords tileId tilemapContents.savedNatureTiles
         }
+
+
+hasSuperpositionCells : Tilemap -> Bool
+hasSuperpositionCells (Tilemap tilemapContents) =
+    hasSuperpositionCellsHelper 0 tilemapContents.cells
+
+
+hasSuperpositionCellsHelper : Int -> Array Tile -> Bool
+hasSuperpositionCellsHelper index cells =
+    case Array.get index cells of
+        Nothing ->
+            False
+
+        Just tile ->
+            case tile.kind of
+                Superposition _ ->
+                    True
+
+                _ ->
+                    hasSuperpositionCellsHelper (index + 1) cells
 
 
 addAnimationTimer : Cell -> Duration -> Tilemap -> Tilemap

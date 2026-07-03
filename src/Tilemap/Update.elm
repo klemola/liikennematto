@@ -34,6 +34,7 @@ import Tilemap.Core
         , fixedTileByCell
         , getBuildHistory
         , getTilemapConfig
+        , hasSuperpositionCells
         , isDestructivePlacement
         , mapCell
         , resetSuperposition
@@ -179,7 +180,13 @@ update msg model =
                                     historyLength >= 3
                                         || (historyLength >= 1 && roadBuildingInProgress model.world.tilemap)
                             in
-                            if Quantity.lessThanOrEqualToZero nextTimer && builtEnough then
+                            -- Road removal empties the build history but leaves cells in
+                            -- superposition; those must be resolved even though nothing
+                            -- new was built.
+                            if
+                                Quantity.lessThanOrEqualToZero nextTimer
+                                    && (builtEnough || hasSuperpositionCells model.world.tilemap)
+                            then
                                 startWFC model
 
                             else

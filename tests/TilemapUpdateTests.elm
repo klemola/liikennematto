@@ -16,7 +16,7 @@ import Message exposing (Message(..))
 import Model.World as World
 import Test exposing (Test, describe, test)
 import Tilemap.Core exposing (isDestructivePlacement, roadTileFromCell, setBuildHistory)
-import Tilemap.DrivenWFC exposing (DrivenWFC(..), addTileById, initDrivenWfc, restartWfc, runWfc)
+import Tilemap.DrivenWFC exposing (DrivenWFC(..), addTileById, initDrivenWfc, onRemoveTile, restartWfc, runWfc)
 import Tilemap.Tile as Tile
 import Tilemap.Update
 import Tilemap.WFC as WFC
@@ -199,6 +199,54 @@ suite =
                         _ ->
                             Expect.fail
                                 "Expected WFC to transition to Active when extending a pre-existing road"
+                )
+            , test "Transitions to Active after a road removal (superposition cells must be resolved)"
+                (\_ ->
+                    let
+                        emptyWorld =
+                            World.empty testSeed tenByTenTilemap
+
+                        baseModel =
+                            gameModelFromWorld emptyWorld
+
+                        roadTilemap =
+                            placeRoad [ ( 4, 5 ), ( 5, 5 ), ( 6, 5 ), ( 7, 5 ) ] emptyWorld.tilemap
+
+                        -- Removal empties the build history and leaves the removed cell
+                        -- (and reset neighbors) in superposition.
+                        ( wfcAfterRemove, _ ) =
+                            onRemoveTile
+                                emptyWorld.seedState
+                                Dict.empty
+                                (createCell tenByTenTilemap 7 5)
+                                roadTilemap
+
+                        modelAfterRemove =
+                            { baseModel
+                                | world = World.setTilemap (WFC.toTilemap wfcAfterRemove) baseModel.world
+                                , wfc = initDrivenWfc (Time.millisToPosix 0)
+                            }
+
+                        -- Tick the tilemap update cycle so the removal FSM completes
+                        -- (emptied cell becomes superposition) and the pending tilemap
+                        -- change drains.
+                        settledModel =
+                            List.foldl
+                                (\msg m -> Tilemap.Update.update msg m |> Tuple.first)
+                                modelAfterRemove
+                                (List.repeat 5 (UpdateTilemap (Duration.seconds 1)))
+
+                        ( resultModel, _ ) =
+                            Tilemap.Update.update
+                                (CheckQueues (Time.millisToPosix 3000) (Duration.milliseconds 3000))
+                                settledModel
+                    in
+                    case resultModel.wfc of
+                        WFCActive _ _ ->
+                            Expect.pass
+
+                        _ ->
+                            Expect.fail "Expected WFC to transition to Active after a road removal"
                 )
             , test "Stays Pending with 1 placement that does not connect to existing road (cold start)"
                 (\_ ->
