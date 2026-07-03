@@ -443,7 +443,7 @@ trailCells builtCell tilemap =
 
         manyNeighbors ->
             -- Join: the placed cell connects to ≥2 road neighbors. Walk along each
-            -- neighbor direction up to 2 cells, collecting side strips of straight cells.
+            -- neighbor direction, collecting side strips of straight cells.
             manyNeighbors
                 |> List.concatMap (\nm -> walkAxis tilemap nm.direction nm.cell trailJoinDepth)
                 |> List.concatMap (sideStripIfStraight tilemap)
@@ -452,7 +452,7 @@ trailCells builtCell tilemap =
 
 trailJoinDepth : Int
 trailJoinDepth =
-    2
+    maxBufferDepth
 
 
 sideStripIfStraight : Tilemap -> Cell -> List Cell
