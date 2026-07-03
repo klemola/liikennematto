@@ -29,10 +29,8 @@ import Set
 import Tilemap.Buffer
     exposing
         ( applyRevertFromDict
-        , captureTrail
+        , registerPlacement
         , removeBuffer
-        , trailCells
-        , updateBufferCells
         )
 import Tilemap.Cell exposing (Cell)
 import Tilemap.Core
@@ -157,17 +155,8 @@ addTileById seedState tileInventory cell tileId tilemap =
 
         placed =
             WFC.toTilemap updatedWfcModel
-
-        -- Order matters: trailCells must read the build history BEFORE
-        -- updateBufferCells pushes `cell` onto it, so it sees the prior
-        -- placements (the cells whose side buffers form the trail).
-        -- captureTrail only records original tile ids into savedNatureTiles;
-        -- the actual revert to Buffer is deferred to startWFC so the live
-        -- tilemap stays visually intact through the debounce window.
-        captured =
-            captureTrail (trailCells cell placed) placed
     in
-    ( updateBufferCells cell captured
+    ( registerPlacement cell placed
     , tilemapChangeActions
     )
 

@@ -1011,6 +1011,49 @@ suite =
                         ]
                         ()
                 )
+            , test "Distant join placement clears stale entries from the previous area"
+                (\_ ->
+                    let
+                        -- Pre-existing stubs with a 1-cell gap, far from the build area.
+                        stubs =
+                            placeRoad
+                                [ ( 3, 8 ), ( 4, 8 ), ( 6, 8 ), ( 7, 8 ) ]
+                                emptyTilemap
+
+                        -- Phase 1: build a road elsewhere and capture trail entries.
+                        roadOnly =
+                            placeRoad
+                                [ ( 2, 2 ), ( 3, 2 ), ( 4, 2 ), ( 5, 2 ), ( 6, 2 ) ]
+                                stubs
+
+                        withFixedNature =
+                            List.foldl
+                                (forceFixNatureTile defaultTileId)
+                                roadOnly
+                                (cartesian [ 4, 5, 6 ] [ 1, 3 ])
+
+                        afterPhase1 =
+                            placeRoad [ ( 7, 2 ) ] withFixedNature
+
+                        -- Phase 2: fill the distant gap. It's a join (2 road neighbors)
+                        -- but adjacent to nothing in the build history, so the phase 1
+                        -- entries are stale and must be dropped.
+                        afterJoin =
+                            placeRoad [ ( 5, 8 ) ] afterPhase1
+                    in
+                    Expect.all
+                        [ \_ ->
+                            -- Precondition: phase 1 populated the dict.
+                            getSavedNatureTiles afterPhase1
+                                |> Dict.isEmpty
+                                |> Expect.equal False
+                        , \_ ->
+                            getSavedNatureTiles afterJoin
+                                |> Dict.isEmpty
+                                |> Expect.equal True
+                        ]
+                        ()
+                )
             ]
         ]
 

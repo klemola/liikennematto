@@ -1,10 +1,9 @@
 module Tilemap.Buffer exposing
     ( applyRevertFromDict
-    , captureTrail
     , reconcileSavedNatureTiles
+    , registerPlacement
     , removeBuffer
     , roadBuildingInProgress
-    , trailCells
     , updateBufferCells
     )
 
@@ -41,46 +40,39 @@ maxBufferDepth =
     3
 
 
+{-| The stale check runs before trail capture so that capture never includes
+history from a previous building phase. A placement that doesn't touch the
+build history means the player moved elsewhere. The captured entries are
+dropped as-is, since the live tilemap was never reverted.
+-}
+registerPlacement : Cell -> Tilemap -> Tilemap
+registerPlacement builtCell tilemap =
+    let
+        continuesBuildPhase =
+            List.any (Cell.isAdjacent builtCell) (getBuildHistory tilemap)
+
+        preparedTilemap =
+            if continuesBuildPhase then
+                tilemap
+
+            else
+                tilemap
+                    |> setSavedNatureTiles Dict.empty
+                    |> setBuildHistory []
+    in
+    preparedTilemap
+        |> captureTrail (trailCells builtCell preparedTilemap)
+        |> updateBufferCells builtCell
+
+
 updateBufferCells : Cell -> Tilemap -> Tilemap
 updateBufferCells builtCell tilemap =
     let
-        priorHistory =
-            getBuildHistory tilemap
-
         updatedHistory =
-            nextCellHistory builtCell priorHistory
-
-        -- A placement that neither extends the most recent cell nor joins
-        -- existing roads means the player moved to a different area. Any
-        -- captured nature tiles from the previous building phase are no
-        -- longer relevant: the live tilemap was never reverted (capture only
-        -- writes to the dict), so dropping the entries is enough — nothing
-        -- needs to be restored. Joins (≥2 road neighbors) are still part of
-        -- the same building phase even if they bridge a non-adjacent gap.
-        isJoinPlacement =
-            case roadNeighbors builtCell tilemap of
-                _ :: _ :: _ ->
-                    True
-
-                _ ->
-                    False
-
-        clearStaleDict =
-            case priorHistory of
-                previous :: _ ->
-                    if Cell.isAdjacent builtCell previous || isJoinPlacement then
-                        identity
-
-                    else
-                        setSavedNatureTiles Dict.empty
-
-                [] ->
-                    identity
+            nextCellHistory builtCell (getBuildHistory tilemap)
 
         withUpdatedHistory =
-            tilemap
-                |> clearStaleDict
-                |> setBuildHistory updatedHistory
+            setBuildHistory updatedHistory tilemap
     in
     List.foldl
         (\cell nextTilemap ->
