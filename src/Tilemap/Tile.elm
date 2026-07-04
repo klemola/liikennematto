@@ -16,6 +16,7 @@ module Tilemap.Tile exposing
     , isDynamic
     , isFixed
     , largeTileCells
+    , largeTileContent
     , largeTileTopLeftCell
     , transitionTimer
     , withAnimation
@@ -255,6 +256,12 @@ largeTileTopLeftCell constraints globalReferenceCell subgridIndex largeTile =
 
 largeTileCells : Constraints a -> Cell -> TileConfig.LargeTile -> List Cell
 largeTileCells constraints topLeftCornerCell largeTile =
+    largeTileContent constraints topLeftCornerCell largeTile
+        |> List.map (\( cell, _, _ ) -> cell)
+
+
+largeTileContent : Constraints a -> Cell -> TileConfig.LargeTile -> List ( Cell, Int, TileConfig.SingleTile )
+largeTileContent constraints topLeftCornerCell largeTile =
     let
         subgridDimensions =
             { horizontalCellsAmount = largeTile.width
@@ -263,12 +270,13 @@ largeTileCells constraints topLeftCornerCell largeTile =
     in
     largeTile.tiles
         |> Array.indexedMapToList
-            (\index _ ->
+            (\index singleTile ->
                 index
                     -- Use of unsafe function: the top left corner has been validated already
                     -- and the whole subgrid should be within tilemap bounds
                     |> Cell.fromArray1DIndexUnsafe subgridDimensions
                     |> Cell.placeIn constraints topLeftCornerCell
+                    |> Maybe.map (\cell -> ( cell, index, singleTile ))
             )
         |> List.filterMap identity
 

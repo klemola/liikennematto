@@ -1,13 +1,12 @@
 module Tilemap.Buffer exposing
-    ( applyRevertFromDict
-    , reconcileSavedNatureTiles
+    ( reconcileSavedNatureTiles
     , registerPlacement
     , removeBuffer
+    , revertSavedNature
     , roadBuildingInProgress
     , updateBufferCells
     )
 
-import Array
 import Data.TileSet exposing (connectionsByTile, tileById)
 import Dict
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection(..))
@@ -45,8 +44,7 @@ maxBufferDepth =
 
 {-| The stale check runs before trail capture so that capture never includes
 history from a previous building phase. A placement that doesn't touch the
-build history means the player moved elsewhere. The captured entries are
-dropped as-is, since the live tilemap was never reverted.
+build history means the player moved elsewhere.
 -}
 registerPlacement : Cell -> Tilemap -> Tilemap
 registerPlacement builtCell tilemap =
@@ -438,19 +436,17 @@ trailCells builtCell tilemap =
             []
 
         [ _ ] ->
-            -- Continuation: the placed cell extends a road. Walk recent build history.
+            -- Continuation: the placed cell extends a road
             getBuildHistory tilemap
                 |> List.take maxBufferDepth
                 |> List.concatMap (sideStripIfStraight tilemap)
-                |> dedupeCells
 
         manyNeighbors ->
-            -- Join: the placed cell connects to ≥2 road neighbors. Walk along each
-            -- neighbor direction, collecting side strips of straight cells.
+            -- Join: the placed cell connects to at least 2 road neighbors. Walk along each
+            -- neighbor direction, collecting side strips of straight cells
             manyNeighbors
                 |> List.concatMap (\nm -> walkAxis tilemap nm.direction nm.cell trailJoinDepth)
                 |> List.concatMap (sideStripIfStraight tilemap)
-                |> dedupeCells
 
 
 trailJoinDepth : Int
@@ -479,33 +475,12 @@ walkAxis tilemap dir cell budget =
                 []
 
             Just _ ->
-                cell
-                    :: (case Cell.nextOrthogonalCell (getTilemapConfig tilemap) dir cell of
-                            Just nextCell ->
-                                walkAxis tilemap dir nextCell (budget - 1)
+                case Cell.nextOrthogonalCell (getTilemapConfig tilemap) dir cell of
+                    Just nextCell ->
+                        cell :: walkAxis tilemap dir nextCell (budget - 1)
 
-                            Nothing ->
-                                []
-                       )
-
-
-dedupeCells : List Cell -> List Cell
-dedupeCells cells =
-    cells
-        |> List.foldl
-            (\cell ( seen, acc ) ->
-                let
-                    coords =
-                        Cell.coordinates cell
-                in
-                if Set.member coords seen then
-                    ( seen, acc )
-
-                else
-                    ( Set.insert coords seen, cell :: acc )
-            )
-            ( Set.empty, [] )
-        |> Tuple.second
+                    Nothing ->
+                        [ cell ]
 
 
 captureTrail : List Cell -> Tilemap -> Tilemap
@@ -515,25 +490,20 @@ captureTrail cells tilemap =
 
 captureTrailCell : Cell -> Tilemap -> Tilemap
 captureTrailCell cell tilemap =
-    case tileByCell tilemap cell of
-        Just tile ->
-            case tile.kind of
-                Fixed props ->
-                    case props.parentTile of
-                        Nothing ->
-                            if isSingleNatureTile props.id then
-                                insertSavedNatureTile (Cell.coordinates cell) props.id tilemap
+    case tileByCell tilemap cell |> Maybe.map .kind of
+        Just (Fixed props) ->
+            case props.parentTile of
+                Nothing ->
+                    if isSingleNatureTile props.id then
+                        insertSavedNatureTile (Cell.coordinates cell) props.id tilemap
 
-                            else
-                                tilemap
+                    else
+                        tilemap
 
-                        Just ( largeTileId, subgridIndex ) ->
-                            captureLargeNatureTileAnchor cell largeTileId subgridIndex tilemap
+                Just ( largeTileId, subgridIndex ) ->
+                    captureLargeNatureTileAnchor cell largeTileId subgridIndex tilemap
 
-                _ ->
-                    tilemap
-
-        Nothing ->
+        _ ->
             tilemap
 
 
@@ -559,8 +529,8 @@ captureLargeNatureTileAnchor cell largeTileId subgridIndex tilemap =
             tilemap
 
 
-applyRevertFromDict : Tilemap -> Tilemap
-applyRevertFromDict tilemap =
+revertSavedNature : Tilemap -> Tilemap
+revertSavedNature tilemap =
     tilemap
         |> revertSavedNatureSingles
         |> revertSavedNatureAnchors
@@ -573,7 +543,7 @@ revertSavedNatureSingles tilemap =
             (\coords _ acc ->
                 case Cell.fromCoordinates (getTilemapConfig acc) coords of
                     Just cell ->
-                        mapCell cell (\_ -> Tile.init Tile.Buffer) acc
+                        revertToBuffer cell acc
 
                     Nothing ->
                         acc
@@ -594,12 +564,17 @@ revertLargeTileFootprint coords largeTileId tilemap =
     case ( Cell.fromCoordinates (getTilemapConfig tilemap) coords, tileById largeTileId ) of
         ( Just topLeftCell, TileConfig.Large largeTile ) ->
             List.foldl
-                (\cell acc -> mapCell cell (\_ -> Tile.init Tile.Buffer) acc)
+                revertToBuffer
                 tilemap
                 (Tile.largeTileCells (getTilemapConfig tilemap) topLeftCell largeTile)
 
         _ ->
             tilemap
+
+
+revertToBuffer : Cell -> Tilemap -> Tilemap
+revertToBuffer cell tilemap =
+    mapCell cell (\_ -> Tile.init Tile.Buffer) tilemap
 
 
 isSingleNatureTile : TileId -> Bool
@@ -619,12 +594,12 @@ reconcileSavedNatureTiles : Tilemap -> Tilemap
 reconcileSavedNatureTiles tilemap =
     tilemap
         |> reconcileAnchors
-        |> reconcileSingles
+        |> reconcileSingleTiles
         |> clearSavedNature
 
 
-reconcileSingles : Tilemap -> Tilemap
-reconcileSingles tilemap =
+reconcileSingleTiles : Tilemap -> Tilemap
+reconcileSingleTiles tilemap =
     getSavedNatureTiles tilemap
         |> Dict.foldl (reconcileEntry (getTilemapConfig tilemap)) tilemap
 
@@ -635,8 +610,6 @@ reconcileAnchors tilemap =
         |> Dict.foldl (reconcileAnchorEntry (getTilemapConfig tilemap)) tilemap
 
 
-{-| A large tile on any footprint cell claims the space, even partially.
--}
 reconcileAnchorEntry : TilemapConfig -> CellCoordinates -> TileId -> Tilemap -> Tilemap
 reconcileAnchorEntry constraints coords largeTileId tilemap =
     case ( Cell.fromCoordinates constraints coords, tileById largeTileId ) of
@@ -649,7 +622,7 @@ reconcileAnchorEntry constraints coords largeTileId tilemap =
                 tilemap
 
             else
-                reinstateLargeTile constraints topLeftCell largeTileId largeTile tilemap
+                reinstateLargeTile constraints topLeftCell largeTile tilemap
 
         _ ->
             tilemap
@@ -659,17 +632,7 @@ footprintCellClaimedByLargeTile : Tilemap -> Cell -> Bool
 footprintCellClaimedByLargeTile tilemap cell =
     case tileByCell tilemap cell |> Maybe.map .kind of
         Just (Fixed { parentTile }) ->
-            case parentTile of
-                Just ( parentTileId, _ ) ->
-                    case tileById parentTileId of
-                        TileConfig.Large _ ->
-                            True
-
-                        TileConfig.Single _ ->
-                            False
-
-                Nothing ->
-                    False
+            parentTile /= Nothing
 
         _ ->
             False
@@ -678,24 +641,14 @@ footprintCellClaimedByLargeTile tilemap cell =
 {-| Nature tile outer sockets are uniform, so overwriting the footprint keeps
 neighbors valid.
 -}
-reinstateLargeTile : TilemapConfig -> Cell -> TileId -> TileConfig.LargeTile -> Tilemap -> Tilemap
-reinstateLargeTile constraints topLeftCell largeTileId largeTile tilemap =
-    let
-        subgridConstraints =
-            { horizontalCellsAmount = largeTile.width
-            , verticalCellsAmount = largeTile.height
-            }
-    in
-    largeTile.tiles
-        |> Array.toIndexedList
-        |> List.foldl
-            (\( subgridIndex, singleTile ) acc ->
-                Cell.fromArray1DIndex subgridConstraints subgridIndex
-                    |> Maybe.andThen (Cell.placeIn constraints topLeftCell)
-                    |> Maybe.map (\globalCell -> mapCell globalCell (\_ -> memberTile largeTileId subgridIndex singleTile) acc)
-                    |> Maybe.withDefault acc
-            )
-            tilemap
+reinstateLargeTile : TilemapConfig -> Cell -> TileConfig.LargeTile -> Tilemap -> Tilemap
+reinstateLargeTile constraints topLeftCell largeTile tilemap =
+    List.foldl
+        (\( globalCell, subgridIndex, singleTile ) acc ->
+            mapCell globalCell (\_ -> memberTile largeTile.id subgridIndex singleTile) acc
+        )
+        tilemap
+        (Tile.largeTileContent constraints topLeftCell largeTile)
 
 
 memberTile : TileId -> Int -> TileConfig.SingleTile -> Tile

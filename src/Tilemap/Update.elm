@@ -170,19 +170,15 @@ update msg model =
                                         |> Quantity.minus delta
                                         |> Quantity.max Quantity.zero
 
-                                historyLength =
-                                    List.length (getBuildHistory model.world.tilemap)
-
-                                -- Cold-start needs `>= 3` to give WFC enough buffer context;
-                                -- extending an existing road already has that context, so one
-                                -- placement is enough.
+                                -- Cold-start needs at least three road placements, but when a road is
+                                -- completed by addding just one piece, rest will suffice
                                 builtEnough =
-                                    historyLength >= 3
-                                        || (historyLength >= 1 && roadBuildingInProgress model.world.tilemap)
+                                    (List.length (getBuildHistory model.world.tilemap) >= 3)
+                                        || roadBuildingInProgress model.world.tilemap
                             in
                             -- Road removal empties the build history but leaves cells in
-                            -- superposition; those must be resolved even though nothing
-                            -- new was built.
+                            -- superposition. Those must be resolved even though nothing
+                            -- new was built
                             if
                                 Quantity.lessThanOrEqualToZero nextTimer
                                     && (builtEnough || hasSuperpositionCells model.world.tilemap)
@@ -294,7 +290,7 @@ onPrimaryInput cell model =
     then
         if isDestructivePlacement cell model.world.tilemap then
             -- Placing here would erase a lot or large nature tile (no undo), so
-            -- defer the commit until the player confirms via the dialog.
+            -- defer the commit until the player confirms the action
             ( { model | ui = UI.Model.requestConfirmation cell model.ui }
             , Cmd.none
             )

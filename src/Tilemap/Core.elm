@@ -794,8 +794,8 @@ largeTileBounds cell tile (Tilemap tilemapContents) =
             )
 
 
-{-| Resolve a cell to the large tile (lot or large nature tile) that placing a
-road there would erase (Nothing if the target is not a large tile).
+{-| Resolve a cell to the large tile that placing a road there would erase
+(Nothing if the target is not a large tile)
 -}
 destructiveLargeTile : Cell -> Tilemap -> Maybe ( Cell, TileConfig )
 destructiveLargeTile cell ((Tilemap tilemapContents) as tilemap) =
@@ -826,7 +826,7 @@ destructiveLargeTile cell ((Tilemap tilemapContents) as tilemap) =
 
 
 {-| Bounds of the large tile that placing a road on this cell would erase, or
-`Nothing` if placement is non-destructive.
+`Nothing` if placement is non-destructive
 -}
 destructiveTileBounds : Cell -> Tilemap -> Maybe ( Point2d Meters GlobalCoordinates, BoundingBox2d Meters GlobalCoordinates )
 destructiveTileBounds cell tilemap =

@@ -28,9 +28,9 @@ import Round
 import Set
 import Tilemap.Buffer
     exposing
-        ( applyRevertFromDict
-        , registerPlacement
+        ( registerPlacement
         , removeBuffer
+        , revertSavedNature
         )
 import Tilemap.Cell as Cell exposing (Cell, CellCoordinates)
 import Tilemap.Core
@@ -117,15 +117,12 @@ runWfc runId tilemap wfc =
             ( tilemap, WFCActive runId nextWfc, [] )
 
 
-{-| The revert is applied here rather than at call sites so that every restart
-(initial run and failure retry both) forks the same view of the trail area.
--}
 restartWfc : SeedState -> TileInventory Int -> Tilemap -> WFC.Model
 restartWfc seedState tileInventory tilemap =
     resetWfc seedState
         Nothing
         tileInventory
-        (preprocessTilemap (applyRevertFromDict tilemap))
+        (preprocessTilemap (revertSavedNature tilemap))
 
 
 resetWfc : SeedState -> Maybe Cell -> TileInventory Int -> Tilemap -> WFC.Model
@@ -154,11 +151,8 @@ addTileById seedState tileInventory cell tileId tilemap =
 
         updatedWfcModel =
             resetWfc seedState (Just cell) tileInventory (updateTileNeighbors cell updatedTilemap)
-
-        placed =
-            WFC.toTilemap updatedWfcModel
     in
-    ( registerPlacement cell placed
+    ( registerPlacement cell (WFC.toTilemap updatedWfcModel)
     , tilemapChangeActions
     )
 
@@ -432,12 +426,6 @@ resetDrivewayNeighbors drivewayNeighbors tilemap =
         drivewayNeighbors
 
 
-{-| The large tile fit check only requires covered cells to be in
-superposition, so the filter extends one cell beyond the footprint — otherwise
-a neighboring anchor could span back into it. The margin needs to grow if
-nature tiles larger than 1x2 are added. Runs last so that lot options from
-reopened roads survive.
--}
 restrictReclaimedFootprints : Tilemap -> Tilemap
 restrictReclaimedFootprints tilemap =
     Dict.foldl restrictFootprintAndMargin tilemap (getSavedNatureAnchors tilemap)
@@ -445,12 +433,13 @@ restrictReclaimedFootprints tilemap =
 
 restrictFootprintAndMargin : CellCoordinates -> TileId -> Tilemap -> Tilemap
 restrictFootprintAndMargin topLeftCoords largeTileId tilemap =
-    case ( Cell.fromCoordinates (getTilemapConfig tilemap) topLeftCoords, tileById largeTileId ) of
+    let
+        constraints =
+            getTilemapConfig tilemap
+    in
+    case ( Cell.fromCoordinates constraints topLeftCoords, tileById largeTileId ) of
         ( Just topLeftCell, TileConfig.Large largeTile ) ->
             let
-                constraints =
-                    getTilemapConfig tilemap
-
                 footprint =
                     Tile.largeTileCells constraints topLeftCell largeTile
 

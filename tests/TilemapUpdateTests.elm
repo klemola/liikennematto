@@ -64,7 +64,7 @@ suite =
                             { modelWithNewRoad | wfc = WFCActive 1 wfcN1 }
 
                         -- If WFC.solve failed, staleResult contains WFCFailed, and the handler
-                        -- would not overwrite the tilemap — making the test pass with unintenional results
+                        -- would not overwrite the tilemap (making the test pass with unintenional results)
                         ( _, staleDrivenWfc, _ ) =
                             staleResult
 

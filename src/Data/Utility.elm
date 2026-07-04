@@ -20,7 +20,6 @@ module Data.Utility exposing
     , worldFromTilemap
     )
 
-import Array
 import Data.Lots exposing (NewLot)
 import Data.TileSet
     exposing
@@ -360,7 +359,7 @@ placeRoadAndUpdateBuffer cellsToPlace tilemap =
 
 
 {-| Same as `placeRoadAndUpdateBuffer` but skips the redundant explicit
-`updateBufferCells` call so the build history accumulates naturally.
+`updateBufferCells` call so the build history accumulates naturally
 -}
 placeRoad : List CellCoordinates -> Tilemap -> Tilemap
 placeRoad cellsToPlace tilemap =
@@ -412,22 +411,13 @@ forceFixLargeNatureTile largeTileId ( x, y ) tilemap =
             let
                 topLeftCell =
                     createCell (getTilemapConfig tilemap) x y
-
-                subgridConstraints =
-                    { horizontalCellsAmount = largeTile.width
-                    , verticalCellsAmount = largeTile.height
-                    }
             in
-            largeTile.tiles
-                |> Array.toIndexedList
-                |> List.foldl
-                    (\( subgridIndex, singleTile ) acc ->
-                        Cell.fromArray1DIndex subgridConstraints subgridIndex
-                            |> Maybe.andThen (Cell.placeIn (getTilemapConfig acc) topLeftCell)
-                            |> Maybe.map (\globalCell -> mapCell globalCell (\_ -> largeTileMember largeTileId subgridIndex singleTile) acc)
-                            |> Maybe.withDefault acc
-                    )
-                    tilemap
+            List.foldl
+                (\( globalCell, subgridIndex, singleTile ) acc ->
+                    mapCell globalCell (\_ -> largeTileMember largeTileId subgridIndex singleTile) acc
+                )
+                tilemap
+                (Tile.largeTileContent (getTilemapConfig tilemap) topLeftCell largeTile)
 
         TileConfig.Single _ ->
             tilemap

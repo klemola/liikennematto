@@ -20,7 +20,7 @@ import Dict
 import Expect
 import Lib.SeedState as SeedState
 import Test exposing (Test, describe, test)
-import Tilemap.Buffer exposing (applyRevertFromDict, reconcileSavedNatureTiles)
+import Tilemap.Buffer exposing (reconcileSavedNatureTiles, revertSavedNature)
 import Tilemap.Cell as Cell
 import Tilemap.Core
     exposing
@@ -621,7 +621,7 @@ suite =
                     expectCellsMatch expectedTilemap tilemapAfterRemove
                 )
             ]
-        , describe ".trailCells / .revertTrailToBuffer"
+        , describe "Buffer trail capture and revert"
             [ test "Case 1 (continuation): reverts side strips of the 3 most-recent straight cells"
                 (\_ ->
                     let
@@ -651,10 +651,10 @@ suite =
                         revertedCells =
                             cartesian [ 7, 8 ] bufferRows
 
-                        -- The actual mutation lives behind applyRevertFromDict, which
+                        -- The actual mutation lives behind revertSavedNature, which
                         -- runs against the WFC.Model fork in startWFC.
                         afterApply =
-                            applyRevertFromDict afterPlacement
+                            revertSavedNature afterPlacement
                     in
                     Expect.all
                         [ \_ ->
@@ -705,7 +705,7 @@ suite =
                             placeRoad [ ( 6, 5 ) ] withFixedNature
 
                         afterApply =
-                            applyRevertFromDict afterJoin
+                            revertSavedNature afterJoin
 
                         leftBranch =
                             cartesian [ 4 ] [ 2, 3, 4, 6, 7, 8 ]
@@ -774,7 +774,7 @@ suite =
                             placeRoad [ ( 10, 5 ) ] withProtected
 
                         afterApply =
-                            applyRevertFromDict afterPlacement
+                            revertSavedNature afterPlacement
                     in
                     Expect.all
                         [ \_ ->
@@ -1092,7 +1092,7 @@ suite =
                             [ ( 8, 1 ), ( 8, 2 ) ]
 
                         afterApply =
-                            applyRevertFromDict afterPlacement
+                            revertSavedNature afterPlacement
                     in
                     Expect.all
                         [ \_ ->
