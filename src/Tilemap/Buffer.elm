@@ -508,13 +508,13 @@ captureTrailCell cell tilemap =
 
 
 {-| One member cell in the trail captures the whole large tile, keyed by its
-top-left cell.
+top-left cell. Nature tiles larger than 1x2 are not captured.
 -}
 captureLargeNatureTileAnchor : Cell -> TileId -> Int -> Tilemap -> Tilemap
 captureLargeNatureTileAnchor cell largeTileId subgridIndex tilemap =
     case tileById largeTileId of
         TileConfig.Large largeTile ->
-            if largeTile.biome == TileConfig.Nature then
+            if largeTile.biome == TileConfig.Nature && largeTile.width * largeTile.height <= 2 then
                 case Tile.largeTileTopLeftCell (getTilemapConfig tilemap) cell subgridIndex largeTile of
                     Just topLeftCell ->
                         insertSavedNatureAnchor (Cell.coordinates topLeftCell) largeTileId tilemap

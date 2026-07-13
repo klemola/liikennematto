@@ -58,6 +58,13 @@ natureDouble1Id =
     215
 
 
+{-| NatureQuad1: a 2x2 Large Nature tile
+-}
+natureQuad1Id : TileConfig.TileId
+natureQuad1Id =
+    217
+
+
 lotLargeTileId : TileConfig.TileId
 lotLargeTileId =
     twoByTwoLotRightLargeTile.id
@@ -1109,6 +1116,41 @@ suite =
                             footprint
                                 |> List.map (cellKindAt afterApply)
                                 |> Expect.equalLists [ Just Buffer, Just Buffer ]
+                        ]
+                        ()
+                )
+            , test "Capture skips nature tiles larger than 1x2: a quad overlapping the trail is kept"
+                (\_ ->
+                    let
+                        roadOnly =
+                            placeRoad
+                                [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ) ]
+                                emptyTilemap
+
+                        -- NatureQuad1 (2x2) top-left at (8,1) covers (8,1)-(9,2);
+                        -- (8,2) and (9,2) are inside the trail's captured rows
+                        withFixedQuad =
+                            forceFixLargeNatureTile natureQuad1Id ( 8, 1 ) roadOnly
+
+                        afterPlacement =
+                            placeRoad [ ( 10, 5 ) ] withFixedQuad
+
+                        footprint =
+                            [ ( 8, 1 ), ( 9, 1 ), ( 8, 2 ), ( 9, 2 ) ]
+
+                        afterApply =
+                            revertSavedNature afterPlacement
+                    in
+                    Expect.all
+                        [ \_ ->
+                            getSavedNatureAnchors afterPlacement
+                                |> Dict.isEmpty
+                                |> Expect.equal True
+                        , \_ ->
+                            footprint
+                                |> List.map (cellKindAt afterApply)
+                                |> List.all (Maybe.map isFixedKind >> Maybe.withDefault False)
+                                |> Expect.equal True
                         ]
                         ()
                 )
