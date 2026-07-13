@@ -532,12 +532,12 @@ captureLargeNatureTileAnchor cell largeTileId subgridIndex tilemap =
 revertSavedNature : Tilemap -> Tilemap
 revertSavedNature tilemap =
     tilemap
-        |> revertSavedNatureSingles
+        |> revertSavedNatureSingleTiles
         |> revertSavedNatureAnchors
 
 
-revertSavedNatureSingles : Tilemap -> Tilemap
-revertSavedNatureSingles tilemap =
+revertSavedNatureSingleTiles : Tilemap -> Tilemap
+revertSavedNatureSingleTiles tilemap =
     getSavedNatureTiles tilemap
         |> Dict.foldl
             (\coords _ acc ->

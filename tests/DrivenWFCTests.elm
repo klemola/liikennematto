@@ -567,7 +567,7 @@ suite =
                             bufferCellOptions 3
                                 |> List.member natureSingle1Id
                                 |> Expect.equal True
-                                |> Expect.onFail "Nature singles should be retained"
+                                |> Expect.onFail "Nature single tiles should be retained"
                         ]
                         ()
                 )
