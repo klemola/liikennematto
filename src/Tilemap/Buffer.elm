@@ -28,6 +28,8 @@ import Tilemap.Core
         , insertSavedNatureAnchor
         , insertSavedNatureTile
         , mapCell
+        , removeSavedNatureAnchor
+        , removeSavedNatureTile
         , roadTileFromCell
         , setBuildHistory
         , tileByCell
@@ -536,6 +538,11 @@ revertSavedNature tilemap =
         |> revertSavedNatureAnchors
 
 
+{-| Captured cells may have been built over since the capture (roads can be
+placed on nature tiles). Reverting only applies while the cell holds no player
+content; stale entries are dropped so the reconcile pass cannot restore nature
+over the player's tiles either.
+-}
 revertSavedNatureSingleTiles : Tilemap -> Tilemap
 revertSavedNatureSingleTiles tilemap =
     getSavedNatureTiles tilemap
@@ -543,7 +550,11 @@ revertSavedNatureSingleTiles tilemap =
             (\coords _ acc ->
                 case Cell.fromCoordinates (getTilemapConfig acc) coords of
                     Just cell ->
-                        revertToBuffer cell acc
+                        if revertableSingle cell acc then
+                            revertToBuffer cell acc
+
+                        else
+                            removeSavedNatureTile coords acc
 
                     Nothing ->
                         acc
@@ -551,25 +562,59 @@ revertSavedNatureSingleTiles tilemap =
             tilemap
 
 
+revertableSingle : Cell -> Tilemap -> Bool
+revertableSingle cell tilemap =
+    case tileByCell tilemap cell |> Maybe.map .kind of
+        Just (Fixed props) ->
+            props.parentTile == Nothing && isSingleNatureTile props.id
+
+        Just _ ->
+            True
+
+        Nothing ->
+            False
+
+
 revertSavedNatureAnchors : Tilemap -> Tilemap
 revertSavedNatureAnchors tilemap =
     getSavedNatureAnchors tilemap
-        |> Dict.foldl
-            (\coords largeTileId acc -> revertLargeTileFootprint coords largeTileId acc)
-            tilemap
+        |> Dict.foldl revertAnchorEntry tilemap
 
 
-revertLargeTileFootprint : CellCoordinates -> TileId -> Tilemap -> Tilemap
-revertLargeTileFootprint coords largeTileId tilemap =
+{-| Building over any member removes the whole large tile, so one non-member
+cell means the capture is stale.
+-}
+revertAnchorEntry : CellCoordinates -> TileId -> Tilemap -> Tilemap
+revertAnchorEntry coords largeTileId tilemap =
     case ( Cell.fromCoordinates (getTilemapConfig tilemap) coords, tileById largeTileId ) of
         ( Just topLeftCell, TileConfig.Large largeTile ) ->
-            List.foldl
-                revertToBuffer
-                tilemap
-                (Tile.largeTileCells (getTilemapConfig tilemap) topLeftCell largeTile)
+            let
+                footprint =
+                    Tile.largeTileCells (getTilemapConfig tilemap) topLeftCell largeTile
+            in
+            if List.all (stillMemberOf largeTileId tilemap) footprint then
+                List.foldl revertToBuffer tilemap footprint
+
+            else
+                removeSavedNatureAnchor coords tilemap
 
         _ ->
-            tilemap
+            removeSavedNatureAnchor coords tilemap
+
+
+stillMemberOf : TileId -> Tilemap -> Cell -> Bool
+stillMemberOf largeTileId tilemap cell =
+    case tileByCell tilemap cell |> Maybe.map .kind of
+        Just (Fixed props) ->
+            case props.parentTile of
+                Just ( parentId, _ ) ->
+                    parentId == largeTileId
+
+                Nothing ->
+                    False
+
+        _ ->
+            False
 
 
 revertToBuffer : Cell -> Tilemap -> Tilemap
