@@ -45,6 +45,7 @@ import Tilemap.Core
 import Tilemap.DrivenWFC
     exposing
         ( DrivenWFC(..)
+        , WFCRunId(..)
         , addTileById
         , initDrivenWfc
         , onRemoveTile
@@ -193,26 +194,53 @@ update msg model =
 
         WFCChunkProcessed ( nextTilemap, updatedDrivenWfc, tileActions ) ->
             case model.wfc of
-                WFCActive activeRunId _ ->
+                WFCActive activeRunId failureRestarts _ ->
                     case updatedDrivenWfc of
-                        WFCActive _ wfc ->
-                            ( { model
-                                | renderCache = setTilemapDebugCache wfc model.renderCache
-                              }
-                            , scheduleWFCChunk activeRunId wfc model.world
-                            )
+                        WFCActive chunkRunId _ wfc ->
+                            if chunkRunId /= activeRunId then
+                                -- Stale chunk from a previous WFC run, discard
+                                ( model, Cmd.none )
 
-                        WFCFailed wfcLog nextSeed ->
-                            let
-                                wfc =
-                                    restartWfc
-                                        nextSeed
-                                        (World.tileInventoryCount model.world)
-                                        model.world.tilemap
-                            in
-                            ( { model | debug = appendWfcLog (">Restart WFC (failure)" :: wfcLog) model.debug }
-                            , scheduleWFCChunk activeRunId wfc model.world
-                            )
+                            else
+                                ( { model
+                                    | renderCache = setTilemapDebugCache wfc model.renderCache
+                                  }
+                                , scheduleWFCChunk activeRunId failureRestarts wfc model.world
+                                )
+
+                        WFCFailed failedRunId wfcLog nextSeed ->
+                            if failedRunId /= activeRunId then
+                                -- Stale chunk from a previous WFC run, discard
+                                ( model, Cmd.none )
+
+                            else if failureRestarts >= maxWfcFailureRestarts then
+                                ( { model
+                                    | wfc = WFCFailed activeRunId wfcLog nextSeed
+                                    , debug =
+                                        appendWfcLog
+                                            (("!WFC gave up after " ++ String.fromInt maxWfcFailureRestarts ++ " restarts") :: wfcLog)
+                                            model.debug
+                                  }
+                                , Cmd.none
+                                )
+
+                            else
+                                let
+                                    nextRestarts =
+                                        failureRestarts + 1
+
+                                    wfc =
+                                        restartWfc
+                                            nextSeed
+                                            (World.tileInventoryCount model.world)
+                                            model.world.tilemap
+                                in
+                                ( { model
+                                    | wfc = WFCActive activeRunId nextRestarts wfc
+                                    , debug = appendWfcLog (">Restart WFC (failure)" :: wfcLog) model.debug
+                                  }
+                                , scheduleWFCChunk activeRunId nextRestarts wfc model.world
+                                )
 
                         WFCSolved solvedRunId wfcLog collapsedTiles nextSeedState ->
                             if solvedRunId /= activeRunId then
@@ -372,6 +400,11 @@ removeTile cell model =
 --
 
 
+maxWfcFailureRestarts : Int
+maxWfcFailureRestarts =
+    3
+
+
 startWFC : Liikennematto -> ( Liikennematto, Cmd Message )
 startWFC model =
     let
@@ -379,7 +412,7 @@ startWFC model =
             model
 
         runId =
-            Time.posixToMillis model.time
+            WFCRunId (Time.posixToMillis model.time)
 
         initialWfc =
             restartWfc world.seedState
@@ -387,18 +420,18 @@ startWFC model =
                 world.tilemap
     in
     ( { model
-        | wfc = WFCActive runId initialWfc
+        | wfc = WFCActive runId 0 initialWfc
         , debug = appendWfcLog [ ">Restart WFC (timer)" ] model.debug
       }
-    , scheduleWFCChunk runId initialWfc world
+    , scheduleWFCChunk runId 0 initialWfc world
     )
 
 
-scheduleWFCChunk : Int -> WFC.Model -> World -> Cmd Message
-scheduleWFCChunk runId wfcModel world =
+scheduleWFCChunk : WFCRunId -> Int -> WFC.Model -> World -> Cmd Message
+scheduleWFCChunk runId failureRestarts wfcModel world =
     -- Small delay to allow for interrupts
     Process.sleep 1
-        |> Task.map (\_ -> runWfc runId world.tilemap wfcModel)
+        |> Task.map (\_ -> runWfc runId failureRestarts world.tilemap wfcModel)
         |> Task.perform WFCChunkProcessed
 
 

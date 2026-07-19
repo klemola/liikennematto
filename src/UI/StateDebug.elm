@@ -136,7 +136,7 @@ wfcOutput wfcLog currentTime drivenWfc =
         , Border.rounded borderRadiusPanel
         ]
         (case drivenWfc of
-            WFCActive _ wfcModel ->
+            WFCActive _ _ wfcModel ->
                 [ wfcStateDescription wfcModel
                 , wfcContext wfcModel
                 ]

@@ -581,6 +581,39 @@ suite =
                                 ()
                 )
             ]
+        , describe "empty superpositions"
+            [ test "A Done run with an empty superposition in its tilemap is not merged as solved"
+                (\_ ->
+                    let
+                        roads =
+                            placeRoad [ ( 4, 5 ), ( 5, 5 ), ( 6, 5 ) ] emptyTilemap
+
+                        -- Empty superpositions are invisible to the solver (never
+                        -- candidates), so the run reaches Done with the blank cell intact
+                        withBlank =
+                            setSuperpositionOptions (createCell constraints 5 4) [] roads
+
+                        solvedModel =
+                            WFC.fromTilemap withBlank (SeedState.fromSeed testSeed)
+                                |> WFC.solve
+                    in
+                    case WFC.currentState solvedModel of
+                        WFC.Done ->
+                            case Tilemap.DrivenWFC.runWfc (Tilemap.DrivenWFC.WFCRunId 0) 0 withBlank solvedModel of
+                                ( _, Tilemap.DrivenWFC.WFCSolved _ _ _ _, _ ) ->
+                                    Expect.fail "A tilemap with an empty superposition was merged as solved"
+
+                                ( _, Tilemap.DrivenWFC.WFCFailed _ _ _, _ ) ->
+                                    Expect.pass
+
+                                _ ->
+                                    Expect.fail "Expected the run to end in WFCFailed"
+
+                        _ ->
+                            Expect.fail
+                                "Precondition failed: the run should reach Done. Test setup is invalid."
+                )
+            ]
         , describe "seed propagation"
             [ test "WFC internal seed changes during solving"
                 (\_ ->
@@ -621,7 +654,7 @@ suite =
                             restartWfc (SeedState.fromSeed testSeed) Dict.empty tilemap
 
                         ( _, drivenWfcResult, _ ) =
-                            Tilemap.DrivenWFC.runWfc 0 tilemap (WFC.solve initialWfc)
+                            Tilemap.DrivenWFC.runWfc (Tilemap.DrivenWFC.WFCRunId 0) 0 tilemap (WFC.solve initialWfc)
 
                         currentSeed =
                             case drivenWfcResult of
