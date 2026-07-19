@@ -5,6 +5,8 @@ import Common exposing (GlobalCoordinates)
 import Data.Colors as Colors
 import Data.Lots exposing (ParkingRestriction(..))
 import Graph
+import Html
+import Html.Attributes
 import Length exposing (Length)
 import Lib.Collection as Collection exposing (Collection)
 import List.Extra
@@ -33,12 +35,10 @@ import Simulation.RoadNetwork
         , RoadNetwork
         )
 import Simulation.Route as Route
-import Html
-import Html.Attributes
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
 import Svg.Keyed
-import Tilemap.Cell as Cell
+import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.TileConfig exposing (TileId)
 
 
@@ -378,46 +378,72 @@ renderParkingSpotDebug cache parkingSpot =
 
 renderWFC : RenderCache -> Svg msg
 renderWFC cache =
-    cache.tilemapDebug
-        |> List.map
-            (\( cell, variant ) ->
-                let
-                    { x, y } =
-                        Cell.bottomLeftCorner cell |> pointToPixels defaultPixelsToMetersRatio
+    Svg.g []
+        [ cache.trailDebug
+            |> List.map (renderTrailShading cache)
+            |> Svg.Keyed.node "g" []
+        , cache.tilemapDebug
+            |> List.map
+                (\( cell, variant ) ->
+                    let
+                        { x, y } =
+                            Cell.bottomLeftCorner cell |> pointToPixels defaultPixelsToMetersRatio
 
-                    yAdjusted =
-                        cache.tilemapHeightPixels - tileSizePixels - y
-                in
-                ( Cell.toString cell
-                , Svg.svg
-                    [ Attributes.x (String.fromFloat x)
-                    , Attributes.y (String.fromFloat yAdjusted)
-                    , Attributes.width (String.fromFloat tileSizePixels)
-                    , Attributes.height (String.fromFloat tileSizePixels)
-                    , Attributes.viewBox "0 0 256 256"
-                    ]
-                    [ case variant of
-                        RenderCache.FixedDebug fixedProps ->
-                            renderFixed fixedProps
+                        yAdjusted =
+                            cache.tilemapHeightPixels - tileSizePixels - y
+                    in
+                    ( Cell.toString cell
+                    , Svg.svg
+                        [ Attributes.x (String.fromFloat x)
+                        , Attributes.y (String.fromFloat yAdjusted)
+                        , Attributes.width (String.fromFloat tileSizePixels)
+                        , Attributes.height (String.fromFloat tileSizePixels)
+                        , Attributes.viewBox "0 0 256 256"
+                        ]
+                        [ case variant of
+                            RenderCache.FixedDebug fixedProps ->
+                                renderFixed fixedProps
 
-                        RenderCache.SuperpositionDebug ids ->
-                            renderSuperposition ids
+                            RenderCache.SuperpositionDebug ids ->
+                                renderSuperposition ids
 
-                        RenderCache.BufferDebug ->
-                            Svg.g []
-                                [ Svg.text_
-                                    [ Attributes.fill "black"
-                                    , Attributes.x "24"
-                                    , Attributes.y "24"
-                                    , Attributes.style "font: italic 24px sans-serif;"
+                            RenderCache.BufferDebug ->
+                                Svg.g []
+                                    [ Svg.text_
+                                        [ Attributes.fill "black"
+                                        , Attributes.x "24"
+                                        , Attributes.y "24"
+                                        , Attributes.style "font: italic 24px sans-serif;"
+                                        ]
+                                        [ Svg.text "B"
+                                        ]
                                     ]
-                                    [ Svg.text "B"
-                                    ]
-                                ]
-                    ]
+                        ]
+                    )
                 )
-            )
-        |> Svg.Keyed.node "g" []
+            |> Svg.Keyed.node "g" []
+        ]
+
+
+renderTrailShading : RenderCache -> Cell -> ( String, Svg msg )
+renderTrailShading cache cell =
+    let
+        { x, y } =
+            Cell.bottomLeftCorner cell |> pointToPixels defaultPixelsToMetersRatio
+
+        yAdjusted =
+            cache.tilemapHeightPixels - tileSizePixels - y
+    in
+    ( Cell.toString cell
+    , Svg.rect
+        [ Attributes.x (String.fromFloat x)
+        , Attributes.y (String.fromFloat yAdjusted)
+        , Attributes.width (String.fromFloat tileSizePixels)
+        , Attributes.height (String.fromFloat tileSizePixels)
+        , Attributes.fill <| Color.toCssString <| Colors.withAlpha 0.25 Colors.orange
+        ]
+        []
+    )
 
 
 renderFixed : { id : TileId, parentTileId : Maybe TileId } -> Svg msg

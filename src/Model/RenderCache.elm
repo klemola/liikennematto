@@ -13,6 +13,7 @@ module Model.RenderCache exposing
 
 import Common exposing (applyTuple2)
 import Data.TileSet exposing (connectionsByTile, tileById)
+import Dict
 import Length
 import Lib.FSM as FSM
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
@@ -34,6 +35,9 @@ import Tilemap.Core
         , Tilemap
         , TilemapUpdateResult
         , fixedTileByCell
+        , getSavedNatureAnchors
+        , getSavedNatureTiles
+        , getTilemapConfig
         , getTilemapDimensions
         , tileToConfig
         , tilemapToList
@@ -46,6 +50,7 @@ import Tilemap.WFC as WFC
 type alias RenderCache =
     { tilemap : List Renderable
     , tilemapDebug : List ( Cell, TilemapDebugItem )
+    , trailDebug : List Cell
     , dynamicTiles : List Renderable
     , tilemapWidthPixels : Float
     , tilemapHeightPixels : Float
@@ -108,6 +113,7 @@ new { tilemap } =
             initialTileListFilter
             tilemap
     , tilemapDebug = tilemapToList debugItemFromTile NoFilter tilemap
+    , trailDebug = trailDebugFromTilemap tilemap
     , dynamicTiles = []
     , tilemapWidthPixels =
         tilemapWidthPixels
@@ -149,6 +155,7 @@ clear screenWidth viewport _ { tilemap } =
             initialTileListFilter
             tilemap
     , tilemapDebug = tilemapToList debugItemFromTile NoFilter tilemap
+    , trailDebug = trailDebugFromTilemap tilemap
     , dynamicTiles = []
     , tilemapWidthPixels = tilemapWidthPixels
     , tilemapHeightPixels = tilemapHeigthPixels
@@ -182,17 +189,23 @@ setTilemapCache tilemap unsolvedWFCTilemap cache =
 
                 Nothing ->
                     cache.tilemapDebug
+
+        -- Rebuilt unconditionally so the shading clears once reconcile
+        -- empties the saved nature dicts
+        , trailDebug =
+            trailDebugFromTilemap (Maybe.withDefault tilemap unsolvedWFCTilemap)
     }
 
 
 setTilemapDebugCache : WFC.Model -> RenderCache -> RenderCache
 setTilemapDebugCache wfcModel cache =
+    let
+        wfcTilemap =
+            WFC.toTilemap wfcModel
+    in
     { cache
-        | tilemapDebug =
-            tilemapToList
-                debugItemFromTile
-                NoFilter
-                (WFC.toTilemap wfcModel)
+        | tilemapDebug = tilemapToList debugItemFromTile NoFilter wfcTilemap
+        , trailDebug = trailDebugFromTilemap wfcTilemap
     }
 
 
@@ -297,6 +310,31 @@ debugItemFromTile cell tile =
 
         _ ->
             Nothing
+
+
+trailDebugFromTilemap : Tilemap -> List Cell
+trailDebugFromTilemap tilemap =
+    let
+        constraints =
+            getTilemapConfig tilemap
+
+        singleTiles =
+            Dict.keys (getSavedNatureTiles tilemap)
+                |> List.filterMap (Cell.fromCoordinates constraints)
+
+        anchorFootprints =
+            Dict.toList (getSavedNatureAnchors tilemap)
+                |> List.concatMap
+                    (\( coords, largeTileId ) ->
+                        case ( Cell.fromCoordinates constraints coords, tileById largeTileId ) of
+                            ( Just topLeftCell, TileConfig.Large largeTile ) ->
+                                Tile.largeTileCells constraints topLeftCell largeTile
+
+                            _ ->
+                                []
+                    )
+    in
+    singleTiles ++ anchorFootprints
 
 
 toDynamicTiles : RenderCache -> Tilemap -> List Cell -> List Renderable

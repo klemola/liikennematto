@@ -22,6 +22,7 @@ import Process
 import Quantity
 import Savegame
 import Task
+import Tilemap.Buffer exposing (reconcileSavedNatureTiles, roadBuildingInProgress)
 import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.Core
     exposing
@@ -33,6 +34,7 @@ import Tilemap.Core
         , fixedTileByCell
         , getBuildHistory
         , getTilemapConfig
+        , hasSuperpositionCells
         , isDestructivePlacement
         , mapCell
         , resetSuperposition
@@ -154,7 +156,7 @@ update msg model =
                         Nothing ->
                             ( model, Cmd.none )
 
-        CheckQueues time delta ->
+        CheckQueues _ delta ->
             case model.world.pendingTilemapChange of
                 Just _ ->
                     ( model, Cmd.none )
@@ -168,13 +170,19 @@ update msg model =
                                         |> Quantity.minus delta
                                         |> Quantity.max Quantity.zero
 
+                                -- Cold-start needs at least three road placements, but when a road is
+                                -- completed by addding just one piece, rest will suffice
                                 builtEnough =
-                                    List.length (getBuildHistory model.world.tilemap) >= 5
-
-                                waitedEnough =
-                                    (Time.posixToMillis time - Time.posixToMillis initTime) > 2000
+                                    (List.length (getBuildHistory model.world.tilemap) >= 3)
+                                        || roadBuildingInProgress model.world.tilemap
                             in
-                            if Quantity.lessThanOrEqualToZero nextTimer && (builtEnough || waitedEnough) then
+                            -- Road removal empties the build history but leaves cells in
+                            -- superposition. Those must be resolved even though nothing
+                            -- new was built
+                            if
+                                Quantity.lessThanOrEqualToZero nextTimer
+                                    && (builtEnough || hasSuperpositionCells model.world.tilemap)
+                            then
                                 startWFC model
 
                             else
@@ -220,15 +228,18 @@ update msg model =
                                         else
                                             playSound Audio.BuildLot
 
+                                    reconciledTilemap =
+                                        reconcileSavedNatureTiles nextTilemap
+
                                     nextWorld =
                                         model.world
-                                            |> World.setTilemap nextTilemap
+                                            |> World.setTilemap reconciledTilemap
                                             |> World.updateSeed nextSeedState
                                 in
                                 ( { model
                                     | world = nextWorld
                                     , wfc = updatedDrivenWfc
-                                    , renderCache = setTilemapCache nextTilemap Nothing model.renderCache
+                                    , renderCache = setTilemapCache reconciledTilemap Nothing model.renderCache
                                     , debug = appendWfcLog wfcLog model.debug
                                   }
                                 , Cmd.batch (audioCmd :: tileActionsToCmds tileActions)
@@ -279,7 +290,7 @@ onPrimaryInput cell model =
     then
         if isDestructivePlacement cell model.world.tilemap then
             -- Placing here would erase a lot or large nature tile (no undo), so
-            -- defer the commit until the player confirms via the dialog.
+            -- defer the commit until the player confirms the action
             ( { model | ui = UI.Model.requestConfirmation cell model.ui }
             , Cmd.none
             )

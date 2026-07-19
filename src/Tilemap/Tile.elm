@@ -16,6 +16,7 @@ module Tilemap.Tile exposing
     , isDynamic
     , isFixed
     , largeTileCells
+    , largeTileContent
     , largeTileTopLeftCell
     , transitionTimer
     , withAnimation
@@ -74,6 +75,12 @@ type TileOperation
     = Add
     | AddFromWFC
     | AddFromSaveGame
+    | RestoreFromTrail
+
+
+suppressesNatureAnimation : TileOperation -> Bool
+suppressesNatureAnimation op =
+    op == AddFromSaveGame || op == RestoreFromTrail
 
 
 defaultTileAnimation : Animation
@@ -106,6 +113,9 @@ fromTileConfig tileConfig parentTileProperties op =
                 AddFromSaveGame ->
                     built
 
+                RestoreFromTrail ->
+                    built
+
                 Add ->
                     constructing
 
@@ -129,7 +139,7 @@ fromTileConfig tileConfig parentTileProperties op =
                 , name = name
                 , parentTile = parentTileProperties
                 , animation =
-                    if isMainTile && op /= AddFromSaveGame && TileConfig.biome tileConfig == TileConfig.Nature then
+                    if isMainTile && not (suppressesNatureAnimation op) && TileConfig.biome tileConfig == TileConfig.Nature then
                         Just defaultTileAnimation
 
                     else
@@ -246,6 +256,12 @@ largeTileTopLeftCell constraints globalReferenceCell subgridIndex largeTile =
 
 largeTileCells : Constraints a -> Cell -> TileConfig.LargeTile -> List Cell
 largeTileCells constraints topLeftCornerCell largeTile =
+    largeTileContent constraints topLeftCornerCell largeTile
+        |> List.map (\( cell, _, _ ) -> cell)
+
+
+largeTileContent : Constraints a -> Cell -> TileConfig.LargeTile -> List ( Cell, Int, TileConfig.SingleTile )
+largeTileContent constraints topLeftCornerCell largeTile =
     let
         subgridDimensions =
             { horizontalCellsAmount = largeTile.width
@@ -254,12 +270,13 @@ largeTileCells constraints topLeftCornerCell largeTile =
     in
     largeTile.tiles
         |> Array.indexedMapToList
-            (\index _ ->
+            (\index singleTile ->
                 index
                     -- Use of unsafe function: the top left corner has been validated already
                     -- and the whole subgrid should be within tilemap bounds
                     |> Cell.fromArray1DIndexUnsafe subgridDimensions
                     |> Cell.placeIn constraints topLeftCornerCell
+                    |> Maybe.map (\cell -> ( cell, index, singleTile ))
             )
         |> List.filterMap identity
 

@@ -19,19 +19,28 @@ import Data.TileSet
         , tileById
         , tilesByBaseTileId
         )
+import Dict
 import Duration exposing (Duration)
 import Lib.OrthogonalDirection as OrthogonalDirection exposing (OrthogonalDirection)
 import Lib.SeedState exposing (SeedState)
 import List.Nonempty
 import Round
 import Set
-import Tilemap.Buffer exposing (removeBuffer, updateBufferCells)
-import Tilemap.Cell exposing (Cell)
+import Tilemap.Buffer
+    exposing
+        ( registerPlacement
+        , removeBuffer
+        , revertSavedNature
+        )
+import Tilemap.Cell as Cell exposing (Cell, CellCoordinates)
 import Tilemap.Core
     exposing
         ( Tilemap
         , addTileFromWfc
+        , clearSavedNature
         , foldTiles
+        , getSavedNatureAnchors
+        , getTilemapConfig
         , resetFixedTileBySurroundings
         , resetTileBySurroundings
         , setSuperpositionOptions
@@ -113,7 +122,7 @@ restartWfc seedState tileInventory tilemap =
     resetWfc seedState
         Nothing
         tileInventory
-        (preprocessTilemap tilemap)
+        (preprocessTilemap (revertSavedNature tilemap))
 
 
 resetWfc : SeedState -> Maybe Cell -> TileInventory Int -> Tilemap -> WFC.Model
@@ -143,7 +152,7 @@ addTileById seedState tileInventory cell tileId tilemap =
         updatedWfcModel =
             resetWfc seedState (Just cell) tileInventory (updateTileNeighbors cell updatedTilemap)
     in
-    ( updateBufferCells cell (WFC.toTilemap updatedWfcModel)
+    ( registerPlacement cell (WFC.toTilemap updatedWfcModel)
     , tilemapChangeActions
     )
 
@@ -155,7 +164,9 @@ onRemoveTile seedState tileInventory cell tilemap =
             Tilemap.Core.removeTile cell tilemap
 
         withBufferRemoved =
-            removeBuffer cell updatedTilemap
+            updatedTilemap
+                |> removeBuffer cell
+                |> clearSavedNature
 
         wfcWithoutTile =
             resetWfc seedState (Just cell) tileInventory (updateTileNeighbors cell withBufferRemoved)
@@ -241,6 +252,7 @@ preprocessTilemap tilemap =
         |> bufferToSuperposition
         |> pruneUnfittableLargeTiles
         |> reopenRoads
+        |> restrictReclaimedFootprints
 
 
 bufferToSuperposition : Tilemap -> Tilemap
@@ -412,6 +424,54 @@ resetDrivewayNeighbors drivewayNeighbors tilemap =
         )
         tilemap
         drivewayNeighbors
+
+
+restrictReclaimedFootprints : Tilemap -> Tilemap
+restrictReclaimedFootprints tilemap =
+    Dict.foldl restrictFootprintAndMargin tilemap (getSavedNatureAnchors tilemap)
+
+
+restrictFootprintAndMargin : CellCoordinates -> TileId -> Tilemap -> Tilemap
+restrictFootprintAndMargin topLeftCoords largeTileId tilemap =
+    let
+        constraints =
+            getTilemapConfig tilemap
+    in
+    case ( Cell.fromCoordinates constraints topLeftCoords, tileById largeTileId ) of
+        ( Just topLeftCell, TileConfig.Large largeTile ) ->
+            let
+                footprint =
+                    Tile.largeTileCells constraints topLeftCell largeTile
+
+                margin =
+                    footprint
+                        |> List.concatMap
+                            (Cell.orthogonalNeighbors constraints >> List.map Tuple.second)
+            in
+            List.foldl restrictCellOptions tilemap (footprint ++ margin)
+
+        _ ->
+            tilemap
+
+
+restrictCellOptions : Cell -> Tilemap -> Tilemap
+restrictCellOptions cell tilemap =
+    case tileByCell tilemap cell |> Maybe.map .kind of
+        Just (Superposition options) ->
+            setSuperpositionOptions cell (List.filter (not << isNatureLargeTile) options) tilemap
+
+        _ ->
+            tilemap
+
+
+isNatureLargeTile : TileId -> Bool
+isNatureLargeTile tileId =
+    case tileById tileId of
+        TileConfig.Large largeTile ->
+            largeTile.biome == TileConfig.Nature
+
+        TileConfig.Single _ ->
+            False
 
 
 drivenWfcDebug : Time.Posix -> DrivenWFC -> String

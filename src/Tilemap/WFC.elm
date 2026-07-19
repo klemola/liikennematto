@@ -23,7 +23,6 @@ module Tilemap.WFC exposing
     , toCurrentCell
     , toTilemap
     , withTileInventory
-    , withTilemapUpdate
     )
 
 import Array
@@ -308,11 +307,6 @@ flushOpenSteps ((Model modelContents) as model) =
 
     else
         flushOpenSteps (step StopAtEmptySteps model)
-
-
-withTilemapUpdate : (Tilemap -> Tilemap) -> Model -> Model
-withTilemapUpdate updateTilemap (Model modelDetails) =
-    Model { modelDetails | tilemap = updateTilemap modelDetails.tilemap }
 
 
 

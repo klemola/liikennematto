@@ -4,10 +4,13 @@ module Data.Utility exposing
     , cellsByTileKind
     , cellsByTileKindFromAscii
     , createCell
+    , forceFixLargeNatureTile
+    , forceFixNatureTile
     , gameModelFromWorld
     , getStartAndEndNode
     , initTileWithSuperposition
     , multilineGridDebug
+    , placeRoad
     , placeRoadAndUpdateBuffer
     , removeRoadAndUpdateBuffer
     , tenByTenTilemap
@@ -22,6 +25,7 @@ import Data.TileSet
     exposing
         ( horizontalRoadLotEntryUp
         , lotTiles
+        , tileById
         , tileIdByBitmask
         , tileIdsByOrthogonalMatch
         , verticalRoadLotEntryLeft
@@ -42,6 +46,7 @@ import Tilemap.Core
     exposing
         ( Tilemap
         , TilemapConfig
+        , addTileFromSavegame
         , addTileFromWfc
         , cellBitmask
         , createTilemap
@@ -353,6 +358,23 @@ placeRoadAndUpdateBuffer cellsToPlace tilemap =
         cellsToPlace
 
 
+{-| Same as `placeRoadAndUpdateBuffer` but skips the redundant explicit
+`updateBufferCells` call so the build history accumulates naturally
+-}
+placeRoad : List CellCoordinates -> Tilemap -> Tilemap
+placeRoad cellsToPlace tilemap =
+    List.foldl
+        (\( x, y ) nextTilemap ->
+            let
+                cell =
+                    createCell (getTilemapConfig tilemap) x y
+            in
+            addTileInstantly cell nextTilemap
+        )
+        tilemap
+        cellsToPlace
+
+
 removeRoadAndUpdateBuffer : CellCoordinates -> Tilemap -> Tilemap
 removeRoadAndUpdateBuffer ( x, y ) tilemap =
     let
@@ -362,6 +384,52 @@ removeRoadAndUpdateBuffer ( x, y ) tilemap =
     tilemap
         |> removeTileInstantly cell
         |> removeBuffer cell
+
+
+{-| Force a Nature `Single` tile into a cell as if WFC had collapsed it. Skips
+side-effects.
+-}
+forceFixNatureTile : TileConfig.TileId -> CellCoordinates -> Tilemap -> Tilemap
+forceFixNatureTile tileId ( x, y ) tilemap =
+    let
+        cell =
+            createCell (getTilemapConfig tilemap) x y
+
+        ( nextTilemap, _ ) =
+            addTileFromSavegame (tileById tileId) cell tilemap
+    in
+    nextTilemap
+
+
+{-| Force a large Nature tile into place with its top-left member at the given
+coordinates, as if WFC or a savegame had placed it. Skips side-effects.
+-}
+forceFixLargeNatureTile : TileConfig.TileId -> CellCoordinates -> Tilemap -> Tilemap
+forceFixLargeNatureTile largeTileId ( x, y ) tilemap =
+    case tileById largeTileId of
+        TileConfig.Large largeTile ->
+            let
+                topLeftCell =
+                    createCell (getTilemapConfig tilemap) x y
+            in
+            List.foldl
+                (\( globalCell, subgridIndex, singleTile ) acc ->
+                    mapCell globalCell (\_ -> largeTileMember largeTileId subgridIndex singleTile) acc
+                )
+                tilemap
+                (Tile.largeTileContent (getTilemapConfig tilemap) topLeftCell largeTile)
+
+        TileConfig.Single _ ->
+            tilemap
+
+
+largeTileMember : TileConfig.TileId -> Int -> TileConfig.SingleTile -> Tile
+largeTileMember largeTileId subgridIndex singleTile =
+    Tile.fromTileConfig
+        (TileConfig.Single singleTile)
+        (Just ( largeTileId, subgridIndex ))
+        Tile.AddFromSaveGame
+        |> Tuple.first
 
 
 
