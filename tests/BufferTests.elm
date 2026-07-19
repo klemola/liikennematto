@@ -1204,7 +1204,7 @@ suite =
                         ]
                         ()
                 )
-            , test "reconcileSavedNatureTiles: reinstates the large tile exactly when its area is unclaimed"
+            , test "reconcileSavedNatureTiles: restores the large tile exactly when its area is unclaimed"
                 (\_ ->
                     let
                         -- Simulate a WFC pass that filled the tile area with single cell Nature tiles
@@ -1415,7 +1415,7 @@ suite =
                         ]
                         ()
                 )
-            , test "reconcileSavedNatureTiles does not reinstate large nature over roads"
+            , test "reconcileSavedNatureTiles does not restore large nature over roads"
                 (\_ ->
                     let
                         roads =

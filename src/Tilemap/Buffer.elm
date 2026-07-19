@@ -663,21 +663,24 @@ reconcileAnchorEntry constraints coords largeTileId tilemap =
                 footprint =
                     Tile.largeTileCells constraints topLeftCell largeTile
             in
-            if List.any (footprintCellClaimedByLargeTile tilemap) footprint then
+            if List.any (footprintCellBlocksRestore tilemap) footprint then
                 tilemap
 
             else
-                reinstateLargeTile constraints topLeftCell largeTile tilemap
+                restoreLargeTile constraints topLeftCell largeTile tilemap
 
         _ ->
             tilemap
 
 
-footprintCellClaimedByLargeTile : Tilemap -> Cell -> Bool
-footprintCellClaimedByLargeTile tilemap cell =
+{-| Large-tile members (lots) and non-nature singles (roads built after the
+capture) block the restore.
+-}
+footprintCellBlocksRestore : Tilemap -> Cell -> Bool
+footprintCellBlocksRestore tilemap cell =
     case tileByCell tilemap cell |> Maybe.map .kind of
-        Just (Fixed { parentTile }) ->
-            parentTile /= Nothing
+        Just (Fixed props) ->
+            props.parentTile /= Nothing || not (isSingleNatureTile props.id)
 
         _ ->
             False
@@ -686,8 +689,8 @@ footprintCellClaimedByLargeTile tilemap cell =
 {-| Nature tile outer sockets are uniform, so overwriting the footprint keeps
 neighbors valid.
 -}
-reinstateLargeTile : TilemapConfig -> Cell -> TileConfig.LargeTile -> Tilemap -> Tilemap
-reinstateLargeTile constraints topLeftCell largeTile tilemap =
+restoreLargeTile : TilemapConfig -> Cell -> TileConfig.LargeTile -> Tilemap -> Tilemap
+restoreLargeTile constraints topLeftCell largeTile tilemap =
     List.foldl
         (\( globalCell, subgridIndex, singleTile ) acc ->
             mapCell globalCell (\_ -> memberTile largeTile.id subgridIndex singleTile) acc
@@ -726,7 +729,9 @@ reconcileEntry constraints coords savedId tilemap =
                                         tilemap
 
                                     TileConfig.Single singleTile ->
-                                        if singleTile.biome == TileConfig.Lot then
+                                        -- Only another nature tile may be replaced; anything
+                                        -- else is player content built after the capture
+                                        if singleTile.biome /= TileConfig.Nature then
                                             tilemap
 
                                         else if props.id == savedId then
