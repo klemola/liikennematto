@@ -28,6 +28,7 @@ import Tilemap.Core
         , fixedTileByCell
         , foldTiles
         , getSavedNatureTiles
+        , insertSavedNatureTile
         , setSuperpositionOptions
         , tileByCell
         , tileNeighborIn
@@ -495,17 +496,25 @@ suite =
                                 overbuiltCells =
                                     [ ( 8, 4 ), ( 8, 5 ) ]
 
-                                staleEntries =
-                                    getSavedNatureTiles afterOverbuild
+                                capturedEntries =
+                                    getSavedNatureTiles afterLeg
                                         |> Dict.keys
                                         |> List.filter (\coords -> List.member coords overbuiltCells)
+
+                                -- Building over the captured cells drops their entries;
+                                -- re-add them to prove the revert and reconcile guards
+                                -- hold even if staleness slips in through some other path
+                                withStaleEntries =
+                                    afterOverbuild
+                                        |> insertSavedNatureTile ( 8, 4 ) natureSingle1Id
+                                        |> insertSavedNatureTile ( 8, 5 ) natureSingle1Id
 
                                 -- Failed runs restart with the next seed from the same
                                 -- tilemap, like the WFCFailed handler does. Failures here
                                 -- are unrelated churn (large tiles vs. tight buffers on a
                                 -- small map); the bug makes every attempt fail
                                 solvedModel =
-                                    solveWithRetries 5 (SeedState.fromSeed testSeed) afterOverbuild
+                                    solveWithRetries 5 (SeedState.fromSeed testSeed) withStaleEntries
 
                                 solvedTilemap =
                                     WFC.toTilemap solvedModel
@@ -540,10 +549,17 @@ suite =
                                         _ ->
                                             Expect.pass
                                 , \_ ->
-                                    List.sort staleEntries
+                                    List.sort capturedEntries
                                         |> Expect.equalLists overbuiltCells
                                         |> Expect.onFail
                                             "Precondition: the trail should have captured (8,4) and (8,5) while they held nature"
+                                , \_ ->
+                                    getSavedNatureTiles afterOverbuild
+                                        |> Dict.keys
+                                        |> List.filter (\coords -> List.member coords overbuiltCells)
+                                        |> Expect.equalLists []
+                                        |> Expect.onFail
+                                            "Building over the captured cells should drop their saved entries"
                                 , \_ ->
                                     overbuiltCells
                                         |> List.map (biomeAt afterOverbuild)

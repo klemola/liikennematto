@@ -64,6 +64,7 @@ registerPlacement builtCell tilemap =
                     |> setBuildHistory []
     in
     preparedTilemap
+        |> invalidateCapturedCell builtCell
         |> captureTrail (trailCells builtCell preparedTilemap)
         |> updateBufferCells builtCell
 
@@ -529,6 +530,38 @@ captureLargeNatureTileAnchor cell largeTileId subgridIndex tilemap =
 
         TileConfig.Single _ ->
             tilemap
+
+
+{-| A placement over a captured cell makes its entry stale; drop it so the
+revert and reconcile passes never consider it.
+-}
+invalidateCapturedCell : Cell -> Tilemap -> Tilemap
+invalidateCapturedCell builtCell tilemap =
+    let
+        withoutSingleEntry =
+            removeSavedNatureTile (Cell.coordinates builtCell) tilemap
+    in
+    getSavedNatureAnchors withoutSingleEntry
+        |> Dict.foldl
+            (\anchorCoords largeTileId acc ->
+                if anchorFootprintContains builtCell anchorCoords largeTileId acc then
+                    removeSavedNatureAnchor anchorCoords acc
+
+                else
+                    acc
+            )
+            withoutSingleEntry
+
+
+anchorFootprintContains : Cell -> CellCoordinates -> TileId -> Tilemap -> Bool
+anchorFootprintContains builtCell anchorCoords largeTileId tilemap =
+    case ( Cell.fromCoordinates (getTilemapConfig tilemap) anchorCoords, tileById largeTileId ) of
+        ( Just topLeftCell, TileConfig.Large largeTile ) ->
+            Tile.largeTileCells (getTilemapConfig tilemap) topLeftCell largeTile
+                |> List.member builtCell
+
+        _ ->
+            False
 
 
 revertSavedNature : Tilemap -> Tilemap
