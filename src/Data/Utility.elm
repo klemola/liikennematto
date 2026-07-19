@@ -93,8 +93,7 @@ worldFromTilemap tilemap =
 
 
 {-| Restore a World from raw savegame JSON, for crafting test fixtures that are
-awkward to build with the placement utilities. Same format as the URL savegame
-(pre-compression).
+awkward to build with the placement utilities.
 -}
 worldFromSavegame : String -> Result String World
 worldFromSavegame json =

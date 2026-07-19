@@ -471,7 +471,7 @@ suite =
                             )
                 )
             ]
-        , describe "stale saved-nature capture (Bug 5)"
+        , describe "stale saved nature tiles"
             [ test "Roads built over previously captured nature survive a full WFC cycle"
                 (\_ ->
                     case worldFromSavegame incidentBaseSavegame of
@@ -703,7 +703,7 @@ suite =
                                 |> Maybe.map tileSuperposition
                                 |> Maybe.withDefault []
 
-                        -- Anchor at (8, 2) covers (8,2)(9,2)(8,3)(9,3). X=9 is not buffer,
+                        -- Anchor at (8, 2) covers (8,2)(9,2)(8,3)(9,3). X=9 is not buffer
                         noFitAnchorOptions =
                             tileByCell tilemap (createCell constraints 8 2)
                                 |> Maybe.map tileSuperposition
@@ -758,9 +758,8 @@ solveWithRetries attempts seedState tilemap =
 
 
 {-| 10x10 base world: a horizontal road on row 3 (x 4..8) and WFC-collapsed
-nature singles below its right end at (8,4) and (8,5). Mirrors the state that
-preceded the wfc-fail-blowup incident, before the player built a road leg over
-the nature tiles.
+nature singles below its right end at (8,4) and (8,5). Based on a WFC failure blow-up
+incident that left tiles empty (the state before the failure)
 -}
 incidentBaseSavegame : String
 incidentBaseSavegame =

@@ -571,11 +571,6 @@ revertSavedNature tilemap =
         |> revertSavedNatureAnchors
 
 
-{-| Captured cells may have been built over since the capture (roads can be
-placed on nature tiles). Reverting only applies while the cell holds no player
-content; stale entries are dropped so the reconcile pass cannot restore nature
-over the player's tiles either.
--}
 revertSavedNatureSingleTiles : Tilemap -> Tilemap
 revertSavedNatureSingleTiles tilemap =
     getSavedNatureTiles tilemap
@@ -583,7 +578,7 @@ revertSavedNatureSingleTiles tilemap =
             (\coords _ acc ->
                 case Cell.fromCoordinates (getTilemapConfig acc) coords of
                     Just cell ->
-                        if revertableSingle cell acc then
+                        if revertableSingleTile cell acc then
                             revertToBuffer cell acc
 
                         else
@@ -595,8 +590,8 @@ revertSavedNatureSingleTiles tilemap =
             tilemap
 
 
-revertableSingle : Cell -> Tilemap -> Bool
-revertableSingle cell tilemap =
+revertableSingleTile : Cell -> Tilemap -> Bool
+revertableSingleTile cell tilemap =
     case tileByCell tilemap cell |> Maybe.map .kind of
         Just (Fixed props) ->
             props.parentTile == Nothing && isSingleNatureTile props.id
@@ -614,9 +609,6 @@ revertSavedNatureAnchors tilemap =
         |> Dict.foldl revertAnchorEntry tilemap
 
 
-{-| Building over any member removes the whole large tile, so one non-member
-cell means the capture is stale.
--}
 revertAnchorEntry : CellCoordinates -> TileId -> Tilemap -> Tilemap
 revertAnchorEntry coords largeTileId tilemap =
     case ( Cell.fromCoordinates (getTilemapConfig tilemap) coords, tileById largeTileId ) of
@@ -625,7 +617,7 @@ revertAnchorEntry coords largeTileId tilemap =
                 footprint =
                     Tile.largeTileCells (getTilemapConfig tilemap) topLeftCell largeTile
             in
-            if List.all (stillMemberOf largeTileId tilemap) footprint then
+            if List.all (cellMemberOfLargeTile largeTileId tilemap) footprint then
                 List.foldl revertToBuffer tilemap footprint
 
             else
@@ -635,8 +627,8 @@ revertAnchorEntry coords largeTileId tilemap =
             removeSavedNatureAnchor coords tilemap
 
 
-stillMemberOf : TileId -> Tilemap -> Cell -> Bool
-stillMemberOf largeTileId tilemap cell =
+cellMemberOfLargeTile : TileId -> Tilemap -> Cell -> Bool
+cellMemberOfLargeTile largeTileId tilemap cell =
     case tileByCell tilemap cell |> Maybe.map .kind of
         Just (Fixed props) ->
             case props.parentTile of
@@ -665,9 +657,6 @@ isSingleNatureTile tileId =
             False
 
 
-{-| The dicts never share cells (a cell was either a single or a large tile
-member at capture), so the pass order doesn't matter.
--}
 reconcileSavedNatureTiles : Tilemap -> Tilemap
 reconcileSavedNatureTiles tilemap =
     tilemap
@@ -706,9 +695,6 @@ reconcileAnchorEntry constraints coords largeTileId tilemap =
             tilemap
 
 
-{-| Large-tile members (lots) and non-nature singles (roads built after the
-capture) block the restore.
--}
 footprintCellBlocksRestore : Tilemap -> Cell -> Bool
 footprintCellBlocksRestore tilemap cell =
     case tileByCell tilemap cell |> Maybe.map .kind of
@@ -753,7 +739,7 @@ reconcileEntry constraints coords savedId tilemap =
                     case tile.kind of
                         Fixed props ->
                             if props.parentTile /= Nothing then
-                                -- Lot subgrid; leave as-is.
+                                -- Lot subgrid, leave as-is
                                 tilemap
 
                             else
@@ -762,8 +748,6 @@ reconcileEntry constraints coords savedId tilemap =
                                         tilemap
 
                                     TileConfig.Single singleTile ->
-                                        -- Only another nature tile may be replaced; anything
-                                        -- else is player content built after the capture
                                         if singleTile.biome /= TileConfig.Nature then
                                             tilemap
 

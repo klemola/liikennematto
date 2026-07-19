@@ -1319,20 +1319,19 @@ suite =
                         ()
                 )
             ]
-        , describe "Stale saved-nature entries (Bug 5)"
+        , describe "Stale saved nature tiles"
             [ test "revertSavedNature keeps a road built over a captured nature cell"
                 (\_ ->
                     let
                         roads =
                             placeRoad [ ( 5, 5 ), ( 6, 5 ) ] emptyTilemap
 
-                        withLegitNature =
+                        withValidNature =
                             forceFixNatureTile defaultTileId ( 5, 3 ) roads
 
-                        -- (5,5) was captured while it held nature, then built over:
-                        -- the entry is stale. (5,3) is still nature: the entry is legit.
+                        -- (5,5) was captured as a nature tile, then built over. (5,3) is a normal nature tile
                         before =
-                            withLegitNature
+                            withValidNature
                                 |> insertSavedNatureTile ( 5, 5 ) defaultTileId
                                 |> insertSavedNatureTile ( 5, 3 ) defaultTileId
 
@@ -1344,10 +1343,10 @@ suite =
                     in
                     Expect.all
                         [ \_ ->
-                            -- Precondition: (5,5) holds a Fixed road.
+                            -- Precondition: (5,5) holds a Fixed road
                             Expect.notEqual Nothing roadIdBefore
                         , \_ ->
-                            -- The stale entry must not revert the road.
+                            -- The stale entry must not revert the road
                             fixedIdAt afterApply ( 5, 5 )
                                 |> Expect.equal roadIdBefore
                         , \_ ->
@@ -1361,7 +1360,7 @@ suite =
                 (\_ ->
                     let
                         -- NatureDouble1 (1x2) top-left at (5,5) covers (5,5) and (5,6);
-                        -- both cells were built over after capture.
+                        -- both cells were built over after capture
                         roads =
                             placeRoad [ ( 5, 5 ), ( 5, 6 ) ] emptyTilemap
 
