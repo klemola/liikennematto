@@ -13,10 +13,11 @@ import Dict
 import Duration
 import Expect
 import Message exposing (Message(..))
+import Model.Liikennematto exposing (Liikennematto)
 import Model.World as World
 import Test exposing (Test, describe, test)
-import Tilemap.Core exposing (isDestructivePlacement, roadTileFromCell, setBuildHistory)
-import Tilemap.DrivenWFC exposing (DrivenWFC(..), addTileById, initDrivenWfc, onRemoveTile, restartWfc, runWfc)
+import Tilemap.Core exposing (isDestructivePlacement, roadTileFromCell, setBuildHistory, setSuperpositionOptions)
+import Tilemap.DrivenWFC exposing (DrivenWFC(..), WFCRunId(..), addTileById, initDrivenWfc, onRemoveTile, restartWfc, runWfc)
 import Tilemap.Tile as Tile
 import Tilemap.Update
 import Tilemap.WFC as WFC
@@ -41,7 +42,7 @@ suite =
                             restartWfc world.seedState Dict.empty world.tilemap
 
                         staleResult =
-                            runWfc 0 world.tilemap (WFC.solve wfcN)
+                            runWfc (WFCRunId 0) 0 world.tilemap (WFC.solve wfcN)
 
                         newRoadCell =
                             createCell tenByTenTilemap 9 5
@@ -61,7 +62,7 @@ suite =
                             restartWfc world.seedState Dict.empty tilemapWithNewRoad
 
                         modelWithActiveWfc =
-                            { modelWithNewRoad | wfc = WFCActive 1 wfcN1 }
+                            { modelWithNewRoad | wfc = WFCActive (WFCRunId 1) 0 wfcN1 }
 
                         -- If WFC.solve failed, staleResult contains WFCFailed, and the handler
                         -- would not overwrite the tilemap (making the test pass with unintenional results)
@@ -87,6 +88,68 @@ suite =
                             |> Maybe.andThen Tile.id
                             |> Maybe.withDefault 0
                             |> Expect.equal newRoadId
+                )
+            , test "Repeated failures make the run rest in WFCFailed instead of restarting forever"
+                (\_ ->
+                    let
+                        emptyWorld =
+                            World.empty testSeed tenByTenTilemap
+
+                        -- verticalRoad
+                        verticalRoadId =
+                            3
+
+                        -- verticalRoad's sockets can match neither the horizontal road
+                        -- below nor the uninitialized cells around, so every attempt
+                        -- fails regardless of seed
+                        impossibleTilemap =
+                            placeRoad [ ( 4, 5 ), ( 5, 5 ), ( 6, 5 ) ] emptyWorld.tilemap
+                                |> setSuperpositionOptions
+                                    (createCell tenByTenTilemap 5 4)
+                                    [ verticalRoadId ]
+
+                        world =
+                            World.setTilemap impossibleTilemap emptyWorld
+
+                        initialWfc =
+                            restartWfc world.seedState Dict.empty world.tilemap
+
+                        baseModel =
+                            gameModelFromWorld world
+
+                        finalModel =
+                            driveWfcChunks 20 initialWfc { baseModel | wfc = WFCActive (WFCRunId 1) 0 initialWfc }
+                    in
+                    case WFC.currentState (WFC.solve initialWfc) of
+                        WFC.Failed _ ->
+                            Expect.all
+                                [ \_ ->
+                                    case finalModel.wfc of
+                                        WFCFailed _ _ _ ->
+                                            Expect.pass
+
+                                        _ ->
+                                            Expect.fail
+                                                "Expected the WFC to rest in WFCFailed after repeated failures"
+                                , \_ ->
+                                    -- Failed runs must not touch the world tilemap
+                                    roadTileFromCell (createCell tenByTenTilemap 5 5) finalModel.world.tilemap
+                                        |> Maybe.andThen Tile.id
+                                        |> Maybe.withDefault 0
+                                        -- horizontalRoad
+                                        |> Expect.equal 2
+                                , \_ ->
+                                    finalModel.debug.wfcLog
+                                        |> List.filter ((==) ">Restart WFC (failure)")
+                                        |> List.length
+                                        |> Expect.atMost 3
+                                        |> Expect.onFail "Expected a bounded number of failure restarts"
+                                ]
+                                ()
+
+                        _ ->
+                            Expect.fail
+                                "Precondition failed: the crafted tilemap should fail WFC. Test setup is invalid."
                 )
             ]
         , describe "isDestructivePlacement"
@@ -193,7 +256,7 @@ suite =
                                 modelExtending
                     in
                     case resultModel.wfc of
-                        WFCActive _ _ ->
+                        WFCActive _ _ _ ->
                             Expect.pass
 
                         _ ->
@@ -242,7 +305,7 @@ suite =
                                 settledModel
                     in
                     case resultModel.wfc of
-                        WFCActive _ _ ->
+                        WFCActive _ _ _ ->
                             Expect.pass
 
                         _ ->
@@ -280,3 +343,43 @@ suite =
                 )
             ]
         ]
+
+
+{-| Emulates the WFC chunk scheduler: feeds each chunk result back to the
+update handler, carrying the in-flight solver state like the Cmd chain does.
+Solving chunks continue from the chunk result; after a failure the restarted
+model is read from `model.wfc` (the handler's restart-time write). Stops when
+the run rests or the failure budget runs out
+-}
+driveWfcChunks : Int -> WFC.Model -> Liikennematto -> Liikennematto
+driveWfcChunks budget inFlightWfc model =
+    case model.wfc of
+        WFCActive runId failureRestarts _ ->
+            if budget <= 0 then
+                model
+
+            else
+                let
+                    (( _, chunkDrivenWfc, _ ) as chunkResult) =
+                        runWfc runId failureRestarts model.world.tilemap inFlightWfc
+
+                    ( nextModel, _ ) =
+                        Tilemap.Update.update (WFCChunkProcessed chunkResult) model
+                in
+                case chunkDrivenWfc of
+                    WFCActive _ _ steppedWfc ->
+                        driveWfcChunks (budget - 1) steppedWfc nextModel
+
+                    WFCFailed _ _ _ ->
+                        case nextModel.wfc of
+                            WFCActive _ _ restartedWfc ->
+                                driveWfcChunks (budget - 1) restartedWfc nextModel
+
+                            _ ->
+                                nextModel
+
+                    _ ->
+                        nextModel
+
+        _ ->
+            model

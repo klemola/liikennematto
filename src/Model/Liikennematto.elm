@@ -23,7 +23,7 @@ import Model.World as World exposing (World)
 import Random
 import Render.Viewport as Viewport exposing (Viewport)
 import Savegame
-import Tilemap.DrivenWFC exposing (DrivenWFC(..))
+import Tilemap.DrivenWFC exposing (DrivenWFC(..), WFCRunId(..))
 import Time
 import UI.Model exposing (UI)
 
@@ -205,7 +205,7 @@ triggerLoading model =
 
 initialDrivenWfc : Random.Seed -> DrivenWFC
 initialDrivenWfc initialSeed =
-    WFCSolved 0 [] [] (SeedState.fromSeed initialSeed)
+    WFCSolved (WFCRunId 0) [] [] (SeedState.fromSeed initialSeed)
 
 
 horizontalCellsAmount : Int

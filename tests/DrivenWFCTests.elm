@@ -1,12 +1,15 @@
 module DrivenWFCTests exposing (suite)
 
+import Data.TileSet exposing (tileById)
 import Data.Utility
     exposing
         ( createCell
+        , placeRoad
         , placeRoadAndUpdateBuffer
         , tenByTenTilemap
         , testSeed
         , tilemapFromCoordinates
+        , worldFromSavegame
         )
 import Data.Worlds exposing (worldWithSchool)
 import Dict
@@ -23,6 +26,9 @@ import Tilemap.Core
         ( Tilemap
         , createTilemap
         , fixedTileByCell
+        , foldTiles
+        , getSavedNatureTiles
+        , insertSavedNatureTile
         , setSuperpositionOptions
         , tileByCell
         , tileNeighborIn
@@ -36,7 +42,7 @@ import Tilemap.DrivenWFC
         , restartWfc
         )
 import Tilemap.Tile as Tile exposing (Tile)
-import Tilemap.TileConfig exposing (TileId)
+import Tilemap.TileConfig as TileConfig exposing (TileId)
 import Tilemap.WFC as WFC
 
 
@@ -465,6 +471,149 @@ suite =
                             )
                 )
             ]
+        , describe "stale saved nature tiles"
+            [ test "Roads built over previously captured nature survive a full WFC cycle"
+                (\_ ->
+                    case worldFromSavegame incidentBaseSavegame of
+                        Err decodeError ->
+                            Expect.fail ("Savegame fixture failed to decode: " ++ decodeError)
+
+                        Ok world ->
+                            let
+                                -- Drag a leg down from the road; the trail side strips of the
+                                -- leg cells (rows 4 and 5, x 2..8) capture the nature at
+                                -- (8,4) and (8,5)
+                                afterLeg =
+                                    placeRoad [ ( 5, 4 ), ( 5, 5 ), ( 5, 6 ) ] world.tilemap
+
+                                -- Continue the same build phase along row 6, then up over the
+                                -- captured nature cells, closing a ring back to (8,3)
+                                afterOverbuild =
+                                    placeRoad
+                                        [ ( 6, 6 ), ( 7, 6 ), ( 8, 6 ), ( 8, 5 ), ( 8, 4 ) ]
+                                        afterLeg
+
+                                overbuiltCells =
+                                    [ ( 8, 4 ), ( 8, 5 ) ]
+
+                                capturedEntries =
+                                    getSavedNatureTiles afterLeg
+                                        |> Dict.keys
+                                        |> List.filter (\coords -> List.member coords overbuiltCells)
+
+                                -- Building over the captured cells drops their entries;
+                                -- re-add them to prove the revert and reconcile guards
+                                -- hold even if staleness slips in through some other path
+                                withStaleEntries =
+                                    afterOverbuild
+                                        |> insertSavedNatureTile ( 8, 4 ) natureSingle1Id
+                                        |> insertSavedNatureTile ( 8, 5 ) natureSingle1Id
+
+                                -- Failed runs restart with the next seed from the same
+                                -- tilemap, like the WFCFailed handler does. Failures here
+                                -- are unrelated churn (large tiles vs. tight buffers on a
+                                -- small map); the bug makes every attempt fail
+                                solvedModel =
+                                    solveWithRetries 5 (SeedState.fromSeed testSeed) withStaleEntries
+
+                                solvedTilemap =
+                                    WFC.toTilemap solvedModel
+
+                                biomeAt tilemap ( x, y ) =
+                                    tileByCell tilemap (createCell constraints x y)
+                                        |> Maybe.andThen Tile.id
+                                        |> Maybe.map (tileById >> TileConfig.biome)
+
+                                emptySuperpositionCells tilemap =
+                                    foldTiles
+                                        (\cell tile acc ->
+                                            case tile.kind of
+                                                Tile.Superposition [] ->
+                                                    Cell.coordinates cell :: acc
+
+                                                _ ->
+                                                    acc
+                                        )
+                                        []
+                                        tilemap
+                            in
+                            Expect.all
+                                [ \_ ->
+                                    case WFC.currentState solvedModel of
+                                        WFC.Failed _ ->
+                                            Expect.fail
+                                                ("WFC still failing after retries. Log tail: "
+                                                    ++ Debug.toString (List.take 8 (WFC.log solvedModel))
+                                                )
+
+                                        _ ->
+                                            Expect.pass
+                                , \_ ->
+                                    List.sort capturedEntries
+                                        |> Expect.equalLists overbuiltCells
+                                        |> Expect.onFail
+                                            "Precondition: the trail should have captured (8,4) and (8,5) while they held nature"
+                                , \_ ->
+                                    getSavedNatureTiles afterOverbuild
+                                        |> Dict.keys
+                                        |> List.filter (\coords -> List.member coords overbuiltCells)
+                                        |> Expect.equalLists []
+                                        |> Expect.onFail
+                                            "Building over the captured cells should drop their saved entries"
+                                , \_ ->
+                                    overbuiltCells
+                                        |> List.map (biomeAt afterOverbuild)
+                                        |> Expect.equalLists [ Just TileConfig.Road, Just TileConfig.Road ]
+                                        |> Expect.onFail
+                                            "Precondition: (8,4) and (8,5) should hold Fixed roads before the WFC run"
+                                , \_ ->
+                                    overbuiltCells
+                                        |> List.map (biomeAt solvedTilemap)
+                                        |> Expect.equalLists [ Just TileConfig.Road, Just TileConfig.Road ]
+                                        |> Expect.onFail
+                                            "Player-built roads must survive the WFC run despite the stale saved-nature entries"
+                                , \_ ->
+                                    emptySuperpositionCells solvedTilemap
+                                        |> Expect.equalLists []
+                                        |> Expect.onFail
+                                            "The solved tilemap must not contain empty superpositions"
+                                ]
+                                ()
+                )
+            ]
+        , describe "empty superpositions"
+            [ test "A Done run with an empty superposition in its tilemap is not merged as solved"
+                (\_ ->
+                    let
+                        roads =
+                            placeRoad [ ( 4, 5 ), ( 5, 5 ), ( 6, 5 ) ] emptyTilemap
+
+                        -- Empty superpositions are invisible to the solver (never
+                        -- candidates), so the run reaches Done with the blank cell intact
+                        withBlank =
+                            setSuperpositionOptions (createCell constraints 5 4) [] roads
+
+                        solvedModel =
+                            WFC.fromTilemap withBlank (SeedState.fromSeed testSeed)
+                                |> WFC.solve
+                    in
+                    case WFC.currentState solvedModel of
+                        WFC.Done ->
+                            case Tilemap.DrivenWFC.runWfc (Tilemap.DrivenWFC.WFCRunId 0) 0 withBlank solvedModel of
+                                ( _, Tilemap.DrivenWFC.WFCSolved _ _ _ _, _ ) ->
+                                    Expect.fail "A tilemap with an empty superposition was merged as solved"
+
+                                ( _, Tilemap.DrivenWFC.WFCFailed _ _ _, _ ) ->
+                                    Expect.pass
+
+                                _ ->
+                                    Expect.fail "Expected the run to end in WFCFailed"
+
+                        _ ->
+                            Expect.fail
+                                "Precondition failed: the run should reach Done. Test setup is invalid."
+                )
+            ]
         , describe "seed propagation"
             [ test "WFC internal seed changes during solving"
                 (\_ ->
@@ -505,7 +654,7 @@ suite =
                             restartWfc (SeedState.fromSeed testSeed) Dict.empty tilemap
 
                         ( _, drivenWfcResult, _ ) =
-                            Tilemap.DrivenWFC.runWfc 0 tilemap (WFC.solve initialWfc)
+                            Tilemap.DrivenWFC.runWfc (Tilemap.DrivenWFC.WFCRunId 0) 0 tilemap (WFC.solve initialWfc)
 
                         currentSeed =
                             case drivenWfcResult of
@@ -587,7 +736,7 @@ suite =
                                 |> Maybe.map tileSuperposition
                                 |> Maybe.withDefault []
 
-                        -- Anchor at (8, 2) covers (8,2)(9,2)(8,3)(9,3). X=9 is not buffer,
+                        -- Anchor at (8, 2) covers (8,2)(9,2)(8,3)(9,3). X=9 is not buffer
                         noFitAnchorOptions =
                             tileByCell tilemap (createCell constraints 8 2)
                                 |> Maybe.map tileSuperposition
@@ -620,6 +769,52 @@ suite =
 natureSingle1Id : TileId
 natureSingle1Id =
     211
+
+
+solveWithRetries : Int -> SeedState.SeedState -> Tilemap -> WFC.Model
+solveWithRetries attempts seedState tilemap =
+    let
+        solved =
+            restartWfc seedState Dict.empty tilemap
+                |> WFC.solve
+    in
+    if attempts <= 1 then
+        solved
+
+    else
+        case WFC.currentState solved of
+            WFC.Failed _ ->
+                solveWithRetries (attempts - 1) (WFC.currentSeed solved) tilemap
+
+            _ ->
+                solved
+
+
+{-| 10x10 base world: a horizontal road on row 3 (x 4..8) and WFC-collapsed
+nature singles below its right end at (8,4) and (8,5). Based on a WFC failure blow-up
+incident that left tiles empty (the state before the failure)
+-}
+incidentBaseSavegame : String
+incidentBaseSavegame =
+    """
+    { "v": 1
+    , "seed": [42, 0]
+    , "tmd": [10, 10]
+    , "tilemap": [ 0,0,0,0,0,0,0,0,0,0
+                 , 0,0,0,0,0,0,0,0,0,0
+                 , 0,0,0,7,2,2,2,5,0,0
+                 , 0,0,0,0,0,0,0,211,0,0
+                 , 0,0,0,0,0,0,0,212,0,0
+                 , 0,0,0,0,0,0,0,0,0,0
+                 , 0,0,0,0,0,0,0,0,0,0
+                 , 0,0,0,0,0,0,0,0,0,0
+                 , 0,0,0,0,0,0,0,0,0,0
+                 , 0,0,0,0,0,0,0,0,0,0
+                 ]
+    , "lots": []
+    , "nature": []
+    }
+    """
 
 
 natureQuad1Id : TileId

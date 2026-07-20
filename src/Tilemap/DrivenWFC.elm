@@ -1,6 +1,7 @@
 module Tilemap.DrivenWFC exposing
     ( DrivenWFC(..)
     , RunWFCResult
+    , WFCRunId(..)
     , addTileById
     , bufferToSuperposition
     , drivenWfcDebug
@@ -54,11 +55,15 @@ import Tilemap.WFC as WFC
 import Time
 
 
+type WFCRunId
+    = WFCRunId Int
+
+
 type DrivenWFC
     = WFCPending Duration Time.Posix
-    | WFCActive Int WFC.Model
-    | WFCFailed (List String) SeedState
-    | WFCSolved Int (List String) (List ( Cell, TileId )) SeedState
+    | WFCActive WFCRunId Int WFC.Model
+    | WFCFailed WFCRunId (List String) SeedState
+    | WFCSolved WFCRunId (List String) (List ( Cell, TileId )) SeedState
 
 
 type alias RunWFCResult =
@@ -80,12 +85,13 @@ wfcStepsPerCycle =
     3500
 
 
-runWfc : Int -> Tilemap -> WFC.Model -> RunWFCResult
-runWfc runId tilemap wfc =
+runWfc : WFCRunId -> Int -> Tilemap -> WFC.Model -> RunWFCResult
+runWfc runId restarts tilemap wfc =
     case WFC.currentState wfc of
         WFC.Failed _ ->
             ( tilemap
             , WFCFailed
+                runId
                 (WFC.log wfc)
                 (WFC.currentSeed wfc)
             , []
@@ -93,17 +99,35 @@ runWfc runId tilemap wfc =
 
         WFC.Done ->
             let
-                ( solvedWfc, tileActions ) =
-                    WFC.flushPendingActions wfc
+                emptySuperpositions =
+                    emptySuperpositionCount (WFC.toTilemap wfc)
             in
-            ( WFC.toTilemap solvedWfc
-            , WFCSolved
-                runId
-                (WFC.log solvedWfc)
-                (WFC.collapsedTiles solvedWfc)
-                (WFC.currentSeed solvedWfc)
-            , tileActions
-            )
+            -- A successful backtrack can leave empty superposition cells that the
+            -- solver never revisits and this should cause the run to fail (and possibly restarted)
+            if emptySuperpositions > 0 then
+                ( tilemap
+                , WFCFailed
+                    runId
+                    (("!Solved, but with " ++ String.fromInt emptySuperpositions ++ " empty superpositions")
+                        :: WFC.log wfc
+                    )
+                    (WFC.currentSeed wfc)
+                , []
+                )
+
+            else
+                let
+                    ( solvedWfc, tileActions ) =
+                        WFC.flushPendingActions wfc
+                in
+                ( WFC.toTilemap solvedWfc
+                , WFCSolved
+                    runId
+                    (WFC.log solvedWfc)
+                    (WFC.collapsedTiles solvedWfc)
+                    (WFC.currentSeed solvedWfc)
+                , tileActions
+                )
 
         -- Solving, Recovering
         _ ->
@@ -114,7 +138,22 @@ runWfc runId tilemap wfc =
                         wfcStepsPerCycle
                         wfc
             in
-            ( tilemap, WFCActive runId nextWfc, [] )
+            ( tilemap, WFCActive runId restarts nextWfc, [] )
+
+
+emptySuperpositionCount : Tilemap -> Int
+emptySuperpositionCount tilemap =
+    foldTiles
+        (\_ tile count ->
+            case tile.kind of
+                Superposition [] ->
+                    count + 1
+
+                _ ->
+                    count
+        )
+        0
+        tilemap
 
 
 restartWfc : SeedState -> TileInventory Int -> Tilemap -> WFC.Model
@@ -487,10 +526,14 @@ drivenWfcDebug currentTime drivenWfc =
                     ((Time.posixToMillis currentTime - Time.posixToMillis initTime) // 1000)
                 ]
 
-        WFCActive _ _ ->
-            "Active"
+        WFCActive _ restarts _ ->
+            if restarts > 0 then
+                "Active (restarts: " ++ String.fromInt restarts ++ ")"
 
-        WFCFailed _ _ ->
+            else
+                "Active"
+
+        WFCFailed _ _ _ ->
             "Failed"
 
         WFCSolved _ _ _ _ ->

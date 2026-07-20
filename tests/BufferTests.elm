@@ -1204,7 +1204,7 @@ suite =
                         ]
                         ()
                 )
-            , test "reconcileSavedNatureTiles: reinstates the large tile exactly when its area is unclaimed"
+            , test "reconcileSavedNatureTiles: restores the large tile exactly when its area is unclaimed"
                 (\_ ->
                     let
                         -- Simulate a WFC pass that filled the tile area with single cell Nature tiles
@@ -1319,6 +1319,176 @@ suite =
                         ()
                 )
             ]
+        , describe "Stale saved nature tiles"
+            [ test "revertSavedNature keeps a road built over a captured nature cell"
+                (\_ ->
+                    let
+                        roads =
+                            placeRoad [ ( 5, 5 ), ( 6, 5 ) ] emptyTilemap
+
+                        withValidNature =
+                            forceFixNatureTile defaultTileId ( 5, 3 ) roads
+
+                        -- (5,5) was captured as a nature tile, then built over. (5,3) is a normal nature tile
+                        before =
+                            withValidNature
+                                |> insertSavedNatureTile ( 5, 5 ) defaultTileId
+                                |> insertSavedNatureTile ( 5, 3 ) defaultTileId
+
+                        roadIdBefore =
+                            fixedIdAt before ( 5, 5 )
+
+                        afterApply =
+                            revertSavedNature before
+                    in
+                    Expect.all
+                        [ \_ ->
+                            -- Precondition: (5,5) holds a Fixed road
+                            Expect.notEqual Nothing roadIdBefore
+                        , \_ ->
+                            -- The stale entry must not revert the road
+                            fixedIdAt afterApply ( 5, 5 )
+                                |> Expect.equal roadIdBefore
+                        , \_ ->
+                            -- The legit entry still reverts.
+                            cellKindAt afterApply ( 5, 3 )
+                                |> Expect.equal (Just Buffer)
+                        ]
+                        ()
+                )
+            , test "revertSavedNature keeps roads built over a captured anchor footprint"
+                (\_ ->
+                    let
+                        -- NatureDouble1 (1x2) top-left at (5,5) covers (5,5) and (5,6);
+                        -- both cells were built over after capture
+                        roads =
+                            placeRoad [ ( 5, 5 ), ( 5, 6 ) ] emptyTilemap
+
+                        before =
+                            insertSavedNatureAnchor ( 5, 5 ) natureDouble1Id roads
+
+                        footprint =
+                            [ ( 5, 5 ), ( 5, 6 ) ]
+
+                        roadIdsBefore =
+                            List.map (fixedIdAt before) footprint
+
+                        afterApply =
+                            revertSavedNature before
+                    in
+                    Expect.all
+                        [ \_ ->
+                            Expect.equal False (List.member Nothing roadIdsBefore)
+                        , \_ ->
+                            footprint
+                                |> List.map (fixedIdAt afterApply)
+                                |> Expect.equalLists roadIdsBefore
+                        ]
+                        ()
+                )
+            , test "reconcileSavedNatureTiles does not restore nature over a road"
+                (\_ ->
+                    let
+                        roads =
+                            placeRoad [ ( 5, 5 ), ( 6, 5 ) ] emptyTilemap
+
+                        before =
+                            insertSavedNatureTile ( 5, 5 ) defaultTileId roads
+
+                        roadIdBefore =
+                            fixedIdAt before ( 5, 5 )
+
+                        afterReconcile =
+                            reconcileSavedNatureTiles before
+                    in
+                    Expect.all
+                        [ \_ ->
+                            Expect.notEqual Nothing roadIdBefore
+                        , \_ ->
+                            fixedIdAt afterReconcile ( 5, 5 )
+                                |> Expect.equal roadIdBefore
+                        , \_ ->
+                            getSavedNatureTiles afterReconcile
+                                |> Dict.isEmpty
+                                |> Expect.equal True
+                        ]
+                        ()
+                )
+            , test "Placing a road over a captured cell drops the saved entries"
+                (\_ ->
+                    let
+                        roads =
+                            placeRoad [ ( 5, 5 ), ( 6, 5 ) ] emptyTilemap
+
+                        -- (6,4) and the (7,4) anchor footprint will be built over;
+                        -- (2,2) is unrelated and must survive
+                        before =
+                            roads
+                                |> insertSavedNatureTile ( 6, 4 ) defaultTileId
+                                |> insertSavedNatureTile ( 2, 2 ) defaultTileId
+                                |> insertSavedNatureAnchor ( 7, 4 ) natureDouble1Id
+
+                        afterFirstPlacement =
+                            placeRoad [ ( 6, 4 ) ] before
+
+                        -- (7,4) is the anchor's top-left; the placement lands inside
+                        -- its 1x2 footprint
+                        afterSecondPlacement =
+                            placeRoad [ ( 7, 4 ) ] afterFirstPlacement
+                    in
+                    Expect.all
+                        [ \_ ->
+                            getSavedNatureTiles afterFirstPlacement
+                                |> Dict.member ( 6, 4 )
+                                |> Expect.equal False
+                        , \_ ->
+                            getSavedNatureTiles afterFirstPlacement
+                                |> Dict.member ( 2, 2 )
+                                |> Expect.equal True
+                        , \_ ->
+                            getSavedNatureAnchors afterFirstPlacement
+                                |> Dict.member ( 7, 4 )
+                                |> Expect.equal True
+                        , \_ ->
+                            getSavedNatureAnchors afterSecondPlacement
+                                |> Dict.member ( 7, 4 )
+                                |> Expect.equal False
+                        ]
+                        ()
+                )
+            , test "reconcileSavedNatureTiles does not restore large nature over roads"
+                (\_ ->
+                    let
+                        roads =
+                            placeRoad [ ( 5, 5 ), ( 5, 6 ) ] emptyTilemap
+
+                        before =
+                            insertSavedNatureAnchor ( 5, 5 ) natureDouble1Id roads
+
+                        footprint =
+                            [ ( 5, 5 ), ( 5, 6 ) ]
+
+                        roadIdsBefore =
+                            List.map (fixedIdAt before) footprint
+
+                        afterReconcile =
+                            reconcileSavedNatureTiles before
+                    in
+                    Expect.all
+                        [ \_ ->
+                            Expect.equal False (List.member Nothing roadIdsBefore)
+                        , \_ ->
+                            footprint
+                                |> List.map (fixedIdAt afterReconcile)
+                                |> Expect.equalLists roadIdsBefore
+                        , \_ ->
+                            footprint
+                                |> List.map (fixedParentAt afterReconcile)
+                                |> Expect.equalLists [ Nothing, Nothing ]
+                        ]
+                        ()
+                )
+            ]
         ]
 
 
@@ -1344,6 +1514,16 @@ isFixedKind kind =
 
         _ ->
             False
+
+
+fixedIdAt : Tilemap -> ( Int, Int ) -> Maybe TileConfig.TileId
+fixedIdAt tilemap coords =
+    case cellKindAt tilemap coords of
+        Just (Fixed props) ->
+            Just props.id
+
+        _ ->
+            Nothing
 
 
 fixedParentAt : Tilemap -> ( Int, Int ) -> Maybe ( TileConfig.TileId, Int )

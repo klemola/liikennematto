@@ -17,6 +17,7 @@ module Data.Utility exposing
     , testSeed
     , tilemapFromCoordinates
     , tilemapToAscii
+    , worldFromSavegame
     , worldFromTilemap
     )
 
@@ -32,12 +33,14 @@ import Data.TileSet
         , verticalRoadLotEntryRight
         )
 import Duration
+import Json.Decode
 import Lib.OrthogonalDirection as OrthogonalDirection
 import Model.Flags
 import Model.Liikennematto exposing (Liikennematto)
 import Model.RenderCache
 import Model.World as World exposing (World, newLotMatchesTile)
 import Random
+import Savegame
 import Simulation.RoadNetwork as RoadNetwork exposing (RNNodeContext)
 import Simulation.Update exposing (addLot)
 import Tilemap.Buffer exposing (removeBuffer, updateBufferCells)
@@ -87,6 +90,17 @@ worldFromTilemap : Tilemap -> World
 worldFromTilemap tilemap =
     World.empty testSeed (getTilemapConfig tilemap)
         |> World.setTilemap tilemap
+
+
+{-| Restore a World from raw savegame JSON, for crafting test fixtures that are
+awkward to build with the placement utilities.
+-}
+worldFromSavegame : String -> Result String World
+worldFromSavegame json =
+    json
+        |> Json.Decode.decodeString Json.Decode.value
+        |> Result.mapError Json.Decode.errorToString
+        |> Result.andThen Savegame.decode
 
 
 gameModelFromWorld : World -> Liikennematto
