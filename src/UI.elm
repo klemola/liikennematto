@@ -28,7 +28,6 @@ import Model.World exposing (DestructiveTarget(..), World, describeDestructiveTa
 import Render.Viewport as Viewport
 import Svg
 import Svg.Attributes as SvgAttr
-import Tilemap.Cell exposing (Cell)
 import Tilemap.Core
 import UI.Button
     exposing
@@ -310,7 +309,7 @@ view liikennematto render renderDebugLayers =
                 liikennematto.viewport
                 liikennematto.screen
                 liikennematto.world
-                liikennematto.ui.pendingDestructiveCell
+                liikennematto.ui.pendingDestructiveAction
             )
         ]
         (Element.el
@@ -765,13 +764,18 @@ dialogBackdropColor =
     Element.rgba255 40 52 72 0.7
 
 
-{-| Modal shown before a road placement that would erase a lot or large nature
-tile. The full-screen backdrop blocks input to the canvas beneath.
+{-| Modal shown before a tilemap change (road placement or removal) that would
+erase a lot or large nature tile. The full-screen backdrop blocks input to the
+canvas beneath.
 -}
-confirmationDialog : RenderCache -> Viewport.Viewport -> Screen -> World -> Maybe Cell -> Element Msg
-confirmationDialog cache viewport screen world maybePendingCell =
-    case maybePendingCell of
-        Just cell ->
+confirmationDialog : RenderCache -> Viewport.Viewport -> Screen -> World -> Maybe Model.DestructiveAction -> Element Msg
+confirmationDialog cache viewport screen world maybePendingAction =
+    case maybePendingAction of
+        Just action ->
+            let
+                cell =
+                    Model.destructiveActionCell action
+            in
             Element.el
                 [ Element.width Element.fill
                 , Element.height Element.fill
@@ -786,14 +790,14 @@ confirmationDialog cache viewport screen world maybePendingCell =
                             Element.none
                     )
                 ]
-                (confirmationPanel (describeDestructiveTarget cell world))
+                (confirmationPanel action (describeDestructiveTarget cell world))
 
         Nothing ->
             Element.none
 
 
-confirmationPanel : Maybe DestructiveTarget -> Element Msg
-confirmationPanel target =
+confirmationPanel : Model.DestructiveAction -> Maybe DestructiveTarget -> Element Msg
+confirmationPanel action target =
     Element.column
         [ Element.centerX
         , Element.centerY
@@ -823,7 +827,7 @@ confirmationPanel target =
                 [ Font.color uiColorText
                 , Font.size 14
                 ]
-                [ Element.text (destructiveTargetSentence target) ]
+                [ Element.text (destructiveTargetSentence action target) ]
             , Element.row
                 [ Element.alignRight
                 , Element.spacing whitespaceCondensed
@@ -842,7 +846,7 @@ confirmationPanel target =
                         , selected = False
                         , disabled = False
                         }
-                        "Build anyway"
+                        (confirmLabel action)
                         Icons.iconBuild
                     )
                 ]
@@ -850,17 +854,32 @@ confirmationPanel target =
         ]
 
 
-destructiveTargetSentence : Maybe DestructiveTarget -> String
-destructiveTargetSentence target =
-    case target of
-        Just DestructiveNature ->
-            "Building a road here removes a nature area. This can't be undone."
+destructiveTargetSentence : Model.DestructiveAction -> Maybe DestructiveTarget -> String
+destructiveTargetSentence action target =
+    case action of
+        Model.DestructiveTileRemoval _ ->
+            "Removing a lot entry here removes the building it belongs to. This can't be undone."
 
-        Just DestructiveLot ->
-            "Building a road here removes the building that's in this spot. This can't be undone."
+        Model.DestructiveRoadPlacement _ ->
+            case target of
+                Just DestructiveNature ->
+                    "Building a road here removes a nature area. This can't be undone."
 
-        Nothing ->
-            "Building a road here removes what's already on these tiles. This can't be undone."
+                Just DestructiveLot ->
+                    "Building a road here removes the building that's in this spot. This can't be undone."
+
+                Nothing ->
+                    "Building a road here removes what's already on these tiles. This can't be undone."
+
+
+confirmLabel : Model.DestructiveAction -> String
+confirmLabel action =
+    case action of
+        Model.DestructiveRoadPlacement _ ->
+            "Build anyway"
+
+        Model.DestructiveTileRemoval _ ->
+            "Remove anyway"
 
 
 devMenu : Liikennematto -> UI -> Element Msg

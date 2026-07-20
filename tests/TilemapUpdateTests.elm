@@ -13,6 +13,7 @@ import Data.Worlds exposing (worldWithSchool)
 import Dict
 import Duration
 import Expect
+import Maybe.Extra as Maybe
 import Message exposing (Message(..))
 import Model.Liikennematto exposing (Liikennematto)
 import Model.World as World
@@ -23,6 +24,7 @@ import Tilemap.Tile as Tile
 import Tilemap.Update
 import Tilemap.WFC as WFC
 import Time
+import UI.Model
 
 
 emptyTilemap : Tilemap
@@ -216,6 +218,58 @@ suite =
                     in
                     isDestructivePlacement (createCell tenByTenTilemap 8 1) withFixedDouble
                         |> Expect.equal True
+                )
+            ]
+        , describe "onSecondaryInput"
+            -- worldWithSchool: vertical road on column 5, school lot entry at (5, 4).
+            -- Fixture tiles start mid-FSM, so settle them to Built first.
+            [ test "requests confirmation instead of removing a lot-entry road tile"
+                (\_ ->
+                    let
+                        entryCell =
+                            createCell tenByTenTilemap 5 4
+
+                        settledModel =
+                            settleTilemap (gameModelFromWorld worldWithSchool)
+
+                        ( resultModel, _ ) =
+                            Tilemap.Update.onSecondaryInput entryCell settledModel
+                    in
+                    Expect.all
+                        [ \_ ->
+                            resultModel.ui.pendingDestructiveAction
+                                |> Expect.equal (Just (UI.Model.DestructiveTileRemoval entryCell))
+                        , \_ ->
+                            -- Tile removal must not have run alongside the confirmation request
+                            roadTileFromCell entryCell resultModel.world.tilemap
+                                |> Maybe.unwrap False Tile.isBuilt
+                                |> Expect.equal True
+                        ]
+                        ()
+                )
+            , test "removes a plain road tile that is not a lot entry, without requesting confirmation"
+                (\_ ->
+                    let
+                        plainRoadCell =
+                            createCell tenByTenTilemap 5 1
+
+                        settledModel =
+                            settleTilemap (gameModelFromWorld worldWithSchool)
+
+                        ( resultModel, _ ) =
+                            Tilemap.Update.onSecondaryInput plainRoadCell settledModel
+                    in
+                    Expect.all
+                        [ \_ ->
+                            resultModel.ui.pendingDestructiveAction
+                                |> Expect.equal Nothing
+                        , \_ ->
+                            -- Removal started (FSM left Built for the Removing state)
+                            roadTileFromCell plainRoadCell resultModel.world.tilemap
+                                |> Maybe.unwrap False Tile.isBuilt
+                                |> Expect.equal False
+                        ]
+                        ()
                 )
             ]
         , describe "describeDestructiveTarget"
@@ -425,3 +479,15 @@ driveWfcChunks budget inFlightWfc model =
 
         _ ->
             model
+
+
+{-| Runs enough UpdateTilemap ticks to let tile FSMs settle into their resting
+state (Built or Removed), matching how a real play session would have
+progressed by the time the player interacts with a tile.
+-}
+settleTilemap : Liikennematto -> Liikennematto
+settleTilemap model =
+    List.foldl
+        (\msg m -> Tilemap.Update.update msg m |> Tuple.first)
+        model
+        (List.repeat 5 (UpdateTilemap (Duration.seconds 1)))

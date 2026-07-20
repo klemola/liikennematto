@@ -1,9 +1,11 @@
 module UI.Model exposing
     ( ButtonKind(..)
+    , DestructiveAction(..)
     , DevView(..)
     , UI
     , ZoomLevel(..)
     , clearConfirmation
+    , destructiveActionCell
     , initialModel
     , requestConfirmation
     )
@@ -20,9 +22,27 @@ type alias UI =
     , selectedDevView : DevView
     , editor : UI.Editor.Model
     , showLmInfo : Bool
-    , pendingDestructiveCell : Maybe Cell
+    , pendingDestructiveAction : Maybe DestructiveAction
     , lastEventDevice : Pointer.DeviceType
     }
+
+
+{-| A tilemap change that would erase a lot or large nature tile (no undo),
+awaiting player confirmation.
+-}
+type DestructiveAction
+    = DestructiveRoadPlacement Cell
+    | DestructiveTileRemoval Cell
+
+
+destructiveActionCell : DestructiveAction -> Cell
+destructiveActionCell action =
+    case action of
+        DestructiveRoadPlacement cell ->
+            cell
+
+        DestructiveTileRemoval cell ->
+            cell
 
 
 type ButtonKind
@@ -58,19 +78,19 @@ initialModel =
     , selectedDevView = EventQueueList
     , editor = UI.Editor.initialModel
     , showLmInfo = False
-    , pendingDestructiveCell = Nothing
+    , pendingDestructiveAction = Nothing
     , lastEventDevice = Pointer.MouseType
     }
 
 
-{-| Show the destructive-placement confirmation for `cell`, closing any other
+{-| Show the destructive-change confirmation for `action`, closing any other
 open panel so the dialog has exclusive focus (same mutual-exclusion pattern as
 the menu and LmInfo toggles).
 -}
-requestConfirmation : Cell -> UI -> UI
-requestConfirmation cell ui =
+requestConfirmation : DestructiveAction -> UI -> UI
+requestConfirmation action ui =
     { ui
-        | pendingDestructiveCell = Just cell
+        | pendingDestructiveAction = Just action
         , showMenu = False
         , showLmInfo = False
     }
@@ -78,4 +98,4 @@ requestConfirmation cell ui =
 
 clearConfirmation : UI -> UI
 clearConfirmation ui =
-    { ui | pendingDestructiveCell = Nothing }
+    { ui | pendingDestructiveAction = Nothing }

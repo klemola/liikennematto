@@ -413,10 +413,16 @@ onUiButtonPressed buttonId model =
             )
 
         UI.Model.ConfirmDestructive ->
-            case model.ui.pendingDestructiveCell of
-                Just cell ->
-                    Tilemap.addTile cell
-                        { model | ui = UI.Model.clearConfirmation model.ui }
+            let
+                modelWithClearedConfirmation =
+                    { model | ui = UI.Model.clearConfirmation model.ui }
+            in
+            case model.ui.pendingDestructiveAction of
+                Just (UI.Model.DestructiveRoadPlacement cell) ->
+                    Tilemap.addTile cell modelWithClearedConfirmation
+
+                Just (UI.Model.DestructiveTileRemoval cell) ->
+                    Tilemap.removeTile cell modelWithClearedConfirmation
 
                 Nothing ->
                     ( model, Cmd.none )

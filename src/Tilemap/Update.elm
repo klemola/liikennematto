@@ -2,6 +2,7 @@ module Tilemap.Update exposing
     ( addTile
     , onPrimaryInput
     , onSecondaryInput
+    , removeTile
     , update
     )
 
@@ -317,9 +318,12 @@ onPrimaryInput cell model =
             && cellSupportsRoadPlacement cell model.world.tilemap
     then
         if isDestructivePlacement cell model.world.tilemap then
-            -- Placing here would erase a lot or large nature tile (no undo), so
-            -- defer the commit until the player confirms the action
-            ( { model | ui = UI.Model.requestConfirmation cell model.ui }
+            ( { model
+                | ui =
+                    UI.Model.requestConfirmation
+                        (UI.Model.DestructiveRoadPlacement cell)
+                        model.ui
+              }
             , Cmd.none
             )
 
@@ -337,7 +341,18 @@ onSecondaryInput cell model =
             |> Maybe.andThen extractRoadTile
             |> Maybe.unwrap False isBuilt
     then
-        removeTile cell model
+        if isDestructivePlacement cell model.world.tilemap then
+            ( { model
+                | ui =
+                    UI.Model.requestConfirmation
+                        (UI.Model.DestructiveTileRemoval cell)
+                        model.ui
+              }
+            , Cmd.none
+            )
+
+        else
+            removeTile cell model
 
     else
         ( model, Cmd.none )
