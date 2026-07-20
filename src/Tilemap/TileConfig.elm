@@ -10,6 +10,7 @@ module Tilemap.TileConfig exposing
     , allSockets
     , baseTileId
     , biome
+    , dimensions
     , directionBySocket
     , graphPriority
     , maxGraphPriority
@@ -166,6 +167,16 @@ biome tileConfig =
 
         Large largeTile ->
             largeTile.biome
+
+
+dimensions : TileConfig -> ( Int, Int )
+dimensions tileConfig =
+    case tileConfig of
+        Single _ ->
+            ( 1, 1 )
+
+        Large largeTile ->
+            ( largeTile.width, largeTile.height )
 
 
 baseTileId : TileConfig -> Maybe TileId

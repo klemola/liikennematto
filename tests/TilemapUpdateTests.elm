@@ -3,6 +3,7 @@ module TilemapUpdateTests exposing (suite)
 import Data.Utility
     exposing
         ( createCell
+        , forceFixLargeNatureTile
         , gameModelFromWorld
         , placeRoad
         , tenByTenTilemap
@@ -16,12 +17,17 @@ import Message exposing (Message(..))
 import Model.Liikennematto exposing (Liikennematto)
 import Model.World as World
 import Test exposing (Test, describe, test)
-import Tilemap.Core exposing (isDestructivePlacement, roadTileFromCell, setBuildHistory, setSuperpositionOptions)
+import Tilemap.Core exposing (Tilemap, createTilemap, isDestructivePlacement, roadTileFromCell, setBuildHistory, setSuperpositionOptions)
 import Tilemap.DrivenWFC exposing (DrivenWFC(..), WFCRunId(..), addTileById, initDrivenWfc, onRemoveTile, restartWfc, runWfc)
 import Tilemap.Tile as Tile
 import Tilemap.Update
 import Tilemap.WFC as WFC
 import Time
+
+
+emptyTilemap : Tilemap
+emptyTilemap =
+    createTilemap tenByTenTilemap (\_ -> Tile.init Tile.Unintialized)
 
 
 suite : Test
@@ -174,6 +180,42 @@ suite =
                 (\_ ->
                     isDestructivePlacement (createCell tenByTenTilemap 5 1) worldWithSchool.tilemap
                         |> Expect.equal False
+                )
+            , test "is False on a 1x2 nature large tile"
+                (\_ ->
+                    let
+                        natureDouble1Id =
+                            215
+
+                        roadOnly =
+                            placeRoad
+                                [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ) ]
+                                emptyTilemap
+
+                        -- NatureDouble1 (1x2) top-left at (8,1)
+                        withFixedDouble =
+                            forceFixLargeNatureTile natureDouble1Id ( 8, 1 ) roadOnly
+                    in
+                    isDestructivePlacement (createCell tenByTenTilemap 8 1) withFixedDouble
+                        |> Expect.equal False
+                )
+            , test "is True on a 2x2 nature large tile"
+                (\_ ->
+                    let
+                        natureQuad1Id =
+                            217
+
+                        roadOnly =
+                            placeRoad
+                                [ ( 5, 5 ), ( 6, 5 ), ( 7, 5 ), ( 8, 5 ), ( 9, 5 ) ]
+                                emptyTilemap
+
+                        -- NatureQuad1 (2x2) top-left at (8,1)
+                        withFixedDouble =
+                            forceFixLargeNatureTile natureQuad1Id ( 8, 1 ) roadOnly
+                    in
+                    isDestructivePlacement (createCell tenByTenTilemap 8 1) withFixedDouble
+                        |> Expect.equal True
                 )
             ]
         , describe "describeDestructiveTarget"

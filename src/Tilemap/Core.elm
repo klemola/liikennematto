@@ -822,7 +822,20 @@ destructiveLargeTile cell ((Tilemap tilemapContents) as tilemap) =
             (\tile ->
                 case tileParentTile tile of
                     Just ( parentTileId, _ ) ->
-                        Just ( cell, tileById parentTileId )
+                        let
+                            tileConfig =
+                                tileById parentTileId
+
+                            tileCellsAmount =
+                                TileConfig.dimensions tileConfig
+                                    |> (\( w, h ) -> w * h)
+                        in
+                        -- Allow destructive build over 1x2 nature tiles
+                        if TileConfig.biome tileConfig == TileConfig.Nature && tileCellsAmount <= 2 then
+                            Nothing
+
+                        else
+                            Just ( cell, tileConfig )
 
                     Nothing ->
                         Tile.id tile
