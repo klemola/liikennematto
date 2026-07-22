@@ -2,6 +2,7 @@ module Simulation.Traffic exposing
     ( Rule(..)
     , RuleSetup
     , addLotResidents
+    , addLotResidentsInstantly
     , applySteering
     , checkRules
     , rerouteCarsIfNeeded
@@ -273,6 +274,22 @@ rerouteCarsIfNeeded world =
 addLotResidents : Time.Posix -> Id -> List CarMake -> World -> World
 addLotResidents time lotId residents world =
     addLotResidentsHelper time lotId residents world
+
+
+addLotResidentsInstantly : Time.Posix -> Id -> List CarMake -> World -> World
+addLotResidentsInstantly time lotId residents world =
+    case World.findLotById lotId world of
+        Just lot ->
+            List.foldl
+                (\resident nextWorld ->
+                    spawnResident time resident lot nextWorld
+                        |> Result.withDefault nextWorld
+                )
+                world
+                residents
+
+        Nothing ->
+            world
 
 
 addLotResidentsHelper : Time.Posix -> Id -> List CarMake -> World -> World

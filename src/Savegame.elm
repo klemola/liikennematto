@@ -652,7 +652,11 @@ spawnLotResidents currentTime world =
         (\lotId lot updatedWorld ->
             case Lots.findByName lot.name of
                 Just newLot ->
-                    Simulation.Traffic.addLotResidents currentTime lotId newLot.residents updatedWorld
+                    Simulation.Traffic.addLotResidentsInstantly
+                        currentTime
+                        lotId
+                        newLot.residents
+                        updatedWorld
 
                 Nothing ->
                     updatedWorld
