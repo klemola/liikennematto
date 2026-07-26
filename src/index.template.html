@@ -68,11 +68,22 @@
                 return "#" + btoa(binary);
             }
 
+            // Reading window.top throws in some cross-origin embeds instead of
+            // returning a foreign window, so a throw also means embedded.
+            function isEmbedded() {
+                try {
+                    return window.self !== window.top;
+                } catch (e) {
+                    return true;
+                }
+            }
+
             var app = Elm.Main.init({
                 flags: {
                     runtimeEnvironment: "release",
                     time: Date.now(),
                     savegameData: parseSavegameFromUrl(),
+                    embedded: isEmbedded(),
                 },
             });
 
@@ -103,7 +114,9 @@
                 };
 
                 // Both navigator.share and the clipboard need transient user
-                // activation, which an await before the call would spend.
+                // activation, which an await before the call would spend. Both
+                // also require a secure context, so neither exists when the
+                // page is served over plain HTTP.
                 if (navigator.canShare && navigator.canShare(shareData)) {
                     navigator
                         .share(shareData)
@@ -111,11 +124,12 @@
                             app.ports.onShareResult.send("shared");
                         })
                         .catch(function (e) {
-                            app.ports.onShareResult.send(
-                                e && e.name === "AbortError"
-                                    ? "cancelled"
-                                    : "failed",
-                            );
+                            if (e && e.name === "AbortError") {
+                                app.ports.onShareResult.send("cancelled");
+                            } else {
+                                console.error("navigator.share failed:", e);
+                                app.ports.onShareResult.send("failed");
+                            }
                         });
                 } else if (navigator.clipboard) {
                     navigator.clipboard
@@ -123,10 +137,20 @@
                         .then(function () {
                             app.ports.onShareResult.send("copied");
                         })
-                        .catch(function () {
+                        .catch(function (e) {
+                            console.error("Clipboard write failed:", e);
                             app.ports.onShareResult.send("failed");
                         });
                 } else {
+                    console.error(
+                        "Sharing unavailable.",
+                        "isSecureContext:",
+                        window.isSecureContext,
+                        "share:",
+                        typeof navigator.share,
+                        "clipboard:",
+                        typeof navigator.clipboard,
+                    );
                     app.ports.onShareResult.send("failed");
                 }
             });

@@ -513,9 +513,12 @@ fontSizeSectionHeading =
     14
 
 
+{-| Sharing cannot work when embedded (itch.io), so the button is absent there
+rather than permanently disabled. `ShareDisabled` is the transient case: nothing
+built yet.
+-}
 type ShareButtonState
     = ShareHidden
-      -- Sharing is disabled when Liikennematto is embedded (in itch.io)
     | ShareDisabled
     | ShareEnabled
 
