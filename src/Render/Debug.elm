@@ -1,18 +1,15 @@
-module Render.Debug exposing (view)
+module Render.Debug exposing (layers)
 
 import Color
 import Common exposing (GlobalCoordinates)
 import Data.Colors as Colors
 import Data.Lots exposing (ParkingRestriction(..))
 import Graph
-import Html
-import Html.Attributes
 import Length exposing (Length)
 import Lib.Collection as Collection exposing (Collection)
 import List.Extra
 import Model.Debug exposing (DebugLayerKind(..), DebugState, isLayerEnabled)
 import Model.RenderCache as RenderCache exposing (RenderCache)
-import Model.Screen exposing (Screen)
 import Model.World exposing (World)
 import Point2d exposing (Point2d)
 import Polygon2d
@@ -25,7 +22,6 @@ import Render.Conversion
         , toPixelsValue
         )
 import Render.Shape
-import Render.Viewport as Viewport exposing (Viewport)
 import Simulation.Car exposing (Car)
 import Simulation.Collision as Collision
 import Simulation.Lot exposing (Lot, ParkingSpot)
@@ -42,91 +38,35 @@ import Tilemap.Cell as Cell exposing (Cell)
 import Tilemap.TileConfig exposing (TileId)
 
 
-nothing : Svg msg
-nothing =
-    Svg.g [] []
-
-
 nodeRadius : Length
 nodeRadius =
     Length.meters 0.8
 
 
-view : World -> RenderCache -> DebugState -> Screen -> Viewport -> Html.Html msg
-view world cache debugState screen viewport =
-    let
-        bounds =
-            cache.pannableBounds
+layers : World -> RenderCache -> DebugState -> List (Svg msg)
+layers world cache debugState =
+    List.concat
+        [ if isLayerEnabled CarDebug debugState then
+            [ renderCarsDebug cache world.cars ]
 
-        pxPerUnit =
-            Viewport.pixelsPerUnit { screenWidth = toFloat screen.width } viewport
+          else
+            []
+        , if isLayerEnabled LotDebug debugState then
+            [ renderLotsDebug cache world.lots ]
 
-        extent =
-            Viewport.pannableExtentPixels bounds cache.tilemapWidthPixels cache.tilemapHeightPixels pxPerUnit
+          else
+            []
+        , if isLayerEnabled RoadNetworkDebug debugState then
+            [ renderRoadNetwork cache world.roadNetwork ]
 
-        ( tx, ty ) =
-            Viewport.cssTranslate bounds viewport pxPerUnit
+          else
+            []
+        , if isLayerEnabled WFCDebug debugState then
+            [ renderWFC cache ]
 
-        translateStr =
-            "translate(" ++ String.fromFloat tx ++ "px, " ++ String.fromFloat ty ++ "px)"
-
-        viewBoxStr =
-            Viewport.fixedViewBox bounds cache.tilemapWidthPixels cache.tilemapHeightPixels
-    in
-    Html.div
-        [ Html.Attributes.style "overflow" "hidden"
-        , Html.Attributes.style "width" (String.fromInt screen.width ++ "px")
-        , Html.Attributes.style "height" (String.fromInt screen.height ++ "px")
-        , Html.Attributes.style "pointer-events" "none"
+          else
+            []
         ]
-        [ Svg.svg
-            [ Attributes.width (String.fromFloat extent.width)
-            , Attributes.height (String.fromFloat extent.height)
-            , Attributes.viewBox viewBoxStr
-            , Html.Attributes.style "will-change" "transform"
-            , Html.Attributes.style "transform" translateStr
-            , Html.Attributes.style "transform-origin" "0 0"
-            ]
-            (debugLayerViews world cache debugState)
-        ]
-
-
-debugLayerViews : World -> RenderCache -> DebugState -> List (Svg msg)
-debugLayerViews world cache debugState =
-    let
-        carsLayer =
-            if isLayerEnabled CarDebug debugState then
-                renderCarsDebug cache world.cars
-
-            else
-                nothing
-
-        lotsLayer =
-            if isLayerEnabled LotDebug debugState then
-                renderLotsDebug cache world.lots
-
-            else
-                nothing
-
-        roadNetworkLayer =
-            if isLayerEnabled RoadNetworkDebug debugState then
-                renderRoadNetwork cache world.roadNetwork
-
-            else
-                nothing
-
-        wfcLayer =
-            if isLayerEnabled WFCDebug debugState then
-                renderWFC cache
-
-            else
-                nothing
-    in
-    [ carsLayer
-    , lotsLayer
-    , roadNetworkLayer
-    , wfcLayer
-    ]
 
 
 renderRoadNetwork : RenderCache -> RoadNetwork -> Svg msg

@@ -165,26 +165,22 @@ view model =
                 , screenWidth = model.cache.tilemapWidthPixels
                 }
 
-        renderDebug =
-            Render.Debug.view
+        debugLayers =
+            Render.Debug.layers
                 world
                 model.cache
                 (Model.Debug.initialDebugState
                     |> Model.Debug.toggleLayer Model.Debug.CarDebug
                     |> Model.Debug.toggleLayer Model.Debug.RoadNetworkDebug
                 )
-                screen
-                viewport
-                |> Element.html
     in
     Html.div []
         [ Html.div [ MouseEvents.onClick WorldClicked ]
-            [ Render.view world model.cache screen viewport
+            [ Render.view world model.cache screen viewport debugLayers
                 |> Element.html
                 |> Element.el
                     [ Element.width (Element.px screenWidth)
                     , Element.height (Element.px screenHeight)
-                    , Element.inFront renderDebug
                     ]
                 |> Element.map (always NoOp)
                 |> Element.layout

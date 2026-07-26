@@ -8,8 +8,8 @@ import Element.Background
 import Element.Border
 import Element.Font
 import Element.Input
-import Html exposing (Html)
 import Helpers
+import Html exposing (Html)
 import Html.Attributes
 import Json.Decode as JD
 import Model.RenderCache as RenderCache
@@ -320,7 +320,7 @@ view model =
             Screen.fromDimensions containerWidth containerHeight
 
         renderAndEditor =
-            Render.view model.world model.cache screen model.viewport
+            Render.view model.world model.cache screen model.viewport []
                 |> Element.html
                 |> Element.el
                     [ Element.width (Element.px containerWidth)

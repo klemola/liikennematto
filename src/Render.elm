@@ -73,8 +73,8 @@ styles =
 --
 
 
-view : World -> RenderCache -> Screen -> Viewport -> Html msg
-view { cars, roadNetwork, trafficLights } cache screen viewport =
+view : World -> RenderCache -> Screen -> Viewport -> List (Svg msg) -> Html msg
+view { cars, roadNetwork, trafficLights } cache screen viewport debugLayers =
     let
         bounds =
             cache.pannableBounds
@@ -107,16 +107,18 @@ view { cars, roadNetwork, trafficLights } cache screen viewport =
             , Html.Attributes.style "transform" translateStr
             , Html.Attributes.style "transform-origin" "0 0"
             ]
-            [ styles
-            , Svg.Lazy.lazy renderBackground cache
-            , Svg.Lazy.lazy renderTilemapBackground cache
-            , Svg.Lazy.lazy renderTilemap cache.tilemap
-            , Svg.Lazy.lazy renderDynamicTiles cache
-            , renderCars cache cars
-            , Svg.Lazy.lazy2 renderTrafficLights cache trafficLights
-            , Svg.Lazy.lazy2 renderTrafficSigns cache roadNetwork
-            , Svg.Lazy.lazy renderTilemapBorder cache
-            ]
+            ([ styles
+             , Svg.Lazy.lazy renderBackground cache
+             , Svg.Lazy.lazy renderTilemapBackground cache
+             , Svg.Lazy.lazy renderTilemap cache.tilemap
+             , Svg.Lazy.lazy renderDynamicTiles cache
+             , renderCars cache cars
+             , Svg.Lazy.lazy2 renderTrafficLights cache trafficLights
+             , Svg.Lazy.lazy2 renderTrafficSigns cache roadNetwork
+             , Svg.Lazy.lazy renderTilemapBorder cache
+             ]
+                ++ debugLayers
+            )
         ]
 
 
@@ -208,7 +210,6 @@ renderTile renderable =
                 Nothing ->
                     ""
             )
-        , Attributes.style "will-change: transform; backface-visibility: hidden;"
         ]
 
 

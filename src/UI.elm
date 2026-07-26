@@ -265,8 +265,8 @@ maxZoomLevel =
     Near
 
 
-view : Liikennematto -> Element msg -> Element msg -> Html Msg
-view liikennematto render renderDebugLayers =
+view : Liikennematto -> Element msg -> Html Msg
+view liikennematto render =
     Element.layoutWith
         { options =
             if liikennematto.ui.lastEventDevice == Pointer.TouchType then
@@ -315,8 +315,6 @@ view liikennematto render renderDebugLayers =
         (Element.el
             [ Element.width (Element.px liikennematto.screen.width)
             , Element.height (Element.px liikennematto.screen.height)
-            , Element.inFront
-                (renderDebugLayers |> Element.map (\_ -> NoOp))
             , Element.inFront
                 (Editor.view
                     liikennematto.renderCache

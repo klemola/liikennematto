@@ -39,8 +39,8 @@ main =
                 , screenWidth = cache.tilemapWidthPixels
                 }
 
-        renderDebug =
-            Render.Debug.view
+        debugLayers =
+            Render.Debug.layers
                 world
                 cache
                 (Model.Debug.initialDebugState
@@ -48,16 +48,12 @@ main =
                     |> Model.Debug.toggleLayer Model.Debug.RoadNetworkDebug
                     |> Model.Debug.toggleLayer Model.Debug.WFCDebug
                 )
-                screen
-                viewport
-                |> Element.html
     in
-    Render.view world cache screen viewport
+    Render.view world cache screen viewport debugLayers
         |> Element.html
         |> Element.el
             [ Element.width (Element.px screenWidth)
             , Element.height (Element.px screenHeight)
-            , Element.inFront renderDebug
             ]
         |> Element.layout
             [ Element.width Element.fill

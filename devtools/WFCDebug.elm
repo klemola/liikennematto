@@ -350,24 +350,20 @@ view model =
                 , screenWidth = model.cache.tilemapWidthPixels
                 }
 
-        renderDebug =
-            Render.Debug.view
+        debugLayers =
+            Render.Debug.layers
                 model.world
                 model.cache
                 (Model.Debug.initialDebugState
                     |> Model.Debug.toggleLayer Model.Debug.WFCDebug
                 )
-                screen
-                viewport
-                |> Element.html
 
         render =
-            Render.view model.world model.cache screen viewport
+            Render.view model.world model.cache screen viewport debugLayers
                 |> Element.html
                 |> Element.el
                     [ Element.width (Element.px screenWidth)
                     , Element.height (Element.px screenHeight)
-                    , Element.inFront renderDebug
                     , Element.inFront
                         (wfcCurrentCell model.wfcModel)
                     , Element.inFront
