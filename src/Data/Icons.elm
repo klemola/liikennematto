@@ -10,6 +10,7 @@ module Data.Icons exposing
     , iconPause
     , iconResume
     , iconRoadNetworkDebug
+    , iconShareGame
     , iconSpawnCar
     , iconZoomIn
     , iconZoomOut
@@ -157,6 +158,16 @@ iconNewGameSvg =
             ]
             []
         ]
+
+
+iconShareGame : ( Element.Color, Svg msg )
+iconShareGame =
+    ( Element.rgb255 211 198 125, iconShareGameSvg )
+
+
+iconShareGameSvg : Svg msg
+iconShareGameSvg =
+    Svg.svg [] []
 
 
 iconPause : ( Element.Color, Svg msg )

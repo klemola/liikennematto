@@ -4,6 +4,10 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, user-scalable=no" />
         <title>Liikennematto</title>
+        <meta
+            name="description"
+            content="Build the roads and the town comes to life"
+        />
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -50,6 +54,20 @@
                 }
             }
 
+            function savegameToHash(savegameJson) {
+                const bytes = fflate.strToU8(JSON.stringify(savegameJson));
+                const compressed = fflate.compressSync(bytes);
+
+                const len = compressed.byteLength;
+                let binary = "";
+
+                for (let i = 0; i < len; i++) {
+                    binary += String.fromCharCode(compressed[i]);
+                }
+
+                return "#" + btoa(binary);
+            }
+
             var app = Elm.Main.init({
                 flags: {
                     runtimeEnvironment: "release",
@@ -60,22 +78,56 @@
 
             app.ports.updateSavegameUrl.subscribe(function (savegameJson) {
                 try {
-                    const jsonString = JSON.stringify(savegameJson);
-                    const bytes = fflate.strToU8(jsonString);
-                    const compressed = fflate.compressSync(bytes);
-
-                    const len = compressed.byteLength;
-                    let binary = "";
-
-                    for (let i = 0; i < len; i++) {
-                        binary += String.fromCharCode(compressed[i]);
-                    }
-
-                    const base64Data = btoa(binary);
-
-                    history.replaceState(null, "", "#" + base64Data);
+                    history.replaceState(null, "", savegameToHash(savegameJson));
                 } catch (e) {
                     console.error("Failed to update savegame URL:", e);
+                }
+            });
+
+            app.ports.shareSavegame.subscribe(function (savegameJson) {
+                let shareUrl;
+
+                try {
+                    history.replaceState(null, "", savegameToHash(savegameJson));
+                    shareUrl = window.location.href;
+                } catch (e) {
+                    console.error("Failed to build share URL:", e);
+                    app.ports.onShareResult.send("failed");
+                    return;
+                }
+
+                const shareData = {
+                    title: "Liikennematto",
+                    text: "Take a look at my town!",
+                    url: shareUrl,
+                };
+
+                // Both navigator.share and the clipboard need transient user
+                // activation, which an await before the call would spend.
+                if (navigator.canShare && navigator.canShare(shareData)) {
+                    navigator
+                        .share(shareData)
+                        .then(function () {
+                            app.ports.onShareResult.send("shared");
+                        })
+                        .catch(function (e) {
+                            app.ports.onShareResult.send(
+                                e && e.name === "AbortError"
+                                    ? "cancelled"
+                                    : "failed",
+                            );
+                        });
+                } else if (navigator.clipboard) {
+                    navigator.clipboard
+                        .writeText(shareUrl)
+                        .then(function () {
+                            app.ports.onShareResult.send("copied");
+                        })
+                        .catch(function () {
+                            app.ports.onShareResult.send("failed");
+                        });
+                } else {
+                    app.ports.onShareResult.send("failed");
                 }
             });
 
