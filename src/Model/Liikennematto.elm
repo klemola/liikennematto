@@ -36,6 +36,7 @@ type alias Liikennematto =
     , world : World
     , wfc : DrivenWFC
     , savegame : Maybe JE.Value
+    , embedded : Bool
     , simulationActive : Bool
     , renderCache : RenderCache
     , viewport : Viewport
@@ -278,6 +279,7 @@ initial flags =
     , world = world
     , wfc = initialDrivenWfc initialSeed
     , savegame = maybeSavegame
+    , embedded = flags.embedded
     , simulationActive = True
     , renderCache = initialRenderCache
     , viewport = initialViewport
@@ -316,6 +318,7 @@ fromNewGame model =
     { model
         | world = world
         , wfc = initialDrivenWfc newGameSeed
+        , savegame = Nothing
         , renderCache = cache
         , simulationActive = True
         , debug = initialDebugState

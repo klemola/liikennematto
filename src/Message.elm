@@ -5,6 +5,7 @@ import Browser.Events exposing (Visibility)
 import Duration exposing (Duration)
 import Json.Encode as JE
 import Model.World exposing (LotPlacement, TilemapChange)
+import Savegame
 import Task
 import Tilemap.DrivenWFC exposing (RunWFCResult)
 import Time
@@ -23,6 +24,8 @@ type Message
     | GameSetupComplete
     | SavegameHashChanged JE.Value
     | SavegameHashCleared
+    | ShareResultReceived Savegame.ShareResult
+    | ShareFeedbackExpired
       -- Tilemap & Simulation
     | UpdateTraffic Duration
     | CheckQueues Time.Posix Duration

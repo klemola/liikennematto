@@ -16,6 +16,7 @@ import Model.Flags as Flags exposing (FlagsJson)
 import Model.Liikennematto as Liikennematto exposing (Liikennematto)
 import Model.RenderCache
 import Model.Screen as Screen
+import Process
 import Render
 import Render.Conversion exposing (tileSizePixels)
 import Render.Debug
@@ -103,6 +104,7 @@ subscriptions model =
             , Audio.onAudioInitComplete (\_ -> AudioInitComplete)
             , Savegame.onHashChange SavegameHashChanged
             , Savegame.onHashCleared (\_ -> SavegameHashCleared)
+            , Savegame.onShareResult (Savegame.shareResultFromString >> ShareResultReceived)
             , UI.subscriptions model.ui |> Sub.map UIMsg
             ]
     in
@@ -264,6 +266,22 @@ updateBase msg model =
             , Cmd.none
             )
 
+        ShareResultReceived result ->
+            case shareFeedbackFor result of
+                Just feedback ->
+                    ( { model | ui = UI.Model.setShareFeedback (Just feedback) model.ui }
+                    , Process.sleep shareFeedbackDurationMs
+                        |> Task.perform (always ShareFeedbackExpired)
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        ShareFeedbackExpired ->
+            ( { model | ui = UI.Model.setShareFeedback Nothing model.ui }
+            , Cmd.none
+            )
+
         UIMsg uiMsg ->
             let
                 ( nextUi, uiCmd, uiEvent ) =
@@ -369,6 +387,30 @@ gameActionToCmd action =
 --
 
 
+shareFeedbackDurationMs : Float
+shareFeedbackDurationMs =
+    3000
+
+
+{-| A completed native share needs no toast (the share sheet already
+acknowledged it), and neither does one the player dismissed.
+-}
+shareFeedbackFor : Savegame.ShareResult -> Maybe UI.Model.ShareFeedback
+shareFeedbackFor result =
+    case result of
+        Savegame.Shared ->
+            Nothing
+
+        Savegame.Cancelled ->
+            Nothing
+
+        Savegame.Copied ->
+            Just UI.Model.ShareLinkCopied
+
+        Savegame.Failed ->
+            Just UI.Model.ShareUnavailable
+
+
 onUiButtonPressed : UI.Model.ButtonKind -> Liikennematto -> ( Liikennematto, Cmd Message )
 onUiButtonPressed buttonId model =
     case buttonId of
@@ -392,6 +434,16 @@ onUiButtonPressed buttonId model =
                 [ gameActionsToCmd transitionActions
                 , Savegame.clearSavegameUrl ()
                 ]
+            )
+
+        UI.Model.ShareGame ->
+            ( model
+            , case model.savegame of
+                Just savegame ->
+                    Savegame.shareSavegame savegame
+
+                Nothing ->
+                    Cmd.none
             )
 
         UI.Model.SpawnCar ->

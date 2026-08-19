@@ -2,12 +2,14 @@ module UI.Model exposing
     ( ButtonKind(..)
     , DestructiveAction(..)
     , DevView(..)
+    , ShareFeedback(..)
     , UI
     , ZoomLevel(..)
     , clearConfirmation
     , destructiveActionCell
     , initialModel
     , requestConfirmation
+    , setShareFeedback
     )
 
 import Html.Events.Extra.Pointer as Pointer
@@ -23,8 +25,22 @@ type alias UI =
     , editor : UI.Editor.Model
     , showLmInfo : Bool
     , pendingDestructiveAction : Maybe DestructiveAction
+    , shareFeedback : Maybe ShareFeedback
     , lastEventDevice : Pointer.DeviceType
     }
+
+
+{-| Transient toast after a share attempt. A completed native share needs no
+toast (the share sheet is its own feedback) and neither does a cancelled one.
+-}
+type ShareFeedback
+    = ShareLinkCopied
+    | ShareUnavailable
+
+
+setShareFeedback : Maybe ShareFeedback -> UI -> UI
+setShareFeedback feedback ui =
+    { ui | shareFeedback = feedback }
 
 
 {-| A tilemap change that would erase a lot or large nature tile (no undo),
@@ -47,6 +63,7 @@ destructiveActionCell action =
 
 type ButtonKind
     = NewGame
+    | ShareGame
     | PauseSimulation
     | ResumeSimulation
     | ToggleCarDebug
@@ -79,6 +96,7 @@ initialModel =
     , editor = UI.Editor.initialModel
     , showLmInfo = False
     , pendingDestructiveAction = Nothing
+    , shareFeedback = Nothing
     , lastEventDevice = Pointer.MouseType
     }
 

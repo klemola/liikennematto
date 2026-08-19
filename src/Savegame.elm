@@ -1,10 +1,14 @@
 port module Savegame exposing
     ( SavegameData
+    , ShareResult(..)
     , clearSavegameUrl
     , decode
     , encode
     , onHashChange
     , onHashCleared
+    , onShareResult
+    , shareResultFromString
+    , shareSavegame
     , spawnLotResidents
     , updateSavegameUrl
     )
@@ -60,6 +64,39 @@ port onHashChange : (JE.Value -> msg) -> Sub msg
 
 
 port onHashCleared : (() -> msg) -> Sub msg
+
+
+port shareSavegame : JE.Value -> Cmd msg
+
+
+port onShareResult : (String -> msg) -> Sub msg
+
+
+{-| The Web Share API is unavailable on most desktop browsers, so the JS side
+falls back to the clipboard. A share attempt therefore succeeds as either
+`Shared` or `Copied`.
+-}
+type ShareResult
+    = Shared
+    | Copied
+    | Cancelled
+    | Failed
+
+
+shareResultFromString : String -> ShareResult
+shareResultFromString tag =
+    case tag of
+        "shared" ->
+            Shared
+
+        "copied" ->
+            Copied
+
+        "cancelled" ->
+            Cancelled
+
+        _ ->
+            Failed
 
 
 

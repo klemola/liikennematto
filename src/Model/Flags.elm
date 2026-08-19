@@ -15,6 +15,9 @@ type alias Flags =
     { runtimeEnvironment : RuntimeEnvironment
     , time : Time.Posix
     , savegameData : Maybe JE.Value
+
+    -- Running inside an iframe, as on itch.io.
+    , embedded : Bool
     }
 
 
@@ -33,6 +36,7 @@ fallback =
     { runtimeEnvironment = Unknown
     , time = Time.millisToPosix 42
     , savegameData = Nothing
+    , embedded = False
     }
 
 
@@ -45,7 +49,7 @@ fromJsonValue value =
 
 flagsDecoder : Json.Decode.Decoder Flags
 flagsDecoder =
-    Json.Decode.map3 Flags
+    Json.Decode.map4 Flags
         (Json.Decode.field "runtimeEnvironment"
             (Json.Decode.string
                 |> Json.Decode.andThen runtimeEnviromentFromString
@@ -55,6 +59,10 @@ flagsDecoder =
             |> Json.Decode.map Time.millisToPosix
         )
         (Json.Decode.maybe (Json.Decode.field "savegameData" Json.Decode.value))
+        (Json.Decode.field "embedded" Json.Decode.bool
+            |> Json.Decode.maybe
+            |> Json.Decode.map (Maybe.withDefault False)
+        )
 
 
 runtimeEnviromentFromString : String -> Json.Decode.Decoder RuntimeEnvironment

@@ -291,11 +291,12 @@ view liikennematto render =
                 liikennematto.simulationActive
             )
         , Element.inFront
-            (Element.Lazy.lazy4 menu
+            (Element.Lazy.lazy5 menu
                 liikennematto.debug
                 liikennematto.screen
                 liikennematto.ui.showMenu
                 liikennematto.ui.showLmInfo
+                (shareButtonState liikennematto)
             )
         , Element.inFront
             (Element.Lazy.lazy2 lmInfo
@@ -303,6 +304,8 @@ view liikennematto render =
                 liikennematto.ui.lastEventDevice
             )
         , Element.inFront (devMenu liikennematto liikennematto.ui)
+        , Element.inFront
+            (Element.Lazy.lazy shareToast liikennematto.ui.shareFeedback)
         , Element.inFront
             (confirmationDialog
                 liikennematto.renderCache
@@ -510,8 +513,46 @@ fontSizeSectionHeading =
     14
 
 
-menu : Model.Debug.DebugState -> Screen -> Bool -> Bool -> Element Msg
-menu debugState screen showMenu showLmInfo =
+{-| Sharing cannot work when embedded (itch.io), so the button is absent there
+rather than permanently disabled. `ShareDisabled` is the transient case: nothing
+built yet.
+-}
+type ShareButtonState
+    = ShareHidden
+    | ShareDisabled
+    | ShareEnabled
+
+
+shareButtonState : Liikennematto -> ShareButtonState
+shareButtonState liikennematto =
+    if liikennematto.embedded then
+        ShareHidden
+
+    else if liikennematto.savegame == Nothing then
+        ShareDisabled
+
+    else
+        ShareEnabled
+
+
+shareButton : ShareButtonState -> Element Msg
+shareButton state =
+    case state of
+        ShareHidden ->
+            Element.none
+
+        _ ->
+            iconWithTextButtonLg
+                { onPress = Trigger ShareGame
+                , selected = False
+                , disabled = state == ShareDisabled
+                }
+                "Share game"
+                Icons.iconShareGame
+
+
+menu : Model.Debug.DebugState -> Screen -> Bool -> Bool -> ShareButtonState -> Element Msg
+menu debugState screen showMenu showLmInfo shareState =
     let
         menuWidthPx =
             208
@@ -609,6 +650,7 @@ menu debugState screen showMenu showLmInfo =
                     }
                     "New game"
                     Icons.iconNewGame
+                , shareButton shareState
                 ]
             , Element.column
                 menuSectionAttrs
@@ -755,6 +797,54 @@ lmInfo showLmInfo deviceType =
 
     else
         Element.none
+
+
+shareToastFadeInCss : String
+shareToastFadeInCss =
+    "@keyframes shareToastFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}.share-toast{animation:shareToastFadeIn 160ms ease-out}"
+
+
+{-| Feedback for share attempts that the platform does not acknowledge on its
+own. Sits above the canvas without capturing pointer events so building can
+continue while it is visible.
+-}
+shareToast : Maybe Model.ShareFeedback -> Element Msg
+shareToast feedback =
+    case feedback of
+        Just kind ->
+            Element.el
+                [ Element.centerX
+                , Element.alignTop
+                , Element.paddingXY 0 whitespaceCondensed
+                , Element.htmlAttribute (HtmlAttribute.style "pointer-events" "none")
+                ]
+                (Element.row
+                    [ Element.paddingXY whitespaceRegular whitespaceCondensed
+                    , Background.color menuBackgroundColor
+                    , Border.rounded borderRadiusMenuPx
+                    , Border.color uiColorBorder
+                    , Border.width borderSize
+                    , Font.color uiColorText
+                    , Element.htmlAttribute (HtmlAttribute.class "share-toast")
+                    ]
+                    [ Element.html
+                        (Html.node "style" [] [ Html.text shareToastFadeInCss ])
+                    , Element.text (shareFeedbackText kind)
+                    ]
+                )
+
+        Nothing ->
+            Element.none
+
+
+shareFeedbackText : Model.ShareFeedback -> String
+shareFeedbackText kind =
+    case kind of
+        Model.ShareLinkCopied ->
+            "Link copied to clipboard"
+
+        Model.ShareUnavailable ->
+            "Could not share the game"
 
 
 dialogBackdropColor : Element.Color
