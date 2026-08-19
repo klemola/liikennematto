@@ -167,7 +167,178 @@ iconShareGame =
 
 iconShareGameSvg : Svg msg
 iconShareGameSvg =
-    Svg.svg [] []
+    Svg.svg
+        [ Attr.width "256"
+        , Attr.height "256"
+        , Attr.viewBox "0 0 256 256"
+        , Attr.fill "none"
+        ]
+        [ Svg.path
+            [ Attr.d "M76.7846 92.6077L128 64L179.215 92.6077L218 115L128.103 166.902C126.192 168.006 123.829 167.971 121.951 166.812L38 115L76.7846 92.6077Z"
+            , Attr.fill "#B1BDD3"
+            ]
+            []
+        , Svg.path
+            [ Attr.d "M128 64L179.215 92.6077L218 115L128.103 166.902C126.192 168.006 123.829 167.971 121.951 166.812L38 115L76.7846 92.6077L128 64ZM38 115L128 64M218 115L128 64"
+            , Attr.stroke "#283448"
+            , Attr.strokeWidth "3"
+            , Attr.strokeLinejoin "round"
+            ]
+            []
+        , Svg.g
+            [ Attr.clipPath "url(#clip0_3032_3665)"
+            ]
+            [ Svg.rect
+                [ Attr.x "53"
+                , Attr.y "63.5942"
+                , Attr.width "139.618"
+                , Attr.height "139.618"
+                , Attr.rx "17"
+                , Attr.transform "rotate(-6 53 63.5942)"
+                , Attr.fill "#7EB270"
+                ]
+                []
+            , Svg.path
+                [ Attr.d "M133.108 112.88L159.253 110.132L162.826 144.121L110.535 149.617L108.749 132.622L106.962 115.628L133.108 112.88Z"
+                , Attr.fill "#DEE4ED"
+                ]
+                []
+            , Svg.path
+                [ Attr.d "M106.133 116.777L160.301 111.084"
+                , Attr.stroke "#283448"
+                , Attr.strokeWidth "1.84218"
+                ]
+                []
+            , Svg.path
+                [ Attr.d "M131.265 95.3486L161.035 110.317L105.258 116.179L131.265 95.3486Z"
+                , Attr.fill "#DEE4ED"
+                ]
+                []
+            , Svg.rect
+                [ Attr.x "137.312"
+                , Attr.y "123.43"
+                , Attr.width "13.2574"
+                , Attr.height "13.2574"
+                , Attr.rx "1.53515"
+                , Attr.transform "rotate(-6 137.312 123.43)"
+                , Attr.fill "#DEE4ED"
+                , Attr.stroke "#283448"
+                , Attr.strokeWidth "1.84218"
+                ]
+                []
+            , Svg.path
+                [ Attr.d "M118.006 131.423L125.992 130.584C126.835 130.495 127.59 131.107 127.679 131.95L129.412 148.436L118.372 149.596L116.639 133.111C116.551 132.267 117.163 131.512 118.006 131.423Z"
+                , Attr.fill "#DEE4ED"
+                , Attr.stroke "#283448"
+                , Attr.strokeWidth "1.84218"
+                , Attr.strokeLinecap "round"
+                ]
+                []
+            , Svg.path
+                [ Attr.d "M129.11 96.1669C130.355 95.1242 132.108 94.94 133.543 95.701L159.328 109.378C159.78 109.618 160.082 110.066 160.135 110.574L163.575 143.301C163.664 144.144 163.052 144.9 162.209 144.988L111.317 150.337C110.474 150.426 109.719 149.814 109.63 148.971L106.19 116.244C106.137 115.736 106.34 115.234 106.731 114.907L129.11 96.1669Z"
+                , Attr.stroke "#283448"
+                , Attr.strokeWidth "1.84218"
+                ]
+                []
+            , Svg.path
+                [ Attr.d "M199.77 166.523C200.78 176.135 193.806 184.746 184.194 185.756L82.8178 196.411C76.5783 197.067 70.9889 192.54 70.3331 186.301L59.6782 84.9254C58.6679 75.3131 65.6407 66.7016 75.253 65.6911C84.8654 64.6808 93.4771 71.6544 94.4874 81.2668L102.254 155.162C102.485 157.354 104.449 158.944 106.641 158.714L180.535 150.947C190.148 149.937 198.759 156.91 199.77 166.523Z"
+                , Attr.fill "#766565"
+                , Attr.stroke "#283448"
+                , Attr.strokeWidth "1.84218"
+                , Attr.strokeLinecap "round"
+                ]
+                []
+            , Svg.path
+                [ Attr.d "M78.1099 92.8672L77.2112 84.3174"
+                , Attr.stroke "#DEE4ED"
+                , Attr.strokeWidth "4.91249"
+                , Attr.strokeLinecap "round"
+                ]
+                []
+            , Svg.path
+                [ Attr.d "M80.2922 113.631L79.3936 105.081"
+                , Attr.stroke "#DEE4ED"
+                , Attr.strokeWidth "4.91249"
+                , Attr.strokeLinecap "round"
+                ]
+                []
+            , Svg.path
+                [ Attr.d "M82.4746 134.395L81.576 125.845"
+                , Attr.stroke "#DEE4ED"
+                , Attr.strokeWidth "4.91249"
+                , Attr.strokeLinecap "round"
+                ]
+                []
+            , Svg.path
+                [ Attr.d "M84.6567 155.159L83.7581 146.609"
+                , Attr.stroke "#DEE4ED"
+                , Attr.strokeWidth "4.91249"
+                , Attr.strokeLinecap "round"
+                ]
+                []
+            , Svg.path
+                [ Attr.d "M172.594 169.378L181.143 168.48"
+                , Attr.stroke "#DEE4ED"
+                , Attr.strokeWidth "4.91249"
+                , Attr.strokeLinecap "round"
+                ]
+                []
+            , Svg.path
+                [ Attr.d "M151.83 171.561L160.379 170.662"
+                , Attr.stroke "#DEE4ED"
+                , Attr.strokeWidth "4.91249"
+                , Attr.strokeLinecap "round"
+                ]
+                []
+            , Svg.path
+                [ Attr.d "M131.066 173.743L139.616 172.845"
+                , Attr.stroke "#DEE4ED"
+                , Attr.strokeWidth "4.91249"
+                , Attr.strokeLinecap "round"
+                ]
+                []
+            , Svg.path
+                [ Attr.d "M110.303 175.926L118.852 175.027"
+                , Attr.stroke "#DEE4ED"
+                , Attr.strokeWidth "4.91249"
+                , Attr.strokeLinecap "round"
+                ]
+                []
+            ]
+        , Svg.rect
+            [ Attr.x "53"
+            , Attr.y "63.5942"
+            , Attr.width "139.618"
+            , Attr.height "139.618"
+            , Attr.rx "17"
+            , Attr.transform "rotate(-6 53 63.5942)"
+            , Attr.stroke "#283448"
+            , Attr.strokeWidth "2.394"
+            ]
+            []
+        , Svg.path
+            [ Attr.d "M218 115V201C218 204.314 215.314 207 212 207H128H44C40.6863 207 38 204.314 38 201L38 115L125.465 155.779C127.072 156.529 128.928 156.529 130.535 155.779L218 115Z"
+            , Attr.fill "#BAC5D8"
+            , Attr.stroke "#283448"
+            , Attr.strokeWidth "3"
+            , Attr.strokeLinejoin "round"
+            ]
+            []
+        , Svg.defs []
+            [ Svg.clipPath []
+                [ Svg.rect
+                    [ Attr.x "53"
+                    , Attr.y "63.5942"
+                    , Attr.width "139.618"
+                    , Attr.height "139.618"
+                    , Attr.rx "17"
+                    , Attr.transform "rotate(-6 53 63.5942)"
+                    , Attr.fill "white"
+                    ]
+                    []
+                ]
+            ]
+        ]
 
 
 iconPause : ( Element.Color, Svg msg )
