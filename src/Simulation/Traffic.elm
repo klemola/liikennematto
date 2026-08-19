@@ -278,18 +278,19 @@ addLotResidents time lotId residents world =
 
 addLotResidentsInstantly : Time.Posix -> Id -> List CarMake -> World -> World
 addLotResidentsInstantly time lotId residents world =
-    case World.findLotById lotId world of
-        Just lot ->
-            List.foldl
-                (\resident nextWorld ->
+    List.foldl
+        (\resident nextWorld ->
+            -- Look up the lot on every iteration so that earlier residents' parking spot reservations are visible
+            case World.findLotById lotId nextWorld of
+                Just lot ->
                     spawnResident time resident lot nextWorld
                         |> Result.withDefault nextWorld
-                )
-                world
-                residents
 
-        Nothing ->
-            world
+                Nothing ->
+                    nextWorld
+        )
+        world
+        residents
 
 
 addLotResidentsHelper : Time.Posix -> Id -> List CarMake -> World -> World
